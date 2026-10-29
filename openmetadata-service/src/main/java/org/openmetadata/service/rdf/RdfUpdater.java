@@ -13,8 +13,8 @@
 package org.openmetadata.service.rdf;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,6 @@ import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
-import org.openmetadata.service.cluster.ClusterCapabilities;
 import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.rdf.maintenance.RdfStorageMaintenanceService;
 import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
@@ -37,21 +36,12 @@ import org.openmetadata.service.util.PostCommitActionQueue;
 public final class RdfUpdater {
   private static volatile Consumer<RdfLiveWrite> writeQueue;
   private static RdfLiveWriter writer;
-  // Set once by the application; until then storage maintenance waits, as it cannot tell
-  // whether every server holds its writes back.
-  private static volatile ClusterCapabilities cluster =
-      capability -> Set.of("this server, whose cluster membership is not known yet");
   private static RdfStorageMaintenanceService maintenance;
 
   private RdfUpdater() {}
 
   public static void initialize(final RdfConfiguration config) {
     initialize(config, new AsyncOperationsConfiguration());
-  }
-
-  /** Tells storage maintenance which servers do not hold their writes back yet. */
-  public static void useClusterCapabilities(final ClusterCapabilities capabilities) {
-    cluster = capabilities;
   }
 
   public static synchronized void initialize(
@@ -63,7 +53,10 @@ public final class RdfUpdater {
         LOG.warn(
             "Durable live RDF delivery uses one cluster-wide writer to preserve mutation order");
       }
-      final RdfLiveWriteStore store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
+      final RdfStorageMaintenanceConfig maintenanceConfig = maintenanceConfig(config);
+      final RdfLiveWriteStore store =
+          new RdfLiveWriteStore(
+              Entity.getJdbi(), Clock.systemUTC(), compactionDeadline(maintenanceConfig));
       RdfProjectionHealth.initialize(store);
       RdfRepository.initialize(config);
       // The queue writes through its own view: a paused write is held back at once and retried,
@@ -77,24 +70,34 @@ public final class RdfUpdater {
               AsyncService.getInstance().getExecutorService());
       writeQueue = writer::enqueue;
       writer.start();
-      startStorageMaintenance(config);
+      startStorageMaintenance(maintenanceConfig, store);
       LOG.info("RDF updater initialized with durable, ordered live writes");
     }
   }
 
-  private static void startStorageMaintenance(final RdfConfiguration config) {
-    final RdfStorageMaintenanceConfig maintenanceConfig =
-        Optional.ofNullable(config.getStorageMaintenance())
-            .orElseGet(RdfStorageMaintenanceConfig::new);
+  private static RdfStorageMaintenanceConfig maintenanceConfig(final RdfConfiguration config) {
+    return Optional.ofNullable(config.getStorageMaintenance())
+        .orElseGet(RdfStorageMaintenanceConfig::new);
+  }
+
+  /** With maintenance off nothing promises a compaction, so none can be overdue. */
+  private static Duration compactionDeadline(final RdfStorageMaintenanceConfig maintenanceConfig) {
+    return Boolean.TRUE.equals(maintenanceConfig.getEnabled())
+        ? RdfStorageMaintenanceService.overdueAfter(maintenanceConfig)
+        : null;
+  }
+
+  private static void startStorageMaintenance(
+      final RdfStorageMaintenanceConfig maintenanceConfig, final RdfLiveWriteStore store) {
     if (Boolean.TRUE.equals(maintenanceConfig.getEnabled())) {
       maintenance =
           new RdfStorageMaintenanceService(
               maintenanceConfig,
               Entity.getCollectionDAO().rdfReindexLockDAO(),
+              store,
               RdfRepository::getInstance,
               Clock.systemUTC(),
-              ServerIdentityResolver.getInstance().getServerId(),
-              capability -> cluster.serversLacking(capability));
+              ServerIdentityResolver.getInstance().getServerId());
       maintenance.start();
     } else {
       LOG.warn(
