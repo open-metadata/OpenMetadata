@@ -417,6 +417,15 @@ class TestHexCellLineage:
         assert "-- Revenue by region\nselect o.region" in request.sql.root
         assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
 
+    def test_data_model_is_still_ingested_without_a_url(self, make_source):
+        source = make_source([REVENUE_CELL])
+        source.client.get_project_url.return_value = None
+
+        (request,), _ = run(source)
+
+        assert request.sourceUrl is None
+        assert [column.name.root for column in request.columns] == ["c1"]
+
     def test_table_to_data_model_edges_carry_column_lineage(self, make_source):
         source = make_source([REVENUE_CELL, CUSTOMERS_CELL])
 
