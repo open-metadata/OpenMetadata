@@ -16,8 +16,8 @@ package org.openmetadata.service.ontology;
 import java.util.Set;
 
 /**
- * Words a double-quoting dialect cannot read as a plain column or table name. The backtick and
- * bracket dialects quote every identifier, so they need no list.
+ * Words the ANSI dialect cannot read as a plain column or table name. Every other dialect quotes
+ * every identifier, so it needs no list.
  */
 final class OntologySqlReservedWords {
   /** Vendor lists of the ANSI engines: PostgreSQL 14, Redshift, Trino, Presto, Athena SELECT. */
@@ -41,19 +41,6 @@ final class OntologySqlReservedWords {
           select session_user similar skip snapshot some symmetric sysdate system table tablesample tag
           tdes text255 text32k then timestamp to top trailing trim true truncatecolumns uescape union
           unique unnest unpivot user using values variadic verbose wallet when where window with without
-          """);
-
-  /** Snowflake's "Reserved & limited keywords", reserved or limited as a column or table name. */
-  static final Set<String> SNOWFLAKE =
-      words(
-          """
-          account all alter and any as between by case cast check column connect connection constraint
-          create cross current current_date current_time current_timestamp current_user database delete
-          distinct drop else exists false following for from full grant group gscluster having ilike in
-          increment inner insert intersect into is issue join lateral left like localtime localtimestamp
-          minus natural not null of on or order organization qualify regexp revoke right rlike row rows
-          sample schema select set some start table tablesample then to trigger true try_cast union unique
-          update using values view when whenever where window with
           """);
 
   private OntologySqlReservedWords() {}

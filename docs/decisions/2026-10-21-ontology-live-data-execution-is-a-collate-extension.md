@@ -47,10 +47,13 @@ commented with the relation label, and the service, service type and dialect.
   property batch. A concept none of whose first 100 bound tables is visible is a 400 that says so.
   At most five hops per request, and the rail stops offering search-around at five.
 - The backtick and bracket dialects (`mysql`, `spark`, `bigquery`, `tsql`) quote every identifier,
-  because quoting never changes how those engines resolve a name. `ansi` and `snowflake` quote only
-  a name that is not lowercase `[a-z_][a-z0-9_]*` or that is in the dialect's reserved-word list,
-  so a lowercase catalog name keeps the source's case folding. The `ansi` list is the union of the
-  vendor lists of every engine mapped to it. `FROM` names `schema.table`, so every table in one
+  because quoting never changes how those engines resolve a name. `snowflake` double-quotes every
+  identifier too: the Snowflake connector stores each name in the case Snowflake reports, so a name
+  created without quotes is stored in upper case, a lowercase stored name was created quoted, and
+  the quoted stored name always resolves to the ingested object. `ansi` quotes only a name that is
+  not lowercase `[a-z_][a-z0-9_]*` or that is in its reserved-word list, because its engines store
+  and fold names in lowercase. That list is the union of the vendor lists of every engine mapped
+  to it. `FROM` names `schema.table`, so every table in one
   query belongs to the root table's service and database.
 - The Studio rail shows the SQL, a copy control, search-around and a `not stored` badge.
   `OntologyExplorerClassBase.getConceptLiveDataExtension()` returns no component in OSS; Collate's

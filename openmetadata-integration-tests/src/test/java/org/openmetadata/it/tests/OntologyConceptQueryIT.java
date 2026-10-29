@@ -146,7 +146,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void snowflakeIdentifiersAreQuotedOnlyWhenTheyNeedIt(final TestNamespace ns) {
+  void snowflakeQuotesEveryIdentifierAsStored(final TestNamespace ns) {
     final Payments payments =
         payments(ns, "snowflakePayments", DatabaseServiceTestFactory.createSnowflake(ns));
     final Table transfers = table(payments, "transfers", List.of("transfer_id", "Amount USD"));
@@ -156,9 +156,9 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
 
     assertEquals(OntologyConceptQueryDialect.SNOWFLAKE, snowflake.getDialect());
     assertEquals(
-        "SELECT transfer_id, \"Amount USD\"\nFROM "
+        "SELECT \"transfer_id\", \"Amount USD\"\nFROM \""
             + payments.schema().getName()
-            + ".transfers\nLIMIT 50",
+            + "\".\"transfers\"\nLIMIT 50",
         snowflake.getSql());
   }
 

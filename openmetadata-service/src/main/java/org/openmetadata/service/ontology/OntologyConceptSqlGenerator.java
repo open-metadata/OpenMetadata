@@ -355,23 +355,28 @@ public final class OntologyConceptSqlGenerator {
 
     /**
      * Quoting never changes how the backtick and bracket dialects resolve a name, so they quote
-     * all. Quoting a lowercase name in ANSI or Snowflake makes it case-sensitive, so those quote
-     * only names the engine would otherwise misread.
+     * all. Snowflake's connector stores names in the case Snowflake reports, so the quoted stored
+     * name always resolves to the ingested object, while an unquoted lowercase name folds to upper
+     * case. The ANSI engines store and fold names in lowercase, so they quote only a name that
+     * lowercase folding or a reserved word would misread.
      */
     String identifier(final String name) {
       return switch (dialect) {
         case TSQL -> "[" + name.replace("]", "]]") + "]";
         case BIGQUERY -> "`" + name.replace("\\", "\\\\").replace("`", "\\`") + "`";
         case MYSQL, SPARK -> "`" + name.replace("`", "``") + "`";
-        case ANSI -> doubleQuotedWhenNeeded(name, OntologySqlReservedWords.ANSI);
-        case SNOWFLAKE -> doubleQuotedWhenNeeded(name, OntologySqlReservedWords.SNOWFLAKE);
+        case SNOWFLAKE -> doubleQuoted(name);
+        case ANSI -> readsPlain(name) ? name : doubleQuoted(name);
       };
     }
 
-    private static String doubleQuotedWhenNeeded(final String name, final Set<String> reserved) {
-      return PLAIN_IDENTIFIER.matcher(name).matches() && !reserved.contains(name)
-          ? name
-          : "\"" + name.replace("\"", "\"\"") + "\"";
+    private static boolean readsPlain(final String name) {
+      return PLAIN_IDENTIFIER.matcher(name).matches()
+          && !OntologySqlReservedWords.ANSI.contains(name);
+    }
+
+    private static String doubleQuoted(final String name) {
+      return "\"" + name.replace("\"", "\"\"") + "\"";
     }
   }
 }
