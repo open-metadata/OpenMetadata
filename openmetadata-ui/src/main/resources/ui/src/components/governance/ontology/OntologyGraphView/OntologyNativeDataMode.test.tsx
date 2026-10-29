@@ -20,6 +20,7 @@ import {
 import { AxiosError, AxiosHeaders } from 'axios';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { NativeOntologyDataGraphPage } from '../../../../generated/api/data/nativeOntologyDataGraphPage';
+import { AssetType } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import {
   getNativeOntologyDataGraphPage,
@@ -103,7 +104,7 @@ const BindingWriter = () => {
       disabled={readState !== 'ready'}
       onClick={() =>
         void replaceAsset({
-          asset: { id: 'a7', type: 'table' },
+          asset: { assetId: 'a7', assetType: AssetType.Table },
           expectedRevision: 0,
         })
       }>

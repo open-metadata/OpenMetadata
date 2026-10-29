@@ -523,7 +523,7 @@ describe('changing the ontology', () => {
     const { result, rerender } = render('ontology-1');
     await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(1));
 
-    rerender({ id: 'ontology-2' });
+    rerender({ id: 'ontology-2', hookOptions: undefined });
     await waitFor(() =>
       expect(result.current.graph.clusters.map((c) => c.concept.id)).toEqual([
         'other',
