@@ -23,6 +23,7 @@ import { performAdminLogin } from '../../../utils/admin';
 import { clickCodeEditor } from '../../../utils/codeEditor';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
+import { selectComboBoxOption } from '../../../utils/destination';
 import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
@@ -46,22 +47,6 @@ const testCaseResult = {
     },
   ],
   timestamp: getCurrentMillis(),
-};
-
-/**
- * The column select opens its full list on focus, and only then does the
- * filled text filter it, so the popover shrinks and the row moves. A click in
- * that window releases over a different spot and selects nothing. Wait for the
- * filtered list before clicking, then confirm the pick took.
- */
-const pickProfilerColumn = async (page: Page, testId: string, name: string) => {
-  const combobox = page.getByTestId(testId).getByRole('combobox');
-  const listbox = page.getByRole('listbox');
-
-  await combobox.fill(name);
-  await expect(listbox.getByRole('option')).toHaveCount(1);
-  await listbox.getByRole('option', { name, exact: true }).click();
-  await expect(combobox).toHaveValue(name);
 };
 
 /**
@@ -319,11 +304,11 @@ test.describe(
         await clickCodeEditor(page);
         await page.keyboard.type(profilerSetting.profileQuery);
 
-        await pickProfilerColumn(
+        await selectComboBoxOption({
           page,
-          'include-column-select',
-          profilerSetting.includeColumns
-        );
+          testId: 'include-column-select',
+          optionName: profilerSetting.includeColumns,
+        });
         await page.locator('[data-testid="enable-partition-switch"]').click();
         await page.locator('[data-testid="interval-type"]').click();
         await page
@@ -334,11 +319,11 @@ test.describe(
           })
           .click();
 
-        await pickProfilerColumn(
+        await selectComboBoxOption({
           page,
-          'column-name',
-          profilerSetting.partitionColumnName
-        );
+          testId: 'column-name',
+          optionName: profilerSetting.partitionColumnName,
+        });
         await page
           .locator('[data-testid="partition-value"]')
           .fill(profilerSetting.partitionValues);
