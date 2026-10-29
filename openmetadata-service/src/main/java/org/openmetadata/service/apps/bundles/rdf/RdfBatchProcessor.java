@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -31,38 +32,22 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
-import org.openmetadata.service.rdf.RdfExcludedEntities;
+import org.openmetadata.service.rdf.RdfEntityLiveness;
+import org.openmetadata.service.rdf.RdfRelationshipScope;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfRepository.LineageEdgeData;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 @Slf4j
 public class RdfBatchProcessor {
-  public static final List<Integer> ALL_RELATIONSHIPS =
-      java.util.Arrays.stream(Relationship.values()).map(Relationship::ordinal).toList();
-
-  public static final Set<String> EXCLUDED_RELATIONSHIP_ENTITY_TYPES =
-      Set.of(
-          "changeEvent",
-          Entity.AUDIT_LOG,
-          Entity.WEB_ANALYTIC_EVENT,
-          "entityUsage",
-          "eventSubscription",
-          Entity.EVENT_SUBSCRIPTION,
-          "vote",
-          Entity.CONVERSATION,
-          Entity.THREAD);
-
-  public static final Set<Integer> EXCLUDED_RELATIONSHIP_TYPES =
-      Set.of(Relationship.VOTED.ordinal(), Relationship.FOLLOWS.ordinal());
-
+  private static final String GLOSSARY_TERM = "glossaryTerm";
   private final CollectionDAO collectionDAO;
   private final RdfRepository rdfRepository;
   private final RdfIndexingRunContext runContext;
   private final LongSupplier nanoTime;
+  private final RdfEntityLiveness liveness;
 
   public RdfBatchProcessor(CollectionDAO collectionDAO, RdfRepository rdfRepository) {
     this(collectionDAO, rdfRepository, RdfIndexingRunContext.reconcileDefaults());
@@ -78,10 +63,20 @@ public class RdfBatchProcessor {
       RdfRepository rdfRepository,
       RdfIndexingRunContext runContext,
       LongSupplier nanoTime) {
+    this(collectionDAO, rdfRepository, runContext, nanoTime, RdfEntityLiveness.database());
+  }
+
+  RdfBatchProcessor(
+      CollectionDAO collectionDAO,
+      RdfRepository rdfRepository,
+      RdfIndexingRunContext runContext,
+      LongSupplier nanoTime,
+      RdfEntityLiveness liveness) {
     this.collectionDAO = collectionDAO;
     this.rdfRepository = rdfRepository;
     this.runContext = runContext != null ? runContext : RdfIndexingRunContext.reconcileDefaults();
     this.nanoTime = nanoTime;
+    this.liveness = liveness;
   }
 
   public BatchProcessingResult processEntities(
@@ -212,7 +207,7 @@ public class RdfBatchProcessor {
       if (relResult.lastError() != null) {
         relationshipError = relResult.lastError();
       }
-      if ("glossaryTerm".equals(entityType)) {
+      if (GLOSSARY_TERM.equals(entityType)) {
         RelationshipProcessingResult glossResult =
             processGlossaryTermRelations(indexedEntities, effectiveStopRequested);
         relationshipFailures += glossResult.failureCount();
@@ -678,17 +673,22 @@ public class RdfBatchProcessor {
           entities.stream().map(entity -> entity.getId().toString()).collect(Collectors.toList());
 
       List<EntityRelationshipObject> outgoingRelationships =
-          collectionDAO
-              .relationshipDAO()
-              .findToBatchWithRelations(entityIds, entityType, ALL_RELATIONSHIPS);
+          retainLiveEnds(
+              collectionDAO
+                  .relationshipDAO()
+                  .findToBatchWithRelations(
+                      entityIds, entityType, RdfRelationshipScope.ALL_RELATIONSHIPS),
+              RdfBatchProcessor::toEnd);
 
       List<EntityRelationshipObject> incomingLineage =
-          collectionDAO
-              .relationshipDAO()
-              .findFromBatch(
-                  entityIds,
-                  Relationship.UPSTREAM.ordinal(),
-                  org.openmetadata.schema.type.Include.ALL);
+          retainLiveEnds(
+              collectionDAO
+                  .relationshipDAO()
+                  .findFromBatch(
+                      entityIds,
+                      Relationship.UPSTREAM.ordinal(),
+                      org.openmetadata.schema.type.Include.ALL),
+              RdfBatchProcessor::fromEnd);
 
       List<org.openmetadata.schema.type.EntityRelationship> allRelationships = new ArrayList<>();
       List<LineageEdgeData> lineageEdges = new ArrayList<>();
@@ -705,9 +705,7 @@ public class RdfBatchProcessor {
             lastError = error;
           }
         } else {
-          if ("glossaryTerm".equals(entityType)
-              && rel.getRelation() == Relationship.RELATED_TO.ordinal()
-              && "glossaryTerm".equals(rel.getToEntity())) {
+          if (RdfRelationshipScope.isTypedGlossaryRelation(rel)) {
             continue;
           }
           allRelationships.add(convertToEntityRelationship(rel));
@@ -794,24 +792,31 @@ public class RdfBatchProcessor {
 
   public org.openmetadata.schema.type.EntityRelationship convertToEntityRelationship(
       EntityRelationshipObject rel) {
-    return new org.openmetadata.schema.type.EntityRelationship()
-        .withFromEntity(rel.getFromEntity())
-        .withFromId(UUID.fromString(rel.getFromId()))
-        .withToEntity(rel.getToEntity())
-        .withToId(UUID.fromString(rel.getToId()))
-        .withRelation(rel.getRelation())
-        .withRelationshipType(Relationship.values()[rel.getRelation()]);
+    return RdfRelationshipScope.toEntityRelationship(rel);
   }
 
   private boolean shouldSkipRelationship(EntityRelationshipObject rel) {
-    return isExcludedRelationshipEndpoint(rel.getToEntity())
-        || isExcludedRelationshipEndpoint(rel.getFromEntity())
-        || EXCLUDED_RELATIONSHIP_TYPES.contains(rel.getRelation());
+    return !RdfRelationshipScope.isProjectedEdge(rel);
   }
 
-  private static boolean isExcludedRelationshipEndpoint(String entityType) {
-    return EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(entityType)
-        || RdfExcludedEntities.isExcluded(entityType);
+  /**
+   * The graph holds the live catalog only, and soft delete never marks relationship rows, so a row
+   * whose other end is soft-deleted or gone is left out. One liveness query per entity type.
+   */
+  private List<EntityRelationshipObject> retainLiveEnds(
+      List<EntityRelationshipObject> rows,
+      Function<EntityRelationshipObject, RdfEntityLiveness.Endpoint> otherEnd) {
+    Set<RdfEntityLiveness.Endpoint> live =
+        liveness.liveEndpoints(rows.stream().map(otherEnd).toList());
+    return rows.stream().filter(row -> live.contains(otherEnd.apply(row))).toList();
+  }
+
+  private static RdfEntityLiveness.Endpoint toEnd(EntityRelationshipObject row) {
+    return new RdfEntityLiveness.Endpoint(row.getToEntity(), UUID.fromString(row.getToId()));
+  }
+
+  private static RdfEntityLiveness.Endpoint fromEnd(EntityRelationshipObject row) {
+    return new RdfEntityLiveness.Endpoint(row.getFromEntity(), UUID.fromString(row.getFromId()));
   }
 
   private String collectLineageRelationship(
@@ -938,6 +943,7 @@ public class RdfBatchProcessor {
       }
     }
 
+    relations = retainLiveTargetTerms(relations);
     if (relations.isEmpty()) {
       return RelationshipProcessingResult.OK;
     }
@@ -948,8 +954,18 @@ public class RdfBatchProcessor {
     } catch (Exception e) {
       LOG.error("Failed to bulk add {} glossary term relations", relations.size(), e);
       return new RelationshipProcessingResult(
-          relations.size(), describeBulkError("glossaryTerm", "glossaryRelations", e));
+          relations.size(), describeBulkError(GLOSSARY_TERM, "glossaryRelations", e));
     }
+  }
+
+  /** Related terms are read with deleted ones included; the graph keeps live terms only. */
+  private List<RdfRepository.GlossaryTermRelationData> retainLiveTargetTerms(
+      List<RdfRepository.GlossaryTermRelationData> relations) {
+    Set<UUID> liveTerms =
+        liveness.liveIds(
+            GLOSSARY_TERM,
+            relations.stream().map(RdfRepository.GlossaryTermRelationData::toTermId).toList());
+    return relations.stream().filter(relation -> liveTerms.contains(relation.toTermId())).toList();
   }
 
   /**
