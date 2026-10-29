@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -154,19 +155,34 @@ public final class OntologyConceptQueryService {
         store.firstTables(
             concepts.stream().map(OntologyConcept::getId).toList(), TABLES_PER_CONCEPT);
     final Map<UUID, Table> tables = viewableTables(access, rows);
-    final List<BindingRow> visible =
-        rows.stream().filter(row -> tables.containsKey(row.assetId())).toList();
-    final Map<UUID, OntologyProperty> properties = boundProperties(access, visible);
+    final Map<UUID, List<BindingRow>> visible = firstVisibleTables(rows, tables::containsKey);
+    final Map<UUID, OntologyProperty> properties =
+        boundProperties(access, visible.values().stream().flatMap(List::stream).toList());
     final Map<UUID, BoundConcept> bound = new HashMap<>();
     for (final OntologyConcept concept : concepts) {
       final List<BoundTable> conceptTables =
-          visible.stream()
-              .filter(row -> row.conceptId().equals(concept.getId()))
+          visible.getOrDefault(concept.getId(), List.of()).stream()
               .map(row -> boundTable(tables.get(row.assetId()), row, properties))
               .toList();
       bound.put(concept.getId(), new BoundConcept(label(concept), conceptTables));
     }
     return bound;
+  }
+
+  /** Each concept's first table rows the reader may view, in the order the rows arrive. */
+  static Map<UUID, List<BindingRow>> firstVisibleTables(
+      final List<BindingRow> rows, final Predicate<UUID> canView) {
+    final Map<UUID, List<BindingRow>> first = new LinkedHashMap<>();
+    for (final BindingRow row : rows) {
+      final List<BindingRow> taken =
+          first.computeIfAbsent(row.conceptId(), id -> new ArrayList<>());
+      if (taken.size() < TABLES_PER_CONCEPT) {
+        taken.add(row);
+      }
+    }
+    first.replaceAll(
+        (concept, taken) -> taken.stream().filter(row -> canView.test(row.assetId())).toList());
+    return first;
   }
 
   private Map<UUID, Table> viewableTables(final Access access, final List<BindingRow> rows) {
