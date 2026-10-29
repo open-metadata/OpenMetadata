@@ -16,6 +16,11 @@
  */
 export interface EventsRecord {
     /**
+     * True when more events are unread than one request evaluates, so pendingEventsCount and
+     * totalEventsCount count only the first unread events.
+     */
+    countsAreLowerBound?: boolean;
+    /**
      * Count of failed events for specific alert.
      */
     failedEventsCount?: any;

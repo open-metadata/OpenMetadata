@@ -22,6 +22,7 @@ import {
   seedIncidents,
   selectGroup,
 } from '../../../utils/incidentGroups';
+import { clickAndWaitFor } from '../../../utils/waitHelpers';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 test.use({
@@ -183,6 +184,30 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
 
     await expect(tableGroup).toBeVisible({ timeout: GROUPS_TIMEOUT });
     await expect(page).not.toHaveURL(/[?&]group=/);
+  });
+
+  test('keeps the sort in the URL across a reload', async ({ page }) => {
+    const groups = await openGroups(page, seed, {});
+    const severityHeader = groups.getByRole('columnheader', {
+      name: 'Severity',
+    });
+
+    await expect(severityHeader).toBeVisible({ timeout: GROUPS_TIMEOUT });
+
+    await clickAndWaitFor(
+      page,
+      severityHeader,
+      /\/incidentGroups\?.*sortField=severity/
+    );
+
+    await expect(page).toHaveURL(/sortField=severity&sortType=desc/);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    await expect(severityHeader).toHaveAttribute('aria-sort', 'descending', {
+      timeout: GROUPS_TIMEOUT,
+    });
+    await expect(page).toHaveURL(/sortField=severity&sortType=desc/);
   });
 
   test('previews a row pressed while another group is selected', async ({

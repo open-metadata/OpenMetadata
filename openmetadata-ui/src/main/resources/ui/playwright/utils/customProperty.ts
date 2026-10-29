@@ -46,7 +46,7 @@ import {
   navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
-import { waitForAntOverlayToOpen } from './waitHelpers';
+import { waitForOverlayToOpen } from './waitHelpers';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -1053,7 +1053,7 @@ export const deleteCreatedProperty = async (
 
   const dialog = page.getByRole('dialog', { name: 'Delete Property' });
 
-  await waitForAntOverlayToOpen(dialog);
+  await waitForOverlayToOpen(dialog);
   await expect(dialog.getByTestId('body-text')).toContainText(propertyName);
 
   const saves = recordCustomPropertySaves(page);

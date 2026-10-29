@@ -918,13 +918,10 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   });
 });
 
-// The description drawers keep only Edit and Delete in their menu; resolving a
-// conversation stays on the entity Activity tab's hover actions.
-test.describe('ActivityFeed: resolve a conversation from the Activity tab', () => {
+test.describe('ActivityFeed: conversation actions on the Activity tab', () => {
   let owner: UserClass;
   let entity: TableClass;
-  let conversationId: string;
-  const message = `Resolve from activity tab ${uuid()}`;
+  const message = `Activity tab conversation ${uuid()}`;
 
   const test = base.extend<{ ownerPage: Page }>({
     ownerPage: async ({ browser }, use) => {
@@ -946,13 +943,12 @@ test.describe('ActivityFeed: resolve a conversation from the Activity tab', () =
     await owner.setAdminRole(apiContext);
     await entity.create(apiContext);
 
-    const response = await apiContext.post('/api/v1/conversations', {
+    await apiContext.post('/api/v1/conversations', {
       data: {
         message,
         about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
       },
     });
-    conversationId = (await response.json()).id;
 
     await afterAction();
   });
@@ -964,7 +960,7 @@ test.describe('ActivityFeed: resolve a conversation from the Activity tab', () =
     await afterAction();
   });
 
-  test('resolves a conversation from its hover actions', async ({
+  test('opens the reply drawer from the comment icon and keeps only Edit and Delete in the menu', async ({
     ownerPage,
   }) => {
     await entity.visitEntityPage(ownerPage);
@@ -976,19 +972,25 @@ test.describe('ActivityFeed: resolve a conversation from the Activity tab', () =
       .filter({ hasText: message });
     await expect(card).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
 
-    await card.hover();
-    const toggle = card.getByTestId('toggle-resolved');
-    await expect(toggle).toHaveAttribute('aria-label', 'Resolve');
+    // The menu renders in a popover outside the card.
+    await card.getByTestId('conversation-actions').click();
+    await expect(ownerPage.getByRole('menuitem')).toHaveText([
+      'Edit',
+      'Delete',
+    ]);
+    await ownerPage.keyboard.press('Escape');
 
-    const resolveResponse = ownerPage.waitForResponse(
-      (response) =>
-        response.url().includes(`/api/v1/conversations/${conversationId}`) &&
-        response.request().method() === 'PATCH'
-    );
-    await toggle.click();
-    expect((await resolveResponse).ok()).toBe(true);
+    // The drawer shows the comment input as the side panel does; the editor
+    // opens, focused, from that input.
+    await card.getByTestId('reply-button').click();
+    const drawerComments = ownerPage.getByTestId('activity-feed-drawer');
+    const editor = drawerComments.locator('[contenteditable="true"]');
+    await expect(
+      drawerComments.getByTestId('comments-input-field')
+    ).toBeVisible();
+    await expect(editor).toHaveCount(0);
 
-    await card.hover();
-    await expect(toggle).toHaveAttribute('aria-label', 'Open');
+    await drawerComments.getByTestId('comments-input-field').click();
+    await expect(editor).toBeFocused();
   });
 });
