@@ -126,8 +126,6 @@ export default defineConfig(async ({ mode }) => {
         process: 'process/browser',
         Quill: path.resolve(__dirname, 'node_modules/quill'),
         '@': path.resolve(__dirname, 'src'),
-        '~antd': path.resolve(__dirname, 'node_modules/antd'),
-        antd: path.resolve(__dirname, 'node_modules/antd'),
         '@deuex-solutions/react-tour': path.resolve(
           __dirname,
           'node_modules/@deuex-solutions/react-tour/dist/reacttour.min.js'

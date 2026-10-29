@@ -4696,6 +4696,8 @@
     "dq-threshold-preview-sampling-dynamic": "Bu tablonun profillenmesinde kullanılan, boyutu dinamik olarak belirlenen örneklem üzerinde ölçülür.",
     "dq-threshold-preview-statistical": "Ölçülen değer {{bound}} dışına çıktığında başarısız olur.",
     "dq-threshold-preview-statistical-deviation": "Ölçülen değer {{bound}} dışına çıktığında başarısız olur; {{amount}} sapmaya izin verilir (etkin aralık {{range}}).",
+    "dq-threshold-preview-statistical-learned": "Ölçülen değer öğrenilen sınırlar dışına çıktığında başarısız olur.",
+    "dq-threshold-preview-statistical-learned-deviation": "Ölçülen değer öğrenilen sınırlar dışına çıktığında başarısız olur; {{amount}} sapmaya izin verilir.",
     "dq-threshold-preview-zero-bound": "Sınırı 0 olan bir değer etrafındaki yüzdesel sapma o sınırı 0'da bırakır — bunun yerine mutlak sapma kullanın.",
     "dq-unresolved-incidents-count": "<0>{{count}} çözülmemiş</0> olay",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} çözülmemiş</0> olay",
