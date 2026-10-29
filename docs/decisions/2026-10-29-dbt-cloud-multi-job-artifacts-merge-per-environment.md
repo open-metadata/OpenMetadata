@@ -21,10 +21,11 @@ model's data model written by a full one, with no SQL and no catalog columns.
   no project is set, and skips `job_type == "ci"` jobs, which build into temporary PR schemas. Job
   IDs take precedence over it. With neither set, the single latest run is read, as before.
 - When more than one job is read, the latest completed run of each job is fetched and the
-  artifacts are merged into one set per dbt Cloud `environment_id`. Manifest entries merge by
-  `unique_id`, and an entry with `compiled_code` beats one without it. Runs are merged newest
-  first, so between two compiled entries, and between catalog entries, the newest run wins. The
-  `run_results` files are concatenated (the source keeps the newest result per test).
+  artifacts are merged into one set per dbt Cloud `environment_id`. The newest run's manifest
+  decides which nodes exist and how they are configured, so a model removed since an older run
+  does not come back; an older run only fills in the compiled fields of nodes the newest run did
+  not compile. Catalog entries are unioned, newest run first. The `run_results` files are
+  concatenated (the source keeps the newest result per test).
 - Environments are never merged: they build into different schemas. A job can still override its
   environment's dbt version; when two jobs of one environment wrote different manifest schema
   versions, the run fails naming both jobs, since one manifest schema cannot validate the other's

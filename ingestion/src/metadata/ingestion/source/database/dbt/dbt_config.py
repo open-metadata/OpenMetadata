@@ -233,8 +233,15 @@ class DbtCloudNoRunException(DBTConfigException):
     """
 
 
-# Manifest sections the dbt source reads, merged by unique_id across the jobs of an environment
-DBT_CLOUD_MERGED_MANIFEST_SECTIONS = ("nodes", "sources", "exposures", "metrics", "semantic_models")
+# Fields dbt sets on a manifest node only in a run that compiled it
+DBT_COMPILED_NODE_KEYS = (
+    "compiled",
+    "compiled_code",
+    "compiled_sql",
+    "compiled_path",
+    "extra_ctes",
+    "extra_ctes_injected",
+)
 
 
 @get_dbt_details.register
@@ -257,13 +264,15 @@ def _(config: DbtCloudConfig):
             limit_codes=[],
         )
         client = TrackedREST(client_config)
-        job_ids = [job_id.strip() for job_id in (config.dbtCloudJobId or "").split(",") if job_id.strip()]
+        job_ids = list(
+            dict.fromkeys(job_id.strip() for job_id in (config.dbtCloudJobId or "").split(",") if job_id.strip())
+        )
         if not job_ids and config.dbtCloudIngestAllJobs:
             job_ids = _get_dbt_cloud_job_ids(client, config)
         if len(job_ids) > 1:
             yield from _get_dbt_cloud_merged_files(client, config, job_ids)
         else:
-            # Without job IDs a single run is read: the latest completed one across all jobs
+            # A single run is read: the job's latest, or without a job ID the latest of any job
             run = _get_dbt_cloud_latest_run(client, config, job_ids[0] if job_ids else None)
             yield _get_dbt_cloud_run_files(client, config, run)
     except DBTConfigException as exc:
@@ -408,13 +417,16 @@ def _check_same_manifest_schema(merged: DbtFiles, merged_run: dict, dbt_files: D
 
 
 def _merge_dbt_files(target: DbtFiles, source: DbtFiles) -> None:
-    for section in DBT_CLOUD_MERGED_MANIFEST_SECTIONS:
-        target_entries = target.dbt_manifest.get(section) or {}
-        for unique_id, entry in (source.dbt_manifest.get(section) or {}).items():
-            current = target_entries.get(unique_id)
-            if current is None or (entry.get("compiled_code") and not current.get("compiled_code")):
-                target_entries[unique_id] = entry
-        target.dbt_manifest[section] = target_entries
+    """
+    Merge an older run's artifacts into the newest run's. The newest manifest decides which
+    nodes exist and how they are configured; the older one only fills in the compiled SQL of
+    nodes the newest run did not compile, so a model removed since then does not come back.
+    """
+    source_nodes = source.dbt_manifest.get("nodes") or {}
+    for unique_id, node in (target.dbt_manifest.get("nodes") or {}).items():
+        older_node = source_nodes.get(unique_id) or {}
+        if _compiled_query(older_node) and not _compiled_query(node):
+            node.update({key: older_node[key] for key in DBT_COMPILED_NODE_KEYS if key in older_node})
     if source.dbt_catalog and target.dbt_catalog:
         for section in ("nodes", "sources"):
             target_entries = target.dbt_catalog.get(section) or {}
@@ -426,6 +438,10 @@ def _merge_dbt_files(target: DbtFiles, source: DbtFiles) -> None:
     if source.dbt_run_results:
         # The source keeps the newest result per test when one appears in several files
         target.dbt_run_results = (target.dbt_run_results or []) + source.dbt_run_results
+
+
+def _compiled_query(node: dict) -> str | None:
+    return node.get("compiled_code") or node.get("compiled_sql")
 
 
 def _get_dbt_cloud_latest_run(client, config: DbtCloudConfig, job_id: str | None) -> dict:
@@ -491,8 +507,9 @@ def _get_dbt_cloud_run_files(client, config: DbtCloudConfig, run: dict, strict: 
         except Exception as exc:
             logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}")
             logger.debug(traceback.format_exc())
-        if dbt_catalog is None:
-            logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog")
+        else:
+            if dbt_catalog is None:
+                logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog")
         try:
             logger.debug("Requesting [dbt_manifest]")
             dbt_manifest = client.get(f"{artifacts_path}/{DBT_MANIFEST_FILE_NAME}")

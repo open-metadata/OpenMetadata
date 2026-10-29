@@ -365,14 +365,14 @@ class TestDbtCloudMultipleJobs:
             artifacts_by_run={
                 1: {"manifest": {"nodes": {"model.p.orders": _model("orders")}}},
                 2: {"manifest": {"nodes": {"model.p.orders": _model("orders_staging")}}},
-                3: {"manifest": {"nodes": {"model.p.events": _model("events")}}},
+                3: {"manifest": {"nodes": {"model.p.orders": _model("orders", compiled=False)}}},
             },
         )
         _serve(tracked_rest, get)
 
         prod, staging = get_dbt_details(_cloud_config(job_ids=" 70, 71 ,72"))
 
-        assert sorted(prod.dbt_manifest["nodes"]) == ["model.p.events", "model.p.orders"]
+        assert prod.dbt_manifest["nodes"]["model.p.orders"]["name"] == "orders"
         assert staging.dbt_manifest["nodes"]["model.p.orders"]["name"] == "orders_staging"
 
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
@@ -513,6 +513,47 @@ class TestDbtCloudMultipleJobs:
             list(get_dbt_details(_cloud_config(job_ids="70,71")))
 
         assert "run [2] of job [71]" in str(exc_info.value)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_newest_manifest_decides_the_nodes_and_their_config(self, tracked_rest):
+        """A paused job's months-old run still lists a model renamed since, and an old alias."""
+        old_orders = {**_model("orders"), "config": {"alias": "orders_old"}}
+        new_orders = {**_model("orders", compiled=False), "config": {"alias": "orders"}}
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={
+                "70": {"id": 1, "finished_at": "2026-04-01 02:00:00.000000+00:00"},
+                "71": {"id": 2, "finished_at": "2026-10-28 02:00:00.000000+00:00"},
+            },
+            artifacts_by_run={
+                1: {
+                    "manifest": {
+                        "metadata": {"dbt_schema_version": "v12"},
+                        "nodes": {"model.p.orders": old_orders, "model.p.orders_v1": _model("orders_v1")},
+                    }
+                },
+                2: {"manifest": {"metadata": {"dbt_schema_version": "v12"}, "nodes": {"model.p.orders": new_orders}}},
+            },
+        )
+        _serve(tracked_rest, get)
+
+        (dbt_files,) = get_dbt_details(_cloud_config(job_ids="70,71"))
+
+        assert dbt_files.dbt_manifest == {
+            "metadata": {"dbt_schema_version": "v12"},
+            "nodes": {
+                "model.p.orders": {**new_orders, "compiled_code": "select * from orders_src"},
+            },
+        }
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_duplicate_job_ids_read_the_job_once(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(runs_by_job={"70": {"id": 1}})
+        _serve(tracked_rest, get)
+
+        list(get_dbt_details(_cloud_config(job_ids="70, 70")))
+
+        assert _runs_requested(requested) == ["70"]
+        assert not tracked_rest.return_value.get_raw.called
 
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_an_environment_is_yielded_before_the_next_is_downloaded(self, tracked_rest):
