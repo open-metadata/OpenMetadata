@@ -172,13 +172,10 @@ function getAssetServiceLabel(node: OntologyNode): string {
 }
 
 function getNativeAssetSummary(node: OntologyNode, t: TFunction): string {
-  const connector = getAssetServiceLabel(node);
-  const columns = node.columnCount
-    ? t('message.native-asset-summary', {
-        connector,
-        count: node.columnCount,
-      })
-    : connector;
+  const columns = t('message.native-asset-summary', {
+    connector: getAssetServiceLabel(node),
+    count: node.columnCount ?? 0,
+  });
   const lineage = (node.lineageNotes ?? []).map(({ direction, label }) =>
     direction === 'downstream'
       ? t('message.lineage-to-table', { name: label })

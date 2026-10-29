@@ -86,8 +86,11 @@ export const DataLayerHeading = ({
   isNative,
 }: DataLayerHeadingProps) => {
   const { t } = useTranslation();
+  // A native total counts bindings: a table bound to two concepts counts twice.
   const summary = isNative
-    ? t('message.native-data-layer-summary', { assetCount, conceptCount })
+    ? `${t('message.native-concept-count', {
+        count: conceptCount,
+      })} · ${t('message.native-binding-count', { count: assetCount })}`
     : t('message.data-layer-summary', { assetCount, termCount: conceptCount });
 
   return (
