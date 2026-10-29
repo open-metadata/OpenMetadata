@@ -12,6 +12,8 @@
  */
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Layer } from '../../../../generated/api/data/createOntology';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
   renderWithQueryClient,
@@ -19,6 +21,10 @@ import {
 } from '../../../../test/unit/test-utils';
 import OntologyCreateForm from './OntologyCreateForm';
 
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 jest.mock('../../../../rest/axiosClient', () => ({
   post: jest.fn(),
   patch: jest.fn(),
@@ -104,5 +110,70 @@ describe('OntologyCreateForm', () => {
     );
 
     expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+  });
+
+  describe('AI mode', () => {
+    beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
+
+    afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
+
+    it('saves the settings rows and the segmented layer through a patch', async () => {
+      const user = userEvent.setup();
+      const saved = jest.fn();
+      const patch = APIClient.patch as jest.MockedFunction<
+        typeof APIClient.patch
+      >;
+      patch.mockResolvedValue({ data: { ...ontology, layer: Layer.L2 } });
+      renderWithQueryClient(
+        <OntologyCreateForm canEdit ontology={ontology} onSaved={saved} />
+      );
+
+      expect(screen.getByText('label.owner-plural')).toBeInTheDocument();
+      expect(screen.getByText('label.reviewer-plural')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('tab', { name: Layer.L2 }));
+      fireEvent.submit(screen.getByTestId('ontology-create-form'));
+
+      await waitFor(() => expect(saved).toHaveBeenCalled());
+
+      expect(patch).toHaveBeenCalledWith(
+        '/ontologies/sales',
+        expect.arrayContaining([
+          { op: 'replace', path: '/layer', value: Layer.L2 },
+        ]),
+        expect.anything()
+      );
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it('keeps name and IRI read-only in settings and gates save', () => {
+      renderWithQueryClient(
+        <OntologyCreateForm
+          canEdit={false}
+          ontology={{
+            id: 'sales',
+            name: 'Sales',
+            fullyQualifiedName: 'Sales',
+            iri: 'urn:sales',
+            namespace: 'urn:sales:',
+            layer: Layer.L2,
+          }}
+          onSaved={jest.fn()}
+        />
+      );
+
+      expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: 'label.name' })
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('textbox', { name: 'label.ontology-iri' })
+      ).toBeDisabled();
+      expect(screen.getByRole('tab', { name: Layer.L2 })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+    });
   });
 });

@@ -17,11 +17,14 @@ import {
   Box,
   Button,
   Card,
+  FeaturedIcon,
+  FileTrigger,
   FileUpload,
   ProgressSteps,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Upload01 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { MutableRefObject, useEffect, useReducer, useRef } from 'react';
@@ -39,6 +42,7 @@ import {
 } from '../../../../hooks/governance/ontology/useNativeOntologyInstall';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { previewNativeOntologyImport } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
@@ -163,17 +167,7 @@ const ImportResult = ({
   );
 };
 
-const ImportFileStep = ({
-  state,
-  isDisabled,
-  onFile,
-  onSizeLimitExceed,
-}: {
-  readonly state: NativeImportState;
-  readonly isDisabled: boolean;
-  readonly onFile: (files: FileList) => void;
-  readonly onSizeLimitExceed: () => void;
-}) => {
+const ImportFileLabel = ({ state }: { readonly state: NativeImportState }) => {
   const { t } = useTranslation();
   const format =
     state.detection.kind === 'ready' ? state.detection.format : undefined;
@@ -181,18 +175,6 @@ const ImportFileStep = ({
 
   return (
     <>
-      <FileUpload.DropZone
-        accept={NATIVE_IMPORT_ACCEPTED_EXTENSIONS}
-        allowsMultiple={false}
-        clickToUploadLabel={t('label.click-to-upload')}
-        data-testid="ontology-native-import-file"
-        hint={t('message.native-import-supported-formats')}
-        isDisabled={isDisabled}
-        maxSize={NATIVE_IMPORT_MAX_BYTES}
-        orDragAndDropLabel={t('label.or-drag-and-drop')}
-        onDropFiles={onFile}
-        onSizeLimitExceed={onSizeLimitExceed}
-      />
       {state.fileName && (
         <Box align="center" gap={2}>
           <Typography data-testid="ontology-native-import-file-name">
@@ -210,6 +192,38 @@ const ImportFileStep = ({
           {t('message.native-import-format-undetected')}
         </Alert>
       )}
+    </>
+  );
+};
+
+const ImportFileStep = ({
+  state,
+  isDisabled,
+  onFile,
+  onSizeLimitExceed,
+}: {
+  readonly state: NativeImportState;
+  readonly isDisabled: boolean;
+  readonly onFile: (files: FileList) => void;
+  readonly onSizeLimitExceed: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <FileUpload.DropZone
+        accept={NATIVE_IMPORT_ACCEPTED_EXTENSIONS}
+        allowsMultiple={false}
+        clickToUploadLabel={t('label.click-to-upload')}
+        data-testid="ontology-native-import-file"
+        hint={t('message.native-import-supported-formats')}
+        isDisabled={isDisabled}
+        maxSize={NATIVE_IMPORT_MAX_BYTES}
+        orDragAndDropLabel={t('label.or-drag-and-drop')}
+        onDropFiles={onFile}
+        onSizeLimitExceed={onSizeLimitExceed}
+      />
+      <ImportFileLabel state={state} />
     </>
   );
 };
@@ -393,6 +407,7 @@ const OntologyNativeImportPanel = ({
   onBusyChange,
 }: OntologyNativeImportPanelProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const { canCreate, currentUserId } = useCanCreateOntology();
   const [state, dispatch] = useReducer(nativeImportReducer, {
     ...INITIAL_NATIVE_IMPORT_STATE,
@@ -469,6 +484,98 @@ const OntologyNativeImportPanel = ({
     isBusy,
     isLockedOrBusy,
   });
+  const isFileDisabled = isLockedOrBusy || !canUseTarget;
+
+  const rejectOversizedFile = () => {
+    const fileId = nextToken();
+    fileToken.current = fileId;
+    content.current = '';
+    dispatch({
+      type: 'fileRejected',
+      token: fileId,
+      message: t('message.file-size-exceeded', { size: '10 MB' }),
+    });
+  };
+
+  // FileTrigger has no size limit of its own, unlike the classic drop zone.
+  const handleSelectedFile = (files: FileList | null) => {
+    if (!files?.length) {
+      return;
+    }
+    if (files[0].size > NATIVE_IMPORT_MAX_BYTES) {
+      rejectOversizedFile();
+
+      return;
+    }
+    void handleFile(files);
+  };
+
+  const targetSelect = (
+    <ImportTargetSelect
+      canCreate={canCreate}
+      isDisabled={isLockedOrBusy}
+      isNewTarget={isNewTarget}
+      ontology={ontology}
+      onChange={(target) =>
+        dispatch({ type: 'targetChanged', token: nextToken(), target })
+      }
+    />
+  );
+
+  const importResult = readySummary && (
+    <ImportResult
+      hasReviewers={!isNewTarget && hasReviewers(ontology)}
+      isNewTarget={isNewTarget}
+      summary={readySummary}
+    />
+  );
+
+  const errors = errorMessage && <Alert variant="error">{errorMessage}</Alert>;
+
+  const importActions = (
+    <ImportActions
+      canImport={flags.canImport}
+      canParse={flags.canParse}
+      isImporting={install.isBusy}
+      isLocked={install.isLocked}
+      isParsed={Boolean(readySummary)}
+      isParsing={isParsing}
+      onImport={handleImport}
+      onParse={() => void handleParse()}
+    />
+  );
+
+  if (isAiMode) {
+    return (
+      <Box direction="col" gap={4}>
+        {targetSelect}
+        <Box
+          align="center"
+          className="tw:rounded-xl tw:border tw:border-dashed tw:border-secondary tw:bg-secondary_alt tw:px-6 tw:py-8 tw:text-center"
+          direction="col"
+          gap={3}>
+          <FeaturedIcon color="gray" icon={Upload01} size="md" theme="modern" />
+          <Typography color="secondary" size="text-sm">
+            {t('message.native-ontology-import-help')}
+          </Typography>
+          <FileTrigger
+            acceptedFileTypes={NATIVE_IMPORT_ACCEPTED_EXTENSIONS.split(',')}
+            onSelect={handleSelectedFile}>
+            <Button
+              color="secondary"
+              data-testid="ontology-native-import-file"
+              isDisabled={isFileDisabled}>
+              {t('label.choose-file')}
+            </Button>
+          </FileTrigger>
+          <ImportFileLabel state={state} />
+        </Box>
+        {importResult}
+        {errors}
+        <Box justify="end">{importActions}</Box>
+      </Box>
+    );
+  }
 
   return (
     <Box direction="col" gap={4}>
@@ -485,48 +592,16 @@ const OntologyNativeImportPanel = ({
         ]}
         type="number"
       />
-      <ImportTargetSelect
-        canCreate={canCreate}
-        isDisabled={isLockedOrBusy}
-        isNewTarget={isNewTarget}
-        ontology={ontology}
-        onChange={(target) =>
-          dispatch({ type: 'targetChanged', token: nextToken(), target })
-        }
-      />
+      {targetSelect}
       <ImportFileStep
-        isDisabled={isLockedOrBusy || !canUseTarget}
+        isDisabled={isFileDisabled}
         state={state}
         onFile={(files) => void handleFile(files)}
-        onSizeLimitExceed={() => {
-          const fileId = nextToken();
-          fileToken.current = fileId;
-          content.current = '';
-          dispatch({
-            type: 'fileRejected',
-            token: fileId,
-            message: t('message.file-size-exceeded', { size: '10 MB' }),
-          });
-        }}
+        onSizeLimitExceed={rejectOversizedFile}
       />
-      {readySummary && (
-        <ImportResult
-          hasReviewers={!isNewTarget && hasReviewers(ontology)}
-          isNewTarget={isNewTarget}
-          summary={readySummary}
-        />
-      )}
-      {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
-      <ImportActions
-        canImport={flags.canImport}
-        canParse={flags.canParse}
-        isImporting={install.isBusy}
-        isLocked={install.isLocked}
-        isParsed={Boolean(readySummary)}
-        isParsing={isParsing}
-        onImport={handleImport}
-        onParse={() => void handleParse()}
-      />
+      {importResult}
+      {errors}
+      {importActions}
     </Box>
   );
 };

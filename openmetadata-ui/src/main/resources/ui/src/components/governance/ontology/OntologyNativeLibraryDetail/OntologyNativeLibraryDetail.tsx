@@ -33,6 +33,7 @@ import type { Ontology } from '../../../../generated/entity/data/ontology';
 import type { OntologyPackInstallationRecord } from '../../../../generated/type/ontologyPackInstallationRecord';
 import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   getOntology,
@@ -84,6 +85,7 @@ const OntologyNativeLibraryDetail = ({
   onBack,
 }: OntologyNativeLibraryDetailProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const currentUserId = useApplicationStore((state) => state.currentUser?.id);
   const [targetId, setTargetId] = useState('new');
   const [target, setTarget] = useState<Ontology>();
@@ -367,7 +369,7 @@ const OntologyNativeLibraryDetail = ({
                   className="tw:flex-1"
                   key={item.id}
                   size="sm"
-                  variant="muted">
+                  variant={isAiMode ? 'default' : 'muted'}>
                   <Card.Content>
                     <Typography
                       as="div"

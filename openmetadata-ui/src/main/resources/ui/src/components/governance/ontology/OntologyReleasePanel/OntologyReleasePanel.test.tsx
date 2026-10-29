@@ -32,6 +32,7 @@ import {
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import enUS from '../../../../locale/languages/en-us.json';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -46,6 +47,10 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyPublicationModal from '../OntologyPublicationModal/OntologyPublicationModal';
 import OntologyReleasePanel from './OntologyReleasePanel';
 
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
@@ -206,6 +211,7 @@ describe('OntologyReleasePanel', () => {
         email: 'editor@example.com',
       },
     });
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     downloadedBlob = undefined;
     downloadedFileName = undefined;
     URL.createObjectURL = jest.fn((blob) => {
@@ -1670,5 +1676,444 @@ describe('OntologyReleasePanel', () => {
     expect(summary.textContent).toBe(
       'Class FundsTransfer ⊑ Payment, Transaction · 1 property'
     );
+  });
+
+  it('groups an ungrouped working diff and captures with the chosen version in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    post.mockResolvedValue({ data: release });
+    await renderPanel(true, 'changes');
+
+    const groups = await screen.findByTestId('ontology-change-groups');
+
+    expect(groups).toHaveTextContent('label.ontology-member-concept');
+    expect(groups).toHaveTextContent('Customer');
+    expect(groups).toHaveTextContent('label.added');
+
+    fireEvent.click(
+      await screen.findByRole('radio', { name: /label.version-patch/ })
+    );
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /label.release-notes/ }),
+      { target: { value: 'Patch notes' } }
+    );
+
+    expect(screen.getByTestId('ontology-version-preview')).toHaveTextContent(
+      '1.2.3 → 1.2.4'
+    );
+    expect(screen.getByTestId('ontology-request-review')).toBeEnabled();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-capture-release')).toBeEnabled()
+    );
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-capture-release'))
+    );
+
+    expect(post).toHaveBeenCalledWith(`/ontologies/${ontology.id}/releases`, {
+      expectedActivationRevision: 3,
+      expectedWorkingRevision: 7,
+      expectedLatestReleaseRevision: 1,
+      versionBump: 'patch',
+      releaseNotes: 'Patch notes',
+    });
+  });
+
+  it('shows a deprecated change from an ungrouped working diff with its badge in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) =>
+      url.endsWith('/working/diff')
+        ? {
+            data: {
+              state: currentState,
+              data: [
+                {
+                  changeType: 'DEPRECATED',
+                  entity: {
+                    id: 'legacy-customer-id',
+                    name: 'LegacyCustomer',
+                    type: 'ontologyConcept',
+                  },
+                  memberKind: 'CONCEPT',
+                  ontologyId: ontology.id,
+                },
+              ],
+              paging: { total: 1 },
+            },
+          }
+        : defaultGet?.(url, config)
+    );
+    await renderPanel(true, 'changes');
+
+    const row = (await screen.findByText('LegacyCustomer')).closest('li');
+
+    expect(row).toHaveTextContent('label.deprecated');
+  });
+
+  it('shows the server-grouped class change row in the AI Changes view', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    useEnUsTranslations();
+    groupedWorking = true;
+    await renderPanel(true, 'changes');
+
+    const summary = await screen.findByTestId(
+      'ontology-working-concept-summary'
+    );
+
+    expect(summary.textContent).toBe(
+      'Class FundsTransfer ⊑ Payment, Transaction · 3 properties'
+    );
+    expect(
+      screen.getAllByTestId('ontology-working-concept-group')
+    ).toHaveLength(1);
+    expect(screen.getByText('Changed classes: 1')).toBeVisible();
+  });
+
+  it('counts changed classes, not member changes, in the AI footer of a grouped working diff', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    useEnUsTranslations();
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) =>
+      url.endsWith('/working/diff')
+        ? {
+            data: {
+              state: currentState,
+              data: [],
+              groups: [
+                {
+                  concept: 'Funds Transfer',
+                  iri: 'https://example.org/fin#FundsTransfer',
+                  parents: ['Payment', 'Transaction'],
+                  propertyCount: 3,
+                  changeType: 'ADDED',
+                  changes: [
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'funds-transfer-id',
+                        name: 'FundsTransfer',
+                        type: 'ontologyConcept',
+                      },
+                      memberKind: 'CONCEPT',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'payment-axiom-id',
+                        name: 'FundsTransfer subClassOf Payment',
+                        type: 'ontologyAxiom',
+                      },
+                      memberKind: 'AXIOM',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'transaction-axiom-id',
+                        name: 'FundsTransfer subClassOf Transaction',
+                        type: 'ontologyAxiom',
+                      },
+                      memberKind: 'AXIOM',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'amount-id',
+                        name: 'amount',
+                        type: 'ontologyProperty',
+                      },
+                      memberKind: 'PROPERTY',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'currency-id',
+                        name: 'currency',
+                        type: 'ontologyProperty',
+                      },
+                      memberKind: 'PROPERTY',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'value-date-id',
+                        name: 'valueDate',
+                        type: 'ontologyProperty',
+                      },
+                      memberKind: 'PROPERTY',
+                      ontologyId: ontology.id,
+                    },
+                  ],
+                },
+                {
+                  changeType: 'CHANGED',
+                  parents: [],
+                  propertyCount: 0,
+                  changes: [
+                    {
+                      changeType: 'CHANGED',
+                      entity: {
+                        id: 'payment-shape-id',
+                        name: 'PaymentShape',
+                        type: 'ontologyShape',
+                      },
+                      memberKind: 'SHAPE',
+                      ontologyId: ontology.id,
+                    },
+                  ],
+                },
+              ],
+              paging: { total: 2 },
+            },
+          }
+        : defaultGet?.(url, config)
+    );
+    await renderPanel(true, 'changes');
+
+    await screen.findByText('Changed classes: 2');
+    const preview = await screen.findByTestId('ontology-version-preview');
+
+    await waitFor(() => expect(preview).toHaveTextContent('1.2.3 → 1.3.0'));
+
+    expect(preview.parentElement?.textContent).toBe(
+      '1.2.3 → 1.3.0 · Changed classes: 2'
+    );
+  });
+
+  it('keeps release rows, export and the release detail actions in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    currentState.activeReleaseId = release.id;
+    currentRelease.entityStatus = EntityStatus.Approved;
+    await renderPanel();
+    await selectRelease();
+
+    expect(
+      await screen.findByTestId('ontology-release-definition')
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-active-release')).toBeVisible();
+    expect(
+      screen.getByTestId(`ontology-release-export-${release.id}`)
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    ).toBeDisabled();
+    expect(screen.getByText('label.release-events')).toBeVisible();
+  });
+
+  it('publishes an approved release from the AI footer', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    currentRelease.entityStatus = EntityStatus.Approved;
+    put.mockResolvedValue({
+      data: { ...currentState, activeReleaseId: release.id },
+    });
+    await renderPanel(true, 'changes');
+
+    const publish = await screen.findByTestId('ontology-publish-release');
+
+    expect(publish).toHaveTextContent('label.publish 1.2.3');
+    expect(
+      screen.queryByTestId('ontology-request-review')
+    ).not.toBeInTheDocument();
+
+    await waitFor(() => expect(publish).toBeEnabled());
+    await act(async () => fireEvent.click(publish));
+
+    expect(put.mock.calls.map(([, body]) => body)).toEqual([
+      { releaseId: release.id, expectedActivationRevision: 3 },
+    ]);
+  });
+
+  it('labels the latest release, not the first history row, in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const older = {
+      ...release,
+      id: '00000000-0000-4000-8000-000000000004',
+      releaseRevision: 0,
+      semanticVersion: '1.0.0',
+    };
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) =>
+      url === `/ontologies/${ontology.id}/releases`
+        ? { data: { data: [older, currentRelease], paging: { total: 2 } } }
+        : defaultGet?.(url, config)
+    );
+    await renderPanel();
+
+    const latestRow = (
+      await screen.findByTestId(`ontology-release-select-${release.id}`)
+    ).closest('li');
+    const olderRow = screen
+      .getByTestId(`ontology-release-select-${older.id}`)
+      .closest('li');
+
+    expect(latestRow).toHaveTextContent('label.latest');
+    expect(olderRow).not.toHaveTextContent('label.latest');
+  });
+
+  it('offers the review retry in AI mode after the task request fails', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    let taskAttempts = 0;
+    post.mockImplementation(async (url) => {
+      if (url === `/ontologies/${ontology.id}/releases`) {
+        currentRelease = {
+          ...release,
+          id: '00000000-0000-4000-8000-000000000007',
+          semanticVersion: '1.3.0',
+          releaseRevision: 2,
+        };
+        currentState = { ...currentState, lastReleaseRevision: 2 };
+
+        return { data: currentRelease };
+      }
+      if (url === '/tasks') {
+        taskAttempts++;
+        if (taskAttempts === 1) {
+          throw Object.assign(new AxiosError('Task rejected'), {
+            response: { status: 400 },
+          });
+        }
+        currentRelease = {
+          ...currentRelease,
+          entityStatus: EntityStatus.InReview,
+          reviewTask: '00000000-0000-4000-8000-000000000044',
+        };
+
+        return {
+          data: {
+            id: currentRelease.reviewTask,
+            taskId: 'TASK-00042',
+            type: 'RequestApproval',
+            about: { id: currentRelease.id, type: 'ontologyRelease' },
+          },
+        };
+      }
+
+      throw new Error('Unexpected write: ' + url);
+    });
+    await renderPanel(true, 'changes');
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-request-review')).toBeEnabled()
+    );
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-request-review'))
+    );
+
+    const retry = await screen.findByTestId('ontology-recovery-action');
+
+    expect(retry).toHaveTextContent('label.retry-review');
+
+    await act(async () => fireEvent.click(retry));
+
+    expect(taskAttempts).toBe(2);
+    expect(
+      screen.queryByTestId('ontology-recovery-action')
+    ).not.toBeInTheDocument();
+  });
+
+  const failFirstReviewRead = () => {
+    const defaultGet = get.getMockImplementation();
+    let reviewReads = 0;
+    get.mockImplementation(async (url, config) => {
+      if (url.endsWith('/review') && ++reviewReads === 1) {
+        throw new Error('Review read failed');
+      }
+
+      return defaultGet?.(url, config);
+    });
+  };
+
+  it('offers the review state retry in the AI Changes view', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    currentRelease.entityStatus = EntityStatus.InReview;
+    currentRelease.reviewTask = '00000000-0000-4000-8000-000000000044';
+    failFirstReviewRead();
+    await renderPanel(true, 'changes');
+
+    const retry = await screen.findByRole('button', { name: 'label.retry' });
+
+    expect(
+      screen.queryByTestId('ontology-publish-release')
+    ).not.toBeInTheDocument();
+
+    await act(async () => fireEvent.click(retry));
+
+    expect(
+      await screen.findByTestId('ontology-publish-release')
+    ).toHaveTextContent('label.publish 1.2.3');
+  });
+
+  it('offers the review state retry in the AI Releases view', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    currentRelease.entityStatus = EntityStatus.Approved;
+    currentRelease.reviewTask = '00000000-0000-4000-8000-000000000044';
+    failFirstReviewRead();
+    await renderPanel(true, 'releases');
+    await selectRelease();
+
+    const retry = await screen.findByRole('button', { name: 'label.retry' });
+
+    expect(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    ).toBeDisabled();
+
+    await act(async () => fireEvent.click(retry));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'label.activate-release' })
+      ).toBeEnabled()
+    );
+  });
+
+  it('shows one review-unavailable alert in AI mode when the state read fails', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) => {
+      if (url.endsWith('/state')) {
+        throw new AxiosError('State unavailable', '403');
+      }
+
+      return defaultGet?.(url, config);
+    });
+    await renderPanel(true, 'changes');
+    await screen.findAllByText('message.ontology-review-unavailable');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getAllByText('message.ontology-review-unavailable')
+    ).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'label.retry' })).toHaveLength(
+      1
+    );
+  });
+
+  it('shows the storage-unavailable alert in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const setItem = jest
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new Error('Storage unavailable');
+      });
+    try {
+      await renderPanel(true, 'changes');
+
+      expect(
+        await screen.findByText(
+          'message.ontology-publication-storage-unavailable'
+        )
+      ).toBeVisible();
+
+      await waitFor(() =>
+        expect(screen.getByTestId('ontology-request-review')).toBeDisabled()
+      );
+    } finally {
+      setItem.mockRestore();
+    }
   });
 });
