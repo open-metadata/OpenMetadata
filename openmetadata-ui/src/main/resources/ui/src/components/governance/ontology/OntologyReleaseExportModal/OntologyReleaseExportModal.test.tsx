@@ -205,11 +205,13 @@ describe('OntologyReleaseExportModal', () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     const onClose = jest.fn();
     renderWithQueryClient(
-      <OntologyReleaseExportModal
-        canImport
-        ontology={ontology}
-        onClose={onClose}
-      />
+      <MemoryRouter>
+        <OntologyReleaseExportModal
+          canImport
+          ontology={ontology}
+          onClose={onClose}
+        />
+      </MemoryRouter>
     );
 
     expect(
