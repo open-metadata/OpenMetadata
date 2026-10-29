@@ -283,7 +283,10 @@ export const withFullVisualTarget = async <T>(
               : 0),
           horizontal:
             Math.max(0, left - rectangle.left) +
-            Math.max(0, rectangle.right - right),
+            Math.max(0, rectangle.right - right) +
+            (clips(ownStyle.overflowX)
+              ? Math.max(0, element.scrollWidth - element.clientWidth)
+              : 0),
         };
       });
       if (clipped.vertical <= 1 && clipped.horizontal <= 1)

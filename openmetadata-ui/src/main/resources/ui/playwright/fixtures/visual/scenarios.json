@@ -2476,7 +2476,9 @@
     ],
     "target": {
       "testId": "add-glossary-form"
-    }
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-create-term",
@@ -2493,7 +2495,9 @@
     ],
     "target": {
       "testId": "add-glossary-term-form"
-    }
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-create-domain",
@@ -2511,7 +2515,9 @@
     ],
     "target": {
       "testId": "add-domain-form"
-    }
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-create-product",
@@ -2529,7 +2535,9 @@
     ],
     "target": {
       "testId": "add-domain-form"
-    }
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-create-classification",
@@ -2747,7 +2755,9 @@
     "target": {
       "testId": "add-glossary-form"
     },
-    "text": "required"
+    "text": "required",
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-create-term-validation",
@@ -2770,7 +2780,9 @@
     "target": {
       "testId": "add-glossary-term-form"
     },
-    "text": "required"
+    "text": "required",
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-create-domain-validation",
@@ -2794,7 +2806,9 @@
     "target": {
       "testId": "add-domain-form"
     },
-    "text": "required"
+    "text": "required",
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-create-product-validation",
@@ -2818,7 +2832,9 @@
     "target": {
       "testId": "add-domain-form"
     },
-    "text": "required"
+    "text": "required",
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-context-folder",
@@ -4927,7 +4943,9 @@
     },
     "target": {
       "testId": "form-container"
-    }
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-task-request-tags",
@@ -4938,7 +4956,9 @@
     },
     "target": {
       "testId": "form-container"
-    }
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-task-update-description",
@@ -4949,7 +4969,9 @@
     },
     "target": {
       "testId": "form-container"
-    }
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "form-task-update-tags",
@@ -4960,7 +4982,9 @@
     },
     "target": {
       "testId": "form-container"
-    }
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "settings-token-empty",
@@ -10047,5 +10071,410 @@
       "testId": "workflow-history-widget"
     },
     "maxDiffPixelRatio": 0
+  },
+  {
+    "id": "classic-settings-access-roles",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/access/roles",
+    "ready": {
+      "testId": "roles-list-table"
+    },
+    "text": "Analyst"
+  },
+  {
+    "id": "classic-settings-access-roles-VisualAnalyst",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/access/roles/VisualAnalyst",
+    "ready": {
+      "testId": "role-details-container"
+    },
+    "text": "Metadata policy"
+  },
+  {
+    "id": "classic-settings-access-roles-add-role",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/access/roles/add-role",
+    "ready": {
+      "testId": "role-form"
+    },
+    "target": {
+      "testId": "role-form"
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
+  },
+  {
+    "id": "classic-settings-access-policies",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/access/policies",
+    "ready": {
+      "testId": "policies-list-table"
+    },
+    "text": "Metadata policy"
+  },
+  {
+    "id": "classic-settings-access-policies-VisualMetadataPolicy",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/access/policies/VisualMetadataPolicy",
+    "ready": {
+      "testId": "rule-card"
+    },
+    "text": "ReadMetadata"
+  },
+  {
+    "id": "classic-settings-access-policies-add-policy",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/access/policies/add-policy",
+    "ready": {
+      "testId": "policy-form"
+    },
+    "target": {
+      "testId": "policy-form"
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
+  },
+  {
+    "id": "classic-settings-access-policies-VisualMetadataPolicy-add-rule",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/access/policies/VisualMetadataPolicy/add-rule",
+    "ready": {
+      "testId": "rule-form"
+    },
+    "target": {
+      "testId": "rule-form"
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
+  },
+  {
+    "id": "classic-settings-access-permission-debugger",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/access/permission-debugger",
+    "ready": {
+      "testId": "admin-permission-debugger"
+    },
+    "text": "Please select a user first"
+  },
+  {
+    "id": "classic-settings-access-audit-logs",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/access/audit-logs",
+    "ready": {
+      "testId": "audit-log-list"
+    },
+    "text": "No Audit Logs Yet",
+    "state": "empty"
+  },
+  {
+    "id": "classic-settings-members",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/members",
+    "ready": {
+      "testId": "members.users"
+    },
+    "text": "Users"
+  },
+  {
+    "id": "classic-settings-members-online-users",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/members/online-users",
+    "ready": {
+      "testId": "online-users-table"
+    },
+    "text": "Finance Steward"
+  },
+  {
+    "id": "classic-settings-members-teams-visual_analytics",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/members/teams/visual_analytics",
+    "ready": {
+      "testId": "team-details-container"
+    },
+    "text": "Finance Steward"
+  },
+  {
+    "id": "classic-settings-bots",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/bots",
+    "ready": {
+      "testId": "bot-link-Ingestion bot"
+    },
+    "text": "Ingestion bot"
+  },
+  {
+    "id": "classic-settings-apps",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/apps",
+    "ready": {
+      "testId": "search-indexing-application-card"
+    },
+    "text": "Search Indexing"
+  },
+  {
+    "id": "classic-settings-apps-SearchIndexingApplication",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/apps/SearchIndexingApplication",
+    "ready": {
+      "testId": "app-run-history-table"
+    }
+  },
+  {
+    "id": "classic-settings-persona",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/persona",
+    "ready": {
+      "testId": "persona-details-card-VisualAnalystPersona"
+    },
+    "text": "Analyst persona"
+  },
+  {
+    "id": "classic-settings-persona-VisualAnalystPersona",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/persona/VisualAnalystPersona",
+    "ready": {
+      "testId": "customize-ui-options"
+    },
+    "text": "Data Assets"
+  },
+  {
+    "id": "classic-settings-customProperties",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/customProperties",
+    "ready": {
+      "testId": "customProperties.tables"
+    },
+    "text": "Tables"
+  },
+  {
+    "id": "classic-settings-customProperties-tables",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/customProperties/tables",
+    "ready": {
+      "testId": "entity-custom-properties-table"
+    },
+    "containsText": "Adding a new Property is easy, just give it a spin! Still need help? Refer to our docs for more information."
+  },
+  {
+    "id": "classic-settings-preferences-search-settings",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/search-settings",
+    "ready": {
+      "testId": "preferences.search-settings.tables"
+    },
+    "text": "Tables"
+  },
+  {
+    "id": "classic-settings-preferences-lineageConfig",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/lineageConfig",
+    "ready": {
+      "testId": "field-lineage-layer"
+    },
+    "text": "Lineage Layer"
+  },
+  {
+    "id": "classic-settings-preferences-om-url-config",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/om-url-config",
+    "ready": {
+      "testId": "open-metadata-url"
+    },
+    "text": "--"
+  },
+  {
+    "id": "classic-settings-preferences-dataAssetRules",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/dataAssetRules",
+    "ready": {
+      "testId": "heading"
+    },
+    "text": "Data Asset Rules",
+    "containsText": "Data Product Domain Validation"
+  },
+  {
+    "id": "classic-settings-preferences-email",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/email",
+    "ready": {
+      "testId": "edit-email-configuration"
+    },
+    "text": "Edit"
+  },
+  {
+    "id": "classic-settings-preferences-appearance",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/appearance",
+    "ready": {
+      "testId": "primaryColor-color-input"
+    }
+  },
+  {
+    "id": "classic-settings-preferences-profiler-configuration",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/profiler-configuration",
+    "ready": {
+      "testId": "sample-data-ingestion-config"
+    },
+    "text": "Enable Storing of Sample Data"
+  },
+  {
+    "id": "classic-settings-preferences-loginConfiguration",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/loginConfiguration",
+    "ready": {
+      "testId": "max-login-fail-attampts"
+    },
+    "text": "--"
+  },
+  {
+    "id": "classic-settings-preferences-data-quality",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/data-quality",
+    "ready": {
+      "testId": "dimension-Accuracy"
+    },
+    "text": "Accuracy"
+  },
+  {
+    "id": "classic-settings-preferences-learning-resources",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/learning-resources",
+    "ready": {
+      "testId": "learning-resources-table-body"
+    },
+    "text": "Content Name"
+  },
+  {
+    "id": "classic-settings-preferences-appMode",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/appMode",
+    "ready": {
+      "testId": "app-mode-radio-group"
+    },
+    "text": "Classic"
+  },
+  {
+    "id": "classic-settings-preferences-glossary",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/glossary",
+    "ready": {
+      "testId": "glossary-settings"
+    },
+    "text": "Propagate glossary tags"
+  },
+  {
+    "id": "classic-settings-preferences-timeFormat",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/preferences/timeFormat",
+    "ready": {
+      "testId": "time-format-radio-group"
+    },
+    "text": "24-hour format"
+  },
+  {
+    "id": "classic-settings-notifications-alerts",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/notifications/alerts",
+    "ready": {
+      "role": "link",
+      "name": "Metadata alert"
+    }
+  },
+  {
+    "id": "classic-settings-notifications-add-notification",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/notifications/add-notification",
+    "ready": {
+      "testId": "source-select"
+    },
+    "containsText": "Destination"
+  },
+  {
+    "id": "classic-settings-notifications-announcements",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/notifications/announcements",
+    "ready": {
+      "testId": "announcements-empty"
+    },
+    "text": "No Announcements found"
+  },
+  {
+    "id": "classic-settings-notifications-announcements-add",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/notifications/announcements/add",
+    "ready": {
+      "testId": "system-announcement-form"
+    },
+    "target": {
+      "testId": "system-announcement-form"
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
+  },
+  {
+    "id": "classic-settings-governance-glossary-term-relations",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/governance/glossary-term-relations",
+    "ready": {
+      "testId": "relation-name-relatedTo"
+    },
+    "text": "relatedTo"
+  },
+  {
+    "id": "classic-settings-governance-intake-forms",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/governance/intake-forms",
+    "ready": {
+      "testId": "intake-forms-empty"
+    },
+    "text": "No intake forms yet"
+  },
+  {
+    "id": "classic-settings-sso",
+    "group": "Classic settings",
+    "mode": "classic",
+    "path": "/settings/sso",
+    "ready": {
+      "text": "Choose Provider"
+    }
   }
 ]

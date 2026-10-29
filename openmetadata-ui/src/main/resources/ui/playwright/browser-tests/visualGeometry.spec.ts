@@ -85,3 +85,18 @@ test('expanding forms fit at their final animated height', async ({ page }) => {
     await expect(page.getByTestId('bottom')).toBeInViewport({ ratio: 1 });
   });
 });
+
+test('a target cannot hide its own horizontal content in a full-target capture', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 900, height: 600 });
+  await page.setContent(
+    '<form data-testid="form" style="width:300px;overflow:hidden"><div style="width:600px">A wide connection field</div></form>'
+  );
+  await expect(
+    withFullVisualTarget(page, page.getByTestId('form'), async () => {
+      throw new Error('Clipped content reached capture');
+    })
+  ).rejects.toThrow('cannot reveal the full visual target');
+  expect(page.viewportSize()).toEqual({ width: 900, height: 600 });
+});

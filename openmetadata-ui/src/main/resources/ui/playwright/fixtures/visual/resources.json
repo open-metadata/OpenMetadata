@@ -3479,7 +3479,7 @@
       "enabled": true,
       "deleted": false,
       "version": 1.1,
-      "updatedAt": 1768471200000,
+      "updatedAt": 1767861923000,
       "updatedBy": "visual_admin"
     },
     {
@@ -3512,7 +3512,7 @@
       "enabled": true,
       "deleted": false,
       "version": 1.1,
-      "updatedAt": 1768471200000,
+      "updatedAt": 1767861923000,
       "updatedBy": "visual_admin",
       "appSchedule": {
         "scheduleTimeline": "Custom",
@@ -3541,7 +3541,7 @@
       "enabled": true,
       "deleted": false,
       "version": 1.1,
-      "updatedAt": 1768471200000,
+      "updatedAt": 1767861923000,
       "updatedBy": "visual_admin",
       "appSchedule": {
         "scheduleTimeline": "Custom",
@@ -3590,7 +3590,7 @@
       "enabled": true,
       "deleted": false,
       "version": 1.1,
-      "updatedAt": 1768471200000,
+      "updatedAt": 1767861923000,
       "updatedBy": "visual_admin",
       "appSchedule": {
         "scheduleTimeline": "Custom",
@@ -3628,7 +3628,7 @@
       "enabled": true,
       "deleted": false,
       "version": 1.1,
-      "updatedAt": 1768471200000,
+      "updatedAt": 1767861923000,
       "updatedBy": "visual_admin",
       "appSchedule": {
         "scheduleTimeline": "Custom",
@@ -3659,7 +3659,7 @@
       "enabled": true,
       "deleted": false,
       "version": 1.1,
-      "updatedAt": 1768471200000,
+      "updatedAt": 1767861923000,
       "updatedBy": "visual_admin",
       "allowBotImpersonation": true
     },
@@ -3696,7 +3696,7 @@
       "enabled": true,
       "deleted": false,
       "version": 1.1,
-      "updatedAt": 1768471200000,
+      "updatedAt": 1767861923000,
       "updatedBy": "visual_admin",
       "appSchedule": {
         "scheduleTimeline": "Custom",
@@ -3730,7 +3730,7 @@
       "enabled": true,
       "deleted": false,
       "version": 1.1,
-      "updatedAt": 1768471200000,
+      "updatedAt": 1767861923000,
       "updatedBy": "visual_admin",
       "appSchedule": {
         "cronExpression": "*/5 * * * *",
@@ -3775,7 +3775,7 @@
       "enabled": true,
       "deleted": false,
       "version": 1.1,
-      "updatedAt": 1768471200000,
+      "updatedAt": 1767861923000,
       "updatedBy": "visual_admin",
       "appSchedule": {
         "scheduleTimeline": "Custom",

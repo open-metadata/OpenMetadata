@@ -21,6 +21,7 @@ import {
   VISUAL_THEMES,
   waitForLineageCanvas,
   waitForOntologyCanvas,
+  withFullVisualTarget,
 } from './visualRegression';
 
 interface VisualLocator {
@@ -48,6 +49,7 @@ interface VisualScene {
   ready: VisualLocator;
   initialReady?: VisualLocator;
   target?: VisualLocator;
+  fullTarget?: boolean;
   absent?: VisualLocator[];
   state?: VisualDataState;
   text?: string;
@@ -187,16 +189,30 @@ export const registerVisualScenarios = (group: string) => {
           }
           if (scene.paintedLineage) await waitForLineageCanvas(page);
           if (scene.paintedOntology) await waitForOntologyCanvas(page);
-          await expectVisualScreenshot(page, scene.id, theme, {
-            target: scene.target ? locate(page, scene.target) : undefined,
-            allowErrorFeedback:
-              scene.state === 'error' || Boolean(scene.expectedError),
-            ...(scene.maxDiffPixelRatio !== undefined
-              ? { maxDiffPixelRatio: scene.maxDiffPixelRatio }
-              : {}),
-          });
-          if (scene.group === 'Forms' && scene.target) {
-            // A focused form can omit the slideout header and footer.
+          const capture = () =>
+            expectVisualScreenshot(page, scene.id, theme, {
+              target: scene.target ? locate(page, scene.target) : undefined,
+              allowErrorFeedback:
+                scene.state === 'error' || Boolean(scene.expectedError),
+              ...(scene.maxDiffPixelRatio !== undefined
+                ? { maxDiffPixelRatio: scene.maxDiffPixelRatio }
+                : {}),
+            });
+          if (scene.fullTarget) {
+            if (!scene.target)
+              throw new Error(
+                'Full-target scenarios require an explicit target.'
+              );
+            await withFullVisualTarget(
+              page,
+              locate(page, scene.target),
+              capture
+            );
+          } else {
+            await capture();
+          }
+          if (scene.target && (scene.group === 'Forms' || scene.fullTarget)) {
+            // A form crop omits page or slideout context; retain its frame too.
             await expectVisualScreenshot(page, `${scene.id}-frame`, theme);
           }
           expect(
