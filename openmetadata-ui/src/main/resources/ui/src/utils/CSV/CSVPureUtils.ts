@@ -511,3 +511,14 @@ export const getCustomPropertyEntityType = (entityType: EntityType) => {
       return entityType;
   }
 };
+
+/**
+ * Rewrites each CRLF and lone CR that ends a row as LF, leaving line breaks inside quoted cells as
+ * they are. Papaparse infers one line separator for the whole text, so a file mixing CRLF and LF
+ * rows (an export with rows appended in another editor) would otherwise merge the minority rows
+ * into their neighbours.
+ */
+export const normalizeCsvLineBreaks = (content: string): string =>
+  content.replaceAll(/"(?:[^"]|"")*"|\r\n?/g, (match) =>
+    match.startsWith('"') ? match : '\n'
+  );
