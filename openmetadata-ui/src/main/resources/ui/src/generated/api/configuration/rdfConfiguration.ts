@@ -233,8 +233,9 @@ export interface StorageMaintenance {
     /**
      * Compact without waiting for the interval once the store reports less free space than this
      * share of its volume, or reports that its write guard is refusing writes. When a
-     * compaction cannot bring the store back above this share, urgent compactions wait an hour.
-     * Only stores that report their volume, such as OpenMetadata's Fuseki images, are checked.
+     * compaction cannot bring the store back above this share, urgent compactions wait for the
+     * next scheduled compaction. Only stores that report their volume, such as OpenMetadata's
+     * Fuseki images, are checked.
      */
     urgentFreeSpacePercent?: number;
 }
