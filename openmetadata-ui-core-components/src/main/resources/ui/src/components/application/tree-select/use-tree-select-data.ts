@@ -246,15 +246,16 @@ export const useTreeSelectData = <T = unknown>({
             );
             nextLoadingNodes.delete(params.parentId);
           } else {
-            if (append) {
-              nextData = [...prev.data, ...response.nodes];
-            } else if (params.searchTerm) {
-              nextData = response.nodes;
+            if (params.searchTerm) {
+              nextData = append
+                ? [...prev.data, ...response.nodes]
+                : response.nodes;
             } else {
-              nextData = withCachedChildren(
+              const page = withCachedChildren(
                 response.nodes,
                 cachedDataRef.current
               );
+              nextData = append ? [...prev.data, ...page] : page;
             }
             nextRootPage = {
               hasMore: response.hasMore,

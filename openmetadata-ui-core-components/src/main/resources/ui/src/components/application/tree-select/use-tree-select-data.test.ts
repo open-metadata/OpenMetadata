@@ -152,6 +152,61 @@ describe('useTreeSelectData', () => {
     expect(fetchData).toHaveBeenCalledTimes(4);
   });
 
+  it('keeps loaded branches on a root page appended after a cleared search', async () => {
+    const parent: TreeSelectNode = {
+      id: 'g2',
+      label: 'g2',
+      value: 'g2',
+      isLeaf: false,
+    };
+    const fetchData = vi
+      .fn()
+      .mockImplementation(
+        async ({
+          parentId,
+          after,
+          searchTerm,
+        }: {
+          parentId?: string;
+          after?: string;
+          searchTerm?: string;
+        }) => {
+          if (parentId) {
+            return { nodes: [child('c1')] };
+          }
+          if (searchTerm) {
+            return { nodes: [child('hit')] };
+          }
+
+          return after
+            ? { nodes: [parent], hasMore: false, total: 2 }
+            : {
+                nodes: [child('g1')],
+                hasMore: true,
+                total: 2,
+                nextCursor: '1',
+              };
+        }
+      );
+    const { result, rerender } = renderHook(
+      ({ searchTerm }: { searchTerm: string }) =>
+        useTreeSelectData({ fetchData, searchTerm }),
+      { initialProps: { searchTerm: '' } }
+    );
+
+    await waitFor(() => expect(result.current.hasMoreRoot).toBe(true));
+    await act(() => result.current.loadMoreRoot());
+    await act(() => result.current.loadChildren('g2'));
+
+    rerender({ searchTerm: 'hit' });
+    await waitFor(() => expect(result.current.treeData[0].id).toBe('hit'));
+    rerender({ searchTerm: '' });
+    await waitFor(() => expect(result.current.hasMoreRoot).toBe(true));
+    await act(() => result.current.loadMoreRoot());
+
+    expect(result.current.treeData[1].children).toEqual([child('c1')]);
+  });
+
   it('records what a truncated branch needs to ask for its next page', async () => {
     const { result } = renderPagedBranch();
 

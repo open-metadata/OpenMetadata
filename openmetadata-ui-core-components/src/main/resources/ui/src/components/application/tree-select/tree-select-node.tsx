@@ -176,7 +176,9 @@ export const TreeSelectTreeItemContent = <T,>({
                   // bg-primary is the page colour in dark mode, so an empty
                   // radio would read as a hole in the popover.
                   className={
-                    isSelected || isRowDisabled ? undefined : 'tw:bg-transparent'
+                    isSelected || isRowDisabled
+                      ? undefined
+                      : 'tw:bg-transparent'
                   }
                   isDisabled={isRowDisabled}
                   isSelected={isSelected}

@@ -213,6 +213,7 @@ interface TriggerContentProps {
   userName: string;
   domainName?: string;
   domainRef: RefObject<HTMLElement>;
+  nameRef: RefObject<HTMLElement>;
   isDomainScoped: boolean;
 }
 
@@ -223,6 +224,7 @@ const TriggerContent = ({
   userName,
   domainName,
   domainRef,
+  nameRef,
   isDomainScoped,
 }: TriggerContentProps) => (
   <>
@@ -247,7 +249,11 @@ const TriggerContent = ({
     ) : (
       <>
         <Box className="tw:min-w-0 tw:flex-1" direction="col">
-          <Typography className="tw:truncate tw:text-primary" weight="medium">
+          <Typography
+            className="tw:truncate tw:text-primary"
+            data-testid="ask-ai-user-menu-name"
+            ref={nameRef}
+            weight="medium">
             {name}
           </Typography>
           <Box align="center" className="tw:min-w-0" gap={1}>
@@ -312,6 +318,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
     activeDomain
   );
   const isDomainScoped = activeDomain !== DEFAULT_DOMAIN_VALUE;
+  const nameRef = useRef<HTMLElement>(null);
   const domainRef = useRef<HTMLElement>(null);
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const selectedPersonaName = selectedPersona
@@ -372,9 +379,12 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           </span>
         }
         onOpenChange={(isOpen) =>
-          // Expanded, the card already shows both unless the domain is cut off.
+          // Expanded, the card already shows both unless one is cut off.
           setIsTooltipOpen(
-            isOpen && (collapsed || isTextTruncated(domainRef.current))
+            isOpen &&
+              (collapsed ||
+                isTextTruncated(nameRef.current) ||
+                isTextTruncated(domainRef.current))
           )
         }>
         <Button
@@ -392,6 +402,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             domainRef={domainRef}
             isDomainScoped={isDomainScoped}
             name={displayName}
+            nameRef={nameRef}
             userName={userName}
           />
         </Button>

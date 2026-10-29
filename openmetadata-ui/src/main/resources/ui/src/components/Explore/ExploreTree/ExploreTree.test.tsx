@@ -75,6 +75,7 @@ const getExpandButton = (element: HTMLElement) =>
 
 afterEach(() => {
   jest.restoreAllMocks();
+  useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
   window.history.pushState({}, '', '/');
 });
 
@@ -101,8 +102,6 @@ describe('ExploreTree', () => {
       expect(Boolean(queryByTestId('no-data-placeholder'))).toBe(
         hasPlaceholder
       );
-
-      useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
     }
   );
 
