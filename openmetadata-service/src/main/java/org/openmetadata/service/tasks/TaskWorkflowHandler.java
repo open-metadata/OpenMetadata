@@ -280,10 +280,13 @@ public class TaskWorkflowHandler {
               "Flowable runtime task for workflow-managed task '%s' is unavailable; retry the resolution",
               taskId));
     }
-    // Wait before anything is written to the workflow: process variables set on a runtime task
-    // Flowable cannot see yet are dropped without an error.
-    if (!requiresRuntimeTaskReadiness && isRuntimeTaskStillBeingCommitted(workflowHandler, task)) {
-      awaitActiveRuntimeTask(workflowHandler, taskId);
+    // Settle before anything is written to the workflow: process variables set on a runtime task
+    // Flowable cannot see yet are dropped without an error, so a task still not visible after the
+    // wait is refused while nothing has reached the workflow and a retry is safe.
+    if (!requiresRuntimeTaskReadiness
+        && isRuntimeTaskStillBeingCommitted(workflowHandler, task)
+        && !awaitActiveRuntimeTask(workflowHandler, taskId)) {
+      throw workflowStillPreparing(taskId);
     }
     if (ontologyReview) {
       OntologyApprovalWorkflow.validateRuntime(task);

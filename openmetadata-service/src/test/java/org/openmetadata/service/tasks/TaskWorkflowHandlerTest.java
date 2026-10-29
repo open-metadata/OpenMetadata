@@ -509,6 +509,53 @@ class TaskWorkflowHandlerTest {
   }
 
   @Test
+  void testRejectionIsNotWrittenToARuntimeTaskThatNeverBecameVisible() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(true);
+
+      TaskStateConflictException exception =
+          assertThrows(
+              TaskStateConflictException.class,
+              () ->
+                  new TaskWorkflowHandler(3, 0)
+                      .resolveTask(
+                          task,
+                          "reject",
+                          TaskResolutionType.Rejected,
+                          null,
+                          null,
+                          "Missing definition details",
+                          "alice"));
+
+      // Flowable drops variables set on a runtime task it cannot see, so a rejection reason
+      // written now would be lost if the task committed before the resolve reached it.
+      assertTrue(exception.getMessage().contains("still preparing"));
+      verify(workflowHandler, never()).setProcessVariable(any(), anyString(), any());
+      verify(workflowHandler, never()).transformToNodeVariables(any(), any());
+    }
+  }
+
+  @Test
   void testRuntimeTaskAppearingAfterAMissedLookupAsksTheCallerToRetry() {
     UUID taskId = UUID.randomUUID();
     UUID instanceId = UUID.randomUUID();
