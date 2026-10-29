@@ -36,12 +36,14 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
@@ -92,6 +94,12 @@ import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/gra
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyConceptDataGraph from '../OntologyGraphView/OntologyConceptDataGraph';
+import OntologyGraphModeTabs from './OntologyGraphModeTabs';
+import { useOntologyGraphSearchSlot } from './OntologyGraphSearchSlot.context';
+import {
+  AI_GRAPH_BACKDROP_CLASS,
+  AI_GRAPH_CONTROLS_CLASS,
+} from './OntologyGraphView.constants';
 
 const OntologyGraphG6 = lazy(
   () => import('../../../OntologyExplorer/OntologyGraphG6')
@@ -281,6 +289,8 @@ const OntologyGraphView = ({
   onWorkingChange,
 }: OntologyGraphViewProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const searchSlot = useOntologyGraphSearchSlot();
   const graphRef = useRef<OntologyGraphHandle>(null);
   const [typeDraft, setTypeDraft] = useState<{
     label: string;
@@ -720,6 +730,33 @@ const OntologyGraphView = ({
     );
   };
 
+  const renderGraphControls = () => {
+    const controls = (
+      <OntologyControlButtons
+        isLoading={isFetching}
+        onFitToScreen={() => void graphRef.current?.fitView()}
+        onRefresh={() => void refetch()}
+        onZoomIn={() => graphRef.current?.zoomIn()}
+        onZoomOut={() => graphRef.current?.zoomOut()}
+      />
+    );
+
+    return isAiMode ? (
+      <div
+        className={AI_GRAPH_CONTROLS_CLASS}
+        data-testid="ontology-graph-controls">
+        {controls}
+      </div>
+    ) : (
+      <Card
+        className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6 tw:flex tw:items-center tw:rounded-lg"
+        data-testid="ontology-graph-controls"
+        variant="elevated">
+        {controls}
+      </Card>
+    );
+  };
+
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
@@ -740,15 +777,20 @@ const OntologyGraphView = ({
       return (
         <OntologyConceptDataGraph
           concept={selected}
+          concepts={model.concepts}
           key={selected?.id}
           model={model}
+          onSelectConcept={setSelectedId}
         />
       );
     }
 
     return (
       <>
-        <div aria-hidden="true" className={GRAPH_BACKDROP_CLASS} />
+        <div
+          aria-hidden="true"
+          className={isAiMode ? AI_GRAPH_BACKDROP_CLASS : GRAPH_BACKDROP_CLASS}
+        />
         <Suspense
           fallback={
             <Typography role="status">{t('label.loading')}</Typography>
@@ -775,24 +817,19 @@ const OntologyGraphView = ({
             onPaneClick={() => setSelectedId(undefined)}
           />
         </Suspense>
-        <Card
-          className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6 tw:flex tw:items-center tw:rounded-lg"
-          data-testid="ontology-graph-controls"
-          variant="elevated">
-          <OntologyControlButtons
-            isLoading={isFetching}
-            onFitToScreen={() => void graphRef.current?.fitView()}
-            onRefresh={() => void refetch()}
-            onZoomIn={() => graphRef.current?.zoomIn()}
-            onZoomOut={() => graphRef.current?.zoomOut()}
-          />
-        </Card>
+        {renderGraphControls()}
       </>
     );
   };
 
-  const renderGraphMode = () =>
-    surface === 'graph' ? (
+  const renderGraphMode = () => {
+    if (surface !== 'graph') {
+      return null;
+    }
+
+    return isAiMode ? (
+      <OntologyGraphModeTabs mode={graphMode} onChange={setGraphMode} />
+    ) : (
       <Box
         className="tw:absolute tw:top-3.5 tw:right-4 tw:z-10 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1"
         gap={1}>
@@ -808,7 +845,9 @@ const OntologyGraphView = ({
           </Button>
         ))}
       </Box>
-    ) : null;
+    );
+  };
+
   const renderTypeDialog = () =>
     typeDraft ? (
       <RelationshipTypeDialog
@@ -819,26 +858,47 @@ const OntologyGraphView = ({
       />
     ) : null;
 
+  const renderSearch = () => {
+    if (isAiMode && searchSlot) {
+      return createPortal(
+        <Input
+          aria-label={t('label.find-concept')}
+          icon={Search}
+          inputDataTestId="ontology-graph-search"
+          placeholder={`${t('label.find-concept')}…`}
+          size="sm"
+          value={search}
+          onChange={setSearch}
+        />,
+        searchSlot
+      );
+    }
+
+    return (
+      <div
+        className={
+          surface === 'tree'
+            ? 'tw:px-6 tw:pt-4'
+            : 'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6'
+        }>
+        <Input
+          aria-label={t('label.find-concept')}
+          className="tw:w-54"
+          icon={Search}
+          inputDataTestId="ontology-graph-search"
+          placeholder={`${t('label.find-concept')}…`}
+          size="sm"
+          value={search}
+          onChange={setSearch}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden">
       <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
-        <div
-          className={
-            surface === 'tree'
-              ? 'tw:px-6 tw:pt-4'
-              : 'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6'
-          }>
-          <Input
-            aria-label={t('label.find-concept')}
-            className="tw:w-54"
-            icon={Search}
-            inputDataTestId="ontology-graph-search"
-            placeholder={`${t('label.find-concept')}…`}
-            size="sm"
-            value={search}
-            onChange={setSearch}
-          />
-        </div>
+        {renderSearch()}
         {renderGraphMode()}
         {renderSurface()}
       </div>

@@ -15,8 +15,11 @@ import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OntologyPackSample } from '../../generated/api/data/ontologyPackSample';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { getOntologyPackSample } from '../../rest/ontologyAPI';
 import { layoutOntologyPackSample } from './OntologyPackSampleGraph.utils';
+
+const AI_GRAPH_CANVAS_CLASS = 'tw:rounded-lg tw:bg-secondary_alt';
 
 interface OntologyPackSampleGraphProps {
   packId: string;
@@ -28,6 +31,7 @@ const OntologyPackSampleGraph = ({
   selectedModuleIds,
 }: OntologyPackSampleGraphProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [sample, setSample] = useState<OntologyPackSample>();
   const [state, setState] = useState<'loading' | 'error' | 'ready'>('loading');
   const [retry, setRetry] = useState(0);
@@ -91,7 +95,12 @@ const OntologyPackSampleGraph = ({
 
   return (
     <Box direction="col" gap={2}>
-      <Box className="tw:overflow-x-auto">
+      <Box
+        className={
+          isAiMode
+            ? `tw:overflow-x-auto ${AI_GRAPH_CANVAS_CLASS}`
+            : 'tw:overflow-x-auto'
+        }>
         <svg
           aria-label={t('message.ontology-pack-sample-graph', {
             concepts: sample.conceptCount,
