@@ -195,7 +195,7 @@ const OptionRow = ({
 interface TriggerContentProps {
   collapsed: boolean;
   name: string;
-  email: string;
+  userName: string;
   domainName?: string;
   isDomainScoped: boolean;
 }
@@ -204,7 +204,7 @@ interface TriggerContentProps {
 const TriggerContent = ({
   collapsed,
   name,
-  email,
+  userName,
   domainName,
   isDomainScoped,
 }: TriggerContentProps) => (
@@ -215,7 +215,7 @@ const TriggerContent = ({
         collapsed ? 'tw:size-[34px]' : 'tw:size-9 tw:*:text-[15px]'
       )}
       displayName={name}
-      name={email}
+      name={userName}
       size="sm"
     />
     {collapsed ? (
@@ -288,7 +288,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
   }, [appVersion, setAppVersion]);
 
   const displayName = getEntityName(currentUser) || t('label.user');
-  const email = currentUser?.email ?? '';
+  const userName = currentUser?.name ?? '';
   const domainDisplayName = getDomainDisplayName(
     activeDomainEntityRef,
     activeDomain
@@ -362,9 +362,9 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           <TriggerContent
             collapsed={collapsed}
             domainName={domainDisplayName}
-            email={email}
             isDomainScoped={isDomainScoped}
             name={displayName}
+            userName={userName}
           />
         </Button>
       </Tooltip>
@@ -378,19 +378,12 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             data-testid="ai-user-menu-profile"
             id="profile"
             textValue={displayName}
-            onAction={() =>
-              setHash(
-                'profile',
-                currentUser?.name
-                  ? encodeURIComponent(currentUser.name)
-                  : undefined
-              )
-            }>
+            onAction={() => setHash('profile')}>
             <Box align="center" gap={3}>
               <ProfilePicture
                 className="tw:*:font-medium"
                 displayName={displayName}
-                name={email}
+                name={userName}
                 width="40"
               />
               <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
@@ -494,9 +487,9 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             className={ROW_CLASS}
             data-testid="ai-user-menu-my-data"
             id="my-data"
-            textValue={t('label.my-data')}
+            textValue={t('label.my-data-and-following')}
             onAction={() => openPanel('my-data')}>
-            <MenuRow icon={Assets} label={t('label.my-data')} />
+            <MenuRow icon={Assets} label={t('label.my-data-and-following')} />
           </Dropdown.Item>
 
           <SubmenuTrigger>

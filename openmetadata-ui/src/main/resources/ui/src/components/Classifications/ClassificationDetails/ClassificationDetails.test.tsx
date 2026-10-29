@@ -242,14 +242,6 @@ jest.mock('../../common/Table/TableV2', () =>
   ))
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(({ placeholderText }) => (
-      <div data-testid="empty-tags-placeholder">{placeholderText}</div>
-    ))
-);
-
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest
     .fn()

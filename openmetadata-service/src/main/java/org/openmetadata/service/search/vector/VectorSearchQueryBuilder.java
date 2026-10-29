@@ -28,6 +28,7 @@ public class VectorSearchQueryBuilder {
   private static final String ANY = "__ANY__";
   private static final String NONE = "__NONE__";
   public static final int DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER = 2;
+  public static final int ES_MAX_KNN_NUM_CANDIDATES = 10_000;
 
   /**
    * Consulted only for its engine-independent predicates ({@code isSubjectResolvable}) and field
@@ -193,9 +194,12 @@ public class VectorSearchQueryBuilder {
       int numCandidatesMultiplier,
       Set<String> readableAnchorIds) {
     // Compute in long to avoid int overflow when k * numCandidatesMultiplier exceeds
-    // Integer.MAX_VALUE; clamp to Integer.MAX_VALUE so num_candidates is always positive.
+    // Integer.MAX_VALUE; clamp to Elasticsearch's engine maximum of 10,000 so any admitted k
+    // (MAX_K = 10_000) yields a valid request — Elasticsearch rejects num_candidates above
+    // 10,000 with a 400.
     long candidatesLong = (long) parameters.k() * (long) numCandidatesMultiplier;
-    int numCandidates = (int) Math.max(100, Math.min(candidatesLong, (long) Integer.MAX_VALUE));
+    int numCandidates =
+        (int) Math.max(100, Math.min(candidatesLong, (long) ES_MAX_KNN_NUM_CANDIDATES));
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")

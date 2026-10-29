@@ -87,11 +87,18 @@ export const visitClassificationPage = async (
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
+type SearchableAsset = {
+  entityResponseData: Pick<
+    TableClass['entityResponseData'],
+    'name' | 'displayName' | 'fullyQualifiedName'
+  >;
+};
+
 export const addAssetsToTag = async (
   page: Page,
-  assets: EntityClass[],
+  assets: SearchableAsset[],
   tag: TagClass,
-  otherAsset?: EntityClass[]
+  otherAsset?: SearchableAsset[]
 ) => {
   const assetSelectionModal = page.getByTestId('asset-selection-modal');
   const searchBar = assetSelectionModal.getByTestId('searchbar');
@@ -112,9 +119,11 @@ export const addAssetsToTag = async (
 
   if (!isUndefined(otherAsset)) {
     for (const asset of otherAsset) {
-      const name = get(asset, 'entityResponseData.name');
-      const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-      const entityDisplayName = get(asset, 'entityResponseData.displayName');
+      const {
+        name,
+        fullyQualifiedName: fqn,
+        displayName: entityDisplayName,
+      } = asset.entityResponseData;
       const visibleName = entityDisplayName ?? name;
       const searchRes = page.waitForResponse(
         `/api/v1/search/query?q=${encodeURIComponent(
@@ -140,9 +149,11 @@ export const addAssetsToTag = async (
   }
 
   for (const asset of assets) {
-    const name = get(asset, 'entityResponseData.name');
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    const entityDisplayName = get(asset, 'entityResponseData.displayName');
+    const {
+      name,
+      fullyQualifiedName: fqn,
+      displayName: entityDisplayName,
+    } = asset.entityResponseData;
     const visibleName = entityDisplayName ?? name;
 
     const searchRes = page.waitForResponse(

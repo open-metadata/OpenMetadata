@@ -24,6 +24,7 @@ const mockRefetchReplies = jest.fn();
 let mockReplies: { id: string; author?: { name: string } }[] = [];
 // Whether a thread's replies were read before (cached) even while closed.
 let mockRepliesCached = false;
+let mockRepliesPending = false;
 const mockRepliesEnabled = jest.fn();
 
 jest.mock('../useActivityReplies', () => ({
@@ -34,7 +35,7 @@ jest.mock('../useActivityReplies', () => ({
     enabled: boolean
   ) => {
     mockRepliesEnabled(enabled);
-    const hasLoaded = enabled || mockRepliesCached;
+    const hasLoaded = !mockRepliesPending && (enabled || mockRepliesCached);
 
     return {
       threadId: ids.conversationId ?? ids.activityId,
@@ -270,7 +271,9 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
     ].map((name) => [name, () => <span data-testid={name} />])
   ),
   ChevronDown: () => <span />,
+  ChevronRight: () => <span />,
   ChevronUp: () => <span />,
+  Column: () => <span />,
   Edit05: () => <span />,
   File02: () => <span />,
   Globe01: () => <span />,
@@ -317,6 +320,7 @@ describe('ActivityFeedItem', () => {
     jest.clearAllMocks();
     mockReplies = [];
     mockRepliesCached = false;
+    mockRepliesPending = false;
   });
 
   describe('kind badge', () => {
@@ -418,11 +422,65 @@ describe('ActivityFeedItem', () => {
       />
     );
 
-    expect(screen.getByText('dim_address.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
     expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
       'href',
       '/table/svc.db.sch.dim.email'
     );
+  });
+
+  it('names and links the column a conversation was started on', () => {
+    render(
+      <ActivityFeedItem
+        feed={{
+          ...baseFeed,
+          about: '<#E::table::svc.db.sch.dim::columns::email::description>',
+          entityRef: {
+            ...baseFeed.entityRef,
+            fullyQualifiedName: 'svc.db.sch.dim',
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+    expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim.email'
+    );
+  });
+
+  it('links a non-column field change to the entity without an ANTLR error', () => {
+    // `entityStatus` is not in the EntityLink grammar: parsing it made ANTLR
+    // log a syntax error on every render.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <ActivityFeedItem
+        activity={
+          {
+            ...baseActivity,
+            about: '<#E::table::svc.db.sch.dim::entityStatus>',
+          } as ActivityEvent
+        }
+      />
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+
+    errorSpy.mockRestore();
   });
 
   it('flags a card that mentions the viewer, and only then', () => {
@@ -814,13 +872,31 @@ describe('ActivityFeedItem', () => {
 
     // One button for the thread, whatever it reads: never Reply beside a count
     // or beside "Hide replies".
-    it('keeps one thread button from Reply to Hide replies and back', () => {
+    it('keeps Hide replies on an open activity thread whose replies are still loading', () => {
+      mockRepliesPending = true;
+      render(<ActivityFeedItem activity={baseActivity} />);
+
+      fireEvent.click(screen.getByTestId('activity-reply'));
+
+      expect(screen.getByTestId('activity-reply')).toHaveTextContent(
+        'label.hide-reply-plural'
+      );
+    });
+
+    it('keeps one thread button that reads Reply while the thread has no replies', () => {
       render(<ActivityFeedItem activity={baseActivity} />);
 
       fireEvent.click(screen.getByTestId('activity-reply'));
 
       expect(screen.getAllByTestId('activity-reply')).toHaveLength(1);
+      expect(screen.getByTestId('activity-reply')).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
       expect(screen.getByTestId('activity-reply')).toHaveTextContent(
+        'label.reply'
+      );
+      expect(screen.getByTestId('activity-reply')).not.toHaveTextContent(
         'label.hide-reply-plural'
       );
 

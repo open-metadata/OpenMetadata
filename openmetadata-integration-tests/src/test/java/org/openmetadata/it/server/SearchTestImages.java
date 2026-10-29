@@ -6,13 +6,15 @@ import org.testcontainers.utility.DockerImageName;
 /**
  * Builds the OpenSearch test image with the language-analysis plugins baked in, so the
  * multi-language search IT can exercise every non-English mapping language: {@code analysis-kuromoji}
- * for Japanese and {@code analysis-ik} ({@code ik_max_word}/{@code ik_smart}) for Chinese.
+ * for Japanese, {@code analysis-nori} for Korean, and {@code analysis-ik} ({@code ik_max_word}/{@code
+ * ik_smart}) for Chinese.
  *
  * <p>Two suites share this image: {@code SearchConsumerFieldBehaviorIT}, which creates the {@code
- * jp}/{@code zh} indexes whose text fields reference those analyzers — that is what lets it catch
- * per-language mapping/analyzer drift (the jp mappings referencing undefined analyzers went unnoticed
- * because CI only ever ran English on a vanilla image) — and {@code FieldNamesAggregationIT}. The
- * rest of the IT suite is pinned to the English mappings and stays on the vanilla base image.
+ * jp}/{@code ko}/{@code zh} indexes whose text fields reference those analyzers — that is what lets
+ * it catch per-language mapping/analyzer drift (the jp mappings referencing undefined analyzers went
+ * unnoticed because CI only ever ran English on a vanilla image) — and {@code
+ * FieldNamesAggregationIT}. The rest of the IT suite is pinned to the English mappings and stays on
+ * the vanilla base image.
  *
  * <p>{@code analysis-ik} is third-party and ships only as a version-matched release URL. That URL is
  * <em>not</em> fetched at test time: the archive is committed under {@code
@@ -23,11 +25,12 @@ import org.testcontainers.utility.DockerImageName;
  * blocked the merge queue (issue #33822, after the bounded-download attempt in #33422). See that
  * directory's {@code README.md} for provenance and the re-vendoring procedure.
  *
- * <p>{@code analysis-kuromoji} is still installed over the network — it is an official OpenSearch
- * plugin resolved by name from the same host the base image comes from, and has never been the flaky
- * one. Its install stays time-bounded because a docker {@code RUN} has no time budget of its own and
- * {@code opensearch-plugin install} fetches over a {@code URLConnection} with no read timeout, so a
- * host that accepts the connection and then stalls would hang the build forever.
+ * <p>{@code analysis-kuromoji} and {@code analysis-nori} are still installed over the network — they
+ * are official OpenSearch plugins resolved by name from the same host the base image comes from,
+ * which has never been the flaky one. Their installs stay time-bounded because a docker {@code RUN}
+ * has no time budget of its own and {@code opensearch-plugin install} fetches over a {@code
+ * URLConnection} with no read timeout, so a host that accepts the connection and then stalls would
+ * hang the build forever.
  */
 public final class SearchTestImages {
 
@@ -49,8 +52,8 @@ public final class SearchTestImages {
   private static final String IK_BUILD_CONTEXT_PATH = "analysis-ik.zip";
   private static final String IK_CONTAINER_PATH = "/tmp/analysis-ik.zip";
 
-  /** Bounds the one step that still resolves an artifact over the network. */
-  private static final String KUROMOJI_INSTALL_TIMEOUT_SECONDS = "300";
+  /** Bounds the steps that still resolve an official artifact over the network. */
+  private static final String OFFICIAL_PLUGIN_INSTALL_TIMEOUT_SECONDS = "300";
 
   private SearchTestImages() {}
 
@@ -67,7 +70,8 @@ public final class SearchTestImages {
                 builder ->
                     builder
                         .from(baseImage)
-                        .run(kuromojiInstallCommand())
+                        .run(officialPluginInstallCommand("analysis-kuromoji"))
+                        .run(officialPluginInstallCommand("analysis-nori"))
                         .copy(IK_BUILD_CONTEXT_PATH, IK_CONTAINER_PATH)
                         .run(ikInstallCommand())
                         .build())
@@ -105,12 +109,8 @@ public final class SearchTestImages {
     return baseImage.substring(baseImage.lastIndexOf(':') + 1);
   }
 
-  private static String kuromojiInstallCommand() {
-    return "timeout "
-        + KUROMOJI_INSTALL_TIMEOUT_SECONDS
-        + " "
-        + PLUGIN_INSTALL
-        + "analysis-kuromoji";
+  private static String officialPluginInstallCommand(String pluginName) {
+    return "timeout " + OFFICIAL_PLUGIN_INSTALL_TIMEOUT_SECONDS + " " + PLUGIN_INSTALL + pluginName;
   }
 
   /**

@@ -295,10 +295,6 @@ jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => {
   return jest.fn().mockReturnValue(<p>EntityNameModal</p>);
 });
 
-jest.mock('../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () => {
-  return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
-});
-
 jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
@@ -502,7 +498,9 @@ describe('Test EntityTable Component', () => {
 
     expect(entityTable).toBeInTheDocument();
 
-    const emptyPlaceholder = screen.getByText('FilterTablePlaceHolder');
+    const emptyPlaceholder = screen.getByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(emptyPlaceholder).toBeInTheDocument();
   });

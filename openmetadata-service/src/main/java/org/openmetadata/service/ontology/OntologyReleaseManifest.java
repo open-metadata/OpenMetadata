@@ -55,12 +55,7 @@ public final class OntologyReleaseManifest {
     if (releaseId == null || kind == null || id == null || payload == null || !payload.isObject()) {
       throw new BadRequestException("A release member requires an identity and an object payload");
     }
-    final ObjectNode source = ((ObjectNode) payload).deepCopy();
-    if (kind == MemberKind.CONCEPT) {
-      source.remove(List.of("superClasses", "subClasses"));
-    }
-    final JsonNode canonical = OntologyJson.canonical(source);
-    requireSupportedText(canonical);
+    final JsonNode canonical = canonicalPayload(kind, payload);
     final String json = canonical.toString();
     final byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
     if (bytes.length > MAX_MEMBER_BYTES) {
@@ -74,6 +69,16 @@ public final class OntologyReleaseManifest {
         .withPayload(canonical)
         .withPayloadDigest(DigestUtils.sha256Hex(bytes))
         .withPayloadBytes((long) bytes.length);
+  }
+
+  static JsonNode canonicalPayload(final MemberKind kind, final JsonNode payload) {
+    final ObjectNode source = ((ObjectNode) payload).deepCopy();
+    if (kind == MemberKind.CONCEPT) {
+      source.remove(List.of("superClasses", "subClasses"));
+    }
+    final JsonNode canonical = OntologyJson.canonical(source);
+    requireSupportedText(canonical);
+    return canonical;
   }
 
   private static void requireSupportedText(final JsonNode value) {

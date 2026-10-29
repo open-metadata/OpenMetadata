@@ -120,10 +120,6 @@ jest.mock('../../../assets/svg/entity/column.svg', () => ({
   ReactComponent: () => <div data-testid="column-icon">ColumnIcon</div>,
 }));
 
-jest.mock('../../../assets/svg/icon-key.svg', () => ({
-  ReactComponent: () => <div data-testid="key-icon">KeyIcon</div>,
-}));
-
 jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
   __esModule: true,
   default: jest

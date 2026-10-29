@@ -5,18 +5,74 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
 
 import jakarta.ws.rs.ForbiddenException;
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseChangeType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
 
 class OntologyReleaseComparisonStorageTest {
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void workingChangesPreviewActiveReleaseWithoutAllocatingAnotherRelease(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final var concept =
+              fixture.concepts.create(
+                  null,
+                  new OntologyConcept()
+                      .withId(UUID.randomUUID())
+                      .withName("Customer")
+                      .withOntology(fixture.ontology.getEntityReference())
+                      .withConceptType(OntologyConceptType.OWL_CLASS)
+                      .withVersion(0.1)
+                      .withUpdatedAt(1L)
+                      .withUpdatedBy("admin"));
+          final var active = fixture.capture(ignored -> {}).withEntityStatus(EntityStatus.APPROVED);
+          fixture.releases.getDao().update(active);
+          new OntologyReleaseActivation(fixture.ontologies, Clock.systemUTC(), ignored -> {})
+              .activate(
+                  fixture.ontology.getId(),
+                  new ActivateOntologyRelease()
+                      .withReleaseId(active.getId())
+                      .withExpectedActivationRevision(0L),
+                  new OntologyReleaseActivation.Access("admin", ignored -> {}));
+          fixture.concepts.update(
+              null,
+              concept,
+              JsonUtils.deepCopy(concept, OntologyConcept.class).withDescription("Changed"),
+              "admin");
+          final var diff =
+              fixture
+                  .capture
+                  .snapshot()
+                  .read(
+                      fixture.ontology.getId(),
+                      ignored -> {},
+                      snapshot ->
+                          new OntologyReleaseComparison(fixture.releases)
+                              .compareWorking(snapshot, 1, null, ignored -> {}));
+          assertEquals(1, diff.getPaging().getTotal());
+          assertEquals(
+              OntologyReleaseChangeType.CHANGED, diff.getData().getFirst().getChangeType());
+          assertEquals(active.getId(), diff.getData().getFirst().getBeforeReleaseId());
+          assertEquals(null, diff.getData().getFirst().getAfterReleaseId());
+          assertEquals(1, fixture.rowCount("ontology_release_entity"));
+        });
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ConnectionType.class,
@@ -39,20 +95,14 @@ class OntologyReleaseComparisonStorageTest {
                       .withUpdatedAt(1L)
                       .withUpdatedBy("admin"));
           final var previous = fixture.capture(ignored -> {});
-          fixture
-              .releases
-              .getDao()
-              .update(
-                  previous.withEntityStatus(org.openmetadata.schema.type.EntityStatus.APPROVED));
-          new org.openmetadata.service.ontology.OntologyReleaseActivation(
-                  fixture.ontologies, java.time.Clock.systemUTC(), ignored -> {})
+          fixture.releases.getDao().update(previous.withEntityStatus(EntityStatus.APPROVED));
+          new OntologyReleaseActivation(fixture.ontologies, Clock.systemUTC(), ignored -> {})
               .activate(
                   root.getId(),
-                  new org.openmetadata.schema.api.data.ActivateOntologyRelease()
+                  new ActivateOntologyRelease()
                       .withReleaseId(previous.getId())
                       .withExpectedActivationRevision(0L),
-                  new org.openmetadata.service.ontology.OntologyReleaseActivation.Access(
-                      "admin", ignored -> {}));
+                  new OntologyReleaseActivation.Access("admin", ignored -> {}));
 
           fixture.concepts.update(
               null,

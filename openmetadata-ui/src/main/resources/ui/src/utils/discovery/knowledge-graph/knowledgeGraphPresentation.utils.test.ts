@@ -18,6 +18,7 @@ import {
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
+  getGraphNodeLabel,
   getGroupMemberLabelKey,
   getMappingCoverage,
   getSharedMemberType,
@@ -948,4 +949,39 @@ it('puts a person who both owns and follows the entity on the ownership bundle',
   expect(scene.edges.flatMap((edge) => edge.members ?? [edge])).toHaveLength(
     data.edges.length
   );
+});
+
+describe('getGraphNodeLabel', () => {
+  it('falls back to name, then the last FQN segment, then the id when the label is empty', () => {
+    expect(
+      getGraphNodeLabel({
+        id: 'term-1',
+        type: 'glossaryTerm',
+        label: '',
+        name: 'Account',
+      })
+    ).toBe('Account');
+    expect(
+      getGraphNodeLabel({
+        id: 'term-2',
+        type: 'glossaryTerm',
+        label: ' ',
+        fullyQualifiedName: 'Banking.Branch',
+      })
+    ).toBe('Branch');
+    expect(
+      getGraphNodeLabel({ id: 'term-3', type: 'glossaryTerm', label: '' })
+    ).toBe('term-3');
+  });
+
+  it('keeps a non-empty label', () => {
+    expect(
+      getGraphNodeLabel({
+        id: 'term-1',
+        type: 'glossaryTerm',
+        label: 'Customer',
+        name: 'customer',
+      })
+    ).toBe('Customer');
+  });
 });

@@ -11,22 +11,27 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
+import { User } from '../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 
 /**
  * The viewer's own id plus their teams': a task assigned to a team is theirs to
  * act on, so both decide whether it reads "pending approval".
+ *
+ * @param user reads as this user instead of the viewer, for a list scoped to
+ * someone else's tasks.
  */
-export const useCurrentUserIds = (): ReadonlySet<string> => {
+export const useCurrentUserIds = (user?: User): ReadonlySet<string> => {
   const { currentUser } = useApplicationStore();
+  const subject = user ?? currentUser;
 
   return useMemo(
     () =>
       new Set(
-        [currentUser?.id, ...(currentUser?.teams ?? []).map((team) => team.id)]
+        [subject?.id, ...(subject?.teams ?? []).map((team) => team.id)]
           .filter(Boolean)
           .map(String)
       ),
-    [currentUser?.id, currentUser?.teams]
+    [subject?.id, subject?.teams]
   );
 };

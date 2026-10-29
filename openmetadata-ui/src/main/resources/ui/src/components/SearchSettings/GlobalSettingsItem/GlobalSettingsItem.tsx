@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Input, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { clamp } from 'lodash';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import '../../../pages/SearchSettingsPage/search-settings.less';
 import InlineEdit from '../../common/InlineEdit/InlineEdit.component';
@@ -35,13 +40,44 @@ export const GlobalSettingItem = ({
   step,
   onUpdate,
 }: GlobalSettingItemProps) => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const valueContainerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const restoreFocusRef = useRef(false);
+
+  // Opening the editor removes the focused edit button and closing it removes
+  // the focused input: move focus to the control that replaces each, instead
+  // of letting it fall to <body>.
+  const closeEditor = () => {
+    const focused = document.activeElement;
+    // Restore only if focus is still in this editor, or was dropped to <body>
+    // (the input disables while saving). A slow save must not pull focus back
+    // from an edit the user has started elsewhere in the meantime.
+    restoreFocusRef.current =
+      !focused ||
+      focused === document.body ||
+      Boolean(editorRef.current?.contains(focused));
+    setIsEditing(false);
+  };
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+    } else if (restoreFocusRef.current) {
+      restoreFocusRef.current = false;
+      valueContainerRef.current
+        ?.querySelector<HTMLButtonElement>('button')
+        ?.focus();
+    }
+  }, [isEditing]);
 
   const handleCancel = () => {
     setUpdatedValue(value);
-    setIsEditing(false);
+    closeEditor();
   };
 
   const handleSave = async () => {
@@ -62,7 +98,7 @@ export const GlobalSettingItem = ({
       throw error;
     } finally {
       setIsUpdating(false);
-      setIsEditing(false);
+      closeEditor();
     }
   };
 
@@ -71,7 +107,9 @@ export const GlobalSettingItem = ({
       <Typography data-testid="global-setting-label">{label}</Typography>
 
       {isEditing ? (
-        <div className="m-l-md d-flex justify-end flex-wrap inline-edit-container">
+        <div
+          className="m-l-md d-flex justify-end flex-wrap inline-edit-container"
+          ref={editorRef}>
           <InlineEdit
             isLoading={isUpdating}
             onCancel={handleCancel}
@@ -81,7 +119,8 @@ export const GlobalSettingItem = ({
               id="value"
               inputDataTestId="value-input"
               isDisabled={isUpdating}
-              placeholder="value"
+              placeholder={t('label.value')}
+              ref={inputRef}
               step={step}
               type="number"
               value={Number.isNaN(updatedValue) ? '' : String(updatedValue)}
@@ -92,15 +131,21 @@ export const GlobalSettingItem = ({
           </InlineEdit>
         </div>
       ) : (
-        <div className="d-flex items-center justify-end flex-wrap value-container">
+        <div
+          className="d-flex items-center justify-end tw:shrink-0"
+          ref={valueContainerRef}>
           <span
-            className="m-l-xlg font-semibold p-x-xss global-settings-item-value"
+            className="m-l-md font-semibold p-x-xss global-settings-item-value"
             data-testid={`global-setting-value-${label}`}>
             {value}
           </span>
-          <EditIcon
-            className="tw:ml-3 tw:shrink-0 tw:size-3.5"
+          <ButtonUtility
+            className="tw:ml-1"
+            color="tertiary"
             data-testid={`global-setting-edit-icon-${label}`}
+            icon={<EditIcon className="tw:size-3.5" />}
+            size="xs"
+            tooltip={t('label.edit-entity', { entity: label })}
             onClick={() => setIsEditing(true)}
           />
         </div>

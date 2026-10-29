@@ -124,7 +124,7 @@ test.describe(
 
         try {
           await navigateToOntologyStudio(page);
-          await page.getByTestId('ontology-glossary-menu-trigger').click();
+          await page.getByTestId('ontology-scope-menu-trigger').click();
           await page
             .getByRole('menuitemradio')
             .filter({ hasText: bulkGlossary.responseData.displayName })

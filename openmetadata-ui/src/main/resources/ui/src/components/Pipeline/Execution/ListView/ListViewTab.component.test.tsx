@@ -16,10 +16,6 @@ import { StatusType } from '../../../../generated/entity/data/pipeline';
 import { EXECUTION_LIST_MOCK } from '../../../../mocks/PipelineVersion.mock';
 import ListView from './ListViewTab.component';
 
-jest.mock('../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>FilterTablePlaceHolder</div>)
-);
-
 jest.mock('../../../common/SearchBarComponent/SearchBar.component', () =>
   jest.fn().mockImplementation(() => <div>SearchBar</div>)
 );
@@ -67,7 +63,11 @@ describe('Test ListViewTab Component', () => {
 
     expect(screen.getByTestId('list-view-table')).toBeInTheDocument();
 
-    expect(screen.getByText('FilterTablePlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('Should render columns if data present', async () => {
@@ -76,7 +76,9 @@ describe('Test ListViewTab Component', () => {
     expect(screen.getByTestId('list-view-table')).toBeInTheDocument();
 
     expect(
-      screen.queryByText('FilterTablePlaceHolder')
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
     ).not.toBeInTheDocument();
 
     expect(screen.getAllByText('StatusIndicator')).toHaveLength(7);

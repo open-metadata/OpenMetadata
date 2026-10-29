@@ -58,6 +58,26 @@ describe('CoreBooleanField', () => {
     jest.clearAllMocks();
   });
 
+  it('names a map entry toggle by its key instead of repeating it as a label', () => {
+    const { Toggle: RealToggle } = jest.requireActual(
+      '@openmetadata/ui-core-components'
+    );
+    (Toggle as jest.Mock).mockImplementationOnce(RealToggle);
+
+    render(
+      <CoreBooleanField
+        {...baseProps}
+        name="verifyCerts"
+        schema={{ type: 'boolean', __additional_property: true }}
+      />
+    );
+
+    expect(
+      screen.getByRole('switch', { name: 'verifyCerts' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Verify Certs')).not.toBeInTheDocument();
+  });
+
   it('renders with schema title as label', () => {
     render(<CoreBooleanField {...baseProps} />);
 

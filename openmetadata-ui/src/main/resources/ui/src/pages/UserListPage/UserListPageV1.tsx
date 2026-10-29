@@ -29,8 +29,8 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
@@ -48,7 +48,6 @@ import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
@@ -390,16 +389,17 @@ const UserListPageV1 = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <ErrorPlaceHolder
-        className="border-none m-y-md"
-        heading={t('label.user')}
-        permission={isAdminUser}
-        permissionValue={t('label.create-entity', {
-          entity: t('label.user'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={handleAddNewUser}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <CreatePlaceholder
+          data-testid={`create-error-placeholder-${t('label.user')}`}
+          heading={t('label.user')}
+          permission={isAdminUser}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.user'),
+          })}
+          onCreate={handleAddNewUser}
+        />
+      </div>
     ),
     [isAdminUser]
   );
@@ -458,7 +458,12 @@ const UserListPageV1 = () => {
     return shouldShowErrorPlaceHolder ? (
       errorPlaceHolder
     ) : (
-      <FilterTablePlaceHolder placeholderText={emptyPlaceHolderText} />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoSearchResultsPlaceholder
+          data-testid="search-error-placeholder"
+          description={emptyPlaceHolderText}
+        />
+      </div>
     );
   }, [
     userList,

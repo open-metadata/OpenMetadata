@@ -921,6 +921,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
     Fields fields = getFields(fieldsParam);
     ListFilter filter =
         new ListFilter(include)

@@ -77,6 +77,13 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
       signed: new Intl.NumberFormat(i18n.language, {
         signDisplay: 'exceptZero',
       }),
+      // The header chip shares its line with the title, so a large change
+      // reads "+115K" there; the rows below keep the exact figure.
+      signedCompact: new Intl.NumberFormat(i18n.language, {
+        maximumFractionDigits: 1,
+        notation: 'compact',
+        signDisplay: 'exceptZero',
+      }),
     }),
     [i18n.language]
   );
@@ -117,7 +124,7 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
       ? undefined
       : t('message.value-in-last-count-days', {
           count: measuredWindowDays,
-          value: formats.signed.format(totalDelta),
+          value: formats.signedCompact.format(totalDelta),
         });
 
   const summary = [
@@ -178,17 +185,20 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
       {!emptyState && (
         <>
           <div className="tw:flex tw:items-start tw:justify-between tw:gap-3">
-            <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1">
+            <div className="tw:flex tw:min-w-0 tw:flex-col">
               {/* `!` on the colours: Typography renders `.prose`, whose unlayered
             `color` rule is emitted after the Tailwind utilities and would
             otherwise silently win. */}
-              <Typography className="tw:text-text-tertiary!" size="text-sm">
+              <Typography
+                className="tw:text-text-tertiary!"
+                size="text-xs"
+                weight="medium">
                 {t('label.total-assets')}
               </Typography>
               <Typography
-                className="tw:text-text-primary!"
+                className="tw:-mt-1 tw:text-text-primary!"
                 data-testid="total-data-assets-total"
-                size="text-xl"
+                size="text-md"
                 weight="semibold">
                 {formats.count.format(totalAssets)}
               </Typography>
@@ -215,7 +225,7 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
           {/* Cased in CSS, not in the string: a locale whose script has no case
             must not be handed a pre-uppercased translation. */}
           <Typography
-            className="tw:mt-5 tw:block tw:uppercase tw:tracking-wide tw:text-text-tertiary!"
+            className="tw:mt-4 tw:block tw:uppercase tw:tracking-wide tw:text-text-tertiary!"
             size="text-xs"
             weight="semibold">
             {t('label.by-entity', { entity: t('label.asset-type') })}

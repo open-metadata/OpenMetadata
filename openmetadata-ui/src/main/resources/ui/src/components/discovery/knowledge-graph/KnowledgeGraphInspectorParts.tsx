@@ -49,7 +49,11 @@ export const InspectorTile = ({
 }: TileProps) => (
   <span
     aria-hidden="true"
-    className={classNames('kg-inspector-tile', 'kg-inspector-tile-' + size)}
+    className={classNames(
+      'kg-inspector-tile',
+      'kg-inspector-tile-' + size,
+      size === 'md' && 'tw:mt-1 tw:mr-1'
+    )}
     style={{ color, backgroundColor: background, borderColor: color }}>
     <Icon aria-hidden="true" size={size === 'md' ? 18 : 14} />
   </span>
@@ -155,7 +159,12 @@ export const InspectorIdentityCard = ({
   valueTestId,
 }: IdentityCardProps) => (
   <Box className="kg-inspector-statement" direction="col" gap={2}>
-    <span className="kg-inspector-section-title">{fieldLabel}</span>
+    <Typography
+      className="tw:tracking-[0.08em] tw:text-quaternary tw:uppercase"
+      size="text-xs"
+      weight="semibold">
+      {fieldLabel}
+    </Typography>
     <Typography
       className="tw:break-all tw:font-mono tw:text-utility-purple-700"
       data-testid={valueTestId}
@@ -264,15 +273,20 @@ interface SectionProps {
 
 export const InspectorSection = ({ title, meta, children }: SectionProps) => (
   <Box direction="col" gap={2}>
-    <Box align="center" gap={2} justify="between">
-      <span className="kg-inspector-section-title">{title}</span>
+    <Box align="center" className="tw:mt-0.5" gap={2} justify="between">
+      <Typography
+        className="tw:tracking-[0.08em] tw:text-quaternary tw:uppercase"
+        size="text-xs"
+        weight="semibold">
+        {title}
+      </Typography>
       {meta && (
         <Typography className="tw:text-quaternary" size="text-xs">
           {meta}
         </Typography>
       )}
     </Box>
-    <Box direction="col" gap={1}>
+    <Box direction="col" gap={2}>
       {children}
     </Box>
   </Box>

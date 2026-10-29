@@ -31,7 +31,7 @@ class OntologyAiAvailabilityTest {
 
   @Test
   void ontologyAiNeedsTheRdfFlagAndAnEnabledModel() {
-    enableLlm(false);
+    enableLlm();
 
     assertFalse(OntologyAiAvailability.isEnabled(null));
     assertFalse(OntologyAiAvailability.isEnabled(new RdfConfiguration()));
@@ -43,28 +43,14 @@ class OntologyAiAvailabilityTest {
 
   @Test
   void legacyAskCollateFlagStillEnablesOntologyAi() {
-    enableLlm(false);
+    enableLlm();
 
     assertTrue(
         OntologyAiAvailability.isEnabled(new RdfConfiguration().withAskCollateEnabled(true)));
   }
 
-  @Test
-  void memoryDerivationAlsoNeedsItsOwnFlag() {
-    final RdfConfiguration rdf = new RdfConfiguration().withAiEnabled(true);
-
-    enableLlm(false);
-    assertFalse(OntologyAiAvailability.isMemoryDerivationEnabled(rdf));
-    enableLlm(true);
-    assertTrue(OntologyAiAvailability.isMemoryDerivationEnabled(rdf));
-    assertFalse(OntologyAiAvailability.isMemoryDerivationEnabled(new RdfConfiguration()));
-  }
-
-  private static void enableLlm(final boolean memoryDerivation) {
+  private static void enableLlm() {
     LLMClientHolder.initialize(
-        new LLMConfiguration()
-            .withEnabled(true)
-            .withProvider(LLMProvider.NOOP)
-            .withOntologyMemoryDerivationEnabled(memoryDerivation));
+        new LLMConfiguration().withEnabled(true).withProvider(LLMProvider.NOOP));
   }
 }

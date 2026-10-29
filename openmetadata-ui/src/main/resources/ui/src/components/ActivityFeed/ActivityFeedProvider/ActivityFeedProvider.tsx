@@ -225,6 +225,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
   const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState<AxiosError>();
   const [isPostsLoading, setIsPostsLoading] = useState(false);
   const [isTestCaseResolutionLoading, setIsTestCaseResolutionLoading] =
     useState(false);
@@ -340,6 +341,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
+        setListError(undefined);
         if (!after) {
           // A first-page fetch replaces the result set. Dropping the rows and the
           // paging cursor now is what stops the previous query's list staying on
@@ -374,6 +376,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           return;
         }
 
+        setListError(err as AxiosError);
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -400,6 +403,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
+        setListError(undefined);
         if (!after) {
           setEntityThread([]);
           setEntityPaging({} as Paging);
@@ -414,6 +418,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
         const { data, paging } = await listConversations({
           entityLink: getConversationsEntityLink(entityType, fqn),
+          includeFields: true,
           after,
           filterType: getConversationsFilterType(feedFilterType, userId),
           userId,
@@ -430,6 +435,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           return;
         }
 
+        setListError(err as AxiosError);
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -713,15 +719,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setFocusReplyEditor(isFocused);
   }, []);
 
-  const showDrawer = useCallback(
-    (thread: Conversation) => {
-      setIsDrawerOpen(true);
-      setActiveThread(thread);
-      setSelectedTask(undefined);
-    },
-    [setActiveThread]
-  );
-
   const showTaskDrawer = useCallback(
     (task: Task) => {
       setIsDrawerOpen(true);
@@ -766,6 +763,20 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     }
   }, []);
 
+  // The drawer shows an activity ahead of a thread, and closing it keeps the
+  // activity selected, so opening a conversation drops it here. Dropped first:
+  // clearing an activity turns the replies loading state off, which would
+  // otherwise hide the thread's own fetch.
+  const showDrawer = useCallback(
+    (thread: Conversation) => {
+      setIsDrawerOpen(true);
+      void setActiveActivity();
+      setActiveThread(thread);
+      setSelectedTask(undefined);
+    },
+    [setActiveThread, setActiveActivity]
+  );
+
   const showActivityDrawer = useCallback(
     (activity: ActivityEvent) => {
       setIsDrawerOpen(true);
@@ -790,11 +801,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     },
     []
   );
+  // Leaves the selection alone: the entity Activity tab's side panel shows the
+  // same thread or activity the drawer opened on.
   const hideDrawer = useCallback(() => {
     setFocusReplyEditor(false);
     setIsDrawerOpen(false);
-    setSelectedActivity(undefined);
-    setActivityReplies([]);
   }, []);
 
   const updateTestCaseIncidentStatus = useCallback(
@@ -919,6 +930,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       selectedTask,
       isDrawerOpen,
       loading,
+      listError,
       isActivityLoading,
       isPostsLoading,
       isTestCaseResolutionLoading,
@@ -963,6 +975,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     selectedTask,
     isDrawerOpen,
     loading,
+    listError,
     isActivityLoading,
     isPostsLoading,
     isTestCaseResolutionLoading,

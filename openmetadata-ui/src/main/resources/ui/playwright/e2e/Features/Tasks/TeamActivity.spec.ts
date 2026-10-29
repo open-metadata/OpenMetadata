@@ -521,13 +521,6 @@ test.describe('Team Activity - Team Page Feed', () => {
     await page.goto(`/settings/members/teams/${team.responseData.name}`);
     await waitForPageLoaded(page);
 
-    // Team page should have activity feed section
-    const activityFeedSection = page.locator(
-      '[data-testid="activity-feed"], [data-testid="team-activity"]'
-    );
-
-    // Activity feed should be visible on team page
-    // (exact implementation depends on UI)
     await expect(page).not.toHaveURL('/404');
   });
 });

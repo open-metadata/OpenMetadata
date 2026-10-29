@@ -18,13 +18,14 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Key } from 'react';
+import { Key, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ExpressionKind,
   OntologyExpression,
   RestrictionKind,
 } from '../../generated/api/data/createOntologyAxiom';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { generateUUID } from '../../utils/StringUtils';
 
 interface OntologyExpressionEditorProps {
@@ -308,6 +309,33 @@ const OntologyBooleanOperands = ({
   );
 };
 
+const ExpressionFrame = ({
+  depth,
+  children,
+}: {
+  depth: number;
+  children: ReactNode;
+}) => {
+  const isAiMode = useIsAiMode();
+
+  return isAiMode ? (
+    <Card
+      data-testid={`ontology-expression-${depth}`}
+      size="sm"
+      variant="muted">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+        {children}
+      </Card.Content>
+    </Card>
+  ) : (
+    <Card
+      className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4"
+      data-testid={`ontology-expression-${depth}`}>
+      {children}
+    </Card>
+  );
+};
+
 const OntologyExpressionEditor = ({
   depth = 0,
   expression,
@@ -406,9 +434,7 @@ const OntologyExpressionEditor = ({
   );
 
   return (
-    <Card
-      className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4"
-      data-testid={`ontology-expression-${depth}`}>
+    <ExpressionFrame depth={depth}>
       <div className="tw:flex tw:items-end tw:gap-2">
         <div className="tw:min-w-0 tw:flex-1">
           <Select
@@ -477,7 +503,7 @@ const OntologyExpressionEditor = ({
           t={t}
         />
       ) : null}
-    </Card>
+    </ExpressionFrame>
   );
 };
 

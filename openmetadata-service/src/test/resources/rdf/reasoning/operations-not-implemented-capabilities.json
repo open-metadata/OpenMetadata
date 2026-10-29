@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "1",
+  "readiness": "READY",
+  "reasons": [],
+  "operations": [
+    {
+      "operation": "REFRESH",
+      "availability": "NOT_IMPLEMENTED",
+      "reason": "Capturing input from the serving dataset is not available in this build."
+    },
+    {
+      "operation": "CHECK",
+      "availability": "NOT_IMPLEMENTED",
+      "reason": "Capturing input from the serving dataset is not available in this build."
+    },
+    {
+      "operation": "EXPLAIN",
+      "availability": "NOT_IMPLEMENTED",
+      "reason": "Capturing input from the serving dataset is not available in this build."
+    },
+    {
+      "operation": "RESULTS",
+      "availability": "NOT_IMPLEMENTED",
+      "reason": "Snapshot results are not available in this build."
+    },
+    {
+      "operation": "QUERY",
+      "availability": "NOT_IMPLEMENTED",
+      "reason": "Snapshot queries are not available in this build."
+    }
+  ],
+  "engines": [],
+  "coverage": [],
+  "memoryBudget": {
+    "containerLimitBytes": 12884901888,
+    "requiredBytes": 11930464712
+  },
+  "limits": {
+    "maxQueuedJobs": 16,
+    "maxDiskBytes": 107374182400
+  }
+}

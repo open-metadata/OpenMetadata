@@ -20,6 +20,7 @@ import {
   LayoutType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
+import { RelationTypeOptionGroup } from './RelationshipTypePicker.interface';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
 export type OntologyStudioSurface = 'graph' | 'tree' | 'term';
@@ -173,6 +174,10 @@ export interface OntologyGraphProps {
   isAuthoringMode?: boolean;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
+  /** Edge colours for relation types that are not glossary relationship types. */
+  relationColors?: Record<string, string>;
+  relationTypeGroups?: RelationTypeOptionGroup[];
+  canCreateRelationType?: boolean;
   studioMode?: boolean;
   onCreateRelation?: (
     fromId: string,
@@ -295,5 +300,6 @@ export interface BuildGraphDataProps {
   graphSearchHighlight?: GraphSearchHighlightInput | null;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
+  relationColors?: Record<string, string>;
   studioMode?: boolean;
 }

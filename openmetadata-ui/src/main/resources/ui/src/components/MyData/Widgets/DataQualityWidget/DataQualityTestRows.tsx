@@ -144,7 +144,7 @@ const TestRow: React.FC<TestRowProps> = ({ test, isGrouped }) => {
         <FeaturedIcon
           color={status.color}
           icon={status.icon}
-          radius="md"
+          radius="lg"
           shape="square"
           size="sm"
           theme="light"
@@ -224,7 +224,7 @@ const DataQualityTestRows: React.FC<DataQualityTestRowsProps> = ({
           aria-label={group.tableFqn}
           data-testid={`dq-table-group-${group.tableFqn}`}
           key={group.tableFqn}>
-          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:rounded-lg tw:bg-secondary tw:px-3 tw:py-2">
+          <div className="tw:-mx-5 tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:bg-secondary tw:px-5 tw:py-2">
             <FeaturedIcon
               color="brand"
               icon={Database01}
@@ -234,7 +234,7 @@ const DataQualityTestRows: React.FC<DataQualityTestRowsProps> = ({
               theme="light"
             />
             <Link
-              className="tw:shrink-0 tw:text-xs tw:font-medium tw:text-brand-secondary"
+              className="tw:min-w-0 tw:truncate tw:text-xs tw:font-semibold tw:text-brand-secondary"
               to={getEntityDetailsPath(EntityType.TABLE, group.tableFqn)}>
               {lastFqnPart(group.tableFqn)}
             </Link>
@@ -258,7 +258,7 @@ const DataQualityTestRows: React.FC<DataQualityTestRowsProps> = ({
               </Typography>
             ))}
           </div>
-          <ul className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary tw:px-3">
+          <ul className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary">
             {group.tests.map((test) => (
               <TestRow isGrouped key={test.id} test={test} />
             ))}

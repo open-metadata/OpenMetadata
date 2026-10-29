@@ -120,8 +120,8 @@
     {
       "name": "filterByUpdaterIsBot",
       "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
-      "displayName": "Filter By Updater Is Bot",
-      "description": "Event Filtering when Updater is a Bot",
+      "displayName": "Update is Bot",
+      "description": "Event Filtering By Updater is Bot",
       "effect": "include",
       "condition": "isBot()",
       "inputType": "none"
@@ -634,8 +634,7 @@
         "Teams",
         "Admins",
         "Owners",
-        "Mentions",
-        "Followers"
+        "Mentions"
       ]
     },
     {
@@ -646,7 +645,6 @@
       ],
       "recipientCategories": [
         "Assignees",
-        "Owners",
         "Mentions"
       ]
     },
@@ -735,10 +733,6 @@
         "filterByFqn": {
           "displayName": "Table Name",
           "description": "Event Filtering By Table Name"
-        },
-        "filterByUpdaterIsBot": {
-          "displayName": "Update is Bot",
-          "description": "Event Filtering By Updater is Bot"
         }
       }
     },
@@ -761,10 +755,6 @@
         "filterByFqn": {
           "displayName": "Topic Name",
           "description": "Event Filtering By Topic Name"
-        },
-        "filterByUpdaterIsBot": {
-          "displayName": "Update is Bot",
-          "description": "Event Filtering By Updater is Bot"
         }
       }
     },
@@ -787,10 +777,6 @@
         "filterByFqn": {
           "displayName": "Container Name",
           "description": "Event Filtering By Container Name"
-        },
-        "filterByUpdaterIsBot": {
-          "displayName": "Update is Bot",
-          "description": "Event Filtering By Updater is Bot"
         }
       }
     },
@@ -813,10 +799,6 @@
         "filterByFqn": {
           "displayName": "Pipeline Name",
           "description": "Event Filtering By Pipeline Name"
-        },
-        "filterByUpdaterIsBot": {
-          "displayName": "Update is Bot",
-          "description": "Event Filtering By Updater is Bot"
         }
       }
     },
@@ -836,10 +818,6 @@
         "filterByFqn": {
           "displayName": "Ingestion Pipeline Name",
           "description": "Event Filtering By Ingestion Pipeline Name"
-        },
-        "filterByUpdaterIsBot": {
-          "displayName": "Update is Bot",
-          "description": "Event Filtering By Updater is Bot"
         }
       }
     },
@@ -867,10 +845,6 @@
         "filterByFqn": {
           "displayName": "Test Case Name",
           "description": "Event By Test Case Name"
-        },
-        "filterByUpdaterIsBot": {
-          "displayName": "Update is Bot",
-          "description": "Event Filtering By Updater is Bot"
         }
       },
       "removedTriggers": [
@@ -899,10 +873,6 @@
         "filterByFqn": {
           "displayName": "Test Suite Name",
           "description": "Event Filtering By Test Suite Name"
-        },
-        "filterByUpdaterIsBot": {
-          "displayName": "Update is Bot",
-          "description": "Event Filtering By Updater is Bot"
         }
       },
       "removedTriggers": [
@@ -927,10 +897,6 @@
         "filterByFqn": {
           "displayName": "Data Contract Name",
           "description": "Event Filtering By Data Contract Name"
-        },
-        "filterByUpdaterIsBot": {
-          "displayName": "Update is Bot",
-          "description": "Event Filtering By Updater is Bot"
         }
       }
     }

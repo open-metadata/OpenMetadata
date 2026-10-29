@@ -145,7 +145,7 @@ const CriticalAnnouncements = ({
       rail's place, right-aligned above it, so the two carousels page alike. */}
       {count > 1 && (
         <>
-          <div className="tw:-mt-4 tw:mr-2 tw:mb-3 tw:flex tw:justify-end">
+          <div className="tw:mr-2 tw:mb-3 tw:flex tw:justify-end">
             <RailPager
               canScroll={canScroll}
               testIdPrefix="critical-announcement"

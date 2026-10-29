@@ -15,7 +15,6 @@ import {
   Button,
   Checkbox,
   Divider,
-  EmptyPlaceholder,
   GridList,
   GridListItem,
   ListLayout,
@@ -69,6 +68,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import { replacePlus } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
@@ -722,11 +722,10 @@ export const AddTestCaseList = ({
     if (!isLoading && isEmpty(source)) {
       return (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <EmptyPlaceholder
+          <NoFilteredResultsPlaceholder
             description={t('message.try-adjusting-filter')}
-            icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+            icon={<FilterOffIcon />}
             title={t('label.no-result-found')}
-            variant="blank"
           />
         </Box>
       );
@@ -914,7 +913,7 @@ export const AddTestCaseList = ({
 
   const actions = showButton ? (
     <>
-      <Button boxed color="link-color" data-testid="cancel" onPress={onCancel}>
+      <Button color="secondary" data-testid="cancel" onPress={onCancel}>
         {cancelText ?? t('label.cancel')}
       </Button>
       <Button

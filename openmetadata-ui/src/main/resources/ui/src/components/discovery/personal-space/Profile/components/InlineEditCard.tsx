@@ -34,7 +34,8 @@ interface InlineEditCardProps {
   canEdit: boolean;
   onEnterEdit?: () => void;
   onCancel?: () => void;
-  onSave: () => Promise<void>;
+  /** Resolving to `false` keeps the card in edit mode (the save failed). */
+  onSave: () => Promise<boolean | void>;
   /** Right-column edit control shown in edit mode. */
   renderEdit: (api: InlineEditCardRenderApi) => React.ReactNode;
   // Anchors the card + its edit/cancel/save controls for E2E tests.
@@ -44,6 +45,8 @@ interface InlineEditCardProps {
    * (e.g. "Admin-managed"). Omit to leave the row silently read-only.
    */
   lockedLabel?: string;
+  // Disables Save, e.g. while the draft still equals the saved value.
+  isSaveDisabled?: boolean;
 }
 
 // Reserve space on the right so the value never sits under the pencil
@@ -77,6 +80,7 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
   renderEdit,
   testId,
   lockedLabel,
+  isSaveDisabled,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -95,8 +99,10 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
   const save = async () => {
     setIsSaving(true);
     try {
-      await onSave();
-      setIsEditing(false);
+      const saved = await onSave();
+      if (saved !== false) {
+        setIsEditing(false);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -161,6 +167,7 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
           <Button
             color="primary"
             data-testid={subTestId('save')}
+            isDisabled={isSaveDisabled}
             isLoading={isSaving}
             size="sm"
             onClick={save}>

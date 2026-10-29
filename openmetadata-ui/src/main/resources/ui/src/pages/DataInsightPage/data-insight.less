@@ -15,7 +15,6 @@
 
 @left-panel-border-color: var(--om-color-gray-neutral-200);
 @box-shadow-color: var(--om-legacy-color-0-0-0-0-06);
-@icon-color: var(--om-legacy-color-515151);
 @group-title-color: var(--om-legacy-color-76746f);
 @target-blue-color: var(--om-legacy-color-1890ff);
 
@@ -31,10 +30,6 @@
   border: 0px;
   padding-top: @size-md;
   border-radius: @border-rad-sm;
-
-  .side-panel-icons {
-    width: 14px;
-  }
 
   .ant-menu-item::after {
     left: 0;
@@ -63,13 +58,6 @@
     padding: 0 var(--om-space-16) !important;
   }
 
-  .ant-menu-item:hover,
-  .ant-menu-item-selected {
-    .side-panel-icons {
-      color: @primary-color;
-    }
-  }
-
   .ant-menu-item-selected {
     .ant-menu-title-content {
       font-weight: var(--om-font-weight-semibold);
@@ -83,10 +71,6 @@
   .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
     border-right: 1px solid @left-panel-border-color;
   }
-}
-
-.side-panel-icons {
-  color: @icon-color;
 }
 
 .data-insight-progress-bar {

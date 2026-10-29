@@ -5,16 +5,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.RDFList;
+import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
@@ -33,6 +37,7 @@ import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyExpression;
@@ -43,11 +48,15 @@ import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyRestrictionKind;
+import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
+import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.ontology.OntologyStructureValidator;
+import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
+import org.semanticweb.owlapi.model.AxiomType;
 
 class OntologyReleaseProjectionTest {
   private static final String EX = "https://example.org/model/";
@@ -60,6 +69,160 @@ class OntologyReleaseProjectionTest {
           .withNamespace(URI.create(EX))
           .withPrefixes(
               List.of(new OntologyPrefix().withPrefix("ex").withNamespace(URI.create(EX))));
+
+  @ParameterizedTest
+  @EnumSource(RdfSerializationFormat.class)
+  void fullNativeExportReimportsAsNoOpAcrossSerializations(RdfSerializationFormat format) {
+    final Bundle bundle =
+        bundle(
+            List.of(
+                concept("Customer")
+                    .withConceptType(OntologyConceptType.BOTH)
+                    .withSynonyms(Set.of("Client"))
+                    .withConceptMappings(
+                        List.of(
+                            new ConceptMapping()
+                                .withMappingType(ConceptMapping.ConceptMappingType.EXACT_MATCH)
+                                .withConceptIri(URI.create(EX + "external")))),
+                property("code")
+                    .withKind(OntologyPropertyKind.DATA)
+                    .withEnumValues(
+                        List.of(
+                            new OntologyLiteral()
+                                .withValue("01")
+                                .withDatatypeIri(URI.create(XSD.integer.getURI())),
+                            new OntologyLiteral()
+                                .withValue("Gold")
+                                .withDatatypeIri(URI.create(XSD.xstring.getURI()))))
+                    .withUnit("kg")
+                    .withIsIdentifier(true),
+                property("related")
+                    .withPropertyChain(List.of(URI.create(EX + "first"), URI.create(EX + "second")))
+                    .withInverse(URI.create(EX + "inverse")),
+                axiom("subclass")));
+    assertNativeReimportIsNoOp(bundle, format);
+  }
+
+  @ParameterizedTest
+  @EnumSource(OntologyAxiomType.class)
+  void everyAxiomKindReimportsWithoutDuplicateOperations(OntologyAxiomType kind) {
+    final OntologyAxiom value = axiom("meaning").withAxiomType(kind);
+    switch (kind) {
+      case OBJECT_PROPERTY_ASSERTION -> value
+          .withExpressions(List.of())
+          .withPropertyIri(URI.create(EX + "knows"))
+          .withTargetIri(URI.create(EX + "person"));
+      case DATA_PROPERTY_ASSERTION -> value
+          .withExpressions(List.of())
+          .withPropertyIri(URI.create(EX + "age"))
+          .withLiteral(
+              new OntologyLiteral()
+                  .withValue("7")
+                  .withDatatypeIri(URI.create(XSD.integer.getURI())));
+      default -> {}
+    }
+    assertNativeReimportIsNoOp(bundle(List.of(value)), RdfSerializationFormat.N_TRIPLES);
+  }
+
+  @Test
+  void duplicateEquivalentAxiomsReimportWithoutAddingCopies() {
+    assertNativeReimportIsNoOp(
+        bundle(List.of(axiom("first"), axiom("second"))), RdfSerializationFormat.N_TRIPLES);
+  }
+
+  @ParameterizedTest
+  @MethodSource("nativeExpressionCases")
+  void nativeExpressionFormsReimportWithoutChanges(OntologyExpression expression) {
+    assertNativeReimportIsNoOp(
+        bundle(
+            List.of(
+                property("age").withKind(OntologyPropertyKind.DATA),
+                axiom("expression").withExpressions(List.of(expression)))),
+        RdfSerializationFormat.N_TRIPLES);
+  }
+
+  static Stream<OntologyExpression> nativeExpressionCases() {
+    final OntologyExpression person = named(EX + "Person");
+    final OntologyExpression organization = named(EX + "Organization");
+    return Stream.of(
+        new OntologyExpression()
+            .withKind(OntologyExpressionKind.UNION)
+            .withOperands(List.of(person, organization)),
+        new OntologyExpression()
+            .withKind(OntologyExpressionKind.INTERSECTION)
+            .withOperands(List.of(person, organization)),
+        new OntologyExpression()
+            .withKind(OntologyExpressionKind.ONE_OF)
+            .withIndividualIris(List.of(URI.create(EX + "one"), URI.create(EX + "two"))),
+        new OntologyExpression()
+            .withKind(OntologyExpressionKind.RESTRICTION)
+            .withPropertyIri(URI.create(EX + "related"))
+            .withRestrictionKind(OntologyRestrictionKind.SOME)
+            .withFiller(person),
+        new OntologyExpression()
+            .withKind(OntologyExpressionKind.RESTRICTION)
+            .withPropertyIri(URI.create(EX + "related"))
+            .withRestrictionKind(OntologyRestrictionKind.ONLY)
+            .withFiller(person),
+        new OntologyExpression()
+            .withKind(OntologyExpressionKind.RESTRICTION)
+            .withPropertyIri(URI.create(EX + "related"))
+            .withRestrictionKind(OntologyRestrictionKind.VALUE)
+            .withIndividualIri(URI.create(EX + "one")),
+        new OntologyExpression()
+            .withKind(OntologyExpressionKind.RESTRICTION)
+            .withPropertyIri(URI.create(EX + "age"))
+            .withRestrictionKind(OntologyRestrictionKind.VALUE)
+            .withLiteral(
+                new OntologyLiteral()
+                    .withValue("7")
+                    .withDatatypeIri(URI.create(XSD.integer.getURI()))),
+        new OntologyExpression()
+            .withKind(OntologyExpressionKind.RESTRICTION)
+            .withPropertyIri(URI.create(EX + "age"))
+            .withRestrictionKind(OntologyRestrictionKind.MIN)
+            .withCardinality(2)
+            .withFiller(named(XSD.integer.getURI())));
+  }
+
+  private static OntologyExpression named(final String iri) {
+    return new OntologyExpression()
+        .withKind(OntologyExpressionKind.NAMED_CLASS)
+        .withClassIri(URI.create(iri));
+  }
+
+  private static void assertNativeReimportIsNoOp(
+      final Bundle bundle, final RdfSerializationFormat format) {
+    final Model exported =
+        new OntologyReleaseProjection().build(bundle.release(), bundle.members());
+    try {
+      final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+      RDFDataMgr.write(bytes, exported, format.rdfFormat());
+      final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
+      final Model parsed = importer.parse(bytes.toString(StandardCharsets.UTF_8), format);
+      try {
+        final var working =
+            new OntologyWorkingSnapshot.Snapshot(
+                new OntologyState()
+                    .withOntologyId(ROOT.getId())
+                    .withWorkingRevision(1L)
+                    .withActivationRevision(0L)
+                    .withLastReleaseRevision(1L),
+                bundle.members().stream()
+                    .map(
+                        member ->
+                            new OntologyWorkingSnapshot.Entry(
+                                member.getMemberKind(),
+                                OntologyReleaseReader.definition(bundle.release(), member)))
+                    .toList());
+        assertEquals(0, importer.reconcile(parsed, working).getOperations().size());
+      } finally {
+        parsed.close();
+      }
+    } finally {
+      exported.close();
+    }
+  }
 
   @ParameterizedTest
   @EnumSource(OntologyConceptType.class)
@@ -212,7 +375,7 @@ class OntologyReleaseProjectionTest {
           model
               .getProperty(model.createResource(EX + "related"), OWL2.propertyChainAxiom)
               .getResource()
-              .as(org.apache.jena.rdf.model.RDFList.class)
+              .as(RDFList.class)
               .asJavaList()
               .stream()
               .map(node -> node.asResource().getURI())
@@ -337,8 +500,7 @@ class OntologyReleaseProjectionTest {
     Model model = new OntologyReleaseProjection().build(bundle.release(), bundle.members());
     try {
       var ontology = OwlApiProjection.parse(model);
-      var subclassAxioms =
-          ontology.axioms(org.semanticweb.owlapi.model.AxiomType.SUBCLASS_OF).toList();
+      var subclassAxioms = ontology.axioms(AxiomType.SUBCLASS_OF).toList();
       assertEquals(2, subclassAxioms.size());
       assertEquals(
           Set.of(
@@ -347,7 +509,7 @@ class OntologyReleaseProjectionTest {
           subclassAxioms.stream()
               .flatMap(axiom -> axiom.annotations())
               .map(annotation -> annotation.getValue().toString())
-              .collect(java.util.stream.Collectors.toSet()));
+              .collect(Collectors.toSet()));
       assertTrue(model.contains(null, OWL2.annotatedProperty, RDFS.subClassOf));
       assertTrue(model.contains(DCTerms.source, RDF.type, OWL2.AnnotationProperty));
       assertEquals(List.of(), OwlApiProjection.dlViolations(ontology));
@@ -470,9 +632,7 @@ class OntologyReleaseProjectionTest {
             List.of(
                 concept("Customer")
                     .withOntology(
-                        new org.openmetadata.schema.type.EntityReference()
-                            .withId(UUID.randomUUID())
-                            .withType("ontology"))));
+                        new EntityReference().withId(UUID.randomUUID()).withType("ontology"))));
     assertThrows(
         BadRequestException.class,
         () -> new OntologyReleaseProjection().build(foreign.release(), foreign.members()));

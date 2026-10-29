@@ -305,6 +305,23 @@ export const getLensRootLabelKey = (lens: LineageLens) => {
   }
 };
 
+/**
+ * The root breadcrumb of a scene that has been drilled into, i.e. the way back
+ * to "All services" (or domains / data products). Undefined at the root itself.
+ */
+export const getDrilledRootBreadcrumb = (
+  scene?: Pick<LineageScene, 'breadcrumb' | 'band' | 'focusFqn'>
+): LineageSceneBreadcrumb | undefined => {
+  // An empty drilled scene comes back with only the root crumb, so whether it
+  // is drilled is read from its focus and band, not from the trail's length.
+  const isDrilled =
+    Boolean(scene?.focusFqn) || (scene && scene.band !== LineageBand.Layer);
+
+  return isDrilled
+    ? scene?.breadcrumb.find((breadcrumb) => !breadcrumb.fullyQualifiedName)
+    : undefined;
+};
+
 export const buildLineagePathHighlightIndex = (
   edges: LineagePathEdge[]
 ): LineagePathHighlightIndex => {
@@ -573,6 +590,28 @@ export const LINEAGE_MAP_RAIL_STOPS = [
   LineageBand.Field,
 ];
 
+export type LineageMapEmptyState = 'loading' | 'error' | 'empty';
+
+/** Which placeholder the map shows while it has no nodes to draw. */
+export const getLineageMapEmptyState = ({
+  scene,
+  loading,
+  hasError,
+}: {
+  scene?: LineageScene;
+  loading: boolean;
+  hasError: boolean;
+}): LineageMapEmptyState => {
+  if (scene) {
+    return 'empty';
+  }
+  if (loading) {
+    return 'loading';
+  }
+
+  return hasError ? 'error' : 'empty';
+};
+
 export const getRailStop = (scene: LineageScene): LineageBand => {
   if (scene.band === LineageBand.Field) {
     return LineageBand.Field;
@@ -611,12 +650,15 @@ export const isSceneNodeDrillable = (
 } => Boolean(node?.isExpandable && node.fullyQualifiedName && node.entityType);
 
 // The scene API marks every container expandable, even a service with no
-// assets left, so a blind rail drill prefers a node with children to land on.
-// The childrenCount check can go once the API stops marking empty containers.
+// assets left, so a drill that the user did not aim at a node lands only on a
+// node with children. The childrenCount check can go once the API stops
+// marking empty containers.
+export const isSceneNodeDrillableWithChildren = (node?: LineageSceneNode) =>
+  isSceneNodeDrillable(node) && (node.childrenCount ?? 0) > 0;
+
 export const getRailDrillFallbackNode = (nodes: LineageSceneNode[]) =>
-  nodes.find(
-    (node) => isSceneNodeDrillable(node) && (node.childrenCount ?? 0) > 0
-  ) ?? nodes.find(isSceneNodeDrillable);
+  nodes.find(isSceneNodeDrillableWithChildren) ??
+  nodes.find(isSceneNodeDrillable);
 
 export const getDrillBand = (node: LineageSceneNode) => {
   if (node.band === LineageBand.Layer) {
@@ -755,12 +797,36 @@ export const getLineageEditColumnPair = (
 // Semantic zoom switches level by how much of the screen the graph or a card
 // fills, not by a zoom value, so it behaves the same for 5 nodes or 500.
 export const ZOOM_OUT_SCREEN_FILL = 1 / 3;
-export const ZOOM_IN_SCREEN_FILL = 0.6;
+// A 340px container on a ~1400px canvas drills at zoom ~1.43, well short of
+// the 2.5 maximum. ADR:2026-10-27-lineage-semantic-zoom-drills-at-35-percent-after-settling
+export const ZOOM_IN_SCREEN_FILL = 0.35;
 
 interface Size {
   width: number;
   height: number;
 }
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+/** The box whose centre is closest to `point`, or undefined when there is none. */
+export const getBoxNearestPoint = <T extends Point & Size>(
+  boxes: T[],
+  point: Point
+): T | undefined =>
+  boxes.reduce<{ box?: T; distance: number }>(
+    (nearest, box) => {
+      const distance = Math.hypot(
+        box.x + box.width / 2 - point.x,
+        box.y + box.height / 2 - point.y
+      );
+
+      return distance < nearest.distance ? { box, distance } : nearest;
+    },
+    { distance: Number.POSITIVE_INFINITY }
+  ).box;
 
 /** Largest share of the screen's width or height that `size` covers at `zoom`. */
 export const getScreenFill = (size: Size, zoom: number, screen: Size) =>

@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, PageLayout } from '@openmetadata/ui-core-components';
+import { PageLayout } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PersonaIcon } from '../../../assets/svg/common/persona.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import { PersonaAIContext } from '../../../components/ContextCenter/PersonaAIContext/PersonaAIContext.component';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { useAuth } from '../../../hooks/authHooks';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName } from '../../../rest/PersonaAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -32,6 +34,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 const ContextCenterAIContextDetailPage = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { fqn } = useFqn();
   const { isAdminUser } = useAuth();
@@ -63,7 +66,9 @@ const ContextCenterAIContextDetailPage = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-ai-context-detail-page">
       <DocumentTitle title={personaName} />
       <PageLayout
@@ -90,7 +95,7 @@ const ContextCenterAIContextDetailPage = () => {
           )}>
           {isLoading && <Loader />}
           {!isLoading && !persona && (
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               description={t('message.no-persona-ai-context-description')}
               icon={PersonaIcon}
               title={t('message.no-persona-available')}

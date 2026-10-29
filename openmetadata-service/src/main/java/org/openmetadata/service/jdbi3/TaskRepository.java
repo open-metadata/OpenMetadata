@@ -210,6 +210,18 @@ public class TaskRepository extends EntityRepository<Task> {
     return super.listBefore(uriInfo, fields, filter, limitParam, before);
   }
 
+  /**
+   * A listing paged by creation time compares its cursor against createdAt, so the cursor carries
+   * createdAt in the slot the name cursor uses. Listings that never ask for that order keep the
+   * name cursor, which the search reindex seeds by offset.
+   */
+  @Override
+  public String getCursorValue(Task entity, ListFilter filter) {
+    return TaskListOrder.isRequestedBy(filter)
+        ? getCursorValue(String.valueOf(entity.getCreatedAt()), String.valueOf(entity.getId()))
+        : super.getCursorValue(entity, filter);
+  }
+
   public ResultList<Task> listDataAccessRequests(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limit, int offset, String sortOrder) {
     applyTaskDomainFilter(filter);
@@ -524,6 +536,12 @@ public class TaskRepository extends EntityRepository<Task> {
     Map<UUID, EntityReference> byId = new LinkedHashMap<>();
     refs.forEach(ref -> byId.putIfAbsent(ref.getId(), ref));
     return new ArrayList<>(byId.values());
+  }
+
+  /** A task takes its domains from the entity it is about on every write, never from its author. */
+  @Override
+  protected boolean authorDecidesDomains() {
+    return false;
   }
 
   /**

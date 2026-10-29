@@ -14,7 +14,6 @@
 import {
   Box,
   Card,
-  EmptyPlaceholder,
   Grid,
   Tree,
   Typography,
@@ -32,6 +31,7 @@ import { TreeNode } from '../../../../interface/tree.interface';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../../utils/executionUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import './tree-view-tab.less';
 
 interface TreeViewProps {
@@ -106,9 +106,9 @@ const TreeViewTab = ({
 
         {isEmpty(viewData) ? (
           <Box className="tw:relative tw:my-4 tw:min-h-40">
-            <EmptyPlaceholder
-              icon={<ClockRewind className="tw:text-secondary" />}
-              title={t('message.no-execution-runs-found')}
+            <NoDataPlaceholder
+              description={t('message.no-execution-runs-found')}
+              icon={<ClockRewind />}
             />
           </Box>
         ) : (

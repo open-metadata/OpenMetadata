@@ -22,6 +22,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Group,
     PowerBIDashboard,
     PowerBIReport,
+    ReportPage,
 )
 from metadata.ingestion.source.dashboard.powerbi.workspace_state import WorkspaceState
 
@@ -99,6 +100,26 @@ def test_dataflow_exports_cleared_on_exit(state, ws_a):
     assert state.get_dataflow_export("df_a1") is None
 
 
+def test_report_pages_cached_per_workspace(state, ws_a, ws_b):
+    """No pages ([]) and a failed read (None) both count as read, so neither is fetched again."""
+    state.enter(ws_a)
+    pages = [ReportPage(name="ReportSection", displayName="Overview")]
+    state.cache_report_pages("r_a1", pages)
+    state.cache_report_pages("r_a2", [])
+    state.cache_report_pages("r_a3", None)
+    assert state.get_report_pages("r_a1") == pages
+    assert state.get_report_pages("r_a2") == []
+    assert [state.has_cached_report_pages(report_id) for report_id in ("r_a1", "r_a2", "r_a3", "never_read")] == [
+        True,
+        True,
+        True,
+        False,
+    ]
+    state.exit()
+    state.enter(ws_b)
+    assert state.has_cached_report_pages("r_a1") is False
+
+
 def test_filtered_datamodels_lazy_memo_lifecycle(state, ws_a):
     state.enter(ws_a)
     assert state.filtered_datamodels is None
@@ -130,6 +151,18 @@ def test_reports_registry_persists_across_workspaces(state, ws_a, ws_b):
     assert state.is_known_report("r_b1") is True
     assert state.is_known_report(None) is False
     assert state.is_known_report("nonexistent") is False
+
+
+def test_unknown_report_charts_persist_across_workspaces(state, ws_a, ws_b):
+    """The stale-chart pass runs after every workspace, so it must still see them."""
+    assert state.any_report_charts_unknown is False
+    state.enter(ws_a)
+    state.mark_report_charts_unknown("r_a1")
+    state.exit()
+    state.enter(ws_b)
+    assert state.are_report_charts_unknown("r_a1") is True
+    assert state.are_report_charts_unknown("r_b1") is False
+    assert state.any_report_charts_unknown is True
 
 
 # -- Dashboard charts: operation-shaped consume API ---------------------

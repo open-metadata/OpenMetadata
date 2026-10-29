@@ -12,6 +12,7 @@
  */
 
 import { EmptyPlaceholderProps } from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 
 export type EmptyPlaceholderVariantProps = Omit<
   EmptyPlaceholderProps,
@@ -40,4 +41,16 @@ export interface CreatePlaceholderProps extends EmptyPlaceholderVariantProps {
   buttonId?: string;
   permissionValue?: string;
   onCreate?: () => void;
+}
+
+export interface PanelEmptyPlaceholderProps {
+  /** An active search swaps the no-data message for "no matching results". */
+  searchText?: string;
+  /** Short headline ("No test cases"); long guidance goes in `description`. */
+  title?: ReactNode;
+  description?: ReactNode;
+  className?: string;
+  'data-testid'?: string;
+  /** Test id for the search state when callers address it separately. */
+  searchResultsTestId?: string;
 }

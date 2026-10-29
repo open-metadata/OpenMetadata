@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { Alert, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useQueries } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
-import { useCallback, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
@@ -26,6 +32,8 @@ import {
   OntologyChangeSetState,
   OperationType,
 } from '../../generated/entity/data/ontologyChangeSet';
+import { useOntologyEditLease } from '../../hooks/governance/ontology/useOntologyEditLease';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { getContextMemoryById } from '../../rest/contextMemoryAPI';
 import {
@@ -37,7 +45,6 @@ import {
 } from '../../rest/ontologyAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { useOntologyEditLease } from './hooks/useOntologyEditLease';
 
 interface OntologyMemoryReviewPanelProps {
   canApply: boolean;
@@ -73,6 +80,30 @@ const DEFINITION_LABELS: Partial<Record<OperationType, string>> = {
   [OperationType.UpsertAxiom]: 'label.constraint',
   [OperationType.DeleteAxiom]: 'label.constraint',
 };
+
+const CLASSIC_STYLES = {
+  root: 'tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto tw:bg-secondary tw:p-6',
+  draft:
+    'tw:w-full tw:justify-start tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3 tw:text-left',
+  selectedDraftColor: 'tertiary' as 'tertiary' | 'secondary',
+  definition: 'tw:overflow-auto tw:text-xs',
+  titleSize: 'display-xs' as 'display-xs' | 'text-lg',
+  titleClassName: undefined as string | undefined,
+  buttonSize: undefined as 'sm' | undefined,
+};
+
+const AI_STYLES: typeof CLASSIC_STYLES = {
+  root: 'tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto',
+  draft: 'tw:w-full tw:justify-start tw:text-left',
+  selectedDraftColor: 'secondary',
+  definition:
+    'tw:mt-2 tw:overflow-auto tw:rounded-lg tw:bg-secondary_alt tw:p-3 tw:text-xs',
+  titleSize: 'text-lg',
+  titleClassName: 'not-prose tw:m-0',
+  buttonSize: 'sm',
+};
+
+const useReviewStyles = () => (useIsAiMode() ? AI_STYLES : CLASSIC_STYLES);
 
 function stateLabel(state: OntologyChangeSetState, t: TFunction): string {
   const key = STATE_LABEL_KEYS[state];
@@ -218,6 +249,7 @@ function DraftList({
   onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const styles = useReviewStyles();
 
   return (
     <ul className="tw:flex tw:flex-col tw:gap-2">
@@ -226,8 +258,12 @@ function DraftList({
           <Button
             noTextPadding
             aria-pressed={selectedId === changeSet.id}
-            className="tw:w-full tw:justify-start tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3 tw:text-left"
-            color="tertiary"
+            className={styles.draft}
+            color={
+              selectedId === changeSet.id
+                ? styles.selectedDraftColor
+                : 'tertiary'
+            }
             data-testid={`ontology-memory-draft-${changeSet.id}`}
             onPress={() => onSelect(changeSet.id)}>
             <span className="tw:flex tw:flex-col tw:gap-1">
@@ -247,15 +283,44 @@ function DraftList({
   );
 }
 
+function OperationFrame({ children }: { children: ReactNode }) {
+  return useIsAiMode() ? (
+    <li>
+      <Card>
+        <Card.Content>{children}</Card.Content>
+      </Card>
+    </li>
+  ) : (
+    <li className="tw:rounded-lg tw:border tw:border-secondary tw:p-4">
+      {children}
+    </li>
+  );
+}
+
+function DetailFrame({ children }: { children: ReactNode }) {
+  return useIsAiMode() ? (
+    <Card size="lg">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-5">
+        {children}
+      </Card.Content>
+    </Card>
+  ) : (
+    <section className="tw:flex tw:flex-col tw:gap-4 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-5">
+      {children}
+    </section>
+  );
+}
+
 function OperationCard({ operation }: { operation: OntologyChangeOperation }) {
   const { t } = useTranslation();
+  const styles = useReviewStyles();
   const description =
     nativeDefinition(operation)?.description ||
     operation.term?.description ||
     operation.glossary?.description;
 
   return (
-    <li className="tw:rounded-lg tw:border tw:border-secondary tw:p-4">
+    <OperationFrame>
       <Typography as="h3" size="text-sm" weight="semibold">
         {operationName(operation)}
       </Typography>
@@ -269,7 +334,7 @@ function OperationCard({ operation }: { operation: OntologyChangeOperation }) {
       ) : null}
       {nativeDefinition(operation) && (
         <pre
-          className="tw:overflow-auto tw:text-xs"
+          className={styles.definition}
           data-testid="ontology-memory-definition">
           {JSON.stringify(nativeDefinition(operation), null, 2)}
         </pre>
@@ -284,7 +349,7 @@ function OperationCard({ operation }: { operation: OntologyChangeOperation }) {
           {t('label.confidence')}: {Math.round(operation.confidence * 100)}%
         </Typography>
       ) : null}
-    </li>
+    </OperationFrame>
   );
 }
 
@@ -328,6 +393,20 @@ function SourceMemoryLinks({ memoryIds }: { memoryIds: string[] }) {
   );
 }
 
+function StateLabel({ state }: { state: OntologyChangeSetState }) {
+  const { t } = useTranslation();
+
+  return useIsAiMode() ? (
+    <Badge color="brand" size="sm" type="pill-color">
+      {stateLabel(state, t)}
+    </Badge>
+  ) : (
+    <span className="tw:text-sm tw:font-semibold tw:text-brand-secondary">
+      {stateLabel(state, t)}
+    </span>
+  );
+}
+
 function DraftDetail({
   changeSet,
   canApply,
@@ -346,6 +425,7 @@ function DraftDetail({
   onAction: (action: DraftAction) => void;
 }) {
   const { t } = useTranslation();
+  const styles = useReviewStyles();
   const showSubmit =
     changeSet.state === OntologyChangeSetState.Draft && canSubmit;
   const showApply =
@@ -359,7 +439,7 @@ function DraftDetail({
     .join('; ');
 
   return (
-    <section className="tw:flex tw:flex-col tw:gap-4 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-5">
+    <DetailFrame>
       <div className="tw:flex tw:items-start tw:justify-between tw:gap-4">
         <div>
           <Typography as="h2" size="text-lg" weight="semibold">
@@ -369,9 +449,7 @@ function DraftDetail({
             {changeSet.description}
           </Typography>
         </div>
-        <span className="tw:text-sm tw:font-semibold tw:text-brand-secondary">
-          {stateLabel(changeSet.state, t)}
-        </span>
+        <StateLabel state={changeSet.state} />
       </div>
 
       <div>
@@ -399,6 +477,7 @@ function DraftDetail({
             color="secondary-destructive"
             data-testid="ontology-memory-discard"
             isDisabled={isActionDisabled}
+            size={styles.buttonSize}
             onPress={() => onAction('discard')}>
             {t('label.discard')}
           </Button>
@@ -409,6 +488,7 @@ function DraftDetail({
             data-testid="ontology-memory-submit"
             isDisabled={isActionDisabled}
             isLoading={isSaving}
+            size={styles.buttonSize}
             onPress={() => onAction('submit')}>
             {t('label.submit')}
           </Button>
@@ -419,12 +499,13 @@ function DraftDetail({
             data-testid="ontology-memory-apply"
             isDisabled={isActionDisabled}
             isLoading={isSaving}
+            size={styles.buttonSize}
             onPress={() => onAction('apply')}>
             {t('label.apply')}
           </Button>
         ) : null}
       </div>
-    </section>
+    </DetailFrame>
   );
 }
 
@@ -455,6 +536,7 @@ const OntologyMemoryReviewPanel = ({
   onApplied,
 }: OntologyMemoryReviewPanelProps) => {
   const { t } = useTranslation();
+  const styles = useReviewStyles();
   const [changeSets, setChangeSets] = useState<OntologyChangeSet[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>(
     initialDraftId
@@ -591,13 +673,15 @@ const OntologyMemoryReviewPanel = ({
   };
 
   return (
-    <div
-      className="tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto tw:bg-secondary tw:p-6"
-      data-testid="ontology-memory-review-panel">
+    <div className={styles.root} data-testid="ontology-memory-review-panel">
       <div className="tw:mx-auto tw:flex tw:max-w-screen-2xl tw:flex-col tw:gap-6">
         <div className="tw:flex tw:items-start tw:justify-between tw:gap-4">
           <div>
-            <Typography as="h1" size="display-xs" weight="semibold">
+            <Typography
+              as="h1"
+              className={styles.titleClassName}
+              size={styles.titleSize}
+              weight="semibold">
               {t('label.needs-review')}
             </Typography>
             <Typography
@@ -610,6 +694,7 @@ const OntologyMemoryReviewPanel = ({
           <Button
             color="secondary"
             isLoading={isLoading}
+            size={styles.buttonSize}
             onPress={loadChangeSets}>
             {t('label.refresh')}
           </Button>
@@ -646,6 +731,7 @@ const OntologyMemoryReviewPanel = ({
             data-testid="ontology-memory-load-more"
             isDisabled={isLoading || isLoadingMore}
             isLoading={isLoadingMore}
+            size={styles.buttonSize}
             onPress={() => void loadMore()}>
             {t('label.load-more')}
           </Button>

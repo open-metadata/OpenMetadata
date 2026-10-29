@@ -37,7 +37,7 @@ const CollapseHeader = ({
   const { t } = useTranslation();
 
   return (
-    <div className="d-flex items-center justify-between">
+    <div className="d-flex items-center justify-between tw:pe-6">
       <Box className="tw:min-w-0 tw:flex-1">{title}</Box>
       {menuItems ? (
         <Dropdown.Root>

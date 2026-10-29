@@ -15,6 +15,7 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../../utils/common';
+import { waitForTermSearch } from '../../../utils/glossary';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -81,16 +82,13 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Test 1: Search for specific term
     const searchInput = page.getByTestId('search-glossary-terms-input');
-    const searchResponse = page.waitForResponse(
-      '**/api/v1/glossaryTerms/search?*'
-    );
+    const searchResponse = waitForTermSearch(page, 'SearchTestTerm5');
     await searchInput.fill('SearchTestTerm5');
 
     await searchResponse;
     const table = page.getByTestId('glossary-terms-table');
-    const filteredTerms = await table.locator('tbody tr[data-row-key]').count();
 
-    expect(filteredTerms).toBe(1);
+    await expect(table.locator('tbody tr[data-row-key]')).toHaveCount(1);
     await expect(
       page.getByText('SearchTestTerm5', { exact: true })
     ).toBeVisible();
@@ -104,17 +102,13 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchInput.clear();
     await clearResponse;
 
-    const partialSearchResponse = page.waitForResponse(
-      '**/api/v1/glossaryTerms/search?*'
-    );
+    const partialSearchResponse = waitForTermSearch(page, 'TestTerm');
     await searchInput.fill('TestTerm');
     await partialSearchResponse;
 
-    const partialFilteredTerms = await table
-      .locator('tbody tr[data-row-key]')
-      .count();
-
-    expect(partialFilteredTerms).toBeGreaterThan(0);
+    await expect(
+      table.getByText('SearchTestTerm4', { exact: true })
+    ).toBeVisible();
 
     // Test 3: Clear search and verify all terms are shown
     const clearResponse2 = page.waitForResponse('**/api/v1/glossaryTerms?*');
@@ -150,16 +144,12 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // testid rather than a placeholder regex; the regex previously matched
     // an ambiguous input, causing the fill to hit the wrong element.
     const searchInput = page.getByTestId('search-glossary-terms-input');
-    const searchRes1 = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const searchRes1 = waitForTermSearch(page, 'ChildSearchTerm');
     await searchInput.fill('ChildSearchTerm');
     await searchRes1;
 
     const nestedTable = page.getByTestId('glossary-terms-table');
-    const filteredTerms = await nestedTable
-      .locator('tbody tr[data-row-key]')
-      .count();
-
-    expect(filteredTerms).toBe(5);
+    await expect(nestedTable.locator('tbody tr[data-row-key]')).toHaveCount(5);
 
     // Verify UI shows only child terms, not sibling terms
     await expect(
@@ -178,10 +168,11 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchInput.clear();
     await clearRes1;
 
-    const searchRes2 = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const searchRes2 = waitForTermSearch(page, 'ChildSearchTerm3');
     await searchInput.fill('ChildSearchTerm3');
     await searchRes2;
 
+    await expect(nestedTable.locator('tbody tr[data-row-key]')).toHaveCount(1);
     await expect(
       page.getByText('ChildSearchTerm3', { exact: true })
     ).toBeVisible();
@@ -202,10 +193,13 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const searchInput = page.getByTestId('search-glossary-terms-input');
 
     // Search with lowercase
-    const lowerRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const lowerRes = waitForTermSearch(page, 'searchtestterm5');
     await searchInput.fill('searchtestterm5');
     await lowerRes;
 
+    await expect(
+      page.getByTestId('glossary-terms-table').locator('tbody tr[data-row-key]')
+    ).toHaveCount(1);
     await expect(
       page.getByText('SearchTestTerm5', { exact: true })
     ).toBeVisible();
@@ -215,10 +209,13 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchInput.clear();
     await clearRes1;
 
-    const upperRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const upperRes = waitForTermSearch(page, 'SEARCHTESTTERM5');
     await searchInput.fill('SEARCHTESTTERM5');
     await upperRes;
 
+    await expect(
+      page.getByTestId('glossary-terms-table').locator('tbody tr[data-row-key]')
+    ).toHaveCount(1);
     await expect(
       page.getByText('SearchTestTerm5', { exact: true })
     ).toBeVisible();
@@ -228,10 +225,13 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchInput.clear();
     await clearRes2;
 
-    const mixedRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const mixedRes = waitForTermSearch(page, 'SeArChTeStTeRm5');
     await searchInput.fill('SeArChTeStTeRm5');
     await mixedRes;
 
+    await expect(
+      page.getByTestId('glossary-terms-table').locator('tbody tr[data-row-key]')
+    ).toHaveCount(1);
     await expect(
       page.getByText('SearchTestTerm5', { exact: true })
     ).toBeVisible();
@@ -254,9 +254,7 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const searchInput = page.getByTestId('search-glossary-terms-input');
 
     // Search for a term that doesn't exist
-    const noResultsRes = page.waitForResponse(
-      '**/api/v1/glossaryTerms/search?*'
-    );
+    const noResultsRes = waitForTermSearch(page, 'NonExistentTermXYZ12345');
     await searchInput.fill('NonExistentTermXYZ12345');
     await noResultsRes;
 

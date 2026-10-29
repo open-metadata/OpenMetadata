@@ -46,6 +46,9 @@ export const useGlossaryStore = create<{
   refreshGlossaryTerms: () => void;
   loadMoreTerms: () => void;
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => void;
+  /** The proposal open in the review panel, highlighted in the terms table too. */
+  selectedProposalId?: string;
+  setSelectedProposalId: (selectedProposalId?: string) => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
@@ -127,6 +130,9 @@ export const useGlossaryStore = create<{
   },
   setTermsLoading: (termsLoading: boolean) => {
     set({ termsLoading });
+  },
+  setSelectedProposalId: (selectedProposalId?: string) => {
+    set({ selectedProposalId });
   },
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
     set({

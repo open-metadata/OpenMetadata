@@ -12,10 +12,15 @@
  */
 import {
   Alert,
+  Badge,
   Box,
   Button,
+  Card,
+  Table,
+  TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { PagingResponse } from 'Models';
 import { Fragment, ReactNode, useState } from 'react';
@@ -24,6 +29,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { ListParams } from '../../../../interface/API.interface';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -37,6 +43,7 @@ interface OntologyDefinitionListProps<T> {
     params: ListParams & { ontology?: string },
     signal?: AbortSignal
   ) => Promise<PagingResponse<T[]>>;
+  onWorkingChange?: () => void;
   children: (
     definition: T | undefined,
     canEdit: boolean,
@@ -55,6 +62,16 @@ const DEFINITION_ENTITIES = {
   axiom: EntityType.ONTOLOGY_AXIOM,
 };
 
+const definitionKind = (definition: object) => {
+  const { conceptType, kind, axiomType } = definition as {
+    conceptType?: string;
+    kind?: string;
+    axiomType?: string;
+  };
+
+  return conceptType ?? kind ?? axiomType;
+};
+
 const OntologyDefinitionList = <
   T extends Pick<
     OntologyConcept,
@@ -66,8 +83,10 @@ const OntologyDefinitionList = <
   definitionType,
   load,
   children,
+  onWorkingChange,
 }: OntologyDefinitionListProps<T>) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const label = definitionType === 'axiom' ? 'constraint' : definitionType;
   const entityLabel = t(`label.${label}`);
   const pluralLabel = t(`label.${label}-plural`);
@@ -123,7 +142,10 @@ const OntologyDefinitionList = <
   const renderDelete = () => (
     <>
       {definition && permission.canDelete && (
-        <Button color="primary-destructive" onPress={() => setIsDeleting(true)}>
+        <Button
+          color={isAiMode ? 'secondary-destructive' : 'primary-destructive'}
+          size={isAiMode ? 'sm' : undefined}
+          onPress={() => setIsDeleting(true)}>
           {t('label.delete')}
         </Button>
       )}
@@ -135,6 +157,7 @@ const OntologyDefinitionList = <
             setIsDeleting(false);
             setSelected(undefined);
             void page.refetch();
+            onWorkingChange?.();
           }}
           entityId={definition.id}
           entityName={getEntityName(definition)}
@@ -160,7 +183,7 @@ const OntologyDefinitionList = <
       );
     }
 
-    return (
+    const editor = (
       <Fragment
         key={definition ? definition.id + ':' + definition.version : 'new'}>
         {children(
@@ -169,12 +192,132 @@ const OntologyDefinitionList = <
           (saved) => {
             setSelected(saved);
             void page.refetch();
+            onWorkingChange?.();
           }
         )}
-        {renderDelete()}
+        {isAiMode ? (
+          <div className="tw:flex tw:empty:hidden">{renderDelete()}</div>
+        ) : (
+          renderDelete()
+        )}
       </Fragment>
     );
+
+    return isAiMode ? (
+      <Card size="lg">
+        <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+          {editor}
+        </Card.Content>
+      </Card>
+    ) : (
+      editor
+    );
   };
+
+  const renderPagination = () => (
+    <>
+      <Button
+        color="secondary"
+        isDisabled={page.isFetching || !page.data?.paging.before}
+        size={isAiMode ? 'sm' : undefined}
+        onPress={() => {
+          setSelected(undefined);
+          setPagination({ before: page.data?.paging.before });
+        }}>
+        {t('label.previous')}
+      </Button>
+      <Button
+        color="secondary"
+        isDisabled={page.isFetching || !page.data?.paging.after}
+        size={isAiMode ? 'sm' : undefined}
+        onPress={() => {
+          setSelected(undefined);
+          setPagination({ after: page.data?.paging.after });
+        }}>
+        {t('label.next')}
+      </Button>
+    </>
+  );
+
+  const renderAiTable = (items: T[]) => (
+    <TableCard.Root size="sm">
+      <Table aria-label={pluralLabel} size="sm">
+        <Table.Header>
+          <Table.Head isRowHeader id="name" label={t('label.name')} />
+          <Table.Head id="type" label={t('label.type')} />
+          <Table.Head id="description" label={t('label.description')} />
+        </Table.Header>
+        <Table.Body
+          items={items}
+          renderEmptyState={() => (
+            <div className="tw:m-4 tw:rounded-lg tw:bg-secondary_alt tw:p-4">
+              <Typography as="p" size="text-sm" weight="medium">
+                {t('label.no-entity', { entity: pluralLabel })}
+              </Typography>
+            </div>
+          )}>
+          {(item) => (
+            <Table.Row id={item.id}>
+              <Table.Cell>
+                <Button
+                  color="link-gray"
+                  size="sm"
+                  onPress={() => setSelected(item)}>
+                  {getEntityName(item)}
+                </Button>
+              </Table.Cell>
+              <Table.Cell>
+                {definitionKind(item) ? (
+                  <Badge color="gray" size="sm" type="pill-color">
+                    {definitionKind(item)}
+                  </Badge>
+                ) : null}
+              </Table.Cell>
+              <Table.Cell>
+                <Typography
+                  as="span"
+                  className="tw:line-clamp-1"
+                  size="text-sm">
+                  {(item as { description?: string }).description}
+                </Typography>
+              </Table.Cell>
+            </Table.Row>
+          )}
+        </Table.Body>
+      </Table>
+      <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
+        {renderPagination()}
+      </div>
+    </TableCard.Root>
+  );
+
+  if (isAiMode) {
+    return (
+      <Box direction="col" gap={5}>
+        <Box align="center" gap={3} justify="between">
+          <Typography as="h2" size="text-md" weight="semibold">
+            {pluralLabel}
+          </Typography>
+          {canCreate && (
+            <Button
+              color="secondary"
+              data-testid={`ontology-add-${definitionType}`}
+              iconLeading={Plus}
+              size="sm"
+              onPress={() => setSelected('new')}>
+              {t('label.add-entity', { entity: entityLabel })}
+            </Button>
+          )}
+        </Box>
+        {page.isPending ? (
+          <Typography role="status">{t('label.loading')}</Typography>
+        ) : (
+          renderAiTable(page.data.data)
+        )}
+        {renderEditor()}
+      </Box>
+    );
+  }
 
   return (
     <Box direction="col" gap={4}>
@@ -204,26 +347,7 @@ const OntologyDefinitionList = <
           ))}
         </ul>
       )}
-      <Box gap={2}>
-        <Button
-          color="secondary"
-          isDisabled={page.isFetching || !page.data?.paging.before}
-          onPress={() => {
-            setSelected(undefined);
-            setPagination({ before: page.data?.paging.before });
-          }}>
-          {t('label.previous')}
-        </Button>
-        <Button
-          color="secondary"
-          isDisabled={page.isFetching || !page.data?.paging.after}
-          onPress={() => {
-            setSelected(undefined);
-            setPagination({ after: page.data?.paging.after });
-          }}>
-          {t('label.next')}
-        </Button>
-      </Box>
+      <Box gap={2}>{renderPagination()}</Box>
       {renderEditor()}
     </Box>
   );

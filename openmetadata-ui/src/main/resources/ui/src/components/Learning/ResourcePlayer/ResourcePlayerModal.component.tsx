@@ -16,7 +16,6 @@ import {
   Box,
   ButtonUtility,
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Skeleton,
@@ -38,6 +37,7 @@ import type { LearningResource } from '../../../rest/learningResourceAPI';
 import { getLearningResourceById } from '../../../rest/learningResourceAPI';
 import { getDurationUnitLabelKey } from '../../../utils/platform/learning.utils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   CATEGORY_BADGE_COLORS,
   LEARNING_CATEGORIES,
@@ -297,7 +297,7 @@ export const ResourcePlayer: FC<ResourcePlayerProps> = ({
   if (!displayResource) {
     return hasFetchFailed ? (
       <Box className="tw:relative tw:min-h-90">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="resource-not-found"
           title={t('label.no-entity-found', {
             entity: t('label.learning-resource'),

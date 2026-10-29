@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { User } from '../../../../../generated/entity/teams/user';
 import PersonaRow from './PersonaRow';
@@ -72,7 +72,7 @@ const userWithPersonas = {
 // the Autocomplete to drive the row's save paths, while this regression needs
 // the real edit-mode entry — it is the moment the draft is re-seeded.
 describe('PersonaRow — draft re-seed on entering edit', () => {
-  it('should save the personas the row is displaying when they arrive after mount', async () => {
+  it('should open the editor from the personas the row is displaying when they arrive after mount', async () => {
     const updateUserDetails = jest.fn().mockResolvedValue(undefined);
 
     // ProfilePage seeds userData from the application store, which carries no
@@ -97,13 +97,12 @@ describe('PersonaRow — draft re-seed on entering edit', () => {
 
     expect(screen.getByTestId(`draft-${PERSONA.id}`)).toBeInTheDocument();
 
+    // A stale empty draft would differ from the displayed persona and enable
+    // Save; the re-seeded draft matches it, so there is nothing to save.
+    expect(screen.getByTestId('persona-save')).toBeDisabled();
+
     fireEvent.click(screen.getByTestId('persona-save'));
 
-    await waitFor(() =>
-      expect(updateUserDetails).toHaveBeenCalledWith(
-        { personas: [PERSONA] },
-        'personas'
-      )
-    );
+    expect(updateUserDetails).not.toHaveBeenCalled();
   });
 });

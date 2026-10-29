@@ -18,6 +18,8 @@ type SelectOwnedOptionArgs = {
   open: () => Promise<void>;
   optionName: string;
   page: Page;
+  /** Asserts the pick landed on the control. */
+  verify: () => Promise<void>;
 };
 
 const selectOwnedOption = async ({
@@ -25,6 +27,7 @@ const selectOwnedOption = async ({
   open,
   optionName,
   page,
+  verify,
 }: SelectOwnedOptionArgs) => {
   await control.focus();
   // Index-keyed destination rows remount on every form-value write, tearing down
@@ -46,6 +49,11 @@ const selectOwnedOption = async ({
     // The exiting overlay still owns focus until it unmounts. Opening the next
     // picker during that transition can restore focus into the old control.
     await expect(listbox).toBeHidden({ timeout: 2_000 });
+    // A popover that closed on its own (focus or scroll taken by the overlay
+    // still exiting from the previous picker) also ends hidden, and a click on
+    // its exiting option selects nothing. Only the control showing the pick
+    // proves it landed; otherwise reopen and pick again.
+    await verify();
   }).toPass({ timeout: 10_000 });
 };
 
@@ -67,6 +75,7 @@ export const selectComboBoxOption = async ({
     open: () => input.press('ArrowDown'),
     optionName,
     page,
+    verify: () => expect(input).toHaveValue(optionName, { timeout: 2_000 }),
   });
   await expect(input).toHaveValue(optionName);
   await input.blur();
@@ -89,6 +98,7 @@ export const selectDropdownOption = async ({
     open: () => trigger.click(),
     optionName,
     page,
+    verify: () => expect(trigger).toContainText(optionName, { timeout: 2_000 }),
   });
   await expect(trigger).toContainText(optionName);
   await trigger.blur();

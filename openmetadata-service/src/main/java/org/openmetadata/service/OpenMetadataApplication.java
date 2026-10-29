@@ -114,6 +114,7 @@ import org.openmetadata.service.config.source.LocalSettingsRefresher;
 import org.openmetadata.service.config.source.RawConfigCapture;
 import org.openmetadata.service.config.source.SettingsChangeWatcher;
 import org.openmetadata.service.context.center.ContextMemoryExtractionJobHandler;
+import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
@@ -152,7 +153,6 @@ import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.*;
 import org.openmetadata.service.ontology.OntologyBulkJobHandler;
 import org.openmetadata.service.ontology.OntologyBulkJobManager;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -216,6 +216,7 @@ import org.openmetadata.service.swagger.SwaggerBundle;
 import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CustomParameterNameProvider;
+import org.openmetadata.service.util.PerRequestContextCleanupFilter;
 import org.openmetadata.service.util.StartupTimer;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.quartz.SchedulerException;
@@ -462,6 +463,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // context) after every response so state cannot leak across requests that share a Jetty
     // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
+    // The same cleanup around servlets and filters outside Jersey. Prepended, so it runs before the
+    // filters registered earlier on the application context, including ones that answer without
+    // chaining.
+    environment
+        .servlets()
+        .addFilter("PerRequestContextCleanupFilter", new PerRequestContextCleanupFilter())
+        .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), false, "/*");
 
     // Blocks impersonated sessions from the identity-affecting endpoints (token mint/revoke,
     // password change, logout) - those call no authorizer, so nothing else would stop them.
@@ -559,7 +567,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
     registry.register(OntologyBulkJobManager.HANDLER_NAME, ontologyBulkJobHandler);
     registry.register(new ContextMemoryExtractionJobHandler());
-    registry.register(OntologyMemoryDerivationJobHandler.createDefault());
+    registry.register(new MemoryGlossaryDerivationJobHandler());
     return registry;
   }
 
@@ -1191,6 +1199,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       ContainerRequestFilterManager.getInstance().registerFilter(filter);
     }
+    Entity.setAuthorizer(authorizer);
   }
 
   private void reRegisterAuthorizer(
@@ -1227,6 +1236,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       ContainerRequestFilterManager.getInstance().registerFilter(filter);
     }
+    Entity.setAuthorizer(authorizer);
   }
 
   private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {

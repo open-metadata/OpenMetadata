@@ -14,7 +14,6 @@
 import {
   Badge,
   Box,
-  Button,
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -26,7 +25,6 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -36,12 +34,10 @@ import {
   TaskComment,
 } from '../../../../../rest/tasksAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import {
-  getFrontEndFormat,
-  MarkdownToHTMLConverter,
-} from '../../../../../utils/FeedUtilsPure';
+import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import { resolveCommentPermissions } from '../../../../../utils/TaskCommentUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { CommentEditForm } from '../../../../common/CommentComposer/CommentComposer';
 import { formatInboxDateTime, INBOX_MESSAGE_CLASS } from '../inbox.utils';
 
 export interface TaskCommentRowProps {
@@ -118,28 +114,14 @@ const TaskCommentBody = ({
   onCancelEdit,
   onSave,
 }: TaskCommentBodyProps) => {
-  const { t } = useTranslation();
-
   if (isEditing) {
     return (
-      <Box data-testid="edit-task-comment-editor" direction="col" gap={2}>
-        <ActivityFeedEditorNew
-          focused
-          defaultValue={MarkdownToHTMLConverter.makeHtml(
-            getFrontEndFormat(comment.message)
-          )}
-          onSave={onSave}
-        />
-        <Box align="center" className="tw:justify-end">
-          <Button
-            color="link-gray"
-            data-testid="cancel-edit-task-comment"
-            size="sm"
-            onPress={onCancelEdit}>
-            {t('label.cancel')}
-          </Button>
-        </Box>
-      </Box>
+      <CommentEditForm
+        message={comment.message}
+        testId="edit-task-comment"
+        onCancel={onCancelEdit}
+        onSave={onSave}
+      />
     );
   }
 

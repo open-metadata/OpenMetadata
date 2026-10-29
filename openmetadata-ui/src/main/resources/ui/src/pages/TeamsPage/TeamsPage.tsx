@@ -17,12 +17,12 @@ import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TeamDetailsV1 from '../../components/Settings/Team/TeamDetails/TeamDetailsV1';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -610,22 +610,22 @@ const TeamsPage = () => {
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.team-plural'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.team-plural'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isEmpty(selectedTeam)) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
     );
   }
 

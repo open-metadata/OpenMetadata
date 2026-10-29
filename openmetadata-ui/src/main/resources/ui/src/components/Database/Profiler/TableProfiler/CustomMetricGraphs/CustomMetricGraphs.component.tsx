@@ -39,7 +39,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -223,7 +223,9 @@ const CustomMetricGraphs = ({
               <div>
                 {isEmpty(metric) ? (
                   <div className="tw:flex tw:h-full tw:w-full tw:items-center tw:justify-center">
-                    <ErrorPlaceHolder className="mt-0-important" />
+                    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                      <NoDataPlaceholder data-testid="no-data-placeholder" />
+                    </div>
                   </div>
                 ) : (
                   <div className="tw:w-full" id={`${key}-graph`}>

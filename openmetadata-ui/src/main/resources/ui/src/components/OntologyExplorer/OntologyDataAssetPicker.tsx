@@ -23,12 +23,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Search, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
@@ -52,14 +54,25 @@ const SCOPE_INDEXES: Record<
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 250;
 
-interface OntologyDataAssetPickerProps {
-  readonly term: GlossaryTerm;
+type OntologyDataAssetPickerProps = {
   readonly onCancel: () => void;
   /** Every selected asset was added. */
   readonly onSave: () => void;
   /** Some assets were added and others were not; the picker stays open. */
   readonly onPartialSave: () => void;
-}
+} & (
+  | { readonly term: GlossaryTerm; readonly native?: never }
+  | {
+      readonly term?: never;
+      readonly native: {
+        readonly assetTypes: string[];
+        readonly linkedIds: string[];
+        readonly saveAssets: (
+          assets: EntityReference[]
+        ) => ReturnType<typeof addAssetsToGlossaryTerm>;
+      };
+    }
+);
 
 const SearchIcon = ({ className }: { className?: string }) => (
   <Search aria-hidden className={className} />
@@ -74,11 +87,13 @@ const getAssetPath = (asset: EntityReference): string =>
 /** Tables and columns to tag with the concept, picked from one inline search. */
 const OntologyDataAssetPicker = ({
   term,
+  native,
   onCancel,
   onSave,
   onPartialSave,
 }: OntologyDataAssetPickerProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<AssetScope>('all');
   const [results, setResults] = useState<EntityReference[]>([]);
@@ -96,7 +111,8 @@ const OntologyDataAssetPicker = ({
     () => new Map()
   );
   const [isSaving, setIsSaving] = useState(false);
-  const termFqn = term.fullyQualifiedName ?? term.name;
+  const termFqn = term?.fullyQualifiedName ?? term?.name;
+  const nativeAssetTypes = native?.assetTypes;
 
   // A new search drops the old rows at once, so nothing on screen belongs to it.
   useEffect(() => {
@@ -117,7 +133,13 @@ const OntologyDataAssetPicker = ({
           pageSize: PAGE_SIZE,
           includeDeleted: false,
           query: query.trim() ? `*${query.trim()}*` : '',
-          queryFilter: getQueryFilterToExcludeTerm(termFqn),
+          queryFilter: termFqn
+            ? getQueryFilterToExcludeTerm(termFqn)
+            : {
+                query: {
+                  bool: { must: [{ terms: { entityType: nativeAssetTypes } }] },
+                },
+              },
           searchIndex: SCOPE_INDEXES[scope],
         });
         if (isCurrent) {
@@ -149,7 +171,7 @@ const OntologyDataAssetPicker = ({
       isCurrent = false;
       window.clearTimeout(timer);
     };
-  }, [request, query, scope, termFqn]);
+  }, [request, query, scope, termFqn, nativeAssetTypes]);
 
   // The next page follows the last one that loaded, so a failed page is asked
   // for again rather than skipped.
@@ -171,13 +193,17 @@ const OntologyDataAssetPicker = ({
       return next;
     });
 
+  const selectable = results.filter(
+    (asset) => !native?.linkedIds.includes(asset.id)
+  );
   const isAllSelected =
-    results.length > 0 && results.every((asset) => selected.has(asset.id));
+    selectable.length > 0 &&
+    selectable.every((asset) => selected.has(asset.id));
 
   const toggleAll = (isSelected: boolean) =>
     setSelected((current) => {
       const next = new Map(current);
-      results.forEach((asset) =>
+      selectable.forEach((asset) =>
         isSelected ? next.set(asset.id, asset) : next.delete(asset.id)
       );
 
@@ -188,9 +214,9 @@ const OntologyDataAssetPicker = ({
     setIsSaving(true);
     try {
       // Full references: a column is resolved through its FQN.
-      const result = await addAssetsToGlossaryTerm(term, [
-        ...selected.values(),
-      ]);
+      const result = native
+        ? await native.saveAssets([...selected.values()])
+        : await addAssetsToGlossaryTerm(term, [...selected.values()]);
       const refused = result.failedRequest ?? [];
       if (refused.length === 0) {
         onSave();
@@ -291,10 +317,18 @@ const OntologyDataAssetPicker = ({
         />
       </Box>
       <Input
-        aria-label={t('message.search-tables-and-columns')}
+        aria-label={
+          native
+            ? t('label.search-entity', { entity: t('label.data-asset-plural') })
+            : t('message.search-tables-and-columns')
+        }
         data-testid="ontology-data-asset-search"
         icon={SearchIcon}
-        placeholder={t('message.search-tables-and-columns')}
+        placeholder={
+          native
+            ? t('label.search-entity', { entity: t('label.data-asset-plural') })
+            : t('message.search-tables-and-columns')
+        }
         value={query}
         onChange={setQuery}
       />
@@ -306,14 +340,22 @@ const OntologyDataAssetPicker = ({
             <Tabs.List size="sm" type="button-border">
               <Tabs.Item id="all" label={t('label.all')} />
               <Tabs.Item id="tables" label={t('label.table-plural')} />
-              <Tabs.Item id="columns" label={t('label.column-plural')} />
+              {!native ? (
+                <Tabs.Item id="columns" label={t('label.column-plural')} />
+              ) : null}
             </Tabs.List>
             <Tabs.Panel className="tw:hidden" id="all" />
             <Tabs.Panel className="tw:hidden" id="tables" />
             <Tabs.Panel className="tw:hidden" id="columns" />
           </Tabs>
         </Box>
-        <Box className="tw:border-b tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2.5">
+        <Box
+          className={classNames(
+            'tw:border-b tw:border-secondary',
+            isAiMode
+              ? 'tw:bg-secondary_alt tw:px-3.5 tw:py-3'
+              : 'tw:bg-secondary tw:px-3 tw:py-2.5'
+          )}>
           <Checkbox
             data-testid="ontology-data-asset-select-all"
             isDisabled={results.length === 0}
@@ -324,10 +366,13 @@ const OntologyDataAssetPicker = ({
         </Box>
         <ul className="tw:m-0 tw:flex tw:max-h-80 tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-y-auto tw:p-0">
           {results.map((asset) => (
-            <li className="tw:px-3 tw:py-2.5" key={asset.id}>
+            <li
+              className={isAiMode ? 'tw:px-3.5 tw:py-3' : 'tw:px-3 tw:py-2.5'}
+              key={asset.id}>
               <Checkbox
                 aria-label={asset.displayName ?? asset.name}
                 data-testid={`ontology-data-asset-option-${asset.id}`}
+                isDisabled={native?.linkedIds.includes(asset.id)}
                 isSelected={selected.has(asset.id)}
                 label={
                   <span className="tw:flex tw:min-w-0 tw:flex-col">

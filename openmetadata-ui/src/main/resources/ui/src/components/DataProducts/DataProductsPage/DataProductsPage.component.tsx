@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -19,7 +20,6 @@ import { toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
@@ -47,7 +47,7 @@ import { getDomainPath, getVersionPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -327,22 +327,21 @@ const DataProductsPage = () => {
 
   if (!dataProduct) {
     return (
-      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <div className="text-center">
-          <p>
-            {t('message.no-entity-found-for-name', {
-              entity: t('label.data-product'),
-              name: dataProductFqn,
-            })}
-          </p>
-          <Button
-            className="tw:mt-2"
-            color="secondary"
-            onPress={() => navigate(getDomainPath())}>
-            {t('label.go-back')}
-          </Button>
-        </div>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          footer={
+            <Button color="primary" onPress={() => navigate(getDomainPath())}>
+              {t('label.go-back')}
+            </Button>
+          }
+          icon={<Database01 />}
+          title={t('message.no-entity-found-for-name', {
+            entity: t('label.data-product'),
+            name: dataProductFqn,
+          })}
+        />
+      </div>
     );
   }
 

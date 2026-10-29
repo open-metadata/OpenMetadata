@@ -157,6 +157,7 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -455,6 +456,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @GET
   @Path("/generateRandomPwd")
+  @IdentityEndpoint
   @Operation(
       operationId = "generateRandomPwd",
       summary = "Generate a random password",
@@ -619,6 +621,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @POST
   @Path("/logout")
+  @IdentityEndpoint
   @Operation(
       operationId = "logoutUser",
       summary = "Logout a User(Only called for saml and basic Auth)",
@@ -704,7 +707,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     if (grantsPrivileges(create)) {
-      authorizeAdminForPrivilegedFields(securityContext);
+      authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
     }
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(user.getIsBot())) {
@@ -834,6 +837,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     repository.setFullyQualifiedName(user);
@@ -854,7 +858,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // ownership branch below, otherwise a principal holding EDIT on users would be able to grant
     // roles to somebody else through PUT while PATCH refuses the same change.
     if (grantsPrivileges(create, existingUser, user)) {
-      authorizeAdminForPrivilegedFields(securityContext);
+      authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
     } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
       // is same as the user. We are trying to update. One option is to set users.owner as user,
@@ -875,6 +879,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/generateToken/{id}")
+  @IdentityEndpoint
   @Operation(
       operationId = "generateJWTTokenForBotUser",
       summary = "Generate JWT Token for a Bot User",
@@ -926,6 +931,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @POST
   @Path("/generateToken")
+  @IdentityEndpoint
   @Operation(
       operationId = "generateJWTTokenForUser",
       summary = "Generate JWT Token for a User",
@@ -999,6 +1005,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/revokeToken")
+  @IdentityEndpoint
   @Operation(
       operationId = "revokeJWTTokenForBotUser",
       summary = "Revoke JWT Token for a Bot User",
@@ -1039,6 +1046,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @GET
   @Path("/token/{id}")
+  @IdentityEndpoint
   @Operation(
       operationId = "getJWTTokenForBotUser",
       summary = "Get JWT Token for a Bot User",
@@ -1076,6 +1084,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @GET
   @Path("/auth-mechanism/{id}")
+  @IdentityEndpoint
   @Operation(
       operationId = "getAuthenticationMechanismBotUser",
       summary = "Get Authentication Mechanism for a Bot User",
@@ -1122,6 +1131,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @RequestBody(
@@ -1152,7 +1162,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         throw new AuthorizationException("Users can only update their own default domain");
       }
       if (isPrivilegedUserPatchPath(path)) {
-        authorizer.authorizeAdmin(securityContext);
+        authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
         continue;
       }
       if (patchOpObject.containsKey("value")) {
@@ -1174,7 +1184,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             String teamId = value.getString("id");
             repository.validateTeamAddition(id, UUID.fromString(teamId));
             if (!repository.isTeamJoinable(teamId)) {
-              authorizer.authorizeAdmin(securityContext); // Only admin can join closed teams
+              // Only admin can join closed teams
+              authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
             }
           }
         }
@@ -1187,16 +1198,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private static final String IS_BOT_PATCH_PATH = "/isBot";
   private static final String ROLES_FIELD = "roles";
   private static final String TEAMS_FIELD = "teams";
-  private static final String PRIVILEGED_FIELDS = ROLES_FIELD + "," + TEAMS_FIELD;
+  private static final String PRIVILEGED_FIELDS =
+      String.join(",", ROLES_FIELD, TEAMS_FIELD, Entity.FIELD_DOMAINS);
   private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
+  private static final String DOMAINS_PATCH_PATH = "/" + Entity.FIELD_DOMAINS;
 
   // A root-level operation (path "") replaces the whole user document, so it covers the same
-  // fields as the explicit paths below.
+  // fields as the explicit paths below. Domains grant access through hasDomain(), so only an admin
+  // changes them: ADR:2026-10-21-only-admins-change-a-users-domains
   private static boolean isPrivilegedUserPatchPath(String path) {
     return path.isEmpty()
         || path.equals(IS_ADMIN_PATCH_PATH)
         || path.equals(IS_BOT_PATCH_PATH)
-        || path.contains(ROLES_PATCH_PATH_SEGMENT);
+        || path.contains(ROLES_PATCH_PATH_SEGMENT)
+        || path.startsWith(DOMAINS_PATCH_PATH);
   }
 
   // Fields on an update that only an admin may set, whoever the user being changed is. The teams
@@ -1207,19 +1222,22 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       return true;
     }
-    if (nullOrEmpty(updatedUser.getRoles()) && nullOrEmpty(create.getTeams())) {
+    if (nullOrEmpty(updatedUser.getRoles())
+        && nullOrEmpty(create.getTeams())
+        && nullOrEmpty(updatedUser.getDomains())) {
       return false;
     }
-    // Reading back what the user already holds only pays off once the request names a role or a
-    // team - nothing else can be an elevation.
+    // Reading back what the user already holds only pays off once the request names a role, a team
+    // or a domain - nothing else can be an elevation.
     User currentUser = loadPrivilegedFields(existingUser);
     return hasRoleElevation(currentUser, updatedUser)
-        || joinsClosedTeam(currentUser, create.getTeams());
+        || joinsClosedTeam(currentUser, create.getTeams())
+        || hasDomainElevation(currentUser, updatedUser);
   }
 
-  // findByNameOrNull() sets core fields only, so the roles and teams the user already holds have to
-  // be loaded before the request can be compared against them. A null existingUser means the user
-  // is being created, so everything the request asks for is new.
+  // findByNameOrNull() sets core fields only, so the roles, teams and domains the user already
+  // holds have to be loaded before the request can be compared against them. A null existingUser
+  // means the user is being created, so everything the request asks for is new.
   private User loadPrivilegedFields(User existingUser) {
     if (existingUser == null) {
       return null;
@@ -1239,6 +1257,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return !entityIds(currentUser.getRoles()).containsAll(updatedRoleIds);
   }
 
+  // True when the request asks for a domain the user does not already hold as their own. A domain
+  // inherited from a team goes away when the user leaves the team, so it does not count as held.
+  private boolean hasDomainElevation(final User currentUser, final User updatedUser) {
+    final Set<UUID> heldDomainIds = currentUser == null ? Set.of() : ownDomainIds(currentUser);
+    return !heldDomainIds.containsAll(entityIds(updatedUser.getDomains()));
+  }
+
+  private static Set<UUID> ownDomainIds(final User user) {
+    return listOrEmpty(user.getDomains()).stream()
+        .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
+  }
+
   // Members of a team hold the team's defaultRoles as inherited roles and are governed by its
   // policies, so joining a team that is not open to everyone grants privileges the same way naming
   // a role does. PATCH has always required an admin for it. Teams the user is already in are
@@ -1255,12 +1287,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   // Fields on CreateUser that only an admin may set, whoever the user being created is. Every team
-  // named on a create request is one the user is not a member of yet.
+  // and domain named on a create request is one the user does not hold yet.
   private boolean grantsPrivileges(CreateUser create) {
     return Boolean.TRUE.equals(create.getIsAdmin())
         || Boolean.TRUE.equals(create.getIsBot())
         || grantsRolesFromRequestBody(create)
-        || joinsClosedTeam(null, create.getTeams());
+        || joinsClosedTeam(null, create.getTeams())
+        || !nullOrEmpty(create.getDomains());
   }
 
   // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
@@ -1271,12 +1304,28 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   // The principal is not in the database yet during self sign-up, and authorizeAdmin() resolves the
   // subject from it, so a plain call would surface the outcome as a 404 instead of a 403.
-  private void authorizeAdminForPrivilegedFields(SecurityContext securityContext) {
+  private void authorizeAdminForPrivilegedFields(
+      SecurityContext securityContext, ContainerRequestContext requestContext) {
+    rejectPrivilegedImpersonation(requestContext);
     String principal = securityContext.getUserPrincipal().getName();
     try {
       authorizer.authorizeAdmin(securityContext);
     } catch (EntityNotFoundException e) {
       throw new AuthorizationException(CatalogExceptionMessage.notAdmin(principal));
+    }
+  }
+
+  /**
+   * Minting a bot token, granting admin or elevating roles while impersonating would outlive the
+   * request-scoped grant, so a privileged user mutation is closed to impersonated callers even
+   * though the impersonated principal is itself an admin. Read from the request context: the
+   * injected {@link SecurityContext} is a Jersey proxy that hides the impersonation.
+   */
+  private static void rejectPrivilegedImpersonation(ContainerRequestContext requestContext) {
+    if (requestContext.getSecurityContext() instanceof CatalogSecurityContext catalogSecurityContext
+        && catalogSecurityContext.impersonatedUser() != null) {
+      throw new AuthorizationException(
+          "Impersonated requests cannot grant privileges or mint credentials for a user");
     }
   }
 
@@ -1747,6 +1796,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/changePassword")
+  @IdentityEndpoint
   @Operation(
       operationId = "changeUserPassword",
       summary = "Change Password For User",
@@ -1868,6 +1918,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @GET
   @Path("/security/token")
+  @IdentityEndpoint
   @Operation(
       operationId = "getPersonalAccessToken",
       summary = "Get personal access token to User",
@@ -1905,6 +1956,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/security/token/revoke")
+  @IdentityEndpoint
   @Operation(
       operationId = "revokePersonalAccessToken",
       summary = "Revoke personal access token to User",
@@ -1956,6 +2008,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/security/token")
+  @IdentityEndpoint
   @Operation(
       operationId = "createPersonalAccessToken",
       summary = "Provide access token to User",

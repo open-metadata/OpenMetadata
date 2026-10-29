@@ -145,6 +145,7 @@ const IncidentManagerPageHeader = ({
         <HeaderDotSeparator />
         <div className="tw:min-w-0" data-testid="assignee">
           <Owner
+            showDashPlaceholder
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
             owners={details?.assignee ? [details.assignee] : []}

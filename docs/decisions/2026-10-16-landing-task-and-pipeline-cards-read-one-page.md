@@ -1,9 +1,9 @@
 # The My Tasks and Pipeline Status cards read one page, and say so where it shows
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-16 (initial)
+- **Revisions:** v1 2026-10-16 (initial) · v2 2026-10-23 (the My Tasks notice moves to the card footer)
 - **Deciders:** Landing page owners
-- **Guard:** `useMyTasks.test.tsx`, `MyTasksWidget.test.tsx` ("Showing N of M"), `usePipelineStatus.test.tsx`
+- **Guard:** `useMyTasks.test.tsx`, `MyTasksWidget.test.tsx` ("says how much of the total the page holds, under every chip"), `usePipelineStatus.test.tsx`
 - **Related:** ADR:2026-10-16-landing-overview-cards-match-the-pages-they-open
 
 ## Context
@@ -32,3 +32,9 @@ requires a time window.
 - A pipeline whose last run is older than 30 days shows no run history on the card.
 - Revisit My Tasks when `/tasks/assigned` can count or filter by category: the chips should then
   become server totals like Pipeline Status's.
+
+## Amendment — v2: the My Tasks notice moves to the card footer
+
+The landing page design review (Set 4) removed the strip above the rows that carried "N of M
+loaded" and its select-all checkbox. The notice now sits in the card footer as the loaded and total
+counts ("100/250 Tasks"), under every chip including All, whenever the total exceeds the page.

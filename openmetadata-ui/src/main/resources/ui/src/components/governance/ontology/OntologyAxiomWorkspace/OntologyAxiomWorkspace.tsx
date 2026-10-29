@@ -19,7 +19,13 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import OntologyDefinitionList from '../OntologyAuthoringWorkspace/OntologyDefinitionList';
 import OntologyAxiomEditor from '../OntologyAxiomEditor/OntologyAxiomEditor';
 
-const OntologyAxiomWorkspace = ({ ontology }: { ontology: Ontology }) => {
+const OntologyAxiomWorkspace = ({
+  ontology,
+  onWorkingChange,
+}: {
+  ontology: Ontology;
+  onWorkingChange?: () => void;
+}) => {
   const { permissions } = usePermissionProvider();
   const { canCreate } = getDerivedPermissionFlags(
     permissions[ResourceEntity.ONTOLOGY_AXIOM] ?? DEFAULT_ENTITY_PERMISSION,
@@ -31,7 +37,8 @@ const OntologyAxiomWorkspace = ({ ontology }: { ontology: Ontology }) => {
       canCreate={canCreate}
       definitionType="axiom"
       load={(params, signal) => listOntologyAxioms(ontology.id, params, signal)}
-      ontology={ontology}>
+      ontology={ontology}
+      onWorkingChange={onWorkingChange}>
       {(axiom, canEdit, onSaved) => (
         <OntologyAxiomEditor
           axiom={axiom}

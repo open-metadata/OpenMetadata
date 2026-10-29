@@ -17,6 +17,14 @@ import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { getAlertEventsFromId } from '../../../rest/alertsAPI';
 import AlertAiRecentEventsTab from './AlertAiRecentEventsTab';
 
+// Boundary: the previewer lazy-loads the block editor.
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => ({
+  __esModule: true,
+  default: ({ markdown }: { markdown?: string }) => (
+    <div data-testid="recent-events-description">{markdown}</div>
+  ),
+}));
+
 jest.mock('../../../rest/alertsAPI', () => ({
   getAlertEventsFromId: jest.fn(),
 }));
@@ -165,7 +173,7 @@ describe('AlertAiRecentEventsTab', () => {
       await screen.findByRole('button', { name: /label.filter/ })
     );
     fireEvent.click(
-      await screen.findByRole('option', { name: 'label.failed' })
+      await screen.findByRole('menuitemradio', { name: 'label.failed' })
     );
 
     await waitFor(() =>
@@ -178,6 +186,9 @@ describe('AlertAiRecentEventsTab', () => {
     expect(
       await screen.findByText('message.no-results-for-filters')
     ).toBeInTheDocument();
+    expect(screen.getByTestId('applied-filter-text')).toHaveTextContent(
+      'label.failed'
+    );
   });
 
   it('loads the page restored from the URL', async () => {

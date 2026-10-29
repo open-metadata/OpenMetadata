@@ -84,7 +84,9 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
         setInstalledPluginInstances(plugins);
       }
     } catch {
-      // do not handle error
+      // Do not surface the error, but still hand the contribution effect a
+      // fresh (empty) plugin list so it re-runs and flips `contributionsReady`.
+      setInstalledPluginInstances([]);
     } finally {
       setIsLoading(false);
       // Signal to downstream consumers (plugins, mode-aware code) that
@@ -97,6 +99,10 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (hasPermissions) {
+      // Permissions usually arrive after mount, so the no-permission pass has
+      // already marked contributions ready. Plugins from this fetch are not
+      // in yet: drop the flag until the contribution effect re-runs.
+      setContributionsReady(false);
       fetchApplicationList();
     } else {
       setIsLoading(false);

@@ -27,6 +27,7 @@ import {
 import IngestionWorkflowForm from './IngestionWorkflowForm';
 
 const DBT_WORKFLOW_DATA = {
+  name: 'dbt_agent',
   type: 'DBT',
   dbtConfigSource: {
     dbtConfigType: 'local',
@@ -35,7 +36,7 @@ const DBT_WORKFLOW_DATA = {
   catalogMapping: { bq_catalog: 'my-gcp-project' },
 } as unknown as IngestionWorkflowData;
 
-const renderDbtForm = (onChange = jest.fn()) =>
+const renderDbtForm = (onChange = jest.fn(), onSubmit = jest.fn()) =>
   render(
     <IngestionWorkflowForm
       okText="Submit"
@@ -45,7 +46,7 @@ const renderDbtForm = (onChange = jest.fn()) =>
       onCancel={jest.fn()}
       onChange={onChange}
       onFocus={jest.fn()}
-      onSubmit={jest.fn()}
+      onSubmit={onSubmit}
     />
   );
 
@@ -56,6 +57,14 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     expect(await screen.findByText('Catalog Mapping')).toBeInTheDocument();
     expect(screen.getByDisplayValue('bq_catalog')).toBeInTheDocument();
     expect(screen.getByDisplayValue('my-gcp-project')).toBeInTheDocument();
+    // the key is the editable input beside the value, not a label above it
+    expect(screen.queryByText('bq_catalog')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'bq_catalog' })).toHaveValue(
+      'my-gcp-project'
+    );
+    expect(screen.getByRole('textbox', { name: 'label.key' })).toHaveValue(
+      'bq_catalog'
+    );
   });
 
   it('adds a catalog entry to the workflow data', async () => {
@@ -68,12 +77,33 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     });
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
-    const { catalogMapping } = onChange.mock.lastCall[0];
+    const { catalogMapping } = onChange.mock.calls.at(-1)[0];
 
     expect(catalogMapping).toEqual(
       expect.objectContaining({ bq_catalog: 'my-gcp-project' })
     );
     expect(Object.keys(catalogMapping)).toHaveLength(2);
+    // RJSF's visible default, so an untouched row is noticed before it is saved
+    expect(catalogMapping.newKey).toBe('New Value');
+  });
+
+  it('saves the catalog mapping without a row that was added but never filled in', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderDbtForm(jest.fn(), onSubmit);
+    await screen.findByText('Catalog Mapping');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.add-entity' }));
+    });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.calls[0][0].catalogMapping).toEqual({
+      bq_catalog: 'my-gcp-project',
+    });
   });
 });
 

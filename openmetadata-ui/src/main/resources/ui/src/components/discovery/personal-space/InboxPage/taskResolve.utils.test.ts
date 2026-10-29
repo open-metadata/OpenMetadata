@@ -241,6 +241,25 @@ describe('getTaskResolveActions', () => {
     }
   );
 
+  it('offers nothing on a Revise and resubmit task, which the next edit completes', () => {
+    const missing = makeTask({
+      category: TaskCategory.MetadataUpdate,
+      type: TaskType.MetadataCompletion,
+      payload: { missingFields: [] },
+    });
+
+    expect(
+      getTaskResolveActions(
+        {
+          ...missing,
+          payload: { missingFields: [], revision: { requestedBy: 'karan' } },
+        },
+        LABELS
+      )
+    ).toEqual([]);
+    expect(getTaskResolveActions(missing, LABELS)).not.toEqual([]);
+  });
+
   it('offers no legacy approve/reject for an incident, which resolves through its own transition', () => {
     expect(
       getTaskResolveActions(

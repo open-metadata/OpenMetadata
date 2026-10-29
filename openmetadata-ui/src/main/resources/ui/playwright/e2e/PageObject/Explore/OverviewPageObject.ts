@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page, Response } from '@playwright/test';
 import { setDomain } from '../../../utils/domainPicker';
 import {
   classificationTagPickerRow,
@@ -195,19 +195,28 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the markdown editor modal to be fully visible - use semantic selector
     await this.markdownEditor.waitFor({ state: 'visible' });
 
-    await this.markdownEditor.click();
-    await this.page.keyboard.press('ControlOrMeta+a');
-    await this.page.keyboard.press('Backspace');
+    // Select-all can fire before the editor takes focus; the old text then
+    // survives and save re-sends it, so a clear silently never lands.
+    await expect(async () => {
+      await this.markdownEditor.click();
+      await this.page.keyboard.press('ControlOrMeta+a');
+      await this.page.keyboard.press('Backspace');
+      await expect(this.markdownEditor).toHaveText('', { timeout: 2_000 });
+    }).toPass();
     if (description) {
       await this.markdownEditor.fill(description);
     }
 
-    // Set up PATCH listener before clicking save so we don't race with the response.
-    // This ensures the description is committed to the server before the caller proceeds
-    // (particularly important when clearing description and then immediately reloading).
-    const patchPromise = this.waitForPatchResponse();
+    // Scoped to the description op: with no entity endpoint configured the
+    // matcher is `/api/v1/`, which any unrelated PATCH would satisfy.
+    const patchPromise = this.waitForPatchResponse('/description');
     await this.saveButton.click();
-    await patchPromise;
+    const response = await patchPromise;
+    if (!description) {
+      const body: { description?: string } = await response.json();
+      expect(body.description ?? '').toBe('');
+    }
+
     return this;
   }
 
@@ -665,18 +674,22 @@ export class OverviewPageObject extends RightPanelBase {
 
   // ============ HELPER METHODS ============
 
-  private async waitForPatchResponse(): Promise<void> {
+  private async waitForPatchResponse(requestPath?: string): Promise<Response> {
     const endpoint = this.rightPanel.getEntityEndpoint();
     const urlPattern = endpoint ? `/api/v1/${endpoint}/` : '/api/v1/';
     const responsePromise = this.page.waitForResponse(
       (resp) =>
         resp.request().method() === 'PATCH' &&
         resp.url().includes(urlPattern) &&
-        !resp.url().includes('/api/v1/analytics')
+        !resp.url().includes('/api/v1/analytics') &&
+        (!requestPath ||
+          (resp.request().postData() ?? '').includes(`"${requestPath}"`))
     );
 
     const response = await responsePromise;
     expect(response.status()).toBe(200);
+
+    return response;
   }
 
   // ============ VERIFICATION METHODS (BDD Style) ============

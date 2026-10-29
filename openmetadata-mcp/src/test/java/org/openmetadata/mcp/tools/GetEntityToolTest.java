@@ -19,7 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -52,9 +54,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -138,6 +142,65 @@ class GetEntityToolTest {
                       mock(Authorizer.class),
                       securityContext,
                       Map.of("entityType", Entity.CONTEXT_MEMORY, "fqn", fqn)));
+    }
+  }
+
+  /** A Query reference names the question its SQL answered; REST reduces it to id and type. */
+  @Test
+  void plainReadReducesAQueryTheCallerMayNotViewToIdAndType() throws Exception {
+    EntityReference query = queryReference();
+    CatalogSecurityContext securityContext = securityContextFor("alice");
+    Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorize(
+            eq(securityContext),
+            argThat(operation -> Entity.QUERY.equals(operation.getResource())),
+            any());
+
+    Map<String, Object> result = readMemoryCiting(query, authorizer, securityContext);
+
+    assertThat(result.get("relatedEntities"))
+        .isEqualTo(List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)));
+  }
+
+  @Test
+  void plainReadKeepsAQueryTheCallerMayView() throws Exception {
+    EntityReference query = queryReference();
+
+    Map<String, Object> result =
+        readMemoryCiting(query, mock(Authorizer.class), securityContextFor("alice"));
+
+    assertThat(result.get("relatedEntities").toString()).contains("erp.payroll", "payroll");
+  }
+
+  private static EntityReference queryReference() {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.QUERY)
+        .withName("payroll")
+        .withFullyQualifiedName("erp.payroll")
+        .withDisplayName("Who earns more than the CEO?");
+  }
+
+  /** get_entity_details, as alice, of her private memory citing {@code query}. */
+  private Map<String, Object> readMemoryCiting(
+      EntityReference query, Authorizer authorizer, CatalogSecurityContext securityContext)
+      throws Exception {
+    String fqn = "alices-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn).withRelatedEntities(List.of(query));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(
+              () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), any()))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
+      return new GetEntityTool()
+          .execute(
+              authorizer, securityContext, Map.of("entityType", Entity.CONTEXT_MEMORY, "fqn", fqn));
     }
   }
 
@@ -250,6 +313,27 @@ class GetEntityToolTest {
         .doesNotContain(GIT_TOKEN)
         .doesNotContain(SIGNING_KEY)
         .doesNotContain(SIGNING_PASSPHRASE);
+  }
+
+  @Test
+  void userDetailsHideTheEmailFromCallersWithoutPiiAccess() throws Exception {
+    String fqn = "carol";
+    User user = new User().withName(fqn).withFullyQualifiedName(fqn).withEmail("carol@acme.com");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(eq(Entity.USER), eq(fqn), anyString(), any()))
+          .thenReturn(user);
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContextFor("alice"),
+                  Map.of("entityType", Entity.USER, "fqn", fqn));
+    }
+
+    assertEquals(PIIMasker.MASKED_MAIL, result.get("email"));
   }
 
   static WorkflowDefinition gitSinkWorkflow(String name) {

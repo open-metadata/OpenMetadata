@@ -13,12 +13,12 @@
 import {
   Box,
   Card,
-  EmptyPlaceholder,
   FeaturedIcon,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FC, ReactNode } from 'react';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { ContextSimplePillarCardProps } from './ContextSimplePillarCard.interface';
 
 const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
@@ -42,7 +42,7 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
     );
   } else if (isEmpty) {
     pillarBody = (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         actions={
           emptyAction
             ? [
@@ -60,7 +60,6 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
         className="tw:justify-start tw:pt-6 tw:[&_:has(>[data-icon='true'])]:size-12.5 tw:**:data-[icon='true']:size-5 tw:[&>*:first-child]:gap-3"
         description={emptyMessage}
         icon={<Icon className="tw:text-fg-brand-primary" />}
-        variant="blank"
         width={200}
       />
     );

@@ -48,6 +48,10 @@ import {
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { Votes } from '../../../generated/type/votes';
+import {
+  useDecideProposal,
+  useGlossaryProposal,
+} from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
@@ -61,6 +65,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
+import { isAiGeneratedDraft } from '../../../utils/GlossaryPureUtils';
+import { canDecideProposal } from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
@@ -68,7 +74,7 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import {
@@ -84,6 +90,7 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
+import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -459,10 +466,54 @@ const GlossaryHeaderModals = ({
   </>
 );
 
+interface GlossaryTermAiDraftNoticeProps {
+  term: GlossaryTerm;
+  isGlossary: boolean;
+  isVersionView?: boolean;
+  onDecided?: () => void;
+}
+
+/** An AI agent's proposal heads its term's page, decided there through its approval request. */
+const GlossaryTermAiDraftNotice = ({
+  term,
+  isGlossary,
+  isVersionView,
+  onDecided,
+}: GlossaryTermAiDraftNoticeProps) => {
+  const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
+  const isAiProposal =
+    !isGlossary && !isVersionView && isAiGeneratedDraft(term);
+  const proposal = useGlossaryProposal(isAiProposal ? term.id : undefined);
+  const decide = useDecideProposal();
+
+  // Until its approval request loads, the card could not say who decides the proposal.
+  if (!isAiProposal || !proposal) {
+    return null;
+  }
+
+  return (
+    <div className="tw:mb-3" data-testid="ai-generated-term-card">
+      <ProposalCard
+        canDecide={!term.deleted && canDecideProposal(proposal, currentUser)}
+        proposal={proposal}
+        onDecide={async (decision, comment) => {
+          if (await decide(proposal, decision, comment)) {
+            onDecided?.();
+          } else {
+            showSuccessToast(t('message.vote-recorded'));
+          }
+        }}
+      />
+    </div>
+  );
+};
+
 const GlossaryHeader = ({
   onDelete,
   onAssetAdd,
   onAddGlossaryTerm,
+  onProposalDecided,
   updateVote,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
@@ -814,6 +865,12 @@ const GlossaryHeader = ({
           entityId={selectedData.id}
         />
       )}
+      <GlossaryTermAiDraftNotice
+        isGlossary={isGlossary}
+        isVersionView={isVersionView}
+        term={selectedData}
+        onDecided={onProposalDecided}
+      />
       <PageHeader
         actions={
           <GlossaryHeaderActions

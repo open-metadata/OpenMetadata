@@ -19,6 +19,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -26,9 +27,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as RoleIcon } from '../../../assets/svg/role-colored.svg';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
@@ -38,7 +39,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Role } from '../../../generated/entity/teams/role';
@@ -356,24 +356,21 @@ const RolesDetailPage = () => {
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
         {isEmpty(role) ? (
-          <ErrorPlaceHolder
-            className="h-min-80 border-none"
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <div className="text-center">
-              <p>
-                {t('message.no-entity-found-for-name', {
-                  entity: t('label.role'),
-                  name: fqn,
-                })}
-              </p>
-              <Button
-                className="tw:mt-3"
-                color="secondary-brand"
-                onClick={() => navigate(rolesPath)}>
-                {t('label.go-back')}
-              </Button>
-            </div>
-          </ErrorPlaceHolder>
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder
+              data-testid="no-data-placeholder"
+              footer={
+                <Button color="primary" onClick={() => navigate(rolesPath)}>
+                  {t('label.go-back')}
+                </Button>
+              }
+              icon={<Database01 />}
+              title={t('message.no-entity-found-for-name', {
+                entity: t('label.role'),
+                name: fqn,
+              })}
+            />
+          </div>
         ) : (
           <>
             <Box justify="between">

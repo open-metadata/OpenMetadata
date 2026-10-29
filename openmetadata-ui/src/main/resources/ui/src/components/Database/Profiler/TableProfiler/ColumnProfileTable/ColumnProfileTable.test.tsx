@@ -106,6 +106,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     );
 
   return {
+    EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+      .EmptyPlaceholder,
     Input: InputMock,
     Skeleton: () => (
       <span aria-hidden="true" data-testid="table-loading-skeleton" />
@@ -132,15 +134,6 @@ jest.mock('../NoProfilerBanner/NoProfilerBanner.component', () =>
 
 jest.mock('../SingleColumnProfile', () =>
   jest.fn().mockImplementation(() => <div>SingleColumnProfile</div>)
-);
-
-jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
-);
-
-jest.mock(
-  '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => jest.fn().mockReturnValue(<div>FilterTablePlaceHolder</div>)
 );
 
 jest.mock('../../../../common/NextPrevious/NextPrevious', () =>
@@ -340,7 +333,11 @@ describe('Test ColumnProfileTable component', () => {
       render(<ColumnProfileTable />, { wrapper: MemoryRouter });
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render NoProfilerBanner when profiling is disabled', async () => {

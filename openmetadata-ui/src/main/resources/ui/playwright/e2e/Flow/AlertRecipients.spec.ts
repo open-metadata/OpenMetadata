@@ -37,9 +37,10 @@ const INSIDE_THE_PLATFORM = [
   'Users',
 ];
 
-// What the server says each selection reaches.
+// What the server says each selection reaches. A task has no owners, and glossary terms and users
+// have no followers, so the form never offers someone delivery cannot find.
 const OFFERED: Array<{ sources: string[]; recipients: string[] }> = [
-  { sources: ['task'], recipients: ['Assignees', 'Mentions', 'Owners'] },
+  { sources: ['task'], recipients: ['Assignees', 'Mentions'] },
   { sources: ['conversation'], recipients: ['Mentions', 'Owners'] },
   {
     sources: ['table'],
@@ -49,12 +50,19 @@ const OFFERED: Array<{ sources: string[]; recipients: string[] }> = [
     sources: ['task', 'conversation'],
     recipients: ['Assignees', 'Mentions', 'Owners'],
   },
+  {
+    sources: ['glossaryTerm'],
+    recipients: ['Admins', 'Owners', 'Teams', 'Users'],
+  },
+  { sources: ['user'], recipients: ['Admins', 'Teams', 'Users'] },
 ];
 
 const DISPLAY_NAMES: Record<string, string> = {
   task: 'Task',
   conversation: 'Conversation',
   table: 'Table',
+  glossaryTerm: 'Glossary Term',
+  user: 'User',
 };
 
 // Opens the first destination's category list and returns it.

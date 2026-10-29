@@ -14,6 +14,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateContextMemory } from '../generated/api/context/createContextMemory';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
+import { MemoryDerivation } from '../generated/entity/context/memoryDerivation';
 import { ListParams } from '../interface/API.interface';
 import { PagingResponse } from '../interface/common/paging.interface';
 import Fqn from '../utils/Fqn';
@@ -103,4 +104,31 @@ export const getContextMemoryByName = async (
   );
 
   return response.data;
+};
+
+/** The server reads at most this many derived entities per request. */
+export const MAX_DERIVATION_ENTITIES = 100;
+
+/**
+ * Why an AI agent derived each of these entities from a memory: the memory and the agent's
+ * confidence and reasons. Entities whose memory the caller may not see are left out.
+ */
+export const getMemoryDerivations = async (
+  entityType: string,
+  entityIds: string[]
+): Promise<MemoryDerivation[]> => {
+  if (entityIds.length === 0) {
+    return [];
+  }
+  const response = await APIClient.get<PagingResponse<MemoryDerivation[]>>(
+    `${BASE_URL}/derivations`,
+    {
+      params: {
+        entityType,
+        entityIds: entityIds.slice(0, MAX_DERIVATION_ENTITIES).join(','),
+      },
+    }
+  );
+
+  return response.data.data;
 };

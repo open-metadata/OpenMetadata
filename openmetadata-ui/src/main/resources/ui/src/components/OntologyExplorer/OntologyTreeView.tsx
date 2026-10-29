@@ -17,13 +17,19 @@ import {
   Button,
   Card,
   Dot,
+  FeaturedIcon,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronRight, Link01 } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronRight,
+  Link01,
+  Share07,
+} from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useMemo, useState } from 'react';
 import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { OntologyNode } from './OntologyExplorer.interface';
 import {
   nestTreeRows,
@@ -33,15 +39,20 @@ import {
 } from './OntologyStudio.utils';
 
 interface OntologyTreeViewProps {
+  readonly density?: 'default' | 'compact';
+  readonly emptyMessage?: string;
+  readonly selectedNodeId?: string;
   readonly groups: OntologyTreeGroup[];
   readonly metrics: OntologyTreeMetric[];
-  readonly onConnect: (node: OntologyNode) => void;
+  readonly onConnect?: (node: OntologyNode) => void;
   readonly onSelect: (node: OntologyNode) => void;
 }
 
 // The tree never indents past this level, however deep the hierarchy.
 const MAX_INDENT_LEVEL = 16;
 const TREE_CLASS = 'tw:gap-0 tw:divide-y tw:divide-secondary';
+const AI_ROW_CONTENT_CLASS =
+  'tw:min-h-14 tw:py-2 tw:pr-4 tw:hover:bg-transparent';
 const ROW_CLASS = 'tw:rounded-none tw:pl-3 tw:hover:bg-primary_hover';
 const ROW_CONTENT_CLASS = 'tw:py-3 tw:pr-4 tw:hover:bg-transparent';
 
@@ -83,20 +94,93 @@ const TreeSectionHeader = ({
   </Box>
 );
 
+interface ConceptsSectionHeaderProps {
+  readonly count: number;
+  readonly groups: OntologyTreeGroup[];
+  readonly onCollapseAll: () => void;
+  readonly onExpandAll: () => void;
+}
+
+const ConceptsSectionHeader = ({
+  count,
+  groups,
+  onCollapseAll,
+  onExpandAll,
+}: ConceptsSectionHeaderProps) => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const buttonProps = isAiMode
+    ? ({ color: 'tertiary', size: 'xs' } as const)
+    : ({ color: 'link-gray', size: 'sm' } as const);
+  const actions = (
+    <Box gap={isAiMode ? 1 : 4}>
+      <Button
+        {...buttonProps}
+        data-testid="ontology-tree-expand-all"
+        onPress={onExpandAll}>
+        {t('label.expand-all')}
+      </Button>
+      <Button
+        {...buttonProps}
+        data-testid="ontology-tree-collapse-all"
+        onPress={onCollapseAll}>
+        {t('label.collapse-all')}
+      </Button>
+    </Box>
+  );
+
+  if (!isAiMode) {
+    return (
+      <TreeSectionHeader
+        actions={actions}
+        count={count}
+        title={t('label.concept-plural')}
+      />
+    );
+  }
+
+  return (
+    <Box align="center" gap={3}>
+      <FeaturedIcon color="brand" icon={Share07} size="md" theme="light" />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Typography
+          ellipsis
+          aria-level={3}
+          className="tw:text-primary"
+          role="heading"
+          size="text-sm"
+          weight="medium">
+          {groups.length === 1
+            ? groups[0].glossaryName
+            : t('label.concept-plural')}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {`${count} ${t('label.concept-plural').toLocaleLowerCase()}`}
+        </Typography>
+      </Box>
+      {actions}
+    </Box>
+  );
+};
+
 interface TreeRowTextProps {
+  readonly compact?: boolean;
   readonly meta?: ReactNode;
   readonly node: OntologyNode;
 }
 
-const TreeRowText = ({ meta, node }: TreeRowTextProps) => (
+const TreeRowText = ({ compact, meta, node }: TreeRowTextProps) => (
   <Box className="tw:min-w-0 tw:flex-1" direction="col">
     <Box align="center" gap={2}>
-      <Typography className="tw:text-primary" size="text-md" weight="medium">
+      <Typography
+        className="tw:text-primary"
+        size={compact ? 'text-sm' : 'text-md'}
+        weight="medium">
         {node.label}
       </Typography>
       {meta}
     </Box>
-    {node.fullyQualifiedName ? (
+    {!compact && node.fullyQualifiedName ? (
       <Typography ellipsis className="tw:text-tertiary" size="text-sm">
         {node.fullyQualifiedName}
       </Typography>
@@ -106,12 +190,19 @@ const TreeRowText = ({ meta, node }: TreeRowTextProps) => (
 
 const TreeRowRelations = ({ count }: { readonly count: number }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
 
   return (
     <Box align="center" className="tw:shrink-0" gap={3}>
-      <Typography className="tw:text-tertiary" size="text-sm">
-        {t('label.x-relations', { count })}
-      </Typography>
+      {isAiMode ? (
+        <Badge color="gray" size="sm" type="pill-color">
+          {t('label.x-relations', { count })}
+        </Badge>
+      ) : (
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {t('label.x-relations', { count })}
+        </Typography>
+      )}
       <ChevronRight
         aria-hidden="true"
         className="tw:size-4 tw:text-fg-quaternary"
@@ -120,9 +211,19 @@ const TreeRowRelations = ({ count }: { readonly count: number }) => {
   );
 };
 
-const ConceptTreeItem = ({ item }: { readonly item: OntologyTreeItem }) => {
+const ConceptTreeItem = ({
+  item,
+  compact,
+}: {
+  readonly item: OntologyTreeItem;
+  readonly compact: boolean;
+}) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const childCount = item.children.length;
+  const contentClass = compact
+    ? 'tw:py-1.5 tw:pr-4 tw:hover:bg-transparent'
+    : ROW_CONTENT_CLASS;
 
   return (
     <Tree.Item
@@ -131,11 +232,12 @@ const ConceptTreeItem = ({ item }: { readonly item: OntologyTreeItem }) => {
       id={item.node.id}
       textValue={item.node.label}>
       <Tree.ItemContent
-        className={ROW_CONTENT_CLASS}
-        indentPerLevel={42}
+        className={isAiMode ? AI_ROW_CONTENT_CLASS : contentClass}
+        indentPerLevel={compact ? 24 : 42}
         maxIndentLevel={MAX_INDENT_LEVEL}>
         <Dot className="tw:shrink-0 tw:text-utility-brand-400" size="sm" />
         <TreeRowText
+          compact={compact}
           meta={
             <>
               {childCount > 0 ? (
@@ -155,19 +257,23 @@ const ConceptTreeItem = ({ item }: { readonly item: OntologyTreeItem }) => {
         <TreeRowRelations count={item.relationCount} />
       </Tree.ItemContent>
       {item.children.map((child) => (
-        <ConceptTreeItem item={child} key={child.node.id} />
+        <ConceptTreeItem compact={compact} item={child} key={child.node.id} />
       ))}
     </Tree.Item>
   );
 };
 
 const OntologyTreeView = ({
+  density = 'default',
+  emptyMessage,
+  selectedNodeId,
   groups,
   metrics,
   onConnect,
   onSelect,
 }: OntologyTreeViewProps) => {
   const { t } = useTranslation();
+  const compact = density === 'compact';
   const rows = useMemo(() => groups.flatMap((group) => group.rows), [groups]);
   const concepts = useMemo(
     () => nestTreeRows(rows.filter((row) => !row.isIsolated)),
@@ -200,7 +306,7 @@ const OntologyTreeView = ({
         data-testid="ontology-tree-view"
         justify="center">
         <Typography className="tw:text-quaternary" size="text-sm">
-          {t('message.no-glossary-terms-found')}
+          {emptyMessage ?? t('message.no-glossary-terms-found')}
         </Typography>
       </Box>
     );
@@ -214,33 +320,19 @@ const OntologyTreeView = ({
       gap={8}>
       {concepts.length > 0 ? (
         <Box data-testid="ontology-tree-concepts" direction="col" gap={3}>
-          <TreeSectionHeader
-            actions={
-              <Box gap={4}>
-                <Button
-                  color="link-gray"
-                  data-testid="ontology-tree-expand-all"
-                  size="sm"
-                  onPress={() => setCollapsedIds(new Set())}>
-                  {t('label.expand-all')}
-                </Button>
-                <Button
-                  color="link-gray"
-                  data-testid="ontology-tree-collapse-all"
-                  size="sm"
-                  onPress={() => setCollapsedIds(new Set(parentIds))}>
-                  {t('label.collapse-all')}
-                </Button>
-              </Box>
-            }
+          <ConceptsSectionHeader
             count={rows.length - unconnected.length}
-            title={t('label.concept-plural')}
+            groups={groups}
+            onCollapseAll={() => setCollapsedIds(new Set(parentIds))}
+            onExpandAll={() => setCollapsedIds(new Set())}
           />
           <Card>
             <Tree
               aria-label={t('label.concept-plural')}
               className={TREE_CLASS}
               expandedKeys={expandedKeys}
+              selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+              selectionMode="single"
               onAction={handleAction}
               onExpandedChange={(keys) =>
                 setCollapsedIds(
@@ -248,7 +340,11 @@ const OntologyTreeView = ({
                 )
               }>
               {concepts.map((item) => (
-                <ConceptTreeItem item={item} key={item.node.id} />
+                <ConceptTreeItem
+                  compact={compact}
+                  item={item}
+                  key={item.node.id}
+                />
               ))}
             </Tree>
           </Card>
@@ -265,6 +361,8 @@ const OntologyTreeView = ({
             <Tree
               aria-label={t('label.metric-plural')}
               className={TREE_CLASS}
+              selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+              selectionMode="single"
               onAction={handleAction}>
               {metrics.map(({ measures, node }) => (
                 <Tree.Item
@@ -278,7 +376,7 @@ const OntologyTreeView = ({
                       className="tw:shrink-0 tw:text-utility-blue-dark-600"
                       size="sm"
                     />
-                    <TreeRowText node={node} />
+                    <TreeRowText compact={compact} node={node} />
                     <Box align="center" className="tw:shrink-0" gap={2}>
                       <Typography className="tw:text-tertiary" size="text-sm">
                         {t('label.measure-plural')}
@@ -318,6 +416,8 @@ const OntologyTreeView = ({
             <Tree
               aria-label={t('label.not-connected')}
               className={TREE_CLASS}
+              selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+              selectionMode="single"
               onAction={handleAction}>
               {unconnected.map(({ node }) => (
                 <Tree.Item
@@ -331,15 +431,17 @@ const OntologyTreeView = ({
                       className="tw:shrink-0 tw:text-utility-warning-500"
                       size="sm"
                     />
-                    <TreeRowText node={node} />
-                    <Button
-                      color="secondary"
-                      data-testid={`ontology-tree-connect-${node.id}`}
-                      iconLeading={Link01}
-                      size="sm"
-                      onPress={() => onConnect(node)}>
-                      {t('label.connect')}
-                    </Button>
+                    <TreeRowText compact={compact} node={node} />
+                    {onConnect ? (
+                      <Button
+                        color="secondary"
+                        data-testid={`ontology-tree-connect-${node.id}`}
+                        iconLeading={Link01}
+                        size="sm"
+                        onPress={() => onConnect?.(node)}>
+                        {t('label.connect')}
+                      </Button>
+                    ) : null}
                   </Tree.ItemContent>
                 </Tree.Item>
               ))}

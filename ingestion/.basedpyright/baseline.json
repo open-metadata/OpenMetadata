@@ -1944,14 +1944,6 @@
             {
                 "code": "reportUndefinedVariable",
                 "range": {
-                    "startColumn": 35,
-                    "endColumn": 47,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportUndefinedVariable",
-                "range": {
                     "startColumn": 65,
                     "endColumn": 77,
                     "lineCount": 1

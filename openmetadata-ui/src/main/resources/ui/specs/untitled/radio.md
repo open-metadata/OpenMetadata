@@ -62,6 +62,8 @@ Parts: **group** (`RadioGroup`: vertical `flex` column), **circle**
 | `value` | string (required) | Value emitted when this option is chosen |
 | `label` | ReactNode | Text beside the circle |
 | `hint` | ReactNode | Secondary text under the label |
+| `variant` | `default` \| `card` (default `default`) | Card gives the whole radio a bordered, padded selection target |
+| `trailing` | ReactNode | Noninteractive content after the label and hint, such as a file extension |
 | `size` | `sm` \| `md` | Overridden by the group's context size |
 | `isDisabled` | boolean | Disable this single option |
 
@@ -75,6 +77,13 @@ Parts: **group** (`RadioGroup`: vertical `flex` column), **circle**
 | Disabled | `tw:border-disabled` + `tw:bg-disabled_subtle`, `cursor-not-allowed` |
 
 > Border is drawn on `::after` (via `borderAfter`), never `tw:ring-*` — see [`docs/colors.md` §2.3.1](../../docs/colors.md).
+
+The `card` variant uses `tw:bg-surface` with a primary border. Hover uses
+`tw:bg-primary_hover` and `tw:after:outline-hover`; selection uses
+`tw:bg-brand-primary` and `tw:after:outline-brand`. Focus surrounds the whole
+card. Disabled cards use the disabled surface, border and text tokens.
+The label column wraps and fills the space beside noninteractive trailing
+content. The default variant retains its indicator-only focus treatment.
 
 ## Code example
 

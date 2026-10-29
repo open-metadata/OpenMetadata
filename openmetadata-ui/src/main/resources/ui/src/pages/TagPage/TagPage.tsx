@@ -39,13 +39,13 @@ import {
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import EntityDetailHeader from '../../components/common/EntityDetailHeader/EntityDetailHeader.component';
 import { EntityDetailTab } from '../../components/common/EntityDetailHeader/EntityDetailHeader.interface';
 import {
   ManageMenu,
   ManageMenuItem,
 } from '../../components/common/EntityPageInfos/ManageButton/ManageMenu';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../components/common/Loader/Loader';
@@ -77,14 +77,12 @@ import {
   TIER_CATEGORY,
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
-import { TAGS_DOCS } from '../../constants/docs.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../enums/Assets.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -448,10 +446,6 @@ const TagPage = () => {
       await handleTagDelete(tagItem.id);
       setIsDelete(false);
     }
-  };
-
-  const handleAddTagClick = () => {
-    navigate(ROUTES.TAGS);
   };
 
   const fetchClassificationTagAssets = useCallback(async () => {
@@ -839,22 +833,20 @@ const TagPage = () => {
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('tag', tagFqn)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError('tag', tagFqn)}
+        />
+      </div>
     );
   }
 
   if (!tagItem) {
     return (
-      <ErrorPlaceHolder
-        buttonId="add-tag"
-        className="mt-0-important"
-        doc={TAGS_DOCS}
-        heading={t('label.tag')}
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-        onClick={handleAddTagClick}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
     );
   }
 

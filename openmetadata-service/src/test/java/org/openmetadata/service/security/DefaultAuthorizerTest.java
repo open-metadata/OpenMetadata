@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
@@ -298,6 +299,76 @@ class DefaultAuthorizerTest {
               AuthorizationException.class,
               () -> authorizer.authorize(flaggedBotContext, operationContext, resourceContext));
       assertTrue(disabledImpersonation.getMessage().contains("impersonation enabled"));
+    }
+  }
+
+  @Test
+  void authorizeActorEvaluatesPolicyForTheRecordedAuthor() {
+    SubjectContext analystContext = subjectContext("analyst", false, false, null);
+    ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_DOMAINS);
+
+    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+      mockedSubjectContext
+          .when(() -> SubjectContext.getSubjectContext("analyst", null))
+          .thenReturn(analystContext);
+
+      authorizer.authorizeActor(
+          ChangeActor.user("analyst", null), operationContext, resourceContext);
+
+      mockedPolicyEvaluator.verify(
+          () -> PolicyEvaluator.hasPermission(analystContext, resourceContext, operationContext));
+    }
+  }
+
+  @Test
+  void authorizeActorRefusesAnAuthorThatNoLongerExists() {
+    ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_DOMAINS);
+
+    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class)) {
+      mockedSubjectContext
+          .when(() -> SubjectContext.getSubjectContext("deleted-user", null))
+          .thenThrow(EntityNotFoundException.byName("deleted-user"));
+
+      assertThrows(
+          AuthorizationException.class,
+          () ->
+              authorizer.authorizeActor(
+                  ChangeActor.user("deleted-user", null), operationContext, resourceContext));
+    }
+  }
+
+  /**
+   * A recorded impersonation was validated when its request came in, or is a workflow's record, so
+   * it is kept for impersonation conditions but not checked again.
+   */
+  @Test
+  void authorizeActorEvaluatesAnImpersonatedAuthorWithoutRevalidatingTheBot() {
+    SubjectContext impersonatedContext =
+        new SubjectContext(new User().withName("target-user"), "agent-bot");
+    ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_DOMAINS);
+
+    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedSubjectContext
+          .when(() -> SubjectContext.getSubjectContext("target-user", "agent-bot"))
+          .thenReturn(impersonatedContext);
+
+      authorizer.authorizeActor(
+          ChangeActor.user("target-user", "agent-bot"), operationContext, resourceContext);
+
+      mockedPolicyEvaluator.verify(
+          () ->
+              PolicyEvaluator.hasPermission(
+                  impersonatedContext, resourceContext, operationContext));
+      mockedEntity.verifyNoInteractions();
     }
   }
 

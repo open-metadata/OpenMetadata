@@ -108,7 +108,7 @@ export const visitTriage = async (page: Page) => {
 };
 
 /**
- * Open My Data from the user menu, which shows it in the personal-space panel.
+ * Open My Data & Following from the user menu, which shows it in the personal-space panel.
  * A direct `goto('/my-data')` races the AI-mode route registration as `/inbox`
  * does, and the sidebar brand leads Home, not here.
  */
@@ -121,20 +121,44 @@ export const visitMyData = async (page: Page) => {
 
   // The sidebar shows before the home page has finished rendering its widgets,
   // and a re-render then can close the menu, or the My Data panel it just
-  // opened. Repeat the whole open until the panel holds.
+  // opened. Repeat the whole open until the panel holds. Once the dialog is
+  // open it covers the menu, and its content waits on the permission check and
+  // a lazy chunk, so wait for the content instead of opening it again.
   const myDataItem = page.getByTestId('ai-user-menu-my-data');
+  const myDataDialog = page.getByRole('dialog', {
+    name: 'My Data & Following',
+  });
   const myDataPage = page.getByTestId('my-data-page');
   await expect(async () => {
     if (await myDataPage.isVisible()) {
       return;
     }
-    if (!(await myDataItem.isVisible())) {
-      await menuTrigger.click();
+    if (!(await myDataDialog.isVisible())) {
+      if (!(await myDataItem.isVisible())) {
+        await menuTrigger.click({ timeout: 2_000 });
+      }
+      await myDataItem.click({ timeout: 2_000 });
     }
-    await myDataItem.click({ timeout: 2_000 });
     await expect(myDataPage).toBeVisible({ timeout: 5_000 });
   }).toPass({ timeout: AI_SHELL_TIMEOUT });
 };
+
+/** The Following tab's search: the assets `userId` follows. */
+export const isFollowedAssetsSearch = (userId: string) => (r: Response) => {
+  const url = new URL(r.url());
+
+  return (
+    r.request().method() === 'GET' &&
+    url.pathname === '/api/v1/search/query' &&
+    url.searchParams
+      .get('query_filter')
+      ?.includes(`"followers":"${userId}"`) === true
+  );
+};
+
+/** The Quill editor of the Inbox comment/reply composer inside `scope`. */
+export const composerEditor = (scope: Locator) =>
+  scope.getByTestId('inbox-comment-composer').locator('.ql-editor');
 
 /** Pick one of the Activity feed's sub-tabs (All, Mentions, …). */
 export const switchActivityFeed = async (

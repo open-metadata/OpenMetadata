@@ -16,11 +16,17 @@ import {
   Category,
   PaletteKey,
 } from '../../generated/entity/data/relationshipType';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { listRelationshipTypes } from '../../rest/ontologyAPI';
 import RelationshipTypePicker from './RelationshipTypePicker.component';
 
 jest.mock('../../rest/ontologyAPI', () => ({
   listRelationshipTypes: jest.fn(),
+}));
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -123,6 +129,90 @@ describe('RelationshipTypePicker', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('offers the given groups without loading glossary relationship types', () => {
+    const onSelect = jest.fn();
+    render(
+      <RelationshipTypePicker
+        groups={[
+          {
+            id: 'core',
+            title: 'Core',
+            options: [
+              {
+                id: 'subClassOf',
+                label: 'is a',
+                inverseLabel: 'has subtype',
+                paletteKey: PaletteKey.Blue,
+              },
+            ],
+          },
+          {
+            id: 'object-properties',
+            title: 'Object properties',
+            options: [
+              {
+                id: 'property:placedBy',
+                label: 'placed by',
+                paletteKey: PaletteKey.Purple,
+              },
+            ],
+          },
+        ]}
+        sourceLabel="Order"
+        targetLabel="Customer"
+        onSelect={onSelect}
+      />
+    );
+
+    expect(mockListRelationshipTypes).not.toHaveBeenCalled();
+    expect(screen.getByTestId('group-core')).toHaveTextContent(
+      'Coreis alabel.inverse: has subtype'
+    );
+
+    fireEvent.click(screen.getByTestId('relation-type-property:placedBy'));
+
+    expect(onSelect).toHaveBeenCalledWith('property:placedBy');
+    expect(
+      screen.queryByTestId('relation-type-create')
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers unmatched search text as a new relationship type', () => {
+    const onSelect = jest.fn();
+    render(
+      <RelationshipTypePicker
+        canCreateType
+        groups={[
+          {
+            id: 'core',
+            title: 'Core',
+            options: [
+              { id: 'subClassOf', label: 'is a', paletteKey: PaletteKey.Blue },
+            ],
+          },
+        ]}
+        sourceLabel="Order"
+        targetLabel="Customer"
+        onSelect={onSelect}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('relation-type-search'), {
+      target: { value: 'is a' },
+    });
+
+    expect(
+      screen.queryByTestId('relation-type-create')
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('relation-type-search'), {
+      target: { value: ' ships to ' },
+    });
+    fireEvent.click(screen.getByTestId('relation-type-create'));
+
+    expect(onSelect).toHaveBeenCalledWith('new:ships to');
+  });
+
   it('invokes onCancel when the cancel button is clicked', async () => {
     const onCancel = jest.fn();
     renderPicker({ onCancel });
@@ -133,5 +223,35 @@ describe('RelationshipTypePicker', () => {
     fireEvent.click(screen.getByTestId('relation-type-cancel'));
 
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('keeps filtering, selection and cancel', async () => {
+      const onSelect = jest.fn();
+      const onCancel = jest.fn();
+      renderPicker({ onCancel, onSelect });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('relation-type-broader')).toBeInTheDocument()
+      );
+      fireEvent.change(screen.getByTestId('relation-type-search'), {
+        target: { value: 'govern' },
+      });
+      fireEvent.click(screen.getByTestId('relation-type-governedBy'));
+
+      expect(onSelect).toHaveBeenCalledWith('governedBy');
+
+      fireEvent.click(screen.getByTestId('relation-type-cancel'));
+
+      expect(onCancel).toHaveBeenCalled();
+    });
   });
 });

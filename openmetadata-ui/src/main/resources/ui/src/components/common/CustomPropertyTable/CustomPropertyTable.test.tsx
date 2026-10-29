@@ -46,10 +46,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
-});
-
 jest.mock('../EmptyPlaceholder/CreatePlaceholder', () => {
   return jest.fn().mockReturnValue(<div>CreatePlaceholder.component</div>);
 });
@@ -124,8 +120,8 @@ describe('Test CustomProperty Table Component', () => {
         />
       );
     });
-    const permissionPlaceholder = await screen.findByText(
-      'ErrorPlaceHolder.component'
+    const permissionPlaceholder = await screen.findByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
     );
 
     expect(permissionPlaceholder).toBeInTheDocument();
@@ -230,7 +226,11 @@ describe('Test CustomProperty Table Component', () => {
       );
     });
 
-    expect(screen.queryByText('ErrorPlaceHolder.component')).toBeNull();
+    expect(
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeNull();
   });
 
   it('Loader should be shown while loading the custom properties', async () => {

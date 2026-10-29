@@ -10,18 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  Dropdown,
-  Input,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import {
-  ChevronDown,
-  FilterLines,
-  Search,
-} from '@openmetadata/ui-core-components/icons';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomPropertyLayoutItem } from '../CustomPropertiesWidget/CustomPropertiesWidget.interface';
@@ -34,6 +23,7 @@ import { SORT_OPTIONS } from './CustomPropertyCard.constants';
 import { CustomPropertyCardListProps } from './CustomPropertyCard.interface';
 import { filterAndSortProperties } from './CustomPropertyCard.utils';
 import { CardListSortMode } from './CustomPropertyCardList.interface';
+import { CustomPropertySearchSortBar } from './CustomPropertySearchSortBar';
 
 const EMPTY_LAYOUT: CustomPropertyLayoutItem[] = [];
 
@@ -55,9 +45,6 @@ export const CustomPropertyCardList = ({
   const sortOptions = hasLayout
     ? [LAYOUT_SORT_OPTION, ...SORT_OPTIONS]
     : SORT_OPTIONS;
-
-  const activeSort =
-    sortOptions.find((option) => option.id === sortMode) ?? sortOptions[0];
 
   const visibleProperties = useMemo(() => {
     if (sortMode === 'layout') {
@@ -82,53 +69,13 @@ export const CustomPropertyCardList = ({
       data-testid="custom-properties-card"
       direction="col">
       <Box direction="col" gap={4}>
-        <Box align="center" gap={3} justify="between" wrap="wrap">
-          <Input
-            aria-label={t('label.search-entity', {
-              entity: t('label.property-plural'),
-            })}
-            className="tw:w-full tw:max-w-80"
-            icon={Search}
-            inputDataTestId="custom-property-search"
-            placeholder={t('label.search-entity', {
-              entity: t('label.property-plural'),
-            })}
-            type="search"
-            value={searchText}
-            onChange={setSearchText}
-          />
-          <Dropdown.Root>
-            <Button
-              color="secondary"
-              data-testid="custom-property-sort"
-              iconLeading={<FilterLines className="tw:size-4" />}
-              iconTrailing={<ChevronDown className="tw:size-4" />}
-              size="sm">
-              {t('label.sort-colon-value', { value: t(activeSort.labelKey) })}
-            </Button>
-            <Dropdown.Popover className="tw:w-48">
-              <Dropdown.Menu
-                disallowEmptySelection
-                aria-label={t('label.sort-by')}
-                selectedKeys={[sortMode]}
-                selectionMode="single"
-                onSelectionChange={(keys) => {
-                  const [key] = Array.from(keys as Set<CardListSortMode>);
-                  if (key) {
-                    setSortMode(key);
-                  }
-                }}>
-                {sortOptions.map((option) => (
-                  <Dropdown.Item
-                    id={option.id}
-                    key={option.id}
-                    label={t(option.labelKey)}
-                  />
-                ))}
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
-        </Box>
+        <CustomPropertySearchSortBar
+          searchText={searchText}
+          sortMode={sortMode}
+          sortOptions={sortOptions}
+          onSearchChange={setSearchText}
+          onSortChange={setSortMode}
+        />
 
         {visibleProperties.length ? (
           // Raw grid instead of core Grid: Grid.Item spans are inline styles and

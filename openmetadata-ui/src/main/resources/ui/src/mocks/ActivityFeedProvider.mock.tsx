@@ -132,7 +132,8 @@ export const DummyChildrenTaskMentionsComponent = () => {
  * provider holds *between* a filter switch and the response landing.
  */
 export const DummyTaskListStateComponent = () => {
-  const { getTaskData, tasks, entityPaging } = useActivityFeedProvider();
+  const { getTaskData, tasks, entityPaging, listError } =
+    useActivityFeedProvider();
 
   const fetchTasks = (statusGroup: TaskStatusGroup) => {
     getTaskData(
@@ -160,6 +161,9 @@ export const DummyTaskListStateComponent = () => {
         {tasks.map((task) => task.id).join(',')}
       </span>
       <span data-testid="paging-after">{entityPaging.after ?? 'none'}</span>
+      <span data-testid="list-error">
+        {listError?.response?.status ?? 'none'}
+      </span>
     </div>
   );
 };
@@ -419,6 +423,49 @@ export const DummySetActiveActivityComponent = ({
       <button data-testid="set-active" onClick={handleSetActive}>
         {t('label.set-active')}
       </button>
+      <span data-testid="selected-activity-id">
+        {selectedActivity?.id ?? 'none'}
+      </span>
+      <span data-testid="activity-reply-count">{activityReplies.length}</span>
+    </div>
+  );
+};
+
+export const DummyActivityDrawerComponent = ({
+  activity,
+  thread,
+}: {
+  activity: ActivityEvent;
+  thread: Conversation;
+}) => {
+  const { t } = useTranslation();
+  const {
+    showActivityDrawer,
+    showDrawer,
+    hideDrawer,
+    isDrawerOpen,
+    isPostsLoading,
+    selectedActivity,
+    activityReplies,
+  } = useActivityFeedProvider();
+
+  return (
+    <div>
+      <button
+        data-testid="open-activity-drawer"
+        onClick={() => showActivityDrawer(activity)}>
+        {t('label.comment')}
+      </button>
+      <button
+        data-testid="open-thread-drawer"
+        onClick={() => showDrawer(thread)}>
+        {t('label.reply')}
+      </button>
+      <button data-testid="hide-drawer" onClick={hideDrawer}>
+        {t('label.close')}
+      </button>
+      <span data-testid="drawer-open">{String(isDrawerOpen)}</span>
+      <span data-testid="posts-loading">{String(isPostsLoading)}</span>
       <span data-testid="selected-activity-id">
         {selectedActivity?.id ?? 'none'}
       </span>

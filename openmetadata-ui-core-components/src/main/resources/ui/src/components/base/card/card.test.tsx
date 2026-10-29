@@ -59,6 +59,21 @@ describe('Card theme roles', () => {
     );
   });
 
+  it('tile variant sits below the surface in dark and lightens on hover when clickable', () => {
+    render(
+      <Card isClickable data-testid="card" variant="tile">
+        Content
+      </Card>
+    );
+
+    expect(screen.getByTestId('card')).toHaveClass(
+      'tw:border-secondary',
+      'tw:bg-primary_alt',
+      'tw:shadow-xs',
+      'tw:hover:bg-primary_hover'
+    );
+  });
+
   it('paints the secondary colour on a ghost card', () => {
     render(
       <Card color="secondary" data-testid="card" variant="ghost">
