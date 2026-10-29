@@ -1239,6 +1239,69 @@ describe('OntologyGraphView', () => {
     expect(showErrorToast).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the inverse when the repair fails, so a later retry links it back', async () => {
+    const stored = keepRegistryWrites();
+    const failure = { isAxiosError: true, response: { status: 500 } };
+    const repairFailure = { isAxiosError: true, response: { status: 503 } };
+    (patchRelationshipType as jest.Mock)
+      .mockRejectedValueOnce(failure)
+      .mockRejectedValueOnce(repairFailure);
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    await registerApprovedBy();
+    await registerApprovedBy();
+
+    expect((showErrorToast as jest.Mock).mock.calls).toEqual([
+      [failure],
+      [repairFailure],
+    ]);
+    expect(createOntologyAxiom).not.toHaveBeenCalled();
+
+    await registerApprovedBy();
+
+    expect((patchRelationshipType as jest.Mock).mock.calls).toEqual([
+      ['type-approves', backLinkTo('approvedBy')],
+      ['type-approves', backLinkTo('approvedBy')],
+      ['type-approves', backLinkTo('approvedBy')],
+    ]);
+    expect(registeredPairs(stored)).toEqual([
+      ['approves', 'approvedBy'],
+      ['approvedBy', 'approves'],
+    ]);
+    expect(createRelationshipType).toHaveBeenCalledTimes(2);
+    expect(createOntologyAxiom).toHaveBeenCalledTimes(1);
+    expect(showErrorToast).toHaveBeenCalledTimes(2);
+  });
+
+  it('links the earlier pair back when the retry is drawn as the inverse', async () => {
+    const stored = keepRegistryWrites();
+    const failure = { isAxiosError: true, response: { status: 500 } };
+    (patchRelationshipType as jest.Mock).mockRejectedValueOnce(failure);
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    await registerApprovedBy();
+    await registerType('approves', 'approved by');
+
+    expect((patchRelationshipType as jest.Mock).mock.calls).toEqual([
+      ['type-approves', backLinkTo('approvedBy')],
+      ['type-approves', backLinkTo('approvedBy')],
+    ]);
+    expect(registeredPairs(stored)).toEqual([
+      ['approves', 'approvedBy'],
+      ['approvedBy', 'approves'],
+    ]);
+    expect(createRelationshipType).toHaveBeenCalledTimes(2);
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
   it('leaves a one-way pair it did not register as it is', async () => {
     const approves = relationshipType('approves', 'approves', APPROVES, {
       category: Category.Custom,
