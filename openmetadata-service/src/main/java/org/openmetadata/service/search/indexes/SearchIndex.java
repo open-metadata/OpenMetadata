@@ -172,7 +172,8 @@ public interface SearchIndex {
    * carries. A create, an update or a CSV import holds only what that operation loaded, so a count
    * such as {@code childrenCount} arrives as null or as a placeholder and would be indexed as 0.
    * {@code SearchRepository} loads these onto a copy before each such write. Each one must also be
-   * in {@link #getRequiredReindexFields()}. Safe to call on a probe instance whose entity is null.
+   * in {@link #getRequiredReindexFields()} and have a field fetcher in its repository. Safe to call
+   * on a probe instance whose entity is null.
    *
    * <p>ADR:2026-10-29-search-documents-load-computed-counts-on-every-write
    */
