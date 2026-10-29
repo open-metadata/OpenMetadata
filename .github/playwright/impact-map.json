@@ -217,7 +217,9 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestCase*.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestSuiteRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinitionRepository.java",
-        "openmetadata-spec/src/main/resources/json/schema/tests/**"
+        "openmetadata-spec/src/main/resources/json/schema/tests/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/dataQualityReportBatcher.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/dataQualityReportBatcher.test.ts"
       ],
       "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
       "specs": [
@@ -1542,6 +1544,15 @@
       ],
       "projects": ["Basic"],
       "specs": ["playwright/e2e/Pages/AuditLogs.spec.ts"]
+    },
+    {
+      "_comment": "The navbar domain scope applied to every request (withDomainFilter, also read by the batched Data Quality report) and the subdomain glyph in the scope picker. The DomainIsolation specs select a domain and check each surface narrows to it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/hoc/withDomainFilter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/ic-subdomain.svg"
+      ],
+      "projects": ["DomainIsolation"],
+      "specs": ["playwright/e2e/Features/DomainIsolation/**/*.spec.ts"]
     }
   ]
 }
