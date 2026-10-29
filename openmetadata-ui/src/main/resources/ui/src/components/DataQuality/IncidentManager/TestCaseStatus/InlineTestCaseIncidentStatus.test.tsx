@@ -482,6 +482,24 @@ describe('InlineTestCaseIncidentStatus', () => {
       );
     });
 
+    it('status menu of an assigned incident offers only reassign and resolve', async () => {
+      renderComponent({
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      });
+
+      // An assigned chip opens on the assignee picker; Back leads to the menu.
+      await act(async () => {
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('incident-status-popover-back'));
+      });
+
+      expect(
+        screen.getAllByRole('menuitem').map((item) => item.textContent)
+      ).toEqual(['label.assigned', 'label.resolved']);
+    });
+
     it('selecting ACK submits directly via API', async () => {
       renderComponent();
 
