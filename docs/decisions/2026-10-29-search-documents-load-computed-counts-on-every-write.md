@@ -6,7 +6,10 @@
 - **Guard:** `SearchIndexFactoryTest#fieldsLoadedOnWriteAreAlsoReindexFields`,
   `SearchIndexFactoryTest#computedCountsAreLoadedOnWrite`,
   `TeamMembershipSearchIT#teamCreatedWithAUserKeepsItsUserCountThroughAPlainEdit`,
-  `MetricGroupResourceIT#csvReimportKeepsAParentsChildrenCount`
+  `MetricGroupResourceIT#csvReimportKeepsAParentsChildrenCount`,
+  `FolderResourceIT#test_folderKeepsItsChildrenCountInSearchThroughAPlainEdit`,
+  `SearchRepositoryTest#testUpdateEntitiesBulkQueuesRetryWhenFieldsLoadedOnWriteFail`,
+  `SearchRepositoryTest#testCreateEntitiesIndexQueuesRetryWhenFieldsLoadedOnWriteFail`
 - **Related:** #36494, ADR:2026-10-29-parent-metric-reads-carry-up-to-25-variant-expressions
 
 ## Context
@@ -24,7 +27,8 @@ The bulk updater path already reloads every reindex field before it writes; the 
   fetchers, before building the document on create, on a full-document update, on bulk create and
   on bulk update (CSV import). The caller's entity, and so the API response, is not changed.
 - Every field loaded on write is also in `getRequiredReindexFields()`, so reindex writes the same
-  value.
+  value, and has a fetcher in its repository's `fieldFetchers`. Loading one without a fetcher fails
+  the write to the retry queue rather than indexing 0.
 - A type that declares no fields pays nothing: no copy and no read.
 - The bulk paths load once per batch. If that load fails, the batch goes to the search retry queue,
   which re-reads every reindex field, instead of being written with zeros or not written at all.

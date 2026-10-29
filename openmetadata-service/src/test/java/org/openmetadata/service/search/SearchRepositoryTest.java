@@ -649,6 +649,62 @@ class SearchRepositoryTest {
   }
 
   @Test
+  void testUpdateEntitiesBulkQueuesRetryWhenFieldsLoadedOnWriteFail() throws Exception {
+    SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
+    when(realSearchRepository.searchIndexFactory.getFieldsLoadedOnWriteFor(Entity.METRIC))
+        .thenReturn(Set.of("childrenCount"));
+    BulkSink mockBulkSink = mock(BulkSink.class);
+    doCallRealMethod().when(realSearchRepository).updateEntitiesBulk(any());
+    doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
+    when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
+        .thenReturn(mockBulkSink);
+    when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
+    IllegalStateException loadFailure = new IllegalStateException("count query failed");
+    List<EntityInterface<?>> entities = List.of(new MockEntityWithType(Entity.METRIC, "m1"));
+
+    try (MockedStatic<Entity> entityStatic = mockStatic(Entity.class);
+        MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      entityStatic.when(() -> Entity.isSearchIndexable(any())).thenReturn(true);
+      entityStatic.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenThrow(loadFailure);
+
+      realSearchRepository.updateEntitiesBulk(entities);
+
+      verify(mockBulkSink, never()).write(any(), any());
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  entities.getFirst(), "updateEntitiesBulk", loadFailure));
+    }
+  }
+
+  @Test
+  void testCreateEntitiesIndexQueuesRetryWhenFieldsLoadedOnWriteFail() throws Exception {
+    SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
+    when(realSearchRepository.searchIndexFactory.getFieldsLoadedOnWriteFor(Entity.METRIC))
+        .thenReturn(Set.of("childrenCount"));
+    doCallRealMethod().when(realSearchRepository).createEntitiesIndex(any());
+    when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    IllegalStateException loadFailure = new IllegalStateException("count query failed");
+    List<EntityInterface<?>> entities = List.of(new MockEntityWithType(Entity.METRIC, "m1"));
+
+    try (MockedStatic<Entity> entityStatic = mockStatic(Entity.class);
+        MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      entityStatic.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenThrow(loadFailure);
+
+      realSearchRepository.createEntitiesIndex(entities);
+
+      verify(elasticSearchClient, never()).createEntities(any(), any());
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  entities.getFirst(), "createEntitiesIndex", loadFailure));
+    }
+  }
+
+  @Test
   void testUpdateEntitiesBulkFallsBackBeforeAnyBulkWriteIsAttempted() {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
     realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);

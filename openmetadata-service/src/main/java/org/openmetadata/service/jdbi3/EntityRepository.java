@@ -2835,11 +2835,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * Loads {@code fieldNames} onto {@code entities} with the field fetchers and leaves every other
    * field as it is, unlike {@link #setFieldsInBulk}, which clears what it was not asked for. For
-   * search documents built from entities that never carried those computed fields.
+   * search documents built from entities that never carried those computed fields. A field with no
+   * registered fetcher would load nothing and be indexed as 0, so it fails the write instead.
    */
   @SuppressWarnings("unchecked")
   public final void loadFieldsForSearchIndex(
       List<? extends EntityInterface<?>> entities, Set<String> fieldNames) {
+    List<String> unfetchable =
+        fieldNames.stream().filter(field -> !fieldFetchers.containsKey(field)).toList();
+    if (!unfetchable.isEmpty()) {
+      throw new IllegalStateException(
+          String.format("%s has no field fetcher for %s", entityType, unfetchable));
+    }
     fetchAndSetFields((List<T>) entities, getFields(String.join(",", fieldNames)));
   }
 

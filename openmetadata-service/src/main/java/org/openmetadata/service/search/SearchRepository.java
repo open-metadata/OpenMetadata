@@ -1789,11 +1789,11 @@ public class SearchRepository {
           }
           return;
         }
-        IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<EntityInterface<?>> indexed = new ArrayList<>(entities);
         if (!loadFieldsOnWriteOrRetry(entityType, indexed, "createEntitiesIndex")) {
           return;
         }
+        IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
         for (EntityInterface<?> entity : indexed) {
           try {
@@ -2346,8 +2346,7 @@ public class SearchRepository {
           deleteEntityIndex(entity);
         }
       }
-      if (typeEntities.isEmpty()
-          || !loadFieldsOnWriteOrRetry(entityType, typeEntities, "updateEntitiesBulk")) {
+      if (typeEntities.isEmpty()) {
         continue;
       }
       Map<String, EntityInterface<?>> typeEntitiesById =
@@ -2368,6 +2367,9 @@ public class SearchRepository {
         for (EntityInterface<?> entity : typeEntities) {
           enqueueEntityRetry(entity, "updateEntitiesBulk: Search client unavailable");
         }
+        continue;
+      }
+      if (!loadFieldsOnWriteOrRetry(entityType, typeEntities, "updateEntitiesBulk")) {
         continue;
       }
 
@@ -2732,8 +2734,9 @@ public class SearchRepository {
     Set<String> fields = searchIndexFactory.getFieldsLoadedOnWriteFor(entityType);
     List<E> result = entities;
     if (!fields.isEmpty() && !entities.isEmpty()) {
+      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
       result = entities.stream().map(SearchRepository::copyOf).toList();
-      Entity.getEntityRepository(entityType).loadFieldsForSearchIndex(result, fields);
+      repository.loadFieldsForSearchIndex(result, fields);
     }
     return result;
   }
