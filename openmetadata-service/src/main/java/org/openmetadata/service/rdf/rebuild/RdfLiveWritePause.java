@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.service.apps.bundles.rdf.RdfReindexRunLock;
@@ -35,8 +35,9 @@ import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
  * they would have waited for Fuseki, before getting {@link RdfStorageMaintenanceException}.
  *
  * <p>The lease lives in the shared lock table and expires unless renewed, so a server that stops
- * mid-maintenance pauses writes for at most {@link RdfReindexRunLock#EXPIRY_MS}. The thread that
- * holds the pause may still write, for example to reload ontologies into an emptied dataset. See
+ * mid-maintenance pauses writes for at most {@link RdfReindexRunLock#EXPIRY_MS}. The job holding
+ * the pause still writes through it, for example to reload ontologies into an emptied dataset,
+ * with the {@link RdfWriteDelivery#pauseHolder} delivery it is handed. See
  * ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule.
  */
 @Slf4j
@@ -46,7 +47,6 @@ public final class RdfLiveWritePause {
   private static final long HEARTBEAT_SECONDS = 30;
   private static final String HOLDER =
       "SELECT jobId FROM rdf_reindex_lock WHERE lockKey = ? AND expiresAt > ?";
-  private static final ThreadLocal<String> OWNER = new ThreadLocal<>();
 
   private final RdfReindexLockDAO locks;
   private final RdfDatasetManager datasets;
@@ -60,18 +60,18 @@ public final class RdfLiveWritePause {
   }
 
   /**
-   * Runs {@code work} with every other writer of the serving dataset held back. Returns once the
-   * pause is released, even when {@code work} throws. Writes already on their way to Fuseki finish
-   * before {@code work} starts.
+   * Runs {@code work} with every other writer of the serving dataset held back, handing it the
+   * delivery its own writes pass the pause with. Returns once the pause is released, even when
+   * {@code work} throws. Writes already on their way to Fuseki finish before {@code work} starts.
    */
-  public <T> T during(final String jobId, final Supplier<T> work) {
+  public <T> T during(final String jobId, final Function<RdfWriteDelivery, T> work) {
     final RdfReindexRunLock lease = new RdfReindexRunLock(locks, LOCK_KEY, jobId, serverId);
     lease.acquire();
     final ScheduledFuture<?> heartbeat = keepAlive(lease);
     try {
       datasets.awaitServingWrites();
       LOG.info("Paused writes to the RDF serving dataset for maintenance {}", jobId);
-      return asOwner(jobId, work);
+      return work.apply(RdfWriteDelivery.pauseHolder(jobId));
     } finally {
       heartbeat.cancel(false);
       lease.release();
@@ -95,34 +95,17 @@ public final class RdfLiveWritePause {
     }
   }
 
-  private static <T> T asOwner(final String jobId, final Supplier<T> work) {
-    final String previous = OWNER.get();
-    OWNER.set(jobId);
-    try {
-      return work.get();
-    } finally {
-      if (previous == null) {
-        OWNER.remove();
-      } else {
-        OWNER.set(previous);
-      }
-    }
-  }
-
   /**
    * Refuses a serving write while another job holds the pause. Called inside the transaction that
    * holds the serving-dataset row lock, so a write either finishes before the pause's flush or
    * sees the pause.
    */
-  static void requireWritable(final Handle handle, final long now) {
+  static void requireWritable(
+      final Handle handle, final long now, final RdfWriteDelivery delivery) {
     final Optional<String> holder = holder(handle, now);
-    if (holder.isPresent() && !holder.get().equals(OWNER.get())) {
+    if (holder.isPresent() && !delivery.holds(holder.get())) {
       throw new RdfStorageMaintenanceException(holder.get(), RETRY_AFTER);
     }
-  }
-
-  static boolean isHeldByCurrentThread() {
-    return OWNER.get() != null;
   }
 
   /** Whether storage maintenance currently holds writes to the serving dataset. */
@@ -130,7 +113,8 @@ public final class RdfLiveWritePause {
     return holder(handle, now).isPresent();
   }
 
-  private static Optional<String> holder(final Handle handle, final long now) {
+  /** The job holding the pause, if one does. */
+  static Optional<String> holder(final Handle handle, final long now) {
     return handle.createQuery(HOLDER).bind(0, LOCK_KEY).bind(1, now).mapTo(String.class).findOne();
   }
 }

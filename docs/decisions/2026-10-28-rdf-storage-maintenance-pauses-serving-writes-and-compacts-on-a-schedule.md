@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-10-28 (initial)
 - **Deciders:** Platform
 - **Guard:** `RdfStorageMaintenanceIT`, `RdfStorageMaintenanceServiceTest`, `FusekiCompactionTest`,
-  `CompactionBlockedWriteTest`, `RdfIndexAppTest`
+  `CompactionBlockedWriteTest`, `RdfIndexAppTest`, `RdfLiveWriteTest`
 - **Related:** #36437
 
 ## Context
@@ -39,6 +39,11 @@ dead-lettered, marking the projection degraded until a full rebuild.
   `RdfStorageMaintenanceException`, which the REST API answers with 503 and `Retry-After`. The pause
   expires unless renewed, so a server that stops mid-maintenance holds writes for at most five
   minutes.
+- How a write meets the pause, and who owns its failure, travels with the storage handle a writer
+  is given (`RdfWriteDelivery`), not with the thread it runs on. The live-write queue's handle is
+  held back at once and its failures stay the queue's; every other handle waits and marks the
+  projection degraded on failure; the maintenance job writes through its own pause with the
+  handle the pause hands it, checked against the lease's job id.
 - The pause ends only on Fuseki's answer: a status poll that fails counts as still running. A write
   that times out while Fuseki reports a running compaction, whoever started it, is held back like a
   paused write instead of counting as failed.

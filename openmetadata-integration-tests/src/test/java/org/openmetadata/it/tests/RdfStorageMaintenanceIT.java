@@ -45,11 +45,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfDatasetNames;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
-import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
+import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
@@ -139,11 +139,10 @@ public class RdfStorageMaintenanceIT {
   @EnumSource(RdfTestDatabase.Backend.class)
   void theHolderWritesDuringItsOwnPause(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
-      final RdfStorageInterface serving = fixture.manager.routedStorage();
       fixture.pause.during(
           UUID.randomUUID().toString(),
-          () -> {
-            serving.executeSparqlUpdate(sparql(1));
+          holder -> {
+            fixture.manager.routedStorage(holder).executeSparqlUpdate(sparql(1));
             return null;
           });
 
@@ -156,7 +155,7 @@ public class RdfStorageMaintenanceIT {
   void aWriterTheQueueDoesNotRetryWaitsForThePauseInsteadOfLosingItsWrite(
       final RdfTestDatabase.Backend backend) throws Exception {
     try (Fixture fixture = new Fixture(backend)) {
-      final RdfStorageInterface serving = fixture.manager.routedStorage();
+      final RdfStorageInterface serving = fixture.manager.routedStorage(RdfWriteDelivery.DIRECT);
       final HeldPause held = fixture.holdPause();
       final CompletableFuture<Void> write =
           CompletableFuture.runAsync(() -> serving.executeSparqlUpdate(sparql(2)));
@@ -175,7 +174,7 @@ public class RdfStorageMaintenanceIT {
   void aWriterStillWaitingWhenItsTimeoutEndsIsRefusedWithNothingApplied(
       final RdfTestDatabase.Backend backend) throws InterruptedException {
     try (Fixture fixture = new Fixture(backend)) {
-      final RdfStorageInterface serving = fixture.manager.routedStorage();
+      final RdfStorageInterface serving = fixture.manager.routedStorage(RdfWriteDelivery.DIRECT);
       final HeldPause held = fixture.holdPause();
 
       assertThrows(
@@ -199,7 +198,12 @@ public class RdfStorageMaintenanceIT {
           longAgo,
           longAgo + TimeUnit.MINUTES.toMillis(5));
 
-      assertDoesNotThrow(() -> fixture.manager.routedStorage().executeSparqlUpdate(sparql(1)));
+      assertDoesNotThrow(
+          () ->
+              fixture
+                  .manager
+                  .routedStorage(RdfWriteDelivery.DIRECT)
+                  .executeSparqlUpdate(sparql(1)));
     }
   }
 
@@ -298,7 +302,7 @@ public class RdfStorageMaintenanceIT {
               () ->
                   pause.during(
                       UUID.randomUUID().toString(),
-                      () -> {
+                      holder -> {
                         paused.countDown();
                         awaitQuietly(done);
                         return null;
@@ -316,12 +320,14 @@ public class RdfStorageMaintenanceIT {
     }
 
     void applyServing(final String payload) {
-      JsonUtils.readValue(payload, RdfMutation.class).apply(manager.routedStorage());
+      JsonUtils.readValue(payload, RdfMutation.class)
+          .apply(manager.routedStorage(RdfWriteDelivery.DIRECT));
     }
 
-    /** As the live writer applies a queue row: the queue, not the write, owns a failure. */
+    /** As the live writer applies a queue row: held back at once while paused, never waiting. */
     void applyQueued(final String payload) {
-      RdfProjectionHealth.withDurableRecovery(() -> applyServing(payload));
+      JsonUtils.readValue(payload, RdfMutation.class)
+          .apply(manager.routedStorage(RdfWriteDelivery.QUEUED));
     }
 
     int headAttempts() {
