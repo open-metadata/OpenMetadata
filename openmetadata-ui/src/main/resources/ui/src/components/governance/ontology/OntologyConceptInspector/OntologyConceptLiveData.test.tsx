@@ -113,6 +113,10 @@ describe('OntologyConceptLiveData', () => {
     expect(screen.queryByTestId('live-data-extension')).not.toBeInTheDocument();
   });
 
+  it('gets no live-data extension from the OSS class base', () => {
+    expect(ontologyExplorerClassBase.getConceptLiveDataExtension()).toBeNull();
+  });
+
   it('copies exactly the SQL it shows', async () => {
     const writeText = jest.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
@@ -128,6 +132,9 @@ describe('OntologyConceptLiveData', () => {
     });
 
     expect(writeText).toHaveBeenCalledWith(ROOT_SQL);
+    expect(
+      screen.getByTestId('ontology-live-data-copy-status')
+    ).toHaveTextContent('label.copied');
   });
 
   it('adds a search-around hop, regenerates the SQL with it, and removes it again', async () => {
@@ -163,6 +170,79 @@ describe('OntologyConceptLiveData', () => {
     expect(
       screen.queryByTestId('ontology-live-data-hops')
     ).not.toBeInTheDocument();
+  });
+
+  it('labels an incoming relation with its declared inverse, and an outgoing one with itself', async () => {
+    const inverseModel: OntologyStudioModel = {
+      ...model,
+      properties: [
+        { ...model.properties[0], inverse: 'urn:payments:hasPart' },
+        {
+          id: 'has-part',
+          name: 'hasPart',
+          fullyQualifiedName: 'Payments.hasPart',
+          iri: 'urn:payments:hasPart',
+          kind: Kind.Object,
+          ontology: ontologyRef,
+          inverse: 'urn:payments:partOf',
+        },
+      ],
+    };
+    const inverseRelations = getModelRelations(inverseModel);
+    const { unmount } = renderWithQueryClient(
+      <OntologyConceptLiveData
+        concept={transfer}
+        model={inverseModel}
+        relations={inverseRelations}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
+
+    expect(
+      screen.getByTestId('ontology-live-data-hop-option-part-of:customer')
+    ).toHaveTextContent('part of · Customer');
+
+    unmount();
+    renderWithQueryClient(
+      <OntologyConceptLiveData
+        concept={customer}
+        model={inverseModel}
+        relations={inverseRelations}
+      />
+    );
+    fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
+
+    expect(
+      screen.getByTestId('ontology-live-data-hop-option-part-of:transfer')
+    ).toHaveTextContent('has part · Funds Transfer');
+  });
+
+  it('stops offering search-around once the path has five hops', async () => {
+    renderLiveData();
+    await screen.findByTestId('ontology-live-data-sql');
+
+    ['customer', 'transfer', 'customer', 'transfer', 'customer'].forEach(
+      (target) => {
+        fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
+        fireEvent.click(
+          screen.getByTestId(`ontology-live-data-hop-option-part-of:${target}`)
+        );
+      }
+    );
+
+    expect(screen.getByTestId('ontology-live-data-hops')).toHaveTextContent(
+      'part of · Customer'
+    );
+    expect(
+      screen.queryByTestId('ontology-live-data-search-around')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-live-data-remove-hop'));
+
+    expect(
+      screen.getByTestId('ontology-live-data-search-around')
+    ).toBeInTheDocument();
   });
 
   it('says when the concept has no object-property relation to follow', async () => {

@@ -21,6 +21,7 @@ class OntologyConceptSqlGeneratorTest {
   private static final String ACCOUNTS = "finance.warehouse.payments.accounts";
   private static final UUID PART_OF = UUID.randomUUID();
   private static final UUID PAID_BY = UUID.randomUUID();
+  private static final UUID RECEIVED_BY = UUID.randomUUID();
 
   @Test
   void oneTableSelectsTheBoundColumnsWithTheRowLimit() {
@@ -43,7 +44,7 @@ class OntologyConceptSqlGeneratorTest {
         OntologyConceptSqlGenerator.generate(
             concept("Funds Transfer", table(TRANSFERS, "Mysql")), List.of());
 
-    assertEquals("SELECT *\nFROM payments.transfers\nLIMIT 50", generated.sql());
+    assertEquals("SELECT *\nFROM `payments`.`transfers`\nLIMIT 50", generated.sql());
   }
 
   @Test
@@ -147,22 +148,194 @@ class OntologyConceptSqlGeneratorTest {
   }
 
   @Test
-  void identifiersAreQuotedOnlyWhenNeededInEachDialectsStyle() {
+  void identifiersAreQuotedInEachDialectsStyle() {
     final String table = "finance.warehouse.\"Payments Core\".transfers";
 
     assertEquals(
         "SELECT \"Amount USD\", \"order\", transfer_id\nFROM \"Payments Core\".transfers\nLIMIT 50",
         sqlFor(table, "Snowflake"));
     assertEquals(
-        "SELECT `Amount USD`, `order`, transfer_id\nFROM `Payments Core`.transfers\nLIMIT 50",
+        "SELECT `Amount USD`, `order`, `transfer_id`\nFROM `Payments Core`.`transfers`\nLIMIT 50",
         sqlFor(table, "BigQuery"));
     assertEquals(
-        "SELECT `Amount USD`, `order`, transfer_id\nFROM `Payments Core`.transfers\nLIMIT 50",
+        "SELECT `Amount USD`, `order`, `transfer_id`\nFROM `Payments Core`.`transfers`\nLIMIT 50",
         sqlFor(table, "Mysql"));
     assertEquals(
-        "SELECT [Amount USD], [order], transfer_id\nFROM [Payments Core].transfers\nLIMIT 50",
+        "SELECT `Amount USD`, `order`, `transfer_id`\nFROM `Payments Core`.`transfers`\nLIMIT 50",
+        sqlFor(table, "Iomete"));
+    assertEquals(
+        "SELECT TOP 50 [Amount USD], [order], [transfer_id]\nFROM [Payments Core].[transfers]",
         sqlFor(table, "Mssql"));
     assertEquals(OntologyConceptQueryDialect.ANSI, OntologyConceptSqlGenerator.dialectOf("Trino"));
+    assertEquals(
+        OntologyConceptQueryDialect.SPARK, OntologyConceptSqlGenerator.dialectOf("Iomete"));
+  }
+
+  @Test
+  void eachDialectQuotesItsOwnReservedWords() {
+    assertEquals(
+        "SELECT `rank`, `index`, `groups`\nFROM `payments`.`transfers`\nLIMIT 50",
+        sqlFor(TRANSFERS, "Mysql", "rank", "index", "groups"));
+    assertEquals(
+        "SELECT \"only\", \"fetch\", \"constraint\", \"cast\"\nFROM payments.transfers\nLIMIT 50",
+        sqlFor(TRANSFERS, "Postgres", "only", "fetch", "constraint", "cast"));
+    assertEquals(
+        "SELECT `hash`, `qualify`, `except`, `over`\nFROM `payments`.`transfers`\nLIMIT 50",
+        sqlFor(TRANSFERS, "BigQuery", "hash", "qualify", "except", "over"));
+    assertEquals(
+        "SELECT \"start\", \"sample\", \"qualify\", \"account\"\nFROM payments.transfers\nLIMIT 50",
+        sqlFor(TRANSFERS, "Snowflake", "start", "sample", "qualify", "account"));
+    assertEquals(
+        "SELECT TOP 50 [top], [file], [public]\nFROM [payments].[transfers]",
+        sqlFor(TRANSFERS, "Mssql", "top", "file", "public"));
+  }
+
+  @Test
+  void aServiceWithNoSupportedDialectIsANamedBadRequest() {
+    assertEquals(
+        "SQL generation does not support Oracle",
+        assertThrows(BadRequestException.class, () -> sqlFor(TRANSFERS, "Oracle", "transfer_id"))
+            .getMessage());
+    assertEquals(
+        "SQL generation does not support MongoDB",
+        assertThrows(BadRequestException.class, () -> sqlFor(TRANSFERS, "MongoDB", "transfer_id"))
+            .getMessage());
+  }
+
+  @Test
+  void severalForeignKeysToOneTableUseTheOneTheHopPropertyIsBoundTo() {
+    final BoundTable payments =
+        new BoundTable(
+            TRANSFERS,
+            "Postgres",
+            List.of(List.of("transfer_id")),
+            Map.of(RECEIVED_BY, List.of("payee_id")),
+            List.of("transfer_id"),
+            List.of(
+                foreignKey(List.of("payer_id"), CUSTOMERS, "customer_id"),
+                foreignKey(List.of("payee_id"), CUSTOMERS, "customer_id")));
+    final BoundTable customers = table(CUSTOMERS, "Postgres", "customer_id", "name");
+
+    final Generated forward =
+        OntologyConceptSqlGenerator.generate(
+            concept("Funds Transfer", payments),
+            List.of(new Hop(RECEIVED_BY, "received by", concept("Customer", customers))));
+    final Generated inverse =
+        OntologyConceptSqlGenerator.generate(
+            concept("Customer", customers),
+            List.of(new Hop(RECEIVED_BY, "received", concept("Funds Transfer", payments))));
+
+    assertEquals(
+        "SELECT t1.customer_id, t1.name\nFROM payments.transfers t0\n"
+            + "JOIN payments.customers t1 ON t0.payee_id = t1.customer_id -- received by\nLIMIT 50",
+        forward.sql());
+    assertEquals(
+        "SELECT t1.transfer_id\nFROM payments.customers t0\n"
+            + "JOIN payments.transfers t1 ON t0.customer_id = t1.payee_id -- received\nLIMIT 50",
+        inverse.sql());
+  }
+
+  @Test
+  void severalForeignKeysToOneTableWithNoBindingAreANamedBadRequest() {
+    final BoundTable payments =
+        withConstraints(
+            table(TRANSFERS, "Postgres", "transfer_id"),
+            foreignKey(List.of("payer_id"), CUSTOMERS, "customer_id"),
+            foreignKey(List.of("payee_id"), CUSTOMERS, "customer_id"));
+
+    final BadRequestException ambiguous =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                OntologyConceptSqlGenerator.generate(
+                    concept("Funds Transfer", payments),
+                    List.of(
+                        new Hop(
+                            RECEIVED_BY,
+                            "received by",
+                            concept("Customer", table(CUSTOMERS, "Postgres", "name"))))));
+
+    assertEquals(
+        "Hop 1 (received by): several foreign keys join "
+            + TRANSFERS
+            + " and "
+            + CUSTOMERS
+            + "; bind the received by property to one of their columns",
+        ambiguous.getMessage());
+  }
+
+  @Test
+  void aHopNeverJoinsATableInAnotherDatabaseOfTheService() {
+    final String otherDatabase = "finance.analytics.crm.customers";
+    final BoundTable payments =
+        withConstraints(
+            table(TRANSFERS, "Snowflake", "transfer_id"),
+            foreignKey(List.of("customer_id"), otherDatabase, "customer_id"));
+
+    assertEquals(
+        "Hop 1 (paid by): no foreign key or object-property binding joins "
+            + TRANSFERS
+            + " to a table bound to Customer",
+        assertThrows(
+                BadRequestException.class,
+                () ->
+                    OntologyConceptSqlGenerator.generate(
+                        concept("Funds Transfer", payments),
+                        List.of(
+                            new Hop(
+                                PAID_BY,
+                                "paid by",
+                                concept("Customer", table(otherDatabase, "Snowflake", "name"))))))
+            .getMessage());
+  }
+
+  @Test
+  void aHopNeverJoinsATableOfAnotherService() {
+    final BoundTable payments =
+        new BoundTable(
+            TRANSFERS,
+            "Postgres",
+            List.of(List.of("payer_id")),
+            Map.of(PAID_BY, List.of("payer_id")),
+            List.of(),
+            List.of());
+    final BoundTable elsewhere =
+        new BoundTable(
+            "crm.warehouse.payments.customers",
+            "Postgres",
+            List.of(),
+            Map.of(),
+            List.of("id"),
+            List.of());
+
+    assertEquals(
+        "Hop 1 (paid by): no foreign key or object-property binding joins "
+            + TRANSFERS
+            + " to a table bound to Customer",
+        assertThrows(
+                BadRequestException.class,
+                () ->
+                    OntologyConceptSqlGenerator.generate(
+                        concept("Funds Transfer", payments),
+                        List.of(new Hop(PAID_BY, "paid by", concept("Customer", elsewhere)))))
+            .getMessage());
+  }
+
+  @Test
+  void aReferredColumnWithADotIsUnquotedBeforeDialectQuoting() {
+    final BoundTable payments =
+        withConstraints(
+            table(TRANSFERS, "Postgres", "transfer_id"),
+            foreignKey(List.of("customer_id"), CUSTOMERS, "\"cust.id\""));
+    final BoundTable customers = table(CUSTOMERS, "Postgres", "name");
+
+    assertEquals(
+        "SELECT t1.name\nFROM payments.transfers t0\n"
+            + "JOIN payments.customers t1 ON t0.customer_id = t1.\"cust.id\" -- part of\nLIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Funds Transfer", payments),
+                List.of(new Hop(PART_OF, "part of", concept("Customer", customers))))
+            .sql());
   }
 
   @Test
@@ -180,7 +353,7 @@ class OntologyConceptSqlGeneratorTest {
             TRANSFERS, "Postgres", List.of(List.of("c\"d")), Map.of(), List.of(), List.of());
 
     assertEquals(
-        "SELECT `a``b`, `c\"d`\nFROM payments.transfers\nLIMIT 50",
+        "SELECT `a``b`, `c\"d`\nFROM `payments`.`transfers`\nLIMIT 50",
         OntologyConceptSqlGenerator.generate(concept("X", table), List.of()).sql());
     assertEquals(
         "SELECT \"c\"\"d\"\nFROM payments.transfers\nLIMIT 50",
@@ -227,10 +400,13 @@ class OntologyConceptSqlGeneratorTest {
   }
 
   private static String sqlFor(final String table, final String serviceType) {
+    return sqlFor(table, serviceType, "Amount USD", "order", "transfer_id");
+  }
+
+  private static String sqlFor(
+      final String table, final String serviceType, final String... columns) {
     return OntologyConceptSqlGenerator.generate(
-            concept(
-                "Funds Transfer", table(table, serviceType, "Amount USD", "order", "transfer_id")),
-            List.of())
+            concept("Funds Transfer", table(table, serviceType, columns)), List.of())
         .sql();
   }
 
@@ -250,14 +426,14 @@ class OntologyConceptSqlGeneratorTest {
   }
 
   private static BoundTable withConstraints(
-      final BoundTable table, final TableConstraint constraint) {
+      final BoundTable table, final TableConstraint... constraints) {
     return new BoundTable(
         table.fullyQualifiedName(),
         table.serviceType(),
         table.columns(),
         table.objectColumns(),
         table.identifier(),
-        List.of(constraint));
+        List.of(constraints));
   }
 
   private static TableConstraint foreignKey(
