@@ -1917,8 +1917,14 @@
       "connection": {
         "config": {
           "type": "Airflow",
-          "hostPort": "warehouse.example.com:3306",
-          "username": "metadata"
+          "hostPort": "https://airflow.example.com",
+          "connection": {
+            "type": "RestAPI",
+            "authConfig": {
+              "username": "metadata",
+              "password": "visual-fixture-only"
+            }
+          }
         }
       }
     }
@@ -1956,8 +1962,7 @@
       "connection": {
         "config": {
           "type": "Kafka",
-          "hostPort": "warehouse.example.com:3306",
-          "username": "metadata"
+          "bootstrapServers": "kafka.example.com:9092"
         }
       }
     }
@@ -1995,8 +2000,9 @@
       "connection": {
         "config": {
           "type": "Looker",
-          "hostPort": "warehouse.example.com:3306",
-          "username": "metadata"
+          "hostPort": "https://looker.example.com",
+          "clientId": "visual-client",
+          "clientSecret": "visual-fixture-only"
         }
       }
     }
@@ -2034,8 +2040,8 @@
       "connection": {
         "config": {
           "type": "Mlflow",
-          "hostPort": "warehouse.example.com:3306",
-          "username": "metadata"
+          "trackingUri": "https://mlflow.example.com",
+          "registryUri": "https://mlflow.example.com"
         }
       }
     }
@@ -2073,8 +2079,9 @@
       "connection": {
         "config": {
           "type": "S3",
-          "hostPort": "warehouse.example.com:3306",
-          "username": "metadata"
+          "awsConfig": {
+            "awsRegion": "us-east-1"
+          }
         }
       }
     }
@@ -2112,8 +2119,7 @@
       "connection": {
         "config": {
           "type": "ElasticSearch",
-          "hostPort": "warehouse.example.com:3306",
-          "username": "metadata"
+          "hostPort": "https://search.example.com:9200"
         }
       }
     }
@@ -2191,8 +2197,13 @@
       "connection": {
         "config": {
           "type": "GoogleDrive",
-          "hostPort": "warehouse.example.com:3306",
-          "username": "metadata"
+          "credentials": {
+            "gcpConfig": {
+              "type": "gcp_credential_path",
+              "path": "/catalog/visual-service-account.json",
+              "projectId": "visual-catalog"
+            }
+          }
         }
       }
     }
@@ -2208,11 +2219,9 @@
       "version": 1.1,
       "updatedAt": 1768471200000,
       "updatedBy": "visual_admin",
-      "deleted": false,
       "provider": "user",
       "enabled": true,
       "alertType": "Notification",
-      "subscriptionType": "Email",
       "input": {
         "actions": []
       },
@@ -2222,14 +2231,169 @@
       },
       "destinations": [
         {
-          "category": "Email",
+          "id": "1884b1d5-b2f0-55da-9838-c0c027ab8cb9",
+          "category": "Owners",
           "type": "Email",
-          "config": {
-            "receivers": ["steward@example.com"]
-          },
           "enabled": true
         }
-      ]
+      ],
+      "trigger": {
+        "triggerType": "RealTime"
+      }
+    },
+    {
+      "name": "ActivityFeedAlert",
+      "fullyQualifiedName": "ActivityFeedAlert",
+      "displayName": "Activity Feed Alerts",
+      "description": "Alerts received on the Activity Feed are controlled with this.",
+      "alertType": "ActivityFeed",
+      "filteringRules": {
+        "resources": ["all"],
+        "rules": [
+          {
+            "name": "matchAnyEventType",
+            "effect": "include",
+            "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !isBot() && !matchAnySource({'user', 'team', 'owners', 'databaseService', 'messagingService', 'dashboardService', 'pipelineService', 'storageService', 'mlmodelService', 'metadataService', 'searchService', 'apiService', 'ingestionPipeline', 'workflow', 'testCase', 'testSuite'})",
+            "prefixCondition": "AND"
+          },
+          {
+            "name": "matchAnyFieldChange",
+            "effect": "include",
+            "condition": "matchAnyFieldChange({'description', 'domains', 'owners', 'tags', 'followers','parameterValues', 'assets', 'entityStatus'})",
+            "prefixCondition": "OR"
+          },
+          {
+            "name": "matchAnySource",
+            "effect": "include",
+            "prefixCondition": "AND",
+            "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic', 'domain', 'dataProduct', 'metric', 'dataContract'})"
+          },
+          {
+            "name": "noBotAllowed",
+            "effect": "exclude",
+            "condition": "isBot()",
+            "prefixCondition": "AND"
+          }
+        ]
+      },
+      "destinations": [
+        {
+          "id": "fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a65",
+          "category": "External",
+          "type": "ActivityFeed"
+        }
+      ],
+      "input": {
+        "filters": [
+          {
+            "name": "filterByEventType",
+            "effect": "include",
+            "prefixCondition": "OR",
+            "arguments": [
+              {
+                "name": "eventTypeList",
+                "input": ["entityCreated", "entityDeleted", "entitySoftDeleted"]
+              }
+            ]
+          },
+          {
+            "name": "filterByFieldChange",
+            "effect": "include",
+            "prefixCondition": "AND",
+            "arguments": [
+              {
+                "name": "fieldChangeList",
+                "input": [
+                  "description",
+                  "domains",
+                  "owners",
+                  "tags",
+                  "followers",
+                  "parameterValues",
+                  "pipelineStatus",
+                  "entityStatus"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "filterBySource",
+            "effect": "include",
+            "prefixCondition": "AND",
+            "arguments": [
+              {
+                "name": "sourceList",
+                "input": [
+                  "chart",
+                  "container",
+                  "dashboard",
+                  "dashboardDataModel",
+                  "database",
+                  "databaseSchema",
+                  "glossary",
+                  "glossaryTerm",
+                  "mlmodel",
+                  "pipeline",
+                  "query",
+                  "report",
+                  "searchIndex",
+                  "storedProcedure",
+                  "table",
+                  "topic",
+                  "domain",
+                  "dataProduct",
+                  "dataContract"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "filterByUpdaterIsBot",
+            "effect": "exclude",
+            "prefixCondition": "AND"
+          }
+        ]
+      },
+      "provider": "system",
+      "pollInterval": 30,
+      "enabled": true,
+      "id": "94b5893e-09a4-5126-bb8a-e819f36dec21",
+      "type": "eventSubscription",
+      "version": 1.0,
+      "updatedAt": 1768471200000,
+      "updatedBy": "admin"
+    },
+    {
+      "id": "b9196f25-470a-52a5-a7b9-a0dedfa1fc6a",
+      "name": "visual_quality_alert",
+      "fullyQualifiedName": "visual_quality_alert",
+      "displayName": "Quality alert",
+      "type": "eventSubscription",
+      "description": "Notify owners when a quality check fails.",
+      "version": 1.1,
+      "updatedAt": 1768471200000,
+      "updatedBy": "visual_admin",
+      "provider": "user",
+      "enabled": true,
+      "alertType": "Observability",
+      "input": {
+        "actions": []
+      },
+      "filteringRules": {
+        "resources": ["table"],
+        "rules": []
+      },
+      "destinations": [
+        {
+          "id": "2a34fe10-d4c8-56aa-b1d0-3779a80052a8",
+          "category": "Owners",
+          "type": "Email",
+          "enabled": true
+        }
+      ],
+      "trigger": {
+        "triggerType": "RealTime"
+      }
     }
   ],
   "contextCenter/pages": [

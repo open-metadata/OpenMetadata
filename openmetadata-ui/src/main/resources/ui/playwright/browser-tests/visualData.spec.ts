@@ -509,6 +509,37 @@ test('incident pickers use test-case identities without adding tests to discover
   ).toBe(false);
 });
 
+test('typed custom-property metadata and table values share the registered field identities', async ({
+  page,
+}) => {
+  await installVisualData(page, 'custom-properties');
+  const result = await page.evaluate(async () => ({
+    fields: await (await fetch('/api/v1/metadata/types?category=field')).json(),
+    type: await (
+      await fetch('/api/v1/metadata/types/name/table?fields=customProperties')
+    ).json(),
+    table: await (
+      await fetch(
+        '/api/v1/tables/name/visual_warehouse.finance.public.orders?fields=extension'
+      )
+    ).json(),
+  }));
+  expect(result.fields.data).toHaveLength(17);
+  expect(result.type.customProperties).toHaveLength(18);
+  const fieldIds = new Set(
+    result.fields.data.map((field: { id: string }) => field.id)
+  );
+  expect(
+    result.type.customProperties.every(
+      (property: { name: string; propertyType: { id: string } }) =>
+        fieldIds.has(property.propertyType.id) &&
+        property.name in result.table.extension
+    )
+  ).toBe(true);
+  expect(result.table.extension.visual_date_cp).toBe('2026-01-15');
+  expect(result.table.extension.visual_table_cp.rows).toHaveLength(2);
+});
+
 test('incident histogram rows stay numeric and distinct from scalar coverage rows', async ({
   page,
 }) => {
@@ -604,4 +635,125 @@ test('table incident badges receive a scalar count rather than test-case status 
   );
   expect(reports[0].data).toEqual([{ stateId: '1' }]);
   expect(reports[1].data).toEqual([{ stateId: '0' }]);
+});
+
+test('workflow history provides schema-shaped finished and running executions', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () =>
+    (
+      await fetch(
+        '/api/v1/governance/workflowInstances?workflowDefinitionName=visual_approval_workflow'
+      )
+    ).json()
+  );
+  expect(result.paging.total).toBe(2);
+  expect(
+    result.data.map((instance: { status: string }) => instance.status)
+  ).toEqual(['FINISHED', 'RUNNING']);
+  expect(result.data[0].endedAt).toBeGreaterThan(result.data[0].startedAt);
+  expect(result.data[1].endedAt).toBeUndefined();
+  expect(result.data[0].variables.relatedEntity).toContain(
+    'VisualBusinessGlossary.Customer'
+  );
+});
+
+test('topic schemas and message samples retain their nested API contracts', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => {
+    const topic = await (
+      await fetch('/api/v1/topics/name/visual_kafka.customer_events')
+    ).json();
+    const topicSample = await (
+      await fetch(`/api/v1/topics/${topic.id}/sampleData`)
+    ).json();
+    const index = await (
+      await fetch('/api/v1/searchIndexes/name/visual_elastic.customers')
+    ).json();
+    const indexSample = await (
+      await fetch(`/api/v1/searchIndexes/${index.id}/sampleData`)
+    ).json();
+    return { topic, topicSample, indexSample };
+  });
+  expect(result.topic.messageSchema.schemaFields.length).toBeGreaterThan(1);
+  expect(result.topic.messageSchema.schemaType).toBe('Avro');
+  expect(result.topic.topicConfig['cleanup.policy']).toBe('delete');
+  expect(result.topicSample.sampleData.messages).toHaveLength(2);
+  expect(result.indexSample.sampleData.messages).toHaveLength(2);
+});
+
+test('glossary workflow stages belong to their selected execution', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => {
+    const { data: instances } = await (
+      await fetch(
+        '/api/v1/governance/workflowInstances?workflowDefinitionName=visual_approval_workflow'
+      )
+    ).json();
+    const instance = instances.find(
+      (item: { status: string }) => item.status === 'RUNNING'
+    );
+    const response = await fetch(
+      `/api/v1/governance/workflowInstanceStates/visual_approval_workflow/${instance.id}`
+    );
+    return { status: response.status, instance, stages: await response.json() };
+  });
+  expect(result.status).toBe(200);
+  expect(result.stages.data).not.toHaveLength(0);
+  expect(
+    result.stages.data.every(
+      (stage: { workflowInstanceId: string }) =>
+        stage.workflowInstanceId === result.instance.id
+    )
+  ).toBe(true);
+  expect(
+    result.stages.data.map((stage: { status: string }) => stage.status)
+  ).toContain('RUNNING');
+});
+
+for (const query of [
+  'workflowDefinitionName=visual_periodic_workflow',
+  'entityLink=' +
+    encodeURIComponent('<#E::glossaryTerm::AnotherGlossary.Term>'),
+]) {
+  test(`workflow execution fixtures honor their scope: ${query}`, async ({
+    page,
+  }) => {
+    await installVisualData(page);
+    const result = await page.evaluate(
+      async (filter) =>
+        (await fetch(`/api/v1/governance/workflowInstances?${filter}`)).json(),
+      query
+    );
+    expect(result).toEqual({ data: [], paging: { total: 0 } });
+  });
+}
+
+test('notification lists load the built-in feed alert without duplicating it in user alerts', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const [notifications, activityFeed] = await page.evaluate(async () =>
+    Promise.all([
+      fetch('/api/v1/events/subscriptions?alertType=Notification').then(
+        (response) => response.json()
+      ),
+      fetch(
+        '/api/v1/events/subscriptions/name/ActivityFeedAlert?include=all'
+      ).then((response) => response.json()),
+    ])
+  );
+  expect(
+    notifications.data.map((alert: { name: string }) => alert.name)
+  ).toEqual(['visual_metadata_alert']);
+  expect(activityFeed).toMatchObject({
+    name: 'ActivityFeedAlert',
+    provider: 'system',
+    alertType: 'ActivityFeed',
+  });
 });

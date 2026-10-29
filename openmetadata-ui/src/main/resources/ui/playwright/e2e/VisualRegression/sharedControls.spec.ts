@@ -39,24 +39,32 @@ const test = base.extend<
         write: false,
         format: 'iife',
         preserveSymlinks: true,
+        nodePaths: [path.resolve('node_modules')],
         // The linked library has its own development peers. Match Vite's
         // deduplication or its hooks use a different React from createRoot.
-        alias: Object.fromEntries(
-          [
-            'react',
-            'react-dom',
-            'react-i18next',
-            'i18next',
-            'react-aria',
-            'react-aria-components',
-            'react-stately',
-            '@react-aria/utils',
-            '@react-stately/utils',
-            '@react-types/shared',
-            '@internationalized/date',
-            'tailwind-merge',
-          ].map((name) => [name, path.resolve('node_modules', name)])
-        ),
+        alias: {
+          // Test shards restore the application bundle, not the library's dist.
+          // Bundle the same checked-in components without requiring a second build.
+          '@openmetadata/ui-core-components': path.resolve(
+            '../../../../../openmetadata-ui-core-components/src/main/resources/ui/src/index.ts'
+          ),
+          ...Object.fromEntries(
+            [
+              'react',
+              'react-dom',
+              'react-i18next',
+              'i18next',
+              'react-aria',
+              'react-aria-components',
+              'react-stately',
+              '@react-aria/utils',
+              '@react-stately/utils',
+              '@react-types/shared',
+              '@internationalized/date',
+              'tailwind-merge',
+            ].map((name) => [name, path.resolve('node_modules', name)])
+          ),
+        },
         define: { 'process.env.NODE_ENV': '"production"' },
       }).outputFiles[0].text;
       // Compile the application's real token/utility stylesheet and scan the

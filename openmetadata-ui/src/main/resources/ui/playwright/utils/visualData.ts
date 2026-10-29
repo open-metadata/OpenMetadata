@@ -14,12 +14,15 @@ import { Page } from '@playwright/test';
 import { ResourceEntity } from '../../src/enums/permissions.enum';
 import { Operation } from '../../src/generated/entity/policies/policy';
 import activity from '../fixtures/visual/activity.json';
+import customProperties from '../fixtures/visual/custom-properties.json';
 import entities from '../fixtures/visual/entities.json';
 import incidents from '../fixtures/visual/incidents.json';
 import ontologyPacks from '../fixtures/visual/ontology-packs.json';
 import personalTokens from '../fixtures/visual/personal-tokens.json';
 import resources from '../fixtures/visual/resources.json';
 import systemSettings from '../fixtures/visual/system-settings.json';
+import workflowInstanceStates from '../fixtures/visual/workflow-instance-states.json';
+import workflowInstances from '../fixtures/visual/workflow-instances.json';
 import workflowTriggerFields from '../fixtures/visual/workflow-trigger-fields.json';
 
 interface FixtureEntity extends Record<string, unknown> {
@@ -45,7 +48,10 @@ export type VisualDataState =
   | 'long-content'
   | 'deleted'
   | 'forbidden'
-  | 'expired-token';
+  | 'expired-token'
+  | 'custom-properties'
+  | 'custom-properties-empty'
+  | 'custom-properties-read-only';
 
 const pageOf = (data: unknown[]) => ({
   data,
@@ -143,6 +149,9 @@ export const installVisualData = async (
   appMode: 'ai' | 'classic' = 'ai'
 ) => {
   await installVisualBootstrap(page, appMode);
+  const hasCustomProperties = state.startsWith('custom-properties');
+  const isReadOnly =
+    state === 'read-only' || state === 'custom-properties-read-only';
   const fixtureResources: Record<string, FixtureEntity[]> = {
     ...resources,
   };
@@ -150,6 +159,15 @@ export const installVisualData = async (
     ...item,
     entity: {
       ...item.entity,
+      // The default catalog retains the undefined-property empty state.
+      ...(hasCustomProperties && item.type === 'table'
+        ? {
+            extension:
+              state === 'custom-properties-empty'
+                ? {}
+                : customProperties.extension,
+          }
+        : {}),
       ...(state === 'deleted' ? { deleted: true } : {}),
       ...(state === 'long-content'
         ? {
@@ -173,8 +191,7 @@ export const installVisualData = async (
     permissions: Object.values(Operation).map((operation) => ({
       operation,
       access:
-        state === 'forbidden' ||
-        (state === 'read-only' && !operation.startsWith('View'))
+        state === 'forbidden' || (isReadOnly && !operation.startsWith('View'))
           ? 'deny'
           : 'allow',
     })),
@@ -232,7 +249,7 @@ export const installVisualData = async (
           name: 'admin',
           fullyQualifiedName: 'admin',
           email: 'admin@open-metadata.org',
-          isAdmin: !['read-only', 'forbidden'].includes(state),
+          isAdmin: !isReadOnly && state !== 'forbidden',
           isBot: false,
           displayName: 'Administrator',
           description: 'Metadata catalog administrator.',
@@ -1096,7 +1113,44 @@ export const installVisualData = async (
       return;
     }
     if (path === 'governance/workflowInstances') {
-      await route.fulfill({ json: pageOf([]) });
+      // Entity history and the global execution list share this endpoint.
+      const workflowName = url.searchParams.get('workflowDefinitionName');
+      const definitionId = url.searchParams.get('workflowDefinitionId');
+      const entityLink = url.searchParams.get('entityLink');
+      const instances = workflowInstances.filter((instance) => {
+        const definition = resources['governance/workflowDefinitions'].find(
+          (workflow) => workflow.id === instance.workflowDefinitionId
+        );
+
+        return (
+          (!workflowName || definition?.name === workflowName) &&
+          (!definitionId || instance.workflowDefinitionId === definitionId) &&
+          (!entityLink || instance.variables.relatedEntity === entityLink)
+        );
+      });
+      await route.fulfill({
+        json: pageOf(state === 'empty' ? [] : instances),
+      });
+
+      return;
+    }
+
+    if (path.startsWith('governance/workflowInstanceStates/')) {
+      const [, , workflowName, instanceId] = path.split('/');
+      const definition = resources['governance/workflowDefinitions'].find(
+        (workflow) => workflow.name === workflowName
+      );
+      await route.fulfill({
+        json: pageOf(
+          state === 'empty'
+            ? []
+            : workflowInstanceStates.filter(
+                (stage) =>
+                  stage.workflowDefinitionId === definition?.id &&
+                  stage.workflowInstanceId === instanceId
+              )
+        ),
+      });
 
       return;
     }
@@ -1113,39 +1167,33 @@ export const installVisualData = async (
       path.startsWith('types/name/') ||
       path.startsWith('metadata/types/name/')
     ) {
+      const name = parts[parts.length - 1];
+      const field = customProperties.fieldTypes.find(
+        (type) => type.name === name
+      );
       await route.fulfill({
-        json: {
+        json: field ?? {
           id: '00000000-0000-4000-8000-000000000001',
-          name: parts[parts.length - 1],
-          fullyQualifiedName: parts[parts.length - 1],
+          name,
+          fullyQualifiedName: name,
           category: 'entity',
           schema: '{"type":"object"}',
-          customProperties: [],
+          customProperties:
+            hasCustomProperties && name === 'table'
+              ? customProperties.properties
+              : [],
         },
       });
 
       return;
     }
     if (path === 'metadata/types') {
-      const names =
-        url.searchParams.get('category') === 'field'
-          ? [
-              'string',
-              'integer',
-              'number',
-              'markdown',
-              'email',
-              'date',
-              'dateTime',
-              'timestamp',
-              'duration',
-              'enum',
-              'entityReference',
-              'entityReferenceList',
-              'table',
-              'json',
-            ]
-          : VISUAL_ENTITIES.map(({ type }) => type);
+      if (url.searchParams.get('category') === 'field') {
+        await route.fulfill({ json: pageOf(customProperties.fieldTypes) });
+
+        return;
+      }
+      const names = VISUAL_ENTITIES.map(({ type }) => type);
       await route.fulfill({
         json: pageOf(
           names.map((name, index) => ({
@@ -1245,7 +1293,12 @@ export const installVisualData = async (
       suffix === 'hierarchy' ||
       (collection.startsWith('dataQuality/') && suffix === 'search/list')
     ) {
-      await route.fulfill({ json: pageOf(state === 'empty' ? [] : data) });
+      const alertType = url.searchParams.get('alertType');
+      const rows =
+        collection === 'events/subscriptions' && alertType
+          ? data.filter((subscription) => subscription.alertType === alertType)
+          : data;
+      await route.fulfill({ json: pageOf(state === 'empty' ? [] : rows) });
 
       return;
     }

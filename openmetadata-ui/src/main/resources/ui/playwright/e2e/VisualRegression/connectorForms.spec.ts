@@ -18,6 +18,7 @@ import {
   gotoForScreenshot,
   prepareVisualTheme,
   VISUAL_THEMES,
+  withFullVisualTarget,
 } from '../../utils/visualRegression';
 
 for (const theme of VISUAL_THEMES) {
@@ -30,8 +31,7 @@ for (const theme of VISUAL_THEMES) {
       ...new Set(connectors.map((item) => item.category)),
     ]) {
       const items = connectors.filter((item) => item.category === category);
-      test(`${category} chooser and configuration forms`, async ({ page }) => {
-        test.setTimeout(30_000 + items.length * 20_000);
+      test(`${category} connector chooser`, async ({ page }) => {
         await gotoForScreenshot(page, `/connections/add-service/${category}`, {
           readyTestId: 'select-service',
         });
@@ -40,91 +40,84 @@ for (const theme of VISUAL_THEMES) {
           `connections-${category}-chooser`,
           theme
         );
-        for (const { connector, layout } of items) {
-          await test.step(connector, async () => {
-            await page.getByTestId(connector).click();
-            await expect(page.getByTestId('service-name')).toBeVisible();
-            await page.getByTestId('service-name').fill('visual_connection');
-            await expect(
-              page.getByTestId('connection-schema-loader')
-            ).toBeHidden();
-            if (layout === 'unconfigured') {
-              await expect(
-                page.getByText('No Connection Configs available.', {
-                  exact: true,
-                })
-              ).toBeVisible();
-              await expectVisualScreenshot(
-                page,
-                `connection-${category}-${connector}`,
-                theme
-              );
-            } else {
-              const form = page.getByTestId('connection-grouped-form');
-              await expect(form).toBeVisible();
-              await expect(
-                form.locator(
-                  'input:visible, select:visible, textarea:visible, button:visible'
-                )
-              ).not.toHaveCount(0);
-              await expectVisualScreenshot(
-                page,
-                `connection-${category}-${connector}`,
-                theme,
-                { target: form }
-              );
-            }
-            if (connector === items[0].connector) {
-              // The form-only captures exclude the wizard's service name,
-              // setup guide, connection test action, and navigation buttons.
-              await expectVisualScreenshot(
-                page,
-                `connection-${category}-wizard`,
-                theme
-              );
-            }
-            if (layout !== 'unconfigured') {
-              const form = page.getByTestId('connection-grouped-form');
-              let expanded = false;
-              // Optional scope and advanced fields start collapsed in the
-              // production wizard; a default-form image cannot protect them.
-              for (const key of ['scope', 'advanced']) {
-                const section = form.getByTestId(`connection-section-${key}`);
-                if (await section.count()) {
-                  await section
-                    .locator('button.connection-section-header')
-                    .click();
-                  expanded = true;
-                }
-              }
-              if (expanded)
-                await expectVisualScreenshot(
-                  page,
-                  `connection-${category}-${connector}-expanded`,
-                  theme,
-                  { target: form }
-                );
-              const keyPair = form.getByTestId('auth-tab-keypair');
-              if (await keyPair.count()) {
-                await keyPair.click();
-                await expectVisualScreenshot(
-                  page,
-                  `connection-${category}-${connector}-keypair`,
-                  theme,
-                  { target: form }
-                );
-              }
-            }
-            await page
-              .getByRole('button', { name: 'Back', exact: true })
-              .click();
-            await page
-              .getByRole('button', { name: 'Discard', exact: true })
-              .click();
-            await expect(page.getByTestId('select-service')).toBeVisible();
-          });
-        }
       });
+      // Each connector owns its page and timing record. A failing form must not
+      // prevent the rest of its category from being captured or sharded.
+      for (const { connector, layout } of items) {
+        test(`${category} ${connector} configuration form`, async ({
+          page,
+        }) => {
+          await gotoForScreenshot(
+            page,
+            `/connections/add-service/${category}`,
+            {
+              readyTestId: 'select-service',
+            }
+          );
+          await page.getByTestId(connector).click();
+          await expect(page.getByTestId('service-name')).toBeVisible();
+          await page.getByTestId('service-name').fill('visual_connection');
+          await expect(
+            page.getByTestId('connection-schema-loader')
+          ).toBeHidden();
+          const form = page.getByTestId('connection-grouped-form');
+          const captureForm = (name: string) =>
+            withFullVisualTarget(page, form, () =>
+              expectVisualScreenshot(page, name, theme, {
+                target: form,
+                // A percentage budget on tall forms can accept missing field labels.
+                maxDiffPixelRatio: 0,
+              })
+            );
+          if (layout === 'unconfigured') {
+            await expect(
+              page.getByText('No Connection Configs available.', {
+                exact: true,
+              })
+            ).toBeVisible();
+            await expectVisualScreenshot(
+              page,
+              `connection-${category}-${connector}`,
+              theme
+            );
+          } else {
+            await expect(form).toBeVisible();
+            await expect(
+              form.locator(
+                'input:visible, select:visible, textarea:visible, button:visible'
+              )
+            ).not.toHaveCount(0);
+            await captureForm(`connection-${category}-${connector}`);
+          }
+          if (connector === items[0].connector) {
+            // Form captures exclude the wizard's setup guide, test action and navigation.
+            await expectVisualScreenshot(
+              page,
+              `connection-${category}-wizard`,
+              theme
+            );
+          }
+          if (layout !== 'unconfigured') {
+            let expanded = false;
+            for (const key of ['scope', 'advanced']) {
+              const section = form.getByTestId(`connection-section-${key}`);
+              if (await section.count()) {
+                await section
+                  .locator('button.connection-section-header')
+                  .click();
+                expanded = true;
+              }
+            }
+            if (expanded)
+              await captureForm(`connection-${category}-${connector}-expanded`);
+            const keyPair = form.getByTestId('auth-tab-keypair');
+            if (await keyPair.count()) {
+              await keyPair.click();
+              await captureForm(`connection-${category}-${connector}-keypair`);
+            }
+          }
+        });
+      }
     }
   });
 }

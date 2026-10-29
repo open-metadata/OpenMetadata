@@ -189,6 +189,9 @@ export const expectVisualScreenshot = async (
     allowErrorFeedback = false,
     ...screenshotOptions
   } = options;
+  // An unmodeled API must fail even if its notification arrives after readiness.
+  const missingFixture = page.getByText(/^Missing visual read fixture:/);
+  await expect(missingFixture).toHaveCount(0);
   if (!allowErrorFeedback) {
     await expect(
       page.getByRole('alertdialog'),
@@ -208,7 +211,92 @@ export const expectVisualScreenshot = async (
       ...screenshotOptions,
     }
   );
+  await expect(missingFixture).toHaveCount(0);
   if (!allowErrorFeedback) {
     await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  }
+};
+
+export const withFullVisualTarget = async <T>(
+  page: Page,
+  target: Locator,
+  capture: () => Promise<T>
+): Promise<T> => {
+  const originalViewport = page.viewportSize();
+  if (!originalViewport)
+    throw new Error('Full-target captures require an explicit viewport.');
+
+  let height = originalViewport.height;
+  try {
+    // Screenshot animation stabilization can enlarge an accordion after sizing;
+    // wait for the target's real layout to settle before measuring its clips.
+    await target.scrollIntoViewIfNeeded();
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const clipped = await target.evaluate((element) => {
+        // Locator screenshots can include thousands of blank pixels when a
+        // scrolling ancestor clips the target. Reveal it using real layout,
+        // preserving the tested width and the component's production styles.
+        for (
+          let parent: Element | null = element;
+          parent;
+          parent = parent.parentElement
+        ) {
+          parent.scrollTop = 0;
+          parent.scrollLeft = 0;
+        }
+        const rectangle = element.getBoundingClientRect();
+        let top = 0;
+        let bottom = window.innerHeight;
+        let left = 0;
+        let right = window.innerWidth;
+        const clips = (value: string) =>
+          /^(auto|scroll|hidden|clip)$/.test(value);
+        for (
+          let parent = element.parentElement;
+          parent;
+          parent = parent.parentElement
+        ) {
+          const style = getComputedStyle(parent);
+          const bounds = parent.getBoundingClientRect();
+          if (clips(style.overflowY)) {
+            top = Math.max(top, bounds.top + parent.clientTop);
+            bottom = Math.min(
+              bottom,
+              bounds.top + parent.clientTop + parent.clientHeight
+            );
+          }
+          if (clips(style.overflowX)) {
+            left = Math.max(left, bounds.left + parent.clientLeft);
+            right = Math.min(
+              right,
+              bounds.left + parent.clientLeft + parent.clientWidth
+            );
+          }
+        }
+        const ownStyle = getComputedStyle(element);
+        return {
+          vertical:
+            Math.max(0, top - rectangle.top) +
+            Math.max(0, rectangle.bottom - bottom) +
+            (clips(ownStyle.overflowY)
+              ? Math.max(0, element.scrollHeight - element.clientHeight)
+              : 0),
+          horizontal:
+            Math.max(0, left - rectangle.left) +
+            Math.max(0, rectangle.right - right),
+        };
+      });
+      if (clipped.vertical <= 1 && clipped.horizontal <= 1)
+        return await capture();
+      if (clipped.horizontal > 1 || attempt === 3) break;
+      height += Math.ceil(clipped.vertical) + 2;
+      // Bound raster memory on CI workers; oversized or fixed-height panels
+      // must fail explicitly rather than accepting an image of clipped content.
+      if (height > 16_000) break;
+      await page.setViewportSize({ width: originalViewport.width, height });
+    }
+    throw new Error('Viewport resizing cannot reveal the full visual target.');
+  } finally {
+    if (!page.isClosed()) await page.setViewportSize(originalViewport);
   }
 };

@@ -322,7 +322,8 @@
     },
     "target": {
       "testId": "ai-profile-page"
-    }
+    },
+    "text": "Metadata alert"
   },
   {
     "id": "settings-notification-create",
@@ -582,222 +583,225 @@
     "group": "Entities",
     "path": "/table/visual_warehouse.finance.public.orders",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "entity-table"
     },
-    "text": "Orders"
+    "text": "Order ID"
   },
   {
     "id": "entity-database",
     "group": "Entities",
     "path": "/database/visual_warehouse.finance",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "database-databaseSchemas"
     },
-    "text": "Finance warehouse"
+    "text": "Public schema"
   },
   {
     "id": "entity-databaseSchema",
     "group": "Entities",
     "path": "/databaseSchema/visual_warehouse.finance.public",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "databaseSchema-tables"
     },
-    "text": "Public schema"
+    "text": "Orders"
   },
   {
     "id": "entity-pipeline",
     "group": "Entities",
     "path": "/pipeline/visual_airflow.customer_sync",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "task-table"
     },
-    "text": "Customer sync"
+    "text": "Presto Task"
   },
   {
     "id": "entity-topic",
     "group": "Entities",
     "path": "/topic/visual_kafka.customer_events",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "topic-schema-fields-table"
     },
-    "text": "Customer events"
+    "text": "first_name"
   },
   {
     "id": "entity-dashboard",
     "group": "Entities",
     "path": "/dashboard/visual_looker.sales",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "charts-table"
     },
-    "text": "Sales dashboard"
+    "text": "Revenue trend"
   },
   {
     "id": "entity-chart",
     "group": "Entities",
     "path": "/chart/visual_looker.revenue_trend",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "asset-description-container"
     },
-    "text": "Revenue trend"
+    "text": "Revenue trend provides curated finance and customer metadata for analytics."
   },
   {
     "id": "entity-dashboardDataModel",
     "group": "Entities",
     "path": "/dashboardDataModel/visual_looker.customer_model",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "data-model-column-table"
     },
-    "text": "Customer model"
+    "text": "0. Pre-clinical"
   },
   {
     "id": "entity-mlmodel",
     "group": "Entities",
     "path": "/mlmodel/visual_ml.customer_churn",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "feature-list"
     },
-    "text": "Customer churn"
+    "text": "distance"
   },
   {
     "id": "entity-storedProcedure",
     "group": "Entities",
     "path": "/storedProcedure/visual_warehouse.finance.public.refresh_orders",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "code-mirror-container"
     },
-    "text": "Refresh orders"
+    "text": "CREATE OR REPLACE PROCEDURE"
   },
   {
     "id": "entity-container",
     "group": "Entities",
     "path": "/container/visual_s3.analytics",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "container-data-model-table"
     },
-    "text": "Analytics bucket"
+    "text": "transaction_id"
   },
   {
     "id": "entity-searchIndex",
     "group": "Entities",
     "path": "/searchIndex/visual_elastic.customers",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "search-index-fields-table"
     },
-    "text": "Customers index"
+    "text": "displayName"
   },
   {
     "id": "entity-apiCollection",
     "group": "Entities",
     "path": "/apiCollection/visual_api.customers",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "databaseSchema-tables"
     },
-    "text": "Customers API"
+    "text": "List customers"
   },
   {
     "id": "entity-apiEndpoint",
     "group": "Entities",
     "path": "/apiEndpoint/visual_api.customers.list_customers",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "schema-fields-table"
     },
-    "text": "List customers"
+    "text": "photoUrls"
   },
   {
     "id": "entity-directory",
     "group": "Entities",
     "path": "/directory/visual_drive.finance",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "container-list-table"
     },
-    "text": "Finance directory"
+    "text": "Forecast file"
   },
   {
     "id": "entity-file",
     "group": "Entities",
     "path": "/file/visual_drive.finance.forecast",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "asset-description-container"
     },
-    "text": "Forecast file"
+    "text": "Forecast file provides curated finance and customer metadata for analytics."
   },
   {
     "id": "entity-spreadsheet",
     "group": "Entities",
     "path": "/spreadsheet/visual_drive.finance.budget",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "container-list-table"
     },
-    "text": "Budget spreadsheet"
+    "text": "Revenue worksheet"
   },
   {
     "id": "entity-worksheet",
     "group": "Entities",
     "path": "/worksheet/visual_drive.finance.budget.revenue",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "worksheet-data-model-table"
     },
-    "text": "Revenue worksheet"
+    "text": "Allocated Budget"
   },
   {
     "id": "entity-domain",
     "group": "Entities",
     "path": "/domain/VisualFinance",
     "ready": {
-      "testId": "domain-details"
-    }
+      "testId": "asset-description-container"
+    },
+    "text": "Curated finance metadata for reliable analytics."
   },
   {
     "id": "entity-dataProduct",
     "group": "Entities",
     "path": "/dataProduct/visual_revenue_product",
     "ready": {
-      "testId": "data-product-details"
-    }
+      "testId": "asset-description-container"
+    },
+    "text": "Curated revenue product metadata for reliable analytics."
   },
   {
     "id": "entity-metric",
     "group": "Entities",
     "path": "/metric/visual_gross_margin",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "metric-definition-card"
     },
-    "text": "Gross margin"
+    "text": "SUM(revenue) / SUM(cost) * 100"
   },
   {
     "id": "entity-glossary",
     "group": "Entities",
     "path": "/glossary/VisualBusinessGlossary",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "glossary-terms-table"
     },
-    "text": "Business glossary"
+    "text": "Customer"
   },
   {
     "id": "entity-glossaryTerm",
     "group": "Entities",
     "path": "/glossary/VisualBusinessGlossary.Customer",
     "ready": {
-      "testId": "entity-header-display-name"
+      "testId": "synonyms-container"
     },
-    "text": "Customer"
+    "text": "Client"
   },
   {
     "id": "entity-classification",
     "group": "Entities",
     "path": "/tags/VisualClassification",
     "ready": {
-      "testId": "tags-left-panel"
-    }
+      "testId": "table"
+    },
+    "text": "Confidential"
   },
   {
     "id": "entity-tag",
     "group": "Entities",
     "path": "/tag/VisualClassification.Confidential",
     "ready": {
-      "role": "heading",
-      "name": "Confidential"
-    }
+      "testId": "asset-description-container"
+    },
+    "text": "Curated confidential metadata for reliable analytics."
   },
   {
     "id": "page-home",
@@ -964,7 +968,8 @@
     "path": "/observability/alerts",
     "ready": {
       "testId": "add-alert-button"
-    }
+    },
+    "containsText": "Quality alert"
   },
   {
     "id": "page-domains",
@@ -1053,7 +1058,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1252,7 +1264,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1314,7 +1333,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1376,7 +1402,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1453,7 +1486,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1530,7 +1570,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1592,7 +1639,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1684,7 +1738,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1750,7 +1811,10 @@
       }
     ],
     "ready": {
-      "testId": "no-data-placeholder"
+      "testId": "message-card",
+      "has": {
+        "text": "{\"name\": \"orders\", \"displayName\": \"Orders\", \"description\": \"Certified finance metadata.\", \"columns\": [{\"name\": \"order_id\", \"displayName\": \"Order ID\", \"description\": \"Unique record identifier.\"}], \"databaseSchema\": \"finance.public\"}"
+      }
     }
   },
   {
@@ -1761,7 +1825,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1887,7 +1958,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -1949,7 +2027,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -2011,7 +2096,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -2073,7 +2165,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -2135,7 +2234,14 @@
       {
         "role": "tab",
         "action": "click",
-        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "ready": {
@@ -2929,7 +3035,7 @@
     "group": "Settings extensions",
     "path": "/my-data#governance/glossary-relations",
     "ready": {
-      "testId": "add-relation-type"
+      "testId": "relation-name-relatedTo"
     },
     "target": {
       "testId": "ai-profile-page"
@@ -3994,12 +4100,14 @@
       "testId": "workflow-header"
     },
     "ready": {
-      "testId": "workflow-execution-history"
+      "testId": "workflow-execution-history-table"
     },
     "actions": [
       {
         "action": "click",
-        "testId": "workflow-execution-history"
+        "role": "tab",
+        "name": "Execution History",
+        "within": "workflow-execution-tabs"
       }
     ]
   },
@@ -4432,7 +4540,14 @@
       {
         "action": "click",
         "role": "tab",
-        "namePattern": "^Lineage\\s*\\d*$"
+        "namePattern": "^Lineage\\s*\\d*$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
       }
     ],
     "paintedLineage": true
@@ -7052,5 +7167,2885 @@
         "within": "incident-groups-bulk-status-modal"
       }
     ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-string",
+    "ready": {
+      "testId": "custom-property-visual_string-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_string-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-string",
+    "ready": {
+      "testId": "value-input",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_string-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-integer",
+    "ready": {
+      "testId": "custom-property-visual_integer-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_integer-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-integer",
+    "ready": {
+      "testId": "value-input",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_integer-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-number",
+    "ready": {
+      "testId": "custom-property-visual_number-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_number-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-number",
+    "ready": {
+      "testId": "value-input",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_number-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-email",
+    "ready": {
+      "testId": "custom-property-visual_email-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_email-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-email",
+    "ready": {
+      "testId": "email-input",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_email-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-timestamp",
+    "ready": {
+      "testId": "custom-property-visual_timestamp-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_timestamp-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-timestamp",
+    "ready": {
+      "testId": "timestamp-input",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_timestamp-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-duration",
+    "ready": {
+      "testId": "custom-property-visual_duration-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_duration-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-duration",
+    "ready": {
+      "testId": "duration-input",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_duration-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-date-cp",
+    "ready": {
+      "testId": "custom-property-visual_date_cp-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_date_cp-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-date-cp",
+    "ready": {
+      "testId": "date-time-picker",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_date_cp-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-dateTime-cp",
+    "ready": {
+      "testId": "custom-property-visual_dateTime_cp-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_dateTime_cp-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-dateTime-cp",
+    "ready": {
+      "testId": "date-time-picker",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_dateTime_cp-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-time-cp",
+    "ready": {
+      "testId": "custom-property-visual_time_cp-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_time_cp-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-time-cp",
+    "ready": {
+      "testId": "time-picker",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_time_cp-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-enum",
+    "ready": {
+      "testId": "custom-property-visual_enum-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_enum-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-enum",
+    "ready": {
+      "testId": "enum-select",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_enum-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-enum-single",
+    "ready": {
+      "testId": "custom-property-visual_enum_single-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_enum_single-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-enum-single",
+    "ready": {
+      "testId": "enum-select",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_enum_single-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-hyperlink-cp",
+    "ready": {
+      "testId": "custom-property-visual_hyperlink_cp-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_hyperlink_cp-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-hyperlink-cp",
+    "ready": {
+      "testId": "hyperlink-url-input",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_hyperlink_cp-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-entityReference",
+    "ready": {
+      "testId": "custom-property-visual_entityReference-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_entityReference-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-entityReference",
+    "ready": {
+      "testId": "asset-select-list",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_entityReference-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-entityReferenceList",
+    "ready": {
+      "testId": "custom-property-visual_entityReferenceList-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_entityReferenceList-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-entityReferenceList",
+    "ready": {
+      "testId": "asset-select-list",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_entityReferenceList-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-timeInterval",
+    "ready": {
+      "testId": "custom-property-visual_timeInterval-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_timeInterval-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-timeInterval",
+    "ready": {
+      "testId": "time-interval-manual-toggle",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_timeInterval-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-table-cp",
+    "ready": {
+      "testId": "custom-property-visual_table_cp-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_table_cp-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-table-cp",
+    "ready": {
+      "testId": "add-new-row",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_table_cp-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-sqlQuery",
+    "ready": {
+      "testId": "custom-property-visual_sqlQuery-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_sqlQuery-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ],
+    "text": "SELECT order_id"
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-sqlQuery",
+    "ready": {
+      "testId": "code-mirror-container",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_sqlQuery-card"
+      }
+    ],
+    "text": "SELECT order_id"
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-view-markdown",
+    "ready": {
+      "testId": "custom-property-visual_markdown-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_markdown-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ]
+  },
+  {
+    "group": "Custom property values",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-edit-markdown",
+    "ready": {
+      "id": "block-editor-wrapper",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_markdown-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-options-enum",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_enum-card"
+      },
+      {
+        "action": "click",
+        "role": "combobox",
+        "within": "enum-select"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-options-enum-single",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_enum_single-card"
+      },
+      {
+        "action": "click",
+        "role": "combobox",
+        "within": "enum-select"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-options-entityReference",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_entityReference-card"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Remove Orders",
+        "within": "asset-select-list"
+      },
+      {
+        "action": "click",
+        "role": "combobox",
+        "within": "asset-select-list"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-options-entityReferenceList",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_entityReferenceList-card"
+      },
+      {
+        "action": "click",
+        "role": "combobox",
+        "within": "asset-select-list"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-calendar-date-cp",
+    "ready": {
+      "role": "grid",
+      "name": "January 2026"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_date_cp-card"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "within": "date-time-picker"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-calendar-dateTime-cp",
+    "ready": {
+      "role": "grid",
+      "name": "January 2026"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_dateTime_cp-card"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "within": "date-time-picker"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-table-add-row",
+    "ready": {
+      "testId": "table-row-2"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_table_cp-card"
+      },
+      {
+        "action": "click",
+        "testId": "add-new-row"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-table-remove-row",
+    "ready": {
+      "testId": "table-row-0"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_table_cp-card"
+      },
+      {
+        "action": "click",
+        "testId": "delete-row-0"
+      }
+    ],
+    "absent": [
+      {
+        "testId": "table-row-1"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-interval-manual",
+    "ready": {
+      "testId": "start-input"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_timeInterval-card"
+      },
+      {
+        "action": "click",
+        "testId": "time-interval-manual-toggle"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-interval-zone-options",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_timeInterval-card"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "namePattern": "Timezone",
+        "within": "custom-property-edit-modal"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-invalid-email",
+    "ready": {
+      "text": "Invalid Email."
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_email-card"
+      },
+      {
+        "action": "fill",
+        "testId": "email-input",
+        "value": "invalid"
+      },
+      {
+        "action": "click",
+        "testId": "inline-save-btn"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-invalid-timestamp",
+    "ready": {
+      "text": "Invalid Unix epoch time in milliseconds"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_timestamp-card"
+      },
+      {
+        "action": "fill",
+        "testId": "timestamp-input",
+        "value": "yesterday"
+      },
+      {
+        "action": "click",
+        "testId": "inline-save-btn"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-invalid-hyperlink-cp",
+    "ready": {
+      "text": "Invalid URL format"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_hyperlink_cp-card"
+      },
+      {
+        "action": "fill",
+        "testId": "hyperlink-url-input",
+        "value": "not-a-url"
+      },
+      {
+        "action": "click",
+        "testId": "inline-save-btn"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-interval-invalid-range",
+    "ready": {
+      "role": "alert",
+      "within": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_timeInterval-card"
+      },
+      {
+        "action": "click",
+        "testId": "time-interval-manual-toggle"
+      },
+      {
+        "action": "fill",
+        "testId": "start-input",
+        "value": "1768471300000"
+      },
+      {
+        "action": "fill",
+        "testId": "end-input",
+        "value": "1768471200000"
+      },
+      {
+        "action": "click",
+        "testId": "inline-save-btn"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-save-error",
+    "ready": {
+      "role": "alertdialog"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_string-card"
+      },
+      {
+        "action": "fill",
+        "testId": "value-input",
+        "within": "custom-property-edit-modal",
+        "value": "Finance metadata awaiting review."
+      },
+      {
+        "action": "click",
+        "testId": "inline-save-btn"
+      }
+    ],
+    "expectedError": "The visual fixture service is unavailable.",
+    "target": {
+      "role": "alertdialog"
+    },
+    "maxDiffPixelRatio": 0
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties-empty",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-empty-value",
+    "ready": {
+      "testId": "custom-property-visual_string-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_string-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ],
+    "containsText": "No value yet"
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties-empty",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-set-value",
+    "ready": {
+      "testId": "value-input",
+      "within": "custom-property-edit-modal"
+    },
+    "target": {
+      "testId": "custom-property-edit-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "add-value-button",
+        "within": "custom-property-visual_string-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties-read-only",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-read-only",
+    "ready": {
+      "testId": "custom-property-visual_string-card"
+    },
+    "target": {
+      "testId": "custom-property-visual_string-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      }
+    ],
+    "absent": [
+      {
+        "testId": "edit-icon",
+        "within": "custom-property-visual_string-card"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-populated",
+    "ready": {
+      "testId": "custom-property-table"
+    },
+    "actions": [],
+    "containsText": "Finance metadata stored as string."
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-type-options",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-required",
+    "ready": {
+      "text": "Name is required"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-save"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-name-validation",
+    "ready": {
+      "text": "Name must start with a letter or number. Invalid characters: \" * : ^ $ \\ < > & ~ /"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "fill",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": "invalid/name"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-save"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-filter-options",
+    "ready": {
+      "role": "menu",
+      "name": "Type"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "custom-property-type-filter"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-no-search-results",
+    "ready": {
+      "text": "No Properties found"
+    },
+    "actions": [
+      {
+        "action": "fill",
+        "testId": "custom-property-search",
+        "value": "unmatched visual property"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-schema",
+    "ready": {
+      "testId": "code-mirror-container",
+      "within": "custom-properties-content"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Schema",
+        "within": "custom-properties-content"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-create-enum",
+    "ready": {
+      "testId": "custom-property-enum-config"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Enum"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-create-date",
+    "ready": {
+      "testId": "custom-property-format-config"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Date"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-formats-date",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Date"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-format-config"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-create-dateTime",
+    "ready": {
+      "testId": "custom-property-format-config"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Date Time"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-formats-dateTime",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Date Time"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-format-config"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-create-time",
+    "ready": {
+      "testId": "custom-property-format-config"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Time"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-formats-time",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Time"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-format-config"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-create-entityReference",
+    "ready": {
+      "testId": "custom-property-entity-ref-config"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Entity Reference"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-references-entityReference",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Entity Reference"
+      },
+      {
+        "action": "click",
+        "role": "combobox",
+        "within": "custom-property-entity-ref-config"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-create-entityReferenceList",
+    "ready": {
+      "testId": "custom-property-entity-ref-config"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Entity Reference List"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-references-entityReferenceList",
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Entity Reference List"
+      },
+      {
+        "action": "click",
+        "role": "combobox",
+        "within": "custom-property-entity-ref-config"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-create-table",
+    "ready": {
+      "testId": "custom-property-columns"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Table"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-actions",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "property-actions",
+        "within": {
+          "role": "row",
+          "has": {
+            "text": "string property"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-delete",
+    "ready": {
+      "testId": "delete-custom-property-popover"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "property-actions",
+        "within": {
+          "role": "row",
+          "has": {
+            "text": "string property"
+          }
+        }
+      },
+      {
+        "action": "click",
+        "testId": "delete-button"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-edit-string",
+    "ready": {
+      "testId": "edit-custom-property-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "property-actions",
+        "within": {
+          "role": "row",
+          "has": {
+            "text": "string property"
+          }
+        }
+      },
+      {
+        "action": "click",
+        "testId": "edit-button"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-edit-enum",
+    "ready": {
+      "testId": "edit-custom-property-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "property-actions",
+        "within": {
+          "role": "row",
+          "has": {
+            "text": "enum property"
+          }
+        }
+      },
+      {
+        "action": "click",
+        "testId": "edit-button"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-edit-entityReference",
+    "ready": {
+      "testId": "edit-custom-property-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "property-actions",
+        "within": {
+          "role": "row",
+          "has": {
+            "text": "entityReference property"
+          }
+        }
+      },
+      {
+        "action": "click",
+        "testId": "edit-button"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-edit-table_cp",
+    "ready": {
+      "testId": "edit-custom-property-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "property-actions",
+        "within": {
+          "role": "row",
+          "has": {
+            "text": "table cp property"
+          }
+        }
+      },
+      {
+        "action": "click",
+        "testId": "edit-button"
+      }
+    ]
+  },
+  {
+    "id": "workflow-history-empty",
+    "group": "Governance states",
+    "path": "/workflows/visual_approval_workflow/workflow",
+    "initialReady": {
+      "testId": "workflow-header"
+    },
+    "ready": {
+      "testId": "workflow-execution-history-empty"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Execution History",
+        "within": "workflow-execution-tabs"
+      }
+    ],
+    "state": "empty"
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-summary-date_cp",
+    "ready": {
+      "role": "row",
+      "has": {
+        "text": "date cp property"
+      }
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "role": "row",
+        "has": {
+          "text": "date cp property"
+        }
+      }
+    ],
+    "target": {
+      "role": "row",
+      "has": {
+        "text": "date cp property"
+      }
+    }
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-summary-dateTime_cp",
+    "ready": {
+      "role": "row",
+      "has": {
+        "text": "dateTime cp property"
+      }
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "role": "row",
+        "has": {
+          "text": "dateTime cp property"
+        }
+      }
+    ],
+    "target": {
+      "role": "row",
+      "has": {
+        "text": "dateTime cp property"
+      }
+    }
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-summary-enum",
+    "ready": {
+      "role": "row",
+      "has": {
+        "text": "enum property"
+      }
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "role": "row",
+        "has": {
+          "text": "enum property"
+        }
+      }
+    ],
+    "target": {
+      "role": "row",
+      "has": {
+        "text": "enum property"
+      }
+    }
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-summary-enum_single",
+    "ready": {
+      "role": "row",
+      "has": {
+        "text": "enum single property"
+      }
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "role": "row",
+        "has": {
+          "text": "enum single property"
+        }
+      }
+    ],
+    "target": {
+      "role": "row",
+      "has": {
+        "text": "enum single property"
+      }
+    }
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-summary-entityReference",
+    "ready": {
+      "role": "row",
+      "has": {
+        "text": "entityReference property"
+      }
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "role": "row",
+        "has": {
+          "text": "entityReference property"
+        }
+      }
+    ],
+    "target": {
+      "role": "row",
+      "has": {
+        "text": "entityReference property"
+      }
+    }
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-summary-entityReferenceList",
+    "ready": {
+      "role": "row",
+      "has": {
+        "text": "entityReferenceList property"
+      }
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "role": "row",
+        "has": {
+          "text": "entityReferenceList property"
+        }
+      }
+    ],
+    "target": {
+      "role": "row",
+      "has": {
+        "text": "entityReferenceList property"
+      }
+    }
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-summary-table_cp",
+    "ready": {
+      "role": "row",
+      "has": {
+        "text": "table cp property"
+      }
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "role": "row",
+        "has": {
+          "text": "table cp property"
+        }
+      }
+    ],
+    "target": {
+      "role": "row",
+      "has": {
+        "text": "table cp property"
+      }
+    }
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-required-enum",
+    "ready": {
+      "text": "Enum Values is required"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Enum"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-save"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-required-entityReference",
+    "ready": {
+      "text": "Entity Reference Types is required"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Entity Reference"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-save"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-required-table",
+    "ready": {
+      "text": "Columns is required"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Table"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-save"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-table-reserved-column",
+    "ready": {
+      "text": "Column name '__row_id__' is reserved for internal use and cannot be used as a table custom property column."
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Table"
+      },
+      {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "__row_id__"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Enter"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-save"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-table-column-limit",
+    "ready": {
+      "text": "Maximum 3 Columns are allowed"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Table"
+      },
+      {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Source"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Enter"
+      },
+      {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Purpose"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Enter"
+      },
+      {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Owner"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Enter"
+      },
+      {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Retention"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Enter"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-save"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-enum-created-values-menu",
+    "ready": {
+      "role": "listbox",
+      "name": "Suggestions"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Enum"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-multi-select"
+      },
+      {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Gold"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Enter"
+      },
+      {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Silver"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Enter"
+      },
+      {
+        "action": "click",
+        "role": "combobox",
+        "within": "custom-property-enum-config"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "ArrowDown"
+      }
+    ],
+    "containsText": ["Gold", "Silver"],
+    "maxDiffPixelRatio": 0,
+    "text": "No data found",
+    "target": {
+      "role": "listbox",
+      "name": "Suggestions"
+    }
+  },
+  {
+    "id": "tab-topic-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/topic/visual_kafka.customer_events",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
+  },
+  {
+    "id": "tab-topic-sample-data",
+    "group": "Entity tabs",
+    "path": "/topic/visual_kafka.customer_events",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Sample\\ Data(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "testId": "message-card",
+      "has": {
+        "text": "{\"id\": 1, \"first_name\": \"L\u00e9vy\", \"country\": \"ES\"}"
+      }
+    }
+  },
+  {
+    "id": "tab-topic-config",
+    "group": "Entity tabs",
+    "path": "/topic/visual_kafka.customer_events",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Config(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "testId": "code-mirror-container"
+    },
+    "text": "cleanup.policy"
+  },
+  {
+    "id": "tab-topic-lineage",
+    "group": "Entity tabs",
+    "path": "/topic/visual_kafka.customer_events",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$",
+        "within": {
+          "role": "tablist",
+          "has": {
+            "role": "tab",
+            "namePattern": "^Custom Properties(?:\\s*\\d+)?$"
+          }
+        }
+      }
+    ],
+    "ready": {
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
+  },
+  {
+    "id": "tab-topic-contract",
+    "group": "Entity tabs",
+    "path": "/topic/visual_kafka.customer_events",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "testId": "no-data-placeholder"
+    }
+  },
+  {
+    "id": "tab-topic-custom-properties",
+    "group": "Entity tabs",
+    "path": "/topic/visual_kafka.customer_events",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "text": "No custom properties defined"
+    }
+  },
+  {
+    "id": "connection-discard-unsaved",
+    "group": "Connections",
+    "path": "/connections/add-service/databaseServices",
+    "initialReady": {
+      "testId": "select-service"
+    },
+    "ready": {
+      "role": "button",
+      "name": "Discard"
+    },
+    "target": {
+      "role": "dialog"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "Mysql"
+      },
+      {
+        "action": "fill",
+        "testId": "service-name",
+        "value": "visual_connection"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Back"
+      }
+    ]
+  },
+  {
+    "group": "Custom property configuration",
+    "path": "/my-data#custom-properties/table",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "custom-property-table"
+    },
+    "id": "custom-property-config-enum-created-values-field",
+    "ready": {
+      "testId": "custom-property-enum-config"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-type"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Enum"
+      },
+      {
+        "action": "click",
+        "testId": "custom-property-multi-select"
+      },
+      {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Gold"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Enter"
+      },
+      {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Silver"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Enter"
+      },
+      {
+        "action": "click",
+        "role": "combobox",
+        "within": "custom-property-enum-config"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "ArrowDown"
+      }
+    ],
+    "containsText": ["Gold", "Silver"],
+    "maxDiffPixelRatio": 0,
+    "text": "Gold",
+    "target": {
+      "testId": "custom-property-enum-config"
+    }
+  },
+  {
+    "id": "glossary-workflow-progress",
+    "group": "Governance states",
+    "path": "/glossary/VisualBusinessGlossary.Customer",
+    "ready": {
+      "testId": "workflow-history-widget"
+    },
+    "text": "1/2",
+    "target": {
+      "testId": "workflow-history-widget"
+    },
+    "maxDiffPixelRatio": 0
+  },
+  {
+    "id": "glossary-workflow-stages",
+    "group": "Governance states",
+    "path": "/glossary/VisualBusinessGlossary.Customer",
+    "initialReady": {
+      "testId": "workflow-history-widget"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Workflow History"
+      }
+    ],
+    "ready": {
+      "testId": "workflow-history-widget"
+    },
+    "text": "Glossary Term Created or Updated",
+    "target": {
+      "testId": "workflow-history-widget"
+    },
+    "maxDiffPixelRatio": 0
   }
 ]

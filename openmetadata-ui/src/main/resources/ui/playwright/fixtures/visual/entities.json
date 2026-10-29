@@ -114,117 +114,6 @@
           ]
         ]
       },
-      "tableProfile": {
-        "timestamp": 1634366539,
-        "columnCount": 12,
-        "rowCount": 725,
-        "customMetrics": [
-          {
-            "name": "CountOfUSAddress",
-            "value": 15467
-          },
-          {
-            "name": "CountOfFRAddress",
-            "value": 1467
-          }
-        ],
-        "columnProfile": [
-          {
-            "name": "address_::>id",
-            "uniqueCount": 9,
-            "uniqueProportion": 0.52805369,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "shop_id",
-            "uniqueCount": 29,
-            "uniqueProportion": 0.2290940013,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "first_name",
-            "uniqueCount": 13,
-            "uniqueProportion": 0.1327792,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "last_name",
-            "uniqueCount": 23,
-            "uniqueProportion": 0.177126,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "address1",
-            "uniqueCount": 53,
-            "uniqueProportion": 0.0396391,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "address2",
-            "uniqueCount": 76,
-            "uniqueProportion": 0.0690369,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "company",
-            "uniqueCount": 23,
-            "uniqueProportion": 0.1210963,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "city",
-            "uniqueCount": 6,
-            "uniqueProportion": 0.024072,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "region",
-            "uniqueCount": 3,
-            "uniqueProportion": 0.1478114,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "zip",
-            "uniqueCount": 11,
-            "uniqueProportion": 0.1383472,
-            "distinctCount": 0,
-            "distinctProportion": 0,
-            "customMetrics": [
-              {
-                "name": "CountOfLAZipCode",
-                "value": 3456
-              },
-              {
-                "name": "CountOfOrangeCountyZipCode",
-                "value": 2345
-              }
-            ]
-          },
-          {
-            "name": "country",
-            "uniqueCount": 13,
-            "uniqueProportion": 0.1601013,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          },
-          {
-            "name": "phone",
-            "uniqueCount": 8,
-            "uniqueProportion": 0.1297079,
-            "distinctCount": 0,
-            "distinctProportion": 0
-          }
-        ]
-      },
       "databaseSchema": {
         "id": "aca6b1e5-92af-55e5-aa28-3d8aefe0f9d0",
         "name": "public",
@@ -285,30 +174,9 @@
         "name": "visual_warehouse.finance.public.orders.testSuite",
         "displayName": "Orders quality checks",
         "fullyQualifiedName": "visual_warehouse.finance.public.orders.testSuite",
-        "version": 1.1,
-        "updatedAt": 1768471200000,
-        "updatedBy": "visual_admin",
         "deleted": false,
         "description": "Curated finance metadata for reliable reporting.",
-        "basic": true,
-        "executable": true,
-        "entityLink": "<#E::table::visual_warehouse.finance.public.orders>",
-        "summary": {
-          "success": 1,
-          "failed": 1,
-          "aborted": 0,
-          "total": 2
-        },
-        "owners": [
-          {
-            "id": "686536f5-3041-5367-9901-bff561dec93d",
-            "name": "visual_steward",
-            "fullyQualifiedName": "visual_steward",
-            "displayName": "Finance Steward",
-            "type": "user"
-          }
-        ],
-        "testCaseCount": 2
+        "type": "testSuite"
       }
     }
   },
@@ -431,7 +299,7 @@
           "name": "presto_task",
           "displayName": "Presto Task",
           "description": "Airflow operator to perform ETL on presto tables",
-          "sourceUrl": "http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists",
+          "sourceUrl": "https://airflow.example.com/dags/visual_sales/tasks/presto_task",
           "downstreamTasks": ["assert_table_exists"],
           "taskType": "PrestoOperator"
         },
@@ -439,7 +307,7 @@
           "name": "assert_table_exists",
           "displayName": "Assert Table Exists",
           "description": "Assert if a table exists",
-          "sourceUrl": "http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists",
+          "sourceUrl": "https://airflow.example.com/dags/visual_sales/tasks/assert_table_exists",
           "downstreamTasks": [],
           "taskType": "HiveOperator"
         }
@@ -496,12 +364,12 @@
       "replicationFactor": 2,
       "maximumMessageSize": 167,
       "cleanupPolicies": ["delete"],
-      "schemaType": "Avro",
-      "schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"Customer\",\"type\":\"record\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}",
-      "sampleData": [
-        "{\"id\": 1, \"first_name\": \"L\u00e9vy\", \"country\": \"ES\"}",
-        "{\"id\": 2, \"first_name\": \"Lima\", \"country\": \"ES\"}"
-      ],
+      "sampleData": {
+        "messages": [
+          "{\"id\": 1, \"first_name\": \"L\u00e9vy\", \"country\": \"ES\"}",
+          "{\"id\": 2, \"first_name\": \"Lima\", \"country\": \"ES\"}"
+        ]
+      },
       "id": "b9a77196-531f-5b38-b617-e8c8191359ef",
       "name": "customer_events",
       "displayName": "Customer events",
@@ -541,7 +409,82 @@
         "displayName": "Visual Kafka",
         "type": "messagingService"
       },
-      "serviceType": "Kafka"
+      "serviceType": "Kafka",
+      "messageSchema": {
+        "schemaType": "Avro",
+        "schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"Customer\",\"type\":\"record\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}",
+        "schemaFields": [
+          {
+            "name": "id",
+            "dataType": "STRING",
+            "dataTypeDisplay": "string",
+            "fullyQualifiedName": "visual_kafka.customer_events.id",
+            "description": "Customer event id",
+            "tags": []
+          },
+          {
+            "name": "first_name",
+            "dataType": "STRING",
+            "dataTypeDisplay": "string",
+            "fullyQualifiedName": "visual_kafka.customer_events.first_name",
+            "description": "Customer event first name",
+            "tags": []
+          },
+          {
+            "name": "last_name",
+            "dataType": "STRING",
+            "dataTypeDisplay": "string",
+            "fullyQualifiedName": "visual_kafka.customer_events.last_name",
+            "description": "Customer event last name",
+            "tags": []
+          },
+          {
+            "name": "email",
+            "dataType": "STRING",
+            "dataTypeDisplay": "string",
+            "fullyQualifiedName": "visual_kafka.customer_events.email",
+            "description": "Customer event email",
+            "tags": []
+          },
+          {
+            "name": "address_line_1",
+            "dataType": "STRING",
+            "dataTypeDisplay": "string",
+            "fullyQualifiedName": "visual_kafka.customer_events.address_line_1",
+            "description": "Customer event address line 1",
+            "tags": []
+          },
+          {
+            "name": "address_line_2",
+            "dataType": "STRING",
+            "dataTypeDisplay": "string",
+            "fullyQualifiedName": "visual_kafka.customer_events.address_line_2",
+            "description": "Customer event address line 2",
+            "tags": []
+          },
+          {
+            "name": "post_code",
+            "dataType": "STRING",
+            "dataTypeDisplay": "string",
+            "fullyQualifiedName": "visual_kafka.customer_events.post_code",
+            "description": "Customer event post code",
+            "tags": []
+          },
+          {
+            "name": "country",
+            "dataType": "STRING",
+            "dataTypeDisplay": "string",
+            "fullyQualifiedName": "visual_kafka.customer_events.country",
+            "description": "Customer event country",
+            "tags": []
+          }
+        ]
+      },
+      "topicConfig": {
+        "cleanup.policy": "delete",
+        "retention.ms": "604800000",
+        "max.message.bytes": "1048576"
+      }
     }
   },
   {
@@ -609,7 +552,6 @@
     "entity": {
       "displayName": "Revenue trend",
       "description": "Revenue trend provides curated finance and customer metadata for analytics.",
-      "chartId": "114",
       "chartType": "Area",
       "sourceUrl": "https://example.com/catalog/revenue_trend",
       "id": "f28819a0-2ef6-5825-9094-83cdd81e3f89",
@@ -753,7 +695,13 @@
       "displayName": "Customer churn",
       "description": "Customer churn provides curated finance and customer metadata for analytics.",
       "algorithm": "mlmodel",
-      "dashboard": "sample_superset.eta_predictions_performance",
+      "dashboard": {
+        "id": "0b200084-5cc1-5440-8248-abe442c830c0",
+        "name": "sales",
+        "displayName": "Sales dashboard",
+        "fullyQualifiedName": "visual_looker.sales",
+        "type": "dashboard"
+      },
       "mlStore": {
         "storage": "mlflow-artifacts:/1/abc123def456/artifacts/model"
       },
@@ -940,8 +888,8 @@
           }
         ]
       },
-      "numberOfObjects": "1.7661858297E10",
-      "size": "102400",
+      "numberOfObjects": 17661858297.0,
+      "size": 102400.0,
       "fileFormats": ["parquet"],
       "id": "bc4c728a-9555-52d4-aa72-aea338a8f488",
       "name": "analytics",
@@ -1089,6 +1037,12 @@
         "fullyQualifiedName": "visual_elastic",
         "displayName": "Visual Elastic",
         "type": "searchService"
+      },
+      "sampleData": {
+        "messages": [
+          "{\"name\": \"orders\", \"displayName\": \"Orders\", \"description\": \"Certified finance metadata.\", \"columns\": [{\"name\": \"order_id\", \"displayName\": \"Order ID\", \"description\": \"Unique record identifier.\"}], \"databaseSchema\": \"finance.public\"}",
+          "{\"name\": \"customers\", \"displayName\": \"Customers\", \"description\": \"Certified finance metadata.\", \"columns\": [{\"name\": \"customer_id\", \"displayName\": \"Customer ID\", \"description\": \"Unique record identifier.\"}], \"databaseSchema\": \"finance.public\"}"
+        ]
       }
     }
   },
@@ -1133,12 +1087,11 @@
         }
       ],
       "tags": [],
-      "followers": [],
       "votes": {
         "upVotes": 2,
         "downVotes": 0
       },
-      "serviceType": "OpenAPI"
+      "serviceType": "Rest"
     }
   },
   {
@@ -1289,7 +1242,7 @@
         "displayName": "Visual Api",
         "type": "apiService"
       },
-      "serviceType": "OpenAPI"
+      "serviceType": "Rest"
     }
   },
   {
@@ -1302,8 +1255,8 @@
       "path": "/Finance",
       "directoryType": "Folder",
       "isShared": true,
-      "numberOfFiles": 342,
-      "numberOfSubDirectories": 12,
+      "numberOfFiles": 2,
+      "numberOfSubDirectories": 0,
       "totalSize": 524288000,
       "id": "d0400651-d760-52cf-8876-10d8d2a7bd85",
       "name": "finance",
@@ -1343,7 +1296,25 @@
         "displayName": "Visual Drive",
         "type": "driveService"
       },
-      "serviceType": "GoogleDrive"
+      "serviceType": "GoogleDrive",
+      "children": [
+        {
+          "id": "d6b95a62-7d78-5400-b1c0-151946c51106",
+          "name": "forecast",
+          "displayName": "Forecast file",
+          "fullyQualifiedName": "visual_drive.finance.forecast",
+          "description": "Forecast file provides curated finance and customer metadata for analytics.",
+          "type": "file"
+        },
+        {
+          "id": "45a00af7-1da8-5aaf-bb94-0dce811d2937",
+          "name": "budget",
+          "displayName": "Budget spreadsheet",
+          "fullyQualifiedName": "visual_drive.finance.budget",
+          "description": "Budget spreadsheet provides curated finance and customer metadata for analytics.",
+          "type": "spreadsheet"
+        }
+      ]
     }
   },
   {
@@ -1373,9 +1344,11 @@
       "createdTime": 1704067200000,
       "modifiedTime": 1719878400000,
       "lastModifiedBy": {
-        "id": "cfo123",
-        "type": "user",
-        "name": "finance_lead"
+        "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
+        "name": "visual_analytics",
+        "fullyQualifiedName": "visual_analytics",
+        "displayName": "Analytics",
+        "type": "team"
       },
       "id": "d6b95a62-7d78-5400-b1c0-151946c51106",
       "name": "forecast",
@@ -1434,7 +1407,6 @@
       },
       "path": "/Finance/annual_budget_2024.xlsx",
       "size": 2097152,
-      "numberOfWorksheets": 12,
       "sourceUrl": "https://example.com/catalog/budget",
       "id": "45a00af7-1da8-5aaf-bb94-0dce811d2937",
       "name": "budget",
@@ -1474,7 +1446,17 @@
         "displayName": "Visual Drive",
         "type": "driveService"
       },
-      "serviceType": "GoogleDrive"
+      "serviceType": "GoogleDrive",
+      "worksheets": [
+        {
+          "id": "74fe2fe3-1d87-5753-a62d-cc147d4ca466",
+          "name": "revenue",
+          "displayName": "Revenue worksheet",
+          "fullyQualifiedName": "visual_drive.finance.budget.revenue",
+          "description": "Revenue worksheet provides curated finance and customer metadata for analytics.",
+          "type": "worksheet"
+        }
+      ]
     }
   },
   {
@@ -1583,7 +1565,6 @@
       "version": 1.2,
       "updatedAt": 1768471200000,
       "updatedBy": "visual_admin",
-      "deleted": false,
       "owners": [
         {
           "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
@@ -1591,15 +1572,6 @@
           "fullyQualifiedName": "visual_analytics",
           "displayName": "Analytics",
           "type": "team"
-        }
-      ],
-      "domains": [
-        {
-          "id": "dd609c7a-8622-50b8-a8c7-78bb5de9a07f",
-          "name": "VisualFinance",
-          "fullyQualifiedName": "VisualFinance",
-          "displayName": "Finance",
-          "type": "domain"
         }
       ],
       "tags": [],
@@ -1621,7 +1593,6 @@
       "version": 1.2,
       "updatedAt": 1768471200000,
       "updatedBy": "visual_admin",
-      "deleted": false,
       "owners": [
         {
           "id": "7971add0-59a8-5db1-8195-c5422ba2c6bd",
@@ -1642,9 +1613,9 @@
       ],
       "tags": [],
       "followers": [],
-      "inputPorts": [],
-      "outputPorts": [],
-      "experts": []
+      "experts": [],
+      "consumesFrom": [],
+      "providesTo": []
     }
   },
   {
@@ -1724,7 +1695,6 @@
         }
       ],
       "tags": [],
-      "followers": [],
       "mutuallyExclusive": false,
       "reviewers": [],
       "termCount": 1,
@@ -1764,7 +1734,6 @@
         }
       ],
       "tags": [],
-      "followers": [],
       "glossary": {
         "id": "85df05d1-c108-58e5-bdeb-ff46b8062c7e",
         "name": "VisualBusinessGlossary",
@@ -1772,7 +1741,6 @@
         "displayName": "Business glossary",
         "type": "glossary"
       },
-      "status": "Approved",
       "synonyms": ["Client"],
       "relatedTerms": [],
       "references": [
@@ -1783,7 +1751,8 @@
       ],
       "childrenCount": 0,
       "reviewers": [],
-      "provider": "user"
+      "provider": "user",
+      "entityStatus": "Approved"
     }
   },
   {
@@ -1818,8 +1787,6 @@
           "type": "domain"
         }
       ],
-      "tags": [],
-      "followers": [],
       "mutuallyExclusive": false,
       "provider": "user",
       "termCount": 1
@@ -1857,8 +1824,6 @@
           "type": "domain"
         }
       ],
-      "tags": [],
-      "followers": [],
       "classification": {
         "id": "55d4520f-9da7-59cc-84ca-c2681cf44463",
         "name": "VisualClassification",

@@ -51,7 +51,8 @@ interface VisualScene {
   absent?: VisualLocator[];
   state?: VisualDataState;
   text?: string;
-  containsText?: string;
+  containsText?: string | string[];
+  expectedError?: string;
   actions?: VisualAction[];
   paintedLineage?: boolean;
   paintedOntology?: boolean;
@@ -163,10 +164,18 @@ export const registerVisualScenarios = (group: string) => {
             await expect(locate(page, missing)).toHaveCount(0);
           if (scene.text)
             await expect(locate(page, scene.ready)).toContainText(scene.text);
-          if (scene.containsText)
-            await expect(
-              page.getByText(scene.containsText, { exact: true })
-            ).not.toHaveCount(0);
+          for (const text of [scene.containsText ?? []].flat())
+            await expect(page.getByText(text, { exact: true })).not.toHaveCount(
+              0
+            );
+          // Require the specific notification so unrelated request failures
+          // cannot become approved error-feedback baselines.
+          if (scene.expectedError) {
+            await expect(page.getByRole('alertdialog')).toHaveCount(1);
+            await expect(page.getByRole('alertdialog')).toContainText([
+              scene.expectedError,
+            ]);
+          }
           if (
             scene.state === 'error' &&
             !scene.ready.text &&
@@ -180,7 +189,8 @@ export const registerVisualScenarios = (group: string) => {
           if (scene.paintedOntology) await waitForOntologyCanvas(page);
           await expectVisualScreenshot(page, scene.id, theme, {
             target: scene.target ? locate(page, scene.target) : undefined,
-            allowErrorFeedback: scene.state === 'error',
+            allowErrorFeedback:
+              scene.state === 'error' || Boolean(scene.expectedError),
             ...(scene.maxDiffPixelRatio !== undefined
               ? { maxDiffPixelRatio: scene.maxDiffPixelRatio }
               : {}),
