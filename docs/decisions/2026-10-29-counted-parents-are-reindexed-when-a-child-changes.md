@@ -6,7 +6,8 @@
 - **Guard:** `FolderResourceIT#test_folderKeepsItsChildrenCountInSearchThroughAPlainEdit`,
   `GlossaryTermResourceIT#test_parentTermChildrenCountFollowsItsChildrenInSearch`,
   `MetricGroupResourceIT#searchCountsSurviveChildCreateAndPlainEdits`,
-  `MetricGroupResourceIT#patchMovesRefreshEveryParentAMetricPassesThrough`
+  `MetricGroupResourceIT#patchMovesRefreshEveryParentAMetricPassesThrough`,
+  `MetricGroupResourceIT#csvReparentRefreshesBothParentsChildrenCount`
 - **Related:** #36494, ADR:2026-10-29-search-documents-load-computed-counts-on-every-write
 
 ## Context
