@@ -1299,6 +1299,21 @@ describe('OntologyGraphView', () => {
       ['approvedBy', 'approves'],
     ]);
     expect(createRelationshipType).toHaveBeenCalledTimes(2);
+    expect(
+      (createOntologyProperty as jest.Mock).mock.calls.map(([request]) => [
+        request.iri,
+        request.inverse,
+      ])
+    ).toEqual([
+      [APPROVED_BY, undefined],
+      [APPROVES, APPROVED_BY],
+    ]);
+    expect(createOntologyAxiom).toHaveBeenCalledTimes(1);
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expressions: [expect.objectContaining({ propertyIri: APPROVES })],
+      })
+    );
     expect(showErrorToast).toHaveBeenCalledTimes(1);
   });
 
