@@ -98,8 +98,6 @@ final class RdfTestDatabase implements AutoCloseable {
     applyReleaseMigration();
     applyTableChanges("2.1.0", "rdf_active_dataset");
     applyTableChanges("2.1.0", "rdf_projection_health");
-    applyTableChanges("1.3.1", "QRTZ_SCHEDULER_STATE");
-    createTable("2.1.0", "server_registry");
   }
 
   void applyReleaseMigration() {
