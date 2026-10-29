@@ -47,45 +47,6 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Drawer: jest
-    .fn()
-    .mockImplementation(({ children, open, title, footer, ...props }) => (
-      <div data-open={open} data-testid="drawer" {...props}>
-        {title && <div data-testid="drawer-title">{title}</div>}
-        <div data-testid="drawer-content">{children}</div>
-        {footer && <div data-testid="drawer-footer">{footer}</div>}
-      </div>
-    )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick, disabled, ...props }) => (
-      <button
-        data-testid={props['data-testid'] || 'button'}
-        disabled={disabled}
-        onClick={onClick}
-        {...props}>
-        {children}
-      </button>
-    )),
-  Card: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="card" {...props}>
-      {children}
-    </div>
-  )),
-  Space: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="space" {...props}>
-      {children}
-    </div>
-  )),
-  Tooltip: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="tooltip" {...props}>
-      {children}
-    </div>
-  )),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
   Button: jest.fn().mockImplementation(

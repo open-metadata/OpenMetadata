@@ -129,6 +129,8 @@ export interface RelationshipTypePlan {
   readonly primary: CreateRelationshipType;
   /** Created before the primary, which names it; the back link is patched afterwards. */
   readonly inverse?: CreateRelationshipType;
+  /** An inverse an earlier attempt registered but never linked, which the primary names in place of a new one. */
+  readonly reusedInverse?: RelationshipType;
 }
 
 const partnerOf = (type: RelationshipType): NativeRelationPartner => ({
@@ -448,10 +450,14 @@ export const planNativeRelation = ({
   ];
 };
 
-/** Custom registry types for a draft, named apart from every existing type. */
+/**
+ * Custom registry types for a draft, named apart from every existing type. An inverse an earlier
+ * attempt registered but never linked is reused when the draft's inverse would take its name.
+ */
 export const planRelationshipType = (
   draft: RelationshipTypeDraft,
-  types: readonly RelationshipType[]
+  types: readonly RelationshipType[],
+  unlinkedInverse?: RelationshipType
 ): RelationshipTypePlan => {
   const taken = new Set(types.map((type) => type.name));
   const nameFor = (label: string) => {
@@ -463,7 +469,13 @@ export const planRelationshipType = (
   const label = draft.label.trim();
   const inverseLabel = draft.symmetric ? '' : draft.inverseLabel?.trim() ?? '';
   const name = nameFor(label);
+  // Freed only after the primary is named, so the primary never takes it.
+  if (unlinkedInverse) {
+    taken.delete(unlinkedInverse.name);
+  }
   const inverseName = inverseLabel ? nameFor(inverseLabel) : undefined;
+  const reusedInverse =
+    inverseName === unlinkedInverse?.name ? unlinkedInverse : undefined;
   const request = (
     typeName: string,
     typeLabel: string,
@@ -479,14 +491,15 @@ export const planRelationshipType = (
   });
 
   return {
-    inverse: inverseName
-      ? request(
-          inverseName,
-          inverseLabel,
-          inverseLabel,
-          CreatePaletteKey.Indigo
-        )
-      : undefined,
+    inverse:
+      inverseName && !reusedInverse
+        ? request(
+            inverseName,
+            inverseLabel,
+            inverseLabel,
+            CreatePaletteKey.Indigo
+          )
+        : undefined,
     primary: {
       ...request(
         name,
@@ -499,6 +512,7 @@ export const planRelationshipType = (
         : undefined,
       inverse: inverseName,
     },
+    reusedInverse,
   };
 };
 
