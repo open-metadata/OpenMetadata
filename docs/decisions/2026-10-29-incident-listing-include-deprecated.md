@@ -33,9 +33,14 @@ warning log. The search-based incident listing is unchanged and still honors `in
 
 Default callers (the UI, the SDKs) see the same listing as before. Callers that used
 `include=deleted` or `include=all` on this endpoint lose that scoping and must move to the
-search-based listing. The DAO-level listing shapes are shared with the incident reindexing path,
-which previously joined needlessly (`include` was never null) and only filtered deletion when
-asked: those listings now also exclude soft-deleted test cases' incidents, matching the search
-twin's default. No incident listing path can reintroduce a deleted clause that dangles on a column
-the table lacks: the scoping always travels with — or instead of — the join that names it.
-Reintroducing per-request deleted scoping would require re-deciding this record.
+search-based listing. The offset/listing shapes (`listWithOffset`/`listCount`) cannot reintroduce
+a deleted clause that dangles on a column the table lacks: the scoping always travels with — or
+instead of — the join that names it. Those shapes are shared with the incident reindexing path
+(`PaginatedEntityTimeSeriesSource`), which previously joined needlessly and did not scope by
+deletion: it now also excludes soft-deleted test cases' incidents, matching the search twin's
+default. The incident DAO's keyset/cursor readers (`listAfterKeyset`, `listBeforeKeyset`,
+`getCursorAtOffset`) are **not** covered: they build `filter.getCondition()` without the join;
+none is wired to an incident listing today (`PartitionWorker` routes time-series reindexing to
+the offset shapes), so if one ever is wired it must route its condition through
+`addOriginEntityFQNJoin` the same way. Reintroducing per-request deleted scoping would require
+re-deciding this record.
