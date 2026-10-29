@@ -21,9 +21,9 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   the database stores for that principal, stamped with the time the read was sent. A check is
   answered from memory while the stamp is within `maxStaleness` (5 s by default), and reads the
   database otherwise. No answer rests on a read older than `maxStaleness`.
-- A sweep pass, which starts 2 s after the previous one ends, fingerprints each cached principal's
-  rows and re-reads the ones that changed. Servers converge on database state and share no
-  credential state, so every committed write is seen, whoever made it.
+- A sweep pass, due 2 s after the previous one ends, fingerprints each cached principal's rows and
+  re-reads the ones that changed. Servers converge on database state and share no credential state,
+  so every committed write is seen, whoever made it.
 - Every entry point that grants access classifies the token with `OmCredential.classify` and calls
   `CredentialVerifier.require`, through `JwtFilter.requireCurrentCredential`. Which method each
   entry point calls:
@@ -72,11 +72,12 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   such as a secret changed inside an external secrets manager. Only the sweep thread, which also
   runs the deep pass, reuses a decrypted digest, and only the one in a confirmed entry whose read
   saw the same stored mechanism and `updatedAt`. So it reuses none for a principal the deep pass
-  could not convert, whose entry is unconfirmed, or for a bot whose user row changed since its entry
-  was read. Check and refresh reads decrypt, so no read replaces a deep pass's result with a digest
-  decrypted before that pass began, and a check read of a bot whose secret lives in an external
-  secrets manager makes one call to it. A principal the deep read cannot convert is unconfirmed from
-  that read on. Its next check reads it again and answers 503 until a read converts it, and no sweep
+  could not convert, whose entry is unconfirmed, or for a bot whose stored mechanism or `updatedAt`
+  changed since its entry was read. Writes to the bot user through the API change its `updatedAt`.
+  Check and refresh reads decrypt, so no read replaces a deep pass's result with a digest decrypted
+  before that pass began, and a check read of a bot whose secret lives in an external secrets
+  manager makes one call to it. A principal the deep read cannot convert is unconfirmed from that
+  read on. Its next check reads it again and answers 503 until a read converts it, and no sweep
   confirms it by fingerprint. A deep pass covers the principals cached when it begins, at most 10 to
   a read (`DEEP_CHUNK_SIZE`, a constant, not a setting), fewer when `batchSize` is smaller. Each
   sweep pass drains the queued nudges and reconfirms every batch first. While a deep pass has
@@ -90,11 +91,11 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   overruns it and one for the wait. So when draining and reconfirming take no time, the deep reads
   keep every such entry within `maxStaleness` while one read takes less than `sweepInterval`,
   however many principals the deep pass covers. A sweep or nudge re-read decrypts a bot's secret
-  again once its user row changes, so slow decrypts while reconfirming or draining nudges can age
-  entries past `maxStaleness`. An entry older than `maxStaleness` is stale, and its next check reads
-  it again. The next deep pass begins with the first sweep pass that starts after this one has ended
-  and once `deepVerifyInterval` has passed since this one began, or `min(deepVerifyInterval, 1 min)`
-  when one of its reads threw. A read that throws changes no entry.
+  again once its stored mechanism or `updatedAt` changes, so slow decrypts while reconfirming or
+  draining nudges can age entries past `maxStaleness`. An entry older than `maxStaleness` is stale,
+  and its next check reads it again. The next deep pass begins with the first sweep pass that starts
+  after this one has ended and once `deepVerifyInterval` has passed since this one began, or
+  `min(deepVerifyInterval, 1 min)` when one of its reads threw. A read that throws changes no entry.
 - When the verifier cannot confirm within `loadTimeout` (2 s), the request gets 503 with
   `Retry-After` (the sweep interval, rounded up), and an MCP tool or prompt call gets JSON-RPC
   error -32003. It never gets 401, and it is never accepted unconfirmed. A check whose thread is
@@ -132,14 +133,18 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
 - While the database is unreachable, bot and PAT requests answer 503 once their entries are older
   than `maxStaleness`. Session tokens and identity-provider tokens that claim neither `isBot=true`
   nor `tokenType=PERSONAL_ACCESS` are not affected.
-- While the secrets manager cannot decrypt a bot's secret, the bot's requests answer 503 until a
-  read decrypts the secret again. That starts with the next deep read of the bot, or sooner when the
-  bot's user row changes, since its entry is then no longer reconfirmed and its checks read it again
-  once it is `maxStaleness` old. On each server, each bot that keeps sending requests costs about
+- While the secrets manager cannot decrypt a bot's secret, every read that must decrypt it fails, so
+  each check of the bot that cannot be answered from memory answers 503 until a read decrypts the
+  secret again. That includes the first check on a server that holds no entry for the bot, as after
+  a restart or `idleExpiry`. A cached entry is reconfirmed by fingerprint without a decrypt, so it
+  keeps answering for the tokens it holds until the next deep read of the bot leaves it unconfirmed,
+  or until it ages past `maxStaleness` without a reconfirmation, as after a change to the bot's
+  stored mechanism or `updatedAt`. On each server, each bot that keeps sending requests costs about
   two check reads a second, each with a decrypt, and once its stored rows change, a decrypt on every
-  sweep as well. Nothing bounds how long a decrypt takes. The sweep thread decrypts a bot's secret
-  in every deep read, and in a sweep or nudge re-read that cannot reuse the last decrypt, as for a
-  bot whose user row changed. A slow decrypt there delays the sweep, so entries can age past
+  sweep as well, unless the sweep's re-read can reuse the last decrypt. Nothing bounds how long a
+  decrypt takes. The sweep thread decrypts a bot's secret in every deep read, and in a sweep or
+  nudge re-read that cannot reuse the last decrypt, as for a bot whose stored mechanism or
+  `updatedAt` changed. A slow decrypt there delays the sweep, so entries can age past
   `maxStaleness`. The deep budget limits how many deep reads a pass starts, not how long one takes.
   One that hangs holds the sweep thread, so no sweep completes until the secrets manager answers.
   After `maxStaleness`, every bot and PAT check then needs a read, and the sweep-age gauge alerts.
@@ -152,8 +157,8 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   `om_credential_sweep_last_complete_age_seconds`) exceeds `maxStaleness`, and watch
   `om.credential.unavailable`. The gauge is the age of the last sweep that re-confirmed every batch.
   A batch fails when one of its statements fails, or when converting one of its principals throws an
-  `Error`. Past `maxStaleness`, the entries that the failed batches did not reconfirm are too old to
-  answer from, so their checks read the database on the request-read pool, wait for it up to
+  `Error`. An entry whose last read or reconfirmation is older than `maxStaleness` is too old to
+  answer from, so its checks read the database on the request-read pool, wait for it up to
   `loadTimeout`, and answer 503 when that read fails or does not finish. A principal whose stored
   credentials fail to convert with an exception does not hold the gauge back. Its checks count under
   `om.credential.unavailable` with `cause=subject_read_failed`, and those that arrive while its

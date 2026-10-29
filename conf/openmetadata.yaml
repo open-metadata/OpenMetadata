@@ -1034,10 +1034,10 @@ cache:
 # In-memory checks of bot and personal access tokens against their stored credentials.
 # Alert on the gauge om_credential_sweep_last_complete_age_seconds (Prometheus name) when it exceeds
 # maxStaleness. It is the age of the last sweep that re-confirmed every batch. A batch fails when
-# one of its statements fails, or when converting one of its principals throws an Error. Past
-# maxStaleness the entries that the failed batches did not reconfirm are too old to answer from, so
-# their checks read the database on the request-read pool, wait for it up to loadTimeout, and answer
-# 503 when that read fails or does not finish. Also watch om_credential_unavailable_total. Its
+# one of its statements fails, or when converting one of its principals throws an Error. An entry
+# whose last read or reconfirmation is older than maxStaleness is too old to answer from, so its
+# checks read the database on the request-read pool, wait for it up to loadTimeout, and answer 503
+# when that read fails or does not finish. Also watch om_credential_unavailable_total. Its
 # cause="subject_read_failed" series counts checks of a principal whose stored credentials could not
 # be converted, which the gauge does not show.
 # waitForPropagation on the token revoke endpoints waits out the receiving server's maxStaleness,
@@ -1047,7 +1047,8 @@ cache:
 credentialVerification:
   # Oldest database read a token check may be answered from.
   maxStaleness: ${CREDENTIAL_VERIFICATION_MAX_STALENESS:-5s}
-  # How often every cached principal is re-confirmed against the database. At most half of maxStaleness.
+  # Delay from the end of one sweep pass to the next. Each pass re-confirms every cached principal
+  # against the database. At most half of maxStaleness.
   sweepInterval: ${CREDENTIAL_VERIFICATION_SWEEP_INTERVAL:-2s}
   # Shortest gap between database reads triggered by tokens of an unknown principal. Less than maxStaleness.
   missRefreshMinAge: ${CREDENTIAL_VERIFICATION_MISS_REFRESH_MIN_AGE:-500ms}

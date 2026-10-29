@@ -68,10 +68,10 @@ import org.openmetadata.service.security.credentials.VerifiedCredentials.ReadOrd
  * <p>{@link #require} never accepts a token on the strength of a database read that began more than
  * {@code maxStaleness} ago, so a revocation committed at T is honored by every server for every
  * check that begins at or after T + maxStaleness, whatever happens to sweeps, peers or the writer.
- * A background sweep, which starts {@code sweepInterval} after the previous one ends, re-confirms
- * every cached principal with one fingerprint query per {@code batchSize} principals and re-reads
- * only the ones whose fingerprint moved, so in steady state a check is a lock-free cache read, a
- * clock read and a set lookup. When the sweep falls behind, the next check starts or joins one
+ * A background sweep, due {@code sweepInterval} after its previous pass ends, re-confirms every
+ * cached principal with one fingerprint query per {@code batchSize} principals and re-reads only
+ * the ones whose fingerprint moved, so in steady state a check is a lock-free cache read, a clock
+ * read and a set lookup. When the sweep falls behind, the next check starts or joins one
  * single-flight read of its principal on a small read pool and waits for it within
  * {@code loadTimeout}; when that read fails, does not finish in time or gets no slot, the check
  * throws {@link CredentialUnavailableException} ("cannot confirm"), which is not
@@ -94,9 +94,9 @@ public final class CredentialVerifier implements Managed {
   private static final int QUEUED_READS_PER_THREAD = 16;
 
   /**
-   * Subjects per deep read. A pass's deep reads end at most one read of this many subjects after
-   * the deep budget runs out, or after the pass's drain and reconfirmations when those take longer
-   * than the budget. A constant, not a setting.
+   * Subjects per deep read, fewer when batchSize is smaller. A pass's deep reads end at most one
+   * read after the deep budget runs out, or one read after the pass's drain and reconfirmations
+   * when those take longer than the budget. A constant, not a setting.
    */
   private static final int DEEP_CHUNK_SIZE = 10;
 
@@ -814,7 +814,7 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
-  /** Each batch on its own, so one that fails leaves only its own entries to age out. */
+  /** Each batch on its own, so one that fails leaves the other batches' entries reconfirmed. */
   private boolean reconfirmAll() {
     boolean complete = true;
     List<CredentialSubject> subjects = List.copyOf(entries.asMap().keySet());
@@ -859,7 +859,8 @@ public final class CredentialVerifier implements Managed {
       succeeded = true;
     } catch (Throwable failure) {
       LOG.warn(
-          "Credential sweep batch of {} subjects failed; their entries age out until a pass succeeds",
+          "Credential sweep batch of {} subjects failed; the entries it did not reconfirm age out"
+              + " until a pass succeeds",
           batch.size(),
           failure);
     }
