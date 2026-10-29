@@ -35,12 +35,12 @@ import {
   Kind,
   OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   Category,
   PaletteKey,
   RelationshipType,
 } from '../../../../generated/entity/data/relationshipType';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyAxiom,
   createOntologyProperty,
