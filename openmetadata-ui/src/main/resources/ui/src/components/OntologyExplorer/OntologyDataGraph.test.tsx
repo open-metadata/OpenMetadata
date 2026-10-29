@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import i18next from 'i18next';
+import { useTranslation } from 'react-i18next';
+import enUS from '../../locale/languages/en-us.json';
 import {
   pageFixture,
   prefixFixture,
@@ -140,25 +143,6 @@ describe('native Data mode clusters', () => {
     expect(
       screen.getByTestId('ontology-load-more-assets-transfer')
     ).toHaveTextContent('label.load-more-count');
-  });
-
-  it('shows the connector with its column count, or the connector alone', () => {
-    renderGraph();
-
-    const rows = within(
-      screen.getByTestId('ontology-data-cluster-rows-transfer')
-    );
-
-    expect(
-      within(
-        rows.getByTestId('ontology-data-asset-asset:transfer:t0')
-      ).getByText('message.native-asset-summary')
-    ).toBeVisible();
-    expect(
-      within(
-        rows.getByTestId('ontology-data-asset-asset:transfer:t1')
-      ).getByText('BigQuery')
-    ).toBeVisible();
   });
 
   it('asks for the logo of the row service, so each connector shows its own', () => {
@@ -310,6 +294,9 @@ describe('native Data mode edges', () => {
     renderGraph();
 
     expect(screen.getByText('message.ontology-data-graph-scope')).toBeVisible();
+    expect(enUS.message['ontology-data-graph-scope']).toBe(
+      'Assets you can view that are bound to each concept. Dashed lines are inferred from related concepts. Solid lines are observed lineage.'
+    );
   });
 });
 
@@ -405,5 +392,69 @@ describe('native Data mode lineage', () => {
     expect(
       screen.getByTestId('ontology-data-asset-asset:transfer:t1')
     ).not.toHaveTextContent('message.lineage');
+  });
+});
+
+describe('native Data mode in English', () => {
+  const english = i18next.createInstance();
+  english.init({
+    initAsync: false,
+    lng: 'en-US',
+    resources: { 'en-US': { translation: enUS } },
+  });
+  const translate = useTranslation as jest.Mock;
+  let keyTranslation: ReturnType<typeof useTranslation>;
+
+  beforeEach(() => {
+    keyTranslation = translate();
+    translate.mockReturnValue({ ...keyTranslation, t: english.t });
+  });
+
+  afterEach(() => {
+    translate.mockReturnValue(keyTranslation);
+  });
+
+  const heading = () =>
+    screen.getByTestId('ontology-data-layer-heading').textContent;
+
+  it('counts the bindings each cluster totals, in the plural', () => {
+    renderGraph();
+
+    expect(heading()).toContain('3 concepts · 152 bindings');
+  });
+
+  it('counts one concept and one binding in the singular', () => {
+    renderGraph({
+      data: buildNativeDataGraph(
+        applyClustersPage(
+          EMPTY_NATIVE_DATA_GRAPH,
+          pageFixture({
+            clusters: [
+              {
+                id: 'single',
+                name: 'Single',
+                count: 1,
+                assets: [{ id: 's1', name: 'single_table' }],
+              },
+            ],
+          })
+        ),
+        new Set(),
+        'label.lineage'
+      ),
+    });
+
+    expect(heading()).toContain('1 concept · 1 binding');
+  });
+
+  it('shows the connector with its column count, zero included', () => {
+    renderGraph();
+
+    expect(
+      screen.getByTestId('ontology-data-asset-asset:transfer:t0')
+    ).toHaveTextContent('Snowflake · 3 cols');
+    expect(
+      screen.getByTestId('ontology-data-asset-asset:transfer:t1')
+    ).toHaveTextContent('BigQuery · 0 cols');
   });
 });

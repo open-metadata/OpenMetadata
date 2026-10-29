@@ -20,6 +20,7 @@ import { Ontology } from '../../generated/entity/data/ontology';
 import { OntologyConceptType } from '../../generated/entity/data/ontologyConcept';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
+  getNativeOntologyDataGraphPage,
   getOntology,
   getOntologyConceptBindings,
   getOntologyWorkingDiff,
@@ -29,6 +30,7 @@ import {
   listOntologyProperties,
 } from '../../rest/ontologyAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { pageFixture } from '../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import { showInfoToast } from '../../utils/ToastUtils';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
@@ -121,6 +123,7 @@ jest.mock('../../rest/ontologyAPI', () => ({
   getOntologyConceptBindings: jest
     .fn()
     .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
+  getNativeOntologyDataGraphPage: jest.fn(),
   getOntology: jest.fn(),
   getOntologyReleaseReviews: jest
     .fn()
@@ -1790,6 +1793,34 @@ describe('OntologyExplorerPage', () => {
       'concept=Customer'
     );
     expect(screen.getByTestId('location')).toHaveTextContent('source=review');
+  });
+
+  it("loads the data graph of the selected concept's ontology in the aggregate Data mode", async () => {
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({
+        clusters: [
+          {
+            id: 'Customer',
+            name: 'Customer',
+            count: 1,
+            assets: [{ id: 't1', name: 'customers' }],
+          },
+        ],
+      })
+    );
+    renderNativeStudio('?concept=Customer&source=review');
+    await screen.findByTestId('ontology-concept-inspector');
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(
+      await screen.findByTestId('ontology-data-cluster-Customer')
+    ).toBeVisible();
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledWith(
+      'native-sales',
+      { loaded: [], page: { kind: 'clusters', limit: 12, offset: 0 } },
+      expect.any(AbortSignal)
+    );
   });
 
   it('controls the aggregate viewport and clears selection while retaining its route context', async () => {
