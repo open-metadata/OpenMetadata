@@ -2125,6 +2125,10 @@ public interface TimeSeriesDAOs {
     List<String> LATEST_RECORD_PARAMS =
         List.of("testCaseResolutionStatusType", "incidentAssignee", "incidentListSeverity");
 
+    String NON_DELETED_TEST_CASE_SCOPE =
+        " AND EXISTS (SELECT 1 FROM test_case tcScope"
+            + " WHERE tcScope.fqnHash = entityFQNHash AND tcScope.deleted = FALSE)";
+
     static ListFilter latestRecordFilter(ListFilter filter) {
       ListFilter outerFilter = new ListFilter(null);
       LATEST_RECORD_PARAMS.forEach(
@@ -2349,18 +2353,23 @@ public interface TimeSeriesDAOs {
         @Define("cond") String cond,
         @BindMap Map<String, ?> params);
 
-    // The join is unconditional: the listing conditions read the testCaseEntityFQN alias it
-    // introduces, and the deleted scoping rides it too — the time-series table has no deleted
-    // column, so every incident listing scopes to non-deleted test cases the same way the
-    // incidentGroups summary SQL's tc.deleted = FALSE does. The flat listing's include parameter
-    // is deprecated and has no effect (ADR:2026-10-29-incident-listing-include-deprecated).
+    // The incident listing always scopes to non-deleted test cases — the time-series table has
+    // no deleted column of its own, and the incidentGroups summary SQL hardcodes tc.deleted =
+    // FALSE. The join exists only to introduce the testCaseEntityFQN alias the originEntityFQN
+    // predicate reads, so it is added only when that parameter is present; otherwise the scoping
+    // pays an indexed EXISTS instead of a join the query does not otherwise need. Requests can
+    // carry an explicit deleted scope no more: the flat listing's include parameter is
+    // deprecated and has no effect (ADR:2026-10-29-incident-listing-include-deprecated).
     static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
-      return """
-              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
-              ON entityFQNHash = testCaseHash
-              """
-          + condition
-          + " AND tc.deleted = FALSE";
+      if (filter.getQueryParam("originEntityFQN") != null) {
+        String join =
+            """
+                INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
+                ON entityFQNHash = testCaseHash
+                """;
+        return join + condition + " AND tc.deleted = FALSE";
+      }
+      return condition + NON_DELETED_TEST_CASE_SCOPE;
     }
 
     default IncidentGroupPage listIncidentGroups(

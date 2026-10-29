@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -101,6 +102,43 @@ class TestCaseResolutionStatusTimeSeriesDaoLatestTest {
     assertTrue(outerCondition.getValue().contains("incidentAssignee"));
     assertEquals(3, count);
     verify(dao, never()).listCount(anyString(), anyString(), anyMap(), anyString());
+  }
+
+  @Test
+  void withoutOriginEntityFqnTheScopingUsesAnExistsInsteadOfTheJoin() {
+    TestCaseResolutionStatusTimeSeriesDAO dao =
+        mock(TestCaseResolutionStatusTimeSeriesDAO.class, CALLS_REAL_METHODS);
+    when(dao.getTimeSeriesTableName()).thenReturn("test_case_resolution_status_time_series");
+    when(dao.listWithOffset(
+            anyString(),
+            anyMap(),
+            anyString(),
+            eq("entityFQNHash"),
+            eq(10),
+            eq(0),
+            anyMap(),
+            anyString()))
+        .thenReturn(List.of("latest"));
+
+    dao.listWithOffset(new ListFilter(Include.ALL), 10, 0, true);
+
+    ArgumentCaptor<String> condition = ArgumentCaptor.forClass(String.class);
+    verify(dao)
+        .listWithOffset(
+            eq("test_case_resolution_status_time_series"),
+            anyMap(),
+            condition.capture(),
+            eq("entityFQNHash"),
+            eq(10),
+            eq(0),
+            anyMap(),
+            anyString());
+    assertFalse(
+        condition.getValue().contains("INNER JOIN"),
+        "no originEntityFQN: the query pays no join no predicate needs");
+    assertTrue(
+        condition.getValue().contains("EXISTS (SELECT 1 FROM test_case"),
+        "the non-deleted scoping rides an indexed EXISTS instead of the join");
   }
 
   @Test
