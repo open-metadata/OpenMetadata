@@ -1111,11 +1111,9 @@ test.describe(
         await page.click('[data-testid="test-cases"]');
         await waitForAllLoadersToDisappear(page);
 
-        // get all the filters
+        // get all the filters; Last Run is already on by default, so clicking it would hide it
         await page.click('[data-testid="advanced-filter"]');
         await page.getByTestId('advanced-filter-option-testPlatforms').click();
-        await page.click('[data-testid="advanced-filter"]');
-        await page.getByTestId('advanced-filter-option-lastRunRange').click();
         await page.click('[data-testid="advanced-filter"]');
         await page.getByTestId('advanced-filter-option-serviceName').click();
         await page.click('[data-testid="advanced-filter"]');

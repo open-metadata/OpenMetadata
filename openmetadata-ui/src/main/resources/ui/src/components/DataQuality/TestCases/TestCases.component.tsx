@@ -101,10 +101,13 @@ export const TestCases = () => {
       showDeleted,
     });
 
+  // Shrinkable down to min-w-36 so the default filters share one row on laptop widths.
+  const flexibleFilterWidth = 'tw:min-w-36 tw:max-w-80 tw:flex-1';
   const filterLayout = [
+    { key: TEST_CASE_FILTERS.lastRun, testId: 'last-run-filter' },
     {
       key: TEST_CASE_FILTERS.table,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'table-select-filter',
     },
     {
@@ -119,13 +122,12 @@ export const TestCases = () => {
     },
     {
       key: TEST_CASE_FILTERS.status,
-      width: 'tw:w-64',
+      width: 'tw:min-w-36 tw:max-w-64 tw:flex-1',
       testId: 'status-select-filter',
     },
-    { key: TEST_CASE_FILTERS.lastRun, testId: 'last-run-filter' },
     {
       key: TEST_CASE_FILTERS.tags,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'tags-select-filter',
     },
     {
@@ -135,17 +137,17 @@ export const TestCases = () => {
     },
     {
       key: TEST_CASE_FILTERS.service,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'service-select-filter',
     },
     {
       key: TEST_CASE_FILTERS.dimension,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'dimension-select-filter',
     },
     {
       key: TEST_CASE_FILTERS.dataProduct,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'data-product-select-filter',
     },
   ];
@@ -174,7 +176,6 @@ export const TestCases = () => {
           align="center"
           className="layout-space layout-space-horizontal w-full"
           gap={4}
-          itemClassName="layout-space-item"
           wrap="wrap">
           <Dropdown.Root>
             <Button

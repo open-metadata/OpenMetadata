@@ -169,10 +169,13 @@ export const ClassicTestCaseFilter = ({
       </Typography>
       {filter.controlType === 'date' ? (
         <DatePickerMenu
+          allowClear
           showSelectedCustomRange
           defaultDateRange={dateValue}
           handleDateRangeChange={filter.onChange}
+          placeholder={t('label.all-time')}
           size="small"
+          onClear={() => filter.onChange(undefined)}
         />
       ) : (
         <Box align="center" className="tw:min-w-0 tw:flex-1" gap={1}>

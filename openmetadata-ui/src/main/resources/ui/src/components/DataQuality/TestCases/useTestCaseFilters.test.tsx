@@ -65,6 +65,7 @@ const renderFilters = (overrides: Partial<UseTestCaseFiltersProps> = {}) =>
   );
 
 const DEFAULT_SELECTED_FILTERS = [
+  TEST_CASE_FILTERS.lastRun,
   TEST_CASE_FILTERS.status,
   TEST_CASE_FILTERS.type,
   TEST_CASE_FILTERS.table,
@@ -222,10 +223,11 @@ describe('useTestCaseFilters', () => {
     ).toEqual(Object.values(TEST_CASE_FILTERS));
   });
 
-  it('should build descriptors that track the selected filters in the canonical order with the injected loading flag', () => {
+  it('should build descriptors that track the selected filters in the canonical order, Last Run first, with the injected loading flag', () => {
     const { result } = renderFilters({ isOptionsLoading: true });
 
     expect(result.current.filters.map((descriptor) => descriptor.key)).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.status,
@@ -296,12 +298,9 @@ describe('useTestCaseFilters', () => {
     ]);
   });
 
-  it('should surface the date control for lastRun and the multiselect control for platform when selected', () => {
+  it('should surface the date control for the default lastRun and the multiselect control for platform when selected', () => {
     const { result } = renderFilters();
 
-    act(() => {
-      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.lastRun });
-    });
     act(() => {
       result.current.handleMenuClick({ key: TEST_CASE_FILTERS.platform });
     });

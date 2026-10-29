@@ -206,4 +206,42 @@ describe('ClassicTestCaseFilter', () => {
       screen.queryByRole('button', { name: 'label.clear Type' })
     ).not.toBeInTheDocument();
   });
+
+  it('labels an unset date filter as all time and clears a picked range back to it', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onChange = jest.fn();
+    const dateDescriptor: FilterDescriptor = {
+      ...descriptor,
+      key: 'lastRunRange',
+      paramKey: 'lastRunRange',
+      label: 'Last Run',
+      controlType: 'date',
+      options: [],
+      onChange,
+    };
+    const { rerender } = render(
+      <ClassicTestCaseFilter filter={dateDescriptor} testId="filter" />
+    );
+
+    expect(screen.getByTestId('date-picker-menu')).toHaveTextContent(
+      'label.all-time'
+    );
+    expect(screen.queryByTestId('clear-date-picker')).not.toBeInTheDocument();
+
+    rerender(
+      <ClassicTestCaseFilter
+        filter={{
+          ...dateDescriptor,
+          value: { startTs: 1, endTs: 2, key: 'last7days', title: '7 days' },
+        }}
+        testId="filter"
+      />
+    );
+    await user.click(screen.getByTestId('clear-date-picker'));
+
+    expect(onChange).toHaveBeenCalledWith(undefined);
+    expect(screen.getByTestId('date-picker-menu')).toHaveTextContent(
+      'label.all-time'
+    );
+  });
 });

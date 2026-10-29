@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { entries, isEmpty, isEqual, isUndefined, uniq, values } from 'lodash';
+import {
+  entries,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  sortBy,
+  uniq,
+  values,
+} from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -32,7 +40,10 @@ import {
 } from './FilterChip.interface';
 import { FetchedOption } from './useTestCaseFilterOptions';
 
+// Last Run stays visible with no range picked, so the counts read as all-time
+// rather than looking unfiltered by accident (open-metadata/OpenMetadata#36481).
 const DEFAULT_SELECTED_FILTERS = [
+  TEST_CASE_FILTERS.lastRun,
   TEST_CASE_FILTERS.status,
   TEST_CASE_FILTERS.type,
   TEST_CASE_FILTERS.table,
@@ -201,9 +212,13 @@ export const useTestCaseFilters = ({
     }));
 
   const filters = useMemo<FilterDescriptor[]>(() => {
-    const keys = entries(TEST_CASE_FILTERS)
-      .map(([, filter]) => filter)
-      .filter((filter) => selectedFilter.includes(filter));
+    // Last Run leads the bar, in the slot the Summary tab gives its date range.
+    const keys = sortBy(
+      entries(TEST_CASE_FILTERS)
+        .map(([, filter]) => filter)
+        .filter((filter) => selectedFilter.includes(filter)),
+      (filter) => filter !== TEST_CASE_FILTERS.lastRun
+    );
 
     return keys.map((key) => {
       const paramKey = key;
