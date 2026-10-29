@@ -56,6 +56,10 @@ class TestCaseResolutionStatusTimeSeriesDaoLatestTest {
         condition.getValue().contains("INNER JOIN (SELECT entityFQN AS testCaseEntityFQN"),
         "the originEntityFQN predicate depends on the join's testCaseEntityFQN alias");
     assertTrue(
+        condition.getValue().contains("tc.deleted = FALSE"),
+        "incidents scope to non-deleted test cases on the join — the include"
+            + " parameter is deprecated and has no effect (ADR:2026-10-29-incident-listing-include-deprecated)");
+    assertTrue(
         outerCondition.getValue().contains("testCaseResolutionStatusType"),
         "the record's own status ranks on the outer condition");
     assertEquals(List.of("latest"), jsons);
@@ -91,6 +95,9 @@ class TestCaseResolutionStatusTimeSeriesDaoLatestTest {
     assertTrue(
         condition.getValue().contains("INNER JOIN (SELECT entityFQN AS testCaseEntityFQN"),
         "the count filters the same rows the listing reads, join included");
+    assertTrue(
+        condition.getValue().contains("tc.deleted = FALSE"),
+        "the count scopes to non-deleted test cases on the join too");
     assertTrue(outerCondition.getValue().contains("incidentAssignee"));
     assertEquals(3, count);
     verify(dao, never()).listCount(anyString(), anyString(), anyMap(), anyString());

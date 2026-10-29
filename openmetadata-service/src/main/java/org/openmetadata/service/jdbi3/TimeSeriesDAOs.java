@@ -2349,19 +2349,18 @@ public interface TimeSeriesDAOs {
         @Define("cond") String cond,
         @BindMap Map<String, ?> params);
 
-    // if originEntityFQN is present, we need to join with test_case table
+    // The join is unconditional: the listing conditions read the testCaseEntityFQN alias it
+    // introduces, and the deleted scoping rides it too — the time-series table has no deleted
+    // column, so every incident listing scopes to non-deleted test cases the same way the
+    // incidentGroups summary SQL's tc.deleted = FALSE does. The flat listing's include parameter
+    // is deprecated and has no effect (ADR:2026-10-29-incident-listing-include-deprecated).
     static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
-      String result = condition;
-      if ((filter.getQueryParam("originEntityFQN") != null)
-          || (filter.getQueryParam("include") != null)) {
-        result =
-            """
-                INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
-                ON entityFQNHash = testCaseHash
-                """
-                + condition;
-      }
-      return result;
+      return """
+              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
+              ON entityFQNHash = testCaseHash
+              """
+          + condition
+          + " AND tc.deleted = FALSE";
     }
 
     default IncidentGroupPage listIncidentGroups(

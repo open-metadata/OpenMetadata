@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -98,6 +99,11 @@ public class TestCaseResolutionStatusResource
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
   private static final int MAX_BULK_CREATE_SIZE = 100;
   private static final String MAX_BULK_CREATE_SIZE_TEXT = "100";
+  // RFC 9745 Deprecation value: 2026-10-29T00:00:00Z
+  private static final String INCLUDE_DEPRECATED_SINCE = "@1793232000";
+  private static final String INCLUDE_DEPRECATED =
+      "include is deprecated on this endpoint and has no effect: incidents are always scoped to"
+          + " non-deleted test cases";
   private final TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
 
   public TestCaseResolutionStatusResource(Authorizer authorizer) {
@@ -132,6 +138,8 @@ public class TestCaseResolutionStatusResource
                     schema = @Schema(implementation = TestCaseResolutionStatusResultList.class)))
       })
   public ResultList<TestCaseResolutionStatus> list(
+      @Context UriInfo uriInfo,
+      @Context HttpServletResponse response,
       @Context SecurityContext securityContext,
       @Parameter(description = "Test Case ID", schema = @Schema(type = "UUID"))
           @QueryParam("testCaseId")
@@ -180,7 +188,10 @@ public class TestCaseResolutionStatusResource
           @QueryParam("assignee")
           String assignee,
       @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
+              description =
+                  "Deprecated: has no effect on this endpoint. Incidents of soft-deleted test"
+                      + " cases are always excluded; the search-based listing still honors it.",
+              deprecated = true,
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -237,6 +248,10 @@ public class TestCaseResolutionStatusResource
               schema = @Schema(type = "string"))
           @QueryParam("severity")
           List<String> severities) {
+    if (uriInfo.getQueryParameters().containsKey("include")) {
+      response.setHeader("Deprecation", INCLUDE_DEPRECATED_SINCE);
+      LOG.warn(INCLUDE_DEPRECATED);
+    }
     ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
     ResourceContextInterface entityResourceContext =
         buildEntityResourceContext(testCaseFQN, testCaseId, originEntityFQN);
