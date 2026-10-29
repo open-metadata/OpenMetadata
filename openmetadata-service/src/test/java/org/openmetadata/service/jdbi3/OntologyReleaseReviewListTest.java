@@ -136,7 +136,6 @@ class OntologyReleaseReviewListTest {
               new EntityRelationshipRepository(Entity.getCollectionDAO()));
           try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class)) {
             new UserRepository();
-            new GlossaryTermRepository();
             new OntologyRepository();
             test.accept(
                 new Reviews(
@@ -264,7 +263,7 @@ class OntologyReleaseReviewListTest {
       UUID taskId = UUID.randomUUID();
       store(
           openApproval(taskId, requester),
-          term.getEntityReference(),
+          term.getEntityReference().withType(Entity.GLOSSARY_TERM),
           requester,
           List.of(steward),
           List.of(steward));
