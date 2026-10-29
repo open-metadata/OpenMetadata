@@ -27,4 +27,4 @@ At most 8 receipts and 64 KiB are kept per origin tab. Beyond either, writes for
 
 ## Consequences
 
-An outage never causes a duplicate capture, task or activation, at the cost of a disabled panel until the next successful read. A receipt for a capture that changed nothing on the server stays until a later edit moves the working revision or the user captures from another tab. The caps keep the storage bounded, and a user with 8 unresolved ontologies in one tab must resolve one before touching a ninth. Changing a status in the definitive list or a cap needs this record amended.
+An outage never causes a duplicate capture, task or activation, at the cost of a disabled panel until the next successful read. A receipt for a capture that changed nothing on the server stays until a later edit or activation moves the working or activation revision, or a capture with the same notes and version bump lands from another tab and is adopted as this attempt's capture. The caps keep the storage bounded, and a user with 8 unresolved ontologies in one tab must resolve one before touching a ninth. Changing a status in the definitive list or a cap needs this record amended.

@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import org.apache.jena.rdf.model.Model;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -19,6 +21,7 @@ import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec.Column;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
+import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 class NativeOntologyImportListRulesTest {
   private static final String EX = "https://example.org/";
@@ -121,6 +124,80 @@ class NativeOntologyImportListRulesTest {
         assertThrows(
             BadRequestException.class, () -> importer.preview(importer.read(request), empty()));
     assertEquals("Property " + EX + "q, " + field + ": " + rule, thrown.getMessage());
+  }
+
+  @Test
+  void csvPreviewRefusesAUnitApplyRefuses() {
+    final PreviewNativeOntologyImport request =
+        csv(property("p", "DATA", Column.UNIT, "u".repeat(300)));
+
+    assertRefusedByPreviewAndSummary(
+        request, "CSV row 2, column unit: An ontology property unit requires 1 to 256 characters");
+  }
+
+  @Test
+  void csvPreviewRefusesMoreEnumValuesThanApplyAccepts() {
+    final String values =
+        String.join(";", IntStream.range(0, 1001).mapToObj(i -> "v" + i).toList());
+    final PreviewNativeOntologyImport request =
+        csv(property("p", "DATA", Column.ENUM_VALUES, values));
+
+    assertRefusedByPreviewAndSummary(
+        request,
+        "CSV row 2, column enumValues: An ontology property supports at most 1000 enum values");
+  }
+
+  @Test
+  void rdfPreviewRefusesAnInverseOnADatatypeProperty() {
+    final PreviewNativeOntologyImport request =
+        turtle("ex:q a owl:DatatypeProperty ; owl:inverseOf ex:p .");
+
+    assertRefusedByPreviewAndSummary(
+        request,
+        "Property "
+            + EX
+            + "q, inverse: Only object properties can have inverses or property chains");
+  }
+
+  @Test
+  void reconcileRefusesTheListsPreviewRefuses() {
+    final Model model =
+        importer.parse(
+            turtle(
+                    "ex:p a owl:ObjectProperty . ex:q a owl:ObjectProperty ;"
+                        + " owl:propertyChainAxiom (ex:p) .")
+                .getData(),
+            RdfSerializationFormat.TURTLE);
+
+    assertEquals(
+        "Property " + EX + "q, propertyChain: " + SHORT_CHAIN,
+        assertThrows(BadRequestException.class, () -> importer.reconcile(model, empty()))
+            .getMessage());
+  }
+
+  private void assertRefusedByPreviewAndSummary(
+      final PreviewNativeOntologyImport request, final String expected) {
+    assertEquals(
+        expected,
+        assertThrows(
+                BadRequestException.class, () -> importer.preview(importer.read(request), empty()))
+            .getMessage());
+    assertEquals(
+        expected,
+        assertThrows(BadRequestException.class, () -> importer.summarize(importer.read(request)))
+            .getMessage());
+  }
+
+  private static PreviewNativeOntologyImport turtle(final String statements) {
+    return new PreviewNativeOntologyImport()
+        .withFormat(NativeOntologyImportFormat.TURTLE)
+        .withData(
+            """
+            @prefix owl: <http://www.w3.org/2002/07/owl#> .
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            @prefix ex: <https://example.org/> .
+            """
+                + statements);
   }
 
   private static PreviewNativeOntologyImport csv(final String... rows) {
