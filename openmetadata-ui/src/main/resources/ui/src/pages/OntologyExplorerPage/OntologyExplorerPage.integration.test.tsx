@@ -21,6 +21,7 @@ import {
   within,
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
+import { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { OntologyNode } from '../../components/OntologyExplorer/OntologyExplorer.interface';
@@ -713,6 +714,196 @@ describe('Ontology Studio mode-switch integration', () => {
     );
 
     expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+  });
+
+  it('opens the New class panel when a stale reload of the previous ontology lands before the URL commits', async () => {
+    const created: Ontology = {
+      id: 'created',
+      name: 'Created',
+      fullyQualifiedName: 'Created',
+      iri: 'urn:created',
+      namespace: 'urn:created#',
+    };
+    const other: Ontology = {
+      id: 'other',
+      name: 'Other',
+      fullyQualifiedName: 'Other',
+      iri: 'urn:other',
+      namespace: 'urn:other#',
+    };
+    let catalog: Ontology[] = [other];
+    mockFetchRdfConfig.mockResolvedValue(rdfStatus);
+    mockListOntologies.mockImplementation(async () => ({
+      data: catalog,
+      paging: { total: catalog.length },
+    }));
+    mockCreateOntology.mockImplementation(async () => {
+      catalog = [created, other];
+
+      return created;
+    });
+    mockGetOntology.mockImplementation((id) =>
+      Promise.resolve(id === created.id ? created : other)
+    );
+    let isReleased = false;
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = () => {
+        isReleased = true;
+        resolve();
+      };
+    });
+    // Suspending on the new URL holds the router transition, so the reload of
+    // the previous ontology resolves while the URL still names it.
+    const UrlCommitGate = () => {
+      const { search } = useLocation();
+      if (search.includes('ontology=created') && !isReleased) {
+        throw gate;
+      }
+
+      return null;
+    };
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/?ontology=other']}>
+          <Suspense fallback={null}>
+            <UrlCommitGate />
+            <OntologyExplorerPage />
+          </Suspense>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+        'data-scope-key',
+        'ontology:other'
+      )
+    );
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-create'));
+    fireEvent.change(await screen.findByTestId('ontology-create-name'), {
+      target: { value: 'Created' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-create-submit')).toBeEnabled()
+    );
+    const callsBeforeCreate = mockGetOntology.mock.calls.length;
+    fireEvent.click(screen.getByTestId('ontology-create-submit'));
+    await waitFor(() =>
+      expect(
+        mockGetOntology.mock.calls.slice(callsBeforeCreate).map(([id]) => id)
+      ).toEqual(['other'])
+    );
+    for (let i = 0; i < 10; i++) {
+      await act(async () => {
+        await Promise.resolve();
+      });
+    }
+
+    expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+      'data-scope-key',
+      'ontology:other'
+    );
+    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+
+    await act(async () => {
+      release();
+      await gate;
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+        'data-scope-key',
+        'ontology:created'
+      )
+    );
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+  });
+
+  it('does not open the New class panel later after leaving through All ontologies before it opened', async () => {
+    const created: Ontology = {
+      id: 'created',
+      name: 'Created',
+      fullyQualifiedName: 'Created',
+      iri: 'urn:created',
+      namespace: 'urn:created#',
+    };
+    let catalog: Ontology[] = [];
+    let isFirstCreatedLoad = true;
+    mockFetchRdfConfig.mockResolvedValue(rdfStatus);
+    mockListOntologies.mockImplementation(async () => ({
+      data: catalog,
+      paging: { total: catalog.length },
+    }));
+    mockCreateOntology.mockImplementation(async () => {
+      catalog = [created];
+
+      return created;
+    });
+    mockGetOntology.mockImplementation(() => {
+      if (isFirstCreatedLoad) {
+        isFirstCreatedLoad = false;
+
+        return new Promise(() => undefined);
+      }
+
+      return Promise.resolve(created);
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    fireEvent.click(await screen.findByTestId('ontology-empty-scratch'));
+    fireEvent.change(await screen.findByTestId('ontology-create-name'), {
+      target: { value: 'Created' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-create-submit')).toBeEnabled()
+    );
+    fireEvent.click(screen.getByTestId('ontology-create-submit'));
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+        'data-scope-key',
+        'ontology:created'
+      )
+    );
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-all-ontologies'));
+
+    expect(await screen.findByTestId('all-ontologies-graph')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-created'));
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+        'data-scope-key',
+        'ontology:created'
+      )
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      )
+    );
+    fireEvent.click(await screen.findByTestId('mode-tab-edit'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      )
+    );
+
+    expect(
+      screen.queryByTestId('ontology-new-class-panel')
+    ).not.toBeInTheDocument();
   });
 
   it('keeps Create disabled when the ontology list failed to load', async () => {
