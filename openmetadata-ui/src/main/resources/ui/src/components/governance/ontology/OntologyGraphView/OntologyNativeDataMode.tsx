@@ -20,6 +20,7 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useNativeOntologyDataGraph } from '../../../../hooks/governance/ontology/useNativeOntologyDataGraph';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyAssetPath } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import {
   buildNativeDataGraph,
@@ -27,9 +28,14 @@ import {
 } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.utils';
 import OntologyDataGraph from '../../../OntologyExplorer/OntologyDataGraph';
 import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
+import { AI_GRAPH_BACKDROP_CLASS } from './OntologyGraphView.constants';
 
 const NO_RELATION_TYPES: never[] = [];
 const NO_COLORS: Record<string, never> = {};
+const CLASSIC_BACKDROP_CLASS = [
+  'tw:pointer-events-none tw:absolute tw:inset-0 tw:bg-canvas tw:[background-size:22px_22px]',
+  'tw:[background-image:radial-gradient(circle,var(--tw-border-color-secondary)_1px,transparent_1px)]',
+].join(' ');
 
 interface OntologyNativeDataModeProps {
   isActive?: boolean;
@@ -47,6 +53,7 @@ const OntologyNativeDataMode = ({
   onSelectConcept,
 }: OntologyNativeDataModeProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const {
     failure,
@@ -82,18 +89,19 @@ const OntologyNativeDataMode = ({
   // A reload keeps the graph mounted, so the selection and expanded cards stay.
   const showsGraph = hasClusters || !(isLoading || failure);
 
+  const renderBackdrop = () => (
+    <div
+      aria-hidden="true"
+      className={isAiMode ? AI_GRAPH_BACKDROP_CLASS : CLASSIC_BACKDROP_CLASS}
+    />
+  );
+
   return (
     <Box
       className="tw:relative tw:h-full tw:min-h-0 tw:flex-1"
       data-testid="ontology-native-data-graph"
       direction="col">
-      <div
-        aria-hidden="true"
-        className={[
-          'tw:pointer-events-none tw:absolute tw:inset-0 tw:bg-canvas tw:[background-size:22px_22px]',
-          'tw:[background-image:radial-gradient(circle,var(--tw-border-color-secondary)_1px,transparent_1px)]',
-        ].join(' ')}
-      />
+      {renderBackdrop()}
       {failure ? (
         <Alert
           className="tw:absolute tw:top-3.5 tw:left-1/2 tw:z-10 tw:-translate-x-1/2"

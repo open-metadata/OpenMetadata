@@ -39,6 +39,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import Fqn from '../../utils/Fqn';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -717,6 +718,7 @@ const OntologyDataGraph = ({
   onLoadMoreTerms,
 }: OntologyDataGraphProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const isNative = variant === 'native';
   const collapsedCount = isNative
     ? NATIVE_COLLAPSED_ASSET_COUNT
@@ -1492,6 +1494,46 @@ const OntologyDataGraph = ({
     );
   };
 
+  const renderControls = () => {
+    const isAiNative = isAiMode && isNative;
+    const controls = (
+      <OntologyControlButtons
+        isLoading={isLoadingMoreTerms}
+        onFitToScreen={fitToScreen}
+        onRefresh={resetView}
+        onZoomIn={() => zoomAtCenter(ZOOM_BUTTON_FACTOR)}
+        onZoomOut={() => zoomAtCenter(1 / ZOOM_BUTTON_FACTOR)}
+      />
+    );
+
+    return (
+      <Box
+        align="end"
+        className={
+          isAiNative
+            ? 'tw:absolute tw:bottom-3.5 tw:left-3.5 tw:z-6'
+            : 'tw:absolute tw:bottom-4 tw:left-4 tw:z-6'
+        }
+        gap={2}>
+        {isAiNative ? (
+          <div
+            className="tw:overflow-hidden tw:rounded-md tw:border tw:border-secondary tw:bg-surface tw:shadow-xs"
+            data-testid="ontology-data-graph-controls">
+            {controls}
+          </div>
+        ) : (
+          <Card
+            className="tw:flex tw:items-center"
+            data-testid="ontology-data-graph-controls"
+            variant="elevated">
+            {controls}
+          </Card>
+        )}
+        <DataEdgeLegend entries={legendEntries} />
+      </Box>
+    );
+  };
+
   return (
     <div
       className={classNames(
@@ -1592,24 +1634,7 @@ const OntologyDataGraph = ({
         isNative={isNative}
       />
 
-      <Box
-        align="end"
-        className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6"
-        gap={2}>
-        <Card
-          className="tw:flex tw:items-center"
-          data-testid="ontology-data-graph-controls"
-          variant="elevated">
-          <OntologyControlButtons
-            isLoading={isLoadingMoreTerms}
-            onFitToScreen={fitToScreen}
-            onRefresh={resetView}
-            onZoomIn={() => zoomAtCenter(ZOOM_BUTTON_FACTOR)}
-            onZoomOut={() => zoomAtCenter(1 / ZOOM_BUTTON_FACTOR)}
-          />
-        </Card>
-        <DataEdgeLegend entries={legendEntries} />
-      </Box>
+      {renderControls()}
     </div>
   );
 };
