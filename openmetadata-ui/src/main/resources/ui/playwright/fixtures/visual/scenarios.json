@@ -1,0 +1,5321 @@
+[
+  {
+    "id": "settings-profile",
+    "group": "Settings",
+    "path": "/my-data#profile",
+    "ready": {
+      "testId": "profile-details-panel"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-permissions",
+    "group": "Settings",
+    "path": "/my-data#permissions",
+    "ready": {
+      "testId": "profile-permissions"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-preferences",
+    "group": "Settings",
+    "path": "/my-data#preferences",
+    "ready": {
+      "testId": "preferences-panel"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-access-token",
+    "group": "Settings",
+    "path": "/my-data#access-token",
+    "ready": {
+      "testId": "access-token-row"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-access-control",
+    "group": "Settings",
+    "path": "/my-data#access-control",
+    "ready": {
+      "testId": "access-control-landing"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-bots",
+    "group": "Settings",
+    "path": "/my-data#bots",
+    "ready": {
+      "testId": "bots-list-table"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform",
+    "group": "Settings",
+    "path": "/my-data#platform-settings",
+    "ready": {
+      "testId": "platform-settings-landing"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso",
+    "group": "Settings",
+    "path": "/my-data#sso",
+    "ready": {
+      "testId": "sso-provider-grid"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-governance",
+    "group": "Settings",
+    "path": "/my-data#governance",
+    "ready": {
+      "testId": "governance-landing"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-applications",
+    "group": "Settings",
+    "path": "/my-data#applications",
+    "ready": {
+      "testId": "applications-panel"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-notification",
+    "group": "Settings",
+    "path": "/my-data#notification",
+    "ready": {
+      "testId": "notification-landing"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-personas",
+    "group": "Settings",
+    "path": "/my-data#personas",
+    "ready": {
+      "testId": "personas-landing"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-members",
+    "group": "Settings",
+    "path": "/my-data#members",
+    "ready": {
+      "testId": "members-landing"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-custom-properties",
+    "group": "Settings",
+    "path": "/my-data#custom-properties",
+    "ready": {
+      "testId": "custom-properties-landing"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-role-list",
+    "group": "Settings",
+    "path": "/my-data#access-control/roles",
+    "ready": {
+      "testId": "roles-list-table"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-policy-list",
+    "group": "Settings",
+    "path": "/my-data#access-control/policies",
+    "ready": {
+      "testId": "policies-list-table"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-add-role",
+    "group": "Settings",
+    "path": "/my-data#access-control/roles/add",
+    "ready": {
+      "testId": "add-role-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-add-policy",
+    "group": "Settings",
+    "path": "/my-data#access-control/policies/add",
+    "ready": {
+      "testId": "add-policy-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-role-detail",
+    "group": "Settings",
+    "path": "/my-data#access-control/roles/VisualAnalyst",
+    "ready": {
+      "testId": "role-detail-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-policy-detail",
+    "group": "Settings",
+    "path": "/my-data#access-control/policies/VisualMetadataPolicy",
+    "ready": {
+      "testId": "policy-detail-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-permission-debugger",
+    "group": "Settings",
+    "path": "/my-data#access-control/permission-debugger",
+    "ready": {
+      "testId": "admin-permission-debugger"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-audit-logs",
+    "group": "Settings",
+    "path": "/my-data#access-control/audit-logs",
+    "ready": {
+      "testId": "audit-logs-page"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-bot-create",
+    "group": "Settings",
+    "path": "/my-data#bots/add",
+    "ready": {
+      "testId": "bot-add-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-bot-detail",
+    "group": "Settings",
+    "path": "/my-data#bots/visual_ingestion_bot",
+    "ready": {
+      "testId": "bot-detail-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-persona-create",
+    "group": "Settings",
+    "path": "/my-data#personas/add",
+    "ready": {
+      "testId": "add-persona-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-persona-detail",
+    "group": "Settings",
+    "path": "/my-data#personas/VisualAnalystPersona",
+    "ready": {
+      "testId": "persona-detail-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-custom-properties-table",
+    "group": "Settings",
+    "path": "/my-data#custom-properties/table",
+    "ready": {
+      "testId": "custom-property-table"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-custom-property-create",
+    "group": "Settings",
+    "path": "/my-data#custom-properties/table",
+    "ready": {
+      "testId": "custom-properties-add-page"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-custom-property-btn"
+      }
+    ]
+  },
+  {
+    "id": "settings-notification-alerts",
+    "group": "Settings",
+    "path": "/my-data#notification/alerts",
+    "ready": {
+      "testId": "alerts-list-table"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-notification-create",
+    "group": "Settings",
+    "path": "/my-data#notification/alerts/add",
+    "ready": {
+      "testId": "save-btn"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-theme",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/theme",
+    "ready": {
+      "testId": "theme-settings"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-email",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/email",
+    "ready": {
+      "testId": "email-settings"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-health-check",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/health-check",
+    "ready": {
+      "testId": "health-check-settings"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-profiler-configuration",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/profiler-configuration",
+    "ready": {
+      "testId": "profiler-settings"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-data-quality",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/data-quality",
+    "ready": {
+      "testId": "data-quality-settings"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-search",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/search",
+    "ready": {
+      "testId": "search-settings"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-data-asset-rules",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/data-asset-rules",
+    "ready": {
+      "testId": "data-asset-rules-settings"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-learning-resources",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/learning-resources",
+    "ready": {
+      "testId": "learning-resources-settings"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-theme-edit",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/theme/edit",
+    "ready": {
+      "testId": "save-button"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-email-edit",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/email/edit",
+    "ready": {
+      "testId": "save-button"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-login-configuration-edit",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/login-configuration/edit",
+    "ready": {
+      "testId": "save-button"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-profiler-configuration-edit",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/profiler-configuration/edit",
+    "ready": {
+      "testId": "save-button"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-lineage-edit",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/lineage/edit",
+    "ready": {
+      "testId": "save-button"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-brand-url-edit",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/brand-url/edit",
+    "ready": {
+      "testId": "save-button"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-app-mode-edit",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/app-mode/edit",
+    "ready": {
+      "testId": "app-mode-radio-group"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-table-schema-edit",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/table-schema/edit",
+    "ready": {
+      "testId": "default-column-order-radio-group"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-platform-time-format-edit",
+    "group": "Settings",
+    "path": "/my-data#platform-settings/time-format/edit",
+    "ready": {
+      "testId": "time-format-radio-group"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-preference-language-menu",
+    "group": "Settings",
+    "path": "/my-data#preferences",
+    "ready": {
+      "role": "listbox"
+    },
+    "target": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "language-preference"
+      }
+    ]
+  },
+  {
+    "id": "settings-profile-default-persona",
+    "group": "Settings",
+    "path": "/my-data#profile",
+    "ready": {
+      "role": "listbox"
+    },
+    "target": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "default-persona-edit"
+      },
+      {
+        "action": "click",
+        "testId": "default-persona-select"
+      }
+    ]
+  },
+  {
+    "id": "settings-role-policies-menu",
+    "group": "Settings",
+    "path": "/my-data#access-control/roles/add",
+    "ready": {
+      "role": "listbox"
+    },
+    "target": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "role-policies-select"
+      }
+    ]
+  },
+  {
+    "id": "entity-table",
+    "group": "Entities",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Orders"
+  },
+  {
+    "id": "entity-database",
+    "group": "Entities",
+    "path": "/database/visual_warehouse.finance",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Finance warehouse"
+  },
+  {
+    "id": "entity-databaseSchema",
+    "group": "Entities",
+    "path": "/databaseSchema/visual_warehouse.finance.public",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Public schema"
+  },
+  {
+    "id": "entity-pipeline",
+    "group": "Entities",
+    "path": "/pipeline/visual_airflow.customer_sync",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Customer sync"
+  },
+  {
+    "id": "entity-topic",
+    "group": "Entities",
+    "path": "/topic/visual_kafka.customer_events",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Customer events"
+  },
+  {
+    "id": "entity-dashboard",
+    "group": "Entities",
+    "path": "/dashboard/visual_looker.sales",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Sales dashboard"
+  },
+  {
+    "id": "entity-chart",
+    "group": "Entities",
+    "path": "/chart/visual_looker.revenue_trend",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Revenue trend"
+  },
+  {
+    "id": "entity-dashboardDataModel",
+    "group": "Entities",
+    "path": "/dashboardDataModel/visual_looker.customer_model",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Customer model"
+  },
+  {
+    "id": "entity-mlmodel",
+    "group": "Entities",
+    "path": "/mlmodel/visual_ml.customer_churn",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Customer churn"
+  },
+  {
+    "id": "entity-storedProcedure",
+    "group": "Entities",
+    "path": "/storedProcedure/visual_warehouse.finance.public.refresh_orders",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Refresh orders"
+  },
+  {
+    "id": "entity-container",
+    "group": "Entities",
+    "path": "/container/visual_s3.analytics",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Analytics bucket"
+  },
+  {
+    "id": "entity-searchIndex",
+    "group": "Entities",
+    "path": "/searchIndex/visual_elastic.customers",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Customers index"
+  },
+  {
+    "id": "entity-apiCollection",
+    "group": "Entities",
+    "path": "/apiCollection/visual_api.customers",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Customers API"
+  },
+  {
+    "id": "entity-apiEndpoint",
+    "group": "Entities",
+    "path": "/apiEndpoint/visual_api.customers.list_customers",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "List customers"
+  },
+  {
+    "id": "entity-directory",
+    "group": "Entities",
+    "path": "/directory/visual_drive.finance",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Finance directory"
+  },
+  {
+    "id": "entity-file",
+    "group": "Entities",
+    "path": "/file/visual_drive.finance.forecast",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Forecast file"
+  },
+  {
+    "id": "entity-spreadsheet",
+    "group": "Entities",
+    "path": "/spreadsheet/visual_drive.finance.budget",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Budget spreadsheet"
+  },
+  {
+    "id": "entity-worksheet",
+    "group": "Entities",
+    "path": "/worksheet/visual_drive.finance.budget.revenue",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Revenue worksheet"
+  },
+  {
+    "id": "entity-domain",
+    "group": "Entities",
+    "path": "/domain/VisualFinance",
+    "ready": {
+      "testId": "domain-details"
+    }
+  },
+  {
+    "id": "entity-dataProduct",
+    "group": "Entities",
+    "path": "/dataProduct/visual_revenue_product",
+    "ready": {
+      "testId": "data-product-details"
+    }
+  },
+  {
+    "id": "entity-metric",
+    "group": "Entities",
+    "path": "/metric/visual_gross_margin",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Gross margin"
+  },
+  {
+    "id": "entity-glossary",
+    "group": "Entities",
+    "path": "/glossary/VisualBusinessGlossary",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Business glossary"
+  },
+  {
+    "id": "entity-glossaryTerm",
+    "group": "Entities",
+    "path": "/glossary/VisualBusinessGlossary.Customer",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Customer"
+  },
+  {
+    "id": "entity-classification",
+    "group": "Entities",
+    "path": "/tags/VisualClassification",
+    "ready": {
+      "testId": "tags-left-panel"
+    }
+  },
+  {
+    "id": "entity-tag",
+    "group": "Entities",
+    "path": "/tag/VisualClassification.Confidential",
+    "ready": {
+      "role": "heading",
+      "name": "Confidential"
+    }
+  },
+  {
+    "id": "page-home",
+    "group": "Pages",
+    "path": "/",
+    "ready": {
+      "testId": "home-landing-page"
+    }
+  },
+  {
+    "id": "page-explore",
+    "group": "Pages",
+    "path": "/explore",
+    "ready": {
+      "testId": "explore-tree"
+    }
+  },
+  {
+    "id": "page-marketplace",
+    "group": "Pages",
+    "path": "/data-marketplace",
+    "ready": {
+      "testId": "marketplace-overview-header"
+    }
+  },
+  {
+    "id": "page-connections",
+    "group": "Pages",
+    "path": "/connections",
+    "ready": {
+      "testId": "connections-page-title"
+    }
+  },
+  {
+    "id": "page-inbox-activity",
+    "group": "Pages",
+    "path": "/inbox/activity",
+    "ready": {
+      "testId": "inbox-activity-tab"
+    }
+  },
+  {
+    "id": "page-inbox-tasks",
+    "group": "Pages",
+    "path": "/inbox/tasks",
+    "ready": {
+      "testId": "inbox-tasks-tab"
+    }
+  },
+  {
+    "id": "page-context-overview",
+    "group": "Pages",
+    "path": "/context-center/overview",
+    "ready": {
+      "testId": "context-center-dashboard-page"
+    }
+  },
+  {
+    "id": "page-context-articles",
+    "group": "Pages",
+    "path": "/context-center/articles",
+    "ready": {
+      "testId": "context-center-articles-page"
+    }
+  },
+  {
+    "id": "page-context-documents",
+    "group": "Pages",
+    "path": "/context-center/documents",
+    "ready": {
+      "testId": "context-center-documents-page"
+    }
+  },
+  {
+    "id": "page-context-memories",
+    "group": "Pages",
+    "path": "/context-center/memories",
+    "ready": {
+      "testId": "context-center-memories-page"
+    }
+  },
+  {
+    "id": "page-context-ai-context",
+    "group": "Pages",
+    "path": "/context-center/ai-context",
+    "ready": {
+      "testId": "context-center-ai-context-page"
+    }
+  },
+  {
+    "id": "page-context-archive",
+    "group": "Pages",
+    "path": "/context-center/archive",
+    "ready": {
+      "testId": "context-center-archive-page"
+    }
+  },
+  {
+    "id": "page-workflows",
+    "group": "Pages",
+    "path": "/workflows",
+    "ready": {
+      "role": "heading",
+      "name": "Workflows"
+    },
+    "absent": [
+      {
+        "testId": "create-workflow-button"
+      }
+    ]
+  },
+  {
+    "id": "page-platform-lineage",
+    "group": "Pages",
+    "path": "/lineage",
+    "ready": {
+      "testId": "platform-lineage-page"
+    }
+  },
+  {
+    "id": "page-ontology",
+    "group": "Pages",
+    "path": "/governance/ontology",
+    "ready": {
+      "testId": "ontology-explorer-stats"
+    }
+  },
+  {
+    "id": "page-sparql",
+    "group": "Pages",
+    "path": "/governance/sparql",
+    "ready": {
+      "testId": "sparql-editor"
+    }
+  },
+  {
+    "id": "page-insights",
+    "group": "Pages",
+    "path": "/data-insights",
+    "ready": {
+      "testId": "data-insight-container"
+    }
+  },
+  {
+    "id": "page-test-library",
+    "group": "Pages",
+    "path": "/observability/test-library",
+    "ready": {
+      "testId": "add-test-definition-button"
+    }
+  },
+  {
+    "id": "page-data-quality",
+    "group": "Pages",
+    "path": "/observability/data-quality",
+    "ready": {
+      "role": "heading",
+      "name": "Data Quality"
+    }
+  },
+  {
+    "id": "page-alerts",
+    "group": "Pages",
+    "path": "/observability/alerts",
+    "ready": {
+      "testId": "add-alert-button"
+    }
+  },
+  {
+    "id": "page-domains",
+    "group": "Pages",
+    "path": "/domain",
+    "ready": {
+      "role": "heading",
+      "name": "Domains"
+    }
+  },
+  {
+    "id": "page-data-products",
+    "group": "Pages",
+    "path": "/dataProduct",
+    "ready": {
+      "role": "heading",
+      "name": "Data Products"
+    }
+  },
+  {
+    "id": "tab-table-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-table-sample-data",
+    "group": "Entity tabs",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Sample\\ Data(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-table-queries",
+    "group": "Entity tabs",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Queries(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-table-data-observability",
+    "group": "Entity tabs",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Data\\ Observability(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-table-lineage",
+    "group": "Entity tabs",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-table-schema-definition",
+    "group": "Entity tabs",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Schema\\ Definition(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-table-contract",
+    "group": "Entity tabs",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-table-custom-properties",
+    "group": "Entity tabs",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-database-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/database/visual_warehouse.finance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-database-contract",
+    "group": "Entity tabs",
+    "path": "/database/visual_warehouse.finance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-database-custom-properties",
+    "group": "Entity tabs",
+    "path": "/database/visual_warehouse.finance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-databaseSchema-stored-procedures",
+    "group": "Entity tabs",
+    "path": "/databaseSchema/visual_warehouse.finance.public",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Stored\\ Procedures(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-databaseSchema-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/databaseSchema/visual_warehouse.finance.public",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-databaseSchema-contract",
+    "group": "Entity tabs",
+    "path": "/databaseSchema/visual_warehouse.finance.public",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-databaseSchema-custom-properties",
+    "group": "Entity tabs",
+    "path": "/databaseSchema/visual_warehouse.finance.public",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-pipeline-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/pipeline/visual_airflow.customer_sync",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-pipeline-executions",
+    "group": "Entity tabs",
+    "path": "/pipeline/visual_airflow.customer_sync",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Executions(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-pipeline-lineage",
+    "group": "Entity tabs",
+    "path": "/pipeline/visual_airflow.customer_sync",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-pipeline-contract",
+    "group": "Entity tabs",
+    "path": "/pipeline/visual_airflow.customer_sync",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-pipeline-custom-properties",
+    "group": "Entity tabs",
+    "path": "/pipeline/visual_airflow.customer_sync",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dashboard-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/dashboard/visual_looker.sales",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dashboard-lineage",
+    "group": "Entity tabs",
+    "path": "/dashboard/visual_looker.sales",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dashboard-contract",
+    "group": "Entity tabs",
+    "path": "/dashboard/visual_looker.sales",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dashboard-custom-properties",
+    "group": "Entity tabs",
+    "path": "/dashboard/visual_looker.sales",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-chart-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/chart/visual_looker.revenue_trend",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-chart-lineage",
+    "group": "Entity tabs",
+    "path": "/chart/visual_looker.revenue_trend",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-chart-contract",
+    "group": "Entity tabs",
+    "path": "/chart/visual_looker.revenue_trend",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-chart-custom-properties",
+    "group": "Entity tabs",
+    "path": "/chart/visual_looker.revenue_trend",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dashboardDataModel-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/dashboardDataModel/visual_looker.customer_model",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dashboardDataModel-sql",
+    "group": "Entity tabs",
+    "path": "/dashboardDataModel/visual_looker.customer_model",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^SQL(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dashboardDataModel-lineage",
+    "group": "Entity tabs",
+    "path": "/dashboardDataModel/visual_looker.customer_model",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dashboardDataModel-contract",
+    "group": "Entity tabs",
+    "path": "/dashboardDataModel/visual_looker.customer_model",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dashboardDataModel-custom-properties",
+    "group": "Entity tabs",
+    "path": "/dashboardDataModel/visual_looker.customer_model",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-mlmodel-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/mlmodel/visual_ml.customer_churn",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-mlmodel-details",
+    "group": "Entity tabs",
+    "path": "/mlmodel/visual_ml.customer_churn",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Details(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-mlmodel-lineage",
+    "group": "Entity tabs",
+    "path": "/mlmodel/visual_ml.customer_churn",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-mlmodel-contract",
+    "group": "Entity tabs",
+    "path": "/mlmodel/visual_ml.customer_churn",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-mlmodel-custom-properties",
+    "group": "Entity tabs",
+    "path": "/mlmodel/visual_ml.customer_churn",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-storedProcedure-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/storedProcedure/visual_warehouse.finance.public.refresh_orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-storedProcedure-lineage",
+    "group": "Entity tabs",
+    "path": "/storedProcedure/visual_warehouse.finance.public.refresh_orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-storedProcedure-contract",
+    "group": "Entity tabs",
+    "path": "/storedProcedure/visual_warehouse.finance.public.refresh_orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-storedProcedure-custom-properties",
+    "group": "Entity tabs",
+    "path": "/storedProcedure/visual_warehouse.finance.public.refresh_orders",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-container-containers",
+    "group": "Entity tabs",
+    "path": "/container/visual_s3.analytics",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Containers(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-container-sample-data",
+    "group": "Entity tabs",
+    "path": "/container/visual_s3.analytics",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Sample\\ Data(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-container-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/container/visual_s3.analytics",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-container-lineage",
+    "group": "Entity tabs",
+    "path": "/container/visual_s3.analytics",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-container-contract",
+    "group": "Entity tabs",
+    "path": "/container/visual_s3.analytics",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-container-custom-properties",
+    "group": "Entity tabs",
+    "path": "/container/visual_s3.analytics",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-searchIndex-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/searchIndex/visual_elastic.customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-searchIndex-sample-data",
+    "group": "Entity tabs",
+    "path": "/searchIndex/visual_elastic.customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Sample\\ Data(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-searchIndex-lineage",
+    "group": "Entity tabs",
+    "path": "/searchIndex/visual_elastic.customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-searchIndex-search-index-settings",
+    "group": "Entity tabs",
+    "path": "/searchIndex/visual_elastic.customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Search\\ Index\\ Settings(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-searchIndex-contract",
+    "group": "Entity tabs",
+    "path": "/searchIndex/visual_elastic.customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-searchIndex-custom-properties",
+    "group": "Entity tabs",
+    "path": "/searchIndex/visual_elastic.customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-apiCollection-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/apiCollection/visual_api.customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-apiCollection-contract",
+    "group": "Entity tabs",
+    "path": "/apiCollection/visual_api.customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-apiCollection-custom-properties",
+    "group": "Entity tabs",
+    "path": "/apiCollection/visual_api.customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-apiEndpoint-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/apiEndpoint/visual_api.customers.list_customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-apiEndpoint-lineage",
+    "group": "Entity tabs",
+    "path": "/apiEndpoint/visual_api.customers.list_customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-apiEndpoint-contract",
+    "group": "Entity tabs",
+    "path": "/apiEndpoint/visual_api.customers.list_customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-apiEndpoint-custom-properties",
+    "group": "Entity tabs",
+    "path": "/apiEndpoint/visual_api.customers.list_customers",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-directory-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/directory/visual_drive.finance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-directory-lineage",
+    "group": "Entity tabs",
+    "path": "/directory/visual_drive.finance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-directory-contract",
+    "group": "Entity tabs",
+    "path": "/directory/visual_drive.finance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-directory-custom-properties",
+    "group": "Entity tabs",
+    "path": "/directory/visual_drive.finance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-file-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/file/visual_drive.finance.forecast",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-file-lineage",
+    "group": "Entity tabs",
+    "path": "/file/visual_drive.finance.forecast",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-file-contract",
+    "group": "Entity tabs",
+    "path": "/file/visual_drive.finance.forecast",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-file-custom-properties",
+    "group": "Entity tabs",
+    "path": "/file/visual_drive.finance.forecast",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-spreadsheet-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/spreadsheet/visual_drive.finance.budget",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-spreadsheet-lineage",
+    "group": "Entity tabs",
+    "path": "/spreadsheet/visual_drive.finance.budget",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-spreadsheet-contract",
+    "group": "Entity tabs",
+    "path": "/spreadsheet/visual_drive.finance.budget",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-spreadsheet-custom-properties",
+    "group": "Entity tabs",
+    "path": "/spreadsheet/visual_drive.finance.budget",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-worksheet-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/worksheet/visual_drive.finance.budget.revenue",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-worksheet-lineage",
+    "group": "Entity tabs",
+    "path": "/worksheet/visual_drive.finance.budget.revenue",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Lineage(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-worksheet-contract",
+    "group": "Entity tabs",
+    "path": "/worksheet/visual_drive.finance.budget.revenue",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-worksheet-custom-properties",
+    "group": "Entity tabs",
+    "path": "/worksheet/visual_drive.finance.budget.revenue",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-domain-sub-domains",
+    "group": "Entity tabs",
+    "path": "/domain/VisualFinance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Sub\\ Domains(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-domain-data-products",
+    "group": "Entity tabs",
+    "path": "/domain/VisualFinance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Data\\ Products(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-domain-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/domain/VisualFinance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-domain-assets",
+    "group": "Entity tabs",
+    "path": "/domain/VisualFinance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Assets(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-domain-custom-properties",
+    "group": "Entity tabs",
+    "path": "/domain/VisualFinance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-domain-data-observability",
+    "group": "Entity tabs",
+    "path": "/domain/VisualFinance",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Data\\ Observability(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dataProduct-activity-feeds---tasks",
+    "group": "Entity tabs",
+    "path": "/dataProduct/visual_revenue_product",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dataProduct-input-output-ports",
+    "group": "Entity tabs",
+    "path": "/dataProduct/visual_revenue_product",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Input/Output\\ Ports(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dataProduct-assets",
+    "group": "Entity tabs",
+    "path": "/dataProduct/visual_revenue_product",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Assets(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dataProduct-contract",
+    "group": "Entity tabs",
+    "path": "/dataProduct/visual_revenue_product",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Contract(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dataProduct-data-observability",
+    "group": "Entity tabs",
+    "path": "/dataProduct/visual_revenue_product",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Data\\ Observability(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "tab-dataProduct-custom-properties",
+    "group": "Entity tabs",
+    "path": "/dataProduct/visual_revenue_product",
+    "actions": [
+      {
+        "role": "tab",
+        "action": "click",
+        "namePattern": "^Custom\\ Properties(?:\\s*\\d+)?$"
+      }
+    ],
+    "ready": {
+      "role": "tabpanel"
+    }
+  },
+  {
+    "id": "form-create-glossary",
+    "group": "Forms",
+    "path": "/glossary/VisualBusinessGlossary",
+    "ready": {
+      "testId": "add-glossary-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-glossary"
+      }
+    ],
+    "target": {
+      "testId": "add-glossary-form"
+    }
+  },
+  {
+    "id": "form-create-term",
+    "group": "Forms",
+    "path": "/glossary/VisualBusinessGlossary",
+    "ready": {
+      "testId": "add-glossary-term-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-new-tag-button-header"
+      }
+    ],
+    "target": {
+      "testId": "add-glossary-term-form"
+    }
+  },
+  {
+    "id": "form-create-domain",
+    "group": "Forms",
+    "path": "/domain",
+    "ready": {
+      "testId": "add-domain-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Add Domain"
+      }
+    ],
+    "target": {
+      "testId": "add-domain-form"
+    }
+  },
+  {
+    "id": "form-create-product",
+    "group": "Forms",
+    "path": "/dataProduct",
+    "ready": {
+      "testId": "add-domain-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Add Data Product"
+      }
+    ],
+    "target": {
+      "testId": "add-domain-form"
+    }
+  },
+  {
+    "id": "form-create-classification",
+    "group": "Forms",
+    "path": "/tags/VisualClassification",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-classification"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    },
+    "target": {
+      "role": "dialog"
+    }
+  },
+  {
+    "id": "form-create-tag",
+    "group": "Forms",
+    "path": "/tags/VisualClassification",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-new-tag-button"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    },
+    "target": {
+      "role": "dialog"
+    }
+  },
+  {
+    "id": "form-create-metric",
+    "group": "Forms",
+    "path": "/metrics",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "create-metric"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    },
+    "target": {
+      "role": "dialog"
+    }
+  },
+  {
+    "id": "table-overlay-owners",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "edit-owner"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    }
+  },
+  {
+    "id": "table-overlay-domains",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-domain"
+      }
+    ],
+    "ready": {
+      "role": "treegrid",
+      "name": "Select Domains"
+    }
+  },
+  {
+    "id": "table-overlay-tier",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "edit-tier"
+      }
+    ],
+    "ready": {
+      "role": "menu",
+      "name": "Tier"
+    }
+  },
+  {
+    "id": "table-overlay-certification",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "edit-certification"
+      }
+    ],
+    "ready": {
+      "role": "menu",
+      "name": "Certification"
+    }
+  },
+  {
+    "id": "table-overlay-retention",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "edit-retention-period-button"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    }
+  },
+  {
+    "id": "table-overlay-description",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "edit-description"
+      }
+    ],
+    "ready": {
+      "role": "dialog",
+      "name": "Edit Description for Orders"
+    }
+  },
+  {
+    "id": "table-overlay-manage",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "manage-button"
+      }
+    ],
+    "ready": {
+      "testId": "delete-button"
+    }
+  },
+  {
+    "id": "table-overlay-constraints",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "edit-table-constraint-button"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    }
+  },
+  {
+    "id": "table-overlay-column-customize",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "column-dropdown"
+      }
+    ],
+    "ready": {
+      "role": "menu"
+    }
+  },
+  {
+    "id": "table-overlay-column-sort",
+    "group": "Overlays",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "sort-dropdown"
+      }
+    ],
+    "ready": {
+      "role": "menu"
+    }
+  },
+  {
+    "id": "form-create-glossary-validation",
+    "group": "Forms",
+    "path": "/glossary/VisualBusinessGlossary",
+    "ready": {
+      "testId": "add-glossary-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-glossary"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Save"
+      }
+    ],
+    "target": {
+      "testId": "add-glossary-form"
+    },
+    "text": "required"
+  },
+  {
+    "id": "form-create-term-validation",
+    "group": "Forms",
+    "path": "/glossary/VisualBusinessGlossary",
+    "ready": {
+      "testId": "add-glossary-term-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-new-tag-button-header"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Save"
+      }
+    ],
+    "target": {
+      "testId": "add-glossary-term-form"
+    },
+    "text": "required"
+  },
+  {
+    "id": "form-create-domain-validation",
+    "group": "Forms",
+    "path": "/domain",
+    "ready": {
+      "testId": "add-domain-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Add Domain"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Save"
+      }
+    ],
+    "target": {
+      "testId": "add-domain-form"
+    },
+    "text": "required"
+  },
+  {
+    "id": "form-create-product-validation",
+    "group": "Forms",
+    "path": "/dataProduct",
+    "ready": {
+      "testId": "add-domain-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Add Data Product"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Save"
+      }
+    ],
+    "target": {
+      "testId": "add-domain-form"
+    },
+    "text": "required"
+  },
+  {
+    "id": "form-context-folder",
+    "group": "Forms",
+    "path": "/context-center/documents",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-folder-btn"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    },
+    "target": {
+      "role": "dialog"
+    },
+    "initialReady": {
+      "testId": "context-center-documents-page"
+    }
+  },
+  {
+    "id": "form-context-upload",
+    "group": "Forms",
+    "path": "/context-center/documents",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ask-sub-panel-upload-file"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    },
+    "target": {
+      "role": "dialog"
+    },
+    "initialReady": {
+      "testId": "context-center-documents-page"
+    }
+  },
+  {
+    "id": "form-context-article",
+    "group": "Forms",
+    "path": "/context-center/articles",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ask-sub-panel-create-article"
+      }
+    ],
+    "ready": {
+      "role": "textbox",
+      "name": "Title"
+    },
+    "initialReady": {
+      "testId": "context-center-articles-page"
+    }
+  },
+  {
+    "id": "form-context-link",
+    "group": "Forms",
+    "path": "/context-center/articles",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ask-sub-panel-create-quick-link"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    },
+    "target": {
+      "role": "dialog"
+    },
+    "initialReady": {
+      "testId": "context-center-articles-page"
+    }
+  },
+  {
+    "id": "settings-users",
+    "group": "Settings extensions",
+    "path": "/my-data#members/users",
+    "ready": {
+      "testId": "users-list-table"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-admins",
+    "group": "Settings extensions",
+    "path": "/my-data#members/admins",
+    "ready": {
+      "testId": "users-list-table"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-user-create",
+    "group": "Settings extensions",
+    "path": "/my-data#members/users/create",
+    "ready": {
+      "testId": "create-user-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-admin-create",
+    "group": "Settings extensions",
+    "path": "/my-data#members/admins/create",
+    "ready": {
+      "testId": "create-user-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-user-detail",
+    "group": "Settings extensions",
+    "path": "/my-data#members/user/visual_steward",
+    "ready": {
+      "testId": "members-user-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-teams",
+    "group": "Settings extensions",
+    "path": "/my-data#members/teams",
+    "ready": {
+      "testId": "team-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-team-detail",
+    "group": "Settings extensions",
+    "path": "/my-data#members/teams/visual_analytics",
+    "ready": {
+      "testId": "team-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-team-create",
+    "group": "Settings extensions",
+    "path": "/my-data#members/teams/add",
+    "ready": {
+      "testId": "add-team-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-team-import-users",
+    "group": "Settings extensions",
+    "path": "/my-data#members/teams/Organization/import-user",
+    "ready": {
+      "testId": "members-import-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-team-import-teams",
+    "group": "Settings extensions",
+    "path": "/my-data#members/teams/Organization/import-team",
+    "ready": {
+      "testId": "members-import-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-online-users",
+    "group": "Settings extensions",
+    "path": "/my-data#members/online-users",
+    "ready": {
+      "testId": "online-users-panel"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-policy-rule-create",
+    "group": "Settings extensions",
+    "path": "/my-data#access-control/policies/VisualMetadataPolicy/rules/add",
+    "ready": {
+      "testId": "rule-form-container"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-governance-relations",
+    "group": "Settings extensions",
+    "path": "/my-data#governance/glossary-relations",
+    "ready": {
+      "testId": "add-relation-type"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-governance-relation-create",
+    "group": "Settings extensions",
+    "path": "/my-data#governance/glossary-relations/add",
+    "ready": {
+      "testId": "glossary-form-page"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-governance-intake",
+    "group": "Settings extensions",
+    "path": "/my-data#governance/intake-forms",
+    "ready": {
+      "testId": "add-intake-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-intake-domain",
+    "group": "Settings extensions",
+    "path": "/my-data#governance/intake-forms/add/domain",
+    "ready": {
+      "testId": "intake-form-page"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-intake-dataProduct",
+    "group": "Settings extensions",
+    "path": "/my-data#governance/intake-forms/add/dataProduct",
+    "ready": {
+      "testId": "intake-form-page"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-intake-glossary",
+    "group": "Settings extensions",
+    "path": "/my-data#governance/intake-forms/add/glossary",
+    "ready": {
+      "testId": "intake-form-page"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-intake-glossaryTerm",
+    "group": "Settings extensions",
+    "path": "/my-data#governance/intake-forms/add/glossaryTerm",
+    "ready": {
+      "testId": "intake-form-page"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-intake-metric",
+    "group": "Settings extensions",
+    "path": "/my-data#governance/intake-forms/add/metric",
+    "ready": {
+      "testId": "intake-form-page"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso-auth0",
+    "group": "Settings extensions",
+    "path": "/my-data#sso/new/auth0",
+    "ready": {
+      "testId": "sso-configure-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso-aws-cognito",
+    "group": "Settings extensions",
+    "path": "/my-data#sso/new/aws-cognito",
+    "ready": {
+      "testId": "sso-configure-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso-azure",
+    "group": "Settings extensions",
+    "path": "/my-data#sso/new/azure",
+    "ready": {
+      "testId": "sso-configure-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso-custom-oidc",
+    "group": "Settings extensions",
+    "path": "/my-data#sso/new/custom-oidc",
+    "ready": {
+      "testId": "sso-configure-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso-google",
+    "group": "Settings extensions",
+    "path": "/my-data#sso/new/google",
+    "ready": {
+      "testId": "sso-configure-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso-ldap",
+    "group": "Settings extensions",
+    "path": "/my-data#sso/new/ldap",
+    "ready": {
+      "testId": "sso-configure-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso-okta",
+    "group": "Settings extensions",
+    "path": "/my-data#sso/new/okta",
+    "ready": {
+      "testId": "sso-configure-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso-openmetadata",
+    "group": "Settings extensions",
+    "path": "/my-data#sso/new/openmetadata",
+    "ready": {
+      "testId": "sso-configure-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-sso-saml",
+    "group": "Settings extensions",
+    "path": "/my-data#sso/new/saml",
+    "ready": {
+      "testId": "sso-configure-form"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-app-AutoPilotApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/AutoPilotApplication",
+    "ready": {
+      "testId": "app-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-AutoPilotApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/AutoPilotApplication",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-app-CacheWarmupApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/CacheWarmupApplication",
+    "ready": {
+      "testId": "app-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-CacheWarmupApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/CacheWarmupApplication",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-app-DataContractValidationApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/DataContractValidationApplication",
+    "ready": {
+      "testId": "app-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-DataContractValidationApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/DataContractValidationApplication",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-app-DataInsightsApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/DataInsightsApplication",
+    "ready": {
+      "testId": "app-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-DataInsightsApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/DataInsightsApplication",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-DataInsightsReportApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/DataInsightsReportApplication",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-app-DataRetentionApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/DataRetentionApplication",
+    "ready": {
+      "testId": "app-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-DataRetentionApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/DataRetentionApplication",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-HelloPipelines",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/HelloPipelines",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-app-McpApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/McpApplication",
+    "ready": {
+      "testId": "app-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-McpApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/McpApplication",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-app-RdfIndexApp",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/RdfIndexApp",
+    "ready": {
+      "testId": "app-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-RdfIndexApp",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/RdfIndexApp",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-app-RdfInferenceApp",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/RdfInferenceApp",
+    "ready": {
+      "testId": "app-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-RdfInferenceApp",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/RdfInferenceApp",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-app-SearchIndexingApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/SearchIndexingApplication",
+    "ready": {
+      "testId": "app-detail"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-marketplace-SearchIndexingApplication",
+    "group": "Settings extensions",
+    "path": "/my-data#applications/marketplace/SearchIndexingApplication",
+    "ready": {
+      "testId": "install-application"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "page-home-narrow",
+    "group": "State variants",
+    "path": "/",
+    "ready": {
+      "testId": "home-landing-page"
+    },
+    "viewport": {
+      "width": 768,
+      "height": 900
+    }
+  },
+  {
+    "id": "page-explore-narrow",
+    "group": "State variants",
+    "path": "/explore",
+    "ready": {
+      "testId": "explore-tree"
+    },
+    "viewport": {
+      "width": 768,
+      "height": 900
+    }
+  },
+  {
+    "id": "entity-table-narrow",
+    "group": "State variants",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Orders",
+    "viewport": {
+      "width": 768,
+      "height": 900
+    }
+  },
+  {
+    "id": "settings-profile-narrow",
+    "group": "State variants",
+    "path": "/my-data#profile",
+    "ready": {
+      "testId": "profile-details-panel"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    },
+    "viewport": {
+      "width": 768,
+      "height": 900
+    }
+  },
+  {
+    "id": "form-create-glossary-narrow",
+    "group": "State variants",
+    "path": "/glossary/VisualBusinessGlossary",
+    "ready": {
+      "testId": "add-glossary-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-glossary"
+      }
+    ],
+    "target": {
+      "testId": "add-glossary-form"
+    },
+    "viewport": {
+      "width": 768,
+      "height": 900
+    }
+  },
+  {
+    "id": "page-connections-narrow",
+    "group": "State variants",
+    "path": "/connections",
+    "ready": {
+      "testId": "connections-page-title"
+    },
+    "viewport": {
+      "width": 768,
+      "height": 900
+    }
+  },
+  {
+    "id": "page-context-documents-narrow",
+    "group": "State variants",
+    "path": "/context-center/documents",
+    "ready": {
+      "testId": "context-center-documents-page"
+    },
+    "viewport": {
+      "width": 768,
+      "height": 900
+    }
+  },
+  {
+    "id": "page-explore-empty",
+    "group": "State variants",
+    "path": "/explore",
+    "ready": {
+      "testId": "explore-tree"
+    },
+    "state": "empty"
+  },
+  {
+    "id": "page-domains-empty",
+    "group": "State variants",
+    "path": "/domain",
+    "ready": {
+      "role": "heading",
+      "name": "Domains"
+    },
+    "state": "empty"
+  },
+  {
+    "id": "page-data-products-empty",
+    "group": "State variants",
+    "path": "/dataProduct",
+    "ready": {
+      "role": "heading",
+      "name": "Data Products"
+    },
+    "state": "empty"
+  },
+  {
+    "id": "page-connections-empty",
+    "group": "State variants",
+    "path": "/connections",
+    "ready": {
+      "testId": "connections-page-title"
+    },
+    "state": "empty"
+  },
+  {
+    "id": "settings-bots-empty",
+    "group": "State variants",
+    "path": "/my-data#bots",
+    "ready": {
+      "testId": "bots-list-table"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    },
+    "state": "empty"
+  },
+  {
+    "id": "page-context-articles-empty",
+    "group": "State variants",
+    "path": "/context-center/articles",
+    "ready": {
+      "testId": "context-center-articles-page"
+    },
+    "state": "empty"
+  },
+  {
+    "id": "page-context-memories-empty",
+    "group": "State variants",
+    "path": "/context-center/memories",
+    "ready": {
+      "testId": "context-center-memories-page"
+    },
+    "state": "empty"
+  },
+  {
+    "id": "entity-table-read-only",
+    "group": "State variants",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "ready": {
+      "testId": "entity-header-display-name"
+    },
+    "text": "Orders",
+    "state": "read-only",
+    "absent": [
+      {
+        "testId": "edit-owner"
+      }
+    ]
+  },
+  {
+    "id": "service-databaseServices",
+    "group": "Connections",
+    "path": "/connections/databaseServices/visual_warehouse",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "service-edit-databaseServices",
+    "group": "Connections",
+    "path": "/connections/databaseServices/visual_warehouse/edit-connection",
+    "ready": {
+      "testId": "connection-grouped-form"
+    }
+  },
+  {
+    "id": "service-pipelineServices",
+    "group": "Connections",
+    "path": "/connections/pipelineServices/visual_airflow",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "service-edit-pipelineServices",
+    "group": "Connections",
+    "path": "/connections/pipelineServices/visual_airflow/edit-connection",
+    "ready": {
+      "testId": "connection-grouped-form"
+    }
+  },
+  {
+    "id": "service-messagingServices",
+    "group": "Connections",
+    "path": "/connections/messagingServices/visual_kafka",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "service-edit-messagingServices",
+    "group": "Connections",
+    "path": "/connections/messagingServices/visual_kafka/edit-connection",
+    "ready": {
+      "testId": "connection-grouped-form"
+    }
+  },
+  {
+    "id": "service-dashboardServices",
+    "group": "Connections",
+    "path": "/connections/dashboardServices/visual_looker",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "service-edit-dashboardServices",
+    "group": "Connections",
+    "path": "/connections/dashboardServices/visual_looker/edit-connection",
+    "ready": {
+      "testId": "connection-grouped-form"
+    }
+  },
+  {
+    "id": "service-mlmodelServices",
+    "group": "Connections",
+    "path": "/connections/mlmodelServices/visual_ml",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "service-edit-mlmodelServices",
+    "group": "Connections",
+    "path": "/connections/mlmodelServices/visual_ml/edit-connection",
+    "ready": {
+      "testId": "connection-grouped-form"
+    }
+  },
+  {
+    "id": "service-storageServices",
+    "group": "Connections",
+    "path": "/connections/storageServices/visual_s3",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "service-edit-storageServices",
+    "group": "Connections",
+    "path": "/connections/storageServices/visual_s3/edit-connection",
+    "ready": {
+      "testId": "connection-grouped-form"
+    }
+  },
+  {
+    "id": "service-searchServices",
+    "group": "Connections",
+    "path": "/connections/searchServices/visual_elastic",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "service-edit-searchServices",
+    "group": "Connections",
+    "path": "/connections/searchServices/visual_elastic/edit-connection",
+    "ready": {
+      "testId": "connection-grouped-form"
+    }
+  },
+  {
+    "id": "service-apiServices",
+    "group": "Connections",
+    "path": "/connections/apiServices/visual_api",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "service-edit-apiServices",
+    "group": "Connections",
+    "path": "/connections/apiServices/visual_api/edit-connection",
+    "ready": {
+      "testId": "connection-grouped-form"
+    }
+  },
+  {
+    "id": "service-driveServices",
+    "group": "Connections",
+    "path": "/connections/driveServices/visual_drive",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "service-edit-driveServices",
+    "group": "Connections",
+    "path": "/connections/driveServices/visual_drive/edit-connection",
+    "ready": {
+      "testId": "connection-grouped-form"
+    }
+  },
+  {
+    "id": "service-databaseServices-connection",
+    "group": "Connections",
+    "path": "/connections/databaseServices/visual_warehouse/connection",
+    "ready": {
+      "testId": "edit-connection-button"
+    }
+  },
+  {
+    "id": "service-pipelineServices-connection",
+    "group": "Connections",
+    "path": "/connections/pipelineServices/visual_airflow/connection",
+    "ready": {
+      "testId": "edit-connection-button"
+    }
+  },
+  {
+    "id": "service-messagingServices-connection",
+    "group": "Connections",
+    "path": "/connections/messagingServices/visual_kafka/connection",
+    "ready": {
+      "testId": "edit-connection-button"
+    }
+  },
+  {
+    "id": "service-dashboardServices-connection",
+    "group": "Connections",
+    "path": "/connections/dashboardServices/visual_looker/connection",
+    "ready": {
+      "testId": "edit-connection-button"
+    }
+  },
+  {
+    "id": "service-mlmodelServices-connection",
+    "group": "Connections",
+    "path": "/connections/mlmodelServices/visual_ml/connection",
+    "ready": {
+      "testId": "edit-connection-button"
+    }
+  },
+  {
+    "id": "service-storageServices-connection",
+    "group": "Connections",
+    "path": "/connections/storageServices/visual_s3/connection",
+    "ready": {
+      "testId": "edit-connection-button"
+    }
+  },
+  {
+    "id": "service-searchServices-connection",
+    "group": "Connections",
+    "path": "/connections/searchServices/visual_elastic/connection",
+    "ready": {
+      "testId": "edit-connection-button"
+    }
+  },
+  {
+    "id": "service-apiServices-connection",
+    "group": "Connections",
+    "path": "/connections/apiServices/visual_api/connection",
+    "ready": {
+      "testId": "edit-connection-button"
+    }
+  },
+  {
+    "id": "service-driveServices-connection",
+    "group": "Connections",
+    "path": "/connections/driveServices/visual_drive/connection",
+    "ready": {
+      "testId": "edit-connection-button"
+    }
+  },
+  {
+    "id": "ingestion-database-metadata",
+    "group": "Connections",
+    "path": "/connections/service/databaseServices/visual_warehouse/add-ingestion/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-database-profiler",
+    "group": "Connections",
+    "path": "/connections/service/databaseServices/visual_warehouse/add-ingestion/profiler",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-database-usage",
+    "group": "Connections",
+    "path": "/connections/service/databaseServices/visual_warehouse/add-ingestion/usage",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-database-lineage",
+    "group": "Connections",
+    "path": "/connections/service/databaseServices/visual_warehouse/add-ingestion/lineage",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-database-dbt",
+    "group": "Connections",
+    "path": "/connections/service/databaseServices/visual_warehouse/add-ingestion/dbt",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-database-autoClassification",
+    "group": "Connections",
+    "path": "/connections/service/databaseServices/visual_warehouse/add-ingestion/autoClassification",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ontology-scope-menu",
+    "group": "Governance states",
+    "path": "/governance/ontology",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ontology-scope-menu-trigger"
+      }
+    ]
+  },
+  {
+    "id": "ontology-new-form",
+    "group": "Governance states",
+    "path": "/governance/ontology",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "testId": "ontology-create-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ontology-scope-menu-trigger"
+      },
+      {
+        "action": "click",
+        "testId": "ontology-create"
+      }
+    ]
+  },
+  {
+    "id": "ontology-new-validation",
+    "group": "Governance states",
+    "path": "/governance/ontology",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "testId": "ontology-create-form"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ontology-scope-menu-trigger"
+      },
+      {
+        "action": "click",
+        "testId": "ontology-create"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Save"
+      }
+    ]
+  },
+  {
+    "id": "ontology-native-graph",
+    "group": "Governance states",
+    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "testId": "ontology-graph-search"
+    }
+  },
+  {
+    "id": "ontology-tree",
+    "group": "Governance states",
+    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "role": "treegrid",
+      "name": "Concepts"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "submode-tab-tree"
+      }
+    ]
+  },
+  {
+    "id": "ontology-library",
+    "group": "Governance states",
+    "path": "/governance/ontology",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "testId": "ontology-library"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ontology-library-trigger"
+      }
+    ]
+  },
+  {
+    "id": "ontology-publication-picker",
+    "group": "Governance states",
+    "path": "/governance/ontology",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "testId": "ontology-publication-picker"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ontology-publication-trigger"
+      }
+    ]
+  },
+  {
+    "id": "ontology-publish-changes",
+    "group": "Governance states",
+    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "testId": "ontology-publication-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ontology-publication-trigger"
+      }
+    ]
+  },
+  {
+    "id": "ontology-publish-releases",
+    "group": "Governance states",
+    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "testId": "ontology-publication-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ontology-publication-trigger"
+      },
+      {
+        "action": "click",
+        "testId": "ontology-publication-tab-releases"
+      }
+    ]
+  },
+  {
+    "id": "ontology-export-dialog",
+    "group": "Governance states",
+    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "role": "dialog",
+      "name": "Import / export ontology"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ontology-import-export-trigger"
+      }
+    ]
+  },
+  {
+    "id": "ontology-query",
+    "group": "Governance states",
+    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
+    "initialReady": {
+      "testId": "ontology-studio-shell"
+    },
+    "ready": {
+      "testId": "ontology-new-query"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "mode-tab-query"
+      }
+    ]
+  },
+  {
+    "id": "workflow-graph",
+    "group": "Governance states",
+    "path": "/workflows/visual_approval_workflow/workflow",
+    "initialReady": {
+      "testId": "workflow-header"
+    },
+    "ready": {
+      "testId": "workflow-header"
+    }
+  },
+  {
+    "id": "workflow-history",
+    "group": "Governance states",
+    "path": "/workflows/visual_approval_workflow/workflow",
+    "initialReady": {
+      "testId": "workflow-header"
+    },
+    "ready": {
+      "testId": "workflow-execution-history"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "workflow-execution-history"
+      }
+    ]
+  },
+  {
+    "id": "workflow-manage-menu",
+    "group": "Governance states",
+    "path": "/workflows/visual_approval_workflow/workflow",
+    "initialReady": {
+      "testId": "workflow-header"
+    },
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "workflow-manage-button"
+      }
+    ]
+  },
+  {
+    "id": "explore-filter-entityType-keyword",
+    "group": "Interaction states",
+    "path": "/explore",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "search-dropdown-entityType.keyword"
+      }
+    ],
+    "initialReady": {
+      "testId": "explore-quick-filter-tables"
+    }
+  },
+  {
+    "id": "explore-filter-domains-displayName-keyword",
+    "group": "Interaction states",
+    "path": "/explore",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "search-dropdown-domains.displayName.keyword"
+      }
+    ],
+    "initialReady": {
+      "testId": "explore-quick-filter-tables"
+    }
+  },
+  {
+    "id": "explore-filter-dataProducts-displayName-keyword",
+    "group": "Interaction states",
+    "path": "/explore",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "search-dropdown-dataProducts.displayName.keyword"
+      }
+    ],
+    "initialReady": {
+      "testId": "explore-quick-filter-tables"
+    }
+  },
+  {
+    "id": "explore-filter-ownerDisplayName",
+    "group": "Interaction states",
+    "path": "/explore",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "search-dropdown-ownerDisplayName"
+      }
+    ],
+    "initialReady": {
+      "testId": "explore-quick-filter-tables"
+    }
+  },
+  {
+    "id": "explore-filter-tags-tagFQN",
+    "group": "Interaction states",
+    "path": "/explore",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "search-dropdown-tags.tagFQN"
+      }
+    ],
+    "initialReady": {
+      "testId": "explore-quick-filter-tables"
+    }
+  },
+  {
+    "id": "explore-filter-tier-tagFQN",
+    "group": "Interaction states",
+    "path": "/explore",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "search-dropdown-tier.tagFQN"
+      }
+    ],
+    "initialReady": {
+      "testId": "explore-quick-filter-tables"
+    }
+  },
+  {
+    "id": "explore-filter-certification-tagLabel-tagFQN",
+    "group": "Interaction states",
+    "path": "/explore",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "search-dropdown-certification.tagLabel.tagFQN"
+      }
+    ],
+    "initialReady": {
+      "testId": "explore-quick-filter-tables"
+    }
+  },
+  {
+    "id": "explore-filter-service-displayName-keyword",
+    "group": "Interaction states",
+    "path": "/explore",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "search-dropdown-service.displayName.keyword"
+      }
+    ],
+    "initialReady": {
+      "testId": "explore-quick-filter-tables"
+    }
+  },
+  {
+    "id": "explore-filter-serviceType",
+    "group": "Interaction states",
+    "path": "/explore",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "search-dropdown-serviceType"
+      }
+    ],
+    "initialReady": {
+      "testId": "explore-quick-filter-tables"
+    }
+  },
+  {
+    "id": "quality-add-case",
+    "group": "Interaction states",
+    "path": "/observability/data-quality",
+    "ready": {
+      "role": "dialog"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ask-sub-panel-item-add-test-case"
+      }
+    ],
+    "initialReady": {
+      "testId": "data-quality-add-button-menu"
+    }
+  },
+  {
+    "id": "quality-add-suite",
+    "group": "Interaction states",
+    "path": "/observability/data-quality",
+    "ready": {
+      "role": "dialog"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ask-sub-panel-item-add-bundle-suite"
+      }
+    ],
+    "initialReady": {
+      "testId": "data-quality-add-button-menu"
+    }
+  },
+  {
+    "id": "quality-add-menu",
+    "group": "Interaction states",
+    "path": "/observability/data-quality",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "data-quality-add-button-menu"
+      }
+    ],
+    "initialReady": {
+      "testId": "data-quality-add-button-menu"
+    }
+  },
+  {
+    "id": "quality-tab-test-cases",
+    "group": "Interaction states",
+    "path": "/observability/data-quality",
+    "ready": {
+      "role": "grid",
+      "name": "Test Cases"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Test Cases"
+      }
+    ],
+    "initialReady": {
+      "testId": "data-quality-add-button-menu"
+    }
+  },
+  {
+    "id": "quality-tab-test-suites",
+    "group": "Interaction states",
+    "path": "/observability/data-quality",
+    "ready": {
+      "role": "grid",
+      "name": "Test Suites"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Test Suites"
+      }
+    ],
+    "initialReady": {
+      "testId": "data-quality-add-button-menu"
+    }
+  },
+  {
+    "id": "test-definition-create",
+    "group": "Interaction states",
+    "path": "/observability/test-library",
+    "ready": {
+      "testId": "form-heading"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-test-definition-button"
+      }
+    ]
+  },
+  {
+    "id": "test-definition-validation",
+    "group": "Interaction states",
+    "path": "/observability/test-library",
+    "ready": {
+      "role": "dialog"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-test-definition-button"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Save"
+      }
+    ]
+  },
+  {
+    "id": "shell-profile-menu",
+    "group": "Interaction states",
+    "path": "/my-data",
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "ask-ai-user-menu-trigger"
+      }
+    ],
+    "initialReady": {
+      "testId": "my-data-page"
+    }
+  },
+  {
+    "id": "shell-mode-menu",
+    "group": "Interaction states",
+    "path": "/my-data",
+    "ready": {
+      "role": "dialog"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "app-mode-switcher-trigger"
+      }
+    ],
+    "initialReady": {
+      "testId": "my-data-page"
+    }
+  },
+  {
+    "id": "glossaryTerm-tab-glossary-terms",
+    "group": "Entity tabs",
+    "path": "/glossary/VisualBusinessGlossary.Customer",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Glossary\\ Terms\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Glossary\\ Terms\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "glossaryTerm-tab-assets",
+    "group": "Entity tabs",
+    "path": "/glossary/VisualBusinessGlossary.Customer",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Assets\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Assets\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "glossaryTerm-tab-activity-feeds-tasks",
+    "group": "Entity tabs",
+    "path": "/glossary/VisualBusinessGlossary.Customer",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "glossaryTerm-tab-relations-graph",
+    "group": "Entity tabs",
+    "path": "/glossary/VisualBusinessGlossary.Customer",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Relations\\ Graph\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Relations\\ Graph\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "glossaryTerm-tab-custom-properties",
+    "group": "Entity tabs",
+    "path": "/glossary/VisualBusinessGlossary.Customer",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Custom\\ Properties\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Custom\\ Properties\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "glossaryTerm-tab-data-observability",
+    "group": "Entity tabs",
+    "path": "/glossary/VisualBusinessGlossary.Customer",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Data\\ Observability\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Data\\ Observability\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "metric-tab-lineage",
+    "group": "Entity tabs",
+    "path": "/metric/visual_gross_margin",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Lineage\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Lineage\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "metric-tab-assets",
+    "group": "Entity tabs",
+    "path": "/metric/visual_gross_margin",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Assets\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Assets\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "metric-tab-activity-feeds-tasks",
+    "group": "Entity tabs",
+    "path": "/metric/visual_gross_margin",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "metric-tab-custom-properties",
+    "group": "Entity tabs",
+    "path": "/metric/visual_gross_margin",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Custom\\ Properties\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Custom\\ Properties\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "glossary-tab-review",
+    "group": "Entity tabs",
+    "path": "/glossary/VisualBusinessGlossary",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Review\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Review\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "glossary-tab-relations-graph",
+    "group": "Entity tabs",
+    "path": "/glossary/VisualBusinessGlossary",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Relations\\ Graph\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Relations\\ Graph\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "glossary-tab-activity-feeds-tasks",
+    "group": "Entity tabs",
+    "path": "/glossary/VisualBusinessGlossary",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "tag-tab-assets",
+    "group": "Entity tabs",
+    "path": "/tag/VisualClassification.Confidential",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Assets\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Assets\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "tag-tab-activity-feeds-tasks",
+    "group": "Entity tabs",
+    "path": "/tag/VisualClassification.Confidential",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "tag-tab-data-observability",
+    "group": "Entity tabs",
+    "path": "/tag/VisualClassification.Confidential",
+    "ready": {
+      "role": "tab",
+      "namePattern": "^Data\\ Observability\\s*\\d*$"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "namePattern": "^Data\\ Observability\\s*\\d*$"
+      }
+    ]
+  },
+  {
+    "id": "table-long-header",
+    "group": "State variants",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "long-content",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "table-deleted",
+    "group": "State variants",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "deleted",
+    "ready": {
+      "testId": "entity-header-display-name"
+    }
+  },
+  {
+    "id": "table-forbidden",
+    "group": "State variants",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "forbidden",
+    "ready": {
+      "testId": "permission-error-placeholder"
+    }
+  },
+  {
+    "id": "connections-load-error",
+    "group": "State variants",
+    "path": "/connections",
+    "state": "error",
+    "ready": {
+      "text": "Something went wrong"
+    }
+  },
+  {
+    "id": "domains-load-error",
+    "group": "State variants",
+    "path": "/domain",
+    "state": "error",
+    "ready": {
+      "testId": "app-shell"
+    },
+    "containsText": "Unable to load the catalog. Please try again."
+  },
+  {
+    "id": "table-read-only-manage-menu",
+    "group": "State variants",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "read-only",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "manage-button"
+      }
+    ],
+    "absent": [
+      {
+        "testId": "delete-button"
+      }
+    ]
+  },
+  {
+    "id": "ingestion-databaseServices-edit-metadata",
+    "group": "Connections",
+    "path": "/connections/service/databaseServices/visual_warehouse/edit-ingestion/visual_warehouse.catalog_metadata/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-pipelineServices-metadata",
+    "group": "Connections",
+    "path": "/connections/service/pipelineServices/visual_airflow/add-ingestion/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-pipelineServices-edit-metadata",
+    "group": "Connections",
+    "path": "/connections/service/pipelineServices/visual_airflow/edit-ingestion/visual_airflow.catalog_metadata/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-messagingServices-metadata",
+    "group": "Connections",
+    "path": "/connections/service/messagingServices/visual_kafka/add-ingestion/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-messagingServices-edit-metadata",
+    "group": "Connections",
+    "path": "/connections/service/messagingServices/visual_kafka/edit-ingestion/visual_kafka.catalog_metadata/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-dashboardServices-metadata",
+    "group": "Connections",
+    "path": "/connections/service/dashboardServices/visual_looker/add-ingestion/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-dashboardServices-edit-metadata",
+    "group": "Connections",
+    "path": "/connections/service/dashboardServices/visual_looker/edit-ingestion/visual_looker.catalog_metadata/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-mlmodelServices-metadata",
+    "group": "Connections",
+    "path": "/connections/service/mlmodelServices/visual_ml/add-ingestion/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-mlmodelServices-edit-metadata",
+    "group": "Connections",
+    "path": "/connections/service/mlmodelServices/visual_ml/edit-ingestion/visual_ml.catalog_metadata/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-storageServices-metadata",
+    "group": "Connections",
+    "path": "/connections/service/storageServices/visual_s3/add-ingestion/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-storageServices-edit-metadata",
+    "group": "Connections",
+    "path": "/connections/service/storageServices/visual_s3/edit-ingestion/visual_s3.catalog_metadata/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-searchServices-metadata",
+    "group": "Connections",
+    "path": "/connections/service/searchServices/visual_elastic/add-ingestion/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-searchServices-edit-metadata",
+    "group": "Connections",
+    "path": "/connections/service/searchServices/visual_elastic/edit-ingestion/visual_elastic.catalog_metadata/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-apiServices-metadata",
+    "group": "Connections",
+    "path": "/connections/service/apiServices/visual_api/add-ingestion/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-apiServices-edit-metadata",
+    "group": "Connections",
+    "path": "/connections/service/apiServices/visual_api/edit-ingestion/visual_api.catalog_metadata/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-driveServices-metadata",
+    "group": "Connections",
+    "path": "/connections/service/driveServices/visual_drive/add-ingestion/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-driveServices-edit-metadata",
+    "group": "Connections",
+    "path": "/connections/service/driveServices/visual_drive/edit-ingestion/visual_drive.catalog_metadata/metadata",
+    "ready": {
+      "testId": "add-ingestion-container"
+    }
+  },
+  {
+    "id": "ingestion-database-schedule",
+    "group": "Connections",
+    "path": "/connections/service/databaseServices/visual_warehouse/add-ingestion/metadata",
+    "initialReady": {
+      "testId": "ingestion-display-name"
+    },
+    "ready": {
+      "testId": "schedule-interval-container"
+    },
+    "actions": [
+      {
+        "action": "fill",
+        "testId": "ingestion-display-name",
+        "value": "Finance metadata"
+      },
+      {
+        "action": "click",
+        "testId": "next-button"
+      }
+    ]
+  },
+  {
+    "id": "form-task-request-description",
+    "group": "Forms",
+    "path": "/request-description/table/visual_warehouse.finance.public.orders",
+    "ready": {
+      "testId": "form-container"
+    },
+    "target": {
+      "testId": "form-container"
+    }
+  },
+  {
+    "id": "form-task-request-tags",
+    "group": "Forms",
+    "path": "/request-tags/table/visual_warehouse.finance.public.orders",
+    "ready": {
+      "testId": "form-container"
+    },
+    "target": {
+      "testId": "form-container"
+    }
+  },
+  {
+    "id": "form-task-update-description",
+    "group": "Forms",
+    "path": "/update-description/table/visual_warehouse.finance.public.orders",
+    "ready": {
+      "testId": "form-container"
+    },
+    "target": {
+      "testId": "form-container"
+    }
+  },
+  {
+    "id": "form-task-update-tags",
+    "group": "Forms",
+    "path": "/update-tags/table/visual_warehouse.finance.public.orders",
+    "ready": {
+      "testId": "form-container"
+    },
+    "target": {
+      "testId": "form-container"
+    }
+  },
+  {
+    "id": "settings-token-empty",
+    "group": "Settings extensions",
+    "path": "/my-data#access-token",
+    "state": "empty",
+    "ready": {
+      "testId": "generate-token"
+    },
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-token-expiry-menu",
+    "group": "Settings extensions",
+    "path": "/my-data#access-token",
+    "state": "empty",
+    "initialReady": {
+      "testId": "generate-token"
+    },
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "namePattern": "Token Expiration$"
+      }
+    ]
+  },
+  {
+    "id": "settings-token-expired",
+    "group": "Settings extensions",
+    "path": "/my-data#access-token",
+    "state": "expired-token",
+    "ready": {
+      "testId": "access-token-row"
+    },
+    "text": "Expired",
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "settings-token-revealed",
+    "group": "Settings extensions",
+    "path": "/my-data#access-token",
+    "initialReady": {
+      "testId": "reveal-token"
+    },
+    "ready": {
+      "testId": "token-value"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "reveal-token"
+      }
+    ],
+    "text": "visual-example-token",
+    "target": {
+      "testId": "ai-profile-page"
+    }
+  },
+  {
+    "id": "workflow-start-configuration",
+    "group": "Governance states",
+    "path": "/workflows/visual_approval_workflow/workflow",
+    "initialReady": {
+      "testId": "workflow-start-node"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "workflow-start-node"
+      }
+    ],
+    "ready": {
+      "testId": "workflow-config-form-v1"
+    },
+    "target": {
+      "testId": "node-config-sidebar"
+    }
+  },
+  {
+    "id": "workflow-start-exclude-filter",
+    "group": "Governance states",
+    "path": "/workflows/visual_approval_workflow/workflow",
+    "initialReady": {
+      "testId": "workflow-start-node"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "edit-workflow-button"
+      },
+      {
+        "action": "click",
+        "testId": "workflow-start-node"
+      },
+      {
+        "action": "click",
+        "testId": "add-event-filter-button"
+      }
+    ],
+    "ready": {
+      "testId": "query-builder-section"
+    },
+    "target": {
+      "testId": "node-config-sidebar"
+    }
+  },
+  {
+    "id": "workflow-start-periodic-batch",
+    "group": "Governance states",
+    "path": "/workflows/visual_periodic_workflow/workflow",
+    "initialReady": {
+      "testId": "edit-workflow-button"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "edit-workflow-button"
+      },
+      {
+        "action": "click",
+        "testId": "workflow-start-node"
+      }
+    ],
+    "ready": {
+      "testId": "workflow-config-form-v1"
+    },
+    "target": {
+      "testId": "node-config-sidebar"
+    }
+  },
+  {
+    "id": "task-detail-description",
+    "group": "Interaction states",
+    "path": "/tasks/TASK-00041",
+    "ready": {
+      "role": "heading",
+      "name": "Task"
+    },
+    "containsText": "Review the orders description"
+  },
+  {
+    "id": "task-detail-tags",
+    "group": "Interaction states",
+    "path": "/tasks/TASK-00042",
+    "ready": {
+      "role": "heading",
+      "name": "Task"
+    },
+    "containsText": "Classify customer information"
+  },
+  {
+    "id": "task-detail-approval",
+    "group": "Interaction states",
+    "path": "/tasks/TASK-00043",
+    "ready": {
+      "role": "heading",
+      "name": "Task"
+    },
+    "containsText": "Approve the finance glossary"
+  },
+  {
+    "id": "task-reject-comment-dialog",
+    "group": "Interaction states",
+    "path": "/tasks/TASK-00043",
+    "initialReady": {
+      "role": "button",
+      "name": "Reject"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Reject"
+      }
+    ],
+    "ready": {
+      "testId": "task-action-comment"
+    },
+    "target": {
+      "role": "dialog"
+    }
+  },
+  {
+    "id": "page-incidents",
+    "group": "Pages",
+    "path": "/incident-manager",
+    "ready": {
+      "role": "heading",
+      "name": "Incident Manager"
+    }
+  },
+  {
+    "id": "task-detail-read-only",
+    "group": "State variants",
+    "state": "read-only",
+    "path": "/tasks/TASK-00041",
+    "ready": {
+      "role": "heading",
+      "name": "Task"
+    },
+    "containsText": "Review the orders description",
+    "absent": [
+      {
+        "role": "button",
+        "name": "Approve"
+      },
+      {
+        "role": "button",
+        "name": "Reject"
+      }
+    ]
+  },
+  {
+    "id": "task-detail-incident",
+    "group": "Interaction states",
+    "path": "/tasks/TASK-00044",
+    "ready": {
+      "role": "heading",
+      "name": "Task"
+    },
+    "containsText": "Investigate missing order identifiers"
+  },
+  {
+    "id": "context-article-detail",
+    "group": "Interaction states",
+    "path": "/context-center/articles/visual_finance_handbook",
+    "ready": {
+      "testId": "article-detail-header"
+    }
+  },
+  {
+    "id": "context-article-manage-menu",
+    "group": "Interaction states",
+    "path": "/context-center/articles/visual_finance_handbook",
+    "initialReady": {
+      "testId": "article-detail-header"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "manage-button"
+      }
+    ],
+    "ready": {
+      "role": "menu"
+    }
+  },
+  {
+    "id": "context-article-delete-dialog",
+    "group": "Interaction states",
+    "path": "/context-center/articles/visual_finance_handbook",
+    "initialReady": {
+      "testId": "article-detail-header"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "manage-button"
+      },
+      {
+        "action": "click",
+        "testId": "delete-btn"
+      }
+    ],
+    "ready": {
+      "role": "dialog",
+      "has": {
+        "role": "button",
+        "name": "Delete"
+      }
+    },
+    "target": {
+      "role": "dialog",
+      "has": {
+        "role": "button",
+        "name": "Delete"
+      }
+    }
+  },
+  {
+    "id": "context-memory-create",
+    "group": "Forms",
+    "path": "/context-center/memories",
+    "initialReady": {
+      "role": "button",
+      "name": "Add Memory"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Add Memory"
+      }
+    ],
+    "ready": {
+      "testId": "memory-modal"
+    },
+    "target": {
+      "testId": "memory-modal"
+    }
+  },
+  {
+    "id": "context-memory-edit",
+    "group": "Forms",
+    "path": "/context-center/memories",
+    "initialReady": {
+      "testId": "edit-memory-btn"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "edit-memory-btn"
+      }
+    ],
+    "ready": {
+      "testId": "memory-modal"
+    },
+    "target": {
+      "testId": "memory-modal"
+    }
+  },
+  {
+    "id": "context-persona-detail",
+    "group": "Pages",
+    "path": "/context-center/ai-context/VisualAnalystPersona",
+    "ready": {
+      "role": "heading",
+      "name": "Analyst persona"
+    }
+  },
+  {
+    "id": "page-native-incidents",
+    "group": "Pages",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "heading",
+      "name": "Incident Manager"
+    },
+    "containsText": "Orders"
+  },
+  {
+    "group": "Interaction states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "role": "tab",
+      "name": "Lineage"
+    },
+    "paintedLineage": true,
+    "id": "lineage-configuration",
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Lineage"
+      },
+      {
+        "action": "click",
+        "testId": "lineage-config"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    },
+    "target": {
+      "role": "dialog"
+    }
+  },
+  {
+    "group": "Interaction states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "role": "tab",
+      "name": "Lineage"
+    },
+    "paintedLineage": true,
+    "id": "lineage-export-dialog",
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Lineage"
+      },
+      {
+        "action": "click",
+        "testId": "export-button"
+      }
+    ],
+    "ready": {
+      "role": "dialog"
+    },
+    "target": {
+      "role": "dialog"
+    }
+  },
+  {
+    "group": "Interaction states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "role": "tab",
+      "name": "Lineage"
+    },
+    "paintedLineage": true,
+    "id": "lineage-time-menu",
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Lineage"
+      },
+      {
+        "action": "click",
+        "testId": "lineage-time-filter"
+      }
+    ],
+    "ready": {
+      "role": "menu"
+    }
+  },
+  {
+    "group": "Interaction states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "role": "tab",
+      "name": "Lineage"
+    },
+    "paintedLineage": true,
+    "id": "lineage-layers-menu",
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Lineage"
+      },
+      {
+        "action": "click",
+        "testId": "lineage-layer-btn"
+      }
+    ],
+    "ready": {
+      "role": "menu"
+    }
+  },
+  {
+    "group": "Interaction states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "role": "tab",
+      "name": "Lineage"
+    },
+    "paintedLineage": true,
+    "id": "lineage-columns-menu",
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Lineage"
+      },
+      {
+        "action": "click",
+        "testId": "children-info-dropdown-btn"
+      }
+    ],
+    "ready": {
+      "testId": "column-container"
+    }
+  },
+  {
+    "group": "Interaction states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "role": "tab",
+      "name": "Lineage"
+    },
+    "paintedLineage": true,
+    "id": "lineage-node-menu",
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Lineage"
+      },
+      {
+        "action": "click",
+        "testId": "lineage-node-menu",
+        "within": "lineage-node-visual_warehouse.finance.public.orders"
+      }
+    ],
+    "ready": {
+      "role": "menu"
+    }
+  }
+]

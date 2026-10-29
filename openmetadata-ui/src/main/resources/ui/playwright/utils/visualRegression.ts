@@ -10,8 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
+import {
+  disableAiAppMode,
+  enableAiAppMode,
+  stubUserPreferencesAppMode,
+} from '../e2e/Utils/appMode';
+import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
+
+export const VISUAL_THEMES = ['light', 'dark'] as const;
+export type VisualTheme = (typeof VISUAL_THEMES)[number];
+
+export const prepareVisualTheme = async (
+  page: Page,
+  theme: VisualTheme,
+  mode: 'ai' | 'classic' = 'ai'
+) => {
+  await page.emulateMedia({ colorScheme: theme });
+  await page.addInitScript((preference) => {
+    localStorage.setItem('ui-theme', preference);
+  }, theme);
+  if (mode === 'ai') {
+    await enableAiAppMode(page);
+  } else {
+    await disableAiAppMode(page);
+    await stubUserPreferencesAppMode(page, 'classic');
+  }
+};
 
 /**
  * Wait out skeleton placeholders.
@@ -38,10 +64,31 @@ const waitForSkeletonsToResolve = async (page: Page) => {
 };
 
 export const FIXED_DATE = new Date('2026-01-15T10:00:00.000Z');
-export const VISUAL_GLOSSARY_NAME = 'pw_visual_regression_glossary';
-export const VISUAL_GLOSSARY_DISPLAY_NAME = 'Visual regression glossary';
-export const VISUAL_GLOSSARY_TERM_NAME = 'Account number';
 
+export const waitForLineageCanvas = async (page: Page) => {
+  // Connections are painted on a canvas, independently of React Flow's nodes.
+  // Waiting for node labels alone can capture the graph before its edges exist.
+  const canvas = page
+    .getByTestId('rf__wrapper')
+    .locator('.lineage-canvas-container canvas');
+  await expect(canvas).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        canvas.evaluate((element: HTMLCanvasElement) => {
+          if (!element.width || !element.height) return false;
+          const pixels = element
+            .getContext('2d')
+            ?.getImageData(0, 0, element.width, element.height).data;
+          return (
+            pixels?.some((alpha, index) => index % 4 === 3 && alpha > 0) ??
+            false
+          );
+        }),
+      { message: 'Lineage connections must finish painting before capture' }
+    )
+    .toBe(true);
+};
 /** Shared options for every toHaveScreenshot assertion in the visual suite. */
 export const SCREENSHOT_OPTS = {
   animations: 'disabled' as const,
@@ -63,12 +110,8 @@ const FREEZE_CSS = `
  * Navigate with a frozen clock so relative timestamps ("x minutes ago")
  * render identically on every run, then quiesce the page.
  *
- * Deviation from the original brief: the brief's snippet used
- * `page.waitForLoadState('networkidle')`, but this repo's eslint config
- * enforces `playwright/no-networkidle` (networkidle is unreliable with
- * websockets/polling — see PLAYWRIGHT_DEVELOPER_HANDBOOK.md). We use the
- * project's existing replacement, `waitForPageLoaded`, which waits for
- * `domcontentloaded` plus all loader spinners to disappear.
+ * The shared page-loaded guard waits for DOM content and loader spinners.
+ * Network-idle waits cannot settle reliably while catalog polling is active.
  */
 export const gotoForScreenshot = async (
   page: Page,
@@ -85,6 +128,7 @@ export const gotoForScreenshot = async (
     await expect(page.getByTestId(readyTestId)).toBeVisible();
   }
   await waitForSkeletonsToResolve(page);
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await page.addStyleTag({ content: FREEZE_CSS });
   await page.evaluate(() => {
     window.scrollTo(0, 0);
@@ -100,10 +144,49 @@ export const gotoForScreenshot = async (
   });
 };
 
-export const gotoVisualGlossary = async (page: Page) => {
-  await gotoForScreenshot(page, `/glossary/${VISUAL_GLOSSARY_NAME}`);
-  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    VISUAL_GLOSSARY_DISPLAY_NAME
+export const expectVisualScreenshot = async (
+  page: Page,
+  name: string,
+  theme: VisualTheme,
+  options: NonNullable<
+    Parameters<ReturnType<typeof expect<Page>>['toHaveScreenshot']>[0]
+  > & { target?: Locator; allowErrorFeedback?: boolean } = {}
+) => {
+  // Classic deliberately resolves dark preferences to light. Requiring the
+  // actual root theme prevents a duplicate light image from claiming dark coverage.
+  if (theme === 'dark') {
+    await expect(page.locator('html')).toHaveClass(/\bdark-mode\b/);
+  } else {
+    await expect(page.locator('html')).not.toHaveClass(/\bdark-mode\b/);
+  }
+  await waitForAllLoadersToDisappear(page);
+  await waitForSkeletonsToResolve(page);
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const {
+    target = page,
+    allowErrorFeedback = false,
+    ...screenshotOptions
+  } = options;
+  if (!allowErrorFeedback) {
+    await expect(
+      page.getByRole('alertdialog'),
+      'Resolved visual pages must not contain an error notification'
+    ).toHaveCount(0);
+    await expect(
+      page.getByText('Something went wrong', { exact: true })
+    ).toHaveCount(0);
+    await expect(page.getByText(/^Error while fetching/)).toHaveCount(0);
+    await expect(page.getByText(/^(NaN|Invalid date)$/i)).toHaveCount(0);
+  }
+
+  await expect(target).toHaveScreenshot(
+    `${name}${theme === 'dark' ? '-dark' : ''}.png`,
+    {
+      ...SCREENSHOT_OPTS,
+      ...screenshotOptions,
+    }
   );
-  await expect(page.getByTestId(VISUAL_GLOSSARY_TERM_NAME)).toBeVisible();
+  if (!allowErrorFeedback) {
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  }
 };

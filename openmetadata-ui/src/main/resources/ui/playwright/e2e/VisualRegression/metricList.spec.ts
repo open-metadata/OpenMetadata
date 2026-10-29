@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 import { expect, Page, Route, test } from '@playwright/test';
+import { installVisualData } from '../../utils/visualData';
 import {
+  expectVisualScreenshot,
   FIXED_DATE,
   gotoForScreenshot,
-  SCREENSHOT_OPTS,
+  prepareVisualTheme,
+  VisualTheme,
+  VISUAL_THEMES,
 } from '../../utils/visualRegression';
 
 const METRIC_ID = '11111111-1111-4111-8111-111111111111';
@@ -609,33 +613,21 @@ const setupMetricRoutes = async (page: Page) => {
       });
     }
 
-    return route.continue();
+    return route.fallback();
   });
 };
-
-const maskVolatileChrome = (page: Page) => [
-  page.locator('.Toastify__toast-container'),
-  page.locator('[data-testid="global-search-suggestions"]'),
-];
 
 const expectMetricScreenshot = async (
   page: Page,
   name: string,
-  viewport: 'desktop' | 'narrow'
-) => {
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-  });
-  await expect(page).toHaveScreenshot(`metric-${name}-${viewport}.png`, {
-    ...SCREENSHOT_OPTS,
-    mask: maskVolatileChrome(page),
-  });
-};
+  viewport: 'desktop' | 'narrow',
+  theme: VisualTheme
+) => expectVisualScreenshot(page, `metric-${name}-${viewport}`, theme);
+
 const captureMetricList = async (
   page: Page,
-  viewport: 'desktop' | 'narrow'
+  viewport: 'desktop' | 'narrow',
+  theme: VisualTheme
 ) => {
   // Each card's health pill lazy-loads behind an IntersectionObserver and renders a Skeleton
   // until its slot intersects. gotoForScreenshot's skeleton guard runs while the sidebar is
@@ -646,13 +638,21 @@ const captureMetricList = async (
   await page.addInitScript(() => {
     Reflect.deleteProperty(window, 'IntersectionObserver');
   });
+  await installVisualData(page);
   await setupMetricRoutes(page);
 
   await gotoForScreenshot(page, '/metrics');
   await expect(page.getByTestId('metric-list-page')).toBeVisible();
   if (viewport === 'narrow') {
-    await page.getByTestId('sidebar-toggle').click();
-    await expect(page.getByTestId('left-sidebar')).toHaveCSS('width', '72px');
+    // The AI shell collapses its main rail at this width, while the route's
+    // secondary panel still needs closing to leave room for the metric cards.
+    const sidebar = page.getByRole('complementary');
+    await sidebar
+      .getByRole('button', { name: 'Collapse', exact: true })
+      .click();
+    await expect(
+      sidebar.getByRole('button', { name: 'Collapse', exact: true })
+    ).toHaveCount(0);
   }
   await page.getByRole('radio', { name: 'Card' }).click();
   const metricCardView = page.getByTestId('metric-card-view');
@@ -661,15 +661,18 @@ const captureMetricList = async (
   await expect(
     metricCardView.getByText('Gross Margin', { exact: true })
   ).toBeVisible();
-  await expectMetricScreenshot(page, 'list', viewport);
+  await expectMetricScreenshot(page, 'list', viewport, theme);
 };
 
-test('Metric list matches desktop baseline', async ({ page }) => {
-  await page.setViewportSize({ height: 900, width: 1440 });
-  await captureMetricList(page, 'desktop');
-});
-
-test('Metric list matches narrow baseline', async ({ page }) => {
-  await page.setViewportSize({ height: 900, width: 390 });
-  await captureMetricList(page, 'narrow');
-});
+for (const theme of VISUAL_THEMES) {
+  for (const viewport of ['desktop', 'narrow'] as const) {
+    test(`Metric list ${viewport} ${theme}`, async ({ page }) => {
+      await page.setViewportSize({
+        height: 900,
+        width: viewport === 'narrow' ? 390 : 1440,
+      });
+      await prepareVisualTheme(page, theme);
+      await captureMetricList(page, viewport, theme);
+    });
+  }
+}
