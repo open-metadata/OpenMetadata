@@ -108,6 +108,7 @@ jest.mock(
           data-can-edit={String(Boolean(canEdit))}
           data-testid="memories-view">
           <button
+            aria-label="delete"
             data-testid="mock-delete-memory"
             onClick={() =>
               onDeleteMemory?.({ id: 'memory-1', title: 'Test Memory' })
