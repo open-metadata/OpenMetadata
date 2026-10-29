@@ -45,20 +45,6 @@ jest.mock('react-router-dom', () => ({
   ),
 }));
 
-jest.mock('antd', () => ({
-  Alert: ({
-    description,
-    ...props
-  }: {
-    description?: React.ReactNode;
-    [key: string]: unknown;
-  }) => (
-    <div data-testid="index-not-found-banner" {...props}>
-      {description}
-    </div>
-  ),
-}));
-
 describe('IndexNotFoundBanner', () => {
   it('renders indexing error details and re-index help text', async () => {
     render(<IndexNotFoundBanner />);

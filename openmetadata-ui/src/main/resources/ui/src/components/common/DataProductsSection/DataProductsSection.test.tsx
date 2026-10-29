@@ -62,19 +62,6 @@ jest.mock('react-i18next', () => ({
 }));
 
 // Partial mock antd to preserve DatePicker and others used transitively
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Button: jest.fn().mockImplementation(({ children, ...props }) => (
-      <button data-testid="button" {...props}>
-        {children}
-      </button>
-    )),
-  };
-});
-
 // Mock svg icons
 jest.mock('../../../assets/svg/edit-new.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,

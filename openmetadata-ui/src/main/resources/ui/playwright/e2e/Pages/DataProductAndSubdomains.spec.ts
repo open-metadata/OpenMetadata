@@ -29,7 +29,6 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   checkAssetsCount,
@@ -889,7 +888,6 @@ test.describe('Multiple Subdomains Tests', () => {
       // [active] and no dialog behind it.
       const deleteMenuItem = page.getByTestId('delete-button');
       await expect(deleteMenuItem).toBeVisible();
-      await waitForAntdPopupToSettle(page);
       await deleteMenuItem.click();
 
       await expect(
