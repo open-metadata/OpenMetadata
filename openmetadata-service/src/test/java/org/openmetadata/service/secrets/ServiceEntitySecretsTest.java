@@ -29,7 +29,11 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
@@ -140,6 +144,42 @@ class ServiceEntitySecretsTest {
         encrypted,
         JsonUtils.convertValue(service.getConnection().getConfig(), SnowflakeConnection.class)
             .getPassword());
+    assertTrue(vault.getSecretsMap().isEmpty());
+  }
+
+  @Test
+  void preparingNestedCredentialsDoesNotWriteToTheVault() {
+    DatabaseService service =
+        service(PASSWORD)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(
+                new DatabaseConnection()
+                    .withConfig(
+                        new MysqlConnection()
+                            .withAuthType(new basicAuth().withPassword(PASSWORD))));
+
+    repository.prepare(service, true);
+
+    MysqlConnection prepared = (MysqlConnection) service.getConnection().getConfig();
+    String password = JsonUtils.convertValue(prepared.getAuthType(), basicAuth.class).getPassword();
+    assertTrue(Fernet.isTokenized(password));
+    assertEquals(PASSWORD, Fernet.getInstance().decrypt(password));
+    assertTrue(vault.getSecretsMap().isEmpty());
+  }
+
+  @Test
+  void preparingCredentialsInACollectionDoesNotWriteToTheVault() {
+    McpConnection config =
+        new McpConnection()
+            .withServers(List.of(new McpServerConfig().withName("server").withApiKey(PASSWORD)));
+
+    McpConnection prepared =
+        (McpConnection)
+            vault.prepareServiceConnectionConfig(config, "Mcp", SERVICE_NAME, ServiceType.MCP);
+
+    String apiKey = prepared.getServers().getFirst().getApiKey();
+    assertTrue(Fernet.isTokenized(apiKey));
+    assertEquals(PASSWORD, Fernet.getInstance().decrypt(apiKey));
     assertTrue(vault.getSecretsMap().isEmpty());
   }
 
