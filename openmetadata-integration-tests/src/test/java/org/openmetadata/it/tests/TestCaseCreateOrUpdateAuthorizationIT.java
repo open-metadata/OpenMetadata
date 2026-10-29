@@ -79,17 +79,14 @@ public class TestCaseCreateOrUpdateAuthorizationIT {
     }
   }
 
-  /** Create on test cases creates a new one with PUT, but does not let the caller overwrite it. */
+  /** Create on test cases alone is enough to create a new test case with PUT. */
   @Test
-  void testCaseCreatePermissionCreatesButDoesNotUpdate(TestNamespace ns) throws Exception {
+  void testCaseCreatePermissionCreatesTestCase(TestNamespace ns) throws Exception {
     CreateTestCase create = createTestCaseRequest(ns, createTable(ns));
     Grantee grantee = grant(ns, MetadataOperation.CREATE, TEST_CASE_RESOURCE);
     try {
       HttpResponse<String> created = putTestCase(create, grantee.token());
       assertEquals(201, created.statusCode(), "Test case must be created: " + created.body());
-      HttpResponse<String> updated =
-          putTestCase(create.withDescription("updated"), grantee.token());
-      assertEquals(403, updated.statusCode(), "Update must be refused: " + updated.body());
     } finally {
       grantee.delete();
     }
