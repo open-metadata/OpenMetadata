@@ -22,15 +22,16 @@ model's data model written by a full one, with no SQL and no catalog columns.
   IDs take precedence over it. With neither set, the single latest run is read, as before.
 - When more than one job is read, the latest completed run of each job is fetched and the
   artifacts are merged into one set per dbt Cloud `environment_id`. Manifest entries merge by
-  `unique_id`, and an entry with `compiled_code` beats one without it. Catalog entries take the
-  first one seen, and the `run_results` files are concatenated (the source keeps the newest result
-  per test).
+  `unique_id`, and an entry with `compiled_code` beats one without it. Runs are merged newest
+  first, so between two compiled entries, and between catalog entries, the newest run wins. The
+  `run_results` files are concatenated (the source keeps the newest result per test).
 - Environments are never merged: they build into different schemas and may pin different dbt
   versions.
 - Only a job with no completed run is skipped. Any other failure on a job (auth, an exhausted
   retry, a missing manifest) fails the whole run: merging without that job's artifacts would
-  overwrite the models only it compiled with no SQL. 429 is retried, since an all-jobs scan makes
-  one runs call per job.
+  overwrite the models only it compiled with no SQL. When merging, the catalog and `run_results`
+  are fetched with `get_raw`, so only a 404 reads as "absent"; `get` returns `None` for a request
+  that ran out of retries too. 429 is retried, since an all-jobs scan makes one runs call per job.
 - The latest runs are listed first, then one environment's artifacts are downloaded, merged and
   yielded at a time, so memory holds one merged manifest rather than one per environment.
 

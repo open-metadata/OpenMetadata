@@ -382,9 +382,11 @@ def _get_dbt_cloud_merged_files(client, config: DbtCloudConfig, job_ids: list[st
         )
     # One environment's artifacts are held at a time: manifests of large projects are big
     for runs in runs_by_environment.values():
-        merged = _get_dbt_cloud_run_files(client, config, runs[0])
+        # The newest run is merged first, so it wins wherever two runs compiled the same node
+        runs.sort(key=lambda run: run.get("finished_at") or "", reverse=True)
+        merged = _get_dbt_cloud_run_files(client, config, runs[0], strict=True)
         for run in runs[1:]:
-            _merge_dbt_files(merged, _get_dbt_cloud_run_files(client, config, run))
+            _merge_dbt_files(merged, _get_dbt_cloud_run_files(client, config, run, strict=True))
         yield merged
 
 
@@ -453,26 +455,32 @@ def _get_dbt_cloud_latest_run(client, config: DbtCloudConfig, job_id: str | None
     return last_run
 
 
-def _get_dbt_cloud_run_files(client, config: DbtCloudConfig, run: dict) -> DbtFiles:
+def _get_dbt_cloud_run_files(client, config: DbtCloudConfig, run: dict, strict: bool = False) -> DbtFiles:
     """
-    Fetch the artifacts of a dbt Cloud run
+    Fetch the artifacts of a dbt Cloud run. With `strict`, a failed request raises instead of
+    reading as a missing artifact: a merge would otherwise lose that job's catalog or tests.
     """
     account_id = config.dbtCloudAccountId
     run_id = run["id"]
-    dbt_catalog = None
-    try:
-        logger.debug("Requesting [dbt_catalog]")
-        dbt_catalog = client.get(f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}")
-    except Exception as exc:
-        logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}")
-        logger.debug(traceback.format_exc())
-    try:
-        logger.debug("Requesting [dbt_manifest]")
-        dbt_manifest = client.get(f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}")
-    except Exception as exc:
-        raise DBTConfigException(
-            f"Manifest artifact not found for run {run_id}. Please ensure the dbt job generates artifacts."
-        ) from exc
+    artifacts_path = f"/accounts/{account_id}/runs/{run_id}/artifacts"
+    if strict:
+        dbt_catalog = _get_dbt_cloud_artifact(client, f"{artifacts_path}/{DBT_CATALOG_FILE_NAME}")
+        dbt_manifest = _get_dbt_cloud_artifact(client, f"{artifacts_path}/{DBT_MANIFEST_FILE_NAME}")
+    else:
+        dbt_catalog = None
+        try:
+            logger.debug("Requesting [dbt_catalog]")
+            dbt_catalog = client.get(f"{artifacts_path}/{DBT_CATALOG_FILE_NAME}")
+        except Exception as exc:
+            logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}")
+            logger.debug(traceback.format_exc())
+        try:
+            logger.debug("Requesting [dbt_manifest]")
+            dbt_manifest = client.get(f"{artifacts_path}/{DBT_MANIFEST_FILE_NAME}")
+        except Exception as exc:
+            raise DBTConfigException(
+                f"Manifest artifact not found for run {run_id}. Please ensure the dbt job generates artifacts."
+            ) from exc
     if not dbt_manifest:
         raise DBTConfigException(
             "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
@@ -480,11 +488,26 @@ def _get_dbt_cloud_run_files(client, config: DbtCloudConfig, run: dict) -> DbtFi
     return DbtFiles(
         dbt_catalog=dbt_catalog,
         dbt_manifest=dbt_manifest,
-        dbt_run_results=_get_dbt_cloud_run_results(client, account_id, run_id, run.get("run_steps")) or None,
+        dbt_run_results=_get_dbt_cloud_run_results(client, account_id, run_id, run.get("run_steps"), strict) or None,
     )
 
 
-def _get_dbt_cloud_run_results(client, account_id, run_id, run_steps: list[dict] | None) -> list[dict]:
+def _get_dbt_cloud_artifact(client, path: str, data: dict | None = None) -> dict | None:
+    """
+    Fetch a run artifact, returning None only when it does not exist: `get` also returns None
+    for a request that ran out of retries
+    """
+    response = client.get_raw(path, data=data)
+    if response.status_code == 404:
+        return None
+    if not response.ok:
+        raise DBTConfigException(f"dbt Cloud answered {response.status_code} for {path}: {response.text[:200]}")
+    return response.json()
+
+
+def _get_dbt_cloud_run_results(
+    client, account_id, run_id, run_steps: list[dict] | None, strict: bool = False
+) -> list[dict]:
     """
     Collect run_results.json from every step of a dbt Cloud run. Steps that ran no dbt command
     (clone, profile, deps) have no artifacts and 404; a run without step details falls back to
@@ -494,12 +517,16 @@ def _get_dbt_cloud_run_results(client, account_id, run_id, run_steps: list[dict]
     step_indexes = [step["index"] for step in run_steps or [] if step.get("index") is not None] or [None]
     run_results = []
     for step_index in step_indexes:
-        try:
-            logger.debug("Requesting [dbt_run_results] for step [%s]", step_index)
-            result = client.get(path, data={"step": step_index} if step_index is not None else None)
-        except Exception as exc:
-            logger.debug("No dbt run_results for run %s step %s: %s", run_id, step_index, exc)
-            continue
+        data = {"step": step_index} if step_index is not None else None
+        logger.debug("Requesting [dbt_run_results] for step [%s]", step_index)
+        if strict:
+            result = _get_dbt_cloud_artifact(client, path, data)
+        else:
+            try:
+                result = client.get(path, data=data)
+            except Exception as exc:
+                logger.debug("No dbt run_results for run %s step %s: %s", run_id, step_index, exc)
+                continue
         if isinstance(result, dict):
             run_results.append(result)
     if not run_results:

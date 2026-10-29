@@ -15,6 +15,7 @@ These cover the branches that translate a provider exception into a
 DBTConfigException message shown to the user.
 """
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -233,8 +234,9 @@ def _model(name, compiled=True):
 def _dbt_cloud_jobs_api(runs_by_job, artifacts_by_run=None, jobs_pages=()):
     """Stand-in for the dbt Cloud API: a paginated job list and, per job, its latest run.
     A job absent from ``runs_by_job`` has no completed run, a run absent from
-    ``artifacts_by_run`` has a manifest with no nodes, and an artifact set to None is
-    missing; a ``runs_by_job`` value of None makes the runs call itself unusable."""
+    ``artifacts_by_run`` has a manifest with no nodes, an artifact set to None is missing
+    (404) and one set to an int fails with that status; a ``runs_by_job`` value of None
+    makes the runs call itself unusable."""
     artifacts_by_run = artifacts_by_run or {}
     total_count = sum(len(page) for page in jobs_pages)
     requested = []
@@ -256,10 +258,27 @@ def _dbt_cloud_jobs_api(runs_by_job, artifacts_by_run=None, jobs_pages=()):
         artifacts = artifacts_by_run.get(run_id, {"manifest": {"nodes": {}}})
         for name in ("manifest", "catalog", "run_results"):
             if path.endswith(f"{name}.json"):
-                return artifacts.get(name)
+                artifact = artifacts.get(name)
+                return None if isinstance(artifact, int) else artifact
         raise _http_error(404)
 
+    def get_raw(path, data=None):
+        """Like the REST client's get_raw: the response after retries, whatever its status."""
+        artifact = get(path, data)
+        name = path.rsplit("/", 1)[-1].removesuffix(".json")
+        failed_status = (artifacts_by_run.get(int(path.split("/runs/")[1].split("/")[0])) or {}).get(name)
+        response = requests.Response()
+        response.status_code = failed_status if isinstance(failed_status, int) else 200 if artifact else 404
+        response._content = json.dumps(artifact).encode()
+        return response
+
+    get.raw = get_raw
     return get, requested
+
+
+def _serve(tracked_rest, get):
+    tracked_rest.return_value.get.side_effect = get
+    tracked_rest.return_value.get_raw.side_effect = get.raw
 
 
 def _cloud_config(job_ids=None, ingest_all_jobs=False, project_id=None):
@@ -278,7 +297,7 @@ class TestDbtCloudMultipleJobs:
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_empty_job_id_reads_only_the_latest_run_of_any_job(self, tracked_rest):
         get, requested = _dbt_cloud_jobs_api(runs_by_job={None: {"id": 1}})
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         assert len(list(get_dbt_details(_cloud_config()))) == 1
         assert _runs_requested(requested) == [None]
@@ -287,7 +306,7 @@ class TestDbtCloudMultipleJobs:
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_existing_config_without_the_flag_keeps_reading_one_run(self, tracked_rest):
         get, requested = _dbt_cloud_jobs_api(runs_by_job={None: {"id": 1}})
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
         config = DbtCloudConfig.model_validate(
             {
                 "dbtConfigType": "cloud",
@@ -327,7 +346,7 @@ class TestDbtCloudMultipleJobs:
                 },
             },
         )
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         (dbt_files,) = get_dbt_details(_cloud_config(job_ids=job_ids))
 
@@ -349,7 +368,7 @@ class TestDbtCloudMultipleJobs:
                 3: {"manifest": {"nodes": {"model.p.events": _model("events")}}},
             },
         )
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         prod, staging = get_dbt_details(_cloud_config(job_ids=" 70, 71 ,72"))
 
@@ -365,7 +384,7 @@ class TestDbtCloudMultipleJobs:
             ],
             runs_by_job={"0": {"id": 1}, "101": {"id": 2}},
         )
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         assert len(list(get_dbt_details(_cloud_config(ingest_all_jobs=True, project_id="9")))) == 1
 
@@ -377,7 +396,7 @@ class TestDbtCloudMultipleJobs:
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_job_ids_take_precedence_over_ingest_all_jobs(self, tracked_rest):
         get, requested = _dbt_cloud_jobs_api(runs_by_job={"70": {"id": 1}})
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         assert len(list(get_dbt_details(_cloud_config(job_ids="70", ingest_all_jobs=True)))) == 1
         assert _runs_requested(requested) == ["70"]
@@ -387,7 +406,7 @@ class TestDbtCloudMultipleJobs:
         get, requested = _dbt_cloud_jobs_api(
             runs_by_job={"71": {"id": 1}}, artifacts_by_run={1: {"manifest": {"nodes": {"model.p.m": _model("m")}}}}
         )
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         (dbt_files,) = get_dbt_details(_cloud_config(job_ids="70,71"))
 
@@ -400,15 +419,17 @@ class TestDbtCloudMultipleJobs:
             # the client returns None after exhausting 429 retries, and for dbt Cloud's 401 body
             ({"70": {"id": 1}, "71": None}, {}),
             ({"70": {"id": 1}, "71": {"id": 2}}, {2: {"manifest": None}}),
+            ({"70": {"id": 1}, "71": {"id": 2}}, {2: {"manifest": {"nodes": {}}, "catalog": 429}}),
+            ({"70": {"id": 1}, "71": {"id": 2}}, {2: {"manifest": {"nodes": {}}, "run_results": 503}}),
         ],
-        ids=["unusable_runs_response", "missing_manifest"],
+        ids=["unusable_runs_response", "missing_manifest", "catalog_out_of_retries", "run_results_out_of_retries"],
     )
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_other_job_failures_fail_the_run_instead_of_merging_without_it(
         self, tracked_rest, runs_by_job, artifacts_by_run
     ):
         get, _ = _dbt_cloud_jobs_api(runs_by_job=runs_by_job, artifacts_by_run=artifacts_by_run)
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         with pytest.raises(DBTConfigException):
             list(get_dbt_details(_cloud_config(job_ids="70,71")))
@@ -416,7 +437,7 @@ class TestDbtCloudMultipleJobs:
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_no_job_with_a_completed_run_fails(self, tracked_rest):
         get, _ = _dbt_cloud_jobs_api(runs_by_job={})
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         with pytest.raises(DBTConfigException) as exc_info:
             list(get_dbt_details(_cloud_config(job_ids="70,71")))
@@ -435,7 +456,7 @@ class TestDbtCloudMultipleJobs:
                 },
             },
         )
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         (dbt_files,) = get_dbt_details(_cloud_config(job_ids="70,71"))
 
@@ -445,11 +466,29 @@ class TestDbtCloudMultipleJobs:
         }
 
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_newest_run_wins_when_two_jobs_compiled_the_same_model(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={
+                "70": {"id": 1, "finished_at": "2026-04-01 02:00:00.000000+00:00"},
+                "71": {"id": 2, "finished_at": "2026-10-28 02:00:00.000000+00:00"},
+            },
+            artifacts_by_run={
+                1: {"manifest": {"nodes": {"model.p.orders": _model("orders_old")}}},
+                2: {"manifest": {"nodes": {"model.p.orders": _model("orders_new")}}},
+            },
+        )
+        _serve(tracked_rest, get)
+
+        (dbt_files,) = get_dbt_details(_cloud_config(job_ids="70,71"))
+
+        assert dbt_files.dbt_manifest["nodes"]["model.p.orders"]["name"] == "orders_new"
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_an_environment_is_yielded_before_the_next_is_downloaded(self, tracked_rest):
         get, requested = _dbt_cloud_jobs_api(
             runs_by_job={"70": {"id": 1, "environment_id": 5}, "71": {"id": 2, "environment_id": 6}}
         )
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         next(get_dbt_details(_cloud_config(job_ids="70,71")))
 
@@ -468,7 +507,7 @@ class TestDbtCloudMultipleJobs:
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_default_path_keeps_its_missing_manifest_message(self, tracked_rest):
         get, _ = _dbt_cloud_jobs_api(runs_by_job={None: {"id": 1}}, artifacts_by_run={1: {"manifest": None}})
-        tracked_rest.return_value.get.side_effect = get
+        _serve(tracked_rest, get)
 
         with pytest.raises(DBTConfigException) as exc_info:
             list(get_dbt_details(_cloud_config()))
@@ -476,6 +515,37 @@ class TestDbtCloudMultipleJobs:
         assert str(exc_info.value) == (
             "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
         )
+
+
+class TestDbtCloudRateLimit:
+    @patch("metadata.ingestion.ometa.client.time.sleep")
+    @patch.object(requests.Session, "request")
+    def test_429_is_retried_rather_than_failing_the_run(self, session_request, _sleep):
+        """Drives the real REST client: by default it turns a 429 into a final LimitsException."""
+
+        def respond(method, url, **kwargs):
+            response = requests.Response()
+            response.url = str(url)
+            if url.endswith("/runs") and session_request.call_count == 1:
+                response.status_code = 429
+                response._content = b'{"status": {"code": 429}}'
+            elif url.endswith("/runs"):
+                response.status_code = 200
+                run = {"id": 1, "finished_at_humanized": "now", "duration_humanized": "1m"}
+                response._content = json.dumps({"data": [run]}).encode()
+            elif url.endswith("manifest.json"):
+                response.status_code = 200
+                response._content = b'{"nodes": {}}'
+            else:
+                response.status_code = 404
+                response._content = b'{"status": {"code": 404}}'
+            return response
+
+        session_request.side_effect = respond
+
+        (dbt_files,) = get_dbt_details(_dbt_cloud_config())
+
+        assert dbt_files.dbt_manifest == {"nodes": {}}
 
 
 def _s3_config():
