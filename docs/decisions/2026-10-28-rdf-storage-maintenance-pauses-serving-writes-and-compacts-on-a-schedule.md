@@ -34,8 +34,8 @@ dead-lettered, marking the projection degraded until a full rebuild.
   `RDF_LIVE_WRITES_PAUSED` in the same table, and waits for in-flight serving writes to finish.
   `RdfDatasetManager.writeActive` then holds back every other writer. A live-write queue entry is
   deferred at once, using no delivery attempt and not tripping the circuit breaker. Any other
-  writer, which nothing retries, first waits up to 60 seconds for the pause to end, about as long
-  as Fuseki's own writer lock would have kept it waiting, and only then gets
+  writer, which nothing retries, first waits for the pause to end up to the RDF request timeout,
+  as long as Fuseki's own writer lock would have kept it waiting, and only then gets
   `RdfStorageMaintenanceException`, which the REST API answers with 503 and `Retry-After`. The pause
   expires unless renewed, so a server that stops mid-maintenance holds writes for at most five
   minutes.
