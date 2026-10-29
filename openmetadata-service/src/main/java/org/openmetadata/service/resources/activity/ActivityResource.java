@@ -62,6 +62,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -176,7 +177,7 @@ public class ActivityResource {
             ? Entity.getEntityByName(Entity.USER, callerName, "teams", Include.NON_DELETED)
             : Entity.getEntity(Entity.USER, userId, "teams", Include.ALL);
     // The principal name comes from the token unmodified while user names are stored lower case.
-    if (!subject.getName().equalsIgnoreCase(callerName)) {
+    if (!SecurityUtil.sameIdentifier(subject.getName(), callerName)) {
       authorizeTargetView(
           securityContext, new ResourceContext<>(Entity.USER, subject.getId(), null, Include.ALL));
     }
