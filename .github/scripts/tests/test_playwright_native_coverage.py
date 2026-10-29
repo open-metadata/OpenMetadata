@@ -101,3 +101,28 @@ def test_native_results_independently_verify_timing_coverage(
         module.main()
         assert json.loads(output.read_text())["nativeEvidenceIssues"] == []
     assert json.loads(output.read_text())["quarantinedTests"] == 3
+
+
+def test_every_setup_and_teardown_project_is_excluded_from_native_coverage():
+    # A fixture project (playwright.config.ts FIXTURE_TEST_MATCH) runs alongside
+    # the planned tests but is never planned, so the merge-queue native check
+    # rejects it unless excluded.
+    import re
+    from pathlib import Path
+
+    module = load_script("verify_playwright_coverage")
+    config = (
+        Path(__file__).parents[3] / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+    ).read_text()
+    # Each project's fields run from its `name:` to the next one, in any order.
+    chunks = re.split(r"\n\s*name:\s*", config)[1:]
+    fixtures = set()
+    for chunk in chunks:
+        name = re.match(r"'([^']+)'", chunk)
+        test_match = re.search(r"testMatch:\s*'([^']+)'", chunk)
+        if name and test_match and re.search(
+            r"(?:\.(?:setup|teardown)\.ts|dataInsightApp\.ts)$", test_match.group(1)
+        ):
+            fixtures.add(name.group(1))
+    assert {"setup", "entity-data-setup", "data-insight-application", "ontology-rdf-setup"} <= fixtures
+    assert fixtures - module.LIFECYCLE_PROJECTS == set()

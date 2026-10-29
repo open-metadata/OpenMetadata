@@ -17,6 +17,7 @@ import {
   BulkOperationResult,
   Status,
 } from '../../generated/type/bulkOperationResult';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -27,6 +28,10 @@ jest.mock('../../rest/glossaryAPI', () => ({
   addAssetsToGlossaryTerm: jest.fn(),
 }));
 jest.mock('../../utils/ToastUtils', () => ({ showErrorToast: jest.fn() }));
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 const mockSearch = searchQuery as jest.MockedFunction<typeof searchQuery>;
 const mockAddAssets = addAssetsToGlossaryTerm as jest.MockedFunction<
@@ -365,5 +370,52 @@ describe('OntologyDataAssetPicker', () => {
     await waitFor(() =>
       expect(showErrorToast).toHaveBeenCalledWith('No edit access')
     );
+  });
+
+  it('selects, saves and cancels in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const saveAssets = jest.fn().mockResolvedValue({
+      completedIds: ['t-2'],
+      remaining: [],
+      stop: 'none',
+    });
+    const onSave = jest.fn();
+    const onCancel = jest.fn();
+    render(
+      <OntologyDataAssetPicker
+        native={{
+          assetTypes: ['table'],
+          linkedIds: ['t-1'],
+          isDisabled: false,
+          saveAssets,
+        }}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+    await screen.findByText('orders');
+
+    expect(
+      screen.getByTestId('ontology-data-asset-option-t-1')
+    ).toHaveAttribute('data-disabled');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+
+    expect(
+      screen.getByTestId('ontology-data-asset-selected-count')
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    expect(saveAssets).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 't-2' }),
+    ]);
+
+    fireEvent.click(screen.getByTestId('ontology-data-asset-picker-close'));
+
+    expect(onCancel).toHaveBeenCalled();
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 });

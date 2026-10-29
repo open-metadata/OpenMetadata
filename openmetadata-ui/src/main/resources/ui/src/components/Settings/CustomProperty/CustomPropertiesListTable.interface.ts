@@ -24,7 +24,8 @@ export interface CustomPropertiesListTableProps {
   variant?: TableCardVariant;
   'data-testid'?: string;
   onEdit: (property: CustomProperty) => void;
-  onDelete: (property: CustomProperty) => void;
+  /** `trigger` is the row's actions button, to anchor a confirmation to. */
+  onDelete: (property: CustomProperty, trigger?: HTMLElement) => void;
 }
 
 export interface CustomPropertyConfigCellProps {
@@ -36,5 +37,6 @@ export interface CustomPropertyActionsProps {
   canEdit: boolean;
   canDelete: boolean;
   onEdit: (property: CustomProperty) => void;
-  onDelete: (property: CustomProperty) => void;
+  /** `trigger` is the row's actions button, to anchor a confirmation to. */
+  onDelete: (property: CustomProperty, trigger?: HTMLElement) => void;
 }
