@@ -31,6 +31,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useListData } from 'react-stately';
+import { FQN_SEPARATOR_CHAR } from '../../../../../constants/char.constants';
 import { useWorkflowModeContext } from '../../../../../contexts/WorkflowModeContext';
 import { CONDITION_BUILDER_WORKFLOW_TRIGGER_FIELDS } from './ConditionBuilder.constants';
 import type {
@@ -55,6 +56,12 @@ interface ConditionBuilderValueControlProps {
   readonly values: string[];
   onChange: (values: string[]) => void;
 }
+
+// A chip has no room for supporting text, so the parent goes into its label.
+const getChipLabel = (option: ConditionBuilderOption | undefined) =>
+  option?.supportingText
+    ? `${option.supportingText}${FQN_SEPARATOR_CHAR}${option.label}`
+    : option?.label;
 
 function ConditionBuilderValueControl(
   props: Readonly<ConditionBuilderValueControlProps>
@@ -136,9 +143,12 @@ function ConditionBuilderValueControl(
       const currentIds = selectedItems.items.map((item) => item.id);
       currentIds.forEach((id) => selectedItems.remove(id));
       values.forEach((v) => {
-        const label = hasFetchOptions
-          ? asyncOptions.find((o) => o.value === v)?.label ?? v
-          : staticOptions.find((o) => o.value === v)?.label ?? v;
+        const label =
+          getChipLabel(
+            (hasFetchOptions ? asyncOptions : staticOptions).find(
+              (o) => o.value === v
+            )
+          ) ?? v;
         selectedItems.append({ id: v, label });
       });
       prevValuesRef.current = values;
@@ -185,7 +195,11 @@ function ConditionBuilderValueControl(
   const options = hasFetchOptions ? asyncOptions : staticOptions;
   const items: SelectItemType[] = (
     hasFetchOptions ? (loading ? [] : asyncOptions) : staticOptions
-  ).map((o) => ({ id: o.value, label: o.label }));
+  ).map((o) => ({
+    id: o.value,
+    label: o.label,
+    supportingText: o.supportingText,
+  }));
 
   return (
     <Autocomplete
@@ -207,7 +221,7 @@ function ConditionBuilderValueControl(
         const opt = options.find((o) => o.value === String(key));
         selectedItems.append({
           id: String(key),
-          label: opt?.label ?? String(key),
+          label: getChipLabel(opt) ?? String(key),
         });
         onChange([...selectedItems.items.map((i) => i.id), String(key)]);
       }}
@@ -218,6 +232,7 @@ function ConditionBuilderValueControl(
           isDisabled={item.isDisabled}
           key={item.id}
           label={item.label}
+          supportingText={item.supportingText}
         />
       )}
     </Autocomplete>
