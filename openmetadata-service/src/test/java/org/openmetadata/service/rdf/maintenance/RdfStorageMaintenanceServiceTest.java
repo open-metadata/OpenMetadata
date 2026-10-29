@@ -30,12 +30,15 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.function.Supplier;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig;
 import org.openmetadata.service.apps.bundles.rdf.RdfReindexRunLock;
+import org.openmetadata.service.cluster.ClusterCapabilities;
 import org.openmetadata.service.jdbi3.InMemoryRdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.inference.InferenceRunLock;
@@ -61,12 +64,13 @@ class RdfStorageMaintenanceServiceTest {
           .withCompactionIntervalHours(24)
           .withMaxDurationMinutes(30)
           .withUrgentFreeSpacePercent(50);
+  private ClusterCapabilities cluster = capability -> Set.of();
   private RdfStorageMaintenanceService serverA;
   private RdfStorageMaintenanceService serverB;
 
   @BeforeEach
   void setUp() {
-    doAnswer(invocation -> invocation.<Supplier<?>>getArgument(1).get())
+    doAnswer(invocation -> invocation.<Function<RdfRepository, ?>>getArgument(1).apply(repository))
         .when(repository)
         .withServingWritesPaused(anyString(), any());
     when(repository.compact(any())).thenReturn(SUCCEEDED);
@@ -87,6 +91,42 @@ class RdfStorageMaintenanceServiceTest {
     assertEquals(SUCCEEDED, result);
     verify(repository).withServingWritesPaused(anyString(), any());
     verify(repository).compact(Duration.ofMinutes(30));
+  }
+
+  @Test
+  void anOlderServerInTheClusterHoldsMaintenanceBack() {
+    cluster = capability -> Set.of("old-server (not registered: older than the server registry)");
+    serverA.close();
+    serverA = service("server-a");
+
+    assertNull(serverA.compactIfDue(), "the old server would keep writing into the compaction");
+    verify(repository, never()).compact(any());
+    assertNull(locks.findByKey(RdfStorageMaintenanceService.NEXT_COMPACTION_KEY));
+  }
+
+  @Test
+  void maintenanceStartsOnceEveryServerHoldsWritesBack() {
+    final AtomicBoolean upgraded = new AtomicBoolean();
+    cluster = capability -> upgraded.get() ? Set.of() : Set.of("old-server (version 2.0.7)");
+    serverA.close();
+    serverA = service("server-a");
+    assertNull(serverA.compactIfDue());
+
+    upgraded.set(true);
+    assertEquals(SUCCEEDED, serverA.compactIfDue());
+  }
+
+  @Test
+  void aClusterThatCannotBeListedHoldsMaintenanceBack() {
+    cluster =
+        capability -> {
+          throw new IllegalStateException("database unavailable");
+        };
+    serverA.close();
+    serverA = service("server-a");
+
+    assertNull(serverA.compactIfDue());
+    verify(repository, never()).compact(any());
   }
 
   @Test
@@ -259,6 +299,6 @@ class RdfStorageMaintenanceServiceTest {
 
   private RdfStorageMaintenanceService service(final String serverId) {
     return new RdfStorageMaintenanceService(
-        config, locks, () -> repository, Clock.systemUTC(), serverId);
+        config, locks, () -> repository, Clock.systemUTC(), serverId, cluster);
   }
 }

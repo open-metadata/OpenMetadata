@@ -46,6 +46,7 @@ import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
@@ -263,9 +264,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
         abandonBuildDataset();
       } else {
+        final String retiring = buildDataset == null ? null : rdf().activeDatasetName();
         final boolean promoted = promoteBuildDataset(indexingRepository);
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
-        if (!promoted) {
+        if (promoted) {
+          // Reported first: returning the retired dataset's disk can take minutes.
+          sendUpdates(jobExecutionContext, true);
+          clearRetiredDataset(retiring);
+        } else {
           // In-place indexing reports completion before potentially lengthy disk maintenance, so
           // it records its rewrite of the serving graph first: once reported, the run is over.
           RdfUpdater.recordUntrackedWrite();
@@ -411,6 +417,22 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   /**
+   * The dataset a promotion retired keeps a full copy of the old graph until the next build reuses
+   * it; nothing reads it, so its disk is returned now. A failure leaves it for that next build.
+   */
+  private void clearRetiredDataset(final String retired) {
+    try {
+      final CompactionResult result = rdf().clearRetiredDataset(retired);
+      LOG.info("Emptied retired RDF dataset '{}' ({})", retired, result.outcome());
+    } catch (RuntimeException exception) {
+      LOG.error(
+          "Could not empty retired RDF dataset '{}'; the next blue/green build clears it",
+          retired,
+          exception);
+    }
+  }
+
+  /**
    * Live writes keep reaching the serving dataset while it is compacted, and Fuseki blocks them for
    * the whole copy, so they are paused meanwhile instead of timing out.
    */
@@ -418,7 +440,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     try {
       rdf()
           .withServingWritesPaused(
-              runId.toString(), () -> rdf().compact(rdf().maintenanceBudget()));
+              runId.toString(), holder -> holder.compact(holder.maintenanceBudget()));
     } catch (RuntimeException compactFailure) {
       LOG.warn(
           "RDF index compaction failed; disk reclamation skipped. Reason: {}",
@@ -702,8 +724,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
       rdf()
           .withServingWritesPaused(
               runId.toString(),
-              () -> {
-                resetServingDataset();
+              holder -> {
+                resetServingDataset(holder);
                 return null;
               });
     } catch (RuntimeException e) {
@@ -717,15 +739,15 @@ public class RdfIndexApp extends AbstractNativeApplication {
    * compacted next, while it is empty and even when the clear failed. CLEAR ALL also wipes the
    * ontology and shapes graphs, which are reloaded before indexing starts.
    */
-  private void resetServingDataset() {
+  private static void resetServingDataset(final RdfRepository holder) {
     try {
-      rdf().clearAllAsMaintenance(rdf().maintenanceBudget());
+      holder.clearAllAsMaintenance(holder.maintenanceBudget());
     } finally {
-      rdf().compact(rdf().maintenanceBudget());
+      holder.compact(holder.maintenanceBudget());
     }
     LOG.info("Cleared all RDF data");
-    rdf().reloadOntologies();
-    rdf().rebuildOntologyGraphs();
+    holder.reloadOntologies();
+    holder.rebuildOntologyGraphs();
   }
 
   private void reindex(final RdfRepository indexingRepository) throws InterruptedException {

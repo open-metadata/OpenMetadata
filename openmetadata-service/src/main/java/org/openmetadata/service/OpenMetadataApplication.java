@@ -52,6 +52,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
@@ -103,6 +104,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdent
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
+import org.openmetadata.service.cluster.ServerRegistry;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -220,6 +222,7 @@ import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.PerRequestContextCleanupFilter;
 import org.openmetadata.service.util.StartupTimer;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
+import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -451,6 +454,20 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     IndexResource.initialize(catalogConfig);
     startupTimer.time(
         "resource registration", () -> registerResources(catalogConfig, environment, jdbi));
+    // After the resources: their app scheduler is what identifies this server in the cluster.
+    final ServerRegistry serverRegistry =
+        new ServerRegistry(
+            jdbi,
+            Clock.systemUTC(),
+            () -> {
+              final Scheduler scheduler = AppScheduler.getInstance().getScheduler();
+              return new ServerRegistry.ClusterIdentity(
+                  scheduler.getSchedulerName(), scheduler.getSchedulerInstanceId());
+            },
+            ServerIdentityResolver.getInstance().getServerId(),
+            VersionUtils.getOpenMetadataServerVersion(CATALOG_VERSION_RESOURCE).getVersion());
+    RdfUpdater.useClusterCapabilities(serverRegistry);
+    environment.lifecycle().manage(serverRegistry);
     SeedDataGate.getInstance().stampIfClean();
 
     // Register Event Handler

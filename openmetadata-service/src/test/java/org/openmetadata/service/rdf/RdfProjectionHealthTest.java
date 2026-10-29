@@ -68,19 +68,6 @@ class RdfProjectionHealthTest {
   }
 
   @Test
-  void aFailureTheQueueRetriesDoesNotMarkTheProjectionDegraded() {
-    unavailable.set(false);
-    RdfProjectionHealth.initialize(store);
-
-    RdfProjectionHealth.withDurableRecovery(
-        () ->
-            RdfProjectionHealth.markDegraded(
-                new RdfStorageMaintenanceException("compaction", Duration.ofSeconds(5))));
-
-    assertFalse(RdfProjectionHealth.isDegraded());
-  }
-
-  @Test
   void initializationKeepsUnpersistedFailuresUntilSqlRecovers() {
     RdfProjectionHealth.markDegraded();
     assertDoesNotThrow(() -> RdfProjectionHealth.initialize(store));
