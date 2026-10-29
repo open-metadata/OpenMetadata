@@ -299,6 +299,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
+import org.openmetadata.service.util.LifeCycles;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.PostCommitActionQueue;
@@ -3502,6 +3503,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public final void prepareInternal(T entity, boolean update) {
     validateTags(entity);
+    entity.setLifeCycle(LifeCycles.withoutPlaceholderTimestamps(entity.getLifeCycle()));
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
@@ -5194,6 +5196,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // The patched copy carries the stored impersonatedBy. Replace it (null for a regular user)
     // before prepare, so validation sees who makes this change rather than who made the last one.
     updated.setImpersonatedBy(impersonatedBy);
+    updated.setLifeCycle(
+        LifeCycles.withoutPlaceholderTimestamps(updated.getLifeCycle(), original.getLifeCycle()));
 
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
