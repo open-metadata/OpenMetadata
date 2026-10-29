@@ -188,7 +188,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
       final Runnable stopRenewing = inference.keepAlive(jobId);
       try {
         final RdfRepository rdf = repository.get();
-        result = rdf.withServingWritesPaused(jobId, () -> rdf.compact(maxDuration()));
+        result = rdf.withServingWritesPaused(jobId, holder -> holder.compact(maxDuration()));
       } finally {
         stopRenewing.run();
         inference.release(jobId);

@@ -29,6 +29,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdent
 import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.rdf.maintenance.RdfStorageMaintenanceService;
+import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
@@ -57,7 +58,10 @@ public final class RdfUpdater {
       final RdfLiveWriteStore store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
       RdfProjectionHealth.initialize(store);
       RdfRepository.initialize(config);
-      final RdfRepository repository = RdfRepository.getInstance();
+      // The queue writes through its own view: a paused write is held back at once and retried,
+      // and its failures stay the queue's.
+      final RdfRepository repository =
+          RdfRepository.getInstance().forDelivery(RdfWriteDelivery.QUEUED);
       writer =
           new RdfLiveWriter(
               store,

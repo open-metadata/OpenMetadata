@@ -418,7 +418,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     try {
       rdf()
           .withServingWritesPaused(
-              runId.toString(), () -> rdf().compact(rdf().maintenanceBudget()));
+              runId.toString(), holder -> holder.compact(holder.maintenanceBudget()));
     } catch (RuntimeException compactFailure) {
       LOG.warn(
           "RDF index compaction failed; disk reclamation skipped. Reason: {}",
@@ -702,8 +702,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
       rdf()
           .withServingWritesPaused(
               runId.toString(),
-              () -> {
-                resetServingDataset();
+              holder -> {
+                resetServingDataset(holder);
                 return null;
               });
     } catch (RuntimeException e) {
@@ -717,15 +717,15 @@ public class RdfIndexApp extends AbstractNativeApplication {
    * compacted next, while it is empty and even when the clear failed. CLEAR ALL also wipes the
    * ontology and shapes graphs, which are reloaded before indexing starts.
    */
-  private void resetServingDataset() {
+  private static void resetServingDataset(final RdfRepository holder) {
     try {
-      rdf().clearAllAsMaintenance(rdf().maintenanceBudget());
+      holder.clearAllAsMaintenance(holder.maintenanceBudget());
     } finally {
-      rdf().compact(rdf().maintenanceBudget());
+      holder.compact(holder.maintenanceBudget());
     }
     LOG.info("Cleared all RDF data");
-    rdf().reloadOntologies();
-    rdf().rebuildOntologyGraphs();
+    holder.reloadOntologies();
+    holder.rebuildOntologyGraphs();
   }
 
   private void reindex(final RdfRepository indexingRepository) throws InterruptedException {
