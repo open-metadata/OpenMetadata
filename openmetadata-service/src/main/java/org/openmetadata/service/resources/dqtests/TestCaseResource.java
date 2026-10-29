@@ -96,7 +96,6 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -890,32 +889,40 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCase create) {
-    EntityLink entityLink = EntityLink.parse(create.getEntityLink());
+    TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    repository.prepareInternal(test, true);
     OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface tableResourceContext =
-        TestCaseResourceContext.builder().entityLink(entityLink).build();
-    OperationContext testCaseOpCreate =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE);
-    ResourceContextInterface testCaseRC =
         TestCaseResourceContext.builder()
-            .name(FullyQualifiedName.add(entityLink.getEntityFQN(), create.getName()))
+            .entityLink(EntityLink.parse(create.getEntityLink()))
             .build();
-    OperationContext testCaseOpUpdate =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
-
     List<AuthRequest> requests =
         List.of(
             new AuthRequest(tableOpContext, tableResourceContext),
-            new AuthRequest(testCaseOpCreate, testCaseRC),
-            new AuthRequest(testCaseOpUpdate, testCaseRC));
+            testCaseCreateOrUpdateRequest(test));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  /**
+   * The test-case half of a PUT: CREATE for a test case that does not exist yet, EDIT_ALL for one
+   * that does. A context built by name looks the test case up, which fails for a new one, and
+   * AuthorizationLogic.ANY evaluates every request, so a new test case must not get one.
+   */
+  private AuthRequest testCaseCreateOrUpdateRequest(TestCase test) {
+    boolean testCaseExists =
+        repository.findByNameOrNull(test.getFullyQualifiedName(), Include.ALL) != null;
+    return testCaseExists
+        ? new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
+            TestCaseResourceContext.builder().name(test.getFullyQualifiedName()).build())
+        : new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE),
+            new CreateResourceContext<>(entityType, test));
   }
 
   @DELETE
