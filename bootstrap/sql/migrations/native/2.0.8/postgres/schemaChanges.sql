@@ -7,14 +7,3 @@
 -- created. 768 is what the table and container FQN hash columns use.
 ALTER TABLE task_entity ALTER COLUMN aboutfqnhash TYPE character varying(768);
 ALTER TABLE domain_entity ALTER COLUMN fqnhash TYPE character varying(768);
-
--- Server registry: the version and cross-server protocols of each server - OpenMetadata 2.0.8
-CREATE TABLE IF NOT EXISTS server_registry (
-  instanceId VARCHAR(255) NOT NULL,
-  serverId VARCHAR(255) NOT NULL,
-  version VARCHAR(64) NOT NULL,
-  capabilities TEXT NOT NULL,
-  startedAt BIGINT NOT NULL,
-  lastHeartbeat BIGINT NOT NULL,
-  PRIMARY KEY (instanceId)
-);

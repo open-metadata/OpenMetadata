@@ -5,7 +5,7 @@
 - **Deciders:** Platform
 - **Guard:** `RdfStorageMaintenanceIT`, `RdfStorageMaintenanceServiceTest`, `FusekiCompactionTest`,
   `CompactionBlockedWriteTest`, `RdfIndexAppTest`, `RdfLiveWriteTest`
-- **Related:** #36437, ADR:2026-10-29-cross-server-protocols-wait-until-every-live-server-supports-them
+- **Related:** #36437
 
 ## Context
 
@@ -29,10 +29,10 @@ dead-lettered, marking the projection degraded until a full rebuild.
   volume cannot hold the copy, or it is still copying, and retrying would only repeat that. A
   failed copy also stays allocated until Fuseki restarts, so the error asks for a bigger volume and
   a restart.
-- Maintenance holds the RDF reindex lock while it runs, so it never overlaps an indexing run. It
-  starts nothing while any live server does not hold its writes back for maintenance, such as one
-  still on an older version during a rolling upgrade
-  (ADR:2026-10-29-cross-server-protocols-wait-until-every-live-server-supports-them).
+- Maintenance holds the RDF reindex lock while it runs, so it never overlaps an indexing run. The
+  first check runs five minutes after a server starts. Nothing waits for a rolling upgrade: a
+  compaction copies only the live data, so it is short, and a server too old to know the pause
+  just waits out a compaction shorter than its request timeout.
 - Before anything blocks Fuseki's writer, maintenance takes the write pause, a lease named
   `RDF_LIVE_WRITES_PAUSED` in the same table, and waits for in-flight serving writes to finish.
   `RdfDatasetManager.writeActive` then holds back every other writer. A live-write queue entry is
