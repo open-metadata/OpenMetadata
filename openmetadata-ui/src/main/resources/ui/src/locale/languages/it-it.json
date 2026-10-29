@@ -4696,6 +4696,8 @@
     "dq-threshold-preview-sampling-dynamic": "Misurato sul campione a dimensione dinamica con cui viene profilata questa tabella.",
     "dq-threshold-preview-statistical": "Fallisce quando il valore misurato è al di fuori di {{bound}}.",
     "dq-threshold-preview-statistical-deviation": "Fallisce quando il valore misurato è al di fuori di {{bound}}, consentendo una deviazione di {{amount}} (intervallo effettivo {{range}}).",
+    "dq-threshold-preview-statistical-learned": "Fallisce quando il valore misurato è al di fuori dei limiti appresi.",
+    "dq-threshold-preview-statistical-learned-deviation": "Fallisce quando il valore misurato è al di fuori dei limiti appresi, consentendo una deviazione di {{amount}}.",
     "dq-threshold-preview-zero-bound": "Una deviazione percentuale attorno a un limite pari a 0 lascia quel limite a 0 — usa invece una deviazione assoluta.",
     "dq-unresolved-incidents-count": "<0>{{count}} incidente</0> non risolto",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} incidenti</0> non risolti",
