@@ -313,7 +313,12 @@ public class McpServer implements McpServerProvider {
   private McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
-        (exchange, arguments) -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments));
+        (context, arguments) ->
+            promptsContext.callPrompt(
+                jwtFilter.getCatalogSecurityContext(
+                    (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER)),
+                prompt.name(),
+                arguments));
   }
 
   private String getBaseUrlFromConfig() {
