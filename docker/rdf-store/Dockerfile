@@ -46,8 +46,7 @@ RUN java -cp ${FUSEKI_HOME}/fuseki-server.jar ${MAIN} --version
 # cache budget is predictable: TDB2 memory-maps its indexes OUTSIDE the JVM
 # heap, so container memory must exceed the heap by the page-cache headroom.
 # GC logs rotate on the data volume for post-incident diagnosis.
-# No crash core dump: it is as large as the heap and lands on the node's disk, not the data volume.
-ENV JVM_ARGS="-Xms4g -Xmx4g -XX:-CreateCoredumpOnCrash -Xlog:gc*:file=/fuseki-data/gc.log:time,uptime:filecount=3,filesize=10m"
+ENV JVM_ARGS="-Xms4g -Xmx4g -Xlog:gc*:file=/fuseki-data/gc.log:time,uptime:filecount=3,filesize=10m"
 # The extension's storage guard and report read the TDB2 datasets here (see config.ttl).
 ENV OPENMETADATA_STORAGE_ROOT=/fuseki-data
 
