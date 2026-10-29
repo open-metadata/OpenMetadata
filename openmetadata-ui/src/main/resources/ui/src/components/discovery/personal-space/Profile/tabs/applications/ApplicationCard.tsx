@@ -46,14 +46,14 @@ interface ApplicationCardProps {
 const AppIconTile = ({ appName }: { appName: string }) => {
   const ColoredIcon = applicationsClassBase.getAppColoredIcon(appName);
   if (ColoredIcon) {
-    return <ColoredIcon className="tw:size-10 tw:shrink-0" />;
+    return <ColoredIcon className="tw:mt-1 tw:size-10 tw:shrink-0" />;
   }
   const Icon = applicationsClassBase.getAppIcon(appName);
 
   return (
     <Box
       align="center"
-      className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
+      className="tw:mt-1 tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
       justify="center">
       <Icon className="tw:size-5 tw:text-fg-secondary" />
     </Box>
