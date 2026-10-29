@@ -14,7 +14,7 @@ import { Grid } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
@@ -35,38 +35,43 @@ const DataAssetsTab = () => {
   const [totalAssets, setTotalAssets] =
     useState<DataInsightCustomChartResult | null>();
 
-  useEffect(() => {
-    if (kpi.isLoading) {
-      return;
-    }
-    let isStale = false;
-    setTotalAssets(undefined);
-    getChartPreviewByName(SystemChartType.TotalDataAssets, {
-      start: chartFilter.startTs,
-      end: chartFilter.endTs,
-      filter: getQueryFilterForDataInsightChart(
-        chartFilter.team,
-        chartFilter.tier
-      ),
-    })
-      .then((response) => !isStale && setTotalAssets(response))
-      .catch((error) => {
-        if (!isStale) {
-          showErrorToast(error as AxiosError);
-          setTotalAssets(null);
-        }
-      });
+  const latestRequestId = useRef(0);
 
-    return () => {
-      isStale = true;
-    };
+  const fetchTotalAssets = useCallback(async () => {
+    // A filter change can overlap requests; only the newest may set the totals.
+    const requestId = ++latestRequestId.current;
+    setTotalAssets(undefined);
+    try {
+      const response = await getChartPreviewByName(
+        SystemChartType.TotalDataAssets,
+        {
+          start: chartFilter.startTs,
+          end: chartFilter.endTs,
+          filter: getQueryFilterForDataInsightChart(
+            chartFilter.team,
+            chartFilter.tier
+          ),
+        }
+      );
+      if (requestId === latestRequestId.current) {
+        setTotalAssets(response);
+      }
+    } catch (error) {
+      if (requestId === latestRequestId.current) {
+        showErrorToast(error as AxiosError);
+        setTotalAssets(null);
+      }
+    }
   }, [
     chartFilter.startTs,
     chartFilter.endTs,
     chartFilter.team,
     chartFilter.tier,
-    kpi.isLoading,
   ]);
+
+  useEffect(() => {
+    !kpi.isLoading && fetchTotalAssets();
+  }, [fetchTotalAssets, kpi.isLoading]);
 
   if (kpi.isLoading) {
     return <Loader />;
