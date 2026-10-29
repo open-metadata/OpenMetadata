@@ -814,7 +814,7 @@ public final class CredentialVerifier implements Managed {
     }
   }
 
-  /** Each batch on its own, so one that fails leaves the other batches' entries reconfirmed. */
+  /** Each batch on its own, so a failing batch does not stop the rest from reconfirming. */
   private boolean reconfirmAll() {
     boolean complete = true;
     List<CredentialSubject> subjects = List.copyOf(entries.asMap().keySet());
