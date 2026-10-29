@@ -151,8 +151,7 @@ class RdfStorageMaintenanceServiceTest {
 
   @Test
   void aRunningReindexDefersTheCompactionWithoutUsingTheInterval() {
-    final RdfReindexRunLock reindex =
-        RdfReindexRunLock.forMaintenance(locks, "reindex-run", "server-c");
+    final RdfReindexRunLock reindex = RdfReindexRunLock.forRun(locks, "reindex-run", "server-c");
     reindex.acquire();
 
     assertNull(serverA.compactIfDue());
@@ -166,7 +165,7 @@ class RdfStorageMaintenanceServiceTest {
   void theReindexLockIsReleasedAfterACompaction() {
     serverA.compactIfDue();
 
-    assertDoesNotThrow(RdfReindexRunLock.forMaintenance(locks, "reindex-run", "server-c")::acquire);
+    assertDoesNotThrow(RdfReindexRunLock.forRun(locks, "reindex-run", "server-c")::acquire);
   }
 
   private RdfStorageMaintenanceService service(final String serverId) {
