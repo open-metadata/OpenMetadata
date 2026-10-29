@@ -329,6 +329,25 @@ class RdfIndexAppTest {
 
       assertNull(buildField.get(testApp));
       verify(mockRdfRepository, never()).activateDataset(anyString(), anyString(), anyString());
+      verify(mockRdfRepository, never()).clearRetiredDataset(anyString());
+    }
+
+    @Test
+    @DisplayName(
+        "the dataset a promotion retired is emptied; a failure there does not fail the run")
+    void retiredDatasetIsEmptiedBestEffort() throws Exception {
+      TestableRdfIndexApp testApp = appWith(true, true);
+      var method = RdfIndexApp.class.getDeclaredMethod("clearRetiredDataset", String.class);
+      method.setAccessible(true);
+      doReturn(COMPACTED).when(mockRdfRepository).clearRetiredDataset("openmetadata");
+
+      method.invoke(testApp, "openmetadata");
+      verify(mockRdfRepository).clearRetiredDataset("openmetadata");
+
+      doThrow(new IllegalStateException("Fuseki unavailable"))
+          .when(mockRdfRepository)
+          .clearRetiredDataset("openmetadata");
+      assertDoesNotThrow(() -> method.invoke(testApp, "openmetadata"));
     }
   }
 
