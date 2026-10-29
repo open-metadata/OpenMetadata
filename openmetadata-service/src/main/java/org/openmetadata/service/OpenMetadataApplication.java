@@ -51,6 +51,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.time.Clock;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -86,6 +87,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
@@ -94,6 +96,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdent
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
+import org.openmetadata.service.cluster.ServerRegistry;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -198,6 +201,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.PerRequestContextCleanupFilter;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
+import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -226,6 +230,7 @@ import org.quartz.SchedulerException;
     scheme = "bearer",
     bearerFormat = "JWT")
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
+  private static final String CATALOG_VERSION_RESOURCE = "/catalog/VERSION";
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   protected Limits limits;
@@ -403,6 +408,20 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     ApplicationHandler.initialize(catalogConfig);
     IndexResource.initialize(catalogConfig);
     registerResources(catalogConfig, environment, jdbi);
+    // After the resources: their app scheduler is what identifies this server in the cluster.
+    final ServerRegistry serverRegistry =
+        new ServerRegistry(
+            jdbi,
+            Clock.systemUTC(),
+            () -> {
+              final Scheduler scheduler = AppScheduler.getInstance().getScheduler();
+              return new ServerRegistry.ClusterIdentity(
+                  scheduler.getSchedulerName(), scheduler.getSchedulerInstanceId());
+            },
+            ServerIdentityResolver.getInstance().getServerId(),
+            VersionUtils.getOpenMetadataServerVersion(CATALOG_VERSION_RESOURCE).getVersion());
+    RdfUpdater.useClusterCapabilities(serverRegistry);
+    environment.lifecycle().manage(serverRegistry);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);

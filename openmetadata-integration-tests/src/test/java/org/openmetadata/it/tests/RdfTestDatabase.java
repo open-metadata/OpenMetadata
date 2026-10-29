@@ -97,10 +97,24 @@ final class RdfTestDatabase implements AutoCloseable {
     createTable("1.13.0", "rdf_reindex_lock");
     applyReleaseMigration();
     applyReleaseMigration();
+    applyTableChanges("1.3.1", "QRTZ_SCHEDULER_STATE");
+    createTable("2.0.8", "server_registry");
   }
 
   void applyReleaseMigration() {
     jdbi.useHandle(handle -> migrationStatements("2.0.2").forEach(handle::execute));
+  }
+
+  /** Every statement of a release that names the table, in file order, on one connection. */
+  private void applyTableChanges(final String version, final String table) {
+    final List<String> changes =
+        migrationStatements(version).stream()
+            .filter(statement -> statement.contains(table))
+            .toList();
+    if (changes.isEmpty()) {
+      throw new IllegalStateException("Missing migration for " + table);
+    }
+    jdbi.useHandle(handle -> changes.forEach(handle::execute));
   }
 
   private void createTable(final String version, final String table) {

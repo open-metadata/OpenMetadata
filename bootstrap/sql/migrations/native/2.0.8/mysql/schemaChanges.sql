@@ -9,3 +9,14 @@
 -- 3072-byte key.
 ALTER TABLE task_entity MODIFY COLUMN aboutFqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.aboutFqnHash'))) STORED;
 ALTER TABLE domain_entity MODIFY COLUMN fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+
+-- Server registry: the version and cross-server protocols of each server - OpenMetadata 2.0.8
+CREATE TABLE IF NOT EXISTS server_registry (
+  instanceId VARCHAR(255) NOT NULL,
+  serverId VARCHAR(255) NOT NULL,
+  version VARCHAR(64) NOT NULL,
+  capabilities TEXT NOT NULL,
+  startedAt BIGINT NOT NULL,
+  lastHeartbeat BIGINT NOT NULL,
+  PRIMARY KEY (instanceId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
