@@ -39,8 +39,11 @@ commented with the relation label, and the service, service type and dialect.
   Several foreign keys between the two tables, in either direction, are a 400 that names both
   tables and asks for the property to be bound to one column.
 - A hop followed from its relation's range back to its domain is labelled with the relation's
-  declared inverse when that inverse is a live object property, the same label as the rail's hop
-  chip.
+  declared inverse when that inverse is a live object property the reader may view, the same label
+  as the rail's hop chip. The server knows only the declared domain and range, so a relation that
+  comes only from a restriction or an assertion, or whose property has the start concept in both
+  its domain and its range, can read the forward label while the chip reads the inverse, with the
+  same joins, until the request carries the direction the rail chose.
 - The endpoint authorizes like the binding read: `VIEW_BASIC` on the concepts and hop properties.
   A bound table the caller may not view is treated as unbound, so its columns never appear in the
   SQL or an error. A concept or hop without a viewable bound table, or a hop with no join, is a
