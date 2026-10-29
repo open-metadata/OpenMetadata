@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import i18next from 'i18next';
+import { Profiler } from 'react';
 import { useTranslation } from 'react-i18next';
 import enUS from '../../locale/languages/en-us.json';
 import {
@@ -373,6 +374,49 @@ describe('native Data mode lineage', () => {
     expect(lineageChip()).toEqual(['table_1 → accounts']);
   });
 
+  it('anchors the rows where the rendered rows sit, not where the default font puts them', () => {
+    const rowIndex = (element: HTMLElement) =>
+      [...(element.parentElement?.children ?? [])].indexOf(element);
+    const isRow = (element: HTMLElement) =>
+      element.parentElement?.dataset.rowsId !== undefined;
+    const isRows = (element: HTMLElement) =>
+      element.dataset.rowsId !== undefined;
+    const getters = [
+      jest
+        .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          return isRow(this) ? 80 : 0;
+        }),
+      jest
+        .spyOn(HTMLElement.prototype, 'offsetTop', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          if (isRows(this)) {
+            return 62;
+          }
+
+          return isRow(this) ? 62 + 80 * rowIndex(this) : 0;
+        }),
+      jest
+        .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          return isRows(this) ? 320 : 0;
+        }),
+      jest
+        .spyOn(HTMLElement.prototype, 'clientTop', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          return this.dataset.termId ? 1 : 0;
+        }),
+    ];
+    renderGraph();
+
+    const edge = lineageEdge();
+
+    expect(edge).toHaveAttribute('data-anchor', 'rows');
+    expect(pathStart(edge)[1]).toBe(cardTop('transfer') + 1 + 62 + 80 + 40);
+
+    getters.forEach((getter) => getter.mockRestore());
+  });
+
   it('marks both rows of a lineage edge inside one cluster, naming the other table', () => {
     renderGraph({
       data: graphData({ lineageEdges: [{ from: 't0', to: 't2' }] }),
@@ -392,6 +436,58 @@ describe('native Data mode lineage', () => {
     expect(
       screen.getByTestId('ontology-data-asset-asset:transfer:t1')
     ).not.toHaveTextContent('message.lineage');
+  });
+});
+
+describe('scrolling the rows of a native cluster', () => {
+  const renderCounted = () => {
+    const commits = jest.fn();
+    render(
+      <Profiler id="graph" onRender={commits}>
+        <OntologyDataGraph
+          data={graphData({ loaded: 8, total: 8 })}
+          glossaryColorMap={{}}
+          hasMoreTerms={false}
+          isLoadingMoreTerms={false}
+          relationTypes={[]}
+          variant="native"
+          onLoadMore={jest.fn()}
+          onLoadMoreTerms={jest.fn()}
+          onPaneClick={jest.fn()}
+          onSelectNode={jest.fn()}
+        />
+      </Profiler>
+    );
+    fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
+    commits.mockClear();
+
+    return commits;
+  };
+  const scrollTo = (top: number) => {
+    const rows = screen.getByTestId('ontology-data-cluster-rows-transfer');
+    rows.scrollTop = top;
+    fireEvent.scroll(rows);
+  };
+
+  it('renders nothing for a burst of scroll events inside one row', () => {
+    const commits = renderCounted();
+
+    [10, 25, 40, 63].forEach(scrollTo);
+
+    expect(commits).not.toHaveBeenCalled();
+  });
+
+  it('renders once when the first row in view changes, and renders no row again', () => {
+    const commits = renderCounted();
+    const logo = jest.spyOn(serviceUtilClassBase, 'getServiceTypeLogo');
+
+    scrollTo(70);
+    scrollTo(90);
+
+    expect(commits).toHaveBeenCalledTimes(1);
+    expect(logo).not.toHaveBeenCalled();
+
+    logo.mockRestore();
   });
 });
 
@@ -445,6 +541,53 @@ describe('native Data mode in English', () => {
     });
 
     expect(heading()).toContain('1 concept · 1 binding');
+  });
+
+  it('names the first pair of tables and counts the rest on one lineage edge between two cards', () => {
+    renderGraph({
+      data: graphData({
+        lineageEdges: [
+          { from: 't5', to: 'acc1' },
+          { from: 't6', to: 'acc1' },
+          { from: 't7', to: 'acc1' },
+        ],
+      }),
+    });
+
+    const lineage = screen
+      .getAllByTestId('ontology-data-semantic-edge')
+      .filter(
+        (edge) => edge.getAttribute('data-edge-kind') === 'observedLineage'
+      );
+
+    expect(lineage).toHaveLength(1);
+    expect(lineage[0]).toHaveAttribute('data-anchor', 'cards');
+    expect(
+      screen
+        .getAllByTestId('ontology-data-semantic-edge-label')
+        .map((label) => label.textContent)
+    ).toEqual(['part of', 'table_5 → accounts and 2 more']);
+  });
+
+  it('shows the first lineage note on a row, counts the rest, and describes them all', () => {
+    renderGraph({
+      data: graphData({
+        lineageEdges: [
+          { from: 't0', to: 't1' },
+          { from: 't0', to: 't2' },
+          { from: 't0', to: 't3' },
+        ],
+      }),
+    });
+
+    const row = screen.getByTestId('ontology-data-asset-asset:transfer:t0');
+
+    expect(row).toHaveTextContent(
+      'Snowflake · 3 cols · Lineage to table_1 and 2 more'
+    );
+    expect(row).toHaveAccessibleDescription(
+      'Lineage to table_1 · Lineage to table_2 · Lineage to table_3'
+    );
   });
 
   it('shows the connector with its column count, zero included', () => {
