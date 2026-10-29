@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
+import { uniqBy } from 'lodash';
 import {
   CERTIFICATION_CATEGORY,
+  PAGE_SIZE_LARGE as TAG_PAGE_SIZE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../../constants/constants';
+import { FQN_SEPARATOR_CHAR } from '../../../../../constants/char.constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { searchData } from '../../../../../rest/miscAPI';
+import { searchQuery } from '../../../../../rest/searchAPI';
 import { getTags } from '../../../../../rest/tagAPI';
 import { searchEntity } from '../../../../../utils/Alerts/AlertsUtil';
 import {
@@ -24,6 +28,7 @@ import {
   formatUsersResponse,
 } from '../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import Fqn from '../../../../../utils/Fqn';
 import type { ConditionBuilderOption } from './ConditionBuilder.interface';
 
 const PAGE_SIZE_LARGE = 1000;
@@ -189,13 +194,27 @@ export async function fetchTagOptions(
   searchText: string
 ): Promise<ConditionBuilderOption[]> {
   try {
-    const options = await searchEntity({
-      searchText: searchText.trim() || '*',
+    // Not searchEntity: it dedupes by label, which drops a tag whose display name
+    // matches one in another classification (PII.Sensitive vs Personal.Sensitive).
+    const response = await searchQuery({
+      query: searchText.trim() || '*',
+      pageNumber: 1,
+      pageSize: TAG_PAGE_SIZE,
       searchIndex: SearchIndex.TAG,
-      setSourceAsValue: false,
     });
 
-    return options.map((o) => ({ value: o.value, label: o.label }));
+    return uniqBy(
+      response.hits.hits.map(({ _source }) => {
+        const fqn = _source.fullyQualifiedName ?? '';
+
+        return {
+          value: fqn,
+          label: getEntityName(_source),
+          supportingText: Fqn.split(fqn).slice(0, -1).join(FQN_SEPARATOR_CHAR),
+        };
+      }),
+      'value'
+    ).filter((o) => o.value);
   } catch {
     return [];
   }
