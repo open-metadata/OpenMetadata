@@ -22,7 +22,6 @@ import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -98,14 +97,11 @@ class OntologyReleaseReviewListTest {
         reviews -> {
           User requester = reviews.user("requester");
           User steward = reviews.user("steward");
-          Set<UUID> tasks =
-              new HashSet<>(
-                  List.of(
-                      reviews.glossaryApproval("customer", requester, steward),
-                      reviews.glossaryApproval("account", requester, steward)));
+          UUID customer = reviews.glossaryApproval("customer", requester, steward);
+          UUID account = reviews.glossaryApproval("account", requester, steward);
           UUID review =
               reviews.inReview("release", requester, List.of(steward), List.of(steward), List.of());
-          tasks.add(review);
+          Set<UUID> tasks = Set.of(customer, account, review);
 
           Listing pending = reviews.listing(View.PENDING, steward);
           Listing created = reviews.listing(View.CREATED, requester);
