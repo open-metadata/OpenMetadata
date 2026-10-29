@@ -467,8 +467,8 @@ OpenMetadata compacts the serving dataset itself:
   `GET /$/openmetadata/storage`. When free space falls below `RDF_URGENT_COMPACTION_FREE_PERCENT`,
   or the image's write guard is refusing writes, the next check (every 15 minutes) compacts without
   waiting for the interval. If a compaction cannot bring the store back above that threshold, the
-  live graph or other datasets fill the volume: urgent compactions then wait for the next scheduled
-  compaction, and the server logs that the volume needs expanding.
+  live graph or other datasets fill the volume: urgent compactions then stop for one interval,
+  while the scheduled compaction still runs, and the server logs that the volume needs expanding.
 - **During indexing.** A recreate run clears the dataset, compacts it while it is empty, and
   compacts again after loading. Blue/green runs compact the target before promotion and empty
   the dataset the promotion retires.
@@ -478,9 +478,8 @@ writes to the serving dataset first, on every server. Queued live writes wait in
 applied once the pause ends; waiting does not count as a failed delivery attempt and does not mark
 the projection degraded. Other writes wait for the pause for up to `RDF_REQUEST_TIMEOUT_MS`, then
 get HTTP 503 with `Retry-After`. A write that times out while Fuseki compacts, whoever started the
-compaction, is retried the same way. Maintenance never overlaps a reindex or an inference run, and
-it waits while any live server, such as one not yet upgraded, does not hold its writes back; the
-server logs which ones it waits for.
+compaction, is retried the same way. Maintenance never overlaps a reindex or an inference run, and a
+server's first check runs five minutes after it starts.
 `RDF_MAINTENANCE_MAX_DURATION_MINUTES` bounds how long a compaction, or the clear that starts a
 recreate run, may hold that pause. Both run under this budget rather than the per-request timeout:
 Fuseki cannot cancel a `CLEAR`, so a shorter budget would only abandon a clear that still completes.
@@ -493,7 +492,10 @@ is at least the size of the live data, which is what a compaction copies. OpenMe
 refusal like the maintenance pause.
 
 Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
-`ontology.rdf.compaction.last.success` falling behind the interval. A compaction Fuseki could not
+`ontology.rdf.compaction.last.success` falling behind the interval. Every server reports the
+cluster's last successful compaction there. Once none has succeeded for two intervals, whatever the
+reason, each check logs an error and `GET /api/v1/rdf/status` reports `projectionState: DEGRADED`
+until the next one succeeds. A compaction Fuseki could not
 start is retried at the next check. One it started and that did not succeed is logged as an error
 and waits for the next interval: when the volume has less free space than the live data, the copy
 fails or restarts Fuseki, and a retry would only do the same. A copy that failed stays allocated

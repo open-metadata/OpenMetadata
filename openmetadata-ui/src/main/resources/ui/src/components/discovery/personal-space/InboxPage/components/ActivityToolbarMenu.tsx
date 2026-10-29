@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Tooltip } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 
@@ -28,6 +28,8 @@ export interface ActivityToolbarMenuProps {
   title: string;
   // Trigger text; the selected option's label when omitted.
   triggerLabel?: string;
+  // Shows only the icon, with the trigger text as its tooltip and name.
+  iconOnly?: boolean;
   triggerIcon: FC<{ className?: string }>;
   options: ActivityToolbarMenuOption[];
   value: string;
@@ -42,6 +44,7 @@ export interface ActivityToolbarMenuProps {
 const ActivityToolbarMenu = ({
   title,
   triggerLabel,
+  iconOnly,
   triggerIcon,
   options,
   value,
@@ -53,18 +56,31 @@ const ActivityToolbarMenu = ({
   'data-testid': testId,
 }: ActivityToolbarMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const selected = options.find((option) => option.value === value);
+  const label =
+    triggerLabel ?? options.find((option) => option.value === value)?.label;
 
   return (
     <Dropdown.Root onOpenChange={setIsOpen}>
-      <Button
-        color={color}
-        data-testid={testId}
-        iconLeading={triggerIcon}
-        iconTrailing={isOpen ? ChevronUp : ChevronDown}
-        size={size}>
-        {triggerLabel ?? selected?.label}
-      </Button>
+      {iconOnly ? (
+        <Tooltip title={label}>
+          <Button
+            aria-label={label}
+            color={color}
+            data-testid={testId}
+            iconLeading={triggerIcon}
+            size={size}
+          />
+        </Tooltip>
+      ) : (
+        <Button
+          color={color}
+          data-testid={testId}
+          iconLeading={triggerIcon}
+          iconTrailing={isOpen ? ChevronUp : ChevronDown}
+          size={size}>
+          {label}
+        </Button>
+      )}
       <Dropdown.Popover className="tw:w-56" placement="bottom end">
         <Dropdown.Menu
           aria-label={title}

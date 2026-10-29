@@ -14,6 +14,8 @@ package org.openmetadata.service.rdf;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
@@ -30,23 +32,64 @@ public final class RdfLiveWriteStore {
   private static final long MAX_HEALTHY_LAG_MILLIS = Duration.ofSeconds(30).toMillis();
   private static final int MAX_ERROR_LENGTH = 8192;
   private static final int MAX_DELIVERY_ATTEMPTS = 10;
+  // Bounds how long one enqueue holds the producer lock while a cascade enqueues its writes
+  // (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only).
+  private static final int MAX_WRITES_PER_ENQUEUE = 500;
   private static final String WRITER_LOCK =
       "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE";
   private static final String RECORD_ENQUEUED =
       "UPDATE rdf_projection_health SET enqueuedWatermark = GREATEST(enqueuedWatermark, ?) "
           + "WHERE id = 'active'";
+  private static final String RECORD_COMPACTION =
+      "UPDATE rdf_projection_health SET lastCompactedAt = GREATEST(lastCompactedAt, ?) "
+          + "WHERE id = 'active'";
+  private static final String START_COMPACTION_CLOCK =
+      "UPDATE rdf_projection_health SET lastCompactedAt = ? WHERE id = 'active' "
+          + "AND lastCompactedAt = 0";
+  private static final String LAST_COMPACTION =
+      "SELECT lastCompactedAt FROM rdf_projection_health WHERE id = 'active'";
 
   private final Jdbi jdbi;
   private final Clock clock;
+  // Null when storage maintenance is off: nothing promises a compaction then.
+  private final Duration compactionDeadline;
 
   public RdfLiveWriteStore(final Jdbi jdbi, final Clock clock) {
+    this(jdbi, clock, null);
+  }
+
+  /**
+   * @param compactionDeadline how long the serving dataset may go without a maintenance compaction
+   *     before the projection reads as degraded, or null when maintenance is off
+   */
+  public RdfLiveWriteStore(final Jdbi jdbi, final Clock clock, final Duration compactionDeadline) {
     this.jdbi = jdbi;
     this.clock = clock;
+    this.compactionDeadline = compactionDeadline;
   }
 
   public void enqueue(final String payload) {
     jdbi.useTransaction(
         TransactionIsolationLevel.READ_COMMITTED, handle -> enqueue(handle, payload));
+  }
+
+  /** Enqueues {@code payloads} in order, a bounded number per transaction. */
+  public void enqueueAll(final List<String> payloads) {
+    for (int start = 0; start < payloads.size(); start += MAX_WRITES_PER_ENQUEUE) {
+      final List<String> chunk =
+          payloads.subList(start, Math.min(start + MAX_WRITES_PER_ENQUEUE, payloads.size()));
+      jdbi.useTransaction(
+          TransactionIsolationLevel.READ_COMMITTED, handle -> enqueueChunk(handle, chunk));
+    }
+  }
+
+  private void enqueueChunk(final Handle handle, final List<String> payloads) {
+    lockEnqueue(handle);
+    long lastId = 0;
+    for (final String payload : payloads) {
+      lastId = insert(handle, payload);
+    }
+    handle.execute(RECORD_ENQUEUED, lastId);
   }
 
   /** Enqueue last in the caller's transaction so delivery and the metadata change commit together. */
@@ -298,8 +341,33 @@ public final class RdfLiveWriteStore {
                   && (head.attempts() > 0
                       || clock.millis() - head.createdAt() >= MAX_HEALTHY_LAG_MILLIS)
                   && !RdfLiveWritePause.isPaused(handle, clock.millis());
-          return unrepaired || lagging;
+          return unrepaired || lagging || compactionOverdue(handle);
         });
+  }
+
+  /** Records that storage maintenance compacted the serving dataset, whichever server ran it. */
+  public void recordCompaction() {
+    jdbi.useHandle(handle -> handle.execute(RECORD_COMPACTION, clock.millis()));
+  }
+
+  /**
+   * When storage maintenance last compacted the serving dataset. The first call starts the clock,
+   * so a new installation is not overdue before maintenance has had a chance to run.
+   */
+  public Instant lastCompaction() {
+    return jdbi.withHandle(
+        handle -> {
+          handle.execute(START_COMPACTION_CLOCK, clock.millis());
+          return Instant.ofEpochMilli(handle.createQuery(LAST_COMPACTION).mapTo(Long.class).one());
+        });
+  }
+
+  private boolean compactionOverdue(final Handle handle) {
+    final long last =
+        compactionDeadline == null
+            ? 0
+            : handle.createQuery(LAST_COMPACTION).mapTo(Long.class).one();
+    return last > 0 && clock.millis() - last > compactionDeadline.toMillis();
   }
 
   public long pendingWrites() {

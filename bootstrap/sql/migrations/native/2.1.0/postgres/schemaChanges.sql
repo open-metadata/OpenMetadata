@@ -681,6 +681,11 @@ ALTER TABLE rdf_active_dataset ADD COLUMN IF NOT EXISTS generation VARCHAR(36);
 ALTER TABLE rdf_projection_health
   ADD COLUMN IF NOT EXISTS enqueuedWatermark BIGINT NOT NULL DEFAULT 0;
 
+-- When storage maintenance last compacted the serving dataset, so a compaction that stops
+-- happening, for any reason, shows as a degraded projection instead of going unnoticed.
+ALTER TABLE rdf_projection_health
+  ADD COLUMN IF NOT EXISTS lastCompactedAt BIGINT NOT NULL DEFAULT 0;
+
 -- A search that pins a memory anchor looks up the edges from the pinned ids into context memories
 -- (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). The existing fromId/relation index
 -- does not cover toEntity, so a pinned domain or team reads all its HAS edges before filtering.
@@ -861,14 +866,3 @@ DELETE FROM entity_relationship WHERE
   (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'))));
 DELETE FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet' AND (json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration')));
 DELETE FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'));
-
--- Server registry: the version and cross-server protocols of each server - OpenMetadata 2.1.0
-CREATE TABLE IF NOT EXISTS server_registry (
-  instanceId VARCHAR(255) NOT NULL,
-  serverId VARCHAR(255) NOT NULL,
-  version VARCHAR(64) NOT NULL,
-  capabilities TEXT NOT NULL,
-  startedAt BIGINT NOT NULL,
-  lastHeartbeat BIGINT NOT NULL,
-  PRIMARY KEY (instanceId)
-);

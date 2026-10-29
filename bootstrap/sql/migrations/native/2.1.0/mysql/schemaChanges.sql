@@ -915,6 +915,25 @@ PREPARE rdf_projection_health_watermark_stmt FROM @rdf_projection_health_waterma
 EXECUTE rdf_projection_health_watermark_stmt;
 DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
 
+-- When storage maintenance last compacted the serving dataset, so a compaction that stops
+-- happening, for any reason, shows as a degraded projection instead of going unnoticed.
+SET @rdf_projection_health_compaction_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_projection_health'
+        AND column_name = 'lastCompactedAt'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_projection_health ADD COLUMN lastCompactedAt bigint NOT NULL DEFAULT 0'
+  )
+);
+PREPARE rdf_projection_health_compaction_stmt FROM @rdf_projection_health_compaction_ddl;
+EXECUTE rdf_projection_health_compaction_stmt;
+DEALLOCATE PREPARE rdf_projection_health_compaction_stmt;
+
 -- Independent ontology definitions and releases.
 CREATE TABLE IF NOT EXISTS ontology_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
@@ -1139,14 +1158,3 @@ DELETE FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id')
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
--- Server registry: the version and cross-server protocols of each server - OpenMetadata 2.1.0
-CREATE TABLE IF NOT EXISTS server_registry (
-  instanceId VARCHAR(255) NOT NULL,
-  serverId VARCHAR(255) NOT NULL,
-  version VARCHAR(64) NOT NULL,
-  capabilities TEXT NOT NULL,
-  startedAt BIGINT NOT NULL,
-  lastHeartbeat BIGINT NOT NULL,
-  PRIMARY KEY (instanceId)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
