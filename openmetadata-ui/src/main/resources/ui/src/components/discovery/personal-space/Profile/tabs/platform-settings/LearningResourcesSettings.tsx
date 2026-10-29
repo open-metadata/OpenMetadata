@@ -207,7 +207,7 @@ const LearningResourcesSettings = ({
   /** Resolves `false` when the delete failed, keeping the confirmation open. */
   const handleDelete = async (resource: LearningResource) => {
     try {
-      await deleteLearningResource(resource.id);
+      await deleteLearningResource(resource.id, true);
       showSuccessToast(
         t('server.entity-deleted-successfully', {
           entity: t('label.learning-resource'),
