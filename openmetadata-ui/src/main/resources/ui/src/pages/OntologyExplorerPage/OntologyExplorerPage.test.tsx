@@ -372,7 +372,7 @@ describe('OntologyExplorerPage', () => {
       },
     });
     mockUseRealRouter = true;
-    (getOntology as jest.Mock).mockResolvedValue(nativeOntology);
+    (getOntology as jest.Mock).mockResolvedValue(ontology);
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
       state: {
         ontologyId: nativeOntology.id,
@@ -384,7 +384,7 @@ describe('OntologyExplorerPage', () => {
       paging: { total: 0 },
     });
     (listOntologies as jest.Mock).mockResolvedValue({
-      data: [nativeOntology],
+      data: [ontology],
       paging: { total: 1 },
     });
     mockUseOntologyStudioScopes.mockReturnValue({
@@ -477,6 +477,13 @@ describe('OntologyExplorerPage', () => {
     expect(chip).toHaveAttribute(
       'data-testid',
       'ontology-release-history-trigger'
+    );
+
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => chip.focus());
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.release-history'
     );
 
     fireEvent.click(chip);
