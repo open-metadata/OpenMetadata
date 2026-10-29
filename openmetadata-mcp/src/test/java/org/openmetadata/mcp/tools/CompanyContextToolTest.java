@@ -80,6 +80,7 @@ class CompanyContextToolTest {
         result.get("error").toString().contains("not both and not neither"),
         result.get("error").toString());
     assertEquals(0, result.get("returnedCount"));
+    assertEquals(400, result.get("statusCode"));
   }
 
   @Test
