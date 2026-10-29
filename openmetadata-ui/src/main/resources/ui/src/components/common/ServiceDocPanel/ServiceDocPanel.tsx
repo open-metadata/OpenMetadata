@@ -751,17 +751,14 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     let observer: MutationObserver | undefined;
 
     const highlight = () => {
-      const element = document.querySelector(selector);
+      const element = panelRef.current?.querySelector<HTMLElement>(selector);
       if (!element) {
         return false;
       }
 
       observer?.disconnect();
-      scrollDocElementIntoView(
-        element as HTMLElement,
-        activeFieldName === 'selected-entity'
-      );
-      (element as HTMLElement).dataset.highlighted = 'true';
+      scrollDocElementIntoView(element, activeFieldName === 'selected-entity');
+      element.dataset.highlighted = 'true';
 
       return true;
     };
@@ -769,12 +766,11 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     // Use requestAnimationFrame to ensure DOM is ready
     const frame = requestAnimationFrame(() => {
       // Remove all previous highlights first
-      const previousHighlighted = document.querySelectorAll(
-        '[data-highlighted="true"]'
-      );
-      previousHighlighted.forEach((el) => {
-        (el as HTMLElement).dataset.highlighted = 'false';
-      });
+      panelRef.current
+        ?.querySelectorAll<HTMLElement>('[data-highlighted="true"]')
+        .forEach((el) => {
+          el.dataset.highlighted = 'false';
+        });
 
       // The docs body is rendered by a lazily loaded editor, so a field
       // focused right after the markdown arrives can find no section yet.
