@@ -7,27 +7,42 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -49,6 +64,7 @@ public class BotImpersonationIT {
       "ApplicationBotImpersonationRole";
   private static final String USER_FIELDS = "roles,allowImpersonation";
   private static final String IMPERSONATE_HEADER = "X-Impersonate-User";
+  private static final String DOMAIN_HEADER = "X-OpenMetadata-Domain";
 
   @Test
   void test_createBotWithImpersonation_grantsFlagAndRole(TestNamespace ns) {
@@ -662,6 +678,101 @@ public class BotImpersonationIT {
                     .executeForString(
                         HttpMethod.GET, "/v1/users/" + target.getId() + ";x=1", null));
     assertTrue(body.contains(target.getName()), "Expected the target user back: " + body);
+  }
+
+  @Test
+  void test_domainHeader_scopesImpersonatedListsOnly(TestNamespace ns) {
+    // An agent run acts for a user through a bot, so the user's navbar selection never reaches the
+    // server; the bot forwards it in X-OpenMetadata-Domain instead. A non-ASCII name checks the
+    // header's percent-encoding.
+    Domain domain = createDomain(ns.prefix("domänScope"), null);
+    Domain subDomain = createDomain("sub", domain.getFullyQualifiedName());
+    Domain otherDomain = createDomain(ns.prefix("otherScope"), null);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table inDomain = createTable(schema, "in_domain", domain);
+    Table inSubDomain = createTable(schema, "in_sub_domain", subDomain);
+    Table outside = createTable(schema, "outside", otherDomain);
+    Set<UUID> all = Set.of(inDomain.getId(), inSubDomain.getId(), outside.getId());
+
+    User target = createRegularUser(ns, "domscope");
+    User botUser = createBotUser(ns, "domscope");
+    createBot(ns.prefix("imp_domscope_bot"), botUser, true);
+    String botToken = generateBotToken(botUser);
+    String encodedFqn =
+        URLEncoder.encode(domain.getFullyQualifiedName(), StandardCharsets.UTF_8)
+            .replace("+", "%20");
+
+    assertEquals(
+        Set.of(inDomain.getId(), inSubDomain.getId()),
+        listedTables(
+            client(
+                botToken, Map.of(IMPERSONATE_HEADER, target.getName(), DOMAIN_HEADER, encodedFqn)),
+            schema),
+        "an impersonated list must narrow to the named domain and its sub-domains");
+    assertEquals(
+        all,
+        listedTables(client(botToken, Map.of(IMPERSONATE_HEADER, target.getName())), schema),
+        "without the header an impersonated list stays unscoped");
+    assertEquals(
+        all,
+        listedTables(client(botToken, Map.of(DOMAIN_HEADER, encodedFqn)), schema),
+        "a bot acting as itself ignores the header");
+
+    Exception unknown =
+        assertThrows(
+            Exception.class,
+            () ->
+                listedTables(
+                    client(
+                        botToken,
+                        Map.of(
+                            IMPERSONATE_HEADER, target.getName(), DOMAIN_HEADER, "noSuchDomain")),
+                    schema),
+            "an unknown domain must fail rather than list the whole catalog");
+    assertTrue(
+        unknown.getMessage().contains("Unknown domain"),
+        "Error should name the unknown domain: " + unknown.getMessage());
+  }
+
+  private Domain createDomain(String name, String parentFqn) {
+    return SdkClients.adminClient()
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(name)
+                .withParent(parentFqn)
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("Domain for impersonated list scoping"));
+  }
+
+  private Table createTable(DatabaseSchema schema, String name, Domain domain) {
+    return SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(name)
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)))
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+  }
+
+  private Set<UUID> listedTables(OpenMetadataClient client, DatabaseSchema schema) {
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.addQueryParam("databaseSchema", schema.getFullyQualifiedName());
+    return client.tables().list(params).getData().stream()
+        .map(Table::getId)
+        .collect(Collectors.toSet());
+  }
+
+  private OpenMetadataClient client(String botToken, Map<String, String> headers) {
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.baseUrl())
+            .accessToken(botToken)
+            .headers(headers)
+            .build());
   }
 
   private record IdentityCall(HttpMethod method, String path, Object body) {}

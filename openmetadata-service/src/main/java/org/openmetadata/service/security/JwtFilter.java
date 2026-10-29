@@ -101,6 +101,7 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
   public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
+  public static final String ACTIVE_DOMAIN_HEADER = "X-OpenMetadata-Domain";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -365,9 +366,13 @@ public class JwtFilter implements ContainerRequestFilter {
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
       String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
       // The persisted navbar selection is a UI view preference: bot tokens (including impersonated
-      // requests) and personal access tokens (scripts, SDK) list without it.
+      // requests) and personal access tokens (scripts, SDK) list without it. A bot impersonating a
+      // user may instead name the domain to scope to (e.g. the one an agent run started with).
+      String requestedDomain = requestContext.getHeaderString(ACTIVE_DOMAIN_HEADER);
       EntityReference activeDomain =
-          ActiveDomainContext.resolve(userName, isBotUser || isPersonalAccessToken(claims));
+          impersonatedBy != null && !nullOrEmpty(requestedDomain)
+              ? ActiveDomainContext.resolveRequested(requestedDomain)
+              : ActiveDomainContext.resolve(userName, isBotUser || isPersonalAccessToken(claims));
       CatalogSecurityContext catalogSecurityContext =
           new CatalogSecurityContext(
               catalogPrincipal,
