@@ -17,16 +17,22 @@ import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSW
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsUtil;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.IngestionPipelineBuilder;
 
 /**
  * Stored connection secrets stay with the endpoint they were entered for. A caller who only ever
@@ -65,10 +71,72 @@ public final class ConnectionSecretsGuard {
       // A connection that cannot be read fails where it is unmasked and saved, restoring nothing.
       return;
     }
-    if (nonExemptFieldChanged(maskedIncoming, maskedStored)
-        && keepsStoredSecret(maskedIncoming, incoming, stored)) {
+    if (retargetsWithStoredSecret(incoming, stored, maskedIncoming, maskedStored)) {
       throw new BadRequestException(SECRETS_REQUIRED);
     }
+  }
+
+  /**
+   * The same guard for an ingestion pipeline, whose secrets live in the source it reads from: a dbt
+   * project or a storage manifest. Only that source is compared, so a change to the pipeline's
+   * other settings never asks for the secrets again.
+   */
+  public static void requireSecretsReenteredOnRetarget(
+      IngestionPipeline incoming, IngestionPipeline stored) {
+    if (incoming == null
+        || stored == null
+        || incoming.getSourceConfig() == null
+        || stored.getSourceConfig() == null) {
+      return;
+    }
+    JsonNode incomingConfig;
+    JsonNode storedConfig;
+    JsonNode maskedIncoming;
+    JsonNode maskedStored;
+    try {
+      incomingConfig = pipelineSourceConfig(incoming, false);
+      storedConfig = pipelineSourceConfig(stored, false);
+      maskedIncoming = pipelineSourceConfig(incoming, true);
+      maskedStored = pipelineSourceConfig(stored, true);
+    } catch (RuntimeException e) {
+      // A config that cannot be read fails where it is unmasked and saved, restoring nothing.
+      return;
+    }
+    for (String source : PIPELINE_SECRET_SOURCES) {
+      if (retargetsWithStoredSecret(
+          incomingConfig.path(source),
+          storedConfig.path(source),
+          maskedIncoming.path(source),
+          maskedStored.path(source))) {
+        throw new BadRequestException(SECRETS_REQUIRED);
+      }
+    }
+  }
+
+  /** Admins and bots may already read or replace any stored secret, so the guard skips them. */
+  public static boolean readsStoredSecrets(SecurityContext securityContext) {
+    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    return subject.isAdmin() || subject.isBot();
+  }
+
+  private static final List<String> PIPELINE_SECRET_SOURCES =
+      List.of("dbtConfigSource", "storageMetadataConfigSource");
+
+  private static boolean retargetsWithStoredSecret(
+      JsonNode incoming, JsonNode stored, JsonNode maskedIncoming, JsonNode maskedStored) {
+    return nonExemptFieldChanged(maskedIncoming, maskedStored)
+        && keepsStoredSecret(maskedIncoming, incoming, stored);
+  }
+
+  private static JsonNode pipelineSourceConfig(IngestionPipeline pipeline, boolean masked) {
+    IngestionPipeline copy = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
+    copy.setOpenMetadataServerConnection(null);
+    if (masked) {
+      EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(copy);
+    } else {
+      IngestionPipelineBuilder.addDefinedConfig(copy);
+    }
+    return JsonUtils.valueToTree(copy.getSourceConfig().getConfig());
   }
 
   // Fields that cannot change where a connection points, so a change to one must not force the

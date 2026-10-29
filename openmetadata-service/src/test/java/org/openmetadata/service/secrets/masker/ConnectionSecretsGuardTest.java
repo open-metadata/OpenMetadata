@@ -25,6 +25,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 
 /**
  * A caller who sees a connection's secrets masked keeps them while the connection points where it
@@ -179,6 +182,95 @@ class ConnectionSecretsGuardTest {
     Map<String, Object> stored = with(STORED, "connectionArguments", Map.of());
 
     assertDoesNotThrow(() -> guard(mysql("db.internal:3306", PASSWORD_MASK), stored));
+  }
+
+  @Test
+  void aDbtSourcePointedElsewhereCannotKeepTheMaskedToken() {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                dbt("https://elsewhere.example", PASSWORD_MASK, false),
+                dbt("https://cloud.getdbt.com", STORED_TOKEN, false)));
+  }
+
+  @Test
+  void aDbtSourcePointedElsewhereTakesANewToken() {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                dbt("https://elsewhere.example", "entered-again", false),
+                dbt("https://cloud.getdbt.com", STORED_TOKEN, false)));
+  }
+
+  /** Only the source the secrets belong to is compared, not the pipeline's other settings. */
+  @Test
+  void aDbtPipelineKeepsItsMaskedTokenWhileItsOtherSettingsChange() {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                dbt("https://cloud.getdbt.com", PASSWORD_MASK, true),
+                dbt("https://cloud.getdbt.com", STORED_TOKEN, false)));
+  }
+
+  @Test
+  void aStorageManifestPointedElsewhereCannotKeepTheMaskedKey() {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                storageManifest("https://elsewhere.example", PASSWORD_MASK),
+                storageManifest("https://s3.amazonaws.com", STORED_TOKEN)));
+  }
+
+  private static IngestionPipeline dbt(String url, String token, boolean updateDescriptions) {
+    return new IngestionPipeline()
+        .withName("dbt")
+        .withPipelineType(PipelineType.DBT)
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(
+                    Map.of(
+                        "type",
+                        "DBT",
+                        "dbtUpdateDescriptions",
+                        updateDescriptions,
+                        "dbtConfigSource",
+                        Map.of(
+                            "dbtConfigType",
+                            "cloud",
+                            "dbtCloudAuthToken",
+                            token,
+                            "dbtCloudAccountId",
+                            "1",
+                            "dbtCloudUrl",
+                            url))));
+  }
+
+  private static IngestionPipeline storageManifest(String endpoint, String secretKey) {
+    return new IngestionPipeline()
+        .withName("manifest")
+        .withPipelineType(PipelineType.METADATA)
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(
+                    Map.of(
+                        "type",
+                        "StorageMetadata",
+                        "storageMetadataConfigSource",
+                        Map.of(
+                            "securityConfig",
+                            Map.of(
+                                "awsAccessKeyId",
+                                "manifest-key",
+                                "awsSecretAccessKey",
+                                secretKey,
+                                "awsRegion",
+                                "us-east-1",
+                                "endPointURL",
+                                endpoint),
+                            "prefixConfig",
+                            Map.of("containerName", "manifests")))));
   }
 
   private static void guard(Map<String, Object> incoming) {

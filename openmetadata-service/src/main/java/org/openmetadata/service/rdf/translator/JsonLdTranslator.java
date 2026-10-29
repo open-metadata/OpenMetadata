@@ -147,6 +147,7 @@ public class JsonLdTranslator {
 
   private ObjectNode createEntityDocument(EntityInterface<?> entity, String entityType) {
     ObjectNode entityJson = objectMapper.valueToTree(entity);
+    entityJson.remove(RdfPropertyMapper.CREDENTIAL_PROPERTIES);
     addJsonLdPropertiesToReferences(entityJson);
     assignColumnIds(entityJson);
     entityJson.put("@id", baseUri + "entity/" + entityType + "/" + entity.getId());
