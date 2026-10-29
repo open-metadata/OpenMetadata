@@ -745,7 +745,7 @@ describe('OntologyExplorerPage', () => {
       },
     });
 
-    const chip = await screen.findByRole('button', { name: '1.2.0' });
+    const chip = await screen.findByRole('button', { name: 'v1.2.0' });
 
     expect(chip).toHaveAttribute(
       'data-testid',

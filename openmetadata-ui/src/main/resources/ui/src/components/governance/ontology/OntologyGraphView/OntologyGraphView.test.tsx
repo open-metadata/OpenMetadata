@@ -1203,7 +1203,14 @@ describe('OntologyGraphView', () => {
       .mockRejectedValueOnce(failure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1242,7 +1249,14 @@ describe('OntologyGraphView', () => {
     (patchRelationshipType as jest.Mock).mockRejectedValueOnce(failure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1284,7 +1298,14 @@ describe('OntologyGraphView', () => {
     (patchRelationshipType as jest.Mock).mockRejectedValueOnce(failure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1318,7 +1339,14 @@ describe('OntologyGraphView', () => {
       .mockRejectedValueOnce(repairFailure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1353,7 +1381,14 @@ describe('OntologyGraphView', () => {
     (patchRelationshipType as jest.Mock).mockRejectedValueOnce(failure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1411,7 +1446,14 @@ describe('OntologyGraphView', () => {
       .mockResolvedValue({ data: fresh, paging: { total: fresh.length } });
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1438,7 +1480,14 @@ describe('OntologyGraphView', () => {
     });
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
