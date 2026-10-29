@@ -14,6 +14,7 @@ package org.openmetadata.service.rdf.maintenance;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,6 +25,8 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig;
 import org.openmetadata.service.apps.bundles.rdf.RdfReindexRunLock;
+import org.openmetadata.service.cluster.ClusterCapabilities;
+import org.openmetadata.service.cluster.ServerCapability;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -44,16 +47,16 @@ import org.openmetadata.service.rdf.storage.CompactionResult;
  * The compaction holds the RDF reindex and inference locks, so it never overlaps a reindex or an
  * inference run, and pauses writes to the serving dataset, because Fuseki blocks them for the whole
  * copy. A compaction that does not succeed releases its lease, so the next check tries again,
- * unless Fuseki restarted during it: that one waits for the next interval. See
+ * unless Fuseki restarted during it: that one waits for the next interval. Nothing is compacted
+ * until every live server holds its writes back for maintenance, so a rolling upgrade from an
+ * older version never has servers writing into a compaction. See
  * ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule.
  */
 @Slf4j
 public final class RdfStorageMaintenanceService implements AutoCloseable {
   static final String NEXT_COMPACTION_KEY = "RDF_STORAGE_NEXT_COMPACTION";
   static final Duration CHECK_INTERVAL = Duration.ofMinutes(15);
-  // Servers older than this change do not hold their writes back for maintenance, so the first
-  // compaction waits for a rolling upgrade to finish.
-  private static final Duration FIRST_CHECK_DELAY = Duration.ofHours(1);
+  private static final Duration FIRST_CHECK_DELAY = Duration.ofMinutes(5);
   private static final long LOCK_HEARTBEAT_SECONDS = 60;
 
   private final RdfStorageMaintenanceConfig config;
@@ -61,6 +64,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
   private final Supplier<RdfRepository> repository;
   private final Clock clock;
   private final String serverId;
+  private final ClusterCapabilities cluster;
   private final ExecutorService worker =
       Executors.newSingleThreadExecutor(
           Thread.ofPlatform().daemon().name("rdf-storage-maintenance").factory());
@@ -72,12 +76,14 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
       final RdfReindexLockDAO locks,
       final Supplier<RdfRepository> repository,
       final Clock clock,
-      final String serverId) {
+      final String serverId,
+      final ClusterCapabilities cluster) {
     this.config = config;
     this.locks = locks;
     this.repository = repository;
     this.clock = clock;
     this.serverId = serverId;
+    this.cluster = cluster;
   }
 
   public void start() {
@@ -115,8 +121,35 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
     }
   }
 
-  /** Compacts the serving dataset when its interval has passed. Returns the outcome, if it ran. */
+  /**
+   * Compacts the serving dataset when its interval has passed, once every live server holds its
+   * writes back for maintenance. Returns the outcome, if it ran.
+   */
   CompactionResult compactIfDue() {
+    return everyServerHoldsWritesBack() ? compactWhenDue() : null;
+  }
+
+  /**
+   * A server older than the write pause keeps writing during a compaction, so maintenance waits
+   * until a rolling upgrade has reached every live server; it waits too when that cannot be read.
+   */
+  private boolean everyServerHoldsWritesBack() {
+    Set<String> lacking;
+    try {
+      lacking = cluster.serversLacking(ServerCapability.RDF_LIVE_WRITE_PAUSE);
+    } catch (RuntimeException exception) {
+      lacking = Set.of("servers that could not be listed (" + exception.getMessage() + ")");
+    }
+    if (!lacking.isEmpty()) {
+      LOG.info(
+          "Not compacting the RDF store yet: {} do not hold writes back for maintenance;"
+              + " retrying on the next check",
+          lacking);
+    }
+    return lacking.isEmpty();
+  }
+
+  private CompactionResult compactWhenDue() {
     // Lock rows hold a 36-character job id: a bare UUID.
     final String jobId = UUID.randomUUID().toString();
     final boolean due = reserve(NEXT_COMPACTION_KEY, jobId, compactionInterval());
