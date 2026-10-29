@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -454,6 +455,97 @@ class TaskWorkflowHandlerTest {
                           task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
 
       assertTrue(exception.getMessage().contains("still preparing"));
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
+    }
+  }
+
+  @Test
+  void testResolveWaitsForTheRuntimeTaskItsRunningWorkflowIsStillCommitting() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Open);
+    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("about"));
+    // The task row is listed before Flowable commits the runtime task: the first lookup misses
+    // and every lookup after the commit finds it.
+    AtomicInteger flowableLookups = new AtomicInteger();
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.hasActiveRuntimeTask(taskId))
+          .thenAnswer(invocation -> flowableLookups.incrementAndGet() > 1);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
+          .thenAnswer(
+              invocation ->
+                  flowableLookups.incrementAndGet() > 1 ? invocation.getArgument(1) : null);
+      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
+      when(workflowHandler.isAwaitingAdditionalVotes(taskId)).thenReturn(true);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(true);
+      when(taskRepository.getFields(anyString())).thenReturn(fields);
+      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
+
+      Task result =
+          new TaskWorkflowHandler(3, 0)
+              .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, null, "alice");
+
+      assertSame(refreshedTask, result);
+      verify(workflowHandler).resolveTask(eq(taskId), any());
+    }
+  }
+
+  @Test
+  void testRuntimeTaskAppearingAfterAMissedLookupAsksTheCallerToRetry() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      // The variable lookup ran before Flowable committed; the runtime task is visible by the time
+      // the failure is classified. Nothing reached the workflow, so the caller can safely retry.
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any())).thenReturn(null);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(true);
+
+      TaskStateConflictException exception =
+          assertThrows(
+              TaskStateConflictException.class,
+              () ->
+                  new TaskWorkflowHandler(1, 0)
+                      .resolveTask(
+                          task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
+
+      assertTrue(exception.getMessage().contains("still preparing"));
+      verify(workflowHandler, never()).resolveTask(any(), any());
       verify(taskRepository, never())
           .resolveTask(any(), any(TaskResolution.class), any(), anyString());
     }
