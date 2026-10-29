@@ -501,17 +501,22 @@ describe('OntologyExplorerPage', () => {
 
   const renderNativeStudio = (
     search: string,
-    conceptNames = ['Party', 'Customer'],
-    ontologies = [nativeOntology]
-  ) => {
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      permissions: {
+    {
+      conceptNames = ['Party', 'Customer'],
+      ontologies = [nativeOntology],
+      permissions = {
         ontologyConcept: { Create: true },
+        ontologyChangeSet: { Create: true },
         ontologyProperty: { Create: true },
         ontologyAxiom: { Create: true },
-        ontologyChangeSet: { Create: true },
       },
-    });
+    }: {
+      conceptNames?: string[];
+      ontologies?: Ontology[];
+      permissions?: Record<string, { Create: boolean }>;
+    } = {}
+  ) => {
+    (usePermissionProvider as jest.Mock).mockReturnValue({ permissions });
     mockUseRealRouter = true;
     (getOntology as jest.Mock).mockResolvedValue(nativeOntology);
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
@@ -868,7 +873,7 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('shows the no-concepts card only while the ontology has zero classes', async () => {
-    renderNativeStudio('?ontology=native-sales', []);
+    renderNativeStudio('?ontology=native-sales', { conceptNames: [] });
 
     expect(await screen.findByTestId('ontology-empty-card')).toBeVisible();
     expect(screen.getByText('label.ontology-has-no-concepts')).toBeVisible();
@@ -883,7 +888,7 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('opens the New class panel from the card and from the sub-tab Add concept', async () => {
-    renderNativeStudio('?ontology=native-sales', []);
+    renderNativeStudio('?ontology=native-sales', { conceptNames: [] });
     fireEvent.click(
       await screen.findByTestId('ontology-empty-card-add-concept')
     );
@@ -1154,6 +1159,45 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(screen.getByTestId('ontology-add-concept'));
 
     expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+  });
+
+  it('offers the sub-tab Add concept to a user who holds all three class-creation rights', async () => {
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(screen.getByTestId('ontology-add-concept')).toBeVisible();
+  });
+
+  it('hides the sub-tab Add concept from a user who cannot edit the ontology', async () => {
+    (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: false });
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides the sub-tab Add concept from a user who cannot create a change set', async () => {
+    renderNativeStudio('?ontology=native-sales', {
+      permissions: {
+        ontologyConcept: { Create: true },
+        ontologyChangeSet: { Create: false },
+        ontologyProperty: { Create: true },
+        ontologyAxiom: { Create: true },
+      },
+    });
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
   });
 
   it('starts a new query in the selected native ontology', async () => {
@@ -1829,10 +1873,9 @@ describe('OntologyExplorerPage', () => {
       iri: 'urn:NativeFinance',
       namespace: 'urn:NativeFinance:',
     };
-    renderNativeStudio('?concept=Customer&source=review', undefined, [
-      financeOntology,
-      nativeOntology,
-    ]);
+    renderNativeStudio('?concept=Customer&source=review', {
+      ontologies: [financeOntology, nativeOntology],
+    });
     await screen.findByTestId('ontology-concept-inspector');
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 

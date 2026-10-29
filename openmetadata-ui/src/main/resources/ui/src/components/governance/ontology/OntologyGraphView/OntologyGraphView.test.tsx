@@ -86,6 +86,7 @@ const mockPermissions = {
   relationshipType: { Create: true, EditAll: true },
 };
 let mockCanEditConcept = true;
+let mockUneditableProperties: string[] = [];
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: mockPermissions }),
@@ -98,6 +99,24 @@ jest.mock(
         ...DEFAULT_ENTITY_PERMISSION,
         EditAll: mockCanEditConcept,
       }),
+  })
+);
+jest.mock(
+  '../../../../hooks/useEntityPermissions/useBulkEntityPermissions',
+  () => ({
+    useBulkEntityPermissions: (_resource: string, fqns: string[]) => ({
+      flagsByFqn: Object.fromEntries(
+        fqns.map((fqn) => [
+          fqn,
+          getDerivedPermissionFlags({
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: !mockUneditableProperties.includes(fqn),
+          }),
+        ])
+      ),
+      isLoading: false,
+      permissionsByFqn: {},
+    }),
   })
 );
 
@@ -332,26 +351,26 @@ const partOfProperty: OntologyProperty = {
 };
 
 const latestGraphProps = () => mockGraphProps.mock.calls.at(-1)?.[0];
-const waitForRegistry = () =>
-  waitFor(() =>
-    expect(
-      latestGraphProps()
-        .relationTypeGroups.flatMap(
-          (group: { options: Array<{ id: string }> }) => group.options
-        )
-        .map((option: { id: string }) => option.id)
-    ).toContain(PART_OF)
-  );
+const offeredRelationIds = (): string[] =>
+  latestGraphProps()
+    .relationTypeGroups.flatMap(
+      (group: { options: Array<{ id: string }> }) => group.options
+    )
+    .map((option: { id: string }) => option.id);
+const waitForRegistry = (offered = PART_OF) =>
+  waitFor(() => expect(offeredRelationIds()).toContain(offered));
 
 describe('OntologyGraphView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPermissions.ontologyConcept.Create = true;
+    mockPermissions.ontologyChangeSet.Create = true;
     mockPermissions.ontologyProperty.Create = true;
     mockPermissions.ontologyAxiom.Create = true;
     mockPermissions.relationshipType.Create = true;
     mockPermissions.relationshipType.EditAll = true;
     mockCanEditConcept = true;
+    mockUneditableProperties = [];
     mockUseOntologyStudioModel.mockReturnValue(modelResult);
     (listRelationshipTypes as jest.Mock).mockResolvedValue({
       data: registryTypes,
@@ -1501,6 +1520,155 @@ describe('OntologyGraphView', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-concept-inspector')).toHaveTextContent(
       'Customer'
+    );
+  });
+
+  describe('canvas Add concept', () => {
+    const renderEditing = () =>
+      render(
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestCreateConcept={jest.fn()}
+          onRequestGraphSurface={jest.fn()}
+        />
+      );
+
+    it('shows for a user who holds all three class-creation rights', async () => {
+      renderEditing();
+      await screen.findByTestId('native-ontology-graph');
+
+      expect(screen.getByTestId('ontology-canvas-add-concept')).toBeVisible();
+    });
+
+    it('hides without edit rights on the ontology', async () => {
+      mockCanEditConcept = false;
+      renderEditing();
+      await screen.findByTestId('native-ontology-graph');
+
+      expect(
+        screen.queryByTestId('ontology-canvas-add-concept')
+      ).not.toBeInTheDocument();
+    });
+
+    it('hides without Create on the change set', async () => {
+      mockPermissions.ontologyChangeSet.Create = false;
+      renderEditing();
+      await screen.findByTestId('native-ontology-graph');
+
+      expect(
+        screen.queryByTestId('ontology-canvas-add-concept')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('offers a user who cannot create properties only the relations an axiom completes', async () => {
+    mockPermissions.ontologyProperty.Create = false;
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: {
+        ...model,
+        properties: [...model.properties, hasPartProperty, partOfProperty],
+      },
+    });
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+
+    expect(
+      screen.getByTestId(`relation-type-${SUBCLASS_OF}`)
+    ).toBeInTheDocument();
+    expect(screen.getByTestId(`relation-type-${PART_OF}`)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`relation-type-${GOVERNED_BY}`)
+    ).not.toBeInTheDocument();
+
+    await act(() =>
+      latestGraphProps().onCreateRelation(customer.id, orphan.id, GOVERNED_BY)
+    );
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.no-permission-for-action'
+    );
+    expect(createOntologyProperty).not.toHaveBeenCalled();
+    expect(createOntologyAxiom).not.toHaveBeenCalled();
+
+    await act(() =>
+      latestGraphProps().onCreateRelation(customer.id, orphan.id, PART_OF)
+    );
+
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'CustomerPartOfOrphan',
+        expressions: [expect.objectContaining({ propertyIri: PART_OF })],
+      })
+    );
+  });
+
+  it('offers a reused pair from the side whose inverse the user can edit', async () => {
+    mockUneditableProperties = ['RetailCommerce.partOf'];
+    (patchOntologyProperty as jest.Mock).mockResolvedValue(hasPartProperty);
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: {
+        ...model,
+        properties: [
+          { ...partOfProperty, inverse: undefined },
+          { ...hasPartProperty, inverse: undefined },
+        ],
+      },
+    });
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry(HAS_PART);
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+
+    expect(screen.getByTestId(`relation-type-${HAS_PART}`)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`relation-type-${PART_OF}`)
+    ).not.toBeInTheDocument();
+
+    await act(() =>
+      latestGraphProps().onCreateRelation(customer.id, orphan.id, PART_OF)
+    );
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.no-permission-for-action'
+    );
+    expect(patchOntologyProperty).not.toHaveBeenCalled();
+    expect(createOntologyAxiom).not.toHaveBeenCalled();
+
+    await act(() =>
+      latestGraphProps().onCreateRelation(customer.id, orphan.id, HAS_PART)
+    );
+
+    expect(patchOntologyProperty).toHaveBeenCalledWith('property-hasPart', [
+      { op: 'add', path: '/inverse', value: PART_OF },
+    ]);
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expressions: [expect.objectContaining({ propertyIri: HAS_PART })],
+      })
     );
   });
 
