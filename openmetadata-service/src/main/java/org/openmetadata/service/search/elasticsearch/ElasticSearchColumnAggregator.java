@@ -61,10 +61,14 @@ import org.openmetadata.service.search.ColumnAggregator;
 import org.openmetadata.service.search.ColumnGridIndexConfigs;
 import org.openmetadata.service.search.ColumnMetadataGrouper;
 import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
 
 @Slf4j
 public class ElasticSearchColumnAggregator implements ColumnAggregator {
   private final ElasticsearchClient client;
+  private final RBACConditionEvaluator rbacConditionEvaluator =
+      new RBACConditionEvaluator(new ElasticQueryBuilderFactory());
 
   /**
    * Index configuration per entity type, derived from the child-field registry and shared with the
@@ -578,7 +582,10 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
           Query.of(q -> q.terms(t -> t.field(tagFQNField).terms(tv -> tv.value(tagValues)))));
     }
 
-    return Query.of(q -> q.bool(boolBuilder.build()));
+    return ElasticRbacQueries.withAccessPolicies(
+        Query.of(q -> q.bool(boolBuilder.build())),
+        request.getSubjectContext(),
+        rbacConditionEvaluator);
   }
 
   private boolean isIndexNotFoundException(ElasticsearchException e) {
@@ -657,7 +664,10 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     addColumnNamePatternFilter(boolBuilder, request, columnNameKeyword);
     addTagFilters(boolBuilder, request, columnNameKeyword, columnNamesFromTagFilter);
 
-    return Query.of(q -> q.bool(boolBuilder.build()));
+    return ElasticRbacQueries.withAccessPolicies(
+        Query.of(q -> q.bool(boolBuilder.build())),
+        request.getSubjectContext(),
+        rbacConditionEvaluator);
   }
 
   private void addEntityTypeFilter(
