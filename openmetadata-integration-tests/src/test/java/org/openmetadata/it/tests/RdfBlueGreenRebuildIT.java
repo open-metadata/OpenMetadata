@@ -615,7 +615,8 @@ public class RdfBlueGreenRebuildIT {
                 }
               }
             };
-          });
+          },
+          Duration.ofMinutes(1));
     }
 
     @Override

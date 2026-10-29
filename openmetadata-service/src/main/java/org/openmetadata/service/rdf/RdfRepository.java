@@ -201,7 +201,8 @@ public class RdfRepository {
               new RdfRebuildStore(
                   Entity.getJdbi(), Clock.systemUTC(), RdfRebuildStore.DEFAULT_LIMITS),
               Clock.systemUTC(),
-              name -> RdfStorageFactory.createStorage(config, name));
+              name -> RdfStorageFactory.createStorage(config, name),
+              Duration.ofMillis(RdfStorageInterface.resolveRequestTimeoutMs(config)));
       datasetManager.registerConfiguredStorage(configuredStorage);
       this.materializationStorageService = datasetManager.routedStorage();
       final InferenceRuleRepository inferenceRuleRepository =

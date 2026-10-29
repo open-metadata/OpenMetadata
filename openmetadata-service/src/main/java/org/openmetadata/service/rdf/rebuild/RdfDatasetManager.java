@@ -36,6 +36,7 @@ public final class RdfDatasetManager implements AutoCloseable {
   private final RdfRebuildStore store;
   private final Clock clock;
   private final Function<String, RdfStorageInterface> factory;
+  private final Duration writerWait;
   private final Cache<String, RdfStorageInterface> handles =
       Caffeine.newBuilder().maximumSize(HANDLE_LIMIT).build();
   private final Semaphore activePermit = new Semaphore(1, true);
@@ -45,11 +46,13 @@ public final class RdfDatasetManager implements AutoCloseable {
       final RdfDatasetNames names,
       final RdfRebuildStore store,
       final Clock clock,
-      final Function<String, RdfStorageInterface> factory) {
+      final Function<String, RdfStorageInterface> factory,
+      final Duration writerWait) {
     this.names = names;
     this.store = store;
     this.clock = clock;
     this.factory = factory;
+    this.writerWait = writerWait;
     store.initialize(names.base());
   }
 
@@ -115,7 +118,7 @@ public final class RdfDatasetManager implements AutoCloseable {
       final Consumer<RdfStorageInterface> mutation, final Supplier<RdfMutation> captured) {
     // The live-write queue retries a held-back write; any other writer would lose it.
     if (!RdfProjectionHealth.inDurableRecovery() && !RdfLiveWritePause.isHeldByCurrentThread()) {
-      store.awaitLiveWritesAllowed(RdfLiveWritePause.WRITER_WAIT);
+      store.awaitLiveWritesAllowed(writerWait);
     }
     withPermit(
         activePermit,
