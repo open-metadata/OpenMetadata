@@ -520,7 +520,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   private void refreshParentOnce(EntityReference parent, Set<UUID> refreshed) {
     if (parent != null && refreshed.add(parent.getId())) {
-      refreshSearchDocument(parent);
+      refreshCountingParent(parent);
     }
   }
 
