@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import i18next from 'i18next';
 import { Profiler } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -372,6 +372,44 @@ describe('native Data mode lineage', () => {
 
     expect(lineageEdge()).toHaveAttribute('data-anchor', 'cards');
     expect(lineageChip()).toEqual(['table_1 → accounts']);
+  });
+
+  describe('once the rows stop scrolling', () => {
+    beforeEach(() => jest.useFakeTimers());
+
+    afterEach(() => jest.useRealTimers());
+
+    const restAt = (top: number) => {
+      renderGraph({ data: graphData({ loaded: 8, total: 8 }) });
+      fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
+      const rows = screen.getByTestId('ontology-data-cluster-rows-transfer');
+      rows.scrollTop = top;
+      fireEvent.scroll(rows);
+      act(() => {
+        jest.advanceTimersByTime(100);
+      });
+    };
+
+    it('anchors the row where it rests inside a row', () => {
+      restAt(40);
+
+      expect(lineageEdge()).toHaveAttribute('data-anchor', 'rows');
+      expect(pathStart(lineageEdge())[1]).toBe(
+        cardTop('transfer') + 50 + 64 + 32 - 40
+      );
+    });
+
+    it.each([50, 63])(
+      'keeps the edge on table_1 when the card rests at %d, past half a row',
+      (top) => {
+        restAt(top);
+
+        expect(lineageEdge()).toHaveAttribute('data-anchor', 'rows');
+        expect(pathStart(lineageEdge())[1]).toBe(
+          cardTop('transfer') + 50 + 64 + 32 - top
+        );
+      }
+    );
   });
 
   it('anchors the rows where the rendered rows sit, not where the default font puts them', () => {
