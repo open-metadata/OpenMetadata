@@ -20,10 +20,12 @@ class OntologyConceptSqlGeneratorTest {
   private static final String CUSTOMERS = "finance.warehouse.payments.customers";
   private static final String ACCOUNTS = "finance.warehouse.payments.accounts";
   private static final String LEDGER = "finance.warehouse.payments.ledger";
+  private static final String EMPLOYEES = "finance.warehouse.payments.employees";
   private static final UUID PART_OF = UUID.randomUUID();
   private static final UUID PAID_BY = UUID.randomUUID();
   private static final UUID RECEIVED_BY = UUID.randomUUID();
   private static final UUID HOLDS = UUID.randomUUID();
+  private static final UUID MANAGED_BY = UUID.randomUUID();
 
   @Test
   void oneTableSelectsTheBoundColumnsWithTheRowLimit() {
@@ -411,6 +413,67 @@ class OntologyConceptSqlGeneratorTest {
             + CUSTOMERS
             + "; bind the received by property to one of their columns",
         ambiguous.getMessage());
+  }
+
+  @Test
+  void anUnboundSelfRelationJoinsTheTablesOneForeignKeyToItself() {
+    final BoundTable employees =
+        withConstraints(
+            table(EMPLOYEES, "Postgres", "employee_id"),
+            foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id"));
+    final BoundConcept employee = concept("Employee", employees);
+
+    assertEquals(
+        "SELECT t1.employee_id\nFROM payments.employees t0\n"
+            + "JOIN payments.employees t1 ON t0.manager_id = t1.employee_id -- managed by\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                employee, List.of(new Hop(MANAGED_BY, "managed by", employee)))
+            .sql());
+  }
+
+  @Test
+  void anUnboundHopBetweenTwoConceptsBoundToOneTableJoinsItsOneForeignKey() {
+    final BoundTable employees =
+        withConstraints(
+            table(EMPLOYEES, "Postgres", "employee_id"),
+            foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id"));
+    final BoundTable managers =
+        withConstraints(
+            table(EMPLOYEES, "Postgres", "name"),
+            foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id"));
+
+    assertEquals(
+        "SELECT t1.name\nFROM payments.employees t0\n"
+            + "JOIN payments.employees t1 ON t0.manager_id = t1.employee_id -- managed by\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Employee", employees),
+                List.of(new Hop(MANAGED_BY, "managed by", concept("Manager", managers))))
+            .sql());
+  }
+
+  @Test
+  void anUnboundSelfRelationOverTwoForeignKeysToItselfIsANamedBadRequest() {
+    final BoundTable employees =
+        withConstraints(
+            table(EMPLOYEES, "Postgres", "employee_id"),
+            foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id"),
+            foreignKey(List.of("mentor_id"), EMPLOYEES, "employee_id"));
+    final BoundConcept employee = concept("Employee", employees);
+
+    assertEquals(
+        "Hop 1 (managed by): several foreign keys join "
+            + EMPLOYEES
+            + " and "
+            + EMPLOYEES
+            + "; bind the managed by property to one of their columns",
+        assertThrows(
+                BadRequestException.class,
+                () ->
+                    OntologyConceptSqlGenerator.generate(
+                        employee, List.of(new Hop(MANAGED_BY, "managed by", employee))))
+            .getMessage());
   }
 
   @Test
