@@ -136,12 +136,40 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         eventType,
         event.getEntityId());
 
+    // WFDBG: temporary debug logging for the GlossaryInheritedReviewerApproval flake
+    final boolean wfdbg =
+        Entity.GLOSSARY_TERM.equals(entityType) || Entity.GLOSSARY.equals(entityType);
+    if (wfdbg) {
+      LOG.info(
+          "WFDBG consumer received id={} ts={} type={} entity={} {} fqn={} user={} impersonatedBy={}",
+          event.getId(),
+          event.getTimestamp(),
+          eventType,
+          entityType,
+          event.getEntityId(),
+          event.getEntityFullyQualifiedName(),
+          event.getUserName(),
+          event.getImpersonatedBy());
+    }
+
     if (!validEventTypes.contains(event.getEventType())) {
+      if (wfdbg) {
+        LOG.info(
+            "WFDBG consumer skip: event type {} not handled, entity {}",
+            eventType,
+            event.getEntityId());
+      }
       return;
     }
 
     if (isBotChange(event.getUserName(), event.getImpersonatedBy())
         && !isAutomationProposal(event)) {
+      if (wfdbg) {
+        LOG.info(
+            "WFDBG consumer skip: bot change by {} entity {}",
+            event.getUserName(),
+            event.getEntityId());
+      }
       LOG.debug(
           "Skipping bot change by {} for entity {} of type: {}",
           event.getUserName(),
@@ -153,6 +181,9 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     Function<ChangeEvent, Map<String, Object>> handler = handlerRegistry.get(event.getEntityType());
 
     if (handler == null) {
+      if (wfdbg) {
+        LOG.info("WFDBG consumer skip: no handler for {}", entityType);
+      }
       LOG.debug("No handler found in registry for entity type {}", event.getEntityType());
       return;
     }
@@ -166,14 +197,26 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       if (variables != null && !variables.isEmpty()) {
         LOG.info("WorkflowEventConsumer - Triggering with signal: {}", signal);
         WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
+        if (wfdbg) {
+          LOG.info("WFDBG consumer triggered signal={} entity={}", signal, event.getEntityId());
+        }
+      } else if (wfdbg) {
+        LOG.info(
+            "WFDBG consumer skip: handler returned no variables, entity {}", event.getEntityId());
       }
     } catch (EntityNotFoundException e) {
+      if (wfdbg) {
+        LOG.info("WFDBG consumer skip: entity {} not found", event.getEntityId(), e);
+      }
       LOG.debug(
           "Skipping workflow event for {} {} - entity {} was deleted before processing",
           eventType,
           entityType,
           event.getEntityId());
     } catch (Exception exc) {
+      if (wfdbg) {
+        LOG.info("WFDBG consumer FAILED signal={} entity={}", signal, event.getEntityId(), exc);
+      }
       LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(

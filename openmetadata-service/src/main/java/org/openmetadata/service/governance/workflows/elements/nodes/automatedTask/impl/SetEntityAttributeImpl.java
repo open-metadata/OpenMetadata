@@ -39,6 +39,11 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     try {
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       FieldUpdate update = fieldUpdate(execution, varHandler, inputNamespaces);
+      LOG.info(
+          "WFDBG setEntityAttribute procInstance={} activity={} update={}",
+          execution.getProcessInstanceId(),
+          execution.getCurrentActivityId(),
+          update);
       BatchEntities.applyAction(
           new BatchEntities.NodeExecution(
               batchExecutionExpr, execution, varHandler, inputNamespaces),

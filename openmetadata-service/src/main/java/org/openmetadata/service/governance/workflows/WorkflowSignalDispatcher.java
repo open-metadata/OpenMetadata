@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
@@ -16,6 +17,7 @@ import org.flowable.eventsubscription.api.EventSubscription;
 import org.openmetadata.service.jdbi3.DeadlockRetry;
 
 /** Delivers each signal subscription in its own retryable Flowable transaction. */
+@Slf4j
 final class WorkflowSignalDispatcher {
   private static final List<String> TRANSIENT_ERRORS =
       List.of(
@@ -50,6 +52,19 @@ final class WorkflowSignalDispatcher {
                     .eventType("signal")
                     .eventName(signal)
                     .list());
+    LOG.info(
+        "WFDBG dispatch signal={} subscriptions={} relatedEntity={}",
+        signal,
+        subscriptions.stream()
+            .map(
+                s ->
+                    s.getProcessDefinitionId()
+                        + "/exec="
+                        + s.getExecutionId()
+                        + "/act="
+                        + s.getActivityId())
+            .toList(),
+        variables.get("global_relatedEntity"));
     final RuntimeException failure = deliverToEach(subscriptions, signal, variables);
     if (failure != null) {
       throw failure;
@@ -67,6 +82,11 @@ final class WorkflowSignalDispatcher {
         // Earlier subscribers have already committed; retry only the subscriber that failed.
         RETRY.executeRunnable(() -> deliver(subscription, signal, variables));
       } catch (RuntimeException deliveryFailure) {
+        LOG.info(
+            "WFDBG dispatch delivery FAILED signal={} procDef={}",
+            signal,
+            subscription.getProcessDefinitionId(),
+            deliveryFailure);
         // Each subscriber is an independent workflow, so one failing must not withhold the
         // signal from the others.
         if (failure == null) {
@@ -96,6 +116,11 @@ final class WorkflowSignalDispatcher {
             .active()
             .singleResult();
     if (definition == null) {
+      LOG.info(
+          "WFDBG dispatch DROPPED signal={}: process definition {} is not active, relatedEntity={}",
+          signal,
+          subscription.getProcessDefinitionId(),
+          variables.get("global_relatedEntity"));
       return;
     }
     if (subscription.getExecutionId() == null) {
@@ -109,12 +134,19 @@ final class WorkflowSignalDispatcher {
       final EventSubscription subscription,
       final ProcessDefinition definition,
       final Map<String, Object> variables) {
-    runtime
-        .createProcessInstanceBuilder()
-        .processDefinitionId(definition.getId())
-        .startEventId(subscription.getActivityId())
-        .variables(new LinkedHashMap<>(variables))
-        .start();
+    var instance =
+        runtime
+            .createProcessInstanceBuilder()
+            .processDefinitionId(definition.getId())
+            .startEventId(subscription.getActivityId())
+            .variables(new LinkedHashMap<>(variables))
+            .start();
+    LOG.info(
+        "WFDBG dispatch started instance={} ended={} procDef={} relatedEntity={}",
+        instance.getId(),
+        instance.isEnded(),
+        definition.getKey(),
+        variables.get("global_relatedEntity"));
   }
 
   private void resume(
@@ -125,6 +157,12 @@ final class WorkflowSignalDispatcher {
         runtime.createExecutionQuery().executionId(subscription.getExecutionId()).singleResult();
     if (execution != null && !execution.isSuspended()) {
       runtime.signalEventReceived(signal, execution.getId(), new LinkedHashMap<>(variables));
+    } else {
+      LOG.info(
+          "WFDBG dispatch DROPPED signal={}: execution {} missing or suspended, relatedEntity={}",
+          signal,
+          subscription.getExecutionId(),
+          variables.get("global_relatedEntity"));
     }
   }
 }

@@ -1043,6 +1043,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         isProvidedByAutomation(entity)
             || !nullOrEmpty(inheritedReviewers(entity))
             || playbookOwnsStage(entity);
+    LOG.info(
+        "WFDBG initialStatus term={} awaitsReview={} inheritedReviewers={}",
+        entity.getFullyQualifiedName(),
+        awaitsReview,
+        inheritedReviewers(entity));
     return awaitsReview ? EntityStatus.DRAFT : EntityStatus.APPROVED;
   }
 

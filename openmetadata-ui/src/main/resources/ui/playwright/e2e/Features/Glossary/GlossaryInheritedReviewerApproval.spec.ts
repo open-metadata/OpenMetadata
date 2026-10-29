@@ -159,161 +159,170 @@ const waitForInheritedReviewer = async (
     .toBe(true);
 };
 
-test.describe(
-  'Glossary Approval - inherited reviewers',
-  { tag: ['@Features', '@Governance'] },
-  () => {
-    test('term inherits reviewer added to the glossary after an earlier term ran the workflow', async ({
-      browser,
-    }) => {
-      test.slow();
+// DEBUG (do not merge): run the pair 3 times with no retries, so a flake fails the shard job
+// and CI uploads the server log with the WFDBG lines.
+for (const run of [1, 2, 3]) {
+  test.describe(
+    `Glossary Approval - inherited reviewers (run ${run})`,
+    { tag: ['@Features', '@Governance'] },
+    () => {
+      test.describe.configure({ retries: 0 });
 
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      const reviewer = new UserClass();
-      const glossary = new Glossary();
+      test('term inherits reviewer added to the glossary after an earlier term ran the workflow', async ({
+        browser,
+      }) => {
+        test.slow();
 
-      try {
-        await reviewer.create(apiContext);
-        await glossary.create(apiContext);
-        const glossaryFqn = glossary.responseData.fullyQualifiedName;
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const reviewer = new UserClass();
+        const glossary = new Glossary();
 
-        await test.step('A term created before any reviewer exists is auto-approved', async () => {
-          const seed = await createTermWithoutReviewers(
-            apiContext,
-            glossaryFqn,
-            `seed_before_reviewer_${uuid()}`
-          );
+        try {
+          await reviewer.create(apiContext);
+          await glossary.create(apiContext);
+          const glossaryFqn = glossary.responseData.fullyQualifiedName;
 
-          const status = await waitForSettledStatus(apiContext, seed.id);
-
-          expect(status).toBe('Approved');
-        });
-
-        await test.step('Add a reviewer to the glossary', async () => {
-          await addReviewerToGlossary(apiContext, glossary, reviewer);
-        });
-
-        await test.step('Every term created afterwards inherits the reviewer and gets an approval task', async () => {
-          for (let index = 0; index < REVIEWER_ADDED_PROBE_COUNT; index++) {
-            const term = await createTermWithoutReviewers(
+          await test.step('A term created before any reviewer exists is auto-approved', async () => {
+            const seed = await createTermWithoutReviewers(
               apiContext,
               glossaryFqn,
-              `after_reviewer_${index}_${uuid()}`
+              `seed_before_reviewer_${uuid()}`
             );
 
-            const status = await waitForSettledStatus(apiContext, term.id);
+            const status = await waitForSettledStatus(apiContext, seed.id);
 
-            expect(
-              status,
-              `Term ${term.name} inherits a reviewer from the glossary, so the approval workflow ` +
-                `must move it to "In Review". "Draft" means the reviewers gate saw none — the ` +
-                `inherited-reviewer bug.`
-            ).toBe('In Review');
+            expect(status).toBe('Approved');
+          });
+
+          await test.step('Add a reviewer to the glossary', async () => {
+            await addReviewerToGlossary(apiContext, glossary, reviewer);
+          });
+
+          await test.step('Every term created afterwards inherits the reviewer and gets an approval task', async () => {
+            for (let index = 0; index < REVIEWER_ADDED_PROBE_COUNT; index++) {
+              const term = await createTermWithoutReviewers(
+                apiContext,
+                glossaryFqn,
+                `after_reviewer_${index}_${uuid()}`
+              );
+
+              const status = await waitForSettledStatus(apiContext, term.id);
+
+              expect(
+                status,
+                `Term ${term.name} inherits a reviewer from the glossary, so the approval workflow ` +
+                  `must move it to "In Review". "Draft" means the reviewers gate saw none — the ` +
+                  `inherited-reviewer bug.`
+              ).toBe('In Review');
+              await waitForInheritedReviewer(
+                apiContext,
+                term.id,
+                reviewer.responseData.id
+              );
+
+              await expect
+                .poll(
+                  () =>
+                    getOpenApprovalTaskCount(
+                      apiContext,
+                      term.fullyQualifiedName
+                    ),
+                  {
+                    message:
+                      `Term ${term.name} must have an open approval task for the inherited ` +
+                      `reviewer`,
+                    timeout: STATUS_TIMEOUT,
+                    intervals: [3_000, 5_000, 10_000],
+                  }
+                )
+                .toBeGreaterThan(0);
+            }
+          });
+        } finally {
+          await glossary.delete(apiContext);
+          await reviewer.delete(apiContext);
+          await afterAction();
+        }
+      });
+
+      test('inherited reviewer is shown on the term page and it is not left in Draft', async ({
+        browser,
+        page,
+      }) => {
+        test.slow();
+
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const reviewer = new UserClass();
+        const glossary = new Glossary();
+        let term: GlossaryTerm | undefined;
+
+        try {
+          await reviewer.create(apiContext);
+          await glossary.create(apiContext);
+
+          await test.step('A term created before any reviewer exists is auto-approved', async () => {
+            const seed = await createTermWithoutReviewers(
+              apiContext,
+              glossary.responseData.fullyQualifiedName,
+              `seed_before_reviewer_${uuid()}`
+            );
+
+            expect(await waitForSettledStatus(apiContext, seed.id)).toBe(
+              'Approved'
+            );
+          });
+
+          await test.step('Add a reviewer to the glossary', async () => {
+            await addReviewerToGlossary(apiContext, glossary, reviewer);
+          });
+
+          // Built from a Glossary constructed without reviewers, so the term is created with an empty
+          // reviewers list and must inherit the one added to the glossary server-side.
+          term = new GlossaryTerm(glossary);
+          await term.create(apiContext);
+          const termId = term.responseData.id;
+
+          await test.step('Term exposes the inherited reviewer and reaches In Review', async () => {
+            expect(await waitForSettledStatus(apiContext, termId)).toBe(
+              'In Review'
+            );
             await waitForInheritedReviewer(
               apiContext,
-              term.id,
+              termId,
               reviewer.responseData.id
             );
+          });
 
-            await expect
-              .poll(
-                () =>
-                  getOpenApprovalTaskCount(apiContext, term.fullyQualifiedName),
-                {
-                  message:
-                    `Term ${term.name} must have an open approval task for the inherited ` +
-                    `reviewer`,
-                  timeout: STATUS_TIMEOUT,
-                  intervals: [3_000, 5_000, 10_000],
-                }
-              )
-              .toBeGreaterThan(0);
-          }
-        });
-      } finally {
-        await glossary.delete(apiContext);
-        await reviewer.delete(apiContext);
-        await afterAction();
-      }
-    });
-
-    test('inherited reviewer is shown on the term page and it is not left in Draft', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      const reviewer = new UserClass();
-      const glossary = new Glossary();
-      let term: GlossaryTerm | undefined;
-
-      try {
-        await reviewer.create(apiContext);
-        await glossary.create(apiContext);
-
-        await test.step('A term created before any reviewer exists is auto-approved', async () => {
-          const seed = await createTermWithoutReviewers(
-            apiContext,
-            glossary.responseData.fullyQualifiedName,
-            `seed_before_reviewer_${uuid()}`
+          const termRes = page.waitForResponse('/api/v1/glossaryTerms/name/*');
+          await page.goto(
+            `/glossary/${encodeURIComponent(
+              term.responseData.fullyQualifiedName
+            )}`,
+            { waitUntil: 'domcontentloaded' }
           );
 
-          expect(await waitForSettledStatus(apiContext, seed.id)).toBe(
-            'Approved'
-          );
-        });
+          await termRes;
+          await waitForAllLoadersToDisappear(page);
 
-        await test.step('Add a reviewer to the glossary', async () => {
-          await addReviewerToGlossary(apiContext, glossary, reviewer);
-        });
+          await test.step('Inherited reviewer is displayed', async () => {
+            await expect(
+              page.getByTestId('glossary-reviewer').getByTestId('owner-link')
+            ).toContainText(
+              reviewer.responseData.displayName ?? reviewer.responseData.name
+            );
+          });
 
-        // Built from a Glossary constructed without reviewers, so the term is created with an empty
-        // reviewers list and must inherit the one added to the glossary server-side.
-        term = new GlossaryTerm(glossary);
-        await term.create(apiContext);
-        const termId = term.responseData.id;
-
-        await test.step('Term exposes the inherited reviewer and reaches In Review', async () => {
-          expect(await waitForSettledStatus(apiContext, termId)).toBe(
-            'In Review'
-          );
-          await waitForInheritedReviewer(
-            apiContext,
-            termId,
-            reviewer.responseData.id
-          );
-        });
-
-        const termRes = page.waitForResponse('/api/v1/glossaryTerms/name/*');
-        await page.goto(
-          `/glossary/${encodeURIComponent(
-            term.responseData.fullyQualifiedName
-          )}`,
-          { waitUntil: 'domcontentloaded' }
-        );
-
-        await termRes;
-        await waitForAllLoadersToDisappear(page);
-
-        await test.step('Inherited reviewer is displayed', async () => {
-          await expect(
-            page.getByTestId('glossary-reviewer').getByTestId('owner-link')
-          ).toContainText(
-            reviewer.responseData.displayName ?? reviewer.responseData.name
-          );
-        });
-
-        await test.step('Term reached In Review, not Draft', async () => {
-          await expect(page.locator('.status-badge-label')).toContainText(
-            'In Review'
-          );
-        });
-      } finally {
-        await glossary.delete(apiContext);
-        await reviewer.delete(apiContext);
-        await afterAction();
-      }
-    });
-  }
-);
+          await test.step('Term reached In Review, not Draft', async () => {
+            await expect(page.locator('.status-badge-label')).toContainText(
+              'In Review'
+            );
+          });
+        } finally {
+          await glossary.delete(apiContext);
+          await reviewer.delete(apiContext);
+          await afterAction();
+        }
+      });
+    }
+  );
+}
