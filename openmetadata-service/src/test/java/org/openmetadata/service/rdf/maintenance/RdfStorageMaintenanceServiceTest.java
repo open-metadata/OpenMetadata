@@ -41,9 +41,9 @@ import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 
 /**
- * The cluster compacts once per interval, never while a reindex holds the RDF lock, and keeps
- * retrying until a compaction succeeds, unless Fuseki restarted during it. Two service instances
- * sharing one lock table stand in for two servers.
+ * The cluster compacts once per interval, never while a reindex holds the RDF lock, and retries
+ * only a compaction Fuseki never started. Two service instances sharing one lock table stand in
+ * for two servers.
  */
 class RdfStorageMaintenanceServiceTest {
   private static final CompactionResult SUCCEEDED =
@@ -139,12 +139,12 @@ class RdfStorageMaintenanceServiceTest {
   }
 
   @Test
-  void aCompactionThatDidNotSucceedIsRetriedOnTheNextCheck() {
-    when(repository.compact(any())).thenReturn(FAILED, SUCCEEDED);
+  void aCompactionFusekiRanAndFailedWaitsForTheNextInterval() {
+    when(repository.compact(any())).thenReturn(FAILED);
 
     assertEquals(FAILED, serverA.compactIfDue());
-    assertEquals(SUCCEEDED, serverB.compactIfDue());
-    assertNull(serverA.compactIfDue());
+    assertNull(serverB.compactIfDue(), "a copy the volume could not hold fails again");
+    verify(repository, times(1)).compact(any());
   }
 
   @Test
@@ -152,10 +152,14 @@ class RdfStorageMaintenanceServiceTest {
     final CompactionResult unreachable =
         new CompactionResult(
             CompactionResult.Outcome.UNKNOWN, null, "Connection refused", Duration.ZERO);
-    when(repository.compact(any())).thenReturn(unreachable, SUCCEEDED);
+    final CompactionResult refused =
+        new CompactionResult(CompactionResult.Outcome.FAILED, null, "HTTP 500", Duration.ZERO);
+    when(repository.compact(any())).thenReturn(unreachable, refused, SUCCEEDED);
 
     assertEquals(unreachable, serverA.compactIfDue());
-    assertEquals(SUCCEEDED, serverB.compactIfDue());
+    assertEquals(refused, serverB.compactIfDue());
+    assertEquals(SUCCEEDED, serverA.compactIfDue());
+    assertNull(serverB.compactIfDue());
   }
 
   @Test
@@ -170,6 +174,18 @@ class RdfStorageMaintenanceServiceTest {
 
     assertEquals(lost, serverA.compactIfDue());
     assertNull(serverB.compactIfDue(), "Fuseki restarted during the copy; retrying restarts it");
+    verify(repository, times(1)).compact(any());
+  }
+
+  @Test
+  void aCompactionStillRunningAtItsBudgetWaitsForTheNextInterval() {
+    final CompactionResult running =
+        new CompactionResult(
+            CompactionResult.Outcome.TIMED_OUT, "4", "still running", Duration.ofHours(4));
+    when(repository.compact(any())).thenReturn(running);
+
+    assertEquals(running, serverA.compactIfDue());
+    assertNull(serverB.compactIfDue(), "a second copy would only queue behind the first");
     verify(repository, times(1)).compact(any());
   }
 
