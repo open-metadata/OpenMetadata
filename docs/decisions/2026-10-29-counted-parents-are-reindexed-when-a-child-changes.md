@@ -28,7 +28,8 @@ Metrics had their own copy of the refresh; glossary terms and folders had none.
   older version as the original, so the move is also checked against the request's own original.
 - The CSV batch update (`updateManyEntitiesForImport`) never runs `postUpdate`. It reads each
   original's counting parents before its flush rewrites the edges and compares them afterwards. A
-  repository whose parent lives only in relationships loads it onto the originals first.
+  repository whose parent lives only in relationships must load it onto the originals first, or
+  the old parent is missed (metrics: #36495).
 - The parent is read again before the refresh, because a reference kept in stored JSON can call a
   deleted parent live. A deleted or missing parent is skipped. So is every child of a hard-delete
   cascade, whose parent goes with it; the soft-delete cascade never calls `postDelete` per child.

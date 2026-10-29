@@ -211,6 +211,27 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
   }
 
   @Test
+  void test_movingAFileRefreshesBothFoldersChildrenCount(TestNamespace ns) {
+    Folder source = getFolderService().create(new CreateFolder().withName(ns.prefix("move_from")));
+    Folder target = getFolderService().create(new CreateFolder().withName(ns.prefix("move_to")));
+    ContextFile file =
+        SdkClients.adminClient()
+            .contextFiles()
+            .create(
+                new CreateContextFile()
+                    .withName(ns.prefix("moved_file"))
+                    .withFolder(source.getFullyQualifiedName()));
+    awaitDoc("folder_search_index", source.getId(), doc -> doc.path("childrenCount").asInt() == 1);
+
+    SdkClients.adminClient()
+        .contextFiles()
+        .move(file.getId().toString(), target.getEntityReference());
+
+    awaitDoc("folder_search_index", source.getId(), doc -> doc.path("childrenCount").asInt() == 0);
+    awaitDoc("folder_search_index", target.getId(), doc -> doc.path("childrenCount").asInt() == 1);
+  }
+
+  @Test
   void test_createFolder_minimalRequest(TestNamespace ns) {
     String folderName = ns.prefix("folder_minimal");
     Folder folder = getFolderService().create(new CreateFolder().withName(folderName));

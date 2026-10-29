@@ -2847,7 +2847,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       throw new IllegalStateException(
           String.format("%s has no field fetcher for %s", entityType, unfetchable));
     }
-    fetchAndSetFields((List<T>) entities, getFields(String.join(",", fieldNames)));
+    // Only the asked-for fetchers: fetchAndSetFields would also run fetchers that ignore `fields`.
+    Fields fields = getFields(String.join(",", fieldNames));
+    fieldNames.forEach(field -> fieldFetchers.get(field).accept((List<T>) entities, fields));
   }
 
   public void setFieldsInBulk(Fields fields, List<T> entities) {

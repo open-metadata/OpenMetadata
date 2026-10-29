@@ -40,7 +40,8 @@ The bulk updater path already reloads every reindex field before it writes; the 
 ## Consequences
 - Each write of a declaring type reads its counts once, batched on the bulk paths. A metric,
   metric group or folder count is one query; a team's `userCount` walks the team's sub-tree, so a
-  write to a large team or the organization costs that walk.
+  write to a large team or the organization costs that walk. A glossary term count is one prefix
+  query per term, so a glossary reindex also runs one per term.
 - The parent refresh path, which already reads every reindex field, counts once more.
 - This replaces the per-repository `postUpdate` loading of `childrenCount` and `metricCount` that
   MetricRepository and MetricGroupRepository carried. Metric and metric group PATCH/PUT responses
