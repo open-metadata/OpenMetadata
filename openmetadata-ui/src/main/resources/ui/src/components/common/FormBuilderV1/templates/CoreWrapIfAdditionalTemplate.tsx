@@ -60,10 +60,10 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
           {children}
         </div>
         <ButtonUtility
-          className="tw:shrink-0"
+          className="core-wrap-if-additional-remove-button tw:shrink-0"
           icon={Trash01}
           isDisabled={disabled || readonly}
-          size="sm"
+          size="lg"
           tooltip={t('label.remove')}
           onClick={onDropPropertyClick(label)}
         />

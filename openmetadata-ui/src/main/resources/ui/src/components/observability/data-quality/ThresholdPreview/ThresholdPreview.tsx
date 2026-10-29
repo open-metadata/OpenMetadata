@@ -36,6 +36,12 @@ const ThresholdPreview: FC<ThresholdPreviewProps> = ({
 }) => {
   const { t } = useTranslation();
   const params = useWatch({ control: form.control, name: 'params' });
+  // In dynamic-assertion mode the statistical bounds are learned at run time,
+  // so the sentence must not quote the static ones still held in the form.
+  const useDynamicAssertion = useWatch({
+    control: form.control,
+    name: 'useDynamicAssertion',
+  });
 
   const data = useMemo(
     () =>
@@ -44,8 +50,9 @@ const ThresholdPreview: FC<ThresholdPreviewProps> = ({
         params: (params ?? {}) as Record<string, unknown>,
         target,
         profilerConfig,
+        useDynamicAssertion: Boolean(useDynamicAssertion),
       }),
-    [definition, params, target, profilerConfig]
+    [definition, params, target, profilerConfig, useDynamicAssertion]
   );
 
   if (!data) {
