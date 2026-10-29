@@ -90,8 +90,7 @@ import {
   getLineageDataByFQN,
   updateLineageEdge,
 } from '../../../rest/lineageAPI';
-import { drawEdgesForExport } from '../../../utils/CanvasUtils';
-import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
+import { getLineagePngExportOptions } from '../../../utils/CanvasUtils';
 import {
   createColumnEdges,
   createEdgesAndEdgeMaps,
@@ -106,10 +105,7 @@ import {
   getNewLineageConnectionDetails,
   getUpdatedColumnsFromEdge,
 } from '../../../utils/EntityLineageEdgeUtils';
-import {
-  centerNodePosition,
-  getExportViewportForNodes,
-} from '../../../utils/EntityLineageLayoutUtils';
+import { centerNodePosition } from '../../../utils/EntityLineageLayoutUtils';
 import {
   createNodes,
   getConnectedNodesEdges,
@@ -130,7 +126,6 @@ import { addBaseNodeDepthToNodes } from '../../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { ExportViewport } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import '../../Entity/EntityLineage/entity-lineage.style.less';
 import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -1026,83 +1021,23 @@ export const Lineage = ({
       exportTypes: ExportTypes[] = [ExportTypes.CSV, ExportTypes.PNG],
       onExportCallback?: (_: string) => Promise<CSVExportResponse>
     ) => {
-      if (!entityFqn && !isPlatformLineage) {
+      // The Lineage page exports the lineage map from its own header button
+      // (LineageExportButton), so this serves the asset Lineage tab only.
+      if (!entityFqn) {
         return;
       }
 
-      // On the Lineage page the lineage map draws the graph and publishes it
-      // to the store, and it exports as a PNG only; the asset tab exports its
-      // own graph in the types asked for.
-      const { graph, fileOptions } = isPlatformLineage
-        ? {
-            graph: useLineageStore.getState(),
-            fileOptions: {
-              name: `${t('label.lineage')}_${getCurrentISODate()}`,
-              exportTypes: [ExportTypes.PNG],
-            },
-          }
-        : {
-            graph: { nodes, edges },
-            fileOptions: { name: entityFqn, exportTypes },
-          };
-      const { nodes: exportNodes, edges: exportEdges } = graph;
-      const includePNG = fileOptions.exportTypes.includes(ExportTypes.PNG);
-
       showModal({
-        ...fileOptions,
+        name: entityFqn,
+        exportTypes,
         title: t('label.lineage'),
         documentSelector: LINEAGE_EXPORT_SELECTOR,
-        ...(includePNG && {
-          getViewport: (imageWidth: number, imageHeight: number) =>
-            getExportViewportForNodes(exportNodes, imageWidth, imageHeight),
-          renderEdgesOverlay: (
-            imageWidth: number,
-            imageHeight: number,
-            padding: number,
-            pixelRatio: number,
-            viewport?: ExportViewport
-          ) => {
-            if (!viewport) {
-              return null;
-            }
-            const nodeMap = new Map(exportNodes.map((n) => [n.id, n]));
-            const { columnsInCurrentPages } = useLineageStore.getState();
-
-            return drawEdgesForExport(
-              exportEdges,
-              nodeMap,
-              viewport,
-              imageWidth,
-              imageHeight,
-              padding,
-              pixelRatio,
-              columnsInCurrentPages
-            );
-          },
-          // The canvases leave off-screen nodes out of the DOM. Mount them
-          // for the capture, which clones the DOM, so the image holds every
-          // node and not only the ones in view.
-          beforeCapture: async () => {
-            useLineageStore.getState().setRenderAllNodes(true);
-            await new Promise((resolve) =>
-              requestAnimationFrame(() => requestAnimationFrame(resolve))
-            );
-          },
-          afterCapture: () =>
-            useLineageStore.getState().setRenderAllNodes(false),
-        }),
+        ...(exportTypes.includes(ExportTypes.PNG) &&
+          getLineagePngExportOptions(nodes, edges)),
         onExport: onExportCallback ?? exportLineageData,
       });
     },
-    [
-      entityFqn,
-      isPlatformLineage,
-      nodes,
-      showModal,
-      t,
-      exportLineageData,
-      edges,
-    ]
+    [entityFqn, nodes, edges, showModal, t, exportLineageData]
   );
 
   const loadChildNodesHandler = useCallback(

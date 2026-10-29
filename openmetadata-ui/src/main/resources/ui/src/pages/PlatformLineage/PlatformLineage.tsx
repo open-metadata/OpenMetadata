@@ -210,7 +210,7 @@ const PlatformLineage = () => {
   const actionButtons = useMemo(
     () => (
       <div className="d-flex gap-2">
-        <LineageExportButton />
+        <LineageExportButton size={buttonSize} />
 
         <ButtonUtility
           data-testid="lineage-config"
