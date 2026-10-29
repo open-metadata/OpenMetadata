@@ -27,8 +27,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,9 +41,11 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig;
 import org.openmetadata.service.apps.bundles.rdf.RdfReindexRunLock;
 import org.openmetadata.service.jdbi3.InMemoryRdfReindexLockDAO;
+import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.inference.InferenceRunLock;
 import org.openmetadata.service.rdf.storage.CompactionResult;
+import org.slf4j.LoggerFactory;
 
 /**
  * The cluster compacts once per interval, never while a reindex holds the RDF lock, and retries
@@ -53,6 +60,7 @@ class RdfStorageMaintenanceServiceTest {
 
   private final InMemoryRdfReindexLockDAO locks = new InMemoryRdfReindexLockDAO();
   private final RdfRepository repository = mock(RdfRepository.class);
+  private final RdfLiveWriteStore compactions = mock(RdfLiveWriteStore.class);
   private final RdfStorageMaintenanceConfig config =
       new RdfStorageMaintenanceConfig().withCompactionIntervalHours(24).withMaxDurationMinutes(30);
   private RdfStorageMaintenanceService serverA;
@@ -64,6 +72,7 @@ class RdfStorageMaintenanceServiceTest {
         .when(repository)
         .withServingWritesPaused(anyString(), any());
     when(repository.compact(any())).thenReturn(SUCCEEDED);
+    when(compactions.lastCompaction()).thenReturn(Instant.now());
     serverA = service("server-a");
     serverB = service("server-b");
   }
@@ -197,6 +206,71 @@ class RdfStorageMaintenanceServiceTest {
     assertDoesNotThrow(RdfReindexRunLock.forRun(locks, "reindex-run", "server-c")::acquire);
   }
 
+  @Test
+  void aSucceededCompactionIsRecordedForTheWholeCluster() {
+    serverA.compactIfDue();
+
+    verify(compactions).recordCompaction();
+  }
+
+  @Test
+  void aCompactionThatDidNotSucceedIsNotRecorded() {
+    when(repository.compact(any())).thenReturn(FAILED);
+
+    serverA.compactIfDue();
+
+    verify(compactions, never()).recordCompaction();
+  }
+
+  @Test
+  void aStoreWithNothingToCompactCountsAsUpToDate() {
+    when(repository.compact(any())).thenReturn(CompactionResult.unsupported());
+
+    serverA.compactIfDue();
+
+    verify(compactions).recordCompaction();
+  }
+
+  @Test
+  void everyCheckLogsAnErrorOnceNoCompactionSucceededForTwoIntervals() {
+    when(compactions.lastCompaction()).thenReturn(Instant.now().minus(Duration.ofHours(49)));
+    final Logger logger = (Logger) LoggerFactory.getLogger(RdfStorageMaintenanceService.class);
+    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      serverA.compactIfDue();
+      serverB.compactIfDue();
+
+      final long overdueErrors =
+          appender.list.stream()
+              .filter(event -> event.getLevel() == Level.ERROR)
+              .filter(event -> event.getFormattedMessage().contains("has not compacted"))
+              .count();
+      assertEquals(2, overdueErrors, "the server that skipped reports it too");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void aRecentCompactionLogsNoOverdueError() {
+    when(compactions.lastCompaction()).thenReturn(Instant.now().minus(Duration.ofHours(47)));
+    final Logger logger = (Logger) LoggerFactory.getLogger(RdfStorageMaintenanceService.class);
+    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      serverB.compactIfDue();
+
+      assertTrue(appender.list.stream().noneMatch(event -> event.getLevel() == Level.ERROR));
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
   private InferenceRunLock inferenceLock() {
     return InferenceRunLock.forCluster(
         locks, InferenceRunLock.MATERIALIZATION_LOCK_KEY, "server-c");
@@ -204,6 +278,6 @@ class RdfStorageMaintenanceServiceTest {
 
   private RdfStorageMaintenanceService service(final String serverId) {
     return new RdfStorageMaintenanceService(
-        config, locks, () -> repository, Clock.systemUTC(), serverId);
+        config, locks, compactions, () -> repository, Clock.systemUTC(), serverId);
   }
 }

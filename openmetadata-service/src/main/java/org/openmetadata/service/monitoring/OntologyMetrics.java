@@ -18,6 +18,7 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -87,6 +88,14 @@ public final class OntologyMetrics {
     final OntologyMetrics metrics = instance;
     if (metrics != null) {
       metrics.compactions.record(successful, elapsed);
+    }
+  }
+
+  /** The cluster's last successful maintenance compaction, which another server may have run. */
+  public static void recordLastCompaction(final Instant at) {
+    final OntologyMetrics metrics = instance;
+    if (metrics != null) {
+      metrics.compactions.lastSuccess().accumulateAndGet(at.toEpochMilli(), Math::max);
     }
   }
 

@@ -14,6 +14,7 @@ package org.openmetadata.service.rdf.maintenance;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,7 +26,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig;
 import org.openmetadata.service.apps.bundles.rdf.RdfReindexRunLock;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
+import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
+import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.inference.InferenceRunLock;
 import org.openmetadata.service.rdf.storage.CompactionResult;
@@ -44,7 +47,11 @@ import org.openmetadata.service.rdf.storage.CompactionResult;
  * The compaction holds the RDF reindex and inference locks, so it never overlaps a reindex or an
  * inference run, and pauses writes to the serving dataset, because Fuseki blocks them for the whole
  * copy. A compaction Fuseki could not start releases its lease, so the next check tries again; one
- * it started keeps the lease until the next interval, whatever its outcome. See
+ * it started keeps the lease until the next interval, whatever its outcome.
+ *
+ * <p>Whatever stops compactions (a failure, a lock held, a store that cannot be reached), once none
+ * has succeeded for {@link #overdueAfter two intervals} every check logs an error and the
+ * projection reads as degraded until one does. See
  * ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule.
  */
 @Slf4j
@@ -56,6 +63,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
 
   private final RdfStorageMaintenanceConfig config;
   private final RdfReindexLockDAO locks;
+  private final RdfLiveWriteStore compactions;
   private final Supplier<RdfRepository> repository;
   private final Clock clock;
   private final String serverId;
@@ -68,11 +76,13 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
   public RdfStorageMaintenanceService(
       final RdfStorageMaintenanceConfig config,
       final RdfReindexLockDAO locks,
+      final RdfLiveWriteStore compactions,
       final Supplier<RdfRepository> repository,
       final Clock clock,
       final String serverId) {
     this.config = config;
     this.locks = locks;
+    this.compactions = compactions;
     this.repository = repository;
     this.clock = clock;
     this.serverId = serverId;
@@ -113,12 +123,33 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
     }
   }
 
+  /** How long the serving dataset may go without a compaction before that is an error. */
+  public static Duration overdueAfter(final RdfStorageMaintenanceConfig config) {
+    return Duration.ofHours(config.getCompactionIntervalHours()).multipliedBy(2);
+  }
+
   /** Compacts the serving dataset when its interval has passed. Returns the outcome, if it ran. */
   CompactionResult compactIfDue() {
     // Lock rows hold a 36-character job id: a bare UUID.
     final String jobId = UUID.randomUUID().toString();
     final boolean due = reserve(NEXT_COMPACTION_KEY, jobId, compactionInterval());
-    return due ? compactHoldingSlot(NEXT_COMPACTION_KEY, jobId) : null;
+    final CompactionResult result = due ? compactHoldingSlot(NEXT_COMPACTION_KEY, jobId) : null;
+    reportOverdue();
+    return result;
+  }
+
+  private void reportOverdue() {
+    final Instant last = compactions.lastCompaction();
+    final Duration since = Duration.between(last, clock.instant());
+    if (since.compareTo(overdueAfter(config)) > 0) {
+      LOG.error(
+          "RDF storage maintenance has not compacted the serving dataset since {} ({} h), more"
+              + " than two intervals; the RDF projection reads as degraded until it does. Earlier"
+              + " log lines say why compactions were skipped or failed.",
+          last,
+          since.toHours());
+    }
+    OntologyMetrics.recordLastCompaction(last);
   }
 
   private boolean reserve(final String slot, final String jobId, final Duration spacing) {
@@ -130,6 +161,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
     CompactionResult result = null;
     try {
       result = compactExclusively(jobId);
+      recordIfUpToDate(result);
     } catch (RdfReindexRunLock.HeldByAnotherRun reindexRunning) {
       LOG.info("Skipping RDF compaction while a reindex runs; it compacts itself");
     } finally {
@@ -138,6 +170,16 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
       }
     }
     return result;
+  }
+
+  /** A store with nothing to compact is as up to date as one just compacted. */
+  private void recordIfUpToDate(final CompactionResult result) {
+    final boolean upToDate =
+        result != null
+            && (result.succeeded() || result.outcome() == CompactionResult.Outcome.UNSUPPORTED);
+    if (upToDate) {
+      compactions.recordCompaction();
+    }
   }
 
   /**
