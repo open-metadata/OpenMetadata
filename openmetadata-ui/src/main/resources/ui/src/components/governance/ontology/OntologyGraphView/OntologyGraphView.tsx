@@ -146,6 +146,28 @@ const registerInverse = async ({
 }: RelationshipTypePlan) =>
   reusedInverse ?? (inverse ? createRelationshipType(inverse) : undefined);
 
+/**
+ * Links the unlinked inverse with this id back to the type that names it, whatever a retry is
+ * called, so a relabelled retry never gives it a second primary. While nothing names it, it is
+ * returned for the draft to reuse.
+ */
+const finishUnlinkedPair = async (
+  registry: readonly RelationshipType[],
+  id: string | undefined
+): Promise<RelationshipType | undefined> => {
+  const unlinked = registry.find((type) => type.id === id && !type.inverse);
+  if (!unlinked) {
+    return undefined;
+  }
+  const primary = registry.find((type) => type.inverse?.id === unlinked.id);
+  if (!primary) {
+    return unlinked;
+  }
+  await patchRelationshipType(unlinked.id, buildInverseBackLink(primary));
+
+  return undefined;
+};
+
 interface RelationshipTypeDialogProps {
   readonly label: string;
   /** The inverse's back link is a patch on the inverse type, which the registry authorizes as EditAll. */
@@ -486,24 +508,16 @@ const OntologyGraphView = ({
       // The cached list is up to 30 s old. A type registered since then is reused with its inverse,
       // and new names are chosen apart from everything the registry holds now.
       const registry = await loadRegistry();
-      const unlinked = registry.find(
-        (type) => type.id === unlinkedInverseId.current && !type.inverse
+      const unlinked = await finishUnlinkedPair(
+        registry,
+        unlinkedInverseId.current
       );
+      unlinkedInverseId.current = unlinked?.id;
       const registered = findNativeRelationTypeByLabel(
         catalogOf(registry),
         draft.label
       );
       if (registered) {
-        const primary = registry.find(
-          (type) => type.rdfPredicate === registered.id
-        );
-        if (unlinked && primary?.inverse?.id === unlinked.id) {
-          await patchRelationshipType(
-            unlinked.id,
-            buildInverseBackLink(primary)
-          );
-          unlinkedInverseId.current = undefined;
-        }
         void refetchRegistry();
 
         return registered;
