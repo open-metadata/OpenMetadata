@@ -38,89 +38,27 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 public final class OntologyConceptSqlGenerator {
   public static final int ROW_LIMIT = 50;
+  private static final String NO_VISIBLE_TABLE =
+      "has no bound table you can view among its first "
+          + OntologyConceptQueryService.TABLE_BINDINGS_READ
+          + " table bindings";
 
   private static final Pattern PLAIN_IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
-  private static final Set<String> RESERVED =
-      Set.of(
-          "all",
-          "and",
-          "any",
-          "as",
-          "asc",
-          "between",
-          "by",
-          "case",
-          "check",
-          "column",
-          "create",
-          "cross",
-          "current",
-          "date",
-          "default",
-          "delete",
-          "desc",
-          "distinct",
-          "drop",
-          "else",
-          "end",
-          "exists",
-          "false",
-          "for",
-          "foreign",
-          "from",
-          "full",
-          "grant",
-          "group",
-          "having",
-          "in",
-          "inner",
-          "insert",
-          "interval",
-          "into",
-          "is",
-          "join",
-          "key",
-          "left",
-          "like",
-          "limit",
-          "natural",
-          "not",
-          "null",
-          "of",
-          "offset",
-          "on",
-          "or",
-          "order",
-          "outer",
-          "partition",
-          "primary",
-          "range",
-          "references",
-          "right",
-          "row",
-          "rows",
-          "select",
-          "set",
-          "table",
-          "then",
-          "time",
-          "timestamp",
-          "to",
-          "true",
-          "union",
-          "unique",
-          "update",
-          "user",
-          "using",
-          "values",
-          "when",
-          "where",
-          "window",
-          "with");
+
+  /**
+   * Each service type whose engine accepts the SQL generated for its dialect. Any other type is a
+   * named 400 (ADR:2026-10-21-ontology-live-data-execution-is-a-collate-extension).
+   */
   private static final Map<String, OntologyConceptQueryDialect> DIALECTS =
       Map.ofEntries(
-          Map.entry("BigQuery", OntologyConceptQueryDialect.BIGQUERY),
+          Map.entry("Postgres", OntologyConceptQueryDialect.ANSI),
+          Map.entry("Timescale", OntologyConceptQueryDialect.ANSI),
+          Map.entry("Redshift", OntologyConceptQueryDialect.ANSI),
+          Map.entry("Trino", OntologyConceptQueryDialect.ANSI),
+          Map.entry("Presto", OntologyConceptQueryDialect.ANSI),
+          Map.entry("Athena", OntologyConceptQueryDialect.ANSI),
           Map.entry("Snowflake", OntologyConceptQueryDialect.SNOWFLAKE),
+          Map.entry("BigQuery", OntologyConceptQueryDialect.BIGQUERY),
           Map.entry("Mysql", OntologyConceptQueryDialect.MYSQL),
           Map.entry("MariaDB", OntologyConceptQueryDialect.MYSQL),
           Map.entry("SingleStore", OntologyConceptQueryDialect.MYSQL),
@@ -131,6 +69,7 @@ public final class OntologyConceptSqlGenerator {
           Map.entry("UnityCatalog", OntologyConceptQueryDialect.SPARK),
           Map.entry("Hive", OntologyConceptQueryDialect.SPARK),
           Map.entry("Impala", OntologyConceptQueryDialect.SPARK),
+          Map.entry("Iomete", OntologyConceptQueryDialect.SPARK),
           Map.entry("Mssql", OntologyConceptQueryDialect.TSQL),
           Map.entry("AzureSQL", OntologyConceptQueryDialect.TSQL),
           Map.entry("Synapse", OntologyConceptQueryDialect.TSQL),
@@ -168,32 +107,45 @@ public final class OntologyConceptSqlGenerator {
 
   private record Join(BoundTable table, List<ColumnPair> on, String label) {}
 
+  /** One hop being resolved: its 1-based position, the hop, and the table it starts from. */
+  private record Step(int position, Hop hop, BoundTable previous) {
+    BadRequestException failure(final String reason, final Object... args) {
+      return new BadRequestException(
+          String.format("Hop %d (%s)", position, hop.label()) + String.format(reason, args));
+    }
+  }
+
   private OntologyConceptSqlGenerator() {}
 
   public static Generated generate(final BoundConcept root, final List<Hop> hops) {
     final BoundTable first = rootTable(root);
+    final Syntax syntax = new Syntax(dialectOf(first.serviceType()));
     final List<Join> joins = joins(first, hops);
     final BoundTable last = joins.isEmpty() ? first : joins.getLast().table();
-    final OntologyConceptQueryDialect dialect = dialectOf(first.serviceType());
     final List<String> tables = new ArrayList<>(List.of(first.fullyQualifiedName()));
     joins.forEach(join -> tables.add(join.table().fullyQualifiedName()));
     return new Generated(
-        sql(new Quoter(dialect), first, joins, last),
-        dialect,
-        serviceOf(first),
+        sql(syntax, first, joins, last),
+        syntax.dialect(),
+        fqnParts(first, 1).getFirst(),
         first.serviceType(),
         List.copyOf(tables));
   }
 
   public static OntologyConceptQueryDialect dialectOf(final String serviceType) {
-    return DIALECTS.getOrDefault(serviceType, OntologyConceptQueryDialect.ANSI);
+    final OntologyConceptQueryDialect dialect =
+        serviceType == null ? null : DIALECTS.get(serviceType);
+    if (dialect == null) {
+      throw new BadRequestException(
+          String.format("SQL generation does not support %s", serviceType));
+    }
+    return dialect;
   }
 
   private static BoundTable rootTable(final BoundConcept root) {
     final List<BoundTable> tables = listOrEmpty(root.tables());
     if (tables.isEmpty()) {
-      throw new BadRequestException(
-          String.format("Concept %s has no bound table you can view", root.label()));
+      throw new BadRequestException(String.format("Concept %s %s", root.label(), NO_VISIBLE_TABLE));
     }
     return tables.stream()
         .filter(table -> !table.columns().isEmpty())
@@ -205,34 +157,31 @@ public final class OntologyConceptSqlGenerator {
     final List<Join> joins = new ArrayList<>();
     BoundTable previous = first;
     for (int index = 0; index < hops.size(); index++) {
-      final Join join = join(previous, hops.get(index), index + 1, serviceOf(first));
+      final Join join = join(new Step(index + 1, hops.get(index), previous), fqnParts(first, 2));
       joins.add(join);
       previous = join.table();
     }
     return joins;
   }
 
-  private static Join join(
-      final BoundTable previous, final Hop hop, final int position, final String service) {
-    final BoundConcept target = hop.target();
-    if (listOrEmpty(target.tables()).isEmpty()) {
-      throw new BadRequestException(
-          String.format(
-              "Hop %d (%s) reaches concept %s, which has no bound table you can view",
-              position, hop.label(), target.label()));
-    }
+  private static Join join(final Step step, final List<String> database) {
     final List<BoundTable> candidates =
-        target.tables().stream().filter(table -> service.equals(serviceOf(table))).toList();
-    return firstJoin(candidates, table -> foreignKeyPairs(previous, table), hop)
-        .or(
-            () ->
-                firstJoin(candidates, table -> bindingPairs(previous, table, hop.property()), hop))
+        candidates(step).stream().filter(table -> database.equals(fqnParts(table, 2))).toList();
+    return firstJoin(candidates, table -> foreignKeyPairs(step, table), step.hop())
+        .or(() -> firstJoin(candidates, table -> bindingPairs(step, table), step.hop()))
         .orElseThrow(
             () ->
-                new BadRequestException(
-                    String.format(
-                        "Hop %d (%s): no foreign key or object-property binding joins %s to a table bound to %s",
-                        position, hop.label(), previous.fullyQualifiedName(), target.label())));
+                step.failure(
+                    ": no foreign key or object-property binding joins %s to a table bound to %s",
+                    step.previous().fullyQualifiedName(), step.hop().target().label()));
+  }
+
+  private static List<BoundTable> candidates(final Step step) {
+    final BoundConcept target = step.hop().target();
+    if (listOrEmpty(target.tables()).isEmpty()) {
+      throw step.failure(" reaches concept %s, which %s", target.label(), NO_VISIBLE_TABLE);
+    }
+    return target.tables();
   }
 
   private static Optional<Join> firstJoin(
@@ -248,21 +197,46 @@ public final class OntologyConceptSqlGenerator {
     return Optional.empty();
   }
 
-  private static List<ColumnPair> foreignKeyPairs(final BoundTable from, final BoundTable to) {
-    final List<ColumnPair> outgoing = referencing(from, to, false);
-    return outgoing.isEmpty() ? referencing(to, from, true) : outgoing;
+  private static List<ColumnPair> foreignKeyPairs(final Step step, final BoundTable target) {
+    final List<ColumnPair> outgoing = referencing(step, step.previous(), target, false);
+    return outgoing.isEmpty() ? referencing(step, target, step.previous(), true) : outgoing;
   }
 
+  /** The pairs of the foreign key {@code owner} holds to {@code referred}, oriented for the hop. */
   private static List<ColumnPair> referencing(
-      final BoundTable owner, final BoundTable referred, final boolean reversed) {
-    return listOrEmpty(owner.constraints()).stream()
-        .filter(
-            constraint ->
-                constraint.getConstraintType() == TableConstraint.ConstraintType.FOREIGN_KEY)
-        .filter(constraint -> refersTo(constraint, referred.fullyQualifiedName()))
+      final Step step, final BoundTable owner, final BoundTable referred, final boolean reversed) {
+    final List<TableConstraint> keys =
+        listOrEmpty(owner.constraints()).stream()
+            .filter(
+                constraint ->
+                    constraint.getConstraintType() == TableConstraint.ConstraintType.FOREIGN_KEY)
+            .filter(constraint -> refersTo(constraint, referred.fullyQualifiedName()))
+            .toList();
+    return keys.isEmpty()
+        ? List.of()
+        : pairs(boundKey(step, owner, keys, reversed ? owner : referred), reversed);
+  }
+
+  /** With several keys between two tables, the hop's property binding names the one it follows. */
+  private static TableConstraint boundKey(
+      final Step step,
+      final BoundTable owner,
+      final List<TableConstraint> keys,
+      final BoundTable target) {
+    if (keys.size() == 1) {
+      return keys.getFirst();
+    }
+    final List<String> bound = owner.objectColumns().get(step.hop().property());
+    return keys.stream()
+        .filter(key -> key.getColumns().equals(bound))
         .findFirst()
-        .map(constraint -> pairs(constraint, reversed))
-        .orElse(List.of());
+        .orElseThrow(
+            () ->
+                step.failure(
+                    ": several foreign keys join %s and %s; bind the %s property to one of their columns",
+                    step.previous().fullyQualifiedName(),
+                    target.fullyQualifiedName(),
+                    step.hop().label()));
   }
 
   private static boolean refersTo(final TableConstraint constraint, final String table) {
@@ -285,58 +259,60 @@ public final class OntologyConceptSqlGenerator {
               final List<String> local = List.of(constraint.getColumns().get(index));
               final List<String> remote =
                   List.of(
-                      FullyQualifiedName.getColumnName(constraint.getReferredColumns().get(index)));
+                      FullyQualifiedName.unquoteName(
+                          FullyQualifiedName.getColumnName(
+                              constraint.getReferredColumns().get(index))));
               return reversed ? new ColumnPair(remote, local) : new ColumnPair(local, remote);
             })
         .toList();
   }
 
-  private static List<ColumnPair> bindingPairs(
-      final BoundTable from, final BoundTable to, final UUID property) {
-    final List<String> outgoing = from.objectColumns().get(property);
+  private static List<ColumnPair> bindingPairs(final Step step, final BoundTable to) {
+    final BoundTable from = step.previous();
+    final List<String> outgoing = from.objectColumns().get(step.hop().property());
     if (outgoing != null && !to.identifier().isEmpty()) {
       return List.of(new ColumnPair(outgoing, to.identifier()));
     }
-    final List<String> incoming = to.objectColumns().get(property);
+    final List<String> incoming = to.objectColumns().get(step.hop().property());
     return incoming != null && !from.identifier().isEmpty()
         ? List.of(new ColumnPair(from.identifier(), incoming))
         : List.of();
   }
 
   private static String sql(
-      final Quoter quoter, final BoundTable first, final List<Join> joins, final BoundTable last) {
+      final Syntax syntax, final BoundTable first, final List<Join> joins, final BoundTable last) {
     final String lastAlias = joins.isEmpty() ? null : alias(joins.size());
     final List<String> lines = new ArrayList<>();
-    lines.add("SELECT " + selectList(quoter, last, lastAlias));
-    lines.add("FROM " + tableName(quoter, first) + (joins.isEmpty() ? "" : " " + alias(0)));
+    lines.add(syntax.select() + " " + selectList(syntax, last, lastAlias));
+    lines.add("FROM " + tableName(syntax, first) + (joins.isEmpty() ? "" : " " + alias(0)));
     IntStream.range(0, joins.size())
-        .forEach(index -> lines.add(joinLine(quoter, joins.get(index), index + 1)));
-    lines.add("LIMIT " + ROW_LIMIT);
+        .forEach(index -> lines.add(joinLine(syntax, joins.get(index), index + 1)));
+    syntax.limit().ifPresent(lines::add);
     return String.join("\n", lines);
   }
 
   private static String selectList(
-      final Quoter quoter, final BoundTable table, final String alias) {
+      final Syntax syntax, final BoundTable table, final String alias) {
     final Set<List<String>> columns = new LinkedHashSet<>(table.columns());
     if (columns.isEmpty()) {
       return alias == null ? "*" : alias + ".*";
     }
     return columns.stream()
-        .map(path -> quoter.column(alias, path))
+        .map(path -> syntax.column(alias, path))
         .collect(Collectors.joining(", "));
   }
 
-  private static String joinLine(final Quoter quoter, final Join join, final int index) {
+  private static String joinLine(final Syntax syntax, final Join join, final int index) {
     final String on =
         join.on().stream()
             .map(
                 pair ->
-                    quoter.column(alias(index - 1), pair.left())
+                    syntax.column(alias(index - 1), pair.left())
                         + " = "
-                        + quoter.column(alias(index), pair.right()))
+                        + syntax.column(alias(index), pair.right()))
             .collect(Collectors.joining(" AND "));
     final String line =
-        "JOIN " + tableName(quoter, join.table()) + " " + alias(index) + " ON " + on;
+        "JOIN " + tableName(syntax, join.table()) + " " + alias(index) + " ON " + on;
     final String label = comment(join.label());
     return label.isEmpty() ? line : line + " -- " + label;
   }
@@ -349,34 +325,56 @@ public final class OntologyConceptSqlGenerator {
     return "t" + index;
   }
 
-  private static String tableName(final Quoter quoter, final BoundTable table) {
+  private static String tableName(final Syntax syntax, final BoundTable table) {
     final String[] parts = FullyQualifiedName.split(table.fullyQualifiedName());
-    return quoter.identifier(FullyQualifiedName.unquoteName(parts[parts.length - 2]))
+    return syntax.identifier(FullyQualifiedName.unquoteName(parts[parts.length - 2]))
         + "."
-        + quoter.identifier(FullyQualifiedName.unquoteName(parts[parts.length - 1]));
+        + syntax.identifier(FullyQualifiedName.unquoteName(parts[parts.length - 1]));
   }
 
-  private static String serviceOf(final BoundTable table) {
-    return FullyQualifiedName.unquoteName(FullyQualifiedName.split(table.fullyQualifiedName())[0]);
+  /** The first {@code count} unquoted FQN parts: 1 is the service, 2 its database too. */
+  private static List<String> fqnParts(final BoundTable table, final int count) {
+    return List.of(FullyQualifiedName.split(table.fullyQualifiedName())).subList(0, count).stream()
+        .map(FullyQualifiedName::unquoteName)
+        .toList();
   }
 
-  /** Quotes an identifier only when the dialect would otherwise misread it. */
-  private record Quoter(OntologyConceptQueryDialect dialect) {
+  /** How a dialect quotes names and limits rows. */
+  private record Syntax(OntologyConceptQueryDialect dialect) {
+    String select() {
+      return dialect == OntologyConceptQueryDialect.TSQL ? "SELECT TOP " + ROW_LIMIT : "SELECT";
+    }
+
+    Optional<String> limit() {
+      return dialect == OntologyConceptQueryDialect.TSQL
+          ? Optional.empty()
+          : Optional.of("LIMIT " + ROW_LIMIT);
+    }
+
     String column(final String alias, final List<String> path) {
       final String quoted = path.stream().map(this::identifier).collect(Collectors.joining("."));
       return alias == null ? quoted : alias + "." + quoted;
     }
 
+    /**
+     * Quoting never changes how the backtick and bracket dialects resolve a name, so they quote
+     * all. Quoting a lowercase name in ANSI or Snowflake makes it case-sensitive, so those quote
+     * only names the engine would otherwise misread.
+     */
     String identifier(final String name) {
-      if (PLAIN_IDENTIFIER.matcher(name).matches() && !RESERVED.contains(name)) {
-        return name;
-      }
       return switch (dialect) {
         case TSQL -> "[" + name.replace("]", "]]") + "]";
         case BIGQUERY -> "`" + name.replace("\\", "\\\\").replace("`", "\\`") + "`";
         case MYSQL, SPARK -> "`" + name.replace("`", "``") + "`";
-        case ANSI, SNOWFLAKE -> "\"" + name.replace("\"", "\"\"") + "\"";
+        case ANSI -> doubleQuotedWhenNeeded(name, OntologySqlReservedWords.ANSI);
+        case SNOWFLAKE -> doubleQuotedWhenNeeded(name, OntologySqlReservedWords.SNOWFLAKE);
       };
+    }
+
+    private static String doubleQuotedWhenNeeded(final String name, final Set<String> reserved) {
+      return PLAIN_IDENTIFIER.matcher(name).matches() && !reserved.contains(name)
+          ? name
+          : "\"" + name.replace("\"", "\"\"") + "\"";
     }
   }
 }

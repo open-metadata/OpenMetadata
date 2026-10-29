@@ -367,13 +367,14 @@ class OntologyConceptSqlGeneratorTest {
         concept("Funds Transfer", table(TRANSFERS, "Postgres", "transfer_id"));
 
     assertEquals(
-        "Concept Funds Transfer has no bound table you can view",
+        "Concept Funds Transfer has no bound table you can view among its first 100 table bindings",
         assertThrows(
                 BadRequestException.class,
                 () -> OntologyConceptSqlGenerator.generate(unbound, List.of()))
             .getMessage());
     assertEquals(
-        "Hop 1 (part of) reaches concept Customer, which has no bound table you can view",
+        "Hop 1 (part of) reaches concept Customer, which has no bound table you can view"
+            + " among its first 100 table bindings",
         assertThrows(
                 BadRequestException.class,
                 () ->
