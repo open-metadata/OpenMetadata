@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { Check } from '@openmetadata/ui-core-components/icons';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Check, Link01, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { Point, useOntologyGraphEdit } from './hooks/useOntologyGraphEdit';
 import {
   OntologyEditNodeClickDetail,
@@ -38,6 +40,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
   canCreateRelationType,
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const toLocalPoint = useCallback(
@@ -123,6 +126,63 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
 
   const getNodeLabel = (nodeId: string) => nodeLabels[nodeId] ?? nodeId;
 
+  const renderAiInstruction = (fromId: string) => (
+    <div
+      className={classNames(
+        'tw:absolute tw:top-4 tw:left-4 tw:z-10 tw:flex tw:h-10 tw:items-center tw:gap-2.5',
+        'tw:rounded-full tw:border tw:border-brand tw:bg-brand-primary tw:pr-2 tw:pl-3.5 tw:font-body tw:whitespace-nowrap tw:shadow-md'
+      )}
+      data-testid="ontology-connect-instruction"
+      role="status">
+      <Link01
+        aria-hidden="true"
+        className="tw:size-4 tw:text-fg-brand-primary"
+      />
+      <span className="tw:text-sm tw:font-medium tw:text-brand-secondary">
+        {t('message.click-another-term-to-draw-connection', {
+          term: getNodeLabel(fromId),
+        })}
+      </span>
+      <kbd className="tw:rounded tw:border tw:border-secondary tw:bg-primary tw:px-1.5 tw:font-body tw:text-xs tw:text-tertiary">
+        {t('label.esc')}
+      </kbd>
+      <ButtonUtility
+        className="tw:pointer-events-auto"
+        color="tertiary"
+        data-testid="ontology-connect-cancel"
+        icon={XClose}
+        size="xs"
+        tooltip={t('label.cancel')}
+        onClick={() => {
+          cancel();
+          dismissPending();
+        }}
+      />
+    </div>
+  );
+
+  const renderInstruction = (fromId: string) =>
+    isAiMode ? (
+      renderAiInstruction(fromId)
+    ) : (
+      <div
+        className={classNames(
+          'tw:absolute tw:left-1/2 tw:top-3.5 tw:z-10 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2',
+          'tw:rounded-full tw:border tw:border-brand tw:bg-brand-primary tw:px-4 tw:py-2',
+          'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary tw:shadow-sm'
+        )}
+        data-testid="ontology-connect-instruction">
+        <span className="tw:grid tw:size-3.5 tw:place-items-center tw:rounded tw:border tw:border-brand">
+          <Check aria-hidden="true" className="tw:size-2.5" />
+        </span>
+        <span>
+          {t('message.click-another-term-to-draw-connection', {
+            term: getNodeLabel(fromId),
+          })}
+        </span>
+      </div>
+    );
+
   const lineStart = pendingRelation?.from ?? armedAt;
   const lineEnd = pendingRelation?.to ?? cursor;
 
@@ -131,24 +191,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
       className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-5"
       data-testid="ontology-port-overlay"
       ref={overlayRef}>
-      {armedFromId ? (
-        <div
-          className={classNames(
-            'tw:absolute tw:left-1/2 tw:top-3.5 tw:z-10 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2',
-            'tw:rounded-full tw:border tw:border-brand tw:bg-brand-primary tw:px-4 tw:py-2',
-            'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary tw:shadow-sm'
-          )}
-          data-testid="ontology-connect-instruction">
-          <span className="tw:grid tw:size-3.5 tw:place-items-center tw:rounded tw:border tw:border-brand">
-            <Check aria-hidden="true" className="tw:size-2.5" />
-          </span>
-          <span>
-            {t('message.click-another-term-to-draw-connection', {
-              term: getNodeLabel(armedFromId),
-            })}
-          </span>
-        </div>
-      ) : null}
+      {armedFromId ? renderInstruction(armedFromId) : null}
 
       {lineStart && lineEnd ? (
         <svg

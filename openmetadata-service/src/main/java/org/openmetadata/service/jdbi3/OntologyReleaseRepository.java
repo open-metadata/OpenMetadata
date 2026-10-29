@@ -6,6 +6,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -49,6 +50,11 @@ import org.openmetadata.service.util.RestUtil;
 public final class OntologyReleaseRepository extends OntologyEntityRepository<OntologyRelease> {
   private static final String USER_APPROVAL_TASK = "userApprovalTask";
   private static final String REVIEW_TASK_FIELDS = "assignees,reviewers,createdBy";
+
+  /** Storage keeps a task's {@code about} out of its JSON, so a read that needs it asks for it. */
+  private static final String LISTED_REVIEW_TASK_FIELDS =
+      REVIEW_TASK_FIELDS + "," + TaskRepository.FIELD_ABOUT;
+
   private static final String REVIEW_SETUP_CHANGED =
       "The ontology's reviewers or approval rule changed while this review was being requested; submit the review again";
 
@@ -260,9 +266,9 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
 
   /**
    * Open reviews only; a decided review stays readable through {@link #review}. The list starts
-   * from the caller's own open approval tasks, which the database narrows to the caller as
-   * reviewer, assignee or requester, so a page costs the caller's reviews rather than every open
-   * review in the catalog.
+   * from the caller's own open approval tasks about a release, which the database narrows to the
+   * caller as reviewer, assignee or requester, so a page costs the caller's reviews rather than
+   * every open review or approval in the catalog.
    */
   public ResultList<OntologyReleaseReview> listReviews(
       final OntologyReleaseReviewReader.View view,
@@ -287,9 +293,12 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
       final Predicate<OntologyRelease> canView) {
     final TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     final ListFilter filter = reviewTaskFilter(view, SubjectContext.getSubjectContext(caller));
+    final List<Task> reviewTasks =
+        tasks.listAll(tasks.getFields(LISTED_REVIEW_TASK_FIELDS), filter);
+    final Map<UUID, OntologyRelease> releases = releasesById(reviewTasks);
     final List<OpenReview> reviews = new ArrayList<>();
-    for (final Task task : tasks.listAll(tasks.getFields(REVIEW_TASK_FIELDS), filter)) {
-      final OntologyRelease release = reviewedRelease(task);
+    for (final Task task : reviewTasks) {
+      final OntologyRelease release = reviewedRelease(task, releases);
       if (release != null && canView.test(release)) {
         final OntologyReleaseReviewReader reader =
             new OntologyReleaseReviewReader(release, task, caller);
@@ -302,15 +311,22 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     return reviews;
   }
 
+  private Map<UUID, OntologyRelease> releasesById(final List<Task> tasks) {
+    final List<UUID> ids =
+        tasks.stream()
+            .map(Task::getAbout)
+            .filter(Objects::nonNull)
+            .map(EntityReference::getId)
+            .toList();
+    return dao.findEntitiesByIds(ids, Include.NON_DELETED).stream()
+        .collect(Collectors.toMap(OntologyRelease::getId, release -> release));
+  }
+
   /** The release {@code task} reviews, when that release is in review under this very task. */
-  private OntologyRelease reviewedRelease(final Task task) {
-    if (task.getAbout() == null || !Entity.ONTOLOGY_RELEASE.equals(task.getAbout().getType())) {
-      return null;
-    }
-    final String json =
-        dao.findById(
-            dao.getTableName(), task.getAbout().getId(), dao.getCondition(Include.NON_DELETED));
-    final OntologyRelease release = json == null ? null : JsonUtils.readValue(json, entityClass);
+  private static OntologyRelease reviewedRelease(
+      final Task task, final Map<UUID, OntologyRelease> releases) {
+    final OntologyRelease release =
+        task.getAbout() == null ? null : releases.get(task.getAbout().getId());
     return release != null
             && release.getEntityStatus() == EntityStatus.IN_REVIEW
             && Objects.equals(release.getReviewTask(), task.getId())
@@ -323,6 +339,7 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
       final OntologyReleaseReviewReader.View view, final SubjectContext subject) {
     final ListFilter filter = new ListFilter(Include.NON_DELETED);
     filter.addQueryParam("taskType", TaskEntityType.RequestApproval.value());
+    filter.addQueryParam("aboutEntityType", Entity.ONTOLOGY_RELEASE);
     filter.addQueryParam(
         "taskStatus",
         OPEN_REVIEW_TASK_STATUSES.stream()

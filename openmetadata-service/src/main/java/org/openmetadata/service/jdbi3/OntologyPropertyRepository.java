@@ -1,10 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import java.net.URI;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,19 +10,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.jena.datatypes.RDFDatatype;
-import org.apache.jena.datatypes.TypeMapper;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
-import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
-import org.openmetadata.service.ontology.OntologyPropertyLists;
+import org.openmetadata.service.ontology.OntologyPropertyRules;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.rdf.OwlEntityDeclarations;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -33,6 +27,55 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Repository
 public class OntologyPropertyRepository extends OntologyEntityRepository<OntologyProperty> {
   public static final String COLLECTION_PATH = "/v1/ontologyProperties/";
+
+  /**
+   * The deleted object properties the write in progress holds, by declaration. When that write is
+   * a restore, it brings every one of them back, as restoring an ontology does with all its
+   * properties at once.
+   */
+  private static final ThreadLocal<Restoring> RESTORING =
+      ThreadLocal.withInitial(() -> Restoring.NONE);
+
+  private record Declaration(UUID ontologyId, String iri) {
+    static Declaration of(final OntologyProperty property, final URI iri) {
+      return new Declaration(property.getOntology().getId(), iri.toString());
+    }
+  }
+
+  /** A write's deleted object properties, and the partners that two or more of them name. */
+  private record Restoring(
+      Map<Declaration, OntologyProperty> properties, Set<Declaration> contested) {
+    static final Restoring NONE = new Restoring(Map.of(), Set.of());
+
+    static Restoring of(final List<OntologyProperty> entities) {
+      final Map<Declaration, OntologyProperty> properties =
+          entities.stream()
+              .filter(
+                  property ->
+                      Boolean.TRUE.equals(property.getDeleted())
+                          && property.getKind() == OntologyPropertyKind.OBJECT)
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      property -> Declaration.of(property, property.getIri()),
+                      property -> property,
+                      (first, second) -> first));
+      return new Restoring(properties, contested(properties.values()));
+    }
+
+    private static Set<Declaration> contested(final Collection<OntologyProperty> properties) {
+      return properties.stream()
+          .filter(property -> property.getInverse() != null)
+          .collect(
+              Collectors.groupingBy(
+                  property -> Declaration.of(property, property.getInverse()),
+                  Collectors.counting()))
+          .entrySet()
+          .stream()
+          .filter(claims -> claims.getValue() > 1)
+          .map(Map.Entry::getKey)
+          .collect(Collectors.toUnmodifiableSet());
+    }
+  }
 
   public OntologyPropertyRepository() {
     super(
@@ -45,27 +88,8 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
 
   @Override
   protected void validateDefinition(final OntologyProperty entity) {
-    if (entity.getKind() == null) {
-      throw new BadRequestException("Ontology property kind is required");
-    }
-    validateDistinctIris(entity.getDomain(), "domain");
-    validateDistinctIris(entity.getRange(), "range");
-    validateIris(entity.getPropertyChain(), "propertyChain");
-    validateDistinctIris(entity.getDisjointWith(), "disjointWith");
-    if (entity.getInverse() != null) {
-      requireAbsoluteIri(entity.getInverse(), "inverse");
-    }
-    if (entity.getReplacedBy() != null) {
-      requireAbsoluteIri(entity.getReplacedBy(), "replacedBy");
-    }
-    validatePropertyKind(entity);
-    validateDataMetadata(entity);
-    requireListsUsable(entity);
-  }
-
-  private void requireListsUsable(final OntologyProperty entity) {
-    final OntologyPropertyLists.Violation violation =
-        OntologyPropertyLists.firstViolation(entity, () -> storedEnumerationEquals(entity));
+    final OntologyPropertyRules.Violation violation =
+        OntologyPropertyRules.firstViolation(entity, () -> storedEnumerationEquals(entity));
     if (violation != null) {
       throw new BadRequestException(violation.message());
     }
@@ -88,7 +112,13 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         entities,
         () -> {
           workingState.beforeValidation(entityType, this::reconcileInverses);
-          return work.get();
+          final Restoring enclosing = RESTORING.get();
+          RESTORING.set(Restoring.of(entities));
+          try {
+            return work.get();
+          } finally {
+            RESTORING.set(enclosing);
+          }
         });
   }
 
@@ -107,9 +137,16 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
 
   /**
    * A restore brings back the inverse the property held when it was deleted. When that partner
-   * has gone since, the link is dropped rather than refused: the property cannot be edited while
-   * deleted, so refusing would leave it unrestorable. A self-inverse is kept, because its own
-   * declaration goes live in this write.
+   * has gone since and does not return in the same write, the link is dropped rather than
+   * refused: the property cannot be edited while deleted, so refusing would leave it unrestorable.
+   * When the partner returns in the same write, the link is kept only if the partner still names
+   * this property. A property deleted on its own keeps a claim that its partner has since released
+   * or given to another property, and the partner's own inverse is the later statement. When the
+   * partner is live and another property the same write restores names it too, all of those links
+   * are dropped and the partner keeps its inverse, because the rows of one write have no order
+   * that makes one claim the latest. Links to a vocabulary property that the ontology does not
+   * declare never compete, since no write changes that property. A self-inverse is kept, because
+   * its own declaration goes live in this write.
    */
   @Override
   public EntityUpdater getUpdater(
@@ -122,18 +159,28 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         && updated.getInverse() != null
         && !updated.getInverse().equals(updated.getIri())
         && Boolean.TRUE.equals(find(original.getId(), Include.ALL).getDeleted())
-        && !declaresObjectProperty(
-            updated.getOntology().getId(), updated.getInverse().toString())) {
+        && !partnerLinksBack(updated)) {
       updated.setInverse(null);
     }
     return super.getUpdater(original, updated, operation, source);
   }
 
+  private boolean partnerLinksBack(final OntologyProperty property) {
+    final Declaration partner = Declaration.of(property, property.getInverse());
+    final OntologyProperty restored = RESTORING.get().properties().get(partner);
+    return restored == null
+        ? isLiveAndUncontested(partner)
+        : property.getIri().toString().equals(iriText(restored.getInverse()));
+  }
+
+  private boolean isLiveAndUncontested(final Declaration partner) {
+    return declaresObjectProperty(partner.ontologyId(), partner.iri())
+        ? !RESTORING.get().contested().contains(partner)
+        : OwlEntityDeclarations.vocabularyKind(partner.iri())
+            == OwlEntityDeclarations.EntityKind.OBJECT_PROPERTY;
+  }
+
   private boolean declaresObjectProperty(final UUID ontologyId, final String iri) {
-    if (OwlEntityDeclarations.vocabularyKind(iri)
-        == OwlEntityDeclarations.EntityKind.OBJECT_PROPERTY) {
-      return true;
-    }
     final var properties = daoCollection.ontologyPropertyDAO();
     return properties
         .findDeclarations(
@@ -313,84 +360,6 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
             }
           });
       return changed;
-    }
-  }
-
-  private static void validateDataMetadata(final OntologyProperty entity) {
-    final List<OntologyLiteral> values = entity.getEnumValues();
-    if (entity.getKind() != OntologyPropertyKind.DATA
-        && (!nullOrEmpty(values)
-            || entity.getUnit() != null
-            || Boolean.TRUE.equals(entity.getIsIdentifier()))) {
-      throw new BadRequestException(
-          "Only data properties can define enum values, units or identifier intent");
-    }
-    if (entity.getUnit() != null
-        && (entity.getUnit().isBlank() || entity.getUnit().length() > 256)) {
-      throw new BadRequestException("An ontology property unit requires 1 to 256 characters");
-    }
-    validateEnumValues(values);
-  }
-
-  private static void validateEnumValues(final List<OntologyLiteral> values) {
-    if (values != null) {
-      if (values.size() > 1000) {
-        throw new BadRequestException("An ontology property supports at most 1000 enum values");
-      }
-      values.forEach(OntologyPropertyRepository::validateLiteral);
-    }
-  }
-
-  private static void validateLiteral(final OntologyLiteral literal) {
-    if (literal == null || literal.getValue() == null) {
-      throw new BadRequestException("An ontology enum literal requires a value");
-    }
-    if (literal.getDatatypeIri() != null) {
-      requireAbsoluteIri(literal.getDatatypeIri(), "enum datatype");
-      final RDFDatatype datatype =
-          TypeMapper.getInstance().getTypeByName(literal.getDatatypeIri().toString());
-      if (datatype != null && !datatype.isValid(literal.getValue())) {
-        throw new BadRequestException("An ontology enum value is invalid for its datatype");
-      }
-    }
-  }
-
-  private static void validatePropertyKind(final OntologyProperty entity) {
-    if (entity.getKind() != OntologyPropertyKind.OBJECT
-        && (entity.getInverse() != null || !nullOrEmpty(entity.getPropertyChain()))) {
-      throw new BadRequestException("Only object properties can have inverses or property chains");
-    }
-    validateCharacteristics(entity);
-    if (entity.getKind() == OntologyPropertyKind.ANNOTATION
-        && !nullOrEmpty(entity.getDisjointWith())) {
-      throw new BadRequestException("Annotation properties cannot declare disjointness");
-    }
-  }
-
-  private static void validateCharacteristics(final OntologyProperty entity) {
-    final EnumSet<RelationshipCharacteristic> allowed =
-        switch (entity.getKind()) {
-          case OBJECT -> EnumSet.allOf(RelationshipCharacteristic.class);
-          case DATA -> EnumSet.of(RelationshipCharacteristic.FUNCTIONAL);
-          case ANNOTATION -> EnumSet.noneOf(RelationshipCharacteristic.class);
-        };
-    if (!nullOrEmpty(entity.getCharacteristics())
-        && !allowed.containsAll(entity.getCharacteristics())) {
-      throw new BadRequestException(
-          "Unsupported characteristics for " + entity.getKind() + " property");
-    }
-  }
-
-  private static void validateIris(final Collection<URI> iris, final String field) {
-    if (!nullOrEmpty(iris)) {
-      iris.forEach(iri -> requireAbsoluteIri(iri, field));
-    }
-  }
-
-  private static void validateDistinctIris(final Collection<URI> iris, final String field) {
-    validateIris(iris, field);
-    if (!nullOrEmpty(iris) && iris.stream().map(URI::toString).distinct().count() != iris.size()) {
-      throw new BadRequestException(field + " requires unique IRIs");
     }
   }
 }

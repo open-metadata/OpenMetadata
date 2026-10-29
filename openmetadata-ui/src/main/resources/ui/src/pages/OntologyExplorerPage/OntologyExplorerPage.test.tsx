@@ -18,8 +18,10 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
 import { OntologyConceptType } from '../../generated/entity/data/ontologyConcept';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
+  createOntology,
   getOntology,
   getOntologyConceptBindings,
   getOntologyWorkingDiff,
@@ -28,6 +30,7 @@ import {
   listOntologyConcepts,
   listOntologyProperties,
 } from '../../rest/ontologyAPI';
+import { fetchRdfConfig } from '../../rest/rdfAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { showInfoToast } from '../../utils/ToastUtils';
 import OntologyExplorerPage from './OntologyExplorerPage';
@@ -118,6 +121,7 @@ jest.mock('../../rest/tasksAPI', () => ({
 
 jest.mock('../../rest/ontologyAPI', () => ({
   ...jest.requireActual('../../rest/ontologyAPI'),
+  createOntology: jest.fn(),
   getOntologyConceptBindings: jest
     .fn()
     .mockResolvedValue({ revision: 0, assets: [] }),
@@ -130,6 +134,11 @@ jest.mock('../../rest/ontologyAPI', () => ({
   listOntologies: jest.fn(),
   listOntologyConcepts: jest.fn(),
   listOntologyProperties: jest.fn(),
+}));
+
+jest.mock('../../rest/rdfAPI', () => ({
+  ...jest.requireActual('../../rest/rdfAPI'),
+  fetchRdfConfig: jest.fn(),
 }));
 
 jest.mock('../../rest/permissionAPI', () => ({
@@ -228,6 +237,11 @@ const mockUseOntologyStudioScopes = jest.fn(() => ({
 const mockUseAuth = jest.fn(() => ({
   isAdminUser: true,
   isFirstTimeUser: false,
+}));
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
@@ -436,6 +450,7 @@ jest.mock(
 
 describe('OntologyExplorerPage', () => {
   beforeEach(() => {
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     jest.clearAllMocks();
     mockUserId = 'admin';
     mockUseRealDrawer = false;
@@ -498,16 +513,20 @@ describe('OntologyExplorerPage', () => {
 
   const renderNativeStudio = (
     search: string,
-    conceptNames = ['Party', 'Customer']
-  ) => {
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      permissions: {
+    {
+      conceptNames = ['Party', 'Customer'],
+      permissions = {
         ontologyConcept: { Create: true },
+        ontologyChangeSet: { Create: true },
         ontologyProperty: { Create: true },
         ontologyAxiom: { Create: true },
-        ontologyChangeSet: { Create: true },
       },
-    });
+    }: {
+      conceptNames?: string[];
+      permissions?: Record<string, { Create: boolean }>;
+    } = {}
+  ) => {
+    (usePermissionProvider as jest.Mock).mockReturnValue({ permissions });
     mockUseRealRouter = true;
     (getOntology as jest.Mock).mockResolvedValue(nativeOntology);
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
@@ -852,7 +871,7 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('shows the no-concepts card only while the ontology has zero classes', async () => {
-    renderNativeStudio('?ontology=native-sales', []);
+    renderNativeStudio('?ontology=native-sales', { conceptNames: [] });
 
     expect(await screen.findByTestId('ontology-empty-card')).toBeVisible();
     expect(screen.getByText('label.ontology-has-no-concepts')).toBeVisible();
@@ -867,7 +886,7 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('opens the New class panel from the card and from the sub-tab Add concept', async () => {
-    renderNativeStudio('?ontology=native-sales', []);
+    renderNativeStudio('?ontology=native-sales', { conceptNames: [] });
     fireEvent.click(
       await screen.findByTestId('ontology-empty-card-add-concept')
     );
@@ -906,6 +925,104 @@ describe('OntologyExplorerPage', () => {
     expect(
       screen.getByTestId('ontology-publication-tab-changes')
     ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('shows the feature placeholder for an empty catalog in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockSearchParams = new URLSearchParams();
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
+
+    const empty = await screen.findByTestId('all-ontologies-empty');
+
+    expect(empty).toHaveTextContent('message.ontology-empty-title');
+    expect(empty).toHaveTextContent('label.the-graph');
+
+    fireEvent.click(screen.getByTestId('all-ontologies-new-ontology'));
+
+    expect(await screen.findByTestId('ontology-create-dialog')).toBeVisible();
+  });
+
+  it('creates an ontology from the empty catalog and opens the New class panel in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockUseRealScopes = true;
+    (listOntologies as jest.Mock).mockResolvedValueOnce({
+      data: [],
+      paging: { total: 0 },
+    });
+    (fetchRdfConfig as jest.Mock).mockResolvedValue({
+      baseUri: 'https://open-metadata.org/',
+    });
+    (createOntology as jest.Mock).mockResolvedValue(nativeOntology);
+    renderNativeStudio('', { conceptNames: [] });
+    fireEvent.click(await screen.findByTestId('all-ontologies-new-ontology'));
+
+    expect(await screen.findByTestId('ontology-create-dialog')).toBeVisible();
+
+    fireEvent.change(screen.getByTestId('ontology-create-name'), {
+      target: { value: 'Native sales' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-create-submit')).toBeEnabled()
+    );
+    fireEvent.click(screen.getByTestId('ontology-create-submit'));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(createOntology).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Native sales' })
+    );
+  });
+
+  it('opens Releases from the version chip in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderNativeStudio('?ontology=native-sales');
+    fireEvent.click(
+      await screen.findByTestId('ontology-release-history-trigger')
+    );
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('badges the server unpublished count on Publish in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockUseRealScopes = true;
+    (listOntologies as jest.Mock).mockResolvedValueOnce({
+      data: [
+        { ...nativeOntology, publicationStatus: { unpublishedChanges: 3 } },
+      ],
+      paging: { total: 1 },
+    });
+    renderNativeStudio('?ontology=native-sales');
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-publication-count')
+      ).toHaveTextContent('3')
+    );
+
+    expect(listOntologies).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens a review task from the header Tasks action in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderNativeStudio('?ontology=native-sales');
+    fireEvent.click(await screen.findByTestId('ontology-tasks-trigger'));
+
+    expect(screen.getByTestId('ontology-review-drawer')).toHaveTextContent(
+      'review-uuid'
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      'task=review-uuid'
+    );
   });
 
   it('shows native list failure without falling back to glossary data', async () => {
@@ -1138,6 +1255,45 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(screen.getByTestId('ontology-add-concept'));
 
     expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+  });
+
+  it('offers the sub-tab Add concept to a user who holds all three class-creation rights', async () => {
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(screen.getByTestId('ontology-add-concept')).toBeVisible();
+  });
+
+  it('hides the sub-tab Add concept from a user who cannot edit the ontology', async () => {
+    (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: false });
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides the sub-tab Add concept from a user who cannot create a change set', async () => {
+    renderNativeStudio('?ontology=native-sales', {
+      permissions: {
+        ontologyConcept: { Create: true },
+        ontologyChangeSet: { Create: false },
+        ontologyProperty: { Create: true },
+        ontologyAxiom: { Create: true },
+      },
+    });
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
   });
 
   it('starts a new query in the selected native ontology', async () => {

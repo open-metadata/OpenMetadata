@@ -182,6 +182,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       validateEntityReference(requestedRef);
       dataContract.setCreatedAt(dataContract.getUpdatedAt());
       dataContract.setCreatedBy(dataContract.getUpdatedBy());
+      // A new contract has no result or history yet, and is never a virtual inherited one. Its
+      // suite reference is kept for createOrUpdateDataContractTestSuite to check: a PUT that
+      // creates runs prepare twice, and the first pass has already made the contract's own suite.
+      dataContract.setLatestResult(null);
+      dataContract.setContractUpdates(null);
+      dataContract.setInherited(null);
     }
 
     // Store the entity's own reference, not what the request sent (often only id and type), so
@@ -238,7 +244,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   protected void postUpdate(DataContract original, DataContract updated) {
     super.postUpdate(original, updated);
-
+    unlinkForeignTestSuite(original, updated);
     postCreateOrUpdate(updated);
   }
 
@@ -267,12 +273,65 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    */
   @Override
   protected void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
-    deleteContractTestSuite(findContractTestSuite(find(id, Include.ALL)), updatedBy);
+    deleteContractTestSuite(findContractTestSuite(find(id, Include.ALL), Include.ALL), updatedBy);
   }
 
-  private TestSuite findContractTestSuite(DataContract dataContract) {
-    return Entity.getEntityOrNull(
-        dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.ALL);
+  /**
+   * A contract's suite is always named after the contract's id, so a reference to any other suite
+   * is never followed. ADR:2026-10-26-a-data-contract-only-acts-on-the-test-suite-named-after-it
+   */
+  static boolean isOwnSuite(DataContract dataContract, TestSuite testSuite) {
+    return testSuite != null && getTestSuiteName(dataContract).equals(testSuite.getName());
+  }
+
+  /** The suite this contract owns, or null. */
+  private TestSuite findContractTestSuite(DataContract dataContract, Include include) {
+    TestSuite testSuite =
+        Entity.getEntityOrNull(dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, include);
+    return isOwnSuite(dataContract, testSuite) ? testSuite : null;
+  }
+
+  /** The suite this contract stores a reference to but does not own, or null. */
+  private TestSuite findForeignTestSuite(DataContract dataContract) {
+    TestSuite referenced = Entity.getEntityOrNull(dataContract.getTestSuite(), "", Include.ALL);
+    return referenced != null && !isOwnSuite(dataContract, referenced) ? referenced : null;
+  }
+
+  /**
+   * Drops a stored reference to a suite this contract does not own. The contract then gets a suite
+   * of its own if it has expectations; {@link #unlinkForeignTestSuite} removes the old link.
+   */
+  private void releaseForeignTestSuite(DataContract dataContract) {
+    TestSuite foreign = findForeignTestSuite(dataContract);
+    if (foreign != null) {
+      LOG.warn(
+          "Data contract {} referenced test suite {}, which belongs to another contract; "
+              + "releasing it",
+          dataContract.getId(),
+          foreign.getId());
+      dataContract.setTestSuite(null);
+    }
+  }
+
+  /**
+   * Removes the link from a suite the contract used to reference but does not own, so that suite's
+   * runs stop writing this contract's results. Runs after the update, not in prepare(), because a
+   * PUT prepares before it authorizes. Follow, vote and result updates also reach postUpdate, so
+   * it acts only when this update dropped the reference.
+   */
+  private void unlinkForeignTestSuite(DataContract original, DataContract updated) {
+    boolean referenceDropped =
+        !Objects.equals(
+            EntityUtil.getId(original.getTestSuite()), EntityUtil.getId(updated.getTestSuite()));
+    TestSuite foreign = referenceDropped ? findForeignTestSuite(original) : null;
+    if (foreign != null) {
+      deleteRelationship(
+          foreign.getId(),
+          Entity.TEST_SUITE,
+          original.getId(),
+          Entity.DATA_CONTRACT,
+          Relationship.CONTAINS);
+    }
   }
 
   /**
@@ -291,7 +350,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private void postCreateOrUpdate(DataContract dataContract) {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      TestSuite testSuite = getOrCreateTestSuite(dataContract);
+      // Find, never create: prepare() makes the suite and stores its reference. A result update
+      // reaches here without prepare(), and a suite created now would not be stored on the
+      // contract, so its next update would fail creating a suite with the same name.
+      TestSuite testSuite = findContractTestSuite(dataContract, Include.NON_DELETED);
       // Write the reverse edge testSuite -> dataContract BEFORE any pipeline work so a
       // pipeline-service outage cannot leave the contract without its reverse link.
       // TestSuiteRepository.onTestSuiteExecutionComplete guards on
@@ -800,6 +862,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return Entity.TABLE.equals(entityType);
   }
 
+  private static final String FIELD_TEST_SUITE = "testSuite";
+
   public static String getTestSuiteName(DataContract dataContract) {
     return dataContract.getId().toString();
   }
@@ -809,6 +873,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       if (update) { // If we're running an update, fetch the existing test suite information
         restoreExistingDataContract(dataContract);
       }
+      releaseForeignTestSuite(dataContract);
 
       // If we don't have quality expectations or a test suite, we don't need to create one
       if (nullOrEmpty(dataContract.getQualityExpectations())
@@ -818,7 +883,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // If we had a test suite from older tests, but we removed them, we can delete the suite
       if (nullOrEmpty(dataContract.getQualityExpectations())) {
-        deleteContractTestSuite(findContractTestSuite(dataContract), dataContract.getUpdatedBy());
+        deleteContractTestSuite(
+            findContractTestSuite(dataContract, Include.ALL), dataContract.getUpdatedBy());
         dataContract.setTestSuite(null);
         return null;
       }
@@ -841,15 +907,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
+  // Include.ALL, as the upsert itself uses: a PUT on a soft-deleted contract restores it under its
+  // own id, so it must keep that contract's suite rather than make one named after a fresh id.
   private void restoreExistingDataContract(DataContract dataContract) {
     setFullyQualifiedName(dataContract);
     Optional<DataContract> existing =
         getByNameOrNull(
-            null,
-            dataContract.getFullyQualifiedName(),
-            Fields.EMPTY_FIELDS,
-            Include.NON_DELETED,
-            false);
+            null, dataContract.getFullyQualifiedName(), Fields.EMPTY_FIELDS, Include.ALL, false);
     dataContract.setTestSuite(existing.map(DataContract::getTestSuite).orElse(null));
     dataContract.setLatestResult(existing.map(DataContract::getLatestResult).orElse(null));
     dataContract.setId(existing.map(DataContract::getId).orElse(dataContract.getId()));
@@ -892,15 +956,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // A non-null reference can point to a suite that was soft-deleted via the DQ API without
     // clearing DataContract.testSuite; returning null would NPE in updateTestSuiteTests.
     if (contractHasTestSuite(dataContract)) {
-      TestSuite existing =
-          Entity.getEntityOrNull(
-              dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
+      TestSuite existing = findContractTestSuite(dataContract, Include.NON_DELETED);
       if (existing != null) {
         return existing;
       }
-      TestSuite softDeleted =
-          Entity.getEntityOrNull(
-              dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.ALL);
+      TestSuite softDeleted = findContractTestSuite(dataContract, Include.ALL);
       if (softDeleted != null) {
         // Restore (not re-create): entity tables have a UNIQUE constraint on fqnHash and the
         // soft-deleted row keeps it, so a fresh insert would collide with the dangling reference.
@@ -914,8 +974,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
       }
       LOG.warn(
-          "Test suite {} referenced by data contract {} no longer exists; creating a new suite "
-              + "to replace the dangling reference",
+          "Test suite {} referenced by data contract {} no longer exists; creating a new suite to "
+              + "replace the reference",
           dataContract.getTestSuite(),
           dataContract.getId());
     }
@@ -1149,15 +1209,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public void deployAndTriggerDQValidation(DataContract dataContract) {
-    if (dataContract.getTestSuite() == null) {
+    TestSuite testSuite = findContractTestSuite(dataContract, Include.NON_DELETED);
+    if (testSuite == null) {
       throw DataContractValidationException.byMessage(
           String.format(
               "Data contract %s does not have a test suite defined, cannot trigger DQ validation",
               dataContract.getFullyQualifiedName()));
     }
-    TestSuite testSuite =
-        Entity.getEntity(
-            dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
 
     if (nullOrEmpty(testSuite.getPipelines())) {
       throw DataContractValidationException.byMessage(
@@ -1508,6 +1566,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       super(original, updated, operation, changeSource);
     }
 
+    /**
+     * prepare() sets testSuite itself, so it is compared whichever fields a PATCH names: a PATCH of
+     * other fields can still have replaced another contract's suite with this contract's own.
+     */
+    @Override
+    protected boolean shouldCompare(String fieldName) {
+      return FIELD_TEST_SUITE.equals(fieldName) || super.shouldCompare(fieldName);
+    }
+
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       preserveUnspecifiedODCSPassthrough();
@@ -1516,8 +1583,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           () ->
               recordChange("latestResult", original.getLatestResult(), updated.getLatestResult()));
       compareAndUpdate(
-          "testSuite",
-          () -> recordChange("testSuite", original.getTestSuite(), updated.getTestSuite()));
+          FIELD_TEST_SUITE,
+          () -> recordChange(FIELD_TEST_SUITE, original.getTestSuite(), updated.getTestSuite()));
       compareAndUpdate(
           "termsOfUse",
           () -> recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse()));

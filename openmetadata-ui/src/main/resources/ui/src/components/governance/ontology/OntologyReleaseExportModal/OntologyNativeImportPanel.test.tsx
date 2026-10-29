@@ -25,6 +25,7 @@ import {
   NativeOntologyImportSummary,
 } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import { OntologyChangeSetState } from '../../../../generated/entity/data/ontologyChangeSet';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   applyOntologyChangeSet,
   createOntology,
@@ -37,6 +38,7 @@ import {
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyNativeImportPanel from './OntologyNativeImportPanel';
+import { NATIVE_IMPORT_MAX_BYTES } from './OntologyNativeImportPanel.utils';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
   applyOntologyChangeSet: jest.fn(),
@@ -80,6 +82,10 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: (
     selector: (state: { currentUser: { id: string } }) => unknown
   ) => selector({ currentUser: { id: 'author' } }),
+}));
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
 const ontology = {
@@ -152,7 +158,7 @@ const renderPanel = (
   return { onApplied };
 };
 
-const dropFile = (name = 'fibo-sample.ttl', text = TURTLE) => {
+const dropFile = (name = 'fibo-sample.ttl', text = TURTLE, size?: number) => {
   const input = document.querySelector('input[type="file"]');
   if (!input) {
     throw new Error('Missing file input');
@@ -161,6 +167,9 @@ const dropFile = (name = 'fibo-sample.ttl', text = TURTLE) => {
   Object.defineProperty(file, 'text', {
     value: jest.fn().mockResolvedValue(text),
   });
+  if (size !== undefined) {
+    Object.defineProperty(file, 'size', { value: size });
+  }
   fireEvent.change(input, { target: { files: [file] } });
 
   return file;
@@ -174,6 +183,7 @@ const parse = async () => {
 describe('OntologyNativeImportPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     (detectNativeOntologyImportFormat as jest.Mock).mockResolvedValue({
       detectedFormat: 'turtle',
     });
@@ -413,6 +423,19 @@ describe('OntologyNativeImportPanel', () => {
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 
+  it('drops the parsed preview when a replacement file is too large', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+    dropFile('replacement.ttl', TURTLE, NATIVE_IMPORT_MAX_BYTES + 1);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'message.file-size-exceeded'
+    );
+    expect(screen.queryByTestId('ontology-native-import-result')).toBeNull();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+
   it('does not offer Parse when the format cannot be detected', async () => {
     (detectNativeOntologyImportFormat as jest.Mock).mockResolvedValue({});
     renderPanel();
@@ -459,5 +482,64 @@ describe('OntologyNativeImportPanel', () => {
     await parse();
 
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+
+  it('parses, shows the counts and imports into the ontology in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const { onApplied } = renderPanel();
+
+    expect(document.querySelectorAll('input[type="file"]')).toHaveLength(1);
+    expect(
+      screen.queryByText('message.native-import-supported-formats')
+    ).toBeNull();
+    expect(screen.getByTestId('ontology-native-import-file')).toBeEnabled();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+
+    dropFile();
+
+    expect(
+      await screen.findByTestId('ontology-native-import-format')
+    ).toHaveTextContent('label.turtle');
+    expect(screen.getByText('fibo-sample.ttl')).toBeVisible();
+
+    await parse();
+
+    expect(
+      screen.getByText('message.native-import-nothing-persisted')
+    ).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-native-import-count-new-concepts')
+    ).toHaveTextContent('42');
+    expect(
+      screen.getByTestId('ontology-native-import-count-relations')
+    ).toHaveTextContent('37');
+    expect(createOntologyChangeSet).not.toHaveBeenCalled();
+
+    await user.click(
+      within(screen.getByTestId('ontology-native-import-target')).getByRole(
+        'button'
+      )
+    );
+    await user.click(await screen.findByRole('option', { name: 'Sales' }));
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
+
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+
+    expect(createOntologyChangeSet).toHaveBeenCalledWith(changeSet);
+    expect(applyOntologyChangeSet).toHaveBeenCalledWith('draft-id', {
+      lease: { sessionId: 'session-id', version: 2 },
+    });
+    expect(createOntology).not.toHaveBeenCalled();
+  });
+
+  it('rejects an oversized file before detection in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderPanel();
+    dropFile('big.ttl', TURTLE, NATIVE_IMPORT_MAX_BYTES + 1);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'message.file-size-exceeded'
+    );
+    expect(detectNativeOntologyImportFormat).not.toHaveBeenCalled();
   });
 });

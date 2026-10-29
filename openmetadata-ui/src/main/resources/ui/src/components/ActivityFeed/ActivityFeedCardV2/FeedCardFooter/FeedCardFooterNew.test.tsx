@@ -98,9 +98,11 @@ describe('FeedCardFooterNew', () => {
     ).toHaveLength(2);
   });
 
-  it('opens the replies from an avatar and lets the click reach the card', async () => {
+  // Opening the drawer selects the conversation; the card's own click would
+  // fetch its replies a second time.
+  it('opens the replies from an avatar without the click reaching the card', async () => {
     const onCardClick = jest.fn();
-    await renderFooter({ isForFeedTab: true }, onCardClick);
+    await renderFooter({}, onCardClick);
 
     expect(screen.queryByTestId('replies-drawer')).not.toBeInTheDocument();
 
@@ -111,11 +113,35 @@ describe('FeedCardFooterNew', () => {
     expect(await screen.findByTestId('replies-drawer')).toHaveTextContent(
       'Footer conversation'
     );
-    expect(onCardClick).toHaveBeenCalled();
+    expect(onCardClick).not.toHaveBeenCalled();
   });
 
+  it('opens the replies from the overflow chip without the click reaching the card', async () => {
+    const onCardClick = jest.fn();
+    await renderFooter(
+      {
+        conversation: {
+          ...conversation,
+          replyCount: 4,
+          replies: ['alice', 'bob', 'carol', 'dave'].map((name) => ({
+            author: { name },
+          })),
+        } as unknown as Conversation,
+      },
+      onCardClick
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '+1 more' }));
+
+    expect(await screen.findByTestId('replies-drawer')).toHaveTextContent(
+      'Footer conversation'
+    );
+    expect(onCardClick).not.toHaveBeenCalled();
+  });
+
+  // Regression: on the entity Activity tab this press opened nothing.
   it('opens the replies from the reply button', async () => {
-    await renderFooter({ isForFeedTab: true });
+    await renderFooter();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.reply' }));
 
@@ -138,11 +164,13 @@ describe('FeedCardFooterNew', () => {
   describe('in an activity thread panel', () => {
     it('hands Reply to the caller instead of opening the drawer', async () => {
       const onReplyPress = jest.fn();
-      await renderFooter({ isForFeedTab: true, onReplyPress });
+      const onCardClick = jest.fn();
+      await renderFooter({ onReplyPress }, onCardClick);
 
       fireEvent.click(screen.getByTestId('reply-button'));
 
       expect(onReplyPress).toHaveBeenCalledTimes(1);
+      expect(onCardClick).toHaveBeenCalled();
       expect(screen.queryByTestId('replies-drawer')).not.toBeInTheDocument();
     });
 
