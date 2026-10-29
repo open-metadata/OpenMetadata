@@ -12,7 +12,6 @@
  */
 import { act, render } from '@testing-library/react';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
-import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
 import { getChartPreviewByName } from '../../../rest/DataInsightAPI';
 import { DataInsightChartCard } from '../DataInsightChartCard';
 import DataAssetsTab from './DataAssetsTab.component';
@@ -50,6 +49,7 @@ const renderTab = () =>
 describe('DataAssetsTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockProvider.kpi = { isLoading: false, data: [] };
   });
 
   it('fetches total data assets once and shares it with the cards', async () => {
@@ -92,10 +92,7 @@ describe('DataAssetsTab', () => {
   });
 
   it('does not fetch while the KPIs are loading', async () => {
-    (useDataInsightProvider as jest.Mock).mockReturnValueOnce({
-      ...mockProvider,
-      kpi: { isLoading: true, data: [] },
-    });
+    mockProvider.kpi = { isLoading: true, data: [] };
 
     await renderTab();
 
