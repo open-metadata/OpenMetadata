@@ -1552,11 +1552,12 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
 // screen. The nudge below resolves the scroller from this root at call time.
 const LANDING_PAGE_SCROLL_CONTAINER = '[data-testid="home-landing-page"]';
 // The standalone Following widget was folded into "Yours and followed", which
-// renders the owned and the followed assets as two columns of one card.
+// shows either the owned or the followed assets, picked by a pill above the list.
 const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.YoursAndFollowed';
 const FOLLOWING_WIDGET_BODY_SKELETON = 'topic-body-skeleton-yoursAndFollowed';
 const FOLLOWED_ASSET_LIST = 'followed-assets';
 const FOLLOWING_WIDGET_CARD = 'topic-card-yoursAndFollowed';
+const FOLLOWING_FILTER_PILL = 'yours-and-followed-filter-following';
 
 const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
@@ -1599,9 +1600,8 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   return followingWidgetPanel;
 };
 
-// Returns the followed-assets column, not the whole card: the owned column can
-// hold the same asset (following something you own is normal), and a card-wide
-// locator would then resolve to two nodes and fail strict mode on click.
+// Returns the followed-assets list, not the whole card, so callers resolve the
+// asset in the followed list specifically.
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
@@ -1614,6 +1614,14 @@ const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await expect(
     followingWidgetPanel.getByTestId(FOLLOWING_WIDGET_BODY_SKELETON)
   ).toBeHidden({ timeout: 60_000 });
+
+  // The pills are absent on the empty state (nothing owned or followed), which
+  // is a valid answer for the unfollow case; once the skeleton is gone the body
+  // has settled, so checking presence here does not race the render.
+  const followingPill = followingWidgetPanel.getByTestId(FOLLOWING_FILTER_PILL);
+  if (await followingPill.isVisible()) {
+    await followingPill.click();
+  }
 
   return followingWidgetPanel.getByTestId(FOLLOWED_ASSET_LIST);
 };
@@ -2336,7 +2344,7 @@ export const softDeleteEntity = async (
   page: Page,
   entityName: string,
   endPoint: EntityTypeEndpoint,
-  displayName: string
+  _displayName: string
 ) => {
   await deletedEntityCommonChecks({
     page,
@@ -2430,7 +2438,7 @@ export const softDeleteEntity = async (
 
 export const hardDeleteEntity = async (
   page: Page,
-  entityName: string,
+  _entityName: string,
   endPoint: EntityTypeEndpoint
 ) => {
   await clickOutside(page);

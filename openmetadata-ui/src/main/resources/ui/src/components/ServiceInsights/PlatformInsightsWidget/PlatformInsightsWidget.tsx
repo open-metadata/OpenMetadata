@@ -34,7 +34,10 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
 import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
+import {
+  ChartSeriesData,
+  PlatformInsightsWidgetProps,
+} from './PlatformInsightsWidget.interface';
 
 const renderViewMoreExpandIcon = (
   t: ReturnType<typeof useTranslation>['t']
@@ -67,8 +70,10 @@ function PlatformInsightsWidget({
 
     return {
       filteredCharts,
-      filteredChartsData: chartsData.filter((chart) =>
-        filteredCharts.includes(chart.chartType)
+      filteredChartsData: chartsData.filter(
+        (chart): chart is ChartSeriesData & { chartType: SystemChartType } =>
+          chart.chartType !== undefined &&
+          filteredCharts.includes(chart.chartType)
       ),
     };
   }, [serviceCategory, chartsData]);

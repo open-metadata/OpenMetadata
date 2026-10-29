@@ -214,6 +214,7 @@ const LineageSettingsForm = ({
 
   return (
     <SettingsFormLayout
+      centered
       form={form}
       isSaving={isSaving}
       showHint={showHint}

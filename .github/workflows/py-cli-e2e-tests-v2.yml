@@ -26,7 +26,7 @@ on:
       connectors:
         description: "Connectors to run (JSON array)"
         required: true
-        default: '["mysql", "postgres", "bigquery", "oracle", "snowflake"]'
+        default: '["mysql", "postgres", "bigquery", "oracle", "snowflake", "mssql"]'
 
 permissions:
   id-token: write
@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        connector: ${{ fromJSON(inputs.connectors || '["mysql", "postgres", "bigquery", "oracle", "snowflake"]') }}
+        connector: ${{ fromJSON(inputs.connectors || '["mysql", "postgres", "bigquery", "oracle", "snowflake", "mssql"]') }}
     # The v1 Snowflake job drops and recreates the same E2E database, so both workflows put their
     # Snowflake jobs in one group that runs one at a time. A newer pending job replaces an older one.
     concurrency:
@@ -54,7 +54,7 @@ jobs:
         shell: bash
         run: |
           case "$E2E_CONNECTOR" in
-            mysql|postgres|bigquery|oracle|snowflake) ;;
+            mysql|postgres|bigquery|oracle|snowflake|mssql) ;;
             *) echo "Unsupported E2E connector" >&2; exit 1 ;;
           esac
 

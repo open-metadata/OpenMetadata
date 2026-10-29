@@ -14,6 +14,8 @@ import static org.openmetadata.schema.EntityInterface.ENTITY_TYPE_TO_CLASS_MAP;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import org.openmetadata.schema.CreationAudited;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -42,6 +44,15 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 public final class VersionResolver {
 
   private static final int VERSION_PAGE_SIZE = 100;
+  private final Function<String, EntityRepository<?>> repositoryLookup;
+
+  public VersionResolver() {
+    this(Entity::getEntityRepository);
+  }
+
+  VersionResolver(Function<String, EntityRepository<?>> repositoryLookup) {
+    this.repositoryLookup = repositoryLookup;
+  }
 
   /**
    * Compute the per-version windows that cover the configured backfill range for this entity.
@@ -62,7 +73,7 @@ public final class VersionResolver {
       return List.of(new VersionedWindow(latest, startTs, endTs, VersionShape.LATEST_HYDRATED));
     }
 
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(context.entityType());
+    EntityRepository<?> entityRepository = repositoryLookup.apply(context.entityType());
     Class<? extends EntityInterface<?>> entityClass =
         ENTITY_TYPE_TO_CLASS_MAP.get(context.entityType().toLowerCase());
 
@@ -70,12 +81,20 @@ public final class VersionResolver {
     long pointerTimestamp = endTs;
     boolean isFirst = true;
     int nextOffset = 0;
+    EntityInterface<?> oldestVersion = null;
+    VersionShape oldestShape = VersionShape.LATEST_HYDRATED;
 
     while (true) {
       EntityRepository.EntityHistoryWithOffset page =
           entityRepository.listVersionsWithOffset(latest.getId(), VERSION_PAGE_SIZE, nextOffset);
       List<Object> versions = page.entityHistory().getVersions();
       if (versions.isEmpty()) {
+        if (oldestVersion != null) {
+          appendCreationWindow(
+              windows,
+              latest,
+              new VersionedWindow(oldestVersion, startTs, pointerTimestamp, oldestShape));
+        }
         return windows;
       }
       nextOffset = page.nextOffset();
@@ -91,11 +110,12 @@ public final class VersionResolver {
           continue; // degenerate row: no timestamp to slice on
         }
         long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionUpdatedAt);
+        VersionShape shape = wasFirst ? VersionShape.LATEST_HYDRATED : VersionShape.HISTORICAL_RAW;
+        oldestVersion = versionEntity;
+        oldestShape = shape;
         if (versionTimestamp > pointerTimestamp) {
           continue; // later same-day update; the pointer already covers this row's day
         }
-
-        VersionShape shape = wasFirst ? VersionShape.LATEST_HYDRATED : VersionShape.HISTORICAL_RAW;
 
         if (versionTimestamp < startTs) {
           // Version older than the window start: covers the remaining days from startTs to pointer.
@@ -109,6 +129,23 @@ public final class VersionResolver {
         pointerTimestamp =
             TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(versionTimestamp, 1));
       }
+    }
+  }
+
+  private void appendCreationWindow(
+      List<VersionedWindow> windows, EntityInterface<?> latest, VersionedWindow remaining) {
+    if (!(latest instanceof CreationAudited audited) || audited.getCreatedAt() == null) {
+      return;
+    }
+    // Non-versioned updates can move even the oldest version's updatedAt past its creation day.
+    long start =
+        Math.max(
+            remaining.windowStartTimestamp(),
+            TimestampUtils.getStartOfDayTimestamp(audited.getCreatedAt()));
+    if (start <= remaining.windowEndTimestamp()) {
+      windows.add(
+          new VersionedWindow(
+              remaining.entity(), start, remaining.windowEndTimestamp(), remaining.shape()));
     }
   }
 }
