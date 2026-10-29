@@ -15,10 +15,12 @@ package org.openmetadata.service.security;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -34,6 +36,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.PathSegment;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
@@ -55,8 +58,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -73,6 +78,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -130,8 +136,23 @@ class JwtFilterTest {
     jwtFilter = new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain);
   }
 
+  // Every test resolves accounts through this per-test mock. Left to the real SubjectCache, the
+  // filter would read the global Entity registry, which other test classes in the same JVM fill
+  // with
+  // their own mock repositories. A name nobody stubs has no account yet, as on a first login.
+  private MockedStatic<SubjectCache> subjectCache;
+
+  @BeforeEach
+  void isolateUserLookups() {
+    subjectCache = mockStatic(SubjectCache.class);
+    subjectCache
+        .when(() -> SubjectCache.getUserContext(anyString()))
+        .thenThrow(EntityNotFoundException.byMessage("no account holds this name yet"));
+  }
+
   @AfterEach
   void clearRequestContext() {
+    subjectCache.close();
     ActivePersonaContext.clear();
     ActiveDomainContext.clear();
   }
@@ -152,8 +173,13 @@ class JwtFilterTest {
             .sign(algorithm);
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    UserRepository users =
+        repositoryWith(new User().withName("sam").withEmail("sam@openmetadata.org"));
 
-    domainEnforcingFilter.filter(context);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(users);
+      domainEnforcingFilter.filter(context);
+    }
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
@@ -222,12 +248,10 @@ class JwtFilterTest {
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
     when(context.getHeaderString(JwtFilter.ACTIVE_PERSONA_HEADER)).thenReturn(activePersona);
 
-    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class);
-        MockedStatic<SubjectCache> subjectCache =
-            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(new User().withName("sam"));
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(new User().withName("sam"));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       jwtFilter.filter(context);
       entity.verifyNoInteractions();
     }
@@ -252,13 +276,10 @@ class JwtFilterTest {
         new EntityReference().withId(UUID.randomUUID()).withType("domain").withName("Sales");
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
-    try (MockedStatic<SubjectCache> subjectCache =
-        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(new User().withName("sam").withDefaultDomain(selected));
-      jwtFilter.filter(context);
-    }
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(new User().withName("sam").withDefaultDomain(selected));
+    jwtFilter.filter(context);
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
@@ -281,18 +302,15 @@ class JwtFilterTest {
             .sign(algorithm);
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
-    try (MockedStatic<UserTokenCache> userTokenCache =
-            org.mockito.Mockito.mockStatic(UserTokenCache.class);
-        MockedStatic<SubjectCache> subjectCache =
-            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(
+            new User()
+                .withName("sam")
+                .withDefaultDomain(
+                    new EntityReference().withId(UUID.randomUUID()).withType("domain")));
+    try (MockedStatic<UserTokenCache> userTokenCache = mockStatic(UserTokenCache.class)) {
       userTokenCache.when(() -> UserTokenCache.isTokenValid("sam", jwt)).thenReturn(true);
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(
-              new User()
-                  .withName("sam")
-                  .withDefaultDomain(
-                      new EntityReference().withId(UUID.randomUUID()).withType("domain")));
       jwtFilter.filter(context);
     }
 
@@ -312,32 +330,233 @@ class JwtFilterTest {
             .withClaim(JwtFilter.BOT_CLAIM, true)
             .sign(algorithm);
 
-    try (MockedStatic<SubjectCache> subjectCache =
-        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(jwt);
+    CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(jwt);
 
-      assertNull(securityContext.activeDomain());
-      subjectCache.verifyNoInteractions();
-    }
+    assertNull(securityContext.activeDomain());
+    subjectCache.verifyNoInteractions();
   }
 
   @Test
   void testFilterWithEmailClaim() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("email", "sam@gmail.com")
-            .sign(algorithm);
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
+    UserRepository users = repositoryWith(new User().withName("sam").withEmail("sam@gmail.com"));
 
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
-
-    jwtFilter.filter(context);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(users);
+      jwtFilter.filter(context);
+    }
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  /**
+   * The legacy flow resolves the account by the claim's local part. A stored email that differs from
+   * the token's - set by an admin, by CSV import or SCIM, or after an IdP domain change - must still
+   * sign in, not be logged out on every request.
+   */
+  @Test
+  void aLegacyProviderTokenSignsInWhenTheStoredEmailDiffers() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("sam@other.example"));
+
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(new User().withName("sam").withEmail("sam@gmail.com"));
+    jwtFilter.filter(context);
+
+    verify(context, times(1)).setSecurityContext(any());
+  }
+
+  @Test
+  void aProviderTokenNeverSignsInToABotAccount() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("ingestion-bot@openmetadata.org"));
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("ingestion-bot"))
+        .thenReturn(botAccount("ingestion-bot"));
+
+    assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  /** A bare principal claim names the account just as an email's local part does. */
+  @Test
+  void aBareProviderPrincipalNeverSignsInToABotAccount() {
+    String bareBotPrincipal =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "ingestion-bot")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(bareBotPrincipal);
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("ingestion-bot"))
+        .thenReturn(botAccount("ingestion-bot"));
+
+    assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  /** A name no account holds yet makes the user lookup throw; that is a first login, not a bot. */
+  @Test
+  void aProviderTokenForANameNoAccountHoldsIsAFirstLogin() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("new@gmail.com"));
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("new"))
+        .thenThrow(EntityNotFoundException.byMessage("user instance for new not found"));
+
+    jwtFilter.filter(context);
+
+    verify(context, times(1)).setSecurityContext(any());
+  }
+
+  @Test
+  void allowedEmailDomainsApplyToLegacyProviderTokens() {
+    JwtFilter legacyWithAllowList =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub", "email"),
+            "openmetadata.org",
+            false,
+            null,
+            null,
+            List.of("openmetadata.org"));
+
+    // A token that carries an email outside the allowed domains is rejected.
+    ContainerRequestContext outsider =
+        createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
+    assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(outsider));
+
+    // A token with no email runs as sam@openmetadata.org, an allowed domain, so a deployment whose
+    // first principal claim is a bare username keeps working instead of being locked out on
+    // upgrade.
+    String subjectOnly =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    ContainerRequestContext noEmail = createRequestContextWithJwt(subjectOnly);
+    legacyWithAllowList.filter(noEmail);
+    verify(noEmail, times(1)).setSecurityContext(any());
+  }
+
+  /** With no email, the address the legacy flow builds must still be in an allowed domain. */
+  @Test
+  void aBareClaimOutsideTheAllowedDomainsIsRejected() {
+    JwtFilter principalDomainOutsideAllowList =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub", "email"),
+            "contractor.example",
+            false,
+            null,
+            null,
+            List.of("openmetadata.org"));
+    String subjectOnly =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(subjectOnly);
+
+    assertThrows(
+        AuthenticationException.class, () -> principalDomainOutsideAllowList.filter(context));
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  @Test
+  void aPublicEntraClientIsRestrictedToTheTenantItsAuthorityNames() {
+    String tenant = "11111111-2222-3333-4444-555555555555";
+
+    assertEquals(
+        tenant,
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/" + tenant)));
+    assertEquals(
+        tenant,
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(
+                ClientType.PUBLIC, "https://login.microsoftonline.com/" + tenant + "/v2.0/")));
+  }
+
+  @Test
+  void onlyAPublicEntraClientNamingATenantIdIsRestricted() {
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/common")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/contoso.com")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(
+                ClientType.CONFIDENTIAL,
+                "https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            new AuthenticationConfiguration()
+                .withProvider(AuthProvider.GOOGLE)
+                .withClientType(ClientType.PUBLIC)
+                .withAuthority("https://accounts.google.com")));
+  }
+
+  private static AuthenticationConfiguration entraSignIn(ClientType clientType, String authority) {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.AZURE)
+        .withClientType(clientType)
+        .withAuthority(authority);
+  }
+
+  @Test
+  void excludedEndpointsAreMatchedExactlyAndIgnoreMatrixParameters() {
+    // A genuine excluded endpoint, and the same path with a matrix parameter, both match.
+    assertTrue(JwtFilter.isExcludedEndpoint(pathSegments(List.of("v1", "users", "login"))));
+    assertTrue(
+        JwtFilter.isExcludedEndpoint(pathSegments(List.of("v1", "users", "login;jsessionid=x"))));
+    // A write to an entity whose name merely embeds an excluded endpoint is not excluded.
+    assertFalse(
+        JwtFilter.isExcludedEndpoint(
+            pathSegments(List.of("v1", "tables", "name", "v1/users/login"))));
+    assertFalse(JwtFilter.isExcludedEndpoint(pathSegments(List.of("v1", "tables", "name", "foo"))));
+  }
+
+  private static UriInfo pathSegments(List<String> segments) {
+    List<PathSegment> pathSegments =
+        segments.stream()
+            .map(
+                segment -> {
+                  PathSegment pathSegment = mock(PathSegment.class);
+                  when(pathSegment.getPath())
+                      .thenReturn(segment.contains(";") ? segment.split(";")[0] : segment);
+                  return pathSegment;
+                })
+            .collect(Collectors.toList());
+    UriInfo uriInfo = mock(UriInfo.class);
+    when(uriInfo.getPathSegments()).thenReturn(pathSegments);
+    return uriInfo;
+  }
+
+  private static String legacyProviderJwt(String email) {
+    return JWT.create()
+        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+        .withClaim("email", email)
+        .sign(algorithm);
+  }
+
+  private static User botAccount(String name) {
+    return new User().withName(name).withEmail(name + "@openmetadata.org").withIsBot(true);
+  }
+
+  private static UserRepository repositoryWith(User account) {
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.findByNameOrNull(account.getName(), Include.NON_DELETED))
+        .thenReturn(account);
+    return userRepository;
   }
 
   @Test
