@@ -12,6 +12,7 @@
  */
 import { isAxiosError } from 'axios';
 import {
+  LineageNote,
   OntologyEdge,
   OntologyGraphData,
   OntologyNode,
@@ -253,7 +254,11 @@ const toConceptNode = (
   };
 };
 
-const toAssetNode = (conceptId: string, row: NativeAssetRow): OntologyNode => ({
+const toAssetNode = (
+  conceptId: string,
+  row: NativeAssetRow,
+  lineageNotes?: LineageNote[]
+): OntologyNode => ({
   id: assetNodeId(conceptId, row.id),
   label: getEntityName(row.asset),
   type: 'dataAsset',
@@ -261,6 +266,7 @@ const toAssetNode = (conceptId: string, row: NativeAssetRow): OntologyNode => ({
   fullyQualifiedName: row.asset.fullyQualifiedName,
   serviceLabel: row.serviceType,
   columnCount: row.columnCount,
+  lineageNotes,
 });
 
 const buildInferredEdges = (
@@ -283,39 +289,73 @@ const buildInferredEdges = (
       edgeKind: 'semanticProjection',
     }));
 
-const buildLineageEdges = (
+interface LineageRow {
+  conceptId: string;
+  nodeId: string;
+  label: string;
+}
+
+interface NativeLineage {
+  edges: OntologyEdge[];
+  notesByNodeId: Map<string, LineageNote[]>;
+}
+
+// Lineage between two rows of one card has no card-to-card edge to draw, so
+// each row names the table on its other end instead.
+const buildLineage = (
   edges: Edge[],
   clusters: NativeCluster[],
   lineageLabel: string
-): OntologyEdge[] => {
-  const clustersByAsset = new Map<string, string[]>();
+): NativeLineage => {
+  const rowsByAsset = new Map<string, LineageRow[]>();
   clusters.forEach((cluster) =>
     cluster.assets.forEach((row) =>
-      clustersByAsset.set(row.id, [
-        ...(clustersByAsset.get(row.id) ?? []),
-        cluster.concept.id,
+      rowsByAsset.set(row.id, [
+        ...(rowsByAsset.get(row.id) ?? []),
+        {
+          conceptId: cluster.concept.id,
+          nodeId: assetNodeId(cluster.concept.id, row.id),
+          label: getEntityName(row.asset),
+        },
       ])
     )
   );
   const joined = new Map<string, OntologyEdge>();
+  const notesByNodeId = new Map<string, LineageNote[]>();
+  const note = (nodeId: string, lineageNote: LineageNote) =>
+    notesByNodeId.set(nodeId, [
+      ...(notesByNodeId.get(nodeId) ?? []),
+      lineageNote,
+    ]);
   edges.forEach((edge) => {
-    (clustersByAsset.get(edge.fromEntity) ?? []).forEach((from) =>
-      (clustersByAsset.get(edge.toEntity) ?? []).forEach((to) => {
-        if (from !== to) {
-          joined.set(`${from}|${to}`, {
-            id: `lineage:${from}:${to}`,
-            from,
-            to,
-            label: lineageLabel,
-            relationType: NATIVE_LINEAGE_RELATION_TYPE,
-            edgeKind: 'observedLineage',
-          });
+    (rowsByAsset.get(edge.fromEntity) ?? []).forEach((from) =>
+      (rowsByAsset.get(edge.toEntity) ?? []).forEach((to) => {
+        if (from.nodeId === to.nodeId) {
+          return;
         }
+        if (from.conceptId === to.conceptId) {
+          note(from.nodeId, { direction: 'downstream', label: to.label });
+          note(to.nodeId, { direction: 'upstream', label: from.label });
+
+          return;
+        }
+        joined.set(`${from.nodeId}|${to.nodeId}`, {
+          id: `lineage:${from.nodeId}:${to.nodeId}`,
+          from: from.conceptId,
+          to: to.conceptId,
+          label: lineageLabel,
+          relationType: NATIVE_LINEAGE_RELATION_TYPE,
+          edgeKind: 'observedLineage',
+          lineage: {
+            from: { nodeId: from.nodeId, label: from.label },
+            to: { nodeId: to.nodeId, label: to.label },
+          },
+        });
       })
     );
   });
 
-  return [...joined.values()];
+  return { edges: [...joined.values()], notesByNodeId };
 };
 
 export const buildNativeDataGraph = (
@@ -324,9 +364,20 @@ export const buildNativeDataGraph = (
   lineageLabel: string
 ): OntologyGraphData => {
   const conceptIds = new Set(graph.clusters.map((item) => item.concept.id));
+  const lineage = buildLineage(
+    graph.topology.lineageEdges,
+    graph.clusters,
+    lineageLabel
+  );
   const nodes = graph.clusters.flatMap((cluster) => [
     toConceptNode(cluster, loadingConceptIds.has(cluster.concept.id)),
-    ...cluster.assets.map((row) => toAssetNode(cluster.concept.id, row)),
+    ...cluster.assets.map((row) =>
+      toAssetNode(
+        cluster.concept.id,
+        row,
+        lineage.notesByNodeId.get(assetNodeId(cluster.concept.id, row.id))
+      )
+    ),
   ]);
   const assetEdges = graph.clusters.flatMap((cluster) =>
     cluster.assets.map(
@@ -346,11 +397,7 @@ export const buildNativeDataGraph = (
     edges: [
       ...assetEdges,
       ...buildInferredEdges(graph.topology.conceptEdges, conceptIds),
-      ...buildLineageEdges(
-        graph.topology.lineageEdges,
-        graph.clusters,
-        lineageLabel
-      ),
+      ...lineage.edges,
     ],
   };
 };

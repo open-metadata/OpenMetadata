@@ -55,6 +55,7 @@ import {
 } from './OntologyExplorer.interface';
 import {
   buildClusterEdgeGeometry,
+  buildRowLinkGeometry,
   CardBox,
   CardPosition,
   CLUSTER_LAYOUT_MARGIN,
@@ -94,6 +95,8 @@ interface DataClusterModel {
   terms: OntologyNode[];
 }
 
+type EdgeAnchor = 'rows' | 'cards';
+
 interface DataEdgeLayout {
   edge: OntologyEdge;
   end: Point;
@@ -104,6 +107,8 @@ interface DataEdgeLayout {
 }
 
 const CARD_WIDTH = 380;
+// The card border, the 48px header and the header's bottom border.
+const CARD_HEADER_HEIGHT = 50;
 // Card border + header and one asset row; used until the rendered card is measured.
 const CARD_CHROME_HEIGHT = 50;
 const ASSET_ROW_HEIGHT = 64;
@@ -112,6 +117,8 @@ const SHOW_MORE_HEIGHT = 41;
 const COLLAPSED_ASSET_COUNT = 3;
 // A native card shows this many rows, then scrolls the rows loaded after them.
 const NATIVE_COLLAPSED_ASSET_COUNT = 4;
+// The height of `tw:max-h-64`, the scroll area that holds a native card's rows.
+const NATIVE_ROWS_MAX_HEIGHT = 256;
 const INFERRED_EDGE_COLOR = 'var(--tw-color-border-brand)';
 const LINEAGE_EDGE_COLOR = 'var(--tw-color-fg-secondary)';
 const HIERARCHY_RELATION_TYPES = new Set(['parentOf', 'childOf']);
@@ -166,13 +173,19 @@ function getAssetServiceLabel(node: OntologyNode): string {
 
 function getNativeAssetSummary(node: OntologyNode, t: TFunction): string {
   const connector = getAssetServiceLabel(node);
-
-  return node.columnCount
+  const columns = node.columnCount
     ? t('message.native-asset-summary', {
         connector,
         count: node.columnCount,
       })
     : connector;
+  const lineage = (node.lineageNotes ?? []).map(({ direction, label }) =>
+    direction === 'downstream'
+      ? t('message.lineage-to-table', { name: label })
+      : t('message.lineage-from-table', { name: label })
+  );
+
+  return [columns, ...lineage].join(' · ');
 }
 
 function toSentenceCase(label: string): string {
@@ -439,6 +452,48 @@ function buildDataEdgeLayout(
   });
 }
 
+interface StyledDataEdge extends DataEdgeLayout {
+  anchor?: EdgeAnchor;
+  color: string;
+  isSolid: boolean;
+  labelText: string;
+}
+
+// A lineage edge joins its two rows while both are in view. Otherwise it joins
+// the cards, and its chip names the two tables the rows would have shown.
+function styleNativeEdge(
+  layout: DataEdgeLayout,
+  rowsInView: Map<string, CardBox>
+): StyledDataEdge {
+  const ends = layout.edge.lineage;
+  if (!ends) {
+    return {
+      ...layout,
+      color: INFERRED_EDGE_COLOR,
+      isSolid: false,
+      labelText: layout.edge.label,
+    };
+  }
+  const fromRow = rowsInView.get(ends.from.nodeId);
+  const toRow = rowsInView.get(ends.to.nodeId);
+  const style = { color: LINEAGE_EDGE_COLOR, isSolid: true };
+
+  return fromRow && toRow
+    ? {
+        ...layout,
+        ...buildRowLinkGeometry(fromRow, toRow),
+        ...style,
+        anchor: 'rows',
+        labelText: layout.edge.label,
+      }
+    : {
+        ...layout,
+        ...style,
+        anchor: 'cards',
+        labelText: `${ends.from.label} → ${ends.to.label}`,
+      };
+}
+
 const OntologyDataGraph = ({
   data,
   glossaryColorMap,
@@ -475,6 +530,9 @@ const OntologyDataGraph = ({
   >({});
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(
     () => new Set()
+  );
+  const [rowScrollTops, setRowScrollTops] = useState<Record<string, number>>(
+    {}
   );
   const cardHeightOf = useCallback(
     (term: OntologyNode) =>
@@ -533,22 +591,55 @@ const OntologyDataGraph = ({
       ),
     [cardBoxes, cardPositions, clusterEdges, clusterLayout]
   );
+  // Rows a lineage edge can end on: shown, and inside their card's scroll area.
+  const rowsInView = useMemo(() => {
+    const rows = new Map<string, CardBox>();
+    if (!isNative) {
+      return rows;
+    }
+    visibleTerms.forEach((term) => {
+      const card = cardBoxes.get(term.id);
+      const isExpanded = expandedCardIds.has(term.id);
+      const assets = assetsByTerm.get(term.id) ?? [];
+      const shownAssets = isExpanded ? assets : assets.slice(0, collapsedCount);
+      const scrollTop = isExpanded ? rowScrollTops[term.id] ?? 0 : 0;
+      const viewportHeight = Math.min(
+        NATIVE_ROWS_MAX_HEIGHT,
+        shownAssets.length * ASSET_ROW_HEIGHT
+      );
+      shownAssets.forEach((asset, index) => {
+        const rowTop = index * ASSET_ROW_HEIGHT - scrollTop;
+        const rowCenter = rowTop + ASSET_ROW_HEIGHT / 2;
+        if (card && rowCenter >= 0 && rowCenter <= viewportHeight) {
+          rows.set(asset.id, {
+            height: ASSET_ROW_HEIGHT,
+            left: card.left,
+            top: card.top + CARD_HEADER_HEIGHT + rowTop,
+            width: card.width,
+          });
+        }
+      });
+    });
+
+    return rows;
+  }, [
+    assetsByTerm,
+    cardBoxes,
+    collapsedCount,
+    expandedCardIds,
+    isNative,
+    rowScrollTops,
+    visibleTerms,
+  ]);
   const relationshipTypeByName = useMemo(
     () => new Map(relationTypes.map((type) => [type.name, type])),
     [relationTypes]
   );
   const renderedSemanticEdges = useMemo(
     () =>
-      dataEdges.map((layout) => {
+      dataEdges.map((layout): StyledDataEdge => {
         if (isNative) {
-          const isLineage = layout.edge.edgeKind === 'observedLineage';
-
-          return {
-            ...layout,
-            color: isLineage ? LINEAGE_EDGE_COLOR : INFERRED_EDGE_COLOR,
-            isSolid: isLineage,
-            labelText: layout.edge.label,
-          };
+          return styleNativeEdge(layout, rowsInView);
         }
         const relationshipType = relationshipTypeByName.get(
           layout.edge.relationType
@@ -570,7 +661,7 @@ const OntologyDataGraph = ({
           ).toLocaleLowerCase(),
         };
       }),
-    [dataEdges, isNative, relationshipTypeByName]
+    [dataEdges, isNative, relationshipTypeByName, rowsInView]
   );
   const legendEntries = useMemo((): LegendEntry[] => {
     if (isNative) {
@@ -1162,7 +1253,15 @@ const OntologyDataGraph = ({
             className="tw:max-h-64 tw:touch-pan-y tw:overflow-y-auto"
             data-rows-id={term.id}
             data-testid={`ontology-data-cluster-rows-${term.id}`}
-            data-wheel-scroll="">
+            data-wheel-scroll=""
+            onScroll={(event) => {
+              const { scrollTop } = event.currentTarget;
+              setRowScrollTops((current) =>
+                current[term.id] === scrollTop
+                  ? current
+                  : { ...current, [term.id]: scrollTop }
+              );
+            }}>
             {assetState.shownAssets.map(renderAssetRow)}
           </div>
         ) : (
@@ -1219,10 +1318,11 @@ const OntologyDataGraph = ({
           height={canvasHeight}
           width={canvasWidth}>
           {renderedSemanticEdges.map(
-            ({ color, edge, end, isSolid, path, renderKey }) => (
+            ({ anchor, color, edge, end, isSolid, path, renderKey }) => (
               <Fragment key={renderKey}>
                 <path
                   d={path}
+                  data-anchor={anchor}
                   data-edge-kind={edge.edgeKind}
                   data-testid="ontology-data-semantic-edge"
                   fill="none"
