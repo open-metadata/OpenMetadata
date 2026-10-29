@@ -105,8 +105,7 @@ public class OAuthTokenRepository {
     boolean issuedToClient =
         record != null && !record.revoked() && record.clientId().equals(clientId);
     if (issuedToClient) {
-      refreshTokenDAO.revoke(tokenHash);
-      accessTokenDAO.deleteAllForUser(record.clientId(), record.userName());
+      refreshTokenDAO.revokeWithAccessTokens(tokenHash, record.clientId(), record.userName());
     }
     return issuedToClient;
   }

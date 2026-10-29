@@ -10,7 +10,7 @@
   `refreshTokenIsRevokedOnlyForTheClientItWasIssuedTo`),
   `RevocationHandlerTest` (`accessTokenWithoutTypeHintIsRevokedWhenNoRefreshTokenMatches`,
   `testRevokeWithRefreshTokenHintButIsAccessToken`), `McpOAuthIT`
-  (`testRevokedAccessToken_isRefusedOnTheNextCall`)
+  (`testRevokedAccessToken_isRefusedOnTheNextCall`, `testRevokedRefreshToken_endsItsAccessTokens`)
 - **Related:** ADR:2026-10-26-an-mcp-oauth-grant-ends-30-days-after-sign-in
 
 ## Context
@@ -32,9 +32,9 @@ signature text is not a canonical encoding, so a string key does not identify a 
 - `/mcp/revoke` deletes a stored token or revokes a refresh token only when the row names the
   authenticated client (RFC 7009 section 2.1). A token issued to another client is left alone and
   answered 200, like an unknown one, so the answer never tells a client that the token exists.
-  `token_type_hint` only picks which type is looked up first; the other is always tried too.
+  `token_type_hint` only picks which type is looked up first; the other is tried when it misses.
 - Revoking a refresh token also deletes the access tokens of its grant, the client and user pair
-  the refresh rotation already treats as one grant.
+  the refresh rotation already treats as one grant, in the same transaction.
 
 ## Consequences
 

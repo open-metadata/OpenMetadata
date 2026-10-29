@@ -30,6 +30,7 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.util.jdbi.BindJson;
@@ -156,10 +157,6 @@ public interface OAuthDAOs {
 
     @SqlUpdate("DELETE FROM oauth_access_tokens WHERE expires_at < :currentTime")
     void deleteExpired(@Bind("currentTime") long currentTime);
-
-    @SqlUpdate(
-        "DELETE FROM oauth_access_tokens WHERE client_id = :clientId AND user_name = :userName")
-    void deleteAllForUser(@Bind("clientId") String clientId, @Bind("userName") String userName);
   }
 
   interface OAuthRefreshTokenDAO {
@@ -200,6 +197,23 @@ public interface OAuthDAOs {
     @SqlUpdate(
         "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE client_id = :clientId AND user_name = :userName AND revoked = FALSE")
     void revokeAllForUser(@Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    @SqlUpdate(
+        "DELETE FROM oauth_access_tokens WHERE client_id = :clientId AND user_name = :userName")
+    void deleteAccessTokensForUser(
+        @Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    /**
+     * Revokes a refresh token and deletes the access tokens of its grant in one transaction. Apart, a
+     * failure after the first write would leave the access tokens valid, and a retry would find the
+     * refresh token already revoked and nothing left to do. The revoke goes first so a refresh racing
+     * it fails its rotation.
+     */
+    @Transaction
+    default void revokeWithAccessTokens(String tokenHash, String clientId, String userName) {
+      revoke(tokenHash);
+      deleteAccessTokensForUser(clientId, userName);
+    }
   }
 
   interface McpPendingAuthRequestDAO {

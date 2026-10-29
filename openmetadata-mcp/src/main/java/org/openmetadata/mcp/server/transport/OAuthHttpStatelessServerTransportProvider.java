@@ -1143,8 +1143,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       LOG.info("Token revocation completed successfully");
 
     } catch (CompletionException ex) {
-      // An unknown token is answered 200 by RevocationHandler (RFC 7009); only a server error gets
-      // here.
+      // RevocationHandler answers an unknown token 200 (RFC 7009); only server errors get here.
       LOG.error("Token revocation failed with server error", ex);
       sendOAuthError(
           request, response, 500, "server_error", "Token revocation failed due to server error");

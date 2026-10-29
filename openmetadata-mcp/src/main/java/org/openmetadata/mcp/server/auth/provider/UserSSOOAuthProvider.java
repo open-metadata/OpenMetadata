@@ -1153,9 +1153,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           new RefreshToken(
               newRefreshTokenValue, client.getClientId(), requestedScopes, newRefreshExpiresAt);
 
-      // Issued before the rotation, so a failed write here leaves the presented refresh token
-      // usable
-      // instead of costing the client its grant. If the rotation then fails, the stored token was
+      // Issued before the rotation: a failed write here leaves the presented refresh token usable
+      // rather than costing the client its grant. If the rotation then fails, the stored token was
       // never handed out and expires on its own.
       JWTAuthMechanism jwtAuth =
           issueAccessToken(user, userName, client.getClientId(), requestedScopes);

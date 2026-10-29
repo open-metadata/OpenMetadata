@@ -415,24 +415,44 @@ public class McpOAuthIT extends McpTestBase {
     String accessToken = OBJECT_MAPPER.readTree(refreshed.body()).get("access_token").asText();
     assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
 
+    assertThat(revoke(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+  }
+
+  /** Revoking a refresh token ends the access tokens of its grant too (RFC 7009 section 2.1). */
+  @Test
+  @Order(17)
+  void testRevokedRefreshToken_endsItsAccessTokens() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    String seeded =
+        seedRefreshToken(List.of(), System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+    JsonNode tokens = OBJECT_MAPPER.readTree(refresh(seeded).body());
+    String accessToken = tokens.get("access_token").asText();
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(revoke(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(200);
+
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+  }
+
+  private HttpResponse<String> revoke(String token) throws Exception {
     String formBody =
         "token="
-            + accessToken
+            + token
             + "&client_id="
             + registeredClientId
             + "&client_secret="
             + registeredClientSecret;
-    HttpRequest revoke =
+    HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(getMcpUrl("/mcp/revoke")))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .POST(HttpRequest.BodyPublishers.ofString(formBody))
             .timeout(Duration.ofSeconds(30))
             .build();
-    assertThat(HTTP_CLIENT.send(revoke, HttpResponse.BodyHandlers.ofString()).statusCode())
-        .isEqualTo(200);
-
-    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private HttpResponse<String> listTools(String accessToken) throws Exception {

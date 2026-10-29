@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.server.auth.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -67,8 +68,6 @@ public class OAuthTokenRepositoryTest {
   @Test
   void refreshTokenIsRevokedOnlyForTheClientItWasIssuedTo() {
     CollectionDAO dao = mock(CollectionDAO.class);
-    CollectionDAO.OAuthAccessTokenDAO accessTokens = mock(CollectionDAO.OAuthAccessTokenDAO.class);
-    when(dao.oauthAccessTokenDAO()).thenReturn(accessTokens);
     when(dao.oauthRefreshTokenDAO()).thenReturn(refreshTokenDAO);
     String live = OAuthTokenRepository.hashToken("live-refresh");
     String used = OAuthTokenRepository.hashToken("used-refresh");
@@ -85,13 +84,11 @@ public class OAuthTokenRepositoryTest {
           .isFalse();
       assertThat(tokenRepository.revokeRefreshTokenIssuedTo("used-refresh", "owner-client"))
           .isFalse();
-      verify(refreshTokenDAO, never()).revoke(live);
-      verify(accessTokens, never()).deleteAllForUser("owner-client", "alice");
+      verify(refreshTokenDAO, never()).revokeWithAccessTokens(any(), any(), any());
 
       assertThat(tokenRepository.revokeRefreshTokenIssuedTo("live-refresh", "owner-client"))
           .isTrue();
-      verify(refreshTokenDAO).revoke(live);
-      verify(accessTokens).deleteAllForUser("owner-client", "alice");
+      verify(refreshTokenDAO).revokeWithAccessTokens(live, "owner-client", "alice");
     }
   }
 
