@@ -707,6 +707,17 @@ export const installVisualData = async (
       return;
     }
     if (
+      state === 'error' &&
+      path.startsWith('dataQuality/testCases/testCaseIncidentStatus')
+    ) {
+      await route.fulfill({
+        status: 503,
+        json: { message: 'Unable to load incidents. Please try again.' },
+      });
+
+      return;
+    }
+    if (
       path === 'dataQuality/testCases/testCaseIncidentStatus/incidentGroups'
     ) {
       const groupBy = url.searchParams.get('groupBy') ?? 'table';
@@ -747,7 +758,64 @@ export const installVisualData = async (
 
       return;
     }
-    if (path === 'tasks' || path === 'tasks/visible') {
+    if (path === 'docStore') {
+      const prefix = url.searchParams.get('fqnPrefix') ?? '';
+      await route.fulfill({
+        json: pageOf(
+          fixtureResources.documents.filter((document) =>
+            document.fullyQualifiedName.startsWith(prefix)
+          )
+        ),
+      });
+
+      return;
+    }
+    if (path.startsWith('docStore/name/')) {
+      // Unsaved persona layouts use a 404 to select the product's defaults.
+      const document = fixtureResources.documents.find(
+        (item) =>
+          item.fullyQualifiedName === path.slice('docStore/name/'.length)
+      );
+      await route.fulfill({
+        status: document ? 200 : 404,
+        json: document ?? { code: 404, message: 'No saved persona layout.' },
+      });
+
+      return;
+    }
+    if (path === 'kpi') {
+      await route.fulfill({
+        json: pageOf(state === 'empty' ? [] : fixtureResources.kpis),
+      });
+
+      return;
+    }
+    if (/^kpi\/[^/]+\/kpiResult$/.test(path)) {
+      const end = Date.parse('2026-01-15T10:00:00.000Z');
+      const values = path.includes('visual_owner_coverage')
+        ? [55, 56, 57, 58, 59, 60, 61]
+        : path.includes('visual_completed_target')
+        ? [60, 62, 64, 66, 68, 70, 72]
+        : [55, 59, 63, 67, 71, 75, 79];
+      await route.fulfill({
+        json: {
+          results:
+            state === 'empty'
+              ? []
+              : values.map((count, index) => ({
+                  count,
+                  day: end - (values.length - index - 1) * 86_400_000,
+                })),
+        },
+      });
+
+      return;
+    }
+    if (
+      path === 'tasks' ||
+      path === 'tasks/visible' ||
+      path === 'tasks/assigned'
+    ) {
       const data =
         state === 'empty'
           ? []
@@ -950,23 +1018,22 @@ export const installVisualData = async (
         return;
       }
       const index = url.searchParams.get('index') ?? 'all';
+      const resourceTypes: Record<string, string> = {
+        users: 'user',
+        teams: 'team',
+        domains: 'domain',
+        dataProducts: 'dataProduct',
+        glossaries: 'glossary',
+        glossaryTerms: 'glossaryTerm',
+      };
+      // Incident pickers use a dedicated index outside the discovery corpus.
+      if (index.toLowerCase().includes('testcase'))
+        resourceTypes['dataQuality/testCases'] = 'testCase';
       const candidates = [
         ...VISUAL_ENTITIES,
-        ...[
-          'users',
-          'teams',
-          'domains',
-          'dataProducts',
-          'glossaries',
-          'glossaryTerms',
-        ].flatMap((collection) =>
+        ...Object.entries(resourceTypes).flatMap(([collection, type]) =>
           (fixtureResources[collection] ?? []).map((entity) => ({
-            type:
-              collection === 'users'
-                ? 'user'
-                : collection === 'teams'
-                ? 'team'
-                : collection.slice(0, -1),
+            type,
             entity,
           }))
         ),

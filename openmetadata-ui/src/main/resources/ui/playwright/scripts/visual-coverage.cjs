@@ -41,10 +41,16 @@ if (uniqueSceneIds.size !== scenes.length) {
   throw new Error('Visual scene IDs must be unique across the catalog.');
 }
 
+const themeCount = (scene) => (scene.mode === 'classic' ? 1 : 2);
+const frameCaptures = scenes
+  .filter((scene) => scene.group === 'Forms' && scene.target)
+  .reduce((total, scene) => total + themeCount(scene), 0);
 const groups = Object.fromEntries(
   [...new Set(scenes.map(({ group }) => group))].map((group) => [
     group,
-    scenes.filter((scene) => scene.group === group).length * 2,
+    scenes
+      .filter((scene) => scene.group === group)
+      .reduce((total, scene) => total + themeCount(scene), 0),
   ])
 );
 const connectorCategories = new Set(connectors.map(({ category }) => category));
@@ -64,16 +70,13 @@ const report = {
       (connectors.length + connectorCategories.size * 2) * 2,
     sharedControlStates: controls.length,
     sharedControlCaptures: controls.length * 2,
-    formFrameCaptures:
-      scenes.filter((scene) => scene.group === 'Forms' && scene.target).length *
-      2,
+    formFrameCaptures: frameCaptures,
     classicCaptures: 14,
     publicAuthenticationCaptures: 10,
     additionalAiAndMetricAndDeleteCaptures: 12,
     minimumCaptures:
-      scenes.length * 2 +
-      scenes.filter((scene) => scene.group === 'Forms' && scene.target).length *
-        2 +
+      scenes.reduce((total, scene) => total + themeCount(scene), 0) +
+      frameCaptures +
       (connectors.length + connectorCategories.size * 2) * 2 +
       controls.length * 2 +
       36,

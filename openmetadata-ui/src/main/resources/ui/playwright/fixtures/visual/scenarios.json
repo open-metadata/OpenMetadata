@@ -996,8 +996,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-table-sample-data",
@@ -1011,7 +1012,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "sample-data-table"
     }
   },
   {
@@ -1026,7 +1027,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "add-query-btn"
     }
   },
   {
@@ -1041,7 +1042,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "Run Profiler to Unlock Table Insights"
     }
   },
   {
@@ -1056,8 +1057,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-table-schema-definition",
@@ -1071,7 +1073,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "code-mirror-container"
     }
   },
   {
@@ -1086,7 +1088,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "contract-header-container"
     }
   },
   {
@@ -1101,7 +1103,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1116,8 +1118,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-database-contract",
@@ -1131,7 +1134,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1146,7 +1149,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1161,7 +1164,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "stored-procedure-table"
     }
   },
   {
@@ -1176,8 +1179,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-databaseSchema-contract",
@@ -1191,7 +1195,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1206,7 +1210,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1221,8 +1225,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-pipeline-executions",
@@ -1236,7 +1241,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "list-view-table"
     }
   },
   {
@@ -1251,8 +1256,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-pipeline-contract",
@@ -1266,7 +1272,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1281,7 +1287,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1296,8 +1302,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-dashboard-lineage",
@@ -1311,8 +1318,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-dashboard-contract",
@@ -1326,7 +1334,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1341,7 +1349,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1356,8 +1364,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-chart-lineage",
@@ -1371,8 +1380,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-chart-contract",
@@ -1386,7 +1396,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1401,7 +1411,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1416,8 +1426,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-dashboardDataModel-sql",
@@ -1431,7 +1442,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "code-mirror-container"
     }
   },
   {
@@ -1446,8 +1457,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-dashboardDataModel-contract",
@@ -1461,7 +1473,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1476,7 +1488,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1491,8 +1503,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-mlmodel-details",
@@ -1506,7 +1519,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "hyperparameters-table"
     }
   },
   {
@@ -1521,8 +1534,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-mlmodel-contract",
@@ -1536,7 +1550,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1551,7 +1565,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1566,8 +1580,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-storedProcedure-lineage",
@@ -1581,8 +1596,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-storedProcedure-contract",
@@ -1596,7 +1612,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1611,7 +1627,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1626,7 +1642,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "container-list-table"
     }
   },
   {
@@ -1641,7 +1657,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1656,8 +1672,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-container-lineage",
@@ -1671,8 +1688,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-container-contract",
@@ -1686,7 +1704,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1701,7 +1719,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1716,8 +1734,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-searchIndex-sample-data",
@@ -1731,7 +1750,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1746,8 +1765,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-searchIndex-search-index-settings",
@@ -1761,7 +1781,10 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "Search Index Settings",
+      "within": {
+        "role": "tabpanel"
+      }
     }
   },
   {
@@ -1776,7 +1799,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1791,7 +1814,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1806,8 +1829,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-apiCollection-contract",
@@ -1821,7 +1845,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1836,7 +1860,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1851,8 +1875,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-apiEndpoint-lineage",
@@ -1866,8 +1891,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-apiEndpoint-contract",
@@ -1881,7 +1907,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1896,7 +1922,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1911,8 +1937,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-directory-lineage",
@@ -1926,8 +1953,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-directory-contract",
@@ -1941,7 +1969,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -1956,7 +1984,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -1971,8 +1999,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-file-lineage",
@@ -1986,8 +2015,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-file-contract",
@@ -2001,7 +2031,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -2016,7 +2046,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -2031,8 +2061,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-spreadsheet-lineage",
@@ -2046,8 +2077,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-spreadsheet-contract",
@@ -2061,7 +2093,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -2076,7 +2108,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -2091,8 +2123,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-worksheet-lineage",
@@ -2106,8 +2139,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "rf__wrapper"
+    },
+    "paintedLineage": true
   },
   {
     "id": "tab-worksheet-contract",
@@ -2121,7 +2155,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -2136,7 +2170,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -2151,7 +2185,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "table-view-container"
     }
   },
   {
@@ -2166,7 +2200,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "explore-card-visual_revenue_product"
     }
   },
   {
@@ -2181,8 +2215,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-domain-assets",
@@ -2196,7 +2231,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "select-all-assets"
     }
   },
   {
@@ -2211,7 +2246,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -2226,7 +2261,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "incident-New-type-area-chart-widget-container"
     }
   },
   {
@@ -2241,8 +2276,9 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
-    }
+      "testId": "activity-feed-left-panel-all"
+    },
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tab-dataProduct-input-output-ports",
@@ -2256,7 +2292,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-input-ports-placeholder"
     }
   },
   {
@@ -2271,7 +2307,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "select-all-assets"
     }
   },
   {
@@ -2286,7 +2322,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "no-data-placeholder"
     }
   },
   {
@@ -2301,7 +2337,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "testId": "incident-New-type-area-chart-widget-container"
     }
   },
   {
@@ -2316,7 +2352,7 @@
       }
     ],
     "ready": {
-      "role": "tabpanel"
+      "text": "No custom properties defined"
     }
   },
   {
@@ -4298,8 +4334,7 @@
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary.Customer",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Glossary\\ Terms\\s*\\d*$"
+      "testId": "glossary-terms-table"
     },
     "actions": [
       {
@@ -4314,8 +4349,7 @@
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary.Customer",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Assets\\s*\\d*$"
+      "testId": "select-all-assets"
     },
     "actions": [
       {
@@ -4330,8 +4364,7 @@
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary.Customer",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+      "testId": "activity-feed-left-panel-all"
     },
     "actions": [
       {
@@ -4339,15 +4372,15 @@
         "role": "tab",
         "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
       }
-    ]
+    ],
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "glossaryTerm-tab-relations-graph",
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary.Customer",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Relations\\ Graph\\s*\\d*$"
+      "testId": "ontology-graph-controls"
     },
     "actions": [
       {
@@ -4355,15 +4388,15 @@
         "role": "tab",
         "namePattern": "^Relations\\ Graph\\s*\\d*$"
       }
-    ]
+    ],
+    "paintedOntology": true
   },
   {
     "id": "glossaryTerm-tab-custom-properties",
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary.Customer",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Custom\\ Properties\\s*\\d*$"
+      "text": "No custom properties defined"
     },
     "actions": [
       {
@@ -4378,8 +4411,7 @@
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary.Customer",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Data\\ Observability\\s*\\d*$"
+      "testId": "incident-New-type-area-chart-widget-container"
     },
     "actions": [
       {
@@ -4394,8 +4426,7 @@
     "group": "Entity tabs",
     "path": "/metric/visual_gross_margin",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Lineage\\s*\\d*$"
+      "testId": "rf__wrapper"
     },
     "actions": [
       {
@@ -4403,15 +4434,15 @@
         "role": "tab",
         "namePattern": "^Lineage\\s*\\d*$"
       }
-    ]
+    ],
+    "paintedLineage": true
   },
   {
     "id": "metric-tab-assets",
     "group": "Entity tabs",
     "path": "/metric/visual_gross_margin",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Assets\\s*\\d*$"
+      "testId": "select-all-assets"
     },
     "actions": [
       {
@@ -4426,8 +4457,7 @@
     "group": "Entity tabs",
     "path": "/metric/visual_gross_margin",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+      "testId": "activity-feed-left-panel-all"
     },
     "actions": [
       {
@@ -4435,15 +4465,15 @@
         "role": "tab",
         "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
       }
-    ]
+    ],
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "metric-tab-custom-properties",
     "group": "Entity tabs",
     "path": "/metric/visual_gross_margin",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Custom\\ Properties\\s*\\d*$"
+      "text": "No custom properties defined"
     },
     "actions": [
       {
@@ -4458,8 +4488,7 @@
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Review\\s*\\d*$"
+      "testId": "inbox-tasks-scroll"
     },
     "actions": [
       {
@@ -4474,8 +4503,7 @@
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Relations\\ Graph\\s*\\d*$"
+      "testId": "ontology-graph-controls"
     },
     "actions": [
       {
@@ -4483,15 +4511,15 @@
         "role": "tab",
         "namePattern": "^Relations\\ Graph\\s*\\d*$"
       }
-    ]
+    ],
+    "paintedOntology": true
   },
   {
     "id": "glossary-tab-activity-feeds-tasks",
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+      "testId": "activity-feed-left-panel-all"
     },
     "actions": [
       {
@@ -4499,15 +4527,15 @@
         "role": "tab",
         "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
       }
-    ]
+    ],
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tag-tab-assets",
     "group": "Entity tabs",
     "path": "/tag/VisualClassification.Confidential",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Assets\\s*\\d*$"
+      "testId": "select-all-assets"
     },
     "actions": [
       {
@@ -4522,8 +4550,7 @@
     "group": "Entity tabs",
     "path": "/tag/VisualClassification.Confidential",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
+      "testId": "activity-feed-left-panel-all"
     },
     "actions": [
       {
@@ -4531,15 +4558,15 @@
         "role": "tab",
         "namePattern": "^Activity\\ Feeds\\ \\&\\ Tasks\\s*\\d*$"
       }
-    ]
+    ],
+    "containsText": "Completed orders used for certified finance reporting."
   },
   {
     "id": "tag-tab-data-observability",
     "group": "Entity tabs",
     "path": "/tag/VisualClassification.Confidential",
     "ready": {
-      "role": "tab",
-      "namePattern": "^Data\\ Observability\\s*\\d*$"
+      "testId": "incident-New-type-area-chart-widget-container"
     },
     "actions": [
       {
@@ -5317,5 +5344,1713 @@
     "ready": {
       "role": "menu"
     }
+  },
+  {
+    "id": "classic-profile-menu",
+    "group": "Classic interactions",
+    "path": "/my-data",
+    "ready": {
+      "role": "menu"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "dropdown-profile"
+      }
+    ]
+  },
+  {
+    "id": "classic-language-menu",
+    "group": "Classic interactions",
+    "path": "/my-data",
+    "ready": {
+      "role": "menu"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "language-selector-button"
+      }
+    ]
+  },
+  {
+    "id": "classic-help-menu",
+    "group": "Classic interactions",
+    "path": "/my-data",
+    "ready": {
+      "role": "menu"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "help-icon"
+      }
+    ]
+  },
+  {
+    "id": "classic-domain-picker",
+    "group": "Classic interactions",
+    "path": "/my-data",
+    "ready": {
+      "role": "treegrid",
+      "name": "All Domains"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "domain-dropdown"
+      }
+    ]
+  },
+  {
+    "id": "classic-notifications",
+    "group": "Classic interactions",
+    "path": "/my-data",
+    "ready": {
+      "role": "dialog",
+      "name": "Notifications"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Notifications"
+      }
+    ]
+  },
+  {
+    "id": "classic-global-search-suggestions",
+    "group": "Classic interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "ready": {
+      "testId": "global-search-suggestion-box"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "containsText": "Orders",
+    "actions": [
+      {
+        "action": "fill",
+        "testId": "searchBox",
+        "value": "orders"
+      }
+    ]
+  },
+  {
+    "id": "classic-global-search-types",
+    "group": "Classic interactions",
+    "path": "/my-data",
+    "ready": {
+      "role": "listbox"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "global-search-selector"
+      }
+    ]
+  },
+  {
+    "id": "classic-home-grid",
+    "group": "Classic interactions",
+    "path": "/my-data",
+    "ready": {
+      "testId": "home-landing-page"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "topics-grid-view"
+      }
+    ]
+  },
+  {
+    "id": "classic-home-collapsed",
+    "group": "Classic interactions",
+    "path": "/my-data",
+    "ready": {
+      "role": "button",
+      "name": "Expand All"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "toggle-all-widgets"
+      }
+    ]
+  },
+  {
+    "id": "home-grid",
+    "group": "Interaction states",
+    "path": "/",
+    "ready": {
+      "testId": "home-landing-page"
+    },
+    "mode": "ai",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "topics-grid-view"
+      }
+    ]
+  },
+  {
+    "id": "home-collapsed",
+    "group": "Interaction states",
+    "path": "/",
+    "ready": {
+      "role": "button",
+      "name": "Expand All"
+    },
+    "mode": "ai",
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "toggle-all-widgets"
+      }
+    ]
+  },
+  {
+    "id": "customize-home",
+    "group": "Customization states",
+    "path": "/customize-page/VisualAnalystPersona/LandingPage",
+    "ready": {
+      "testId": "add-widget-button"
+    },
+    "mode": "ai"
+  },
+  {
+    "id": "customize-home-widget-picker",
+    "group": "Customization states",
+    "path": "/customize-page/VisualAnalystPersona/LandingPage",
+    "ready": {
+      "testId": "customise-home-modal"
+    },
+    "mode": "ai",
+    "initialReady": {
+      "testId": "add-widget-button"
+    },
+    "containsText": "All Widgets",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-widget-button"
+      }
+    ]
+  },
+  {
+    "id": "customize-home-reset-dialog",
+    "group": "Customization states",
+    "path": "/customize-page/VisualAnalystPersona/LandingPage",
+    "ready": {
+      "role": "dialog",
+      "name": "Reset Default Layout"
+    },
+    "mode": "ai",
+    "initialReady": {
+      "testId": "add-widget-button"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "reset-button"
+      }
+    ]
+  },
+  {
+    "id": "classic-customize-home",
+    "group": "Customization states",
+    "path": "/customize-page/VisualAnalystPersona/LandingPage",
+    "ready": {
+      "testId": "add-widget-button"
+    },
+    "mode": "classic"
+  },
+  {
+    "id": "classic-customize-home-widget-picker",
+    "group": "Customization states",
+    "path": "/customize-page/VisualAnalystPersona/LandingPage",
+    "ready": {
+      "testId": "customise-home-modal"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "add-widget-button"
+    },
+    "containsText": "All Widgets",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "add-widget-button"
+      }
+    ]
+  },
+  {
+    "id": "classic-customize-home-reset-dialog",
+    "group": "Customization states",
+    "path": "/customize-page/VisualAnalystPersona/LandingPage",
+    "ready": {
+      "role": "dialog",
+      "name": "Reset Default Layout"
+    },
+    "mode": "classic",
+    "initialReady": {
+      "testId": "add-widget-button"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "reset-button"
+      }
+    ]
+  },
+  {
+    "id": "contract-actions",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "contract-action-dropdown"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      }
+    ]
+  },
+  {
+    "id": "contract-yaml",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "code-mirror-container"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "contract-view-switch-tab-yaml"
+      }
+    ]
+  },
+  {
+    "id": "contract-edit-details",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "contract-name"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-edit-status-options",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "testId": "contract-status"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-edit-owners",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "role": "listbox"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "testId": "contract-owners"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-edit-terms-of-service",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "id": "block-editor-wrapper",
+      "within": {
+        "role": "tabpanel",
+        "name": "Terms of Service"
+      }
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Terms of Service"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-edit-schema",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "role": "grid",
+      "within": "add-contract-card"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Schema"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-edit-semantics",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "save-semantic-button"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Semantics"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-edit-security",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "data-classification-input"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Security"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-edit-quality",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "quality-filter-button"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Quality"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-edit-sla",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "refresh-frequency-interval-input"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "SLA"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-semantic-validation",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "text": "Name is required."
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Semantics"
+      },
+      {
+        "action": "click",
+        "testId": "save-semantic-button"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-security-row-filter",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "columnName-input-0-0"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Security"
+      },
+      {
+        "action": "click",
+        "testId": "add-row-filter-button-0"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "contract-quality-filter",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "role": "menu"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Quality"
+      },
+      {
+        "action": "click",
+        "testId": "quality-filter-button"
+      }
+    ]
+  },
+  {
+    "id": "contract-quality-add-test",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "role": "dialog"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "contract-edit-button"
+      },
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Quality"
+      },
+      {
+        "action": "click",
+        "testId": "add-test-button"
+      }
+    ]
+  },
+  {
+    "id": "contract-import-odcs",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "import-contract-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "import-odcs-contract-button"
+      }
+    ]
+  },
+  {
+    "id": "contract-import-openmetadata",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "import-contract-modal"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "import-openmetadata-contract-button"
+      }
+    ]
+  },
+  {
+    "id": "contract-delete-confirmation",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "role": "dialog",
+      "has": {
+        "role": "button",
+        "name": "Delete"
+      }
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      },
+      {
+        "action": "click",
+        "testId": "delete-contract-button"
+      }
+    ]
+  },
+  {
+    "id": "contract-read-only",
+    "group": "Contract states",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "contract-action-dropdown"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "manage-contract-actions"
+      }
+    ],
+    "state": "read-only",
+    "absent": [
+      {
+        "testId": "contract-edit-button"
+      },
+      {
+        "testId": "contract-run-now-button"
+      },
+      {
+        "testId": "delete-contract-button"
+      }
+    ]
+  },
+  {
+    "id": "contract-create-chart",
+    "group": "Contract states",
+    "path": "/chart/visual_looker.revenue_trend",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "ready": {
+      "testId": "contract-name"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Contract"
+      },
+      {
+        "action": "click",
+        "testId": "add-contract-button"
+      },
+      {
+        "action": "click",
+        "testId": "create-contract-button"
+      }
+    ],
+    "viewport": {
+      "width": 1440,
+      "height": 1800
+    }
+  },
+  {
+    "id": "home-widget-platformHealth",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-platformHealth"
+    },
+    "target": {
+      "testId": "topic-card-platformHealth"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.PlatformHealth"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-dataEstate",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-dataEstate"
+    },
+    "target": {
+      "testId": "topic-card-dataEstate"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.DataEstate"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-totalDataAssets",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-totalDataAssets"
+    },
+    "target": {
+      "testId": "topic-card-totalDataAssets"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.TotalAssets"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-myTasks",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-myTasks"
+    },
+    "target": {
+      "testId": "topic-card-myTasks"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.MyTask"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-pipelineStatus",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-pipelineStatus"
+    },
+    "target": {
+      "testId": "topic-card-pipelineStatus"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.PipelineStatus"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-teamActivity",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-teamActivity"
+    },
+    "target": {
+      "testId": "topic-card-teamActivity"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.ActivityFeed"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-yoursAndFollowed",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-yoursAndFollowed"
+    },
+    "target": {
+      "testId": "topic-card-yoursAndFollowed"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.YoursAndFollowed"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-contextCenter",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-contextCenter"
+    },
+    "target": {
+      "testId": "topic-card-contextCenter"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.KnowledgeCenter"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-curatedAssets",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-curatedAssets"
+    },
+    "target": {
+      "testId": "topic-card-curatedAssets"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.CuratedAssets"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-dataQuality",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-dataQuality"
+    },
+    "target": {
+      "testId": "topic-card-dataQuality"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.DataQuality"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-domains",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-domains"
+    },
+    "target": {
+      "testId": "topic-card-domains"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.Domains"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-dataProducts",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-dataProducts"
+    },
+    "target": {
+      "testId": "topic-card-dataProducts"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.DataProducts"
+      }
+    ]
+  },
+  {
+    "id": "home-widget-kpis",
+    "group": "Home widgets",
+    "path": "/",
+    "ready": {
+      "testId": "topic-card-kpis"
+    },
+    "target": {
+      "testId": "topic-card-kpis"
+    },
+    "initialReady": {
+      "testId": "home-landing-page"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.KPI"
+      }
+    ]
+  },
+  {
+    "id": "incident-filter-test-case",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "incident-groups-test-case"
+      }
+    ]
+  },
+  {
+    "id": "incident-filter-status",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "incident-groups-status"
+      }
+    ]
+  },
+  {
+    "id": "incident-filter-severity",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "incident-groups-severity"
+      }
+    ]
+  },
+  {
+    "id": "incident-filter-date-field",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "incident-groups-date-field"
+      }
+    ]
+  },
+  {
+    "id": "incident-group-by-options",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "incident-group-by-button"
+      }
+    ]
+  },
+  {
+    "id": "incident-group-by-table",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "group-name"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "incident-group-by-button"
+      },
+      {
+        "action": "click",
+        "testId": "incident-group-by-option-table"
+      }
+    ],
+    "text": "Orders"
+  },
+  {
+    "id": "incident-group-by-owner",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "group-name"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "incident-group-by-button"
+      },
+      {
+        "action": "click",
+        "testId": "incident-group-by-option-owner"
+      }
+    ],
+    "text": "Administrator"
+  },
+  {
+    "id": "incident-group-preview",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "incident-list"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-name"
+      }
+    ]
+  },
+  {
+    "id": "incident-group-details",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "incident-list"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "button",
+        "name": "View Column Values To Be Not Null"
+      }
+    ]
+  },
+  {
+    "id": "incident-inline-status",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-name"
+      },
+      {
+        "action": "click",
+        "testId": "incident-status",
+        "within": "incident-list"
+      }
+    ]
+  },
+  {
+    "id": "incident-inline-severity",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-name"
+      },
+      {
+        "action": "click",
+        "testId": "incident-severity",
+        "within": "incident-list"
+      }
+    ]
+  },
+  {
+    "id": "incident-selected-group",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "incident-groups-selection-bar"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      }
+    ]
+  },
+  {
+    "id": "incident-bulk-status-options",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-set-status"
+      }
+    ]
+  },
+  {
+    "id": "incident-bulk-severity-options",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "menu"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-set-severity"
+      }
+    ]
+  },
+  {
+    "id": "incident-bulk-assigned",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "incident-groups-bulk-status-modal"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-set-status"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-status-Assigned"
+      }
+    ]
+  },
+  {
+    "id": "incident-bulk-resolved",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "incident-groups-bulk-status-modal"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-set-status"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-status-Resolved"
+      }
+    ]
+  },
+  {
+    "id": "incident-resolution-reasons",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "listbox"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-set-status"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-status-Resolved"
+      },
+      {
+        "action": "click",
+        "testId": "bulk-status-reason"
+      }
+    ]
+  },
+  {
+    "id": "incident-bulk-severity-confirm",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "incident-groups-bulk-status-modal"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-set-severity"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-severity-Severity1"
+      }
+    ]
+  },
+  {
+    "id": "incident-read-only",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "incident-groups-table"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "state": "read-only",
+    "absent": [
+      {
+        "testId": "group-select-page"
+      }
+    ]
+  },
+  {
+    "id": "incident-empty",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "incident-groups-empty"
+    },
+    "state": "empty"
+  },
+  {
+    "id": "incident-error",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "testId": "incident-groups-error"
+    },
+    "containsText": "Retry",
+    "state": "error"
+  },
+  {
+    "id": "incident-bulk-assignee-options",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "role": "listbox"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-set-status"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-status-Assigned"
+      },
+      {
+        "action": "click",
+        "testId": "bulk-status-assignee"
+      }
+    ]
+  },
+  {
+    "id": "incident-bulk-assignee-validation",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "text": "Assignee is required"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-set-status"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-status-Assigned"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Apply",
+        "within": "incident-groups-bulk-status-modal"
+      }
+    ]
+  },
+  {
+    "id": "incident-bulk-resolution-validation",
+    "group": "Incident states",
+    "path": "/observability/incident-manager",
+    "ready": {
+      "text": "Comment is required"
+    },
+    "initialReady": {
+      "testId": "incident-groups-table"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "testId": "group-select-page"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-set-status"
+      },
+      {
+        "action": "click",
+        "testId": "incident-groups-status-Resolved"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Apply",
+        "within": "incident-groups-bulk-status-modal"
+      }
+    ]
   }
 ]

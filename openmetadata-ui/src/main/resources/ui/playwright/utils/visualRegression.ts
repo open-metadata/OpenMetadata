@@ -65,29 +65,49 @@ const waitForSkeletonsToResolve = async (page: Page) => {
 
 export const FIXED_DATE = new Date('2026-01-15T10:00:00.000Z');
 
-export const waitForLineageCanvas = async (page: Page) => {
-  // Connections are painted on a canvas, independently of React Flow's nodes.
-  // Waiting for node labels alone can capture the graph before its edges exist.
-  const canvas = page
-    .getByTestId('rf__wrapper')
-    .locator('.lineage-canvas-container canvas');
-  await expect(canvas).toBeVisible();
+const waitForCanvasPaint = async (canvases: Locator, message: string) => {
+  await expect(canvases).not.toHaveCount(0);
   await expect
     .poll(
       () =>
-        canvas.evaluate((element: HTMLCanvasElement) => {
-          if (!element.width || !element.height) return false;
-          const pixels = element
-            .getContext('2d')
-            ?.getImageData(0, 0, element.width, element.height).data;
-          return (
-            pixels?.some((alpha, index) => index % 4 === 3 && alpha > 0) ??
-            false
-          );
-        }),
-      { message: 'Lineage connections must finish painting before capture' }
+        canvases.evaluateAll((elements: HTMLCanvasElement[]) =>
+          elements.some((element) => {
+            if (
+              !element.width ||
+              !element.height ||
+              !element.getClientRects().length
+            )
+              return false;
+            const pixels = element
+              .getContext('2d')
+              ?.getImageData(0, 0, element.width, element.height).data;
+
+            return (
+              pixels?.some((alpha, index) => index % 4 === 3 && alpha > 0) ??
+              false
+            );
+          })
+        ),
+      { message }
     )
     .toBe(true);
+};
+
+export const waitForLineageCanvas = async (page: Page) => {
+  // Connections are painted independently of React Flow's DOM nodes.
+  await waitForCanvasPaint(
+    page.getByTestId('rf__wrapper').locator('.lineage-canvas-container canvas'),
+    'Lineage connections must finish painting before capture'
+  );
+};
+
+export const waitForOntologyCanvas = async (page: Page) => {
+  // The graph uses several canvas layers, including empty interaction layers.
+  // Its toolbar can mount before any layer has drawn the graph itself.
+  await waitForCanvasPaint(
+    page.getByTestId('ontology-explorer').locator('canvas'),
+    'Ontology nodes must finish painting before capture'
+  );
 };
 /** Shared options for every toHaveScreenshot assertion in the visual suite. */
 export const SCREENSHOT_OPTS = {
@@ -107,8 +127,7 @@ const FREEZE_CSS = `
 `;
 
 /**
- * Navigate with a frozen clock so relative timestamps ("x minutes ago")
- * render identically on every run, then quiesce the page.
+ * Anchor the browser date while allowing elapsed time during interactions.
  *
  * The shared page-loaded guard waits for DOM content and loader spinners.
  * Network-idle waits cannot settle reliably while catalog polling is active.
@@ -118,7 +137,9 @@ export const gotoForScreenshot = async (
   path: string,
   { readyTestId }: { readyTestId?: string } = {}
 ) => {
-  await page.clock.setFixedTime(FIXED_DATE);
+  // Lodash debounce compares successive Date.now() readings. A fixed Date
+  // with running timers continually reschedules it, so search never completes.
+  await page.clock.setSystemTime(FIXED_DATE);
   await page.goto(path, { waitUntil: 'domcontentloaded' });
   await waitForPageLoaded(page);
   // Lazily mounted routes (the AI shell's pages) can pass the loader and
@@ -152,6 +173,7 @@ export const expectVisualScreenshot = async (
     Parameters<ReturnType<typeof expect<Page>>['toHaveScreenshot']>[0]
   > & { target?: Locator; allowErrorFeedback?: boolean } = {}
 ) => {
+  await page.clock.setFixedTime(FIXED_DATE);
   // Classic deliberately resolves dark preferences to light. Requiring the
   // actual root theme prevents a duplicate light image from claiming dark coverage.
   if (theme === 'dark') {

@@ -2822,11 +2822,15 @@
       "schema": [
         {
           "name": "order_id",
-          "dataType": "INT"
+          "displayName": "Order ID",
+          "dataType": "INT",
+          "fullyQualifiedName": "visual_warehouse.finance.public.orders.order_id"
         },
         {
           "name": "revenue",
-          "dataType": "DECIMAL"
+          "displayName": "Revenue",
+          "dataType": "DECIMAL",
+          "fullyQualifiedName": "visual_warehouse.finance.public.orders.revenue"
         }
       ],
       "semantics": [],
@@ -4754,6 +4758,212 @@
       "updatedBy": "admin",
       "version": 1,
       "deleted": false
+    }
+  ],
+  "documents": [
+    {
+      "name": "ActivityFeed",
+      "displayName": "Team Activity",
+      "description": "Recent activity across the assets and domains the user owns, showing who changed what and when.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.ActivityFeed",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "659d5433-c82b-5f7e-bb00-85a1f157e550"
+    },
+    {
+      "name": "CuratedAssets",
+      "displayName": "Curated Assets",
+      "description": "A filtered list of high-impact assets. Ships with a certified Tier-1 rule and can be pointed at any saved filter from the persona editor.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.CuratedAssets",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "feefb650-e227-546f-8d1c-494635342604"
+    },
+    {
+      "name": "DataEstate",
+      "displayName": "Your Data Estate",
+      "description": "How large the data estate is, which connectors it comes from, and how much of it carries a description.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.DataEstate",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "82009e46-3cd5-5d45-8cc5-2357861aef3b"
+    },
+    {
+      "name": "DataProducts",
+      "displayName": "Data Products",
+      "description": "Data products across the platform with their owning domain, for quicker access to high-value products.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.DataProducts",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "af7a845d-ed42-55d4-809c-c595704fd8e5"
+    },
+    {
+      "name": "DataQuality",
+      "displayName": "Data Quality",
+      "description": "Overview of data quality test results (passing, failing, and aborted) with a link through to the failing tests.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.DataQuality",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "5520a582-7a35-5493-935f-b2a268f54d65"
+    },
+    {
+      "name": "Domains",
+      "displayName": "Domains",
+      "description": "Domain-by-domain overview of owner, description coverage, and failing tests, so a gap is visible without opening each one.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.Domains",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "c79780d9-50cf-5a9c-9163-98483c5b083d"
+    },
+    {
+      "name": "KnowledgeCenter",
+      "displayName": "Context Center",
+      "description": "The most recently updated Context Center pages, articles and quick links, with how many changed this week.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.KnowledgeCenter",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "439fdb76-2f36-527b-b5c7-ff49f1240f89"
+    },
+    {
+      "name": "KPI",
+      "displayName": "KPIs",
+      "description": "Progress against each active KPI: target, current pace, and whether it is on track to land by its end date.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.KPI",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "50adaedc-20df-5129-84d9-4f950d7c6898"
+    },
+    {
+      "name": "MyTask",
+      "displayName": "My Tasks",
+      "description": "Open tasks assigned to the user or their teams, with incidents flagged first and access requests and approvals resolvable from the card.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.MyTask",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "a4b6c0e1-089d-51de-b427-789ff0a88c23"
+    },
+    {
+      "name": "PipelineStatus",
+      "displayName": "Pipeline Status",
+      "description": "Each pipeline's latest run, failures first, with its last ten runs and the error behind a failure.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.PipelineStatus",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "d4e0aafe-77c2-5f93-8411-596f400f0d8b"
+    },
+    {
+      "name": "PlatformHealth",
+      "displayName": "Platform Health",
+      "description": "Ingestion health across every connected service, showing how many are failing, healthy, or have not run yet, with the worst offenders listed first.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.PlatformHealth",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "dc97097d-c3d4-50f7-80db-4b0731cf1865"
+    },
+    {
+      "name": "RecentlyViewed",
+      "displayName": "Recently Viewed",
+      "description": "Recently Viewed KnowledgePanel shows list of Data Assets that User visited.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.RecentlyViewed",
+      "data": {
+        "gridSizes": ["small"]
+      },
+      "id": "529d9d2b-b624-5b1e-bf34-a0ff468ecff3"
+    },
+    {
+      "name": "TotalAssets",
+      "displayName": "Total Data Assets",
+      "description": "How many data assets the estate holds, split by asset type, and how each type changed over the selected window.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.TotalAssets",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "8c2ddf59-1bdd-54cd-9dd7-81a0d35ced1f"
+    },
+    {
+      "name": "YoursAndFollowed",
+      "displayName": "Yours and Followed",
+      "description": "The assets the user owns alongside the ones they follow, so the things they are accountable for stay in one place.",
+      "entityType": "KnowledgePanel",
+      "fullyQualifiedName": "KnowledgePanel.YoursAndFollowed",
+      "data": {
+        "gridSizes": ["small", "medium", "large"]
+      },
+      "id": "ee5deece-33da-5c0b-9e1d-53ccf24188ad"
+    }
+  ],
+  "kpis": [
+    {
+      "id": "da922b51-528c-5eb4-a334-acc0412efa2c",
+      "name": "visual_description_coverage",
+      "fullyQualifiedName": "visual_description_coverage",
+      "displayName": "Description coverage",
+      "description": "Track metadata governance coverage across the finance data estate.",
+      "metricType": "PERCENTAGE",
+      "targetValue": 80,
+      "startDate": 1765879200000,
+      "endDate": 1769767200000,
+      "dataInsightChart": {
+        "id": "00000000-0000-4000-8000-000000000111",
+        "name": "PercentageOfEntitiesWithDescriptionByType",
+        "type": "dataInsightChart"
+      }
+    },
+    {
+      "id": "d69c4b1d-7978-5335-adc0-663185f832cf",
+      "name": "visual_owner_coverage",
+      "fullyQualifiedName": "visual_owner_coverage",
+      "displayName": "Ownership coverage",
+      "description": "Track metadata governance coverage across the finance data estate.",
+      "metricType": "PERCENTAGE",
+      "targetValue": 95,
+      "startDate": 1765879200000,
+      "endDate": 1769767200000,
+      "dataInsightChart": {
+        "id": "00000000-0000-4000-8000-000000000111",
+        "name": "PercentageOfEntitiesWithDescriptionByType",
+        "type": "dataInsightChart"
+      }
+    },
+    {
+      "id": "0eb8ad61-bf85-5c75-8ef2-7e522011ea6e",
+      "name": "visual_completed_target",
+      "fullyQualifiedName": "visual_completed_target",
+      "displayName": "Completed certification target",
+      "description": "Track metadata governance coverage across the finance data estate.",
+      "metricType": "PERCENTAGE",
+      "targetValue": 90,
+      "startDate": 1765879200000,
+      "endDate": 1768384800000,
+      "dataInsightChart": {
+        "id": "00000000-0000-4000-8000-000000000111",
+        "name": "PercentageOfEntitiesWithDescriptionByType",
+        "type": "dataInsightChart"
+      }
     }
   ]
 }

@@ -20,20 +20,22 @@ import {
   prepareVisualTheme,
   VISUAL_THEMES,
   waitForLineageCanvas,
+  waitForOntologyCanvas,
 } from './visualRegression';
 
 interface VisualLocator {
   text?: string;
   testId?: string;
+  id?: string;
   role?: Parameters<Page['getByRole']>[0];
   name?: string;
   namePattern?: string;
-  within?: string;
+  within?: string | VisualLocator;
   has?: VisualLocator;
 }
 
 interface VisualAction extends VisualLocator {
-  action: 'click' | 'fill' | 'press' | 'check' | 'hover';
+  action: 'click' | 'fill' | 'press' | 'check' | 'hover' | 'scroll';
   value?: string;
 }
 
@@ -41,6 +43,7 @@ interface VisualScene {
   id: string;
   group: string;
   path: string;
+  mode?: 'ai' | 'classic';
   viewport?: { width: number; height: number };
   ready: VisualLocator;
   initialReady?: VisualLocator;
@@ -51,16 +54,23 @@ interface VisualScene {
   containsText?: string;
   actions?: VisualAction[];
   paintedLineage?: boolean;
+  paintedOntology?: boolean;
   maxDiffPixelRatio?: number;
 }
 
 const locate = (page: Page, locator: VisualLocator): Locator => {
-  const scope = locator.within ? page.getByTestId(locator.within) : page;
+  const scope = locator.within
+    ? typeof locator.within === 'string'
+      ? page.getByTestId(locator.within)
+      : locate(page, locator.within)
+    : page;
   let result: Locator;
   if (locator.text) {
     result = scope.getByText(locator.text, { exact: true });
   } else if (locator.testId) {
     result = scope.getByTestId(locator.testId);
+  } else if (locator.id) {
+    result = scope.locator(`[id=${JSON.stringify(locator.id)}]`);
   } else if (locator.role) {
     result = scope.getByRole(locator.role, {
       name: locator.namePattern
@@ -69,7 +79,9 @@ const locate = (page: Page, locator: VisualLocator): Locator => {
       exact: !locator.namePattern,
     });
   } else {
-    throw new Error('A visual checkpoint needs an explicit test ID or role.');
+    throw new Error(
+      'A visual checkpoint needs an explicit element ID, test ID or role.'
+    );
   }
 
   return locator.has
@@ -84,17 +96,20 @@ export const registerVisualScenarios = (group: string) => {
   for (const theme of VISUAL_THEMES) {
     test.describe(`${group} ${theme}`, { tag: '@Platform' }, () => {
       for (const scene of scenarios) {
+        // Classic resolves every theme preference to light; a second capture
+        // would incorrectly claim coverage of a dark interface it cannot render.
+        if (scene.mode === 'classic' && theme === 'dark') continue;
         test(scene.id, async ({ page }) => {
           test.setTimeout(60_000);
           const pageErrors: string[] = [];
           page.on('pageerror', (error) => pageErrors.push(error.message));
           if (scene.viewport) await page.setViewportSize(scene.viewport);
-          await prepareVisualTheme(page, theme);
-          await installVisualData(page, scene.state);
+          await prepareVisualTheme(page, theme, scene.mode);
+          await installVisualData(page, scene.state, scene.mode);
           // Each state gets its own page so settings caches, pending effects,
           // unsaved forms, and open portals cannot affect a later baseline.
           await gotoForScreenshot(page, scene.path, {
-            readyTestId: 'app-shell',
+            readyTestId: scene.mode === 'classic' ? undefined : 'app-shell',
           });
           if (scene.initialReady)
             await expect(locate(page, scene.initialReady)).toBeVisible();
@@ -114,6 +129,9 @@ export const registerVisualScenarios = (group: string) => {
               case 'hover':
                 await target.hover();
                 break;
+              case 'scroll':
+                await target.scrollIntoViewIfNeeded();
+                break;
               case 'click':
                 await target.click();
                 break;
@@ -124,6 +142,12 @@ export const registerVisualScenarios = (group: string) => {
             }
           }
           if (group === 'Entity tabs') {
+            // A selected tab and its empty panel can render before lazy
+            // content mounts. Require a checkpoint inside the loaded view.
+            if (scene.ready.role === 'tab' || scene.ready.role === 'tabpanel')
+              throw new Error(
+                'Entity tab checkpoints must identify loaded content.'
+              );
             const tab = scene.actions?.find((action) => action.role === 'tab');
             if (!tab)
               throw new Error(
@@ -153,6 +177,7 @@ export const registerVisualScenarios = (group: string) => {
             );
           }
           if (scene.paintedLineage) await waitForLineageCanvas(page);
+          if (scene.paintedOntology) await waitForOntologyCanvas(page);
           await expectVisualScreenshot(page, scene.id, theme, {
             target: scene.target ? locate(page, scene.target) : undefined,
             allowErrorFeedback: scene.state === 'error',

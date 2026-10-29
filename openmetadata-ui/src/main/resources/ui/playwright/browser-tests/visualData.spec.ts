@@ -443,6 +443,72 @@ test('populated task and activity lists retain identities and status counts', as
   expect(result.activity.data[0].entity.type).toBe('table');
 });
 
+test('home customization and assigned work use public list contracts', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    tasks: await (
+      await fetch('/api/v1/tasks/assigned?statusGroup=Open')
+    ).json(),
+    widgets: await (
+      await fetch('/api/v1/docStore?fqnPrefix=KnowledgePanel')
+    ).json(),
+    persona: (
+      await fetch('/api/v1/docStore/name/persona.VisualAnalystPersona')
+    ).status,
+    kpis: await (await fetch('/api/v1/kpi')).json(),
+    progress: await (
+      await fetch('/api/v1/kpi/visual_description_coverage/kpiResult')
+    ).json(),
+  }));
+  expect(result.tasks.data).toHaveLength(4);
+  expect(result.tasks.paging.total).toBe(4);
+  expect(
+    result.widgets.data.some(
+      (widget: { fullyQualifiedName: string }) =>
+        widget.fullyQualifiedName === 'KnowledgePanel.MyTask'
+    )
+  ).toBe(true);
+  // A persona without a saved layout must take the default-layout branch.
+  expect(result.persona).toBe(404);
+  expect(result.kpis.data).toHaveLength(3);
+  expect(result.progress.results.length).toBeGreaterThan(1);
+  expect(
+    result.progress.results.every(
+      (row: { count: number; day: number }) =>
+        Number.isFinite(row.count) && Number.isFinite(row.day)
+    )
+  ).toBe(true);
+});
+
+test('incident pickers use test-case identities without adding tests to discovery assets', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    cases: await (
+      await fetch('/api/v1/search/query?index=testCase&q=*')
+    ).json(),
+    assets: await (
+      await fetch('/api/v1/search/query?index=dataAsset&q=*')
+    ).json(),
+  }));
+  expect(result.cases.hits.hits).toHaveLength(2);
+  expect(
+    result.cases.hits.hits.every(
+      (hit: { _source: { entityType: string } }) =>
+        hit._source.entityType === 'testCase'
+    )
+  ).toBe(true);
+  expect(
+    result.assets.hits.hits.some(
+      (hit: { _source: { entityType: string } }) =>
+        hit._source.entityType === 'testCase'
+    )
+  ).toBe(false);
+});
+
 test('incident histogram rows stay numeric and distinct from scalar coverage rows', async ({
   page,
 }) => {
