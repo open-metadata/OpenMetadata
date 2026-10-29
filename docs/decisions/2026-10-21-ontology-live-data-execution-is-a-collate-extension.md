@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-21 (initial)
 - **Deciders:** Harsha
-- **Guard:** `OntologyConceptSqlGeneratorTest`, `OntologyConceptQueryIT`, `OntologyConceptLiveData.test.tsx` ("renders the preview only when the class base returns an extension"), reviewer
+- **Guard:** `OntologyConceptSqlGeneratorTest`, `OntologyConceptQueryServiceTest`, `OntologyConceptQueryIT`, `OntologyConceptLiveData.test.tsx` ("renders the preview only when the class base returns an extension"), reviewer
 - **Related:** ADR:2026-10-16-ontology-ai-proposal-review-is-a-collate-extension, ADR:2026-10-19-native-concept-bindings-remain-operational-metadata, Collate `OntologyExplorerClassCollate`
 
 ## Context
@@ -18,22 +18,40 @@ SQL Studio tab are Collate plugins.
 ## Decision
 
 OpenMetadata generates the SQL and never runs it. `POST /v1/ontologyConcepts/{id}/query` returns a
-`SELECT` over the concept's bound columns with `LIMIT 50`, one `JOIN` per search-around hop
-commented with the relation label, and the service, service type and identifier-quoting dialect.
+`SELECT` over the concept's bound columns limited to 50 rows, one `JOIN` per search-around hop
+commented with the relation label, and the service, service type and dialect.
+
+- The dialect decides the quoting and the row limit. A service type is listed only when its engine
+  accepts the SQL generated for it: `ansi` (Postgres, Timescale, Redshift, Trino, Presto, Athena),
+  `snowflake`, `bigquery`, `mysql` (Mysql, MariaDB, SingleStore, Doris, StarRocks, Clickhouse),
+  `spark` (Databricks, UnityCatalog, Hive, Impala, Iomete) and `tsql` (Mssql, AzureSQL, Synapse,
+  MicrosoftFabric). T-SQL limits with `SELECT TOP 50`, the others with `LIMIT 50`. Every other
+  service type is a 400, "SQL generation does not support <serviceType>".
 
 - A hop's join columns come from a `FOREIGN_KEY` table constraint between the two tables, in either
-  direction. Without one, the hop's object property may be bound to a foreign-key column on either
-  concept's table, which joins to the other concept's identifier column (a bound DATA property with
-  `isIdentifier`). `OntologyBindingRules` accepts OBJECT properties for that reason.
+  direction. When several foreign keys join the two tables, the hop uses the one whose local column
+  is the hop property's object-property binding, and without that binding it is a 400 that names
+  both tables. Without a foreign key, the hop's object property may be bound to a foreign-key column
+  on either concept's table, which joins to the other concept's identifier column (a bound DATA
+  property with `isIdentifier`). `OntologyBindingRules` accepts OBJECT properties for that reason.
+- A hop followed from its relation's range back to its domain is labelled with the relation's
+  declared inverse when that inverse is a live object property, the same label as the rail's hop
+  chip.
 - The endpoint authorizes like the binding read: `VIEW_BASIC` on the concepts and hop properties.
   A bound table the caller may not view is treated as unbound, so its columns never appear in the
   SQL or an error. A concept or hop without a viewable bound table, or a hop with no join, is a
   400 that names the concept and the hop.
-- Reads are batched: one statement for every concept's first ten table bindings, one table batch,
-  one property batch, whatever the hop count. At most five hops per request.
-- Identifiers are quoted only when the dialect would misread them, so a lowercase catalog name
-  stays unquoted and keeps the source's case folding. `FROM` names `schema.table`, and every table
-  in one query belongs to the root table's service.
+- Reads are batched, whatever the hop count: one statement for every concept's first 100 table
+  bindings, one table batch with only the fields the `VIEW_BASIC` check reads, one table batch with
+  columns and constraints for each concept's first ten visible tables in asset-id order, and one
+  property batch. A concept none of whose first 100 bound tables is visible is a 400 that says so.
+  At most five hops per request, and the rail stops offering search-around at five.
+- The backtick and bracket dialects (`mysql`, `spark`, `bigquery`, `tsql`) quote every identifier,
+  because quoting never changes how those engines resolve a name. `ansi` and `snowflake` quote only
+  a name that is not lowercase `[a-z_][a-z0-9_]*` or that is in the dialect's reserved-word list,
+  so a lowercase catalog name keeps the source's case folding. The `ansi` list is the union of the
+  vendor lists of every engine mapped to it. `FROM` names `schema.table`, so every table in one
+  query belongs to the root table's service and database.
 - The Studio rail shows the SQL, a copy control, search-around and a `not stored` badge.
   `OntologyExplorerClassBase.getConceptLiveDataExtension()` returns no component in OSS; Collate's
   override supplies `Preview 3 rows` and **Open in SQL Studio** through its query runner.
@@ -44,5 +62,6 @@ No source credential or query engine enters OpenMetadata, and the call writes no
 extension's props (`conceptId` and the generated `OntologyConceptQuery`) are shared by both
 repositories, so changing them needs a paired Collate change, and this OSS change merges before
 the Collate override that depends on it. A concept bound to more than ten tables uses the first
-ten in asset-id order. Running queries in OpenMetadata itself would need source credentials on the
+ten its reader may view among its first 100, in asset-id order, so two readers may get different
+tables. A service type outside the list gets no SQL until its dialect is verified and added. Running queries in OpenMetadata itself would need source credentials on the
 server and is a separate program.
