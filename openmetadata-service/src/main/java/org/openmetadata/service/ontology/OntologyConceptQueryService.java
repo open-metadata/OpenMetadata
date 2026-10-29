@@ -63,9 +63,10 @@ import org.openmetadata.service.util.FreshReadScope;
 
 /**
  * Reads what SQL generation needs in a fixed number of batched statements, whatever the hop count:
- * the concepts, the hop properties, each concept's first bound tables, those tables, and the
- * properties their columns bind. Tables the reader may not view are treated as unbound, so their
- * columns never appear in the SQL. The call writes nothing.
+ * the concepts, the hop properties and their inverses, each concept's first bound tables, those
+ * tables twice (for the view check, then columns of the kept ones), and the properties their
+ * columns bind. Tables the reader may not view are treated as unbound, so their columns never
+ * appear in the SQL. The call writes nothing.
  */
 @Slf4j
 public final class OntologyConceptQueryService {

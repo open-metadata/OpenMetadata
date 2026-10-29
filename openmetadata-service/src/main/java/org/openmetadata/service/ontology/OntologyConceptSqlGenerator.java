@@ -107,7 +107,6 @@ public final class OntologyConceptSqlGenerator {
 
   private record Join(BoundTable table, List<ColumnPair> on, String label) {}
 
-  /** One hop being resolved: its 1-based position, the hop, and the table it starts from. */
   private record Step(int position, Hop hop, BoundTable previous) {
     BadRequestException failure(final String reason, final Object... args) {
       return new BadRequestException(
@@ -202,7 +201,6 @@ public final class OntologyConceptSqlGenerator {
     return outgoing.isEmpty() ? referencing(step, target, step.previous(), true) : outgoing;
   }
 
-  /** The pairs of the foreign key {@code owner} holds to {@code referred}, oriented for the hop. */
   private static List<ColumnPair> referencing(
       final Step step, final BoundTable owner, final BoundTable referred, final boolean reversed) {
     final List<TableConstraint> keys =
@@ -339,7 +337,6 @@ public final class OntologyConceptSqlGenerator {
         .toList();
   }
 
-  /** How a dialect quotes names and limits rows. */
   private record Syntax(OntologyConceptQueryDialect dialect) {
     String select() {
       return dialect == OntologyConceptQueryDialect.TSQL ? "SELECT TOP " + ROW_LIMIT : "SELECT";
