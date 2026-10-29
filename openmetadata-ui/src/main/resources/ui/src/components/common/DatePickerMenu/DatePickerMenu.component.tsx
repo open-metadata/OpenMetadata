@@ -71,6 +71,22 @@ const getTriggerClassName = (
 const getActiveItemClassName = (isActive: boolean) =>
   isActive ? 'tw:[&>div]:bg-active' : undefined;
 
+const getTriggerLabelClassName = ({
+  isCustomRangeSelected,
+  hasSelection,
+  allowClear,
+}: {
+  isCustomRangeSelected: boolean;
+  hasSelection: boolean;
+  allowClear: boolean;
+}) =>
+  classNames(
+    isCustomRangeSelected && 'tw:whitespace-nowrap',
+    !hasSelection && 'tw:text-disabled',
+    // Keeps the label clear of the overlaid clear button.
+    allowClear && hasSelection && 'tw:pr-9'
+  );
+
 interface DatePickerMenuProps {
   allowClear?: boolean;
   defaultDateRange?: Partial<DateRangeObject>;
@@ -258,10 +274,11 @@ const DatePickerMenu = ({
         size={size === 'small' ? 'sm' : 'md'}>
         <Typography
           as="span"
-          className={classNames(
-            isCustomRangeSelected && 'tw:whitespace-nowrap',
-            !selectedTimeRangeKey && 'tw:text-disabled'
-          )}
+          className={getTriggerLabelClassName({
+            isCustomRangeSelected,
+            hasSelection: Boolean(selectedTimeRangeKey),
+            allowClear,
+          })}
           ellipsis={!isCustomRangeSelected}>
           {selectedTimeRange}
         </Typography>
@@ -325,9 +342,7 @@ const DatePickerMenu = ({
       align="center"
       className={classNames(
         'tw:relative tw:inline-flex tw:h-8 tw:items-center',
-        isCustomRangeSelected ? 'tw:max-w-none' : 'tw:max-w-80',
-        selectedTimeRangeKey &&
-          'tw:[&_[data-testid=date-picker-menu]>span:first-of-type]:pr-9'
+        isCustomRangeSelected ? 'tw:max-w-none' : 'tw:max-w-80'
       )}
       data-testid="date-picker-container">
       {datePickerMenu}
