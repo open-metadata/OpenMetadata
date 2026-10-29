@@ -227,7 +227,11 @@ public final class OntologyConceptSqlGenerator {
 
   private static List<ColumnPair> onlyKeyPairs(final Step step, final BoundTable candidate) {
     final List<TableConstraint> outgoing = foreignKeys(step.previous(), candidate);
-    final List<TableConstraint> incoming = foreignKeys(candidate, step.previous());
+    // A key from a table to itself is both outgoing and incoming; count it once.
+    final List<TableConstraint> incoming =
+        candidate.fullyQualifiedName().equals(step.previous().fullyQualifiedName())
+            ? List.of()
+            : foreignKeys(candidate, step.previous());
     if (outgoing.size() + incoming.size() > 1) {
       throw step.failure(
           ": several foreign keys join %s and %s; bind the %s property to one of their columns",
