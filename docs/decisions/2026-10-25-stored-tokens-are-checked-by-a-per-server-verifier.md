@@ -35,8 +35,10 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   - `JwtFilter.checkValidationsForToken` decodes the token it is given and calls
     `requireCurrentCredential` with that token's own claims before its other checks.
     `SocketAddressFilter.validatePrefixedTokenRequest` calls it after `verifySignatureOnly`, for the
-    WebSocket handshake and for the MCP HTTP transport, so each of those requests makes one check.
-    Callers outside this repository call it after their own signature check.
+    WebSocket handshake and for the MCP HTTP transport, so the transport checks each request once.
+    An MCP tool or prompt call is checked again by its callback, through
+    `getCatalogSecurityContext`. Callers outside this repository call it after their own signature
+    check.
   - `JwtFilter.verifySignatureOnly` classifies nothing and calls no `require`. Apart from
     `SocketAddressFilter`, only the probes that grant no access use it (`BotTokenCheck`,
     `TestLoginService`, `SystemRepository`).
@@ -71,19 +73,22 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   runs the deep pass, reuses a decrypted digest for an unchanged stored mechanism, and it reuses
   none for a principal the deep pass could not convert. Check and refresh reads decrypt, so no read
   replaces a deep pass's result with a digest decrypted before that pass began, and a check read of
-  a bot whose secret lives in an external secrets manager makes one call to it. A principal the
-  deep read cannot convert is unconfirmed from that read on. Its next check reads it again and
-  answers 503 until a read converts it, and no sweep confirms it by fingerprint. A deep pass covers
-  the principals cached when it begins, 10 to a read (`DEEP_CHUNK_SIZE`, a constant, not a
-  setting). Each sweep pass reconfirms every batch first, then makes at least one of these reads,
-  and starts another only while the pass has run less than `maxStaleness` minus twice
-  `sweepInterval` (1 s by default). Between two reconfirmations an entry then ages about
-  `sweepInterval`, plus one of these reads, plus the longer of the reconfirmations and that budget.
-  That stays within `maxStaleness` while reconfirming takes less than 1 s and 10 decrypts take no
-  longer than `sweepInterval`, however many principals the deep pass covers. The next deep pass
-  begins `deepVerifyInterval` after this one began, or `min(deepVerifyInterval, 1 min)` after it
-  when one of its reads threw, and at the first sweep after this one ends when that is later. A
-  read that throws changes no entry.
+  a bot whose secret lives in an external secrets manager makes one call to it. A principal the deep
+  read cannot convert is unconfirmed from that read on. Its next check reads it again and answers
+  503 until a read converts it, and no sweep confirms it by fingerprint. A deep pass covers the
+  principals cached when it begins, 10 to a read (`DEEP_CHUNK_SIZE`, a constant, not a setting).
+  Each sweep pass drains the queued nudges and reconfirms every batch first, then makes at least one
+  of these reads. It starts another only while the pass has run less than the deep budget,
+  `maxStaleness` minus twice `sweepInterval` (1 s by default). Between two reconfirmations an entry
+  then ages about `sweepInterval`, plus one of these reads, plus the longer of the deep budget and
+  the time the pass took to drain and reconfirm. A drain that holds the sweep thread when the next
+  pass is due adds its own time. So entries stay within `maxStaleness` while draining and
+  reconfirming fit in the deep budget and 10 decrypts take no longer than `sweepInterval`, however
+  many principals the deep pass covers. A nudge re-read decrypts a changed secret, so a burst of
+  nudges for bots whose decrypts are slow can break the first condition. The next deep pass begins
+  `deepVerifyInterval` after this one began, or `min(deepVerifyInterval, 1 min)` after it when one
+  of its reads threw, and at the first sweep after this one ends when that is later. A read that
+  throws changes no entry.
 - When the verifier cannot confirm within `loadTimeout` (2 s), the request gets 503 with
   `Retry-After` (the sweep interval, rounded up), and an MCP tool or prompt call gets JSON-RPC
   error -32003. It never gets 401, and it is never accepted unconfirmed. A check whose thread is
