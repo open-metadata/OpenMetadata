@@ -137,6 +137,7 @@ function FeedCardFooterNew({
                   <ButtonUtility
                     aria-label={t('label.view-replies-by-user', { user })}
                     className="tw:align-top"
+                    color="tertiary"
                     icon={
                       <UserPopOverCard userName={user}>
                         <ProfilePicture name={user} size="xs" />

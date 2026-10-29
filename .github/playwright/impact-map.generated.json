@@ -5600,15 +5600,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedPanel/ActivityPanelHeader.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
-        "playwright/e2e/Pages/DescriptionVisibility.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1.tsx"
       ],
       "specs": [

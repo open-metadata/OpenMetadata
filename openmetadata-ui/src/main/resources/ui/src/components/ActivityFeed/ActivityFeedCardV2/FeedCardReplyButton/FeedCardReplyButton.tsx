@@ -40,7 +40,7 @@ const FeedCardReplyButton = ({
         className={LABELLED_REPLY_CLASS}
         color="tertiary"
         data-testid="reply-button"
-        iconLeading={<MessageDotsCircle data-icon />}
+        iconLeading={MessageDotsCircle}
         size="sm"
         {...pressProps}>
         {getReplyCountLabel(count, t)}

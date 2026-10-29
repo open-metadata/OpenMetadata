@@ -152,7 +152,8 @@ const ActivityFeedActions = ({
   return (
     <>
       <Dropdown.Root>
-        {/* A 24px target that a long name beside it must not shrink. */}
+        {/* sm: a 24px target around the glyph, which a long name beside it
+            must not shrink. The ring shows only on keyboard focus. */}
         <Dropdown.DotsButton
           className={classNames('tw:shrink-0', className)}
           data-testid="conversation-actions"
