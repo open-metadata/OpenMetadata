@@ -110,6 +110,20 @@ class GetEntityToolTest {
     assertThat(result).doesNotContainKey("description");
   }
 
+  /** A call with neither a batch nor an entity is the caller's mistake, not a backend fault. */
+  @Test
+  void missingEntityIsRejectedAsABadRequest() {
+    IllegalArgumentException rejected =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new GetEntityTool()
+                    .execute(mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of()));
+
+    assertThat(rejected.getMessage()).contains("'entityType' is required");
+    assertEquals(400, DefaultToolContext.resolveStatusCode(rejected));
+  }
+
   /**
    * A context memory's visibility comes from its own shareConfig rather than from a role or policy,
    * so a read by name applies that rule on top of the operation check - the same answer the REST

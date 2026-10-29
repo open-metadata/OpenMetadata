@@ -147,9 +147,18 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
-  public static String entityRepositoryNotFound(String entityType) {
-    return String.format(
-        "Entity repository for %s not found. Is the ENTITY_TYPE_MAP initialized?", entityType);
+  /**
+   * Entity types are case-sensitive and mix conventions ({@code glossaryTerm}, {@code
+   * eventsubscription}), so a wrong-case spelling is the usual miss; name the type that was meant.
+   */
+  public static String entityRepositoryNotFound(String entityType, Collection<String> knownTypes) {
+    String suggestion =
+        knownTypes.stream()
+            .filter(entityType::equalsIgnoreCase)
+            .findFirst()
+            .map(known -> String.format(" Did you mean '%s'?", known))
+            .orElse("");
+    return String.format("Unknown entity type '%s'.%s", entityType, suggestion);
   }
 
   public static String entityRelationshipNotFound(
