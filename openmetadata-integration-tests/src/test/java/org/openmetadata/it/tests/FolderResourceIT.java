@@ -19,6 +19,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.exceptions.ApiException;
@@ -182,12 +183,13 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
   void test_folderKeepsItsChildrenCountInSearchThroughAPlainEdit(TestNamespace ns) {
     Folder folder =
         getFolderService().create(new CreateFolder().withName(ns.prefix("counted_folder")));
-    SdkClients.adminClient()
-        .contextFiles()
-        .create(
-            new CreateContextFile()
-                .withName(ns.prefix("counted_file"))
-                .withFolder(folder.getFullyQualifiedName()));
+    ContextFile file =
+        SdkClients.adminClient()
+            .contextFiles()
+            .create(
+                new CreateContextFile()
+                    .withName(ns.prefix("counted_file"))
+                    .withFolder(folder.getFullyQualifiedName()));
     awaitDoc("folder_search_index", folder.getId(), doc -> doc.path("childrenCount").asInt() == 1);
 
     Folder edited = getFolderService().get(folder.getId().toString());
@@ -200,6 +202,12 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
         doc ->
             "Edited folder description".equals(doc.path("description").asText())
                 && doc.path("childrenCount").asInt() == 1);
+
+    // A hard delete removes the file's edge to the folder before the folder is refreshed.
+    SdkClients.adminClient()
+        .contextFiles()
+        .delete(file.getId().toString(), Map.of("hardDelete", "true"));
+    awaitDoc("folder_search_index", folder.getId(), doc -> doc.path("childrenCount").asInt() == 0);
   }
 
   @Test

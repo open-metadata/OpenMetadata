@@ -5,7 +5,8 @@
 - **Deciders:** Vishnu Jain
 - **Guard:** `FolderResourceIT#test_folderKeepsItsChildrenCountInSearchThroughAPlainEdit`,
   `GlossaryTermResourceIT#test_parentTermChildrenCountFollowsItsChildrenInSearch`,
-  `MetricGroupResourceIT#searchCountsSurviveChildCreateAndPlainEdits`
+  `MetricGroupResourceIT#searchCountsSurviveChildCreateAndPlainEdits`,
+  `MetricGroupResourceIT#patchMovesRefreshEveryParentAMetricPassesThrough`
 - **Related:** #36494, ADR:2026-10-29-search-documents-load-computed-counts-on-every-write
 
 ## Context
@@ -21,7 +22,12 @@ Metrics had their own copy of the refresh; glossary terms and folders had none.
   prefix (soft-deleted ones included, as REST reports it).
 - The base `postCreate` (single and batch), `postDelete`, `postRestore` and, when the parent
   changed, `postUpdate` refresh that parent's search document. Every updater path reaches
-  `postUpdate`, so a move through PATCH, PUT or a bulk update is covered.
+  `postUpdate`, so a move through PATCH, PUT or the bulk API is covered.
+- An edit consolidated into the user's previous in-session version reaches `postUpdate` with that
+  older version as the original, so the move is also checked against the request's own original.
+- The CSV batch update (`updateManyEntitiesForImport`) never runs `postUpdate`. It reads each
+  original's counting parents before its flush rewrites the edges and compares them afterwards. A
+  repository whose parent lives only in relationships loads it onto the originals first.
 - The parent is read again before the refresh, because a reference kept in stored JSON can call a
   deleted parent live. A deleted or missing parent is skipped. So is every child of a hard-delete
   cascade, whose parent goes with it; the soft-delete cascade never calls `postDelete` per child.
@@ -32,6 +38,5 @@ Metrics had their own copy of the refresh; glossary terms and folders had none.
 - Each create, delete, restore or move of a child costs one parent read and one parent reindex.
 - A context file loaded without its folder looks it up, one query, and captures it before a hard
   delete removes the edge.
-- Known gaps: a context file moved by a plain PUT, not the move endpoint, does not know its old
-  folder, so that folder stays stale. A CSV import cannot move a glossary term, since terms match
-  by FQN, and metric CSV moves are refreshed by the metric import path.
+- Restoring a glossary subtree refreshes the live ancestors once per restored term. Those
+  refreshes change nothing, since the count includes soft-deleted terms, but restore is rare.
