@@ -142,7 +142,10 @@ public final class OntologyConceptQueryService {
     return label(incoming && inverse != null ? inverse : relation);
   }
 
-  /** The declared inverses of the hop properties that the reader may view, by IRI. */
+  /**
+   * The declared inverses of the hop properties that the reader may view, by IRI. The stored rows
+   * carry no owners, so the inverses are reloaded with the fields their authorization reads.
+   */
   private Map<URI, OntologyProperty> inverses(
       final Access access,
       final OntologyConcept root,
@@ -152,9 +155,24 @@ public final class OntologyConceptQueryService {
             .map(OntologyProperty::getInverse)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
+    final List<UUID> ids =
+        store.liveProperties(root.getOntology().getId(), iris).stream()
+            .filter(property -> property.getKind() == OntologyPropertyKind.OBJECT)
+            .map(OntologyProperty::getId)
+            .distinct()
+            .toList();
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
     final EntityRepository<?> repository = repositories.apply(Entity.ONTOLOGY_PROPERTY);
-    return store.liveProperties(root.getOntology().getId(), iris).stream()
-        .filter(property -> property.getKind() == OntologyPropertyKind.OBJECT)
+    return repository
+        .get(
+            access.uriInfo(),
+            ids,
+            ResourceContext.authorizationFields(repository),
+            Include.NON_DELETED)
+        .stream()
+        .map(OntologyProperty.class::cast)
         .filter(property -> isViewable(access, repository, property))
         .collect(
             Collectors.toMap(
