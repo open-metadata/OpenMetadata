@@ -91,7 +91,7 @@ class ConnectionSecretsEncryptionMigrationTest {
     for (final var manager :
         List.of(
             DBSecretsManager.getInstance(SecretsManagerProvider.DB, secretsConfig),
-            InMemorySecretsManager.getInstance(secretsConfig))) {
+            new InMemorySecretsManager(secretsConfig) {})) {
       final Object decrypted = manager.decryptServiceConnectionConfig(config, type, serviceType);
       assertEquals(reference, JsonUtils.valueToTree(decrypted).path(field).asText());
     }
