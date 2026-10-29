@@ -101,8 +101,8 @@ export const TestCases = () => {
       showDeleted,
     });
 
-  // Shrinkable down to min-w-36 so the default filters share one row on laptop widths.
-  const flexibleFilterWidth = 'tw:min-w-36 tw:max-w-80 tw:flex-1';
+  // Shrinkable to the label plus a min-w-24 control, so the default filters share one row on laptop widths.
+  const flexibleFilterWidth = 'tw:min-w-min tw:max-w-80 tw:flex-1';
   const filterLayout = [
     { key: TEST_CASE_FILTERS.lastRun, testId: 'last-run-filter' },
     {
@@ -122,7 +122,7 @@ export const TestCases = () => {
     },
     {
       key: TEST_CASE_FILTERS.status,
-      width: 'tw:min-w-36 tw:max-w-64 tw:flex-1',
+      width: 'tw:min-w-min tw:max-w-64 tw:flex-1',
       testId: 'status-select-filter',
     },
     {

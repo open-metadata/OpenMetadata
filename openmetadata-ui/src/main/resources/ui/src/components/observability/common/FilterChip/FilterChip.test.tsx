@@ -110,14 +110,19 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 
 jest.mock('../../../common/DateRangeFilter/DateRangeFilter', () => ({
   __esModule: true,
-  default: ({ onApply, startTs, endTs }: any) => (
-    <button
-      data-end={endTs}
-      data-start={startTs}
-      data-testid="date-range-filter"
-      onClick={() => onApply({ startTs: 1, endTs: 2 })}>
-      date-filter
-    </button>
+  default: ({ onApply, onClear, placeholder, startTs, endTs }: any) => (
+    <>
+      <button
+        data-end={endTs}
+        data-start={startTs}
+        data-testid="date-range-filter"
+        onClick={() => onApply({ startTs: 1, endTs: 2 })}>
+        {placeholder}
+      </button>
+      <button data-testid="clear-date-filter" onClick={onClear}>
+        clear
+      </button>
+    </>
   ),
 }));
 
@@ -202,6 +207,23 @@ describe('FilterChip', () => {
 
     expect(dateFilter).toBeInTheDocument();
     expect(dateFilter).not.toHaveAttribute('data-start');
+  });
+
+  it('labels an unset date chip as all time and clears it back to undefined', () => {
+    const descriptor = baseDescriptor({
+      controlType: 'date',
+      label: 'Last Run',
+      value: { startTs: 10, endTs: 20 },
+    });
+    render(<FilterChip descriptor={descriptor as any} />);
+
+    expect(screen.getByTestId('date-range-filter')).toHaveTextContent(
+      'Last Run: label.all-time'
+    );
+
+    fireEvent.click(screen.getByTestId('clear-date-filter'));
+
+    expect(descriptor.onChange).toHaveBeenCalledWith(undefined);
   });
 
   it('should render the select chip trigger with label when nothing selected', () => {

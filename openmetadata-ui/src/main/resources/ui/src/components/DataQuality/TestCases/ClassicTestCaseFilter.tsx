@@ -162,7 +162,7 @@ export const ClassicTestCaseFilter = ({
     <Box align="center" className={className} gap={2}>
       <Typography
         as="span"
-        className="tw:shrink-0"
+        className="tw:shrink-0 tw:whitespace-nowrap"
         size="text-sm"
         weight="medium">
         {filter.label}:
@@ -178,7 +178,7 @@ export const ClassicTestCaseFilter = ({
           onClear={() => filter.onChange(undefined)}
         />
       ) : (
-        <Box align="center" className="tw:min-w-0 tw:flex-1" gap={1}>
+        <Box align="center" className="tw:min-w-24 tw:flex-1" gap={1}>
           {filter.controlType === 'multiselect' ? (
             <ClassicMultipleSelect
               filter={filter}
