@@ -28,7 +28,7 @@ import {
 } from '../../rest/DataInsightAPI';
 import { DataInsightChartCard } from './DataInsightChartCard';
 
-jest.mock('../../pages/DataInsightPage/DataInsightProvider', () => ({
+jest.mock('./DataInsightProvider/DataInsightProvider', () => ({
   useDataInsightProvider: jest.fn().mockReturnValue({
     chartFilter: { startTs: 1, endTs: 2 },
     selectedDaysFilter: 7,

@@ -17,7 +17,6 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
-import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
@@ -26,6 +25,7 @@ import { getQueryFilterForDataInsightChart } from '../../../utils/DataInsightPur
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { DataInsightChartCard } from '../DataInsightChartCard';
+import { useDataInsightProvider } from '../DataInsightProvider/DataInsightProvider';
 
 const DataAssetsTab = () => {
   const { t } = useTranslation();

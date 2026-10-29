@@ -50,7 +50,6 @@ import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
-import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
@@ -76,6 +75,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import PageHeader from '../PageHeader/PageHeader.component';
 import DataInsightProgressBar from './DataInsightProgressBar';
+import { useDataInsightProvider } from './DataInsightProvider/DataInsightProvider';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 interface DataInsightChartCardProps {

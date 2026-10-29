@@ -23,7 +23,7 @@ const mockProvider = {
   kpi: { isLoading: false, data: [] },
 };
 
-jest.mock('../../../pages/DataInsightPage/DataInsightProvider', () => ({
+jest.mock('../DataInsightProvider/DataInsightProvider', () => ({
   useDataInsightProvider: jest.fn().mockImplementation(() => mockProvider),
 }));
 
