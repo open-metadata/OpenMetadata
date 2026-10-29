@@ -16,7 +16,8 @@ either stack: use a `tw:` token utility in TSX. In existing `.less`/`.css` and c
 read colours from the Tailwind
 bridge vars the utilities compile to (`var(--tw-background-color-surface)`, `--tw-text-color-*`,
 `--tw-border-color-*`, `--tw-color-fg-*`, `--tw-color-utility-*`, which flip under `.dark-mode`)
-and every other value from `var(--om-*)`. Raw `--color-*` / `--background-color-*` /
+and non-colour values from the Tailwind theme vars (`calc(var(--tw-spacing) * N)`, `--tw-radius-*`,
+`--tw-shadow-*`, `--tw-text-*`). Raw `--color-*` / `--background-color-*` /
 `--text-color-*` / `--border-color-*` variables are invalid in light (transparent). The `--om-*`
 layer below documents the **deprecated** Antd/Less side (still maintained during the migration);
 never add `--om-color-*` tokens or references.

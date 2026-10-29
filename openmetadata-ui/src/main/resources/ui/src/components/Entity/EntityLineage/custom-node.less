@@ -175,6 +175,9 @@
   .profiler-item {
     margin-right: var(--om-space-4);
     border-radius: var(--om-radius-sm);
+    // The node footer sets no colour, so without this the count inherits React
+    // Flow's fixed #222 node text, which disappears on dark cards.
+    color: var(--tw-text-color-primary);
 
     &.medium {
       width: 36px;

@@ -32,6 +32,7 @@ import {
   LogicalCheck,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   acquireOntologyEditLock,
   applyOntologyChangeSet,
@@ -47,6 +48,11 @@ import {
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { downloadFile } from '../../../../utils/Export/ExportUtils';
 import OntologyReleaseExportModal from './OntologyReleaseExportModal';
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
   acquireOntologyEditLock: jest.fn(),
@@ -145,6 +151,7 @@ const mockApplyChangeSet = applyOntologyChangeSet as jest.MockedFunction<
 describe('OntologyReleaseExportModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     mockGetOntologyState.mockResolvedValue({
       activationRevision: 1,
       activeReleaseId: release.id,
@@ -192,6 +199,46 @@ describe('OntologyReleaseExportModal', () => {
       'text/turtle'
     );
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('exports, switches tabs and cancels from the AI-mode modal', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const onClose = jest.fn();
+    renderWithQueryClient(
+      <OntologyReleaseExportModal
+        canImport
+        ontology={ontology}
+        onClose={onClose}
+      />
+    );
+
+    expect(
+      screen.getByRole('dialog', { name: 'label.import-export-ontology' })
+    ).toBeVisible();
+    expect(
+      await screen.findByText('Sales · label.active: Release 1')
+    ).toBeVisible();
+
+    const exportButton = screen.getByTestId('ontology-run-release-export');
+    await waitFor(() => expect(exportButton).toBeEnabled());
+    fireEvent.click(exportButton);
+
+    expect(mockDownloadFile).toHaveBeenCalledWith(
+      '<rdf>sealed release</rdf>',
+      'Sales-release-1.rdf',
+      'application/rdf+xml'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-native-import-tab'));
+
+    expect(screen.getByTestId('ontology-native-import-file')).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-run-release-export')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-release-export-cancel'));
+
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 
   it('supports keyboard tab navigation and keeps the selected format and import permission', async () => {
