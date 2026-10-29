@@ -402,6 +402,74 @@ public class McpOAuthIT extends McpTestBase {
         .containsExactly("openid");
   }
 
+  /** A revoked access token is refused on the next call; clients often send no type hint. */
+  @Test
+  @Order(16)
+  void testRevokedAccessToken_isRefusedOnTheNextCall() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    String refreshToken =
+        seedRefreshToken(List.of(), System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+    HttpResponse<String> refreshed = refresh(refreshToken);
+    assertThat(refreshed.statusCode()).isEqualTo(200);
+    String accessToken = OBJECT_MAPPER.readTree(refreshed.body()).get("access_token").asText();
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(revoke(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+  }
+
+  /** Revoking a refresh token ends the access tokens of its grant too (RFC 7009 section 2.1). */
+  @Test
+  @Order(17)
+  void testRevokedRefreshToken_endsItsAccessTokens() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    String seeded =
+        seedRefreshToken(List.of(), System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+    JsonNode tokens = OBJECT_MAPPER.readTree(refresh(seeded).body());
+    String accessToken = tokens.get("access_token").asText();
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(revoke(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(200);
+
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+  }
+
+  private HttpResponse<String> revoke(String token) throws Exception {
+    String formBody =
+        "token="
+            + token
+            + "&client_id="
+            + registeredClientId
+            + "&client_secret="
+            + registeredClientSecret;
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl("/mcp/revoke")))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString(formBody))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> listTools(String accessToken) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl("/mcp")))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json, text/event-stream")
+            .header("Authorization", "Bearer " + accessToken)
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}"))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
   /**
    * Stores a refresh token for admin granting {@code scopes} and ending at {@code expiresAt}, as a
    * sign-in would.

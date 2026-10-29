@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -376,7 +377,7 @@ class UserSSOOAuthProviderTest {
     when(tokenRepo.findRefreshToken("old-token")).thenReturn(stored);
     JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
     when(jwtGenerator.generateJWTToken(
-            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any()))
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any(), any()))
         .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
 
     UserSSOOAuthProvider provider = newProvider(null, null, ISSUER);
@@ -400,6 +401,59 @@ class UserSSOOAuthProviderTest {
     verify(tokenRepo)
         .rotateRefreshToken(eq("old-token"), rotated.capture(), eq(CLIENT_ID), eq("alice"), any());
     assertThat(rotated.getValue().getExpiresAt()).isEqualTo(endOfGrant);
+    // The new access token names its client and is stored, so a revoke can reach it.
+    verify(jwtGenerator)
+        .generateJWTToken(
+            eq("alice"),
+            any(),
+            anyBoolean(),
+            any(),
+            anyLong(),
+            anyBoolean(),
+            any(),
+            any(),
+            eq(CLIENT_ID));
+    verify(tokenRepo).storeAccessToken(any(), eq(CLIENT_ID), eq("alice"), any());
+  }
+
+  /** The access token is stored before the rotation, so a failed write keeps the grant usable. */
+  @Test
+  void exchangeRefreshToken_aFailedAccessTokenWriteLeavesTheRefreshTokenUnrotated()
+      throws Exception {
+    RefreshToken stored =
+        new RefreshToken(
+            "old-token", CLIENT_ID, List.of("openid"), System.currentTimeMillis() + 60_000L);
+    stored.setUserName("alice");
+    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
+    when(tokenRepo.findRefreshToken("old-token")).thenReturn(stored);
+    doThrow(new IllegalStateException("database unavailable"))
+        .when(tokenRepo)
+        .storeAccessToken(any(), any(), any(), any());
+    JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
+    when(jwtGenerator.generateJWTToken(
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any(), any()))
+        .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
+    UserSSOOAuthProvider provider = newProvider(null, null, ISSUER);
+    setField(provider, "tokenRepository", tokenRepo);
+    setField(provider, "jwtGenerator", jwtGenerator);
+    RefreshToken presented = new RefreshToken();
+    presented.setToken("old-token");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), eq("alice"), anyString(), eq(Include.NON_DELETED)))
+          .thenReturn(new User().withName("alice").withEmail("alice@corp.example"));
+      TokenException failed =
+          assertThrows(
+              TokenException.class,
+              () -> provider.exchangeRefreshToken(registeredClient(), presented, null).join());
+
+      assertThat(failed.getError()).isEqualTo("server_error");
+    }
+    verify(tokenRepo, never()).rotateRefreshToken(any(), any(), any(), any(), any());
   }
 
   @Test
@@ -411,7 +465,7 @@ class UserSSOOAuthProviderTest {
     when(tokenRepo.findRefreshToken("old-token")).thenReturn(stored);
     JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
     when(jwtGenerator.generateJWTToken(
-            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any()))
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any(), any()))
         .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
     UserSSOOAuthProvider provider = newProvider(null, null, ISSUER);
     setField(provider, "tokenRepository", tokenRepo);
@@ -686,7 +740,7 @@ class UserSSOOAuthProviderTest {
     when(tokenRepo.findRefreshToken("refresh-token")).thenReturn(stored);
     JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
     when(jwtGenerator.generateJWTToken(
-            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any()))
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any(), any()))
         .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
     UserSSOOAuthProvider provider =
         newProvider(
