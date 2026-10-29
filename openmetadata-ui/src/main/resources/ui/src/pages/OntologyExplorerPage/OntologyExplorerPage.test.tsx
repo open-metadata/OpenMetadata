@@ -780,6 +780,26 @@ describe('OntologyExplorerPage', () => {
     expect(listOntologies).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    [false, 'ontology-publication-trigger', 'label.publish (label.loading)'],
+    [true, 'ontology-publication-count', 'label.loading'],
+  ])(
+    'shows loading on the Publish count while the ontology list loads (AI mode %s)',
+    async (aiMode, testId, text) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(aiMode);
+      mockUseRealScopes = true;
+      (listOntologies as jest.Mock).mockReturnValueOnce(
+        new Promise(() => undefined)
+      );
+      renderNativeStudio('?ontology=native-sales');
+
+      expect(await screen.findByTestId(testId)).toHaveTextContent(text);
+      expect(
+        screen.getByTestId('ontology-publication-trigger')
+      ).not.toHaveTextContent('label.unavailable');
+    }
+  );
+
   it('opens a review task from the header Tasks action in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     renderNativeStudio('?ontology=native-sales');
