@@ -64,7 +64,8 @@ const Sidebar: React.FC = () => {
 
   const inSubMode = activeSubNav !== null;
 
-  // Main nav collapse. Top level: the user's persisted preference (localStorage).
+  // Main nav collapse. Top level: starts from the compact preference; a manual
+  // toggle is transient and never changes the preference.
   // Inside a sub-context: always the icon rail — the persisted preference does
   // NOT keep it expanded, and any expand there is transient, re-railing when the
   // active sub-context (`activeModuleId`) changes or on reload.

@@ -40,7 +40,6 @@ v2, 2026-10-28: compact means every nav panel shows as its icon rail. Inside a s
 nav is always railed, so the preference now decides how the submenu opens: railed when compact,
 expanded otherwise. It applies on entering a sub-context and straight away when changed from
 Preferences, which also drops any transient main-nav expand so only one full panel is ever open.
-A user's submenu toggle stays transient and is never written back to the preference. The top-level
-main-nav collapse button writes the same `aiShell.sidebar.mainCollapsed` key, so collapsing the main
-nav outside a sub-context turns compact on (and Preferences shows it on); there is one compact
-setting, not two.
+Only the Preferences toggle writes the preference. The sidebar's own collapse/expand buttons, for the
+main nav at the top level and for the submenu, are transient: they never change Compact Sidebar, and
+they reset to it on a sub-context change or reload.

@@ -46,21 +46,25 @@ describe('useMainCollapse', () => {
       expect(renderMain(false).result.current[0]).toBe(true);
     });
 
-    it('persists an explicit toggle', () => {
+    // Only the Preferences toggle writes the compact preference; expanding a
+    // compact main nav must not switch compact off.
+    it('does not persist an explicit toggle', () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
       const { result } = renderMain(false);
 
       act(() => result.current[1]());
 
-      expect(result.current[0]).toBe(true);
+      expect(result.current[0]).toBe(false);
       expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
     });
 
-    it('persists an explicit set', () => {
+    it('does not persist an explicit set', () => {
       const { result } = renderMain(false);
 
       act(() => result.current[2](true));
 
-      expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
+      expect(result.current[0]).toBe(true);
+      expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBeNull();
     });
   });
 

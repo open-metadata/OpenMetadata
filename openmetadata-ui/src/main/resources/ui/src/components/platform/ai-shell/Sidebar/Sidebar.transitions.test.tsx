@@ -19,7 +19,10 @@ import { AppModule } from '../AppModule.types';
 import { useActiveModuleStore } from '../state/useActiveModule';
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from './appModeSidebar.constants';
 import Sidebar from './Sidebar';
-import { setCompactSidebarPreference } from './sidebarPreference.utils';
+import {
+  readCompactSidebarPreference,
+  setCompactSidebarPreference,
+} from './sidebarPreference.utils';
 
 // A second sub-context: the same real SubNavConfig under a different module id,
 // so switching modules exercises the real SubPanel/SubRail again without pulling
@@ -249,18 +252,18 @@ describe('Sidebar dual-nav transitions', () => {
     });
   });
 
-  it('persists a top-level collapse and restores it across a sub-context round-trip', () => {
+  it('keeps compact on when the main nav is expanded at the top level, and re-rails after a sub-context round-trip', () => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
     setModule(null);
     renderSidebar();
 
     expect(hasClass('ask-sidebar--sub')).toBe(false);
-    expect(hasClass('ask-sidebar--collapsed')).toBe(false);
-    expect(present('ask-rail')).toBe(false);
-
-    fireEvent.click(screen.getByTestId('main-collapse'));
-
     expect(hasClass('ask-sidebar--collapsed')).toBe(true);
-    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
+
+    fireEvent.click(screen.getByTestId('rail-expand'));
+
+    expect(hasClass('ask-sidebar--collapsed')).toBe(false);
+    expect(readCompactSidebarPreference()).toBe(true);
 
     setModule(OBS_ID);
 
