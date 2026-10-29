@@ -10,13 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getRequestDomain } from '../hoc/withDomainFilter';
 import { batchedDataQualityReport } from './dataQualityReportBatcher';
 import { getDataQualityReportBatch } from './testAPI';
-
-jest.mock('../hoc/withDomainFilter', () => ({
-  getRequestDomain: jest.fn(),
-}));
 
 jest.mock('./testAPI', () => ({
   getDataQualityReportBatch: jest.fn(),
@@ -51,42 +46,6 @@ describe('dataQualityReportBatcher', () => {
     });
     expect(first).toEqual({ data: [{ a: '1' }], metadata: {} });
     expect(second).toEqual({ data: [{ b: '2' }], metadata: {} });
-  });
-
-  it('should scope items to the navbar domain unless one is given', async () => {
-    (getRequestDomain as jest.Mock).mockReturnValueOnce('Finance');
-    mockGetDataQualityReportBatch.mockResolvedValue({
-      results: [
-        { key: '0', report: { data: [], metadata: {} } },
-        { key: '1', report: { data: [], metadata: {} } },
-      ],
-    });
-
-    await Promise.all([
-      batchedDataQualityReport({ index: 'table', aggregationQuery: 'agg1' }),
-      batchedDataQualityReport({
-        index: 'table',
-        aggregationQuery: 'agg2',
-        domain: 'Marketing',
-      }),
-    ]);
-
-    expect(mockGetDataQualityReportBatch).toHaveBeenCalledWith({
-      requests: [
-        {
-          index: 'table',
-          aggregationQuery: 'agg1',
-          domain: 'Finance',
-          key: '0',
-        },
-        {
-          index: 'table',
-          aggregationQuery: 'agg2',
-          domain: 'Marketing',
-          key: '1',
-        },
-      ],
-    });
   });
 
   it('should coalesce identical requests and resolve every caller', async () => {

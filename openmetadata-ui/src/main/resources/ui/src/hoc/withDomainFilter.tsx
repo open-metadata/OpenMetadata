@@ -16,6 +16,7 @@ import {
   SKIP_DOMAIN_FILTER_HEADER,
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import type { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
 import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
@@ -82,7 +83,7 @@ const isUnscopedSearch = (index?: string | string[]) => {
  * The navbar domain a request should be scoped to, or `undefined` when none is
  * selected or scoping is off (product tour, domain pages, auth calls).
  */
-export const getRequestDomain = (): string | undefined => {
+const getRequestDomain = (): string | undefined => {
   const { activeDomain } = useDomainStore.getState();
   const currentPath = getPathNameFromWindowLocation();
   // A product tour shows every user the same recorded pages, whatever domain
@@ -99,6 +100,28 @@ export const getRequestDomain = (): string | undefined => {
     : activeDomain;
 };
 
+// The Data Quality dashboard batches its reports into one POST, so each item
+// is scoped here the way a GET would be, unless the page scoped it itself.
+const DQ_REPORT_BATCH_PATH = '/dataQualityReport/batch';
+
+const withDomainOnReportBatch = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  const body = config.data as DataQualityReportBatchRequest | undefined;
+  if (body?.requests) {
+    config.data = {
+      ...body,
+      requests: body.requests.map((request) => ({
+        ...request,
+        domain: request.domain || activeDomain,
+      })),
+    };
+  }
+
+  return config;
+};
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
@@ -109,6 +132,14 @@ export const withDomainFilter = (
   }
 
   const activeDomain = getRequestDomain();
+
+  if (
+    activeDomain &&
+    config.method === 'post' &&
+    config.url?.includes(DQ_REPORT_BATCH_PATH)
+  ) {
+    return withDomainOnReportBatch(config, activeDomain);
+  }
 
   if (config.method === 'get' && activeDomain) {
     if (config.url?.includes('/search/query')) {
