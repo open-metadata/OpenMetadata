@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.SearchDocs.awaitDoc;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -268,6 +269,37 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // ===================================================================
   // GLOSSARY TERM-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void test_parentTermChildrenCountFollowsItsChildrenInSearch(TestNamespace ns) {
+    Glossary glossary = getOrCreateGlossary(ns);
+    GlossaryTerm parent =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("counted_parent"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Parent term"));
+    GlossaryTerm child =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("counted_child"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(parent.getFullyQualifiedName())
+                .withDescription("Child term"));
+    awaitDoc(
+        "glossary_term_search_index",
+        parent.getId(),
+        doc -> doc.path("childrenCount").asInt() == 1);
+
+    // The count includes soft-deleted terms, as REST reports it, so only a hard delete lowers it.
+    SdkClients.adminClient()
+        .glossaryTerms()
+        .delete(child.getId().toString(), Map.of("hardDelete", "true"));
+    awaitDoc(
+        "glossary_term_search_index",
+        parent.getId(),
+        doc -> doc.has("childrenCount") && doc.path("childrenCount").asInt() == 0);
+  }
 
   @Test
   void post_glossaryTermWithSynonyms_200_OK(TestNamespace ns) {

@@ -4617,6 +4617,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
     }
     RdfUpdater.updateEntity(entity);
+    getCountingParents(entity).forEach(this::refreshCountingParent);
     ListCountCache.invalidate(entityType);
     // Drop any negative-cache markers (P2.4) for this just-created entity. Without this, a
     // create-then-immediately-read flow would 404 for up to notFoundTtlSeconds because a
@@ -4718,9 +4719,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           .onEntitiesCreated(new ArrayList<>(uniqueEntities), null);
     }
 
+    Set<String> refreshedParents = new HashSet<>();
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
       CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+      getCountingParents(entity).stream()
+          .filter(parent -> refreshedParents.add(countingKey(parent)))
+          .forEach(this::refreshCountingParent);
     }
     ListCountCache.invalidate(entityType);
   }
@@ -4733,6 +4738,61 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
     invalidateListCountsOnStageChange(original, updated);
+    refreshCountingParentsOnMove(original, updated);
+  }
+
+  /**
+   * The entities whose search documents count this one, such as a parent metric, every ancestor
+   * glossary term, or a folder. They are re-indexed whenever this one is created, deleted, restored
+   * or moved, or their counts go stale until the next reindex. A reference needs a type and either
+   * an id or a fully qualified name. Empty, the default, for entities nothing counts.
+   *
+   * <p>ADR:2026-10-29-counted-parents-are-reindexed-when-a-child-changes
+   */
+  protected List<EntityReference> getCountingParents(T entity) {
+    return List.of();
+  }
+
+  private void refreshCountingParentsOnMove(T original, T updated) {
+    List<EntityReference> before = getCountingParents(original);
+    List<EntityReference> after = getCountingParents(updated);
+    if (!countingKeys(before).equals(countingKeys(after))) {
+      Set<String> refreshed = new HashSet<>();
+      Stream.concat(before.stream(), after.stream())
+          .filter(parent -> refreshed.add(countingKey(parent)))
+          .forEach(this::refreshCountingParent);
+    }
+  }
+
+  private static Set<String> countingKeys(List<EntityReference> parents) {
+    return parents.stream().map(EntityRepository::countingKey).collect(Collectors.toSet());
+  }
+
+  private static String countingKey(EntityReference parent) {
+    return parent.getId() != null
+        ? parent.getId().toString()
+        : parent.getType() + ":" + parent.getFullyQualifiedName();
+  }
+
+  /**
+   * Re-reads the parent rather than trusting the reference: a reference kept in stored JSON can
+   * call a deleted parent live. A deleted or missing parent is skipped, since the refresh could not
+   * load it, and so is every child of a hard-delete cascade, whose parent goes with it.
+   */
+  protected final void refreshCountingParent(EntityReference parent) {
+    if (parent != null && !isInHardDeleteCascade()) {
+      EntityInterface current = currentCountingParent(parent);
+      if (current != null && !Boolean.TRUE.equals(current.getDeleted())) {
+        EntityLifecycleEventDispatcher.getInstance()
+            .onEntityUpdated(current.getEntityReference(), null);
+      }
+    }
+  }
+
+  private static EntityInterface currentCountingParent(EntityReference parent) {
+    return parent.getId() != null
+        ? Entity.getEntityOrNull(parent.getType(), parent.getId(), "", ALL)
+        : Entity.findByNameOrNull(parent.getType(), parent.getFullyQualifiedName(), ALL);
   }
 
   // Listing totals are cached per filter and dropped only on create or delete, but a stage change
@@ -5466,9 +5526,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     // Both hard and soft delete change the count of non-deleted entities returned by listings.
     ListCountCache.invalidate(entityType);
+    getCountingParents(entity).forEach(this::refreshCountingParent);
   }
 
-  protected void postRestore(T entity) {}
+  protected void postRestore(T entity) {
+    getCountingParents(entity).forEach(this::refreshCountingParent);
+  }
 
   @FunctionalInterface
   protected interface DeleteLifecycle extends AutoCloseable {

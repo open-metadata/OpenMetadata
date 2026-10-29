@@ -214,6 +214,17 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return getFromEntityRef(file.getId(), Relationship.CONTAINS, FOLDER_ENTITY, false);
   }
 
+  @Override
+  protected List<EntityReference> getCountingParents(ContextFile file) {
+    EntityReference folder = folderOf(file);
+    return folder == null ? List.of() : List.of(folder);
+  }
+
+  // The folder is kept out of the stored JSON, so a file loaded without it looks it up.
+  private EntityReference folderOf(ContextFile file) {
+    return file.getFolder() != null ? file.getFolder() : getFolder(file);
+  }
+
   public ContextFile moveContextFile(UUID id, EntityReference newFolderRef, String user) {
     ContextFile original =
         Entity.getEntity(CONTEXT_FILE_ENTITY, id, "folder,owners,tags", Include.NON_DELETED);
@@ -307,6 +318,8 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   @Override
   protected void entitySpecificCleanup(ContextFile entityInterface) {
+    // Cleanup removes the edge to the folder before postDelete refreshes the folder's count.
+    entityInterface.setFolder(folderOf(entityInterface));
     List<ContextFileContent> contents =
         new ArrayList<>(contentRepository.listByContextFileId(entityInterface.getId()));
     if (contents.isEmpty()) {

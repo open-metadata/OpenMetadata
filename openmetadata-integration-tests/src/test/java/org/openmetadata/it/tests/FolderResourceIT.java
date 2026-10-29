@@ -188,6 +188,7 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
             new CreateContextFile()
                 .withName(ns.prefix("counted_file"))
                 .withFolder(folder.getFullyQualifiedName()));
+    awaitDoc("folder_search_index", folder.getId(), doc -> doc.path("childrenCount").asInt() == 1);
 
     Folder edited = getFolderService().get(folder.getId().toString());
     edited.setDescription("Edited folder description");
