@@ -126,7 +126,7 @@ $$section
 
 When no job IDs are set, fetch the dbt artifacts from the latest completed run of every job of the project (or of the whole account, when no project ID is set) instead of only the most recent run.
 
-CI jobs are skipped, since their runs build into temporary pull-request schemas. The artifacts of jobs in the same dbt Cloud environment are merged, so a model keeps the compiled SQL and catalog of whichever job built it. Jobs that have no completed run or no manifest are skipped.
+CI jobs are skipped, since their runs build into temporary pull-request schemas. The artifacts of jobs in the same dbt Cloud environment are merged, so a model keeps the compiled SQL and catalog of whichever job built it. Jobs that have no completed run are skipped; any other error on a job fails the ingestion rather than ingesting the remaining jobs without it.
 
 This option is ignored when job IDs are set.
 $$
