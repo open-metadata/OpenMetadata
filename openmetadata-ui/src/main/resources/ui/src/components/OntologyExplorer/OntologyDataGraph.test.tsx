@@ -38,11 +38,13 @@ const graphData = ({
   total = 150,
   contextFull = false,
   withEdges = true,
+  lineageEdges = [{ from: 't1', to: 'acc1' }],
 }: {
   loaded?: number;
   total?: number;
   contextFull?: boolean;
   withEdges?: boolean;
+  lineageEdges?: { from: string; to: string }[];
 } = {}) => {
   const base = applyClustersPage(
     EMPTY_NATIVE_DATA_GRAPH,
@@ -81,7 +83,7 @@ const graphData = ({
             conceptEdges: [
               { from: 'transfer', to: 'account', label: 'part of' },
             ],
-            lineageEdges: [{ from: 't1', to: 'acc1' }],
+            lineageEdges,
           }).topology
         ),
       }
@@ -331,5 +333,77 @@ describe('native Data mode cluster paging', () => {
       'message.ontology-data-context-full'
     );
     expect(screen.queryByText('label.load-more')).not.toBeInTheDocument();
+  });
+});
+
+describe('native Data mode lineage', () => {
+  const lineageEdge = () =>
+    screen
+      .getAllByTestId('ontology-data-semantic-edge')
+      .find(
+        (edge) => edge.getAttribute('data-edge-kind') === 'observedLineage'
+      );
+  const lineageChip = () =>
+    screen
+      .getAllByTestId('ontology-data-semantic-edge-label')
+      .map((label) => label.textContent)
+      .filter((text) => text !== 'part of');
+  const pathStart = (path?: Element) =>
+    (path?.getAttribute('d') ?? '').split(' ').slice(1, 3).map(Number);
+  const cardTop = (id: string) =>
+    parseFloat(screen.getByTestId(`ontology-data-cluster-${id}`).style.top);
+
+  it('joins the two rows when both are in view', () => {
+    renderGraph();
+
+    const edge = lineageEdge();
+
+    expect(edge).toHaveAttribute('data-anchor', 'rows');
+    expect(pathStart(edge)[1]).toBe(cardTop('transfer') + 50 + 64 + 32);
+    expect(lineageChip()).toEqual(['label.lineage']);
+  });
+
+  it('joins the cards and names both tables when an endpoint row is not shown', () => {
+    renderGraph({
+      data: graphData({ lineageEdges: [{ from: 't5', to: 'acc1' }] }),
+    });
+
+    expect(lineageEdge()).toHaveAttribute('data-anchor', 'cards');
+    expect(lineageChip()).toEqual(['table_5 → accounts']);
+  });
+
+  it('falls back to the cards once the row scrolls out of the card', () => {
+    renderGraph({ data: graphData({ loaded: 8, total: 8 }) });
+    fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
+
+    expect(lineageEdge()).toHaveAttribute('data-anchor', 'rows');
+
+    const rows = screen.getByTestId('ontology-data-cluster-rows-transfer');
+    rows.scrollTop = 192;
+    fireEvent.scroll(rows);
+
+    expect(lineageEdge()).toHaveAttribute('data-anchor', 'cards');
+    expect(lineageChip()).toEqual(['table_1 → accounts']);
+  });
+
+  it('marks both rows of a lineage edge inside one cluster, naming the other table', () => {
+    renderGraph({
+      data: graphData({ lineageEdges: [{ from: 't0', to: 't2' }] }),
+    });
+
+    expect(
+      screen
+        .queryAllByTestId('ontology-data-semantic-edge')
+        .map((edge) => edge.getAttribute('data-edge-kind'))
+    ).toEqual(['semanticProjection']);
+    expect(
+      screen.getByTestId('ontology-data-asset-asset:transfer:t0')
+    ).toHaveTextContent('message.lineage-to-table');
+    expect(
+      screen.getByTestId('ontology-data-asset-asset:transfer:t2')
+    ).toHaveTextContent('message.lineage-from-table');
+    expect(
+      screen.getByTestId('ontology-data-asset-asset:transfer:t1')
+    ).not.toHaveTextContent('message.lineage');
   });
 });

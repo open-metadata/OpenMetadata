@@ -329,7 +329,7 @@ describe('buildNativeDataGraph', () => {
     ]);
   });
 
-  it('joins the clusters that hold the lineage endpoints once, and ignores unloaded assets', () => {
+  it('draws one lineage edge per joined pair of rows, naming the rows it joins', () => {
     const { edges } = buildNativeDataGraph(
       withTopology(),
       NO_LOADING,
@@ -339,10 +339,22 @@ describe('buildNativeDataGraph', () => {
 
     expect(lineage).toEqual([
       expect.objectContaining({
+        id: 'lineage:asset:transfer:a1:asset:account:a3',
         from: 'transfer',
         to: 'account',
         label: 'Lineage',
         relationType: 'observedLineage',
+        lineage: {
+          from: { nodeId: 'asset:transfer:a1', label: 'transfers' },
+          to: { nodeId: 'asset:account:a3', label: 'accounts' },
+        },
+      }),
+      expect.objectContaining({
+        id: 'lineage:asset:transfer:a2:asset:account:a3',
+        lineage: {
+          from: { nodeId: 'asset:transfer:a2', label: 'payments' },
+          to: { nodeId: 'asset:account:a3', label: 'accounts' },
+        },
       }),
     ]);
   });
@@ -353,11 +365,48 @@ describe('buildNativeDataGraph', () => {
       NO_LOADING,
       'Lineage'
     );
+    const related = edges.filter((edge) => edge.edgeKind !== 'assetBinding');
 
+    expect(related.map((edge) => edge.id)).toEqual([
+      'inferred:transfer|account|urn:property:part of',
+      'lineage:asset:transfer:a1:asset:account:a3',
+      'lineage:asset:transfer:a2:asset:account:a3',
+    ]);
     expect(
-      edges
-        .filter((edge) => edge.edgeKind !== 'assetBinding')
-        .some((edge) => edge.from === 'unrelated' || edge.to === 'unrelated')
+      related.some(
+        (edge) => edge.from === 'unrelated' || edge.to === 'unrelated'
+      )
     ).toBe(false);
+  });
+
+  describe('lineage between two tables of one cluster', () => {
+    const sameCluster = () => ({
+      ...loadedGraph(),
+      topology: stageTopologyPage(
+        EMPTY_NATIVE_TOPOLOGY,
+        pageFixture({ lineageEdges: [{ from: 'a1', to: 'a2' }] }).topology
+      ),
+    });
+
+    it('marks both rows and names the table on the other end instead of drawing an edge', () => {
+      const { edges, nodes } = buildNativeDataGraph(
+        sameCluster(),
+        NO_LOADING,
+        'Lineage'
+      );
+      const notes = (id: string) =>
+        nodes.find((node) => node.id === id)?.lineageNotes;
+
+      expect(notes('asset:transfer:a1')).toEqual([
+        { direction: 'downstream', label: 'payments' },
+      ]);
+      expect(notes('asset:transfer:a2')).toEqual([
+        { direction: 'upstream', label: 'transfers' },
+      ]);
+      expect(notes('asset:account:a3')).toBeUndefined();
+      expect(
+        edges.filter((edge) => edge.edgeKind === 'observedLineage')
+      ).toEqual([]);
+    });
   });
 });
