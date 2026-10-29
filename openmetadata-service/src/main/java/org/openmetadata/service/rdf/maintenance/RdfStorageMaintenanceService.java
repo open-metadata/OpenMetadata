@@ -160,7 +160,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
   }
 
   private CompactionResult compactExclusively(final String jobId) {
-    final RdfReindexRunLock reindexLock = RdfReindexRunLock.forMaintenance(locks, jobId, serverId);
+    final RdfReindexRunLock reindexLock = RdfReindexRunLock.forRun(locks, jobId, serverId);
     reindexLock.acquire();
     final ScheduledFuture<?> heartbeat =
         RdfBackgroundScheduler.getInstance()
