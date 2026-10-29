@@ -42,12 +42,6 @@ const VENDOR_FAMILIES: {
     matches: (name) => name === 'oidc-client',
   },
   {
-    // Left whole until antd is removed from the app.
-    chunk: 'vendor-antd',
-    pinned: true,
-    matches: (name) => name === 'antd',
-  },
-  {
     chunk: 'vendor-aria',
     matches: (name) =>
       name.startsWith('@react-aria/') ||

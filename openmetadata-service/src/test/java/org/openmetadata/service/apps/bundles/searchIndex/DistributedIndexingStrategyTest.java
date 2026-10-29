@@ -688,7 +688,8 @@ class DistributedIndexingStrategyTest {
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
-    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class)))
+        .thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
     when(indexPromotionHandler.reCreateIndexes(reindexConfig.entities()))
         .thenReturn(stagedIndexContext);
@@ -764,7 +765,8 @@ class DistributedIndexingStrategyTest {
 
     when(timeSeriesRepository.getTimeSeriesDao()).thenReturn(timeSeriesDao);
     when(timeSeriesDao.listCount(any(ListFilter.class))).thenReturn(5);
-    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class)))
+        .thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
     when(indexPromotionHandler.reCreateIndexes(Set.of(Entity.QUERY_COST_RECORD)))
         .thenReturn(stagedIndexContext);
@@ -885,7 +887,8 @@ class DistributedIndexingStrategyTest {
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
-    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class)))
+        .thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
     when(indexPromotionHandler.reCreateIndexes(Set.of(Entity.TABLE)))
         .thenReturn(stagedIndexContext);
@@ -937,7 +940,8 @@ class DistributedIndexingStrategyTest {
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
-    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong(), any(BulkRetryPolicy.class)))
+        .thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
     when(indexPromotionHandler.reCreateIndexes(Set.of(Entity.TABLE)))
         .thenReturn(stagedIndexContext);
