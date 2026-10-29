@@ -52,6 +52,7 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.repository.ProcessDefinitionQuery;
 import org.flowable.engine.runtime.Execution;
@@ -512,6 +513,36 @@ public class WorkflowHandler {
       }
     }
 
+    // The new versions are deployed before the old ones are drained. Deploying a version moves the
+    // trigger's start-signal subscription onto it; draining first deleted the version that held the
+    // subscription before its replacement existed, so an entity event handled in between started
+    // no workflow at all.
+    // Deploy Main Workflow
+    byte[] bpmnMainWorkflowBytes =
+        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
+    Deployment mainDeployment =
+        repositoryService
+            .createDeployment()
+            .addBytes(
+                String.format(
+                    "%s-workflow.bpmn20.xml", workflow.getMainWorkflow().getWorkflowName()),
+                bpmnMainWorkflowBytes)
+            .name(workflow.getMainWorkflow().getWorkflowName())
+            .deploy();
+
+    // Deploy Trigger Workflow
+    byte[] bpmnTriggerWorkflowBytes =
+        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
+    Deployment triggerDeployment =
+        repositoryService
+            .createDeployment()
+            .addBytes(
+                String.format(
+                    "%s-workflow.bpmn20.xml", workflow.getTriggerWorkflow().getWorkflowName()),
+                bpmnTriggerWorkflowBytes)
+            .name(workflow.getTriggerWorkflow().getWorkflowName())
+            .deploy();
+
     // Cleanup path is skipped in migration context. `redeployGovernanceWorkflows` in v1131 calls
     // deploy() for every workflow_definition in a tight loop; combined with a large ACT_RE_PROCDEF
     // backlog (customers with long-running approval instances accumulate tens of thousands of
@@ -519,37 +550,17 @@ public class WorkflowHandler {
     // user-CRUD deploys still trigger the drain below, so the backlog is not orphaned — it is
     // just deferred out of the migration critical path.
     if (!isMigrationContext) {
+      Set<String> justDeployed = Set.of(mainDeployment.getId(), triggerDeployment.getId());
       try {
-        drainOldDeploymentsForKey(repositoryService, managementService, triggerWorkflowKey, true);
-        drainOldDeploymentsForKey(repositoryService, managementService, workflowName, false);
+        drainOldDeploymentsForKey(
+            repositoryService, managementService, triggerWorkflowKey, true, justDeployed);
+        drainOldDeploymentsForKey(
+            repositoryService, managementService, workflowName, false, justDeployed);
       } catch (Exception e) {
         LOG.warn(
             "Error draining old deployments for workflow {}: {}", workflowName, e.getMessage());
       }
     }
-
-    // Deploy Main Workflow
-    byte[] bpmnMainWorkflowBytes =
-        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
-    repositoryService
-        .createDeployment()
-        .addBytes(
-            String.format("%s-workflow.bpmn20.xml", workflow.getMainWorkflow().getWorkflowName()),
-            bpmnMainWorkflowBytes)
-        .name(workflow.getMainWorkflow().getWorkflowName())
-        .deploy();
-
-    // Deploy Trigger Workflow
-    byte[] bpmnTriggerWorkflowBytes =
-        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
-    repositoryService
-        .createDeployment()
-        .addBytes(
-            String.format(
-                "%s-workflow.bpmn20.xml", workflow.getTriggerWorkflow().getWorkflowName()),
-            bpmnTriggerWorkflowBytes)
-        .name(workflow.getTriggerWorkflow().getWorkflowName())
-        .deploy();
 
     keepSuspended(workflow.getWorkflowDefinition());
   }
@@ -679,7 +690,8 @@ public class WorkflowHandler {
       RepositoryService repositoryService,
       ManagementService managementService,
       String key,
-      boolean useKeyLike) {
+      boolean useKeyLike,
+      Set<String> keepDeploymentIds) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     int offset = 0;
     while (true) {
@@ -692,7 +704,8 @@ public class WorkflowHandler {
         break;
       }
       DeploymentCleanupResult cleanupResult =
-          drainBatch(batch, repositoryService, runtimeService, managementService);
+          drainBatch(
+              batch, repositoryService, runtimeService, managementService, keepDeploymentIds);
       if (cleanupResult.deleted() == 0) {
         offset += batch.size();
       } else {
@@ -711,10 +724,15 @@ public class WorkflowHandler {
       List<ProcessDefinition> batch,
       RepositoryService repositoryService,
       RuntimeService runtimeService,
-      ManagementService managementService) {
+      ManagementService managementService,
+      Set<String> keepDeploymentIds) {
     int deleted = 0;
     int preserved = 0;
     for (ProcessDefinition pd : batch) {
+      if (keepDeploymentIds.contains(pd.getDeploymentId())) {
+        preserved++;
+        continue;
+      }
       List<ProcessInstance> running =
           runtimeService.createProcessInstanceQuery().processDefinitionId(pd.getId()).list();
       if (running.isEmpty()) {
