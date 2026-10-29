@@ -12,11 +12,15 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { SwitchVertical01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  SwitchVertical01,
+} from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import OntologyReleaseExportModal from '../governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportModal';
 import OntologyImportExportModal from './OntologyImportExportModal';
 
@@ -45,6 +49,7 @@ type OntologyImportExportMenuProps =
 
 const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [isOpen, setIsOpen] = useState(false);
   let modal: ReactNode = null;
   if (isOpen) {
@@ -74,7 +79,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
         aria-label={t('label.import-export')}
         color="secondary"
         data-testid="ontology-import-export-trigger"
-        iconLeading={SwitchVertical01}
+        iconLeading={isAiMode ? Download01 : SwitchVertical01}
         size="sm"
         tooltip={t('label.import-export')}
         onPress={() => setIsOpen(true)}
