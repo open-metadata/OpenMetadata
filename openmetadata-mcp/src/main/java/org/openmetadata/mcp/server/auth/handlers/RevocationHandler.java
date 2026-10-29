@@ -1,6 +1,8 @@
 package org.openmetadata.mcp.server.auth.handlers;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiPredicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 
@@ -10,7 +12,7 @@ import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
  * <p>This handler processes token revocation requests and ensures RFC 7009 compliance by:
  * - Returning success (200 OK) even if the token is not found
  * - Supporting both access and refresh token revocation
- * - Honoring token_type_hint when provided
+ * - Using token_type_hint to pick which token type is looked up first
  */
 @Slf4j
 public class RevocationHandler {
@@ -43,32 +45,28 @@ public class RevocationHandler {
             return;
           }
 
+          // The hint only decides which lookup runs first: RFC 7009 section 2.1 extends the search
+          // to the other type when the token is not found under the hinted one.
+          List<BiPredicate<String, String>> lookups =
+              "access_token".equals(tokenTypeHint)
+                  ? List.of(
+                      tokenRepository::revokeAccessTokenIssuedTo,
+                      tokenRepository::revokeRefreshTokenIssuedTo)
+                  : List.of(
+                      tokenRepository::revokeRefreshTokenIssuedTo,
+                      tokenRepository::revokeAccessTokenIssuedTo);
+
           boolean revoked = false;
           Exception lastError = null;
-
-          if ("refresh_token".equals(tokenTypeHint) || tokenTypeHint == null) {
-            try {
-              revoked = tokenRepository.revokeRefreshTokenIssuedTo(token, clientId);
-            } catch (IllegalArgumentException e) {
-              // Token not found - expected case per RFC 7009
-              LOG.debug("Token not found as refresh token: {}", e.getMessage());
-            } catch (Exception e) {
-              // Database or other error - unexpected
-              LOG.warn("Database error while revoking refresh token: {}", e.getMessage());
-              lastError = e;
-            }
-          }
-
-          if (!revoked && ("access_token".equals(tokenTypeHint) || tokenTypeHint == null)) {
-            try {
-              revoked = tokenRepository.revokeAccessTokenIssuedTo(token, clientId);
-            } catch (IllegalArgumentException e) {
-              // Token not found - expected case per RFC 7009
-              LOG.debug("Token not found as access token: {}", e.getMessage());
-            } catch (Exception e) {
-              // Database or other error - unexpected
-              LOG.warn("Database error while revoking access token: {}", e.getMessage());
-              lastError = e;
+          for (BiPredicate<String, String> lookup : lookups) {
+            if (!revoked) {
+              try {
+                revoked = lookup.test(token, clientId);
+              } catch (Exception e) {
+                // Database or other error - unexpected
+                LOG.warn("Database error while revoking token: {}", e.getMessage());
+                lastError = e;
+              }
             }
           }
 

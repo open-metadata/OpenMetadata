@@ -1153,6 +1153,13 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           new RefreshToken(
               newRefreshTokenValue, client.getClientId(), requestedScopes, newRefreshExpiresAt);
 
+      // Issued before the rotation, so a failed write here leaves the presented refresh token
+      // usable
+      // instead of costing the client its grant. If the rotation then fails, the stored token was
+      // never handed out and expires on its own.
+      JWTAuthMechanism jwtAuth =
+          issueAccessToken(user, userName, client.getClientId(), requestedScopes);
+
       // Atomic CAS rotation: atomically revoke the old token, then store the new one.
       // If a concurrent request already consumed this token, CAS fails and we reject.
       try {
@@ -1163,9 +1170,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         throw new TokenException("invalid_grant", "Refresh token has already been used");
       }
       LOG.debug("Refresh token rotated for user: {}", userName);
-
-      JWTAuthMechanism jwtAuth =
-          issueAccessToken(user, userName, client.getClientId(), requestedScopes);
 
       // Prepare OAuth token response with both new access token and new refresh token
       OAuthToken token = new OAuthToken();

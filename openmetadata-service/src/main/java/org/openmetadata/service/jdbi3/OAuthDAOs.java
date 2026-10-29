@@ -156,6 +156,10 @@ public interface OAuthDAOs {
 
     @SqlUpdate("DELETE FROM oauth_access_tokens WHERE expires_at < :currentTime")
     void deleteExpired(@Bind("currentTime") long currentTime);
+
+    @SqlUpdate(
+        "DELETE FROM oauth_access_tokens WHERE client_id = :clientId AND user_name = :userName")
+    void deleteAllForUser(@Bind("clientId") String clientId, @Bind("userName") String userName);
   }
 
   interface OAuthRefreshTokenDAO {

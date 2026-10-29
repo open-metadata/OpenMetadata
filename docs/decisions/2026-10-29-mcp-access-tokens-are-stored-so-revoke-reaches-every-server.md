@@ -6,8 +6,11 @@
 - **Guard:** `JWTTokenGeneratorTest` (`mcpAccessTokenNamesItsClient`), `JwtFilterTest`
   (`mcpAccessTokenNoLongerStoredIsRejected`, `mcpAccessTokenStillStoredIsAccepted`,
   `providerTokenWithAClientIdIsNotLookedUp`),
-  `OAuthTokenRepositoryTest` (`accessTokenIsRevokedOnlyForTheClientItWasIssuedTo`),
-  `RevocationHandlerTest` (`accessTokenWithoutTypeHintIsRevokedWhenNoRefreshTokenMatches`)
+  `OAuthTokenRepositoryTest` (`accessTokenIsRevokedOnlyForTheClientItWasIssuedTo`,
+  `refreshTokenIsRevokedOnlyForTheClientItWasIssuedTo`),
+  `RevocationHandlerTest` (`accessTokenWithoutTypeHintIsRevokedWhenNoRefreshTokenMatches`,
+  `testRevokeWithRefreshTokenHintButIsAccessToken`), `McpOAuthIT`
+  (`testRevokedAccessToken_isRefusedOnTheNextCall`)
 - **Related:** ADR:2026-10-26-an-mcp-oauth-grant-ends-30-days-after-sign-in
 
 ## Context
@@ -29,6 +32,9 @@ signature text is not a canonical encoding, so a string key does not identify a 
 - `/mcp/revoke` deletes a stored token or revokes a refresh token only when the row names the
   authenticated client (RFC 7009 section 2.1). A token issued to another client is left alone and
   answered 200, like an unknown one, so the answer never tells a client that the token exists.
+  `token_type_hint` only picks which type is looked up first; the other is always tried too.
+- Revoking a refresh token also deletes the access tokens of its grant, the client and user pair
+  the refresh rotation already treats as one grant.
 
 ## Consequences
 
@@ -40,5 +46,5 @@ signature text is not a canonical encoding, so a string key does not identify a 
 - A token is accepted only as the exact string that was issued and stored.
 - Tokens issued before this change carry no `client_id` and are not looked up; they expire within
   10 minutes of the upgrade.
-- Revoking a refresh token still leaves the access tokens it minted valid until they expire. The
-  stored client and user would make deleting them a small change.
+- A user signed in twice with the same client shares one grant: revoking either refresh token
+  ends both sessions' access tokens, as rotation already ends both refresh tokens.

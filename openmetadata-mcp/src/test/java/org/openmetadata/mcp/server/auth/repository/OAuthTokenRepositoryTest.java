@@ -19,6 +19,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthRefreshTokenRecord;
 
 /**
  * Unit tests for OAuthTokenRepository - token storage, retrieval, revocation, and encryption.
@@ -60,6 +61,43 @@ public class OAuthTokenRepositoryTest {
       assertThat(tokenRepository.revokeAccessTokenIssuedTo("access-jwt", "owner-client")).isTrue();
       verify(accessTokens).delete(hash);
     }
+  }
+
+  /** Only the owning client revokes a live refresh token, and the grant's access tokens go too. */
+  @Test
+  void refreshTokenIsRevokedOnlyForTheClientItWasIssuedTo() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.OAuthAccessTokenDAO accessTokens = mock(CollectionDAO.OAuthAccessTokenDAO.class);
+    when(dao.oauthAccessTokenDAO()).thenReturn(accessTokens);
+    when(dao.oauthRefreshTokenDAO()).thenReturn(refreshTokenDAO);
+    String live = OAuthTokenRepository.hashToken("live-refresh");
+    String used = OAuthTokenRepository.hashToken("used-refresh");
+    when(refreshTokenDAO.findByTokenHash(live)).thenReturn(refreshRecord(live, false));
+    when(refreshTokenDAO.findByTokenHash(used)).thenReturn(refreshRecord(used, true));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<Fernet> fernets = mockStatic(Fernet.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(dao);
+      fernets.when(Fernet::getInstance).thenReturn(fernet);
+      tokenRepository = new OAuthTokenRepository();
+
+      assertThat(tokenRepository.revokeRefreshTokenIssuedTo("live-refresh", "other-client"))
+          .isFalse();
+      assertThat(tokenRepository.revokeRefreshTokenIssuedTo("used-refresh", "owner-client"))
+          .isFalse();
+      verify(refreshTokenDAO, never()).revoke(live);
+      verify(accessTokens, never()).deleteAllForUser("owner-client", "alice");
+
+      assertThat(tokenRepository.revokeRefreshTokenIssuedTo("live-refresh", "owner-client"))
+          .isTrue();
+      verify(refreshTokenDAO).revoke(live);
+      verify(accessTokens).deleteAllForUser("owner-client", "alice");
+    }
+  }
+
+  private static OAuthRefreshTokenRecord refreshRecord(String hash, boolean revoked) {
+    return new OAuthRefreshTokenRecord(
+        UUID.randomUUID(), hash, "encrypted", "owner-client", "alice", List.of(), 1L, revoked);
   }
 
   @Test

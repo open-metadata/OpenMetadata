@@ -81,15 +81,6 @@ public class OAuthTokenRepository {
   }
 
   /**
-   * Delete access token.
-   */
-  public void deleteAccessToken(String tokenValue) {
-    String tokenHash = hashToken(tokenValue);
-    accessTokenDAO.delete(tokenHash);
-    LOG.debug("Deleted access token");
-  }
-
-  /**
    * Deletes an access token if it was issued to this client, and says whether it was. Reads the
    * stored row rather than decrypting it, so a row that no longer decrypts is still revocable.
    */
@@ -103,7 +94,11 @@ public class OAuthTokenRepository {
     return issuedToClient;
   }
 
-  /** Revokes a live refresh token if it was issued to this client, and says whether it was. */
+  /**
+   * Revokes a live refresh token if it was issued to this client, and says whether it was. The
+   * access tokens of the same grant go with it (RFC 7009 section 2.1); like the rotation's cleanup,
+   * the grant is the client and user pair.
+   */
   public boolean revokeRefreshTokenIssuedTo(String tokenValue, String clientId) {
     String tokenHash = hashToken(tokenValue);
     OAuthRefreshTokenRecord record = refreshTokenDAO.findByTokenHash(tokenHash);
@@ -111,6 +106,7 @@ public class OAuthTokenRepository {
         record != null && !record.revoked() && record.clientId().equals(clientId);
     if (issuedToClient) {
       refreshTokenDAO.revoke(tokenHash);
+      accessTokenDAO.deleteAllForUser(record.clientId(), record.userName());
     }
     return issuedToClient;
   }
