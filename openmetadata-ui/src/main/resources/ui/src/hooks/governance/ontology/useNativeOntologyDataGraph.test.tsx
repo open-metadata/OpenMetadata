@@ -720,6 +720,64 @@ describe('a graph that the model or the bindings made stale', () => {
     expect(fetchPage).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps every paged row when a second change supersedes a reload in flight', async () => {
+    const rowsPage = (from: number, after: string) =>
+      pageFixture({
+        bindings: {
+          assets: Array.from({ length: 25 }, (_, index) => ({
+            id: `r${from + index}`,
+            name: `row_${from + index}`,
+          })),
+          after,
+        },
+        loaded: LOADED,
+      });
+    fetchPage
+      .mockResolvedValueOnce(clustersPage())
+      .mockResolvedValueOnce(rowsPage(3, 'cursor-27'))
+      .mockResolvedValueOnce(rowsPage(28, 'cursor-52'))
+      .mockImplementationOnce(() => new Promise(() => undefined))
+      .mockResolvedValueOnce(clustersPage())
+      .mockResolvedValueOnce(rowsPage(3, 'cursor-27'))
+      .mockResolvedValueOnce(rowsPage(28, 'cursor-52'));
+    const { result, rerender } = render('ontology-1', {
+      isActive: true,
+      revision: 0,
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    act(() => result.current.loadMoreAssets('transfer'));
+    await waitFor(() =>
+      expect(result.current.graph.clusters[0].assets).toHaveLength(27)
+    );
+    act(() => result.current.loadMoreAssets('transfer'));
+    await waitFor(() =>
+      expect(result.current.graph.clusters[0].assets).toHaveLength(52)
+    );
+
+    rerender({
+      id: 'ontology-1',
+      hookOptions: { isActive: true, revision: 1 },
+    });
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(4));
+    rerender({
+      id: 'ontology-1',
+      hookOptions: { isActive: true, revision: 2 },
+    });
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(7));
+    await settle();
+
+    expect(result.current.graph.clusters[0].assets).toHaveLength(52);
+    expect(kinds()).toEqual([
+      'clusters',
+      'bindings',
+      'bindings',
+      'clusters',
+      'clusters',
+      'bindings',
+      'bindings',
+    ]);
+  });
+
   it('reloads after a binding write succeeds, and not after one that did not run', async () => {
     fetchPage
       .mockResolvedValueOnce(clustersPage())

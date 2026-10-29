@@ -18,6 +18,7 @@ import {
   within,
 } from '@testing-library/react';
 import { AxiosError, AxiosHeaders } from 'axios';
+import { useState } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { NativeOntologyDataGraphPage } from '../../../../generated/api/data/nativeOntologyDataGraphPage';
 import { AssetType } from '../../../../generated/api/data/updateOntologyConceptBinding';
@@ -113,16 +114,33 @@ const BindingWriter = () => {
   );
 };
 
+const SelectingMode = ({
+  revision,
+  onSelectConcept,
+}: {
+  revision: number;
+  onSelectConcept: (conceptId: string) => void;
+}) => {
+  const [selectedConceptId, setSelectedConceptId] = useState('account');
+
+  return (
+    <OntologyNativeDataMode
+      isActive
+      ontologyId="ontology-1"
+      revision={revision}
+      selectedConceptId={selectedConceptId}
+      onSelectConcept={(conceptId) => {
+        setSelectedConceptId(conceptId);
+        onSelectConcept(conceptId);
+      }}
+    />
+  );
+};
+
 const renderMode = (onSelectConcept = jest.fn()) => {
   const tree = (revision: number) => (
     <MemoryRouter>
-      <OntologyNativeDataMode
-        isActive
-        ontologyId="ontology-1"
-        revision={revision}
-        selectedConceptId="account"
-        onSelectConcept={onSelectConcept}
-      />
+      <SelectingMode revision={revision} onSelectConcept={onSelectConcept} />
       <Location />
       <BindingWriter />
     </MemoryRouter>
@@ -384,6 +402,71 @@ describe('a graph that went stale', () => {
       { kind: 'bindings', conceptId: 'transfer', after: 'cursor-4', limit: 25 },
       { kind: 'clusters', limit: 12, offset: 0 },
       { kind: 'bindings', conceptId: 'transfer', after: 'cursor-4', limit: 25 },
+    ]);
+  });
+
+  it('keeps the clusters, rows and selection the user loaded past the first clusters page', async () => {
+    const ledgerClusters = () =>
+      pageFixture({
+        clusters: [
+          {
+            id: 'ledger',
+            name: 'Ledger',
+            count: 6,
+            after: 'ledger-4',
+            assets: [1, 2, 3, 4].map((n) => ({
+              id: `l${n}`,
+              name: `ledger_${n}`,
+            })),
+          },
+        ],
+        loaded: [...LOADED, prefixFixture('ledger', 'l4')],
+      });
+    const lastLedgerRows = () =>
+      pageFixture({
+        bindings: {
+          assets: [5, 6].map((n) => ({ id: `l${n}`, name: `ledger_${n}` })),
+        },
+        loaded: [...LOADED, prefixFixture('ledger', 'l6')],
+      });
+    fetchPage
+      .mockResolvedValueOnce(firstPage({ nextClusterOffset: 12 }))
+      .mockResolvedValueOnce(ledgerClusters())
+      .mockResolvedValueOnce(lastLedgerRows())
+      .mockResolvedValueOnce(firstPage({ nextClusterOffset: 12 }))
+      .mockResolvedValueOnce(ledgerClusters())
+      .mockResolvedValueOnce(lastLedgerRows());
+    const { changeModel } = renderMode();
+    await screen.findByTestId('ontology-data-cluster-transfer');
+    fireEvent.click(screen.getByText('label.load-more'));
+    await screen.findByTestId('ontology-data-cluster-ledger');
+    fireEvent.click(screen.getByTestId('ontology-load-more-assets-ledger'));
+    await waitFor(() => expect(rows('ledger')).toHaveLength(6));
+    fireEvent.click(screen.getByText('Ledger'));
+
+    changeModel(1);
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(6));
+    await waitFor(() => expect(screen.queryByText('label.loading')).toBeNull());
+
+    expect(rows('ledger')).toEqual([
+      'ledger_1',
+      'ledger_2',
+      'ledger_3',
+      'ledger_4',
+      'ledger_5',
+      'ledger_6',
+    ]);
+    expect(rows('transfer')).toHaveLength(4);
+    expect(
+      screen.getByTestId('ontology-data-cluster-ledger').className
+    ).toMatch(/border-brand/);
+    expect(fetchPage.mock.calls.map(([, request]) => request.page)).toEqual([
+      { kind: 'clusters', limit: 12, offset: 0 },
+      { kind: 'clusters', limit: 12, offset: 12 },
+      { kind: 'bindings', conceptId: 'ledger', after: 'ledger-4', limit: 25 },
+      { kind: 'clusters', limit: 12, offset: 0 },
+      { kind: 'clusters', limit: 12, offset: 12 },
+      { kind: 'bindings', conceptId: 'ledger', after: 'ledger-4', limit: 25 },
     ]);
   });
 
