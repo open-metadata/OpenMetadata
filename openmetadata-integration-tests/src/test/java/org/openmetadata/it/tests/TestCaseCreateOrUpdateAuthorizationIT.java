@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -52,6 +53,8 @@ public class TestCaseCreateOrUpdateAuthorizationIT {
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String TEST_CASES_PATH = "/v1/dataQuality/testCases";
   private static final String COLUMN_NAME = "id";
+  private static final String TABLE_RESOURCE = "table";
+  private static final String TEST_CASE_RESOURCE = "testCase";
 
   /**
    * EditTests on the table alone is enough to create a table and a column test case with PUT, then
@@ -59,59 +62,63 @@ public class TestCaseCreateOrUpdateAuthorizationIT {
    */
   @Test
   void tableEditTestsPermissionCreatesAndUpdatesTestCase(TestNamespace ns) throws Exception {
-    OpenMetadataClient admin = SdkClients.adminClient();
     Table table = createTable(ns);
     List<CreateTestCase> creates =
-        List.of(
-            createTestCaseRequest(ns, table),
-            TestCaseBuilder.create(admin)
-                .name(ns.shortPrefix("ctc"))
-                .forColumn(table, COLUMN_NAME)
-                .testDefinition("columnValuesToBeNotNull")
-                .build());
-    String id = ns.uniqueShortId();
-    Policy policy =
-        admin
-            .policies()
-            .create(
-                new CreatePolicy()
-                    .withName("tcput_pol_" + id)
-                    .withDescription("Allow EditTests on table resources only")
-                    .withRules(
-                        List.of(
-                            new Rule()
-                                .withName("allowTableEditTests")
-                                .withEffect(Rule.Effect.ALLOW)
-                                .withOperations(List.of(MetadataOperation.EDIT_TESTS))
-                                .withResources(List.of("table")))));
-    Role role =
-        admin
-            .roles()
-            .create(
-                new CreateRole()
-                    .withName("tcput_role_" + id)
-                    .withPolicies(List.of(policy.getFullyQualifiedName())));
-    User user = createUser("tcput_u_" + id, List.of(role.getId()));
+        List.of(createTestCaseRequest(ns, table), createColumnTestCaseRequest(ns, table));
+    Grantee grantee = grant(ns, MetadataOperation.EDIT_TESTS, TABLE_RESOURCE);
     try {
-      String token = tokenFor(user);
       for (CreateTestCase create : creates) {
-        HttpResponse<String> created = putTestCase(create, token);
+        HttpResponse<String> created = putTestCase(create, grantee.token());
         assertEquals(201, created.statusCode(), "Test case must be created: " + created.body());
-        HttpResponse<String> updated = putTestCase(create.withDescription("updated"), token);
+        HttpResponse<String> updated =
+            putTestCase(create.withDescription("updated"), grantee.token());
         assertEquals(200, updated.statusCode(), "Test case must be updated: " + updated.body());
       }
     } finally {
-      admin.users().delete(user.getId());
-      admin.roles().delete(role.getId());
-      admin.policies().delete(policy.getId());
+      grantee.delete();
     }
   }
 
-  /** A caller with no grant on the table or the test case is refused, not told it is missing. */
+  /** Create on test cases creates a new one with PUT, but does not let the caller overwrite it. */
+  @Test
+  void testCaseCreatePermissionCreatesButDoesNotUpdate(TestNamespace ns) throws Exception {
+    CreateTestCase create = createTestCaseRequest(ns, createTable(ns));
+    Grantee grantee = grant(ns, MetadataOperation.CREATE, TEST_CASE_RESOURCE);
+    try {
+      HttpResponse<String> created = putTestCase(create, grantee.token());
+      assertEquals(201, created.statusCode(), "Test case must be created: " + created.body());
+      HttpResponse<String> updated =
+          putTestCase(create.withDescription("updated"), grantee.token());
+      assertEquals(403, updated.statusCode(), "Update must be refused: " + updated.body());
+    } finally {
+      grantee.delete();
+    }
+  }
+
+  /** EditAll on test cases updates an existing column test case, found by its stored FQN. */
+  @Test
+  void testCaseEditAllPermissionUpdatesExistingColumnTestCase(TestNamespace ns) throws Exception {
+    CreateTestCase create = createColumnTestCaseRequest(ns, createTable(ns));
+    SdkClients.adminClient().testCases().create(create);
+    Grantee grantee = grant(ns, MetadataOperation.EDIT_ALL, TEST_CASE_RESOURCE);
+    try {
+      HttpResponse<String> updated =
+          putTestCase(create.withDescription("updated"), grantee.token());
+      assertEquals(200, updated.statusCode(), "Test case must be updated: " + updated.body());
+    } finally {
+      grantee.delete();
+    }
+  }
+
+  /**
+   * A caller with no grant on the table or the test case is refused, not told it is missing, and
+   * the refused PUT leaves nothing behind, not even the table's test suite.
+   */
   @Test
   void noPermissionReturns403ForNewTestCase(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
-    CreateTestCase create = createTestCaseRequest(ns, createTable(ns));
+    Table table = createTable(ns);
+    CreateTestCase create = createTestCaseRequest(ns, table);
     User user = createUser("tcput_du_" + ns.uniqueShortId(), List.of());
     try {
       HttpResponse<String> response = putTestCase(create, tokenFor(user));
@@ -119,6 +126,58 @@ public class TestCaseCreateOrUpdateAuthorizationIT {
     } finally {
       admin.users().delete(user.getId());
     }
+    assertNull(
+        admin.tables().get(table.getId().toString(), "testSuite").getTestSuite(),
+        "A refused PUT must not create the table's test suite");
+  }
+
+  private record Grantee(User user, Role role, Policy policy) {
+    String token() {
+      return tokenFor(user);
+    }
+
+    void delete() {
+      OpenMetadataClient admin = SdkClients.adminClient();
+      admin.users().delete(user.getId());
+      admin.roles().delete(role.getId());
+      admin.policies().delete(policy.getId());
+    }
+  }
+
+  /** A user whose only grant is {@code operation} on {@code resource}. */
+  private static Grantee grant(TestNamespace ns, MetadataOperation operation, String resource) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String id = ns.uniqueShortId();
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName("tcput_pol_" + id)
+                    .withDescription("Allow one operation on one resource")
+                    .withRules(
+                        List.of(
+                            new Rule()
+                                .withName("allowOne")
+                                .withEffect(Rule.Effect.ALLOW)
+                                .withOperations(List.of(operation))
+                                .withResources(List.of(resource)))));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName("tcput_role_" + id)
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    return new Grantee(createUser("tcput_u_" + id, List.of(role.getId())), role, policy);
+  }
+
+  private static CreateTestCase createColumnTestCaseRequest(TestNamespace ns, Table table) {
+    return TestCaseBuilder.create(SdkClients.adminClient())
+        .name(ns.shortPrefix("ctc"))
+        .forColumn(table, COLUMN_NAME)
+        .testDefinition("columnValuesToBeNotNull")
+        .build();
   }
 
   private static CreateTestCase createTestCaseRequest(TestNamespace ns, Table table) {

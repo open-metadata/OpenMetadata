@@ -858,7 +858,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context SecurityContext securityContext,
       @Valid CreateTestCase create) {
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.prepareInternal(test, true);
+    // Only the FQN before authorizing: prepare creates the table's test suite if it is missing.
+    repository.setFullyQualifiedName(test);
     OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface tableResourceContext =
@@ -870,6 +871,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(tableOpContext, tableResourceContext),
             testCaseCreateOrUpdateRequest(test));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
