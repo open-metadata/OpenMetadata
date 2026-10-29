@@ -17,11 +17,13 @@ import {
   Kind,
   OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
+import { PaletteKey } from '../../../../generated/entity/data/relationshipType';
 import {
   AssetType,
   OntologyConceptBindingsResponse,
   State,
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   deleteOntologyConceptBinding,
   getOntologyConceptBindings,
@@ -37,6 +39,10 @@ import OntologyConceptInspector from './OntologyConceptInspector';
 
 jest.mock('../../../../rest/ontologyAPI');
 jest.mock('../../../../rest/permissionAPI');
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 const ontology = {
   id: 'ontology',
@@ -316,5 +322,203 @@ describe('OntologyConceptInspector relationships', () => {
     expect(
       screen.getByTestId('ontology-concept-relationships')
     ).toHaveTextContent(/Account\s*part of/);
+  });
+});
+
+describe('OntologyConceptInspector in AI mode', () => {
+  const party = {
+    ...concept,
+    id: 'party',
+    name: 'Party',
+    iri: 'urn:sales:Party',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockGetBindings.mockResolvedValue(response);
+    mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
+  });
+
+  afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
+
+  const renderAiInspector = () => {
+    const handlers = {
+      onAddProperty: jest.fn().mockResolvedValue(true),
+      onAddRelation: jest.fn().mockResolvedValue(true),
+      onClose: jest.fn(),
+      onEdit: jest.fn(),
+      onEditMappings: jest.fn(),
+      onSelectConcept: jest.fn(),
+    };
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyConceptInspector
+          canAddProperty
+          canAddRelation
+          canEditBindings
+          concept={concept}
+          model={{ ...model, concepts: [concept, party] }}
+          relationTypeGroups={[
+            {
+              id: 'hierarchy',
+              title: 'Hierarchy',
+              options: [
+                { id: 'isA', label: 'is a', paletteKey: PaletteKey.Blue },
+              ],
+            },
+          ]}
+          relations={[
+            { key: 'isA', kind: 'subClassOf', from: concept, to: party },
+          ]}
+          {...handlers}
+        />
+      </MemoryRouter>
+    );
+
+    return handlers;
+  };
+
+  it('keeps the description in the scrollable body with the sections', async () => {
+    renderAiInspector();
+    const description = await screen.findByTestId(
+      'ontology-concept-description'
+    );
+    const header = screen.getByTestId(
+      'ontology-concept-completeness'
+    ).parentElement;
+
+    expect(header).not.toContainElement(description);
+    expect(description.closest('.tw\\:overflow-auto')).toContainElement(
+      screen.getByTestId(`ontology-concept-relation-${party.id}`)
+    );
+  });
+
+  it('keeps the header, section controls and bindings working', async () => {
+    const handlers = renderAiInspector();
+    const assets = await screen.findByTestId('ontology-native-assets');
+
+    expect(
+      await within(assets).findByRole('link', { name: 'customers' })
+    ).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-concept-completeness')
+    ).toHaveTextContent('message.completed-section-count');
+    expect(
+      screen.getByTestId(`ontology-concept-relation-${party.id}`)
+    ).toHaveTextContent('Party');
+    expect(
+      screen.getByTestId(`ontology-bind-property-${property.id}`)
+    ).toBeEnabled();
+    expect(
+      await screen.findByText(/former_id.*label.unavailable/)
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-concept-edit'));
+    fireEvent.click(screen.getByTestId('ontology-add-mapping'));
+    fireEvent.click(
+      within(screen.getByTestId('ontology-concept-inspector')).getByRole(
+        'button',
+        { name: 'label.close' }
+      )
+    );
+
+    expect(handlers.onEdit).toHaveBeenCalled();
+    expect(handlers.onEditMappings).toHaveBeenCalled();
+    expect(handlers.onClose).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('ontology-native-link-assets'));
+
+    expect(screen.getByTestId('ontology-data-asset-picker')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-native-link-assets')
+    ).not.toBeInTheDocument();
+  });
+
+  it('adds a property and a relationship from the inline forms', async () => {
+    const handlers = renderAiInspector();
+    await screen.findByTestId('ontology-native-assets');
+
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+
+    expect(
+      screen.queryByTestId('ontology-add-property')
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('ontology-property-name'), {
+      target: { value: 'loyaltyTier' },
+    });
+    fireEvent.click(screen.getByTestId('ontology-property-type-enum'));
+    fireEvent.change(screen.getByTestId('ontology-property-enum-values'), {
+      target: { value: 'gold, silver' },
+    });
+    fireEvent.click(screen.getByTestId('ontology-property-identifier'));
+    fireEvent.click(screen.getByTestId('ontology-property-submit'));
+
+    await waitFor(() =>
+      expect(handlers.onAddProperty).toHaveBeenCalledWith({
+        datatype: 'enum',
+        enumValues: ['gold', 'silver'],
+        isIdentifier: true,
+        name: 'loyaltyTier',
+      })
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-add-property')).toBeVisible()
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    fireEvent.click(screen.getByTestId('relation-type-isA'));
+
+    expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
+    expect(screen.getByTestId('ontology-relationship-form')).toBeVisible();
+  });
+
+  it('reads an incoming relation through its inverse in the AI panel', async () => {
+    const partOf: OntologyProperty = {
+      id: 'part-of',
+      name: 'partOf',
+      displayName: 'Part Of',
+      fullyQualifiedName: 'Sales.partOf',
+      iri: 'urn:sales:partOf',
+      ontology: { id: ontology.id, type: 'ontology' },
+      kind: Kind.Object,
+      domain: [party.iri],
+      range: [concept.iri],
+      inverse: 'urn:sales:hasPart',
+    };
+    const hasPart: OntologyProperty = {
+      id: 'has-part',
+      name: 'hasPart',
+      displayName: 'Has Part',
+      fullyQualifiedName: 'Sales.hasPart',
+      iri: 'urn:sales:hasPart',
+      ontology: { id: ontology.id, type: 'ontology' },
+      kind: Kind.Object,
+      inverse: partOf.iri,
+    };
+    const relationModel = {
+      ...model,
+      concepts: [concept, party],
+      properties: [partOf, hasPart],
+    };
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyConceptInspector
+          concept={concept}
+          model={relationModel}
+          relations={getModelRelations(relationModel)}
+          onClose={jest.fn()}
+          onSelectConcept={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('ontology-native-assets');
+
+    expect(screen.getByTestId('ontology-concept-completeness')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-concept-relationships')
+    ).toHaveTextContent(/has part\s*Party/);
   });
 });
