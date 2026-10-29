@@ -203,7 +203,7 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
             "Edited folder description".equals(doc.path("description").asText())
                 && doc.path("childrenCount").asInt() == 1);
 
-    // A hard delete removes the file's edge to the folder before the folder is refreshed.
+    // Through REST a hard delete soft-deletes the file first, which is what drops the count.
     SdkClients.adminClient()
         .contextFiles()
         .delete(file.getId().toString(), Map.of("hardDelete", "true"));

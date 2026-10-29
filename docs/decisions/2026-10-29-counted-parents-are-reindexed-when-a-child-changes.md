@@ -35,7 +35,10 @@ Metrics had their own copy of the refresh; glossary terms and folders had none.
   does not inherit domains from its parent metric.
 
 ## Consequences
-- Each create, delete, restore or move of a child costs one parent read and one parent reindex.
+- Each create, delete or restore of a child costs one read and one reindex per counting parent: one
+  for a metric or context file, one per ancestor for a glossary term. A move pays that for the old
+  and the new parent, and a move consolidated into the previous version reindexes the new parent
+  twice.
 - A context file loaded without its folder looks it up, one query, and captures it before a hard
   delete removes the edge.
 - Restoring a glossary subtree refreshes the live ancestors once per restored term. Those

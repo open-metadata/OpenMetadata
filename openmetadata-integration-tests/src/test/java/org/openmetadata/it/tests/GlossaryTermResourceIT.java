@@ -81,6 +81,7 @@ import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -299,7 +300,11 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                             other.getFullyQualifiedName(), parent.getFullyQualifiedName())
                         : line)
             .collect(Collectors.joining("\n", "", "\n"));
-    client.glossaries().importCsv(glossary.getName(), movedBack, false);
+    CsvImportResult imported =
+        JsonUtils.readValue(
+            client.glossaries().importCsv(glossary.getName(), movedBack, false),
+            CsvImportResult.class);
+    assertEquals(0, imported.getNumberOfRowsFailed(), imported.getImportResultsCsv());
     awaitChildrenCount(other, 0);
     awaitChildrenCount(parent, 1);
 

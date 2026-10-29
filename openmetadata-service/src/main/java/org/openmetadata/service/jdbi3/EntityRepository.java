@@ -11077,7 +11077,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    @Transaction
     /**
      * After a consolidation, postUpdate compares the pre-session version with the update, which
      * misses a counting parent this request moved the entity away from. So the move is also checked
@@ -11089,6 +11088,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       deferReactOperation(() -> refreshCountingParentsOnMove(requestOriginal, requestUpdated));
     }
 
+    @Transaction
     private void revertForImport() {
       // Revert from current version to previous version to go back to the previous version
       // set changeDescription to null
