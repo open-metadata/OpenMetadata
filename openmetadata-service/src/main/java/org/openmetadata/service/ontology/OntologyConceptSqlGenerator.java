@@ -163,16 +163,23 @@ public final class OntologyConceptSqlGenerator {
     return joins;
   }
 
+  /**
+   * A bound hop property follows its binding: through a foreign key on the bound column, else to
+   * the other table's identifier. An unbound one follows the one foreign key between the tables.
+   */
   private static Join join(final Step step, final List<String> database) {
     final List<BoundTable> candidates =
         candidates(step).stream().filter(table -> database.equals(fqnParts(table, 2))).toList();
-    return firstJoin(candidates, table -> foreignKeyPairs(step, table), step.hop())
-        .or(() -> firstJoin(candidates, table -> bindingPairs(step, table), step.hop()))
-        .orElseThrow(
-            () ->
-                step.failure(
-                    ": no foreign key or object-property binding joins %s to a table bound to %s",
-                    step.previous().fullyQualifiedName(), step.hop().target().label()));
+    final Optional<Join> join =
+        isBound(step, candidates)
+            ? firstJoin(candidates, table -> agreeingKeyPairs(step, table), step.hop())
+                .or(() -> firstJoin(candidates, table -> bindingPairs(step, table), step.hop()))
+            : firstJoin(candidates, table -> onlyKeyPairs(step, table), step.hop());
+    return join.orElseThrow(
+        () ->
+            step.failure(
+                ": no foreign key or object-property binding joins %s to a table bound to %s",
+                step.previous().fullyQualifiedName(), step.hop().target().label()));
   }
 
   private static List<BoundTable> candidates(final Step step) {
@@ -181,6 +188,12 @@ public final class OntologyConceptSqlGenerator {
       throw step.failure(" reaches concept %s, which %s", target.label(), NO_VISIBLE_TABLE);
     }
     return target.tables();
+  }
+
+  private static boolean isBound(final Step step, final List<BoundTable> candidates) {
+    final UUID property = step.hop().property();
+    return step.previous().objectColumns().containsKey(property)
+        || candidates.stream().anyMatch(table -> table.objectColumns().containsKey(property));
   }
 
   private static Optional<Join> firstJoin(
@@ -196,45 +209,43 @@ public final class OntologyConceptSqlGenerator {
     return Optional.empty();
   }
 
-  private static List<ColumnPair> foreignKeyPairs(final Step step, final BoundTable target) {
-    final List<ColumnPair> outgoing = referencing(step, step.previous(), target, false);
-    return outgoing.isEmpty() ? referencing(step, target, step.previous(), true) : outgoing;
-  }
-
-  private static List<ColumnPair> referencing(
-      final Step step, final BoundTable owner, final BoundTable referred, final boolean reversed) {
-    final List<TableConstraint> keys =
-        listOrEmpty(owner.constraints()).stream()
-            .filter(
-                constraint ->
-                    constraint.getConstraintType() == TableConstraint.ConstraintType.FOREIGN_KEY)
-            .filter(constraint -> refersTo(constraint, referred.fullyQualifiedName()))
-            .toList();
-    return keys.isEmpty()
-        ? List.of()
-        : pairs(boundKey(step, owner, keys, reversed ? owner : referred), reversed);
-  }
-
-  /** With several keys between two tables, the hop's property binding names the one it follows. */
-  private static TableConstraint boundKey(
-      final Step step,
-      final BoundTable owner,
-      final List<TableConstraint> keys,
-      final BoundTable target) {
-    if (keys.size() == 1) {
-      return keys.getFirst();
+  /** The previous table's binding wins over the candidate's, as in {@link #bindingPairs}. */
+  private static List<ColumnPair> agreeingKeyPairs(final Step step, final BoundTable candidate) {
+    final UUID property = step.hop().property();
+    final boolean reversed = !step.previous().objectColumns().containsKey(property);
+    final BoundTable owner = reversed ? candidate : step.previous();
+    final List<String> bound = owner.objectColumns().get(property);
+    if (bound == null) {
+      return List.of();
     }
-    final List<String> bound = owner.objectColumns().get(step.hop().property());
-    return keys.stream()
+    return foreignKeys(owner, reversed ? step.previous() : candidate).stream()
         .filter(key -> key.getColumns().equals(bound))
         .findFirst()
-        .orElseThrow(
-            () ->
-                step.failure(
-                    ": several foreign keys join %s and %s; bind the %s property to one of their columns",
-                    step.previous().fullyQualifiedName(),
-                    target.fullyQualifiedName(),
-                    step.hop().label()));
+        .map(key -> pairs(key, reversed))
+        .orElse(List.of());
+  }
+
+  private static List<ColumnPair> onlyKeyPairs(final Step step, final BoundTable candidate) {
+    final List<TableConstraint> outgoing = foreignKeys(step.previous(), candidate);
+    final List<TableConstraint> incoming = foreignKeys(candidate, step.previous());
+    if (outgoing.size() + incoming.size() > 1) {
+      throw step.failure(
+          ": several foreign keys join %s and %s; bind the %s property to one of their columns",
+          step.previous().fullyQualifiedName(), candidate.fullyQualifiedName(), step.hop().label());
+    }
+    return outgoing.isEmpty()
+        ? incoming.stream().findFirst().map(key -> pairs(key, true)).orElse(List.of())
+        : pairs(outgoing.getFirst(), false);
+  }
+
+  private static List<TableConstraint> foreignKeys(
+      final BoundTable owner, final BoundTable referred) {
+    return listOrEmpty(owner.constraints()).stream()
+        .filter(
+            constraint ->
+                constraint.getConstraintType() == TableConstraint.ConstraintType.FOREIGN_KEY)
+        .filter(constraint -> refersTo(constraint, referred.fullyQualifiedName()))
+        .toList();
   }
 
   private static boolean refersTo(final TableConstraint constraint, final String table) {

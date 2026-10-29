@@ -28,12 +28,16 @@ commented with the relation label, and the service, service type and dialect.
   MicrosoftFabric). T-SQL limits with `SELECT TOP 50`, the others with `LIMIT 50`. Every other
   service type is a 400, "SQL generation does not support <serviceType>".
 
-- A hop's join columns come from a `FOREIGN_KEY` table constraint between the two tables, in either
-  direction. When several foreign keys join the two tables, the hop uses the one whose local column
-  is the hop property's object-property binding, and without that binding it is a 400 that names
-  both tables. Without a foreign key, the hop's object property may be bound to a foreign-key column
-  on either concept's table, which joins to the other concept's identifier column (a bound DATA
-  property with `isIdentifier`). `OntologyBindingRules` accepts OBJECT properties for that reason.
+- A hop follows its property's object-property binding whenever the previous table or a candidate
+  table binds it; `OntologyBindingRules` accepts OBJECT properties for that reason. The previous
+  table's binding wins over the candidate's. The hop joins through a `FOREIGN_KEY` constraint on
+  the binding table whose columns equal the bound column and that refers to the other table, and
+  without one it joins the bound column to the other concept's identifier column (a bound DATA
+  property with `isIdentifier`). A foreign key on any other column never counts, even when it is
+  the only one. A hop whose property no candidate binds joins through the one foreign key between
+  the previous table and a candidate, in either direction, trying candidates in asset-id order.
+  Several foreign keys between the two tables, in either direction, are a 400 that names both
+  tables and asks for the property to be bound to one column.
 - A hop followed from its relation's range back to its domain is labelled with the relation's
   declared inverse when that inverse is a live object property, the same label as the rail's hop
   chip.
