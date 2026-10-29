@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.auth.AccessToken;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.AuthorizationParams;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
@@ -30,7 +31,6 @@ import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
 import org.openmetadata.mcp.auth.exception.RegistrationException;
 import org.openmetadata.mcp.auth.exception.TokenException;
-import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
 import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
@@ -117,7 +117,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private final OAuthAuthorizationCodeRepository codeRepository;
   private final OAuthTokenRepository tokenRepository;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
-  private final RevocationHandler revocationHandler;
 
   // Thread-safe storage for request/response to prevent race conditions in concurrent requests
   private final ThreadLocal<HttpServletRequest> currentRequest = new ThreadLocal<>();
@@ -139,7 +138,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     this.codeRepository = new OAuthAuthorizationCodeRepository();
     this.tokenRepository = new OAuthTokenRepository();
     this.pendingAuthRepository = new McpPendingAuthRequestRepository();
-    this.revocationHandler = new RevocationHandler(tokenRepository);
 
     LOG.info("Initialized UserSSOOAuthProvider with unified auth (SSO + Basic Auth)");
   }
@@ -984,15 +982,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       JWTAuthMechanism jwtAuth =
-          jwtGenerator.generateJWTToken(
-              userName,
-              getRoleListFromUser(user),
-              !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
-              user.getEmail(),
-              JWT_EXPIRY_SECONDS,
-              false,
-              ServiceTokenType.OM_USER,
-              usedRecord.scopes());
+          issueAccessToken(user, userName, client.getClientId(), usedRecord.scopes());
 
       // Generate cryptographically secure refresh token (32 bytes = 256 bits) for long-lived
       // sessions (OAuth 2.0 RFC 6749)
@@ -1029,6 +1019,32 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       LOG.error("Token exchange failed", e);
       throw new TokenException("server_error", "Token exchange failed");
     }
+  }
+
+  /**
+   * Mints an access token naming the client it was issued to, and stores it. JwtFilter refuses one
+   * that is no longer stored, which is how a revoke reaches every server.
+   * ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
+   */
+  private JWTAuthMechanism issueAccessToken(
+      User user, String userName, String clientId, List<String> scopes) {
+    JWTAuthMechanism jwtAuth =
+        jwtGenerator.generateJWTToken(
+            userName,
+            getRoleListFromUser(user),
+            !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
+            user.getEmail(),
+            JWT_EXPIRY_SECONDS,
+            false,
+            ServiceTokenType.OM_USER,
+            scopes,
+            clientId);
+    tokenRepository.storeAccessToken(
+        new AccessToken(jwtAuth.getJWTToken(), clientId, scopes, jwtAuth.getJWTTokenExpiresAt()),
+        clientId,
+        userName,
+        scopes);
+    return jwtAuth;
   }
 
   @Override
@@ -1137,6 +1153,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           new RefreshToken(
               newRefreshTokenValue, client.getClientId(), requestedScopes, newRefreshExpiresAt);
 
+      // Issued before the rotation: a failed write here leaves the presented refresh token usable
+      // rather than costing the client its grant. If the rotation then fails, the stored token was
+      // never handed out and expires on its own.
+      JWTAuthMechanism jwtAuth =
+          issueAccessToken(user, userName, client.getClientId(), requestedScopes);
+
       // Atomic CAS rotation: atomically revoke the old token, then store the new one.
       // If a concurrent request already consumed this token, CAS fails and we reject.
       try {
@@ -1147,17 +1169,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         throw new TokenException("invalid_grant", "Refresh token has already been used");
       }
       LOG.debug("Refresh token rotated for user: {}", userName);
-
-      JWTAuthMechanism jwtAuth =
-          jwtGenerator.generateJWTToken(
-              userName,
-              getRoleListFromUser(user),
-              !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
-              user.getEmail(),
-              JWT_EXPIRY_SECONDS,
-              false,
-              ServiceTokenType.OM_USER,
-              requestedScopes);
 
       // Prepare OAuth token response with both new access token and new refresh token
       OAuthToken token = new OAuthToken();
@@ -1178,16 +1189,15 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     }
   }
 
+  /**
+   * Revocation is bound to the client that asks (RFC 7009 section 2.1), and this entry point does
+   * not know it; /mcp/revoke authenticates the client and calls RevocationHandler itself.
+   */
   @Override
   public CompletableFuture<Void> revokeToken(Object token) {
-    LOG.info("Token revocation requested");
-    if (token == null) {
-      return CompletableFuture.failedFuture(
-          new TokenException("invalid_request", "Token cannot be null"));
-    }
-
-    String tokenString = token.toString();
-    return revocationHandler.revokeToken(tokenString, null);
+    return CompletableFuture.failedFuture(
+        new TokenException(
+            "invalid_client", "Revoke through /mcp/revoke, which authenticates the client"));
   }
 
   public String createAuthorizationCode(

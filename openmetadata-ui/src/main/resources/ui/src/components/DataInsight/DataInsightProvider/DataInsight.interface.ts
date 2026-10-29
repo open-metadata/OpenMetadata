@@ -13,15 +13,15 @@
 
 import { DateRangeObject } from 'Models';
 import { ReactNode } from 'react';
+import { SystemChartType } from '../../../enums/DataInsight.enum';
+import { Kpi } from '../../../generated/dataInsight/kpi/kpi';
+import { Tag } from '../../../generated/entity/classification/tag';
+import { ChartFilter } from '../../../interface/data-insight.interface';
+import { DataInsightCustomChartResult } from '../../../rest/DataInsightAPI';
 import {
   SearchDropdownOption,
   SearchDropdownProps,
-} from '../../components/SearchDropdown/SearchDropdown.interface';
-import { SystemChartType } from '../../enums/DataInsight.enum';
-import { Kpi } from '../../generated/dataInsight/kpi/kpi';
-import { Tag } from '../../generated/entity/classification/tag';
-import { ChartFilter } from '../../interface/data-insight.interface';
-import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
+} from '../../SearchDropdown/SearchDropdown.interface';
 
 export type TeamStateType = {
   defaultOptions: SearchDropdownOption[];

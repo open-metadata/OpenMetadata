@@ -297,7 +297,6 @@ public class McpToolsValidationIT extends McpTestBase {
   @Order(9)
   void testCreateLineageMissingParams() throws Exception {
     Map<String, Object> arguments = new HashMap<>();
-    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
     Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_lineage", arguments);
 
     JsonNode result = executeToolCall(toolCall);
@@ -398,7 +397,6 @@ public class McpToolsValidationIT extends McpTestBase {
     arguments.put("name", "some_test");
     arguments.put("fqn", testTable.getFullyQualifiedName());
     arguments.put("parameterValues", List.of());
-    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest("create_test_case", arguments);
 
@@ -477,7 +475,6 @@ public class McpToolsValidationIT extends McpTestBase {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("entityType", "metric");
     arguments.put("name", "incomplete_metric");
-    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
     Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_entity", arguments);
 
     JsonNode result = executeToolCall(toolCall);
@@ -592,7 +589,6 @@ public class McpToolsValidationIT extends McpTestBase {
     arguments.put("limit", limit);
     arguments.put("entityType", entityType);
     arguments.put("includeDeleted", includeDeleted);
-    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
 
     return McpTestUtils.createToolCallRequest("search_metadata", arguments);
   }

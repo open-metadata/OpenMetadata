@@ -13,6 +13,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
+import { AxiosError, AxiosResponse } from 'axios';
 import { ReactNode } from 'react';
 import { Ontology } from '../../../generated/entity/data/ontology';
 import {
@@ -240,5 +241,43 @@ describe('all native ontology models', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(result.current.graph).toBeNull();
+  });
+
+  it.each([
+    ['while counting definitions', 1],
+    ['while loading its model', 2],
+  ])('skips an ontology deleted %s', async (_, failingCall) => {
+    const deleted = {
+      ...ontology,
+      id: 'deleted',
+      name: 'Deleted',
+      fullyQualifiedName: 'Deleted',
+    };
+    const calls = { count: 0 };
+    mockListOntologyConcepts.mockImplementation(async (params) => {
+      if (params?.ontology === deleted.fullyQualifiedName) {
+        calls.count += 1;
+        if (calls.count === failingCall) {
+          throw new AxiosError('Not found', '404', undefined, undefined, {
+            status: 404,
+          } as AxiosResponse);
+        }
+      }
+
+      return {
+        data: [{ ...concept('Order'), id: params?.ontology + '-order' }],
+        paging: { total: 1 },
+      };
+    });
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([deleted, ontology], true),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.graph).not.toBeNull());
+
+    expect(result.current.isError).toBe(false);
+    expect(result.current.models?.map((model) => model.ontology.id)).toEqual([
+      ontology.id,
+    ]);
   });
 });
