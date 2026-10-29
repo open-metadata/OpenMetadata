@@ -24,7 +24,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfDatasetNames;
-import org.openmetadata.service.rdf.RdfProjectionHealth;
+import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 /** Owns stable dataset handles, durable mutation capture, and online rebuild cutover. */
@@ -56,8 +56,9 @@ public final class RdfDatasetManager implements AutoCloseable {
     store.initialize(names.base());
   }
 
-  public RdfStorageInterface routedStorage() {
-    return new RebuildingRdfStorage(this, null);
+  /** The serving dataset, for writers of the given kind; see {@link RdfWriteDelivery}. */
+  public RdfStorageInterface routedStorage(final RdfWriteDelivery delivery) {
+    return new RebuildingRdfStorage(this, null, delivery);
   }
 
   public void registerConfiguredStorage(final RdfStorageInterface storage) {
@@ -101,7 +102,7 @@ public final class RdfDatasetManager implements AutoCloseable {
 
   public RdfStorageInterface buildStorage(final BuildTarget target) {
     requireTarget(target);
-    return new RebuildingRdfStorage(this, target);
+    return new RebuildingRdfStorage(this, target, RdfWriteDelivery.DIRECT);
   }
 
   private void requireTarget(final BuildTarget target) {
@@ -115,9 +116,11 @@ public final class RdfDatasetManager implements AutoCloseable {
   }
 
   void writeActive(
-      final Consumer<RdfStorageInterface> mutation, final Supplier<RdfMutation> captured) {
+      final RdfWriteDelivery delivery,
+      final Consumer<RdfStorageInterface> mutation,
+      final Supplier<RdfMutation> captured) {
     // The live-write queue retries a held-back write; any other writer would lose it.
-    if (!RdfProjectionHealth.inDurableRecovery() && !RdfLiveWritePause.isHeldByCurrentThread()) {
+    if (delivery.waitsForPause()) {
       store.awaitLiveWritesAllowed(writerWait);
     }
     withPermit(
@@ -125,7 +128,7 @@ public final class RdfDatasetManager implements AutoCloseable {
         () ->
             store.withActiveLock(
                 session -> {
-                  session.requireLiveWritesAllowed();
+                  session.requireLiveWritesAllowed(delivery);
                   final RdfRebuildStore.State state = session.state();
                   if (state != null && state.failure() == null) {
                     capture(session, state, captured);
@@ -144,8 +147,9 @@ public final class RdfDatasetManager implements AutoCloseable {
   }
 
   /** Runs maintenance on the serving dataset; only the holder of the write pause may. */
-  void maintainServing(final Consumer<RdfStorageInterface> maintenance) {
-    if (!RdfLiveWritePause.isHeldByCurrentThread()) {
+  void maintainServing(
+      final RdfWriteDelivery delivery, final Consumer<RdfStorageInterface> maintenance) {
+    if (!store.isPauseHolder(delivery)) {
       throw new IllegalStateException(
           "Maintenance of the RDF serving dataset requires the live write pause");
     }
@@ -225,6 +229,35 @@ public final class RdfDatasetManager implements AutoCloseable {
       replayed = entry.id();
     }
     return replayed;
+  }
+
+  /**
+   * Empties and compacts {@code dataset} once it neither serves nor is being built, as after a
+   * blue/green promotion retired it. Its writers have all moved to the serving dataset, so it needs
+   * no pause, and TDB2's snapshot reads keep a query still open on it consistent. The caller holds
+   * the reindex lock, so no build can start on it meanwhile.
+   */
+  public CompactionResult clearRetired(final String dataset, final Duration budget) {
+    names.requireKnown(dataset);
+    final boolean idle =
+        withPermit(
+            activePermit,
+            () ->
+                store.withActiveLock(
+                    session ->
+                        !dataset.equals(session.activeDataset())
+                            && !isBuildTarget(session.state(), dataset)));
+    if (!idle) {
+      throw new IllegalStateException(
+          "RDF dataset '" + dataset + "' is serving or being built, so it is not retired");
+    }
+    final RdfStorageInterface retired = storage(dataset);
+    retired.executeMaintenanceUpdate("CLEAR ALL", budget);
+    return retired.compact(budget);
+  }
+
+  private static boolean isBuildTarget(final RdfRebuildStore.State state, final String dataset) {
+    return state != null && dataset.equals(state.buildDataset());
   }
 
   public void abort(final BuildTarget target, final String reason) {

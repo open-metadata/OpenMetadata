@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 public final class RdfProjectionHealth {
   private static final AtomicLong LOCAL_FAILURES = new AtomicLong();
   private static final AtomicLong LOCAL_REPAIRED = new AtomicLong();
-  private static final ThreadLocal<Boolean> DURABLE_RECOVERY = new ThreadLocal<>();
   private static volatile RdfLiveWriteStore store;
 
   private RdfProjectionHealth() {}
@@ -44,15 +43,7 @@ public final class RdfProjectionHealth {
     markDegraded(new IllegalStateException("RDF operation failed without durable recovery"));
   }
 
-  /** Whether the current write is a live-write queue entry, which the queue retries on failure. */
-  public static boolean inDurableRecovery() {
-    return Boolean.TRUE.equals(DURABLE_RECOVERY.get());
-  }
-
   public static void markDegraded(final Throwable failure) {
-    if (inDurableRecovery()) {
-      return;
-    }
     if (store == null) {
       LOCAL_FAILURES.incrementAndGet();
       return;
@@ -91,22 +82,6 @@ public final class RdfProjectionHealth {
       } catch (RuntimeException exception) {
         LOG.warn(
             "Could not flush RDF projection failures; local state retained for retry", exception);
-      }
-    }
-  }
-
-  public static void withDurableRecovery(final Runnable write) {
-    final Boolean previous = DURABLE_RECOVERY.get();
-    DURABLE_RECOVERY.set(true);
-    try {
-      // The queue row owns this failure until acknowledgement. A second, sticky failure marker
-      // would incorrectly require a full rebuild even after that row has been retried successfully.
-      write.run();
-    } finally {
-      if (previous == null) {
-        DURABLE_RECOVERY.remove();
-      } else {
-        DURABLE_RECOVERY.set(previous);
       }
     }
   }
