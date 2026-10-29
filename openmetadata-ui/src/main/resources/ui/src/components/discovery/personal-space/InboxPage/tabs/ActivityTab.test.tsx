@@ -177,7 +177,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 import { User } from '../../../../../generated/entity/teams/user';
-import { getInboxDateRange } from '../inbox.utils';
+import { ActivityFilter, getInboxDateRange } from '../inbox.utils';
 import ActivityTab from './ActivityTab';
 
 const alice = {
@@ -208,6 +208,42 @@ describe('ActivityTab', () => {
     render(<ActivityTab isFiltered />);
 
     expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
+  });
+
+  it('shows the filter empty state with a clear action when a type filter empties the feed', () => {
+    activityState = {
+      items: [{ activity: { id: 'created', eventType: 'EntityCreated' } }],
+      total: 1,
+      isLoading: false,
+    };
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(screen.getByTestId('inbox-activity-no-results')).toBeInTheDocument();
+    expect(
+      screen.getByText('label.no-result-for-these-filter-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.no-activity-in-period')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.clear-filter-plural'));
+
+    expect(
+      screen.getAllByTestId('feed-item').map((el) => el.textContent)
+    ).toEqual(['created']);
+  });
+
+  it('keeps the feed empty state when the feed itself is empty under a type filter', () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(
+      screen.getByText('label.activity-feed-starts-here')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.no-result-for-these-filter-plural')
+    ).not.toBeInTheDocument();
   });
 
   // A failed feed must not read as an empty one.
@@ -309,6 +345,16 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
       defaultWindow,
+      undefined
+    );
+  });
+
+  it('opens on the sub-tab a link asks for', () => {
+    render(<ActivityTab initialFilter={ActivityFilter.MyAssets} />);
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'my-assets',
+      expect.objectContaining({ key: 'last30days' }),
       undefined
     );
   });

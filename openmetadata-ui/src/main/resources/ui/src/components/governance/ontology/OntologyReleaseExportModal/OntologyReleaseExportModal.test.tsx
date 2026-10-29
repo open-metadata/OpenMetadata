@@ -43,6 +43,7 @@ import {
   LogicalCheck,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   acquireOntologyEditLock,
   applyOntologyChangeSet,
@@ -59,6 +60,11 @@ import {
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { downloadFile } from '../../../../utils/Export/ExportUtils';
 import OntologyReleaseExportModal from './OntologyReleaseExportModal';
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
   acquireOntologyEditLock: jest.fn(),
@@ -161,6 +167,7 @@ const mockApplyChangeSet = applyOntologyChangeSet as jest.MockedFunction<
 describe('OntologyReleaseExportModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
     mockGetOntologyState.mockResolvedValue({
       activationRevision: 1,
       activeReleaseId: release.id,
@@ -212,6 +219,100 @@ describe('OntologyReleaseExportModal', () => {
       'application/rdf+xml'
     );
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('exports, switches tabs and cancels from the AI-mode modal', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const onClose = jest.fn();
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyReleaseExportModal
+          canImport
+          ontology={ontology}
+          onClose={onClose}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByRole('dialog', { name: 'label.import-export-ontology' })
+    ).toBeVisible();
+    expect(
+      await screen.findByText('Sales · label.active: Release 1')
+    ).toBeVisible();
+
+    const exportButton = screen.getByTestId('ontology-run-release-export');
+    await waitFor(() => expect(exportButton).toBeEnabled());
+    fireEvent.click(exportButton);
+
+    await waitFor(() => expect(mockDownloadFile).toHaveBeenCalled());
+
+    expect(mockDownloadFile).toHaveBeenCalledWith(
+      '<rdf>sealed release</rdf>',
+      'Sales-release-1.rdf',
+      'application/rdf+xml'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-native-import-tab'));
+
+    expect(screen.getByTestId('ontology-native-import-file')).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-run-release-export')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-release-export-cancel'));
+
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('blocks the export in the AI-mode footer while the SHACL gate reports a violation', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockGetValidation.mockResolvedValue({
+      contentDigest: release.contentDigest,
+      deprecationImpacts: [],
+      releaseId: release.id,
+      shacl: {
+        findings: [
+          {
+            focusIri: 'urn:sales:Broken',
+            message: 'A concept needs a label',
+            severity: FindingSeverity.Violation,
+            shapeIri: 'urn:shape',
+          },
+        ],
+        truncated: false,
+        violationCount: 1,
+        warningCount: 0,
+      },
+      structure: { valid: true, violationCount: 0, violations: [] },
+      valid: false,
+    } as unknown as OntologyReleaseValidation);
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-run-release-export')).toBeEnabled()
+    );
+    fireEvent.click(screen.getByTestId('ontology-export-shacl-gate'));
+    fireEvent.click(screen.getByTestId('ontology-run-export-shacl'));
+
+    expect(
+      await screen.findByTestId('ontology-export-shacl-findings')
+    ).toHaveTextContent('urn:sales:Broken');
+    expect(
+      screen.getByTestId('ontology-release-export-cancel').parentElement
+    ).toContainElement(screen.getByTestId('ontology-run-release-export'));
+    expect(screen.getByTestId('ontology-run-release-export')).toBeDisabled();
+    expect(screen.getByTestId('ontology-release-export-cancel')).toBeEnabled();
+
+    fireEvent.click(screen.getByTestId('ontology-export-shacl-gate'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-run-release-export')).toBeEnabled()
+    );
   });
 
   it('supports keyboard tab navigation and keeps the selected format and import permission', async () => {

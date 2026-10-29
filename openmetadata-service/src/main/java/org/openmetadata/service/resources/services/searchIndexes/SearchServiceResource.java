@@ -450,7 +450,7 @@ public class SearchServiceResource
       @Valid CreateSearchService update) {
     SearchService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (SearchService) response.getEntity());
     return response;
   }

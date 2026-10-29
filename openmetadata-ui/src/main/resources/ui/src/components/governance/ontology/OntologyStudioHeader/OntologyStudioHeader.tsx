@@ -14,12 +14,14 @@ import {
   Box,
   Divider,
   FeaturedIcon,
+  PageHeader,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Share07 } from '@openmetadata/ui-core-components/icons';
-import { ReactNode } from 'react';
+import { Key, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { OntologyStudioTab } from './OntologyStudioHeader.types';
 
 interface OntologyStudioHeaderProps<M extends string> {
@@ -40,6 +42,53 @@ const OntologyStudioHeader = <M extends string>({
   breadcrumb,
 }: OntologyStudioHeaderProps<M>) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+
+  const handleSelectionChange = (key: Key) => {
+    const nextMode = modes.find((item) => item.id === key)?.id;
+    if (nextMode) {
+      onModeChange(nextMode);
+    }
+  };
+
+  const modeItems = modes.map((tab) => (
+    <Tabs.Item data-testid={`mode-tab-${tab.id}`} id={tab.id} key={tab.id}>
+      {tab.label}
+    </Tabs.Item>
+  ));
+
+  if (isAiMode) {
+    return (
+      <header
+        className="tw:shrink-0 tw:px-2 tw:pt-2"
+        data-testid="ontology-studio-header"
+        data-tour-step="ontology-studio">
+        <PageHeader
+          actions={
+            <Box align="center" gap={2}>
+              {scopeMenu}
+              {actions}
+            </Box>
+          }
+          breadcrumb={breadcrumb}
+          data-testid="ontology-studio-page-header"
+          footer={
+            <Tabs
+              className="tw:w-auto"
+              selectedKey={mode}
+              onSelectionChange={handleSelectionChange}>
+              <Tabs.List aria-label={t('label.mode')} type="underline">
+                {modeItems}
+              </Tabs.List>
+            </Tabs>
+          }
+          subtitle={t('message.ontology-studio-description')}
+          title={t('label.ontology-studio')}
+          variant="gradient"
+        />
+      </header>
+    );
+  }
 
   return (
     <header
@@ -64,24 +113,12 @@ const OntologyStudioHeader = <M extends string>({
           <Tabs
             className="tw:w-auto tw:shrink-0"
             selectedKey={mode}
-            onSelectionChange={(key) => {
-              const nextMode = modes.find((item) => item.id === key)?.id;
-              if (nextMode) {
-                onModeChange(nextMode);
-              }
-            }}>
+            onSelectionChange={handleSelectionChange}>
             <Tabs.List
               aria-label={t('label.mode')}
               size="sm"
               type="button-border">
-              {modes.map((tab) => (
-                <Tabs.Item
-                  data-testid={`mode-tab-${tab.id}`}
-                  id={tab.id}
-                  key={tab.id}>
-                  {tab.label}
-                </Tabs.Item>
-              ))}
+              {modeItems}
             </Tabs.List>
           </Tabs>
         ) : null}

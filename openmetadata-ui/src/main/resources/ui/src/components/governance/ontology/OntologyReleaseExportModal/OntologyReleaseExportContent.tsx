@@ -24,6 +24,7 @@ import {
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { OntologyReleaseValidation } from '../../../../generated/api/data/ontologyReleaseValidation';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { NATIVE_EXPORT_EXTENSIONS } from '../../../../rest/ontologyExport.constants';
 import {
   ONTOLOGY_RELEASE_EXPORT_FORMATS,
@@ -56,6 +57,7 @@ const OntologyReleaseExportContent = ({
   onSelectionChange,
 }: OntologyReleaseExportContentProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const { card, options, skosXl } = selection;
   const setOption = (changes: Partial<typeof options>) =>
     onSelectionChange({ ...selection, options: { ...options, ...changes } });
@@ -151,8 +153,12 @@ const OntologyReleaseExportContent = ({
               <pre
                 className={classNames(
                   'tw:m-0 tw:min-h-64 tw:max-h-96 tw:flex-1 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary',
-                  'tw:bg-primary-solid tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed',
-                  'tw:whitespace-pre-wrap tw:break-words tw:text-primary_on-brand'
+                  isAiMode
+                    ? 'tw:bg-secondary_alt tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed tw:whitespace-pre-wrap tw:break-words tw:text-secondary'
+                    : [
+                        'tw:bg-primary-solid tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed',
+                        'tw:whitespace-pre-wrap tw:break-words tw:text-primary_on-brand',
+                      ]
                 )}
                 data-testid="ontology-release-export-preview">
                 {state.isPreviewLoading

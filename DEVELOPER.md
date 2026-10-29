@@ -70,6 +70,8 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 
 ### Python Ingestion
 
+For local setup and test commands, see [Python commands](#locked-local-python-environments).
+
 ```
 1. /planning          — Choose connector architecture (SQLAlchemy vs REST vs SDK)
 2. /connector-standards — Load the relevant standards
@@ -582,3 +584,66 @@ Always import from `generated/` for API response types. Never hand-write interfa
 6. **Unit tests**: `ingestion/tests/unit/topology/{type}/test_{connector}.py`
 7. **UI integration**: Update `{type}ServiceUtils.tsx`, add MDX doc file
 8. **Run**: `yarn parse-schema` for UI form generation
+
+## Locked local Python environments
+
+From the **repository root**, install the test dependencies and activate the environment:
+
+```bash
+make install_test PYTHON=python3.11
+source env/bin/activate
+export PYTHON_VERSIONS=3.11
+```
+
+Set `PYTHON_VERSIONS` to your environment's version to run one Nox matrix entry.
+Python 3.10–3.12 are validated; newer versions remain available for experimentation
+(`requires-python` has no upper bound). Native build tools and ANTLR are required;
+use `./scripts/dev_setup.sh` for first-time toolchain setup.
+
+**Unit tests** — run from root or `ingestion/`; paths in `ARGS` are always relative to `ingestion/`:
+
+```bash
+make unit_ingestion                                      # Full unit suite
+make unit_ingestion ARGS="-n 0 tests/unit/models/"         # One directory
+make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_pydantic.py"  # One file
+# One test by node ID
+make unit_ingestion ARGS="-n 0 tests/unit/models/test_custom_pydantic.py::test_model_dump_secrets"
+# Filter names within a directory
+make unit_ingestion ARGS="-n 2 tests/unit/models/ -k 'secrets or validation'"
+```
+
+The default is **four workers**. Override with `-n 2` for less load, `-n 0` for debugging,
+or `-n auto` for CPU-based selection. Use `-m 'not slow'` to omit slow-marked tests.
+An explicit path replaces the default suite; `-k` and `-m` filter that selection.
+
+| Command | Purpose |
+| --- | --- |
+| `make install_dev` | Smaller development setup; use `install_test` for tests |
+| `make install` / `make install_all` | Base SDK / all-connector installation |
+| `make py_format` / `make py_format_check` | Fix / check Python formatting and lint |
+| `make static-checks` | Type checks |
+| `make generate ARGS=--python-only` | Regenerate Python models/parsers; **root only** |
+| `python scripts/check_generated_models.py --check` | Check generated-file freshness |
+| `make run_ometa_integration_tests` | Integration tests; prepare required services first; accepts `ARGS` |
+| `make coverage` | Unit and integration suites plus coverage reports; requires their services |
+
+Make prepares pinned uv/Nox automatically. Application profiles reuse `env/` and remove
+packages outside the selected profile; switching from `test` to `dev` removes test-only
+packages. Formatting, generation and coverage tools use separate `ingestion/.nox/`
+environments. The test profile locks the four classification models and validates them locally;
+repeat runs reuse matching models. Updating their versions requires a manifest/lock update.
+
+For another interpreter/environment, use Nox explicitly after setup:
+
+```bash
+ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py \
+  -s install -- test --python python3.12 --environment /tmp/om-test-env
+```
+
+Existing environments keep their interpreter. `OM_VENV_DIR` selects another application
+environment for Make. `make install_dev_env` aliases `install_test`;
+`make unit_ingestion_dev_env` aliases `unit_ingestion`.
+
+Dependency selections are in `ingestion/pyproject.toml`; sessions are in
+`ingestion/noxfile.py`. Commands reject a stale lock. After intentionally editing dependencies,
+run `ingestion/.nox/bootstrap/bin/uv lock --project ingestion` and review the diff.

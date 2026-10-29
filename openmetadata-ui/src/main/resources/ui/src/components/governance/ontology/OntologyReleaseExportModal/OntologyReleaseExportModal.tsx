@@ -16,17 +16,23 @@ import {
   Button,
   CloseButton,
   Dialog,
+  FeaturedIcon,
   Modal,
   ModalOverlay,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Download01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  SwitchVertical01,
+} from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
+import { Heading } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useOntologyReleaseExport } from '../../../../hooks/governance/ontology/useOntologyReleaseExport';
 import { useOntologyReleaseShacl } from '../../../../hooks/governance/ontology/useOntologyReleaseShacl';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   NATIVE_EXPORT_EXTENSIONS,
   NATIVE_EXPORT_MEDIA_TYPES,
@@ -60,6 +66,7 @@ const OntologyReleaseExportModal = ({
   onApplied,
 }: OntologyReleaseExportModalProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [isImportBusy, setIsImportBusy] = useState(false);
   const [selection, setSelection] = useState<OntologyReleaseExportSelection>({
     card: 'rdfxml',
@@ -125,6 +132,48 @@ const OntologyReleaseExportModal = ({
     );
   };
 
+  const tabList = (
+    <Tabs.List
+      aria-label={t('label.import-export')}
+      size="sm"
+      type="button-border">
+      <Tabs.Item
+        data-testid="ontology-native-export-tab"
+        id="export"
+        isDisabled={isImportBusy}
+        label={t('label.export')}
+      />
+      <Tabs.Item
+        data-testid="ontology-native-import-tab"
+        id="import"
+        isDisabled={isImportBusy}
+        label={t('label.import')}
+      />
+    </Tabs.List>
+  );
+
+  const closeButton = (
+    <CloseButton
+      className="tw:ml-auto tw:shrink-0"
+      isDisabled={isImportBusy}
+      label={t('label.close')}
+      onPress={handleClose}
+    />
+  );
+
+  const renderExportButton = (className?: string) => (
+    <Button
+      className={className}
+      color="primary"
+      data-testid="ontology-run-release-export"
+      iconLeading={Download01}
+      isDisabled={isImportBusy || !content || isError || isGateBlocking}
+      isLoading={isPreviewLoading || shacl.isDownloading}
+      onPress={handleExport}>
+      {t('label.export')}
+    </Button>
+  );
+
   return (
     <ModalOverlay
       isOpen
@@ -144,46 +193,57 @@ const OntologyReleaseExportModal = ({
                 setActiveTab(key);
               }
             }}>
-            <Dialog.Header
-              className="tw:flex tw:flex-wrap tw:items-center tw:gap-3"
-              title={t('label.import-export-ontology')}>
-              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-                <Typography className="tw:break-words" size="text-sm">
-                  {getEntityName(ontology)}
-                </Typography>
-                {release && (
+            {isAiMode ? (
+              <Dialog.Header className="tw:flex tw:flex-wrap tw:items-center tw:gap-4">
+                <FeaturedIcon
+                  color="brand"
+                  icon={SwitchVertical01}
+                  radius="lg"
+                  shape="square"
+                  size="md"
+                  theme="light"
+                />
+                <Box className="tw:min-w-0 tw:flex-1" direction="col">
+                  <Heading
+                    className="tw:m-0 tw:text-md tw:font-semibold tw:text-primary"
+                    slot="title">
+                    {t('label.import-export-ontology')}
+                  </Heading>
                   <Typography
                     className="tw:break-words"
                     color="secondary"
-                    size="text-xs">
-                    {`${t('label.active')}: ${getEntityName(release)}`}
+                    size="text-sm">
+                    {release
+                      ? `${getEntityName(ontology)} · ${t(
+                          'label.active'
+                        )}: ${getEntityName(release)}`
+                      : getEntityName(ontology)}
                   </Typography>
-                )}
-              </Box>
-              <Tabs.List
-                aria-label={t('label.import-export')}
-                size="sm"
-                type="button-border">
-                <Tabs.Item
-                  data-testid="ontology-native-export-tab"
-                  id="export"
-                  isDisabled={isImportBusy}
-                  label={t('label.export')}
-                />
-                <Tabs.Item
-                  data-testid="ontology-native-import-tab"
-                  id="import"
-                  isDisabled={isImportBusy}
-                  label={t('label.import')}
-                />
-              </Tabs.List>
-              <CloseButton
-                className="tw:ml-auto tw:shrink-0"
-                isDisabled={isImportBusy}
-                label={t('label.close')}
-                onPress={handleClose}
-              />
-            </Dialog.Header>
+                </Box>
+                {tabList}
+                {closeButton}
+              </Dialog.Header>
+            ) : (
+              <Dialog.Header
+                className="tw:flex tw:flex-wrap tw:items-center tw:gap-3"
+                title={t('label.import-export-ontology')}>
+                <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+                  <Typography className="tw:break-words" size="text-sm">
+                    {getEntityName(ontology)}
+                  </Typography>
+                  {release && (
+                    <Typography
+                      className="tw:break-words"
+                      color="secondary"
+                      size="text-xs">
+                      {`${t('label.active')}: ${getEntityName(release)}`}
+                    </Typography>
+                  )}
+                </Box>
+                {tabList}
+                {closeButton}
+              </Dialog.Header>
+            )}
             <Dialog.Content>
               <Tabs.Panel id="export">
                 <OntologyReleaseExportContent
@@ -207,22 +267,22 @@ const OntologyReleaseExportModal = ({
                 />
               </Tabs.Panel>
             </Dialog.Content>
-            <Dialog.Footer>
-              {activeTab === 'export' && (
+            {isAiMode ? (
+              <Dialog.Footer>
                 <Button
-                  className="tw:mr-auto"
-                  color="primary"
-                  data-testid="ontology-run-release-export"
-                  iconLeading={Download01}
-                  isDisabled={
-                    isImportBusy || !content || isError || isGateBlocking
-                  }
-                  isLoading={isPreviewLoading || shacl.isDownloading}
-                  onPress={handleExport}>
-                  {t('label.export')}
+                  color="secondary"
+                  data-testid="ontology-release-export-cancel"
+                  isDisabled={isImportBusy}
+                  onPress={handleClose}>
+                  {t('label.cancel')}
                 </Button>
-              )}
-            </Dialog.Footer>
+                {activeTab === 'export' && renderExportButton()}
+              </Dialog.Footer>
+            ) : (
+              <Dialog.Footer>
+                {activeTab === 'export' && renderExportButton('tw:mr-auto')}
+              </Dialog.Footer>
+            )}
           </Tabs>
         </Dialog>
       </Modal>

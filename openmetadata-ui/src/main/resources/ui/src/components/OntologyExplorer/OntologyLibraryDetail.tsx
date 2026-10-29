@@ -30,6 +30,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyPackInstallResult } from '../../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { selectedModuleTotals } from './OntologyLibrary.utils';
 import { OntologyPackIcon } from './OntologyLibraryCatalogue';
 import OntologyPackSampleGraph from './OntologyPackSampleGraph';
@@ -192,6 +193,48 @@ const OntologyLibraryInstallPanel = ({
   );
 };
 
+const OntologyPackStatCards = ({
+  concepts,
+  relationships,
+}: {
+  concepts: number;
+  relationships: number;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box gap={3}>
+      {[
+        {
+          count: concepts,
+          label: 'label.concept-plural',
+          testId: 'ontology-pack-concept-count',
+        },
+        {
+          count: relationships,
+          label: 'label.relation-plural',
+          testId: 'ontology-pack-relationship-count',
+        },
+      ].map((item) => (
+        <Card className="tw:flex-1" key={item.testId} size="sm">
+          <Card.Content>
+            <Typography
+              as="div"
+              data-testid={item.testId}
+              size="text-xl"
+              weight="semibold">
+              {item.count}
+            </Typography>
+            <Typography color="secondary" size="text-xs">
+              {t(item.label)}
+            </Typography>
+          </Card.Content>
+        </Card>
+      ))}
+    </Box>
+  );
+};
+
 const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
   const { pack, selectedModuleIds, onBack, onModuleChange } = props;
   const installedResult = props.native ? undefined : props.installedResult;
@@ -199,6 +242,7 @@ const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
     ? props.native.canSelectModules
     : props.canInstall;
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const totals = selectedModuleTotals(pack, selectedModuleIds);
   const moduleNames = new Map(
     pack.modules.map((module) => [module.id, module.name])
@@ -213,7 +257,7 @@ const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
     <Box data-testid="ontology-pack-detail" direction="col" gap={5}>
       <Box align="center" gap={4} justify="between">
         <Button
-          color="secondary"
+          color={isAiMode ? 'link-gray' : 'secondary'}
           data-testid="ontology-library-back"
           iconLeading={ArrowLeft}
           isDisabled={props.native?.isBusy}
@@ -346,14 +390,21 @@ const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
             props.native.installPanel
           ) : (
             <Box direction="col" gap={4}>
-              <Box gap={3}>
-                <Typography data-testid="ontology-pack-concept-count">
-                  {totals.concepts} {t('label.concept-plural')}
-                </Typography>
-                <Typography data-testid="ontology-pack-relationship-count">
-                  {totals.relationships} {t('label.relation-plural')}
-                </Typography>
-              </Box>
+              {isAiMode ? (
+                <OntologyPackStatCards
+                  concepts={totals.concepts}
+                  relationships={totals.relationships}
+                />
+              ) : (
+                <Box gap={3}>
+                  <Typography data-testid="ontology-pack-concept-count">
+                    {totals.concepts} {t('label.concept-plural')}
+                  </Typography>
+                  <Typography data-testid="ontology-pack-relationship-count">
+                    {totals.relationships} {t('label.relation-plural')}
+                  </Typography>
+                </Box>
+              )}
               <OntologyLibraryInstallPanel
                 activeAction={props.activeAction}
                 canInstall={props.canInstall}

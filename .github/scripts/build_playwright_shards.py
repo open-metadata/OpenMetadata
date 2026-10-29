@@ -31,6 +31,9 @@ FULL_PROJECTS = {
     "SystemCertificationTags",
     "IntakeForm",
     "AdvancedSearch",
+    "visual-regression",
+    "Knowledge Graph",
+    "Ontology RDF",
 }
 PROJECT_LANES = {
     "chromium": "chromium",
@@ -55,7 +58,15 @@ PROJECT_LANES = {
     "SystemCertificationTags": "global-state",
     "IntakeForm": "global-state",
     "AdvancedSearch": "advanced-search",
+    # Self-contained lanes: each runs a whole project on its own runner and is
+    # switched on by its own path filter (--enable-lane), never by spec impact.
+    # visual renders inside the Playwright image its baselines were captured
+    # in; rdf needs Fuseki and an RDF-enabled server seeded from scratch.
+    "visual-regression": "visual",
+    "Knowledge Graph": "rdf",
+    "Ontology RDF": "rdf",
 }
+GATED_LANES = {"visual", "rdf"}
 PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
 }
@@ -198,6 +209,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--history", type=Path, action="append", default=[])
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--github-output", type=Path)
+    parser.add_argument(
+        "--enable-lane",
+        action="append",
+        default=[],
+        choices=sorted(GATED_LANES),
+        help="Run this self-contained lane in full (repeatable).",
+    )
     return parser.parse_args()
 
 
@@ -778,8 +796,18 @@ def main() -> None:
             "Playwright selectors reference specs that do not exist: "
             + ", ".join(missing_selectors)
         )
-    units = [unit for unit in discovered_units if selected_projects(unit, selection)]
+    units = [
+        unit
+        for unit in discovered_units
+        if selected_projects(unit, selection)
+        and PROJECT_LANES[unit.project] not in GATED_LANES
+    ]
     units = include_project_dependencies(units, discovered_units)
+    units += [
+        unit
+        for unit in discovered_units
+        if PROJECT_LANES[unit.project] in set(args.enable_lane)
+    ]
     if not units:
         raise SystemExit("Playwright selection produced no runnable test units")
 
@@ -792,8 +820,14 @@ def main() -> None:
     # below requires that full-mode planning stay unblocked even when a
     # newly re-enabled suite has no baseline. In full mode, the softer
     # emit_unweighted_warnings above still surfaces the issue as a warning.
+    # Gated lanes are single-shard, so an unweighted test cannot push a shard
+    # over budget there.
     stale_files = (
-        stale_baseline_files_in_plan(units, test_weights, identity_weights)
+        stale_baseline_files_in_plan(
+            [unit for unit in units if PROJECT_LANES[unit.project] not in GATED_LANES],
+            test_weights,
+            identity_weights,
+        )
         if selection["mode"] != "full"
         else []
     )
