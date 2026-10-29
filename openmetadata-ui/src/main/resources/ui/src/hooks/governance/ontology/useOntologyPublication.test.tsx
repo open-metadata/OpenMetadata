@@ -363,7 +363,7 @@ it('reconciles a lost capture response before allowing the captured Draft to be 
   expect(post).toHaveBeenCalledTimes(1);
 });
 
-it('keeps a lost capture unresolved when the bounded history cannot prove its identity', async () => {
+it('keeps a lost capture unresolved while history has no match and its revisions are unchanged', async () => {
   currentState = { ...currentState, workingRevision: 8 };
   const hook = await setup();
   post.mockRejectedValueOnce(new Error('Capture response lost'));
@@ -410,6 +410,73 @@ it.each([
     expect(post).toHaveBeenCalledTimes(1);
   }
 );
+
+it('adopts a landed capture from history even after the working revision has moved', async () => {
+  currentState = { ...currentState, workingRevision: 8 };
+  const hook = await setup();
+  post.mockImplementationOnce(async () => {
+    releases.unshift({ ...makeRelease(6), sourceWorkingRevision: 8 });
+    currentState = { ...currentState, lastReleaseRevision: 6 };
+
+    throw new Error('Capture response lost');
+  });
+  await act(async () => {
+    await hook.result.current.captureAndRequestApproval(
+      { ...currentState },
+      { versionBump: VersionBump.Minor }
+    );
+  });
+
+  expect(hook.result.current.recovery?.operation).toBe('capture');
+
+  currentState = { ...currentState, workingRevision: 9 };
+  await act(async () => {
+    await hook.result.current.retryRecovery();
+  });
+
+  expect(hook.result.current.recovery).toMatchObject({
+    operation: 'review',
+    release: { id: releaseId(6), sourceWorkingRevision: 8 },
+  });
+  expect(post).toHaveBeenCalledTimes(1);
+});
+
+it('keeps a lost capture unresolved when it lands and the revision moves during the history read', async () => {
+  currentState = { ...currentState, workingRevision: 8 };
+  const hook = await setup();
+  post.mockRejectedValueOnce(new Error('Capture response lost'));
+  await act(async () => {
+    await hook.result.current.captureAndRequestApproval(currentState, {
+      versionBump: VersionBump.Minor,
+    });
+  });
+
+  expect(hook.result.current.recovery?.operation).toBe('capture');
+
+  const readThrough = get.getMockImplementation();
+  get.mockImplementation(async (url, config) => {
+    const response = await readThrough?.(url, config);
+    if (
+      url === `/ontologies/${owner}/releases` &&
+      expect.objectContaining({ limit: 100 }).asymmetricMatch(config?.params)
+    ) {
+      releases = [{ ...makeRelease(6), sourceWorkingRevision: 8 }, ...releases];
+      currentState = {
+        ...currentState,
+        workingRevision: 9,
+        lastReleaseRevision: 6,
+      };
+    }
+
+    return response;
+  });
+  await act(async () => {
+    await hook.result.current.retryRecovery();
+  });
+
+  expect(hook.result.current.recovery?.operation).toBe('capture');
+  expect(post).toHaveBeenCalledTimes(1);
+});
 
 it('permits a deliberate new capture after the server definitively rejects the first capture', async () => {
   currentState = { ...currentState, workingRevision: 8 };
