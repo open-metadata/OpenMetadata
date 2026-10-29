@@ -86,12 +86,13 @@ they are worth stating plainly:
   timed drill does not share the browser and the server with it.
 - **Semantic zoom steps until the band changes.** The map switches level by screen fill —
   zoom out once the whole graph fills under a third of the viewport, zoom in once a card fills
-  most of it, with the zoom min/max as a fallback — not a fixed zoom level; the benchmark
-  steps until the band changes (at most 40 times).
+  35% of it and the zoom has settled for 250ms, with the zoom min/max as a fallback — not a
+  fixed zoom level; the benchmark steps until the band changes (at most 40 times).
 - **Zoom-in is not a band toggle.** Crossing the zoom-in threshold makes the map *drill into* a
-  node, so focus changes as well as band. It drills only into a node the user is plainly zooming
-  into: the one under the pointer for a wheel or pinch, otherwise the selected node or the only
-  drillable node in view. Zoom-out pops to the parent scene via the breadcrumb.
+  node, so focus changes as well as band. It drills into the node under the pointer for a wheel or
+  pinch, otherwise into the selected node or the drillable node with children nearest the canvas
+  centre, so the benchmark wheels over its own node rather than clicking zoom in. Zoom-out pops to
+  the parent scene via the breadcrumb.
 - **The zoom gesture has a 1.2s dead window.** Semantic zoom is suppressed for
   `PROGRAMMATIC_ZOOM_SUPPRESSION_MS` after every scene load and every navigation, and the
   zoom-crossing baseline is rebased when it closes. The benchmark waits that out in untimed setup —

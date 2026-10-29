@@ -55,7 +55,8 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   /**
    * React Flow's zoom-out button steps by 1.2x, and {@link #WHEEL_ZOOM_STEP_PX} of wheel by about
    * 1.15x. A root scene of a few hundred services fits near a zoom of 0.05, and the maximum is 2.5:
-   * about thirty wheel steps at most. Forty bounds the loop without ever being the reason it stops.
+   * about thirty wheel steps at most. Forty bounds the loop. A wheel loop often runs to the bound:
+   * the map drills in only once the zoom has settled, and awaitSceneSettled waits for that drill.
    */
   private static final int MAX_SEMANTIC_ZOOM_STEPS = 40;
 
@@ -164,12 +165,12 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   }
 
   /**
-   * Wheels in over {@code nodeFqn} until the map drills into it, once a card fills most of the
-   * viewport (or the zoom reaches its maximum). The map drills only into a node the user is plainly
-   * zooming into: the one under the pointer for a wheel or pinch, otherwise the selected node or
-   * the only drillable node in view. So the zoom buttons, which carry no pointer, zoom without
-   * drilling while several drillable nodes are on screen; a wheel over the node always has a
-   * target. The drill changes the focus as well as the band.
+   * Wheels in over {@code nodeFqn} until the map drills into it. The map drills once a card fills
+   * 35% of the viewport (or the zoom reaches its maximum) and the zoom has settled for 250ms. It
+   * drills into the node under the pointer for a wheel or pinch, otherwise into the selected node
+   * or the drillable node with children nearest the canvas centre, so the zoom buttons may pick
+   * another node; a wheel over this one always targets it. The drill changes the focus as well as
+   * the band.
    */
   public LineageMapPage semanticZoomInto(final String nodeFqn, final String expectedBand) {
     requireBandChange(expectedBand);
