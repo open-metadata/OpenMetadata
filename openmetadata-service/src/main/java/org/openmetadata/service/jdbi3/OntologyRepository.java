@@ -2,6 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.json.JsonPatch;
 import java.net.URI;
 import java.util.List;
 import java.util.Objects;
@@ -27,11 +29,17 @@ import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.ontology.OntologyLayerValidator;
+import org.openmetadata.service.ontology.OntologyPublicationStatusResolver;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
 
 @Repository
 public class OntologyRepository extends OntologyEntityRepository<Ontology> {
   public static final String COLLECTION_PATH = "/v1/ontologies/";
+
+  private static final String PUBLICATION_STATUS = "publicationStatus";
+  private final OntologyPublicationStatusResolver publication;
 
   public OntologyRepository() {
     super(
@@ -40,6 +48,50 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
         Entity.getCollectionDAO().ontologyEntityDAO(),
         COLLECTION_PATH,
         "iri,namespace,layer,prefixes,approvalRule");
+    fieldFetchers.put(PUBLICATION_STATUS, this::fetchPublicationStatus);
+    publication = new OntologyPublicationStatusResolver(Entity.getCollectionDAO());
+  }
+
+  @Override
+  public void setFields(
+      final Ontology entity, final Fields fields, final RelationIncludes includes) {
+    fetchPublicationStatus(List.of(entity), fields);
+  }
+
+  @Override
+  public void clearFields(final Ontology entity, final Fields fields) {
+    if (!fields.contains(PUBLICATION_STATUS)) {
+      entity.setPublicationStatus(null);
+    }
+  }
+
+  @Override
+  protected void validatePatch(
+      final Ontology original, final Ontology updated, final JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
+    if (JsonUtils.extractPatchedFields(patch).contains(PUBLICATION_STATUS)) {
+      throw new BadRequestException(
+          "Ontology publicationStatus is derived by the server from ontology releases");
+    }
+  }
+
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of(PUBLICATION_STATUS);
+  }
+
+  @Override
+  protected String serializeForVersionHistory(final Ontology entity) {
+    final ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
+    node.remove(PUBLICATION_STATUS);
+    return node.toString();
+  }
+
+  private void fetchPublicationStatus(final List<Ontology> ontologies, final Fields fields) {
+    if (fields.contains(PUBLICATION_STATUS) && !ontologies.isEmpty()) {
+      final var resolved = publication.resolve(ontologies);
+      ontologies.forEach(ontology -> ontology.setPublicationStatus(resolved.get(ontology.getId())));
+    }
   }
 
   @Override
@@ -126,6 +178,7 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
 
   @Override
   protected void validateDefinition(final Ontology entity) {
+    entity.setPublicationStatus(null);
     requireAbsoluteIri(entity.getNamespace(), "namespace");
     OntologyLayerValidator.validatePrefixes(entity.getPrefixes());
   }
