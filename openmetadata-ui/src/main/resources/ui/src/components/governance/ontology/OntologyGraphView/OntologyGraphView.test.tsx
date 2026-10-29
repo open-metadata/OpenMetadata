@@ -1199,6 +1199,45 @@ describe('OntologyGraphView', () => {
     ]);
   });
 
+  it('leaves a one-way pair it did not register as it is', async () => {
+    const approves = relationshipType('approves', 'approves', APPROVES, {
+      category: Category.Custom,
+      systemDefined: false,
+    });
+    const approvedBy = relationshipType(
+      'approvedBy',
+      'approved by',
+      APPROVED_BY,
+      {
+        category: Category.Custom,
+        inverse: inverseRef('approves'),
+        systemDefined: false,
+      }
+    );
+    const fresh = [...registryTypes, approves, approvedBy];
+    (listRelationshipTypes as jest.Mock)
+      .mockResolvedValueOnce({
+        data: registryTypes,
+        paging: { total: registryTypes.length },
+      })
+      .mockResolvedValue({ data: fresh, paging: { total: fresh.length } });
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    await registerApprovedBy();
+
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expressions: [expect.objectContaining({ propertyIri: APPROVED_BY })],
+      })
+    );
+    expect(createRelationshipType).not.toHaveBeenCalled();
+    expect(patchRelationshipType).not.toHaveBeenCalled();
+  });
+
   it('reuses a registry type whose label matches the requested new type', async () => {
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});

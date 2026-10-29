@@ -66,6 +66,7 @@ import {
   planNativeRelation,
   planRelationshipType,
   RelationshipTypeDraft,
+  RelationshipTypePlan,
   toNativeRelationType,
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
@@ -138,6 +139,12 @@ const loadRegistry = () =>
     (after) => listRelationshipTypes({ limit: 1000, after }),
     MAX_RELATIONSHIP_TYPE_PAGES
   );
+
+const registerInverse = async ({
+  inverse,
+  reusedInverse,
+}: RelationshipTypePlan) =>
+  reusedInverse ?? (inverse ? createRelationshipType(inverse) : undefined);
 
 interface RelationshipTypeDialogProps {
   readonly label: string;
@@ -296,6 +303,9 @@ const OntologyGraphView = ({
     label: string;
     resolve: (draft?: RelationshipTypeDraft) => void;
   }>();
+  // The inverse this view registered and has not linked back yet. A retry reuses or links it, since
+  // a delete needs a right the dialog never checks and a soft delete leaves its name taken.
+  const unlinkedInverseId = useRef<string>();
   const handledCreateConceptRequest = useRef(createConceptRequestKey);
   const [search, setSearch] = useState('');
   const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
@@ -473,25 +483,40 @@ const OntologyGraphView = ({
       if (!draft) {
         return undefined;
       }
-      // The cached list is up to 30 s old. A type registered since then is reused as it is,
-      // inverse included, and new names are chosen apart from everything the registry holds now.
+      // The cached list is up to 30 s old. A type registered since then is reused with its inverse,
+      // and new names are chosen apart from everything the registry holds now.
       const registry = await loadRegistry();
+      const unlinked = registry.find(
+        (type) => type.id === unlinkedInverseId.current && !type.inverse
+      );
       const registered = findNativeRelationTypeByLabel(
         catalogOf(registry),
         draft.label
       );
       if (registered) {
+        const primary = registry.find(
+          (type) => type.rdfPredicate === registered.id
+        );
+        if (unlinked && primary?.inverse?.id === unlinked.id) {
+          await patchRelationshipType(
+            unlinked.id,
+            buildInverseBackLink(primary)
+          );
+          unlinkedInverseId.current = undefined;
+        }
         void refetchRegistry();
 
         return registered;
       }
-      const plan = planRelationshipType(draft, registry);
-      const inverse = plan.inverse
-        ? await createRelationshipType(plan.inverse)
-        : undefined;
+      const plan = planRelationshipType(draft, registry, unlinked);
+      const inverse = await registerInverse(plan);
+      if (inverse) {
+        unlinkedInverseId.current = inverse.id;
+      }
       const primary = await createRelationshipType(plan.primary);
       if (inverse) {
         await patchRelationshipType(inverse.id, buildInverseBackLink(primary));
+        unlinkedInverseId.current = undefined;
       }
       void refetchRegistry();
 
