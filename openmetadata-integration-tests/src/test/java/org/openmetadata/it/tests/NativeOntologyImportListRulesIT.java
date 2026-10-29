@@ -34,6 +34,10 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
   private static final int PROPERTY_KIND = 8;
   private static final int ENUM_VALUES = 11;
   private static final int PROPERTY_CHAIN = 16;
+  private static final String ONE_VALUE = "An enumeration needs at least two allowed values";
+  private static final String DUPLICATE = "Ontology property enum values must be unique";
+  private static final String SHORT_CHAIN =
+      "A property chain requires at least two object properties";
 
   @Test
   void previewAndApplyRefuseAOneValueEnumeration(TestNamespace ns) {
@@ -47,7 +51,8 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
         "tier",
         OntologyPropertyKind.DATA,
         List.of(new OntologyLiteral().withValue("Gold")),
-        null);
+        null,
+        ONE_VALUE);
   }
 
   @Test
@@ -59,7 +64,8 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
         ontology,
         property(iri(ns, "tier"), "DATA", ENUM_VALUES, "\"\"\"Gold\"\"\";\"\"\"Gold\"\"\""),
         "enumValues");
-    assertApplyRefused(ontology, "tier", OntologyPropertyKind.DATA, List.of(gold, gold), null);
+    assertApplyRefused(
+        ontology, "tier", OntologyPropertyKind.DATA, List.of(gold, gold), null, DUPLICATE);
   }
 
   @Test
@@ -70,7 +76,12 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
     assertPreviewRefused(
         ontology, property(iri(ns, "path"), "OBJECT", PROPERTY_CHAIN, only), "propertyChain");
     assertApplyRefused(
-        ontology, "path", OntologyPropertyKind.OBJECT, null, List.of(URI.create(only)));
+        ontology,
+        "path",
+        OntologyPropertyKind.OBJECT,
+        null,
+        List.of(URI.create(only)),
+        SHORT_CHAIN);
   }
 
   @Test
@@ -112,7 +123,8 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
       String name,
       OntologyPropertyKind kind,
       List<OntologyLiteral> enumValues,
-      List<URI> chain) {
+      List<URI> chain,
+      String rule) {
     final var request =
         new CreateOntologyProperty()
             .withOntology(ontology.getFullyQualifiedName())
@@ -120,12 +132,12 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
             .withKind(kind)
             .withEnumValues(enumValues)
             .withPropertyChain(chain);
-    assertEquals(
-        400,
+    final var thrown =
         assertThrows(
-                OpenMetadataException.class,
-                () -> SdkClients.adminClient().ontologyProperties().create(request))
-            .getStatusCode());
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().ontologyProperties().create(request));
+    assertEquals(400, thrown.getStatusCode());
+    assertEquals(rule, thrown.getMessage());
   }
 
   private static String iri(TestNamespace ns, String name) {
