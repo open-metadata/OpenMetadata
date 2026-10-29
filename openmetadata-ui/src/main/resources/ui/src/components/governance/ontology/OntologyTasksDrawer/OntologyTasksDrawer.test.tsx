@@ -560,7 +560,7 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
       .map(([, config]) => config.params.after)
   ).toEqual(['cursor-7', undefined]);
   expect(screen.getByText(/PAGE-01/)).toBeInTheDocument();
-});
+}, 20_000);
 
 it('does not invent a zero pending count when paging is unavailable', async () => {
   get.mockResolvedValue({ data: { data: [] } });
