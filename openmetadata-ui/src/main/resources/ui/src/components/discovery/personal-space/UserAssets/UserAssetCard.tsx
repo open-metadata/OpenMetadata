@@ -59,11 +59,10 @@ const UserAssetCard: React.FC<UserAssetCardProps> = ({
     // squeezed to fit the viewport instead of the list scrolling.
     <Card
       isClickable
-      // 1px selection edge matching ExploreSearchCard (brand-300 light, brand-600
-      // dark) instead of Card's 2px border-brand.
+      // 1px selection edge like ExploreSearchCard instead of Card's 2px border-brand.
       className={
         isSelected
-          ? 'tw:shrink-0 tw:border tw:border-brand-300 tw:dark:border-brand-600'
+          ? 'tw:shrink-0 tw:border tw:border-utility-brand-300'
           : 'tw:shrink-0'
       }
       data-selected={isSelected}
