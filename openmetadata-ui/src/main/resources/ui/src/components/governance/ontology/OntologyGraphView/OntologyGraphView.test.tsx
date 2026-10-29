@@ -40,6 +40,7 @@ import {
   PaletteKey,
   RelationshipType,
 } from '../../../../generated/entity/data/relationshipType';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyAxiom,
   createOntologyProperty,
@@ -58,6 +59,7 @@ import {
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { OntologyGraphSearchSlotContext } from './OntologyGraphSearchSlot.context';
 import OntologyGraphView from './OntologyGraphView';
 
 const mockGraphProps = jest.fn();
@@ -128,6 +130,11 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   listRelationshipTypes: jest.fn(),
   patchOntologyProperty: jest.fn(),
   patchRelationshipType: jest.fn(),
+}));
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -1714,5 +1721,81 @@ describe('OntologyGraphView', () => {
       'aria-pressed',
       'true'
     );
+  });
+
+  describe('in AI mode', () => {
+    let slot: HTMLDivElement;
+
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+      slot = document.createElement('div');
+      document.body.appendChild(slot);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+      slot.remove();
+    });
+
+    const renderAiGraph = () =>
+      render(
+        <MemoryRouter>
+          <OntologyGraphSearchSlotContext.Provider value={slot}>
+            <OntologyGraphView
+              ontology={ontology}
+              surface="graph"
+              onRequestGraphSurface={jest.fn()}
+            />
+          </OntologyGraphSearchSlotContext.Provider>
+        </MemoryRouter>
+      );
+
+    it('moves the term search into the sub-bar slot and keeps the canvas controls', async () => {
+      renderAiGraph();
+
+      await screen.findByTestId('native-ontology-graph');
+
+      fireEvent.change(within(slot).getByTestId('ontology-graph-search'), {
+        target: { value: 'customer' },
+      });
+      await waitFor(() =>
+        expect(
+          mockGraphProps.mock.calls.at(-1)?.[0].graphSearchHighlight
+            .highlightedNodeIds
+        ).toEqual(['concept-customer'])
+      );
+
+      const controls = screen.getByTestId('ontology-graph-controls');
+      ['fit-view', 'zoom-in', 'zoom-out', 'refresh'].forEach((id) =>
+        expect(within(controls).getByTestId(id)).toBeInTheDocument()
+      );
+
+      fireEvent.click(within(controls).getByTestId('refresh'));
+
+      expect(modelResult.refetch).toHaveBeenCalled();
+      expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
+    });
+
+    it('switches to Data mode and shows the concept picker until a concept is chosen', async () => {
+      renderAiGraph();
+
+      await screen.findByTestId('native-ontology-graph');
+      fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+      expect(
+        await screen.findByTestId('ontology-data-empty-state')
+      ).toBeVisible();
+
+      fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
+      fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+      fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+      expect(
+        await screen.findByTestId('ontology-native-data-graph')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ontology-data-empty-state')
+      ).not.toBeInTheDocument();
+    });
   });
 });

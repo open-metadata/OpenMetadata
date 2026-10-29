@@ -145,6 +145,11 @@ export async function clickPieChartSegmentByIndex(
   // late data refresh redraws the arcs) hits nothing and leaves the page on
   // the dashboard, so re-measure and click again until it navigates.
   await expect(async () => {
+    // ECharts lifts a hovered slice's z2, which moves its path to the end of
+    // the SVG and shifts every nth() index. The pointer can rest on the pie
+    // after the tier filter's Update click or a missed attempt, so park it
+    // off the chart; the stability poll below then waits out the downplay.
+    await page.mouse.move(0, 0);
     let previousGeometry: string | undefined;
     let stableSamples = 0;
     // Visibility and a stable bounding box do not mean the SVG arc has stopped animating.

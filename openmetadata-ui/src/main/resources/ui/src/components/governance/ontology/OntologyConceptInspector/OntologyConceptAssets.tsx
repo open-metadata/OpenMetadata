@@ -25,6 +25,7 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { BulkOperationResult } from '../../../../generated/type/bulkOperationResult';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
@@ -41,6 +42,7 @@ import {
   InspectorSection,
   InspectorSectionHeading,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
+import { ConceptEmptyState, ConceptSection } from './OntologyConceptSection';
 
 interface OntologyConceptAssetsProps {
   conceptId: string;
@@ -86,6 +88,7 @@ const OntologyConceptAssets = ({
   presentation,
 }: OntologyConceptAssetsProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const bindings = useOntologyConceptBindings(conceptId);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [page, setPage] = useState(0);
@@ -137,8 +140,10 @@ const OntologyConceptAssets = ({
     return { failedRequest };
   };
 
+  const canLink = canEdit && bindings.isSuccess;
+
   const renderPicker = () => {
-    if (!canEdit || !bindings.isSuccess) {
+    if (!canLink || (isAiMode && !isPickerOpen)) {
       return null;
     }
 
@@ -165,7 +170,78 @@ const OntologyConceptAssets = ({
     );
   };
 
-  const renderPagination = () =>
+  const renderStatus = () => (
+    <>
+      {bindings.isPending ? (
+        <Typography role="status">{t('label.loading')}</Typography>
+      ) : null}
+      {bindings.isError ? (
+        <Alert variant="error">
+          {t('message.temporary-error-try-reloading')}
+          <Button
+            color="link-color"
+            size="sm"
+            onPress={() => void bindings.refetch()}>
+            {t('label.retry')}
+          </Button>
+        </Alert>
+      ) : null}
+    </>
+  );
+
+  const visibleAssets =
+    presentation.kind === 'view'
+      ? assets.slice(0, 3)
+      : assets.slice(visiblePage * 10, (visiblePage + 1) * 10);
+
+  const renderAssetList = () =>
+    assets.length > 0 ? (
+      <InspectorList>
+        {visibleAssets.map((binding) => {
+          return (
+            <InspectorRow key={`${binding.assetType}:${binding.assetId}`}>
+              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+                <OntologyAssetLinks asset={binding.asset} />
+                <Typography ellipsis color="secondary" size="text-xs">
+                  {binding.asset.fullyQualifiedName}
+                </Typography>
+                <Typography color="secondary" size="text-xs">
+                  {binding.assetType} ·{' '}
+                  {t('label.ontology-column-binding-count', {
+                    count: binding.columns.length,
+                  })}
+                </Typography>
+              </Box>
+              {canEdit ? (
+                <InspectorRemoveButton
+                  isDisabled={
+                    bindings.remove.isPending || bindings.update.isPending
+                  }
+                  label={t('label.remove-entity', {
+                    entity: getEntityName(binding.asset),
+                  })}
+                  testId={`ontology-native-asset-remove-${binding.assetId}`}
+                  onRemove={() => {
+                    if (bindings.data) {
+                      void bindings.remove
+                        .mutateAsync({
+                          id: conceptId,
+                          assetType: binding.assetType,
+                          assetId: binding.assetId,
+                          revision: bindings.data.revision,
+                        })
+                        .catch(() => undefined);
+                    }
+                  }}
+                />
+              ) : null}
+            </InspectorRow>
+          );
+        })}
+      </InspectorList>
+    ) : null;
+
+  const renderPager = () =>
     presentation.kind === 'edit' && assets.length > 10 ? (
       <Box gap={2}>
         <Button
@@ -184,10 +260,51 @@ const OntologyConceptAssets = ({
         </Button>
       </Box>
     ) : null;
-  const visibleAssets =
-    presentation.kind === 'view'
-      ? assets.slice(0, 3)
-      : assets.slice(visiblePage * 10, (visiblePage + 1) * 10);
+
+  const renderMoreAssets = () =>
+    presentation.kind === 'view' && assets.length > 3 ? (
+      <Button
+        color="link-color"
+        data-testid="ontology-assets-more"
+        size="sm"
+        onPress={presentation.onOpenData}>
+        {t('label.ontology-more-assets', { count: assets.length - 3 })}
+      </Button>
+    ) : null;
+
+  const renderAiSection = () => (
+    <ConceptSection
+      addLabel={t('label.link-entity', { entity: t('label.asset') })}
+      addTestId="ontology-native-link-assets"
+      count={assets.length}
+      testId="ontology-native-assets"
+      title={t('label.data-asset-plural')}
+      onAdd={
+        canLink && !isPickerOpen ? () => setIsPickerOpen(true) : undefined
+      }>
+      {renderPicker()}
+      {renderStatus()}
+      {assets.length === 0 && bindings.isSuccess ? (
+        <ConceptEmptyState
+          hint={t('message.ontology-current-catalog-links')}
+          title={t('label.no-entity', {
+            entity: t('label.data-asset-plural'),
+          })}
+        />
+      ) : (
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t('message.ontology-current-catalog-links')}
+        </Typography>
+      )}
+      {renderAssetList()}
+      {renderMoreAssets()}
+      {renderPager()}
+    </ConceptSection>
+  );
+
+  if (isAiMode) {
+    return renderAiSection();
+  }
 
   return (
     <InspectorSection testId="ontology-native-assets">
@@ -198,80 +315,15 @@ const OntologyConceptAssets = ({
       <Typography color="secondary" size="text-xs">
         {t('message.ontology-current-catalog-links')}
       </Typography>
-      {bindings.isPending ? (
-        <Typography role="status">{t('label.loading')}</Typography>
-      ) : null}
-      {bindings.isError ? (
-        <Alert variant="error">
-          {t('message.temporary-error-try-reloading')}
-          <Button
-            color="link-color"
-            size="sm"
-            onPress={() => void bindings.refetch()}>
-            {t('label.retry')}
-          </Button>
-        </Alert>
-      ) : null}
-      {assets.length > 0 ? (
-        <InspectorList>
-          {visibleAssets.map((binding) => {
-            return (
-              <InspectorRow key={`${binding.assetType}:${binding.assetId}`}>
-                <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-                  <OntologyAssetLinks asset={binding.asset} />
-                  <Typography ellipsis color="secondary" size="text-xs">
-                    {binding.asset.fullyQualifiedName}
-                  </Typography>
-                  <Typography color="secondary" size="text-xs">
-                    {binding.assetType} ·{' '}
-                    {t('label.ontology-column-binding-count', {
-                      count: binding.columns.length,
-                    })}
-                  </Typography>
-                </Box>
-                {canEdit ? (
-                  <InspectorRemoveButton
-                    isDisabled={
-                      bindings.remove.isPending || bindings.update.isPending
-                    }
-                    label={t('label.remove-entity', {
-                      entity: getEntityName(binding.asset),
-                    })}
-                    testId={`ontology-native-asset-remove-${binding.assetId}`}
-                    onRemove={() => {
-                      if (bindings.data) {
-                        void bindings.remove
-                          .mutateAsync({
-                            id: conceptId,
-                            assetType: binding.assetType,
-                            assetId: binding.assetId,
-                            revision: bindings.data.revision,
-                          })
-                          .catch(() => undefined);
-                      }
-                    }}
-                  />
-                ) : null}
-              </InspectorRow>
-            );
-          })}
-        </InspectorList>
-      ) : null}
+      {renderStatus()}
+      {renderAssetList()}
       {assets.length === 0 && bindings.isSuccess ? (
         <InspectorEmptyText>
           {t('message.no-data-available')}
         </InspectorEmptyText>
       ) : null}
-      {presentation.kind === 'view' && assets.length > 3 ? (
-        <Button
-          color="link-color"
-          data-testid="ontology-assets-more"
-          size="sm"
-          onPress={presentation.onOpenData}>
-          {t('label.ontology-more-assets', { count: assets.length - 3 })}
-        </Button>
-      ) : null}
-      {renderPagination()}
+      {renderMoreAssets()}
+      {renderPager()}
       {renderPicker()}
     </InspectorSection>
   );
