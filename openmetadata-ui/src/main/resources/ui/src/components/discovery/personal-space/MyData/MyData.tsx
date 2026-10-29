@@ -22,7 +22,12 @@ import UserAssetsView from '../UserAssets/UserAssetsView';
  * "My Data & Following": the current user's owned assets (with stat tiles)
  * and the assets they follow, behind a My Data | Following tab strip.
  */
-const MyDataPage: React.FC = () => {
+interface MyDataPageProps {
+  // The personal-space modal passes `muted`; the /my-data route keeps `default`.
+  cardVariant?: 'default' | 'muted';
+}
+
+const MyDataPage: React.FC<MyDataPageProps> = ({ cardVariant = 'default' }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [kind, setKind] = useState<UserAssetsKind>('owned');
@@ -46,7 +51,12 @@ const MyDataPage: React.FC = () => {
       <Box className="tw:flex tw:min-h-0 tw:flex-1 tw:p-6" direction="col">
         {currentUser && (
           // Remount per tab so search, filters and selection start fresh.
-          <UserAssetsView key={kind} kind={kind} user={currentUser} />
+          <UserAssetsView
+            cardVariant={cardVariant}
+            key={kind}
+            kind={kind}
+            user={currentUser}
+          />
         )}
       </Box>
     </Box>

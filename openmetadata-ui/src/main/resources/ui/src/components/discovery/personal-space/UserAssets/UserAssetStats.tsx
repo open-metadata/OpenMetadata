@@ -28,7 +28,10 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import StatCard from './StatCard';
 import { useUserAssetStats } from './useUserAssetStats';
 
-const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
+const UserAssetStats: React.FC<{
+  user: User;
+  cardVariant?: 'default' | 'muted';
+}> = ({ user, cardVariant = 'default' }) => {
   const { t } = useTranslation();
   const {
     assetStats,
@@ -78,6 +81,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
     <Grid className="tw:shrink-0" gap="4">
       <Grid.Item span={6}>
         <StatCard
+          cardVariant={cardVariant}
           isSelected
           breakdown={
             failed.assets
@@ -104,6 +108,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
       </Grid.Item>
       <Grid.Item span={6}>
         <StatCard
+          cardVariant={cardVariant}
           icon={<HeartRounded data-icon />}
           label={t('label.data-health-score')}
           loading={isLoading}
@@ -121,6 +126,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
       </Grid.Item>
       <Grid.Item span={6}>
         <StatCard
+          cardVariant={cardVariant}
           icon={<AlertTriangle data-icon />}
           label={t('label.open-incidents')}
           loading={isLoading}
@@ -138,6 +144,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
       </Grid.Item>
       <Grid.Item span={6}>
         <StatCard
+          cardVariant={cardVariant}
           icon={<CodeSquare02 data-icon />}
           label={t('label.queries')}
           loading={isLoading}

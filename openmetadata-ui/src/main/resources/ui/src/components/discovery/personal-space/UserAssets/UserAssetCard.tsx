@@ -34,12 +34,14 @@ interface UserAssetCardProps {
   source: SearchSourceAlias;
   isSelected: boolean;
   onSelect: (source: SearchSourceAlias) => void;
+  cardVariant?: 'default' | 'muted';
 }
 
 const UserAssetCard: React.FC<UserAssetCardProps> = ({
   source,
   isSelected,
   onSelect,
+  cardVariant = 'default',
 }) => {
   const { t } = useTranslation();
   const breadcrumbItems = useMemo(
@@ -62,7 +64,7 @@ const UserAssetCard: React.FC<UserAssetCardProps> = ({
       data-testid={`user-asset-card-${source.fullyQualifiedName}`}
       isSelected={isSelected}
       size="sm"
-      variant="muted">
+      variant={cardVariant}>
       <Card.Content>
         {/* py-1 on top of the sm Card's padding gives the 12px × 16px inset and
             the row rhythm of the Explore result card (ExploreSearchCard). */}
