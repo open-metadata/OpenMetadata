@@ -267,6 +267,26 @@ describe('withDomainFilter', () => {
       });
     });
 
+    it('should keep articles with no domain in an article search', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/context-center/articles'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const result = withDomainFilter(
+        createMockConfig('get', '/search/query', {
+          index: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+        })
+      );
+      const filter = JSON.parse(result.params?.query_filter as string);
+
+      expect(filter.query.bool.must[0].bool.should).toContainEqual({
+        bool: {
+          must_not: { exists: { field: 'domains.fullyQualifiedName' } },
+        },
+      });
+    });
+
     it('should return config unchanged for TAG index searches', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
         '/api/search'

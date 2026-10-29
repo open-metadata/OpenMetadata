@@ -89,6 +89,17 @@ const isUnscopedSearch = (index?: string | string[]) => {
   );
 };
 
+// Mostly global content (e.g. Context Center articles) keeps items with no domain under a pick,
+// as its list endpoint does, so a search or sort does not change what the list shows.
+const KEEPS_UNASSIGNED_SEARCH_INDEXES = new Set<string>([
+  SearchIndex.KNOWLEDGE_PAGE_INDEX,
+]);
+
+const keepsUnassignedSearch = (index?: string | string[]) =>
+  (Array.isArray(index) ? index : (index ?? '').split(','))
+    .map((name) => name.trim())
+    .some((name) => KEEPS_UNASSIGNED_SEARCH_INDEXES.has(name));
+
 /**
  * The navbar domain a request should be scoped to, or `undefined` when none is
  * selected or scoping is off (product tour, domain pages, auth calls).
@@ -132,6 +143,55 @@ const withDomainOnReportBatch = (
   return config;
 };
 
+// A domain clause matches the picked domain and its sub-domains, plus items with no domain on
+// indexes that keep them.
+const domainClause = (
+  field: string,
+  activeDomain: string,
+  keepUnassigned: boolean
+): QueryFieldInterface =>
+  ({
+    bool: {
+      should: [
+        { term: { [field]: activeDomain } },
+        { prefix: { [field]: `${activeDomain}.` } },
+        ...(keepUnassigned
+          ? [{ bool: { must_not: { exists: { field } } } }]
+          : []),
+      ],
+    },
+  } as QueryFieldInterface);
+
+const withDomainOnSearch = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  const index = config.params?.index;
+  if (isUnscopedSearch(index)) {
+    return config;
+  }
+
+  const field =
+    index === SearchIndex.DOMAIN
+      ? 'fullyQualifiedName'
+      : 'domains.fullyQualifiedName';
+  const filter = parseExistingFilter(
+    config.params?.query_filter as string | undefined
+  );
+  filter.query = {
+    bool: {
+      ...filter.query?.bool,
+      must: [
+        ...collectMustClauses(filter),
+        domainClause(field, activeDomain, keepsUnassignedSearch(index)),
+      ],
+    },
+  };
+  config.params = { ...config.params, query_filter: JSON.stringify(filter) };
+
+  return config;
+};
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
@@ -151,63 +211,14 @@ export const withDomainFilter = (
     return withDomainOnReportBatch(config, activeDomain);
   }
 
-  if (isUnscopedList(config.url)) {
+  if (!activeDomain || config.method !== 'get' || isUnscopedList(config.url)) {
     return config;
   }
 
-  if (config.method === 'get' && activeDomain) {
-    if (config.url?.includes('/search/query')) {
-      if (isUnscopedSearch(config.params?.index)) {
-        return config;
-      }
-
-      const domainFilterField =
-        config.params?.index === SearchIndex.DOMAIN
-          ? 'fullyQualifiedName'
-          : 'domains.fullyQualifiedName';
-      const filter = parseExistingFilter(
-        config.params?.query_filter as string | undefined
-      );
-
-      const mustArray = collectMustClauses(filter);
-      const existingBool = filter.query?.bool;
-
-      filter.query = {
-        bool: {
-          ...existingBool,
-          must: [
-            ...mustArray,
-            {
-              bool: {
-                should: [
-                  {
-                    term: {
-                      [domainFilterField]: activeDomain,
-                    },
-                  },
-                  {
-                    prefix: {
-                      [domainFilterField]: `${activeDomain}.`,
-                    },
-                  },
-                ],
-              },
-            } as QueryFieldInterface,
-          ],
-        },
-      };
-
-      config.params = {
-        ...config.params,
-        query_filter: JSON.stringify(filter),
-      };
-    } else {
-      config.params = {
-        ...config.params,
-        domain: activeDomain,
-      };
-    }
+  if (config.url?.includes('/search/query')) {
+    return withDomainOnSearch(config, activeDomain);
   }
+  config.params = { ...config.params, domain: activeDomain };
 
   return config;
 };
