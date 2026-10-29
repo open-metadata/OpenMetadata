@@ -1917,4 +1917,49 @@ describe('OntologyGraphView', () => {
       (getNativeOntologyDataGraphPage as jest.Mock).mock.calls[1][1].page
     ).toEqual({ kind: 'clusters', limit: 12, offset: 0 });
   });
+
+  it('reloads Data after a data property is added while Data shows', async () => {
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({
+        clusters: [
+          {
+            id: customer.id,
+            name: 'Customer',
+            count: 1,
+            assets: [{ id: 't1', name: 'customers' }],
+          },
+        ],
+      })
+    );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+    await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+    fireEvent.change(screen.getByTestId('ontology-property-name'), {
+      target: { value: 'customerNumber' },
+    });
+    fireEvent.click(screen.getByTestId('ontology-property-type-integer'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-property-submit'));
+    });
+
+    await waitFor(() =>
+      expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2)
+    );
+
+    expect(createOntologyProperty).toHaveBeenCalledTimes(1);
+  });
 });
