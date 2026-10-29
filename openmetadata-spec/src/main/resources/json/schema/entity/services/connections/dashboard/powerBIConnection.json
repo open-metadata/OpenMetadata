@@ -112,7 +112,7 @@
       "title": "Include Hidden Fields",
       "description": "Ingest tables, columns and measures that are marked as hidden in Power BI.",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "pbitFilesSource": {
       "title": "PowerBI .pbit Files Source",
