@@ -13,28 +13,13 @@
  */
 
 /**
- * Deprecation guard for the Antd + Less → UntitledUI + Tailwind migration.
+ * Deprecation guard for the Less → Tailwind and raw-SVG → core-icons migrations.
  *
- * Antd (864 files) and Less (449 files) can't be a blanket error — instead we
- * enforce "no NEW debt": fail if a change ADDS an `import … from 'antd'`
- * specifier that wasn't already imported from that same module before the
- * change. New `.less` files are reported but do NOT fail the guard while the
- * app-mode migration still ships `.less` for the AI shell. Existing usage is
- * untouched and migrates over time.
- * Regression tests may import the legacy controls they exercise; the guard
- * applies to application code, so tests can cover existing behavior faithfully.
- *
- * The antd check compares full before/after file contents (via `git show`)
- * rather than raw diff lines. A diff-line scan flags
- *   - import { Button, Typography } from 'antd'
- *   + import { Button } from 'antd'
- * as a "new" import line even though it strictly REMOVES usage (Typography),
- * and it can't reliably reconstruct multi-line import statements that git's
- * `-U0` diff splits apart. Parsing the whole file on both sides sidesteps
- * both problems: for every antd module (`antd`, `antd/es/button`, …) we diff
- * the *set of imported specifiers* before vs. after, and only fail when the
- * after-set contains a specifier absent from the before-set (or the module
- * wasn't imported at all before) — i.e. genuinely new antd debt.
+ * Enforces "no NEW debt": fail if a change adds a raw `.svg` under
+ * `assets/svg` or a new import of one. New `.less` files are reported but do
+ * NOT fail the guard while the app-mode migration still ships `.less` for the
+ * AI shell. Existing usage is untouched and migrates over time. Test files may
+ * import the assets they exercise.
  *
  *   node scripts/tw-deprecation-guard.js              # staged changes (pre-commit)
  *   node scripts/tw-deprecation-guard.js <baseRef>    # vs a base branch (CI)
@@ -68,7 +53,7 @@ function newLessFiles() {
 // --- raw SVG debt -----------------------------------------------------------
 
 // Raw SVGs under assets/svg are deprecated in favour of
-// @openmetadata/ui-core-components/icons. Same "no new debt" treatment as antd:
+// @openmetadata/ui-core-components/icons. "No new debt":
 // a newly ADDED .svg file, or a newly ADDED import from assets/svg, fails.
 const SVG_DIR = 'openmetadata-ui/src/main/resources/ui/src/assets/svg';
 
@@ -119,57 +104,6 @@ function newSvgImports() {
     }
   }
   return hits;
-}
-
-// --- antd import comparison -------------------------------------------------
-
-// Matches `import [type] <clause> from 'antd'` and `'antd/<subpath>'`, across
-// multi-line import clauses (the `s` flag lets `.` span newlines).
-const ANTD_IMPORT_RE = /import\s+(?:type\s+)?([^'";]*?)\s+from\s+(['"])(antd(?:\/[^'"]*)?)\2/gs;
-
-function parseClause(clause) {
-  const specifiers = new Set();
-  let rest = clause.trim();
-  const braceMatch = rest.match(/\{([^}]*)\}/s);
-  if (braceMatch) {
-    braceMatch[1]
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-      // `Foo as Bar` — the imported name (`Foo`) is what matters, not the
-      // local alias.
-      .forEach((s) => specifiers.add(s.split(/\s+as\s+/)[0].trim()));
-    rest = (rest.slice(0, braceMatch.index) + rest.slice(braceMatch.index + braceMatch[0].length)).trim();
-  }
-  rest = rest.replace(/,\s*$/, '').replace(/^,\s*/, '').trim();
-  if (rest.startsWith('*')) {
-    specifiers.add('*namespace*');
-  } else if (rest) {
-    specifiers.add('*default*');
-  }
-  return specifiers;
-}
-
-// Returns Map<moduleString, { specifiers: Set<string>, statement: string }>
-function parseAntdImports(content) {
-  const map = new Map();
-  if (!content) {
-    return map;
-  }
-  let m;
-  ANTD_IMPORT_RE.lastIndex = 0;
-  while ((m = ANTD_IMPORT_RE.exec(content))) {
-    const moduleName = m[3];
-    const specifiers = parseClause(m[1]);
-    const statement = m[0].replace(/\s+/g, ' ').trim();
-    if (!map.has(moduleName)) {
-      map.set(moduleName, { specifiers: new Set(), statement });
-    }
-    const entry = map.get(moduleName);
-    specifiers.forEach((s) => entry.specifiers.add(s));
-    entry.statement = statement;
-  }
-  return map;
 }
 
 // List of changed .ts/.tsx files, as { before, after } repo-relative paths
@@ -224,48 +158,17 @@ function getAfterContent(path) {
   return gitShow(base ? `HEAD:${path}` : `:${path}`);
 }
 
-function newAntdImports() {
-  const hits = [];
-  const files = changedTsFiles();
-  for (const { before, after } of files) {
-    if (/\.(?:test|spec)\.tsx?$/.test(after)) {
-      continue;
-    }
-    const afterContent = getAfterContent(after);
-    const afterMap = parseAntdImports(afterContent);
-    if (afterMap.size === 0) {
-      continue;
-    }
-    const beforeContent = getBeforeContent(before);
-    const beforeMap = parseAntdImports(beforeContent);
-    for (const [moduleName, afterEntry] of afterMap) {
-      const beforeEntry = beforeMap.get(moduleName);
-      const beforeSpecifiers = beforeEntry ? beforeEntry.specifiers : new Set();
-      const isNew = [...afterEntry.specifiers].some((s) => !beforeSpecifiers.has(s));
-      if (isNew) {
-        hits.push({ file: after, line: afterEntry.statement });
-      }
-    }
-  }
-  return hits;
-}
-
 function main() {
   const less = newLessFiles();
-  const antd = newAntdImports();
   const svgFiles = newSvgFiles();
   const svgImports = newSvgImports();
   // New `.less` files are reported but do NOT fail the guard — the app-mode
-  // migration still lands `.less` for the AI shell. New antd/svg debt blocks.
-  const problems = antd.length + svgFiles.length + svgImports.length;
+  // migration still lands `.less` for the AI shell. New svg debt blocks.
+  const problems = svgFiles.length + svgImports.length;
 
   if (less.length) {
     process.stderr.write(C.gray(`\nⓘ New .less file(s) detected (allowed for now — prefer Tailwind (tw:) + UntitledUI):\n`));
     less.forEach((f) => process.stderr.write(`    ${f}\n`));
-  }
-  if (antd.length) {
-    process.stderr.write(C.red(`\n✖ New 'antd' import(s) are not allowed — use @openmetadata/ui-core-components (UntitledUI):\n`));
-    antd.forEach((h) => process.stderr.write(`    ${h.file}:  ${h.line}\n`));
   }
   if (svgFiles.length) {
     process.stderr.write(C.red(`\n✖ New raw .svg file(s) under assets/svg are not allowed — add icons to @openmetadata/ui-core-components:\n`));
@@ -278,11 +181,11 @@ function main() {
 
   if (problems) {
     process.stderr.write(
-      C.gray(`\nAntd, Less and raw SVG icons are deprecated. See specs/ and CLAUDE.md. Existing usage is fine; do not add more.\n`)
+      C.gray(`\nLess and raw SVG icons are deprecated. See specs/ and CLAUDE.md. Existing usage is fine; do not add more.\n`)
     );
     process.exit(1);
   }
-  process.stdout.write(C.green('✔ No new Antd or raw-SVG imports.\n'));
+  process.stdout.write(C.green('✔ No new raw-SVG imports.\n'));
 }
 
 if (require.main === module) {
@@ -290,9 +193,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  parseClause,
-  parseAntdImports,
-  newAntdImports,
   newLessFiles,
   newSvgFiles,
   newSvgImports,

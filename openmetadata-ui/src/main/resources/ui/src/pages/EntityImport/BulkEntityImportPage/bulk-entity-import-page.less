@@ -271,48 +271,6 @@
   padding: var(--om-space-2) var(--om-space-7);
 }
 
-.csv-import-upload-card {
-  .ant-upload.ant-upload-drag {
-    background: var(--tw-color-bg-secondary);
-    border: 1.5px dashed var(--tw-color-border-primary);
-    border-radius: var(--om-radius-xl);
-    padding: var(--om-space-40) var(--om-space-24);
-    transition: background var(--om-duration-160) ease,
-      border-color var(--om-duration-160) ease;
-
-    &:hover {
-      background: var(--tw-color-bg-brand-primary);
-      border-color: var(--tw-color-border-brand);
-    }
-
-    .ant-upload {
-      padding: 0;
-    }
-
-    :is(.ant-space, .layout-space) {
-      gap: var(--om-space-16) !important;
-    }
-
-    svg {
-      height: 48px;
-      width: 48px;
-    }
-
-    .ant-typography,
-    .prose {
-      color: var(--tw-color-text-primary);
-      font-size: var(--om-font-size-md);
-      font-weight: @font-semibold;
-      line-height: 22px;
-    }
-
-    .browse-text {
-      color: var(--tw-color-fg-brand-primary);
-      font-weight: @font-semibold;
-    }
-  }
-}
-
 .csv-import-banner-stack {
   display: flex;
   flex-direction: column;
