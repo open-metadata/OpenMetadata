@@ -484,10 +484,14 @@ describe('OntologyNativeImportPanel', () => {
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 
-  it('parses, shows the counts and imports into the chosen target in AI mode', async () => {
+  it('parses, shows the counts and imports into the ontology in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     const { onApplied } = renderPanel();
 
+    expect(document.querySelectorAll('input[type="file"]')).toHaveLength(1);
+    expect(
+      screen.queryByText('message.native-import-supported-formats')
+    ).toBeNull();
     expect(screen.getByTestId('ontology-native-import-file')).toBeEnabled();
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
 
@@ -526,5 +530,16 @@ describe('OntologyNativeImportPanel', () => {
       lease: { sessionId: 'session-id', version: 2 },
     });
     expect(createOntology).not.toHaveBeenCalled();
+  });
+
+  it('rejects an oversized file before detection in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderPanel();
+    dropFile('big.ttl', TURTLE, NATIVE_IMPORT_MAX_BYTES + 1);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'message.file-size-exceeded'
+    );
+    expect(detectNativeOntologyImportFormat).not.toHaveBeenCalled();
   });
 });
