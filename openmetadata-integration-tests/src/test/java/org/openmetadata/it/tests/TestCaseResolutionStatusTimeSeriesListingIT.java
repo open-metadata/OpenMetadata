@@ -130,6 +130,31 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
     return recordId;
   }
 
+  private static void softDeleteTestCase(OpenMetadataClient client, TestCase testCase) {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/dataQuality/testCases/" + testCase.getId() + "?recursive=true&hardDelete=false",
+            null,
+            RequestOptions.builder().build());
+  }
+
+  private static Boolean testCaseDeleted(UUID testCaseId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            h ->
+                h.createQuery("SELECT deleted FROM test_case WHERE id = :id")
+                    .bind("id", testCaseId.toString())
+                    .mapTo(Boolean.class)
+                    .findOne()
+                    .orElse(null));
+  }
+
+  private static ListFilter originFilter(String tableFqn, Include include) {
+    return new ListFilter(include).addQueryParam("originEntityFQN", tableFqn);
+  }
+
   @Test
   void baseTimeSeries_latestWithoutRangeReturnsOneRowPerPartition(TestNamespace ns) {
     EntityTimeSeriesDAO dao =
@@ -291,7 +316,7 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
   }
 
   @Test
-  void incidentListing_overRest_softDeletedTestCasesAreAlwaysExcluded(TestNamespace ns) {
+  void incidentListing_overRest_softDeletedTestCasesAreExcludedByDefault(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Fixture fixture = createIncidentFixture(client, ns);
     UUID stateId = UUID.randomUUID();
@@ -329,28 +354,12 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
     // scoping, or the indexed EXISTS without the join), include=deleted and include=all still
     // list them. The scoping is always a qualified predicate, never the unqualified clause the
     // old code parked on the implicit join.
-    client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.DELETE,
-            "/v1/dataQuality/testCases/"
-                + fixture.testCase().getId()
-                + "?recursive=true&hardDelete=false",
-            null,
-            RequestOptions.builder().build());
+    softDeleteTestCase(client, fixture.testCase());
     Map<String, Object> afterDelete =
         getJson(client, INCIDENT_LISTING_PATH + "?testCaseFQN=" + encodedFQN + "&latest=true");
     // The case is genuinely soft-deleted, so the exclusion is the scoping, not a vanished row.
-    Boolean deletedProbe =
-        TestSuiteBootstrap.getJdbi()
-            .withHandle(
-                h ->
-                    h.createQuery("SELECT deleted FROM test_case WHERE id = :id")
-                        .bind("id", fixture.testCase().getId().toString())
-                        .mapTo(Boolean.class)
-                        .findOne()
-                        .orElse(null));
-    assertEquals(Boolean.TRUE, deletedProbe, "the test case is soft-deleted");
+    assertEquals(
+        Boolean.TRUE, testCaseDeleted(fixture.testCase().getId()), "the test case is soft-deleted");
     assertEquals(0, total(afterDelete), "incidents of a soft-deleted test case are excluded");
     assertEquals(
         1,
@@ -369,6 +378,85 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
                 client,
                 INCIDENT_LISTING_PATH + "?testCaseFQN=" + encodedFQN + "&latest=true&include=all")),
         "incidents of a soft-deleted test case are listed under include=all");
+  }
+
+  /**
+   * The originEntityFQN predicate needs the test_case join, so its deletion scoping rides that
+   * join as a qualified tc.deleted clause instead of the indexed EXISTS the testCaseFQN path
+   * uses. A soft-deleted test case keeps its test_case row and its incident records, so the join
+   * still matches and only the include-derived clause filters.
+   */
+  @Test
+  void incidentListing_originEntityFQNScopesDeletedTestCasesThroughTheJoin(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Fixture fixture = createIncidentFixture(client, ns);
+    long timestamp = System.currentTimeMillis();
+    seedRevision(fixture, UUID.randomUUID(), timestamp, "Resolved");
+    String tableFqn = fixture.table().getFullyQualifiedName();
+
+    softDeleteTestCase(client, fixture.testCase());
+    assertEquals(
+        Boolean.TRUE, testCaseDeleted(fixture.testCase().getId()), "the test case is soft-deleted");
+
+    TestCaseResolutionStatusTimeSeriesDAO dao =
+        Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao();
+
+    // No-range latest listing: the join rider is the only deletion scope on the query.
+    assertEquals(
+        0,
+        dao.listWithOffset(originFilter(tableFqn, Include.NON_DELETED), 10, 0, true).size(),
+        "the default scope hides incidents of a soft-deleted test case");
+    assertEquals(0, dao.listCount(originFilter(tableFqn, Include.NON_DELETED), true));
+    assertEquals(
+        1,
+        dao.listWithOffset(originFilter(tableFqn, Include.DELETED), 10, 0, true).size(),
+        "include=deleted lists incidents of the soft-deleted test case");
+    assertEquals(1, dao.listCount(originFilter(tableFqn, Include.DELETED), true));
+    assertEquals(1, dao.listWithOffset(originFilter(tableFqn, Include.ALL), 10, 0, true).size());
+    assertEquals(1, dao.listCount(originFilter(tableFqn, Include.ALL), true));
+
+    // The ranged shape shares incidentCondition, so it carries the same qualified scope.
+    assertEquals(
+        0,
+        dao.listCount(
+            originFilter(tableFqn, Include.NON_DELETED),
+            timestamp - 1_000,
+            timestamp + 1_000,
+            true));
+    assertEquals(
+        1,
+        dao.listCount(
+            originFilter(tableFqn, Include.DELETED), timestamp - 1_000, timestamp + 1_000, true));
+
+    // Over REST, originEntityFQN without testCaseFQN reaches the join rider too.
+    String encodedTableFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    Map<String, Object> nonDeleted =
+        getJson(
+            client,
+            INCIDENT_LISTING_PATH
+                + "?originEntityFQN="
+                + encodedTableFqn
+                + "&latest=true&include=non-deleted");
+    assertEquals(0, data(nonDeleted).size());
+    assertEquals(0, total(nonDeleted));
+    Map<String, Object> deleted =
+        getJson(
+            client,
+            INCIDENT_LISTING_PATH
+                + "?originEntityFQN="
+                + encodedTableFqn
+                + "&latest=true&include=deleted");
+    assertEquals(1, data(deleted).size());
+    assertEquals(1, total(deleted), "include=deleted lists the soft-deleted test case's incidents");
+    Map<String, Object> all =
+        getJson(
+            client,
+            INCIDENT_LISTING_PATH
+                + "?originEntityFQN="
+                + encodedTableFqn
+                + "&latest=true&include=all");
+    assertEquals(1, data(all).size());
+    assertEquals(1, total(all));
   }
 
   @SuppressWarnings("unchecked")
