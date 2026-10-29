@@ -17,13 +17,22 @@ import {
   ExpressionKind,
   Provenance,
 } from '../../../../generated/api/data/createOntologyAxiom';
+import {
+  Code,
+  Severity,
+} from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyAxiom,
   validateOntologyAxiom,
 } from '../../../../rest/ontologyAPI';
 import OntologyAxiomEditor from './OntologyAxiomEditor';
 
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 jest.mock('../../../../rest/ontologyAPI', () => ({
   createOntologyAxiom: jest.fn(),
   validateOntologyAxiom: jest.fn(),
@@ -103,5 +112,54 @@ describe('OntologyAxiomEditor', () => {
         subjectIri: 'https://example.test/Subject',
       })
     );
+  });
+
+  it('keeps the type, nested expression, preview, validation and save in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockValidate.mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.InvalidAxiomShape,
+          message: 'Subject must be absolute',
+          path: 'subject',
+          severity: Severity.Error,
+        },
+      ],
+    });
+    render(<OntologyAxiomEditor canEdit ontology={ONTOLOGY} />);
+
+    expect(screen.getByTestId('ontology-axiom-panel')).toBeInTheDocument();
+    expect(screen.getByText('label.new-entity')).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-expression-0')).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-axiom-submit')).toBeDisabled();
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'label.display-name' }),
+      { target: { value: 'Subclass' } }
+    );
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'label.description' }),
+      { target: { value: 'Customer is a party' } }
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'label.subject' }), {
+      target: { value: 'Subject' },
+    });
+
+    expect(screen.getByTestId('ontology-axiom-preview')).toHaveTextContent(
+      'Subject label.child-of'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-axiom-validate'));
+
+    expect(
+      await screen.findByText('label.validation-failed')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Subject must be absolute')).toBeInTheDocument();
+    expect(mockValidate).toHaveBeenCalledWith(
+      expect.objectContaining({ subjectIri: 'Subject' })
+    );
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 });
