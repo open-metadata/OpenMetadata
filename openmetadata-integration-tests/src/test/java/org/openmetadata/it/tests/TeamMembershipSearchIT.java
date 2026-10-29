@@ -59,6 +59,25 @@ public class TeamMembershipSearchIT {
   }
 
   @Test
+  void teamPatch_reindexesTheMembers(TestNamespace ns) {
+    Team department = TeamHierarchyTestFactory.departmentUnderDivision(ns, "pat", null);
+    Team group = TeamHierarchyTestFactory.groupUnder(ns, "patgroup", department);
+    User user = UserTestFactory.createUser(ns, "patched");
+    awaitDoc(USER_INDEX, user.getId(), doc -> true);
+
+    Team joined = client().teams().get(group.getId().toString(), "users");
+    joined.setUsers(List.of(new EntityReference().withId(user.getId()).withType("user")));
+    client().teams().update(group.getId().toString(), joined);
+    awaitDoc(USER_INDEX, user.getId(), doc -> refOf(doc.path("teams"), group.getId()).isObject());
+
+    Team emptied = client().teams().get(group.getId().toString(), "users");
+    emptied.setUsers(List.of());
+    client().teams().update(group.getId().toString(), emptied);
+    awaitDoc(
+        USER_INDEX, user.getId(), doc -> refOf(doc.path("teams"), group.getId()).isMissingNode());
+  }
+
+  @Test
   void userTeamChange_keepsTheRestOfTheTeamDocument(TestNamespace ns) {
     Team department = TeamHierarchyTestFactory.departmentUnderDivision(ns, "kept", null);
     User owner = UserTestFactory.createUser(ns, "teamowner");

@@ -428,24 +428,29 @@ public interface SearchClient
           + renameNestedTagsScript("Classification")
           + TAG_RESEPARATION_SCRIPT;
 
+  /**
+   * Moves the documents of {@code params.oldParentFQN} and everything under it to {@code
+   * params.newParentFQN}. Only the leading FQN segments are rewritten: a substring replace would
+   * also rewrite a name that merely contains the old FQN.
+   */
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
-                  String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
-                  ctx._source.fullyQualifiedName = updatedFQN;
-                  ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
-                  if (ctx._source.containsKey('parent')) {
-                    if (ctx._source.parent.containsKey('fullyQualifiedName')) {
-                      String parentFQN = ctx._source.parent.fullyQualifiedName;
-                      ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
+                  String fqn = ctx._source.fullyQualifiedName;
+                  if (fqn != null && (fqn.equals(params.oldParentFQN) || fqn.startsWith(params.oldParentFQN + '.'))) {
+                    String updatedFQN = params.newParentFQN + fqn.substring(params.oldParentFQN.length());
+                    ctx._source.fullyQualifiedName = updatedFQN;
+                    ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
+                  }
+                  if (ctx._source.parent instanceof Map && ctx._source.parent.fullyQualifiedName != null) {
+                    String parentFQN = ctx._source.parent.fullyQualifiedName;
+                    if (parentFQN.equals(params.oldParentFQN) || parentFQN.startsWith(params.oldParentFQN + '.')) {
+                      ctx._source.parent.fullyQualifiedName = params.newParentFQN + parentFQN.substring(params.oldParentFQN.length());
                     }
                   }
-                  if (ctx._source.containsKey('classification')) {
-                    if (ctx._source.classification.containsKey('fullyQualifiedName')) {
-                      ctx._source.classification.fullyQualifiedName = ctx._source.classification.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
-                    }
-                    if (ctx._source.classification.containsKey('name')) {
-                      ctx._source.classification.name = params.newParentFQN;
-                    }
+                  if (ctx._source.classification instanceof Map
+                      && params.oldParentFQN.equals(ctx._source.classification.fullyQualifiedName)) {
+                    ctx._source.classification.fullyQualifiedName = params.newParentFQN;
+                    ctx._source.classification.name = params.newParentFQN;
                   }
                   if (ctx._source.containsKey('tags')) {
                     for (int i = 0; i < ctx._source.tags.size(); i++) {
@@ -819,6 +824,9 @@ public interface SearchClient
       """
       for (String field : params.fields) {
         def refs = ctx._source[field];
+        if (refs instanceof Map && refs.get('id') == params.id) {
+          refs.putAll(params.label);
+        }
         if (refs instanceof List) {
           for (def ref : refs) {
             if (ref instanceof Map && ref.get('id') == params.id) {

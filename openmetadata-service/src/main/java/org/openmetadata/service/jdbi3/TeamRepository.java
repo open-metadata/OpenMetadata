@@ -1329,8 +1329,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   /**
-   * The users endpoints change membership without running an updater on either side, so nothing
-   * else rebuilds the documents that show it: the users' teams and the team's user count.
+   * Changing membership from the team's side runs no updater for the users, so nothing else
+   * rebuilds the documents that show it: the users' teams and the team's user count.
    */
   private void reindexMembership(Team team, List<UUID> userIds) {
     if (userIds.isEmpty()) {
@@ -1639,6 +1639,14 @@ public class TeamRepository extends EntityRepository<Team> {
           updatedUsers,
           false);
       updatedTeam.setUserCount(updatedUsers.size());
+      Set<UUID> updatedUserIds =
+          updatedUsers.stream().map(EntityReference::getId).collect(Collectors.toSet());
+      reindexMembership(
+          updatedTeam,
+          Stream.concat(
+                  addedUsers.stream().map(EntityReference::getId),
+                  origUserIds.stream().filter(id -> !updatedUserIds.contains(id)))
+              .toList());
     }
 
     private void updateDefaultPersona(Team origTeam, Team updatedTeam) {

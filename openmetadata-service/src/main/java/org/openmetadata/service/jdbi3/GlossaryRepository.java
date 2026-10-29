@@ -595,7 +595,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     searchRepository.deferIfFlushScopeActive(
         () ->
             searchRepository.updateEntitiesByReference(
-                getAllTerms(updated).stream().map(GlossaryTerm::getEntityReference).toList()),
+                getAllTerms(updated).stream().map(GlossaryTerm::getEntityReference).toList(),
+                Include.ALL),
         "updateEntitiesByReference",
         updated.getId().toString(),
         newFqn,
