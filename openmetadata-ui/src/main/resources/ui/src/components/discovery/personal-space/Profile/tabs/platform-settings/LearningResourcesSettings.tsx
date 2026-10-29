@@ -253,7 +253,7 @@ const LearningResourcesSettings = ({
         className: 'tw:w-52',
       },
       { id: 'context', label: t('label.context'), className: 'tw:w-52' },
-      { id: 'updated', label: t('label.updated-at'), className: 'tw:w-32' },
+      { id: 'updated', label: t('label.updated-at'), className: 'tw:w-40' },
       { id: 'actions', label: t('label.action-plural'), className: 'tw:w-24' },
     ],
     [t]
