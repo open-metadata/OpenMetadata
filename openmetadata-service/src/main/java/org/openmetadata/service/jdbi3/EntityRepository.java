@@ -3645,6 +3645,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (T entity : entities) {
       if (!nullOrEmpty(entity.getDomains())) {
         validateDomainsByRef(entity.getDomains());
+        // Bulk create indexes the request's own references, so they carry the style as well.
+        withDomainStyles(entity.getDomains());
         for (EntityReference domain : entity.getDomains()) {
           allRelationships.add(
               CollectionDAO.EntityRelationshipObject.builder()
@@ -10231,10 +10233,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return null;
     }
 
-    return domainFqns.stream()
-        .map(domainFqn -> Entity.getEntityReferenceByName(DOMAIN, domainFqn, NON_DELETED))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toList());
+    // Styled here too: a created entity is indexed from these references before any re-read.
+    return withDomainStyles(
+        domainFqns.stream()
+            .map(domainFqn -> Entity.getEntityReferenceByName(DOMAIN, domainFqn, NON_DELETED))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList()));
   }
 
   public final List<EntityReference> validateDomainsByRef(List<EntityReference> domains) {
@@ -10245,10 +10249,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return null;
     }
 
-    return domains.stream()
-        .map(domain -> Entity.getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toList());
+    // Styled here too: an entity whose domains change is reindexed from these references.
+    return withDomainStyles(
+        domains.stream()
+            .map(domain -> Entity.getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList()));
   }
 
   /**
@@ -13958,7 +13964,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * restyle shows on the next read. Only colour and icon: a reference has no use for the cover
    * image. ADR:2026-10-28-domain-references-carry-the-domain-style
    */
-  static List<EntityReference> withDomainStyles(List<EntityReference> domains) {
+  public static List<EntityReference> withDomainStyles(List<EntityReference> domains) {
     if (nullOrEmpty(domains)) {
       return domains;
     }

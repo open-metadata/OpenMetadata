@@ -1612,6 +1612,8 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
                         .withCoverImage(
                             new CoverImage().withUrl("https://example.com/cover.png"))));
     Table asset = createTableInDomain(ns, "style", domain.getFullyQualifiedName());
+    // A newly created asset is indexed straight from the create request's domain references.
+    awaitAssetDomainStyle(client, mapper, asset.getId().toString(), "#F14C75", "Database01");
 
     Style style =
         client.tables().get(asset.getId().toString(), "domains").getDomains().get(0).getStyle();
@@ -1639,8 +1641,29 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertEquals("#1470EF", restyled.getColor(), "a restyle shows on the next read");
     assertEquals("Globe01", restyled.getIconURL());
 
-    String tableId = asset.getId().toString();
-    Awaitility.await("asset " + tableId + " search doc carries the new domain style")
+    awaitAssetDomainStyle(client, mapper, asset.getId().toString(), "#1470EF", "Globe01");
+
+    // Moving an asset into a styled domain indexes the new reference with its style too.
+    Domain other =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("styled_domain_other"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Second styled domain the asset moves into")
+                .withStyle(new Style().withColor("#7D81E9").withIconURL("Bank")));
+    Table moved = client.tables().get(asset.getId().toString(), "domains");
+    moved.setDomains(List.of(other.getEntityReference()));
+    client.tables().update(asset.getId().toString(), moved);
+    awaitAssetDomainStyle(client, mapper, asset.getId().toString(), "#7D81E9", "Bank");
+  }
+
+  private void awaitAssetDomainStyle(
+      OpenMetadataClient client,
+      ObjectMapper mapper,
+      String tableId,
+      String expectedColor,
+      String expectedIcon) {
+    Awaitility.await("asset " + tableId + " search doc carries domain style " + expectedColor)
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
@@ -1663,8 +1686,8 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
                       .path("_source")
                       .path("domains")
                       .get(0);
-              assertEquals("#1470EF", domainRef.path("style").path("color").asText());
-              assertEquals("Globe01", domainRef.path("style").path("iconURL").asText());
+              assertEquals(expectedColor, domainRef.path("style").path("color").asText());
+              assertEquals(expectedIcon, domainRef.path("style").path("iconURL").asText());
             });
   }
 
