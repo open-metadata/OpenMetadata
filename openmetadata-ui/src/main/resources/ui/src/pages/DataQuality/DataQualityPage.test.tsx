@@ -181,10 +181,10 @@ jest.mock('../../components/PageHeader/PageHeader.component', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(({ data }) => (
     <div className="page-header-container" data-testid="page-header-container">
-      <h5 className="ant-typography heading" data-testid="heading">
+      <h5 className="heading" data-testid="heading">
         {data?.header}
       </h5>
-      <div className="ant-typography sub-heading" data-testid="sub-heading">
+      <div className="sub-heading" data-testid="sub-heading">
         {data?.subHeader}
       </div>
     </div>

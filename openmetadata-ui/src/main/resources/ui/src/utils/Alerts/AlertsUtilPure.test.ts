@@ -19,6 +19,7 @@ import {
 import { Status } from '../../generated/events/testDestinationStatus';
 import {
   formatDiagnosticValue,
+  formatEventCount,
   getDestinationsWithTestStatus,
 } from './AlertsUtilPure';
 
@@ -101,5 +102,20 @@ describe('formatDiagnosticValue', () => {
     expect(formatDiagnosticValue(0)).toBe('0');
     expect(formatDiagnosticValue(42)).toBe('42');
     expect(formatDiagnosticValue(undefined)).toBe('--');
+  });
+});
+
+describe('formatEventCount', () => {
+  it('shows an exact count as it is', () => {
+    expect(formatEventCount(12, false)).toBe('12');
+    expect(formatEventCount(12)).toBe('12');
+  });
+
+  it('marks a count the server capped with a plus', () => {
+    expect(formatEventCount(500, true)).toBe('500+');
+  });
+
+  it('shows a missing count as zero', () => {
+    expect(formatEventCount(undefined)).toBe('0');
   });
 });

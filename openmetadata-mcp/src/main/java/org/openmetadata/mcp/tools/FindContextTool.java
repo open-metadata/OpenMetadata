@@ -1,10 +1,12 @@
 package org.openmetadata.mcp.tools;
 
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextFinder;
@@ -42,7 +44,12 @@ public class FindContextTool implements McpTool {
     String query = (String) params.get("query");
     Map<String, Object> result;
     if (query == null || query.isBlank()) {
-      result = Map.of("error", "'query' parameter is required");
+      result =
+          Map.of(
+              McpResponseTrim.ERROR_KEY,
+              "'query' parameter is required",
+              McpResponseTrim.STATUS_CODE_KEY,
+              Response.Status.BAD_REQUEST.getStatusCode());
     } else if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
       result =
           Map.of(

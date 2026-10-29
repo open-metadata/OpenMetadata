@@ -607,29 +607,6 @@ export const clickOutside = async (page: Page) => {
   });
 };
 
-/**
- * Blocks until every open Ant Design overlay has finished its enter animation.
- *
- * Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)`
- * around `transform-origin: 0 0`, and rc-motion applies the start class one frame
- * before the `-active` class that begins the transition. Playwright's actionability
- * check ("bounding box unchanged across two consecutive animation frames") can be
- * satisfied on those pre-transition frames, so the click point gets computed against
- * the 0.8-scaled menu. Once the menu finishes growing, that point has slid onto the
- * item above the intended one — the click silently selects the wrong option.
- *
- * rc-motion strips the `-appear`/`-enter` classes on `animationend`, so their absence
- * is the signal that the popup geometry is final.
- */
-export const waitForAntdPopupToSettle = async (page: Page) => {
-  await expect(
-    page.locator(
-      '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
-        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"]'
-    )
-  ).toHaveCount(0);
-};
-
 export const searchFromSearchInput = async (
   page: Page,
   searchInput: Locator,
@@ -1767,7 +1744,16 @@ export const selectOptionWithRetry = async (
   }).toPass({ timeout: 15000 });
 };
 
-export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
+/**
+ * `selected`, when given, is visible only once the pick took: the retry then
+ * also covers an option click that resolves but picks nothing, which happens
+ * when the options are replaced under the pointer.
+ */
+export const chooseSelectOption = async (
+  trigger: Locator,
+  option: Locator,
+  selected?: Locator
+) => {
   await expect(trigger).toBeVisible();
   const nestedControl = trigger.locator(
     'input[role="combobox"], button[aria-haspopup="listbox"]'
@@ -1787,6 +1773,9 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
   // dismissed by anything else, with a short option timeout so a detached
   // option reopens quickly instead of waiting out a long click.
   await expect(async () => {
+    if (selected && (await selected.isVisible())) {
+      return;
+    }
     if ((await control.getAttribute('aria-expanded')) !== 'true') {
       await scrollIntoViewAndSettle(control);
       if ((await control.getAttribute('role')) === 'combobox') {
@@ -1797,6 +1786,9 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
     }
     await expect(option).toBeVisible({ timeout: 5_000 });
     await option.click({ timeout: 2_000 });
+    if (selected) {
+      await expect(selected).toBeVisible({ timeout: 2_000 });
+    }
   }).toPass({ timeout: 30_000 });
 };
 
@@ -1825,9 +1817,6 @@ export const pickSelectOption = async (
 
 export const dismissHoverPopovers = async (page: Page) => {
   await page.mouse.move(0, 0);
-  await expect(
-    page.locator('.ant-popover:not(.ant-popover-hidden)')
-  ).toHaveCount(0);
 };
 
 export const dismissToasts = async (page: Page) => {

@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,9 @@ public final class RdfLiveWriteStore {
   private static final long MAX_HEALTHY_LAG_MILLIS = Duration.ofSeconds(30).toMillis();
   private static final int MAX_ERROR_LENGTH = 8192;
   private static final int MAX_DELIVERY_ATTEMPTS = 10;
+  // Bounds how long one enqueue holds the producer lock while a cascade enqueues its writes
+  // (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only).
+  private static final int MAX_WRITES_PER_ENQUEUE = 500;
   private static final String WRITER_LOCK =
       "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE";
   private static final String RECORD_ENQUEUED =
@@ -67,6 +71,25 @@ public final class RdfLiveWriteStore {
   public void enqueue(final String payload) {
     jdbi.useTransaction(
         TransactionIsolationLevel.READ_COMMITTED, handle -> enqueue(handle, payload));
+  }
+
+  /** Enqueues {@code payloads} in order, a bounded number per transaction. */
+  public void enqueueAll(final List<String> payloads) {
+    for (int start = 0; start < payloads.size(); start += MAX_WRITES_PER_ENQUEUE) {
+      final List<String> chunk =
+          payloads.subList(start, Math.min(start + MAX_WRITES_PER_ENQUEUE, payloads.size()));
+      jdbi.useTransaction(
+          TransactionIsolationLevel.READ_COMMITTED, handle -> enqueueChunk(handle, chunk));
+    }
+  }
+
+  private void enqueueChunk(final Handle handle, final List<String> payloads) {
+    lockEnqueue(handle);
+    long lastId = 0;
+    for (final String payload : payloads) {
+      lastId = insert(handle, payload);
+    }
+    handle.execute(RECORD_ENQUEUED, lastId);
   }
 
   /** Enqueue last in the caller's transaction so delivery and the metadata change commit together. */

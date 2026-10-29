@@ -68,6 +68,8 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
+import org.openmetadata.service.rdf.translator.LiveTagLookup;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
 
 @Slf4j
 public class RdfRepository {
@@ -159,6 +161,9 @@ public class RdfRepository {
   private final AtomicLong appendBudgetOverrideBytes = new AtomicLong(0);
   private final RdfStorageInterface materializationStorageService;
   private final JsonLdTranslator translator;
+  // Renders an entity as stored for the REST API, references to deleted entities included; the
+  // graph translator leaves those out.
+  private final JsonLdTranslator documentTranslator;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
   private final RdfProjectionLoaders projectionLoaders;
   private final RdfWriteDelivery delivery;
@@ -219,6 +224,12 @@ public class RdfRepository {
           servingChain(materializationStorageService, inferenceRuleRepository, assertedOnlyQueries);
       this.translator =
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
+      this.documentTranslator =
+          new JsonLdTranslator(
+              JsonUtils.getObjectMapper(),
+              config.getBaseUri().toString(),
+              LiveTagLookup.database(),
+              ReferenceScope.ALL);
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
       warnAboutIgnoredInferenceSettings(config);
 
@@ -230,6 +241,7 @@ public class RdfRepository {
       this.storageService = null;
       this.materializationStorageService = null;
       this.translator = null;
+      this.documentTranslator = null;
       LOG.info("RDF Repository disabled");
     }
   }
@@ -240,6 +252,7 @@ public class RdfRepository {
     this.datasetNames = base.datasetNames;
     this.datasetManager = base.datasetManager;
     this.translator = base.translator;
+    this.documentTranslator = base.documentTranslator;
     this.relationshipTypeResolverSupplier = base.relationshipTypeResolverSupplier;
     this.projectionLoaders = base.projectionLoaders;
     this.delivery = delivery;
@@ -326,6 +339,7 @@ public class RdfRepository {
     this.storageService = storageService;
     this.materializationStorageService = storageService;
     this.translator = translator;
+    this.documentTranslator = translator;
     this.relationshipTypeResolverSupplier = relationshipTypeResolverSupplier;
     this.projectionLoaders = projectionLoaders;
   }
@@ -582,16 +596,49 @@ public class RdfRepository {
   /**
    * Projects a lineage edge with the details stored for it now, including column lineage, so live
    * edits and reindexing write the same triples. A replay that finds the edge gone, such as an add
-   * replayed after the edge was deleted, removes it instead of restoring it without details.
+   * replayed after the edge was deleted, or one of its ends soft-deleted, removes it instead.
    */
   public void refreshLineage(final EntityRelationship lineage) {
     final Optional<RdfProjectionLoaders.StoredLineageEdge> storedEdge =
         projectionLoaders.lineageDetailsLoader().load(lineage.getFromId(), lineage.getToId());
-    if (storedEdge.isEmpty()) {
+    if (storedEdge.isEmpty() || !hasLiveEnds(lineage)) {
       removeRelationship(lineage);
     } else {
       projectLineage(lineage, storedEdge.get().details());
     }
+  }
+
+  /**
+   * Replays an added relationship. The graph holds the live catalog only, so an edge one of whose
+   * ends was soft-deleted or removed after the add was queued is left out; the delete already
+   * removed every edge of that end.
+   */
+  public void refreshRelationship(final EntityRelationship relationship) {
+    if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
+      refreshLineage(relationship);
+    } else if (hasLiveEnds(relationship)) {
+      addRelationship(relationship);
+    }
+  }
+
+  /** Replays an added typed glossary relation, leaving it out unless both terms are live. */
+  public void refreshGlossaryTermRelation(
+      final UUID fromTermId, final UUID toTermId, final String relationType) {
+    final RdfEntityLiveness.Endpoint from =
+        new RdfEntityLiveness.Endpoint(Entity.GLOSSARY_TERM, fromTermId);
+    final RdfEntityLiveness.Endpoint to =
+        new RdfEntityLiveness.Endpoint(Entity.GLOSSARY_TERM, toTermId);
+    if (projectionLoaders.liveness().areLive(from, to)) {
+      addGlossaryTermRelation(fromTermId, toTermId, relationType);
+    }
+  }
+
+  private boolean hasLiveEnds(final EntityRelationship relationship) {
+    return projectionLoaders
+        .liveness()
+        .areLive(
+            new RdfEntityLiveness.Endpoint(relationship.getFromEntity(), relationship.getFromId()),
+            new RdfEntityLiveness.Endpoint(relationship.getToEntity(), relationship.getToId()));
   }
 
   private void projectLineage(final EntityRelationship lineage, final LineageDetails details) {
@@ -601,7 +648,7 @@ public class RdfRepository {
           lineage.getFromId(),
           lineage.getToEntity(),
           lineage.getToId(),
-          details);
+          RdfLineagePipelines.withLivePipeline(details, projectionLoaders.liveness()));
     } catch (RuntimeException exception) {
       recordFailure(exception);
       throw exception;
@@ -689,6 +736,8 @@ public class RdfRepository {
       List<? extends EntityInterface<?>> entities) {
     List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
     if (isEnabled()) {
+      // One label lookup per label type for the whole page, not per entity.
+      JsonLdTranslator.Page page = translator.page(entities);
       for (EntityInterface<?> entity : entities) {
         // Per-entity isolation: mapEntityToRdf propagates mapping failures, and the sink
         // translates a whole batch in one task, so an unguarded throw here would record
@@ -696,7 +745,7 @@ public class RdfRepository {
         // A skipped entity is reported as a single failure by the caller.
         try {
           String entityType = entity.getEntityReference().getType();
-          Model rdfModel = translator.toRdf(entity);
+          Model rdfModel = page.toRdf(entity);
           requests.add(
               new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
         } catch (RuntimeException translationFailure) {
@@ -1012,14 +1061,21 @@ public class RdfRepository {
         buildPredicateInList(RELATIONSHIP_HOOK_PREDICATES));
   }
 
-  /** Builds one update that removes both incoming and outgoing triples for an entity. */
+  /**
+   * Builds one update that removes an entity's incoming and outgoing triples, its owned resources
+   * and the lineage details of its edges.
+   */
   public static String buildEntityDeleteUpdate(String entityUri) {
     return String.format(
         "DELETE { GRAPH <%1$s> { ?subject ?p ?o } } WHERE { GRAPH <%1$s> { "
             + "VALUES ?entity { <%2$s> } "
             + "{ ?entity ?p ?o . BIND(?entity AS ?subject) } UNION "
-            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } } }",
-        KNOWLEDGE_GRAPH, entityUri, RdfOwnedResources.ownedTriplesPattern());
+            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } UNION { %4$s } } }",
+        KNOWLEDGE_GRAPH,
+        entityUri,
+        RdfOwnedResources.ownedTriplesPattern(),
+        RdfLineage.incidentDetailsTriplesPattern(
+            entityUri.substring(entityUri.lastIndexOf('/') + 1)));
   }
 
   private static String buildIriValues(Collection<String> iris) {
@@ -1459,11 +1515,13 @@ public class RdfRepository {
 
   private record LineageDeleteTarget(String fromUri, String toUri, String detailsUri) {}
 
-  public void bulkAddLineage(List<LineageEdgeData> edges, RdfWriteMode writeMode) {
-    if (!isEnabled() || edges == null || edges.isEmpty()) {
+  public void bulkAddLineage(List<LineageEdgeData> lineageEdges, RdfWriteMode writeMode) {
+    if (!isEnabled() || lineageEdges == null || lineageEdges.isEmpty()) {
       return;
     }
 
+    List<LineageEdgeData> edges =
+        RdfLineagePipelines.withLivePipelines(lineageEdges, projectionLoaders.liveness());
     try {
       int chunkSize = resolveBulkLineageEdgeBatchSize(config);
       for (int start = 0; start < edges.size(); start += chunkSize) {
@@ -1705,7 +1763,7 @@ public class RdfRepository {
     try {
       // Get the entity and convert to RDF
       EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
-      Model rdfModel = translator.toRdf(entity);
+      Model rdfModel = documentTranslator.toRdf(entity);
 
       // Convert model to requested format
       java.io.StringWriter writer = new java.io.StringWriter();
