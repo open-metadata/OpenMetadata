@@ -101,7 +101,8 @@ public class RdfStorageMaintenanceIT {
             .withEnv("ADMIN_PASSWORD", "admin")
             .withEnv("FUSEKI_HEAP", "1g")
             .withEnv("FUSEKI_DATASETS", DATASET + "," + DATASET + "_a," + DATASET + "_b")
-            .withEnv("FUSEKI_UNION_DEFAULT_GRAPH", "true");
+            .withEnv("FUSEKI_UNION_DEFAULT_GRAPH", "true")
+            .withEnv("OPENMETADATA_EXTENSION_ENABLED", "true");
   }
 
   @AfterAll
