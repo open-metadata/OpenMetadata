@@ -14,10 +14,12 @@ import com.macasaet.fernet.Key;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -26,10 +28,12 @@ import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServic
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.approval.MutationPlanner;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 
@@ -109,6 +113,7 @@ class ServiceEntitySecretsTest {
 
     assertTrue(vault.getSecretsMap().isEmpty());
     assertInstanceOf(SnowflakeConnection.class, service.getConnection().getConfig());
+    assertLocallyEncrypted(service.getConnection(), PASSWORD);
   }
 
   @ParameterizedTest
@@ -121,6 +126,48 @@ class ServiceEntitySecretsTest {
 
     assertEquals(Map.of(SECRET_ID, PASSWORD), vault.getSecretsMap());
     assertInstanceOf(SnowflakeConnection.class, service.getConnection().getConfig());
+    assertLocallyEncrypted(service.getConnection(), incomingPassword);
+  }
+
+  @Test
+  void preparingAnEncryptedConnectionPreservesItsCiphertext() {
+    String encrypted = Fernet.getInstance().encrypt(PASSWORD);
+    DatabaseService service = service(encrypted);
+
+    repository.prepare(service, true);
+
+    assertEquals(
+        encrypted,
+        JsonUtils.convertValue(service.getConnection().getConfig(), SnowflakeConnection.class)
+            .getPassword());
+    assertTrue(vault.getSecretsMap().isEmpty());
+  }
+
+  @Test
+  void approvalOperationsKeepPreparedCredentialsEncrypted() {
+    DatabaseService service = service(PASSWORD);
+    repository.prepare(service, true);
+
+    List<MutationOp> operations =
+        MutationPlanner.plan(
+            JsonUtils.valueToTree(service(PASSWORD).withConnection(null)),
+            JsonUtils.valueToTree(service),
+            Set.of("connection"),
+            Set.of("connection"));
+
+    assertEquals(1, operations.size());
+    DatabaseConnection proposed =
+        JsonUtils.readValue(operations.getFirst().getValue(), DatabaseConnection.class);
+    assertLocallyEncrypted(proposed, PASSWORD);
+    assertTrue(vault.getSecretsMap().isEmpty());
+  }
+
+  private static void assertLocallyEncrypted(
+      DatabaseConnection connection, String expectedPassword) {
+    String password =
+        JsonUtils.convertValue(connection.getConfig(), SnowflakeConnection.class).getPassword();
+    assertTrue(Fernet.isTokenized(password));
+    assertEquals(expectedPassword, Fernet.getInstance().decrypt(password));
   }
 
   @ParameterizedTest
