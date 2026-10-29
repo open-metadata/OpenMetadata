@@ -134,6 +134,11 @@ export const TreeSelectTreeItemContent = <T,>({
   // A glossary row cannot be picked but is a live container, not a dead one.
   const isRowBlocked = Boolean(disabled || node.disabled);
   const isRowDisabled = isRowBlocked || !isSelectable;
+  // bg-primary is the page colour in dark mode, so an empty radio or checkbox
+  // would read as a hole in the popover.
+  const emptyControlClassName =
+    isSelected || isRowDisabled ? undefined : 'tw:bg-transparent';
+
   // One choice at a time reads as a radio: a single-select tree otherwise shows
   // no control at all, leaving the rows looking inert.
   const isSingleChoice = !multiple || Boolean(node.isParentMutuallyExclusive);
@@ -173,18 +178,15 @@ export const TreeSelectTreeItemContent = <T,>({
               }`}>
               {isSingleChoice ? (
                 <RadioButtonBase
-                  // bg-primary is the page colour in dark mode, so an empty
-                  // radio would read as a hole in the popover.
-                  className={
-                    isSelected || isRowDisabled
-                      ? undefined
-                      : 'tw:bg-transparent'
-                  }
+                  className={emptyControlClassName}
                   isDisabled={isRowDisabled}
                   isSelected={isSelected}
                 />
               ) : (
                 <CheckboxBase
+                  className={
+                    isIndeterminate ? undefined : emptyControlClassName
+                  }
                   isDisabled={isRowDisabled}
                   isIndeterminate={isIndeterminate}
                   isSelected={isSelected}
