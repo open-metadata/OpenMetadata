@@ -8,11 +8,16 @@ import static org.openmetadata.it.tests.OntologyBindingFixtures.admin;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.bind;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.bindings;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.ownerReader;
+import static org.openmetadata.it.tests.OntologyBindingFixtures.readerReference;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -165,11 +170,12 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
     final Table customers = table(payments, "customers", List.of("customer_id"));
 
     assertBadRequest(
-        "Concept FundsTransfer has no bound table you can view",
+        "Concept FundsTransfer has no bound table you can view among its first 100 table bindings",
         () -> query(admin(), payments.transfer()));
     bindData(payments.transfer(), transfers, payments.ontology(), "transfer_id");
     assertBadRequest(
-        "Hop 1 (part of) reaches concept Customer, which has no bound table you can view",
+        "Hop 1 (part of) reaches concept Customer, which has no bound table you can view"
+            + " among its first 100 table bindings",
         () -> query(admin(), payments.transfer(), hop(payments.partOf(), payments.customer())));
     bindData(payments.customer(), customers, payments.ontology(), "customer_id");
     assertBadRequest(
@@ -205,6 +211,48 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void aReaderWhoMayViewOnlyTheTwelfthBoundTableGetsSqlOverIt(final TestNamespace ns) {
+    final Payments payments =
+        payments(ns, "twelfthPayments", DatabaseServiceTestFactory.createPostgres(ns));
+    final List<Table> tables =
+        IntStream.range(0, 12)
+            .mapToObj(index -> table(payments, "transfers_" + index, List.of("amount_" + index)))
+            .sorted(Comparator.comparing(table -> table.getId().toString()))
+            .toList();
+    final Table twelfth = tables.getLast();
+    try (var fixtures = new RdfAccessFixtures("conceptQuery12" + ns.shortPrefix())) {
+      final OpenMetadataClient reader = ownerReader(fixtures, Entity.TABLE);
+      final var current = admin().tables().get(twelfth.getId().toString(), "owners");
+      admin()
+          .tables()
+          .update(twelfth.getId().toString(), current.withOwners(List.of(readerReference(reader))));
+      for (final Table table : tables) {
+        bindData(
+            payments.transfer(),
+            table,
+            payments.ontology(),
+            table.getColumns().getFirst().getName());
+      }
+
+      final OntologyConceptQuery visible = query(reader, payments.transfer());
+
+      assertEquals(
+          "SELECT "
+              + twelfth.getColumns().getFirst().getName()
+              + "\nFROM "
+              + payments.schema().getName()
+              + "."
+              + twelfth.getName()
+              + "\nLIMIT 50",
+          visible.getSql());
+      assertEquals(List.of(twelfth.getFullyQualifiedName()), visible.getTables());
+      assertEquals(
+          tables.getFirst().getFullyQualifiedName(),
+          query(admin(), payments.transfer()).getTables().getFirst());
+    }
+  }
+
+  @Test
   void generatingSqlWritesNothing(final TestNamespace ns) {
     final Payments payments =
         payments(ns, "readOnlyPayments", DatabaseServiceTestFactory.createPostgres(ns));
@@ -227,15 +275,22 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
   }
 
   private static List<Object> observedState(final Payments payments, final Table transfers) {
+    final String ontology = encoded(payments.ontology().getFullyQualifiedName());
     return List.of(
-        total("/v1/tables?limit=1&include=all"),
-        total("/v1/ontologyConcepts?limit=1&include=all"),
-        total("/v1/ontologyProperties?limit=1&include=all"),
-        total("/v1/ontologyAxioms?limit=1&include=all"),
+        total(
+            "/v1/tables?limit=1&include=all&databaseSchema="
+                + encoded(payments.schema().getFullyQualifiedName())),
+        total("/v1/ontologyConcepts?limit=1&include=all&ontology=" + ontology),
+        total("/v1/ontologyProperties?limit=1&include=all&ontology=" + ontology),
+        total("/v1/ontologyAxioms?limit=1&include=all&ontologyId=" + payments.ontology().getId()),
         bindings(payments.transfer(), "").getRevision(),
         bindings(payments.customer(), "").getRevision(),
         admin().ontologyConcepts().get(payments.transfer().getId().toString()).getVersion(),
         admin().tables().get(transfers.getId().toString()).getVersion());
+  }
+
+  private static String encoded(final String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 
   private static int total(final String path) {

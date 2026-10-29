@@ -15,6 +15,7 @@ package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -67,7 +69,12 @@ import org.openmetadata.service.util.FreshReadScope;
  */
 @Slf4j
 public final class OntologyConceptQueryService {
-  /** Bound tables considered per concept (ADR:2026-10-21-ontology-live-data-execution-is-a-collate-extension). */
+  /**
+   * Each concept reads its first 100 table bindings and keeps the first 10 the reader may view, in
+   * asset-id order (ADR:2026-10-21-ontology-live-data-execution-is-a-collate-extension).
+   */
+  public static final int TABLE_BINDINGS_READ = 100;
+
   public static final int TABLES_PER_CONCEPT = 10;
 
   private final OntologyConceptBindingStore store;
@@ -90,8 +97,7 @@ public final class OntologyConceptQueryService {
     try (final var ignored = FreshReadScope.enter()) {
       final Map<UUID, OntologyConcept> concepts = concepts(access, conceptId, hops);
       store.requireLiveOntology(concepts.get(conceptId));
-      final List<OntologyConceptQueryHop> labeled =
-          labeled(hops, relations(access, concepts.get(conceptId), hops));
+      final List<OntologyConceptQueryHop> labeled = labeled(access, concepts, conceptId, hops);
       final Map<UUID, BoundConcept> bound = bind(access, concepts.values());
       final List<Hop> steps =
           labeled.stream()
@@ -101,16 +107,68 @@ public final class OntologyConceptQueryService {
     }
   }
 
-  private static List<OntologyConceptQueryHop> labeled(
-      final List<OntologyConceptQueryHop> hops, final Map<UUID, OntologyProperty> relations) {
-    return hops.stream()
-        .map(
-            hop ->
-                new OntologyConceptQueryHop()
-                    .withProperty(hop.getProperty())
-                    .withTarget(hop.getTarget())
-                    .withLabel(label(relations.get(hop.getProperty()))))
-        .toList();
+  private List<OntologyConceptQueryHop> labeled(
+      final Access access,
+      final Map<UUID, OntologyConcept> concepts,
+      final UUID conceptId,
+      final List<OntologyConceptQueryHop> hops) {
+    final Map<UUID, OntologyProperty> relations = relations(access, concepts.get(conceptId), hops);
+    final Map<URI, OntologyProperty> inverses =
+        inverses(access, concepts.get(conceptId), relations.values());
+    final List<OntologyConceptQueryHop> labeled = new ArrayList<>();
+    OntologyConcept from = concepts.get(conceptId);
+    for (final OntologyConceptQueryHop hop : hops) {
+      final OntologyProperty relation = relations.get(hop.getProperty());
+      labeled.add(
+          new OntologyConceptQueryHop()
+              .withProperty(hop.getProperty())
+              .withTarget(hop.getTarget())
+              .withLabel(hopLabel(relation, from, inverses.get(relation.getInverse()))));
+      from = concepts.get(hop.getTarget());
+    }
+    return labeled;
+  }
+
+  /**
+   * Labels a hop the way the Studio's hop chip does: a relation followed from its range back to
+   * its domain reads as its declared inverse, when that inverse is a live object property.
+   */
+  static String hopLabel(
+      final OntologyProperty relation, final OntologyConcept from, final OntologyProperty inverse) {
+    final boolean incoming =
+        !listOrEmpty(relation.getDomain()).contains(from.getIri())
+            && listOrEmpty(relation.getRange()).contains(from.getIri());
+    return label(incoming && inverse != null ? inverse : relation);
+  }
+
+  /** The declared inverses of the hop properties that the reader may view, by IRI. */
+  private Map<URI, OntologyProperty> inverses(
+      final Access access,
+      final OntologyConcept root,
+      final Collection<OntologyProperty> relations) {
+    final Set<URI> iris =
+        relations.stream()
+            .map(OntologyProperty::getInverse)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    final EntityRepository<?> repository = repositories.apply(Entity.ONTOLOGY_PROPERTY);
+    return store.liveProperties(root.getOntology().getId(), iris).stream()
+        .filter(property -> property.getKind() == OntologyPropertyKind.OBJECT)
+        .filter(property -> isViewable(access, repository, property))
+        .collect(
+            Collectors.toMap(
+                OntologyProperty::getIri, Function.identity(), (first, ignored) -> first));
+  }
+
+  private boolean isViewable(
+      final Access access, final EntityRepository<?> repository, final OntologyProperty property) {
+    try {
+      authorize(access, repository, property);
+      return true;
+    } catch (final AuthorizationException hidden) {
+      LOG.debug("Inverse property {} is hidden from the reader", property.getId());
+      return false;
+    }
   }
 
   private Map<UUID, OntologyConcept> concepts(
@@ -153,11 +211,12 @@ public final class OntologyConceptQueryService {
       final Access access, final Collection<OntologyConcept> concepts) {
     final List<BindingRow> rows =
         store.firstTables(
-            concepts.stream().map(OntologyConcept::getId).toList(), TABLES_PER_CONCEPT);
-    final Map<UUID, Table> tables = viewableTables(access, rows);
-    final Map<UUID, List<BindingRow>> visible = firstVisibleTables(rows, tables::containsKey);
-    final Map<UUID, OntologyProperty> properties =
-        boundProperties(access, visible.values().stream().flatMap(List::stream).toList());
+            concepts.stream().map(OntologyConcept::getId).toList(), TABLE_BINDINGS_READ);
+    final Map<UUID, List<BindingRow>> visible =
+        firstVisibleTables(rows, viewableTableIds(access, rows)::contains);
+    final List<BindingRow> kept = visible.values().stream().flatMap(List::stream).toList();
+    final Map<UUID, Table> tables = tablesWithColumns(access, kept);
+    final Map<UUID, OntologyProperty> properties = boundProperties(access, kept);
     final Map<UUID, BoundConcept> bound = new HashMap<>();
     for (final OntologyConcept concept : concepts) {
       final List<BoundTable> conceptTables =
@@ -176,30 +235,51 @@ public final class OntologyConceptQueryService {
     for (final BindingRow row : rows) {
       final List<BindingRow> taken =
           first.computeIfAbsent(row.conceptId(), id -> new ArrayList<>());
-      if (taken.size() < TABLES_PER_CONCEPT) {
+      if (taken.size() < TABLES_PER_CONCEPT && canView.test(row.assetId())) {
         taken.add(row);
       }
     }
-    first.replaceAll(
-        (concept, taken) -> taken.stream().filter(row -> canView.test(row.assetId())).toList());
     return first;
   }
 
-  private Map<UUID, Table> viewableTables(final Access access, final List<BindingRow> rows) {
-    @SuppressWarnings("unchecked")
-    final EntityRepository<Table> repository =
-        (EntityRepository<Table>) repositories.apply(Entity.TABLE);
-    final List<UUID> ids = rows.stream().map(BindingRow::assetId).distinct().toList();
+  /** Loads the bound tables with only the fields the VIEW_BASIC check reads. */
+  private Set<UUID> viewableTableIds(final Access access, final List<BindingRow> rows) {
+    final EntityRepository<Table> repository = tableRepository();
     final List<Table> loaded =
-        ids.isEmpty()
-            ? List.of()
-            : repository.get(access.uriInfo(), ids, tableFields(repository), Include.NON_DELETED);
+        load(access, repository, rows, ResourceContext.authorizationFields(repository));
     final var tags =
         new BulkFieldHydrator(
             Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(loaded))));
     return loaded.stream()
         .filter(table -> canView(access, repository, table, tags))
+        .map(Table::getId)
+        .collect(Collectors.toSet());
+  }
+
+  private Map<UUID, Table> tablesWithColumns(final Access access, final List<BindingRow> rows) {
+    return load(
+            access,
+            tableRepository(),
+            rows,
+            new Fields(Set.of(Entity.FIELD_COLUMNS, TableRepository.TABLE_CONSTRAINTS_FIELD)))
+        .stream()
         .collect(Collectors.toMap(Table::getId, Function.identity()));
+  }
+
+  private static List<Table> load(
+      final Access access,
+      final EntityRepository<Table> repository,
+      final List<BindingRow> rows,
+      final Fields fields) {
+    final List<UUID> ids = rows.stream().map(BindingRow::assetId).distinct().toList();
+    return ids.isEmpty()
+        ? List.of()
+        : repository.get(access.uriInfo(), ids, fields, Include.NON_DELETED);
+  }
+
+  @SuppressWarnings("unchecked")
+  private EntityRepository<Table> tableRepository() {
+    return (EntityRepository<Table>) repositories.apply(Entity.TABLE);
   }
 
   private boolean canView(
@@ -244,28 +324,35 @@ public final class OntologyConceptQueryService {
                 binding ->
                     OntologyBindingRules.resolveColumn(table, binding.getColumnPath()) != null)
             .toList();
-    final Map<UUID, List<String>> objectColumns =
-        resolved.stream()
-            .filter(binding -> kindOf(properties, binding) == OntologyPropertyKind.OBJECT)
-            .collect(
-                Collectors.toMap(
-                    OntologyColumnBinding::getPropertyId,
-                    OntologyColumnBinding::getColumnPath,
-                    (first, ignored) -> first,
-                    LinkedHashMap::new));
-    final List<String> identifier =
-        resolved.stream()
-            .filter(binding -> isIdentifier(properties.get(binding.getPropertyId())))
-            .findFirst()
-            .map(OntologyColumnBinding::getColumnPath)
-            .orElse(List.of());
     return new BoundTable(
         table.getFullyQualifiedName(),
         table.getServiceType() == null ? null : table.getServiceType().value(),
         resolved.stream().map(OntologyColumnBinding::getColumnPath).toList(),
-        objectColumns,
-        identifier,
+        objectColumns(resolved, properties),
+        identifierColumn(resolved, properties),
         listOrEmpty(table.getTableConstraints()));
+  }
+
+  /** The column each object property is bound to, the first binding winning. */
+  private static Map<UUID, List<String>> objectColumns(
+      final List<OntologyColumnBinding> resolved, final Map<UUID, OntologyProperty> properties) {
+    return resolved.stream()
+        .filter(binding -> kindOf(properties, binding) == OntologyPropertyKind.OBJECT)
+        .collect(
+            Collectors.toMap(
+                OntologyColumnBinding::getPropertyId,
+                OntologyColumnBinding::getColumnPath,
+                (first, ignored) -> first,
+                LinkedHashMap::new));
+  }
+
+  private static List<String> identifierColumn(
+      final List<OntologyColumnBinding> resolved, final Map<UUID, OntologyProperty> properties) {
+    return resolved.stream()
+        .filter(binding -> isIdentifier(properties.get(binding.getPropertyId())))
+        .findFirst()
+        .map(OntologyColumnBinding::getColumnPath)
+        .orElse(List.of());
   }
 
   private static OntologyPropertyKind kindOf(
@@ -308,14 +395,6 @@ public final class OntologyConceptQueryService {
         access.securityContext(),
         new OperationContext(repository.getEntityType(), MetadataOperation.VIEW_BASIC),
         new ResourceContext(repository.getEntityType(), entity, repository));
-  }
-
-  private static Fields tableFields(final EntityRepository<Table> repository) {
-    final var names =
-        new LinkedHashSet<>(ResourceContext.authorizationFields(repository).getFieldList());
-    names.add(Entity.FIELD_COLUMNS);
-    names.add(TableRepository.TABLE_CONSTRAINTS_FIELD);
-    return new Fields(names);
   }
 
   private static String label(final OntologyConcept concept) {

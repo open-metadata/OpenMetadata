@@ -2,6 +2,7 @@ package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -9,10 +10,15 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
+import org.openmetadata.schema.type.OntologyPropertyKind;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.ontology.OntologyConceptSqlGenerator.BoundConcept;
 import org.openmetadata.service.ontology.OntologyConceptSqlGenerator.BoundTable;
+import org.openmetadata.service.ontology.OntologyConceptSqlGenerator.Hop;
 
 class OntologyConceptQueryServiceTest {
   private static final UUID TRANSFER = new UUID(0xa1, 0);
@@ -58,6 +64,62 @@ class OntologyConceptQueryServiceTest {
             CUSTOMER,
             List.of(asset(CUSTOMER, 2))),
         assetIds(visible));
+  }
+
+  @Test
+  void aHopFollowedBackAgainstItsRelationReadsAsTheDeclaredInverse() {
+    final URI transferIri = URI.create("urn:payments:FundsTransfer");
+    final URI customerIri = URI.create("urn:payments:Customer");
+    final URI hasPartIri = URI.create("urn:payments:hasPart");
+    final OntologyProperty partOf =
+        new OntologyProperty()
+            .withName("partOf")
+            .withKind(OntologyPropertyKind.OBJECT)
+            .withDomain(List.of(transferIri))
+            .withRange(List.of(customerIri))
+            .withInverse(hasPartIri);
+    final OntologyProperty hasPart =
+        new OntologyProperty()
+            .withName("hasPart")
+            .withKind(OntologyPropertyKind.OBJECT)
+            .withIri(hasPartIri);
+    final OntologyConcept transfer = new OntologyConcept().withIri(transferIri);
+    final OntologyConcept customer = new OntologyConcept().withIri(customerIri);
+    final BoundTable customers =
+        new BoundTable(
+            "finance.warehouse.payments.customers",
+            "Postgres",
+            List.of(List.of("name")),
+            Map.of(),
+            List.of(),
+            List.of());
+    final BoundTable transfers =
+        new BoundTable(
+            "finance.warehouse.payments.transfers",
+            "Postgres",
+            List.of(List.of("transfer_id")),
+            Map.of(),
+            List.of(),
+            List.of(
+                new TableConstraint()
+                    .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                    .withColumns(List.of("customer_id"))
+                    .withReferredColumns(
+                        List.of("finance.warehouse.payments.customers.customer_id"))));
+
+    assertEquals("part of", OntologyConceptQueryService.hopLabel(partOf, transfer, hasPart));
+    assertEquals("part of", OntologyConceptQueryService.hopLabel(partOf, customer, null));
+    assertEquals(
+        "SELECT t1.transfer_id\nFROM payments.customers t0\n"
+            + "JOIN payments.transfers t1 ON t0.customer_id = t1.customer_id -- has part\nLIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                new BoundConcept("Customer", List.of(customers)),
+                List.of(
+                    new Hop(
+                        UUID.randomUUID(),
+                        OntologyConceptQueryService.hopLabel(partOf, customer, hasPart),
+                        new BoundConcept("Funds Transfer", List.of(transfers)))))
+            .sql());
   }
 
   private static List<BindingRow> rows(final UUID concept, final int count) {
