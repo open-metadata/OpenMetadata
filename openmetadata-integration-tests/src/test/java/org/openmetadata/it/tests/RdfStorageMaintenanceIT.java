@@ -53,6 +53,7 @@ import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
@@ -71,6 +72,8 @@ public class RdfStorageMaintenanceIT {
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
   private static final String DATASET = "openmetadata";
+  // Stands in for the RDF request timeout, the longest a writer waits for a pause.
+  private static final Duration WRITER_WAIT = Duration.ofSeconds(10);
   private static final Map<RdfTestDatabase.Backend, RdfTestDatabase> DATABASES =
       new EnumMap<>(RdfTestDatabase.Backend.class);
   private static GenericContainer<?> fuseki;
@@ -169,6 +172,23 @@ public class RdfStorageMaintenanceIT {
 
   @ParameterizedTest
   @EnumSource(RdfTestDatabase.Backend.class)
+  void aWriterStillWaitingWhenItsTimeoutEndsIsRefusedWithNothingApplied(
+      final RdfTestDatabase.Backend backend) throws InterruptedException {
+    try (Fixture fixture = new Fixture(backend)) {
+      final RdfStorageInterface serving = fixture.manager.routedStorage();
+      final HeldPause held = fixture.holdPause();
+
+      assertThrows(
+          RdfStorageMaintenanceException.class,
+          () -> serving.executeSparqlUpdate(sparql(3)),
+          "the REST API answers this with 503 and Retry-After");
+      assertEquals(0, fixture.raw.getTripleCount(GRAPH), "nothing reaches Fuseki during a pause");
+      held.release();
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
   void anExpiredPauseOfAStoppedServerNoLongerHoldsWrites(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       final long longAgo = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(10);
@@ -253,7 +273,8 @@ public class RdfStorageMaintenanceIT {
               new RdfDatasetNames(DATASET),
               new RdfRebuildStore(database.jdbi(), clock, RdfRebuildStore.DEFAULT_LIMITS),
               clock,
-              dataset -> raw);
+              dataset -> raw,
+              WRITER_WAIT);
       pause = new RdfLiveWritePause(locks, manager, "server-a");
     }
 

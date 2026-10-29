@@ -433,10 +433,10 @@ OpenMetadata compacts the serving dataset itself:
 Fuseki blocks every writer to a dataset for the whole compaction, so OpenMetadata pauses its own
 writes to the serving dataset first, on every server. Queued live writes wait in SQL and are
 applied once the pause ends; waiting does not count as a failed delivery attempt and does not mark
-the projection degraded. Other writes wait for the pause for up to a minute, then get HTTP 503 with
-`Retry-After`. A write that times out while Fuseki compacts, whoever started the compaction, is
-retried the same way. Maintenance never overlaps a reindex, and a server's first check runs an hour
-after it starts.
+the projection degraded. Other writes wait for the pause for up to `RDF_REQUEST_TIMEOUT_MS`, then
+get HTTP 503 with `Retry-After`. A write that times out while Fuseki compacts, whoever started the
+compaction, is retried the same way. Maintenance never overlaps a reindex, and a server's first
+check runs an hour after it starts.
 `RDF_MAINTENANCE_MAX_DURATION_MINUTES` bounds how long a compaction, or the clear that starts a
 recreate run, may hold that pause. Both run under this budget rather than the per-request timeout:
 Fuseki cannot cancel a `CLEAR`, so a shorter budget would only abandon a clear that still completes.
