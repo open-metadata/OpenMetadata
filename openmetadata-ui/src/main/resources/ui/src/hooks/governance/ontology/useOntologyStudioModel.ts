@@ -106,13 +106,13 @@ const countAggregateOntologies = async (
       throw new Error('Missing ontology name');
     }
     const params = { ontology: ontology.fullyQualifiedName, limit: 1 };
-    const pages = await skipDeleted(() =>
+    const countPages = () =>
       Promise.all([
         listOntologyConcepts(params, signal),
         listOntologyProperties(params, signal),
         listOntologyAxioms(ontology.id, { limit: 1 }, signal),
-      ])
-    );
+      ]);
+    const pages = await skipDeleted(countPages); // NOSONAR sequential: the budget check stops further requests
     if (!pages) {
       continue;
     }
@@ -158,9 +158,9 @@ export const useAllOntologyStudioModels = (
       };
       const models: OntologyStudioModel[] = [];
       for (const ontology of present) {
-        const model = await skipDeleted(() =>
-          loadOntologyStudioModel(ontology, signal, consume)
-        );
+        const loadModel = () =>
+          loadOntologyStudioModel(ontology, signal, consume);
+        const model = await skipDeleted(loadModel); // NOSONAR sequential: the definition budget stops further loads
         if (model) {
           models.push(model);
         }
