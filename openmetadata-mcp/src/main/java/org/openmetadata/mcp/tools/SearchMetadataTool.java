@@ -39,13 +39,14 @@ public class SearchMetadataTool implements McpTool {
   private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;
 
   private static final Set<String> REFERENCE_FIELDS =
-      Set.of("service", "database", "databaseSchema");
+      Set.of("service", "database", "databaseSchema", "parent", "metricGroup");
   private static final Set<String> REFERENCE_LIST_FIELDS = Set.of("owners", "domains");
   private static final Set<String> TAG_FIELDS = Set.of("tier", "tags");
   private static final String CERTIFICATION_FIELD = "certification";
   private static final Set<String> BULK_FIELDS =
       Set.of("columns", "columnNames", "charts", "tasks");
   private static final int MAX_BULK_ITEMS = 60;
+  private static final String METRIC_EXPRESSION_FIELD = "metricExpression";
   private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
   private static final String TEST_CASE_ENTITY = "testCase";
   private static final String NEVER_RUN_KEY = "neverRun";
@@ -85,7 +86,11 @@ public class SearchMetadataTool implements McpTool {
           "dataQualityDimensionName",
           "testPlatforms",
           "basic",
-          "lastResultTimestamp");
+          "lastResultTimestamp",
+          // ADR:2026-10-29-search-metadata-hits-show-their-place-in-a-hierarchy
+          "parent",
+          "childrenCount",
+          "metricGroup");
 
   // Latest-result subset kept in test case search results; the full testCaseResult object
   // (testResultValue, sample row counts, ...) is available via the 'fields' parameter.
@@ -743,7 +748,8 @@ public class SearchMetadataTool implements McpTool {
    *
    * <p>{@code fields=columns} hydrates every column with its full description, so one wide table can
    * dominate a page. A search hit exists to be chosen between; {@code get_entity_details} is where
-   * the full detail lives.
+   * the full detail lives. A requested metric expression is capped the same way every other metric
+   * summary caps it, so one long SQL body cannot push the other hits out of the response budget.
    */
   private static Object capBulkField(String field, Object value, Map<String, Object> result) {
     Object capped = value;
@@ -753,6 +759,9 @@ public class SearchMetadataTool implements McpTool {
       capped = new ArrayList<>(items.subList(0, MAX_BULK_ITEMS));
       result.put(field + "Total", items.size());
       result.put(field + "Truncated", Boolean.TRUE);
+    }
+    if (METRIC_EXPRESSION_FIELD.equals(field) && value instanceof Map<?, ?> expression) {
+      capped = McpResponseTrim.cappedMetricExpression(expression);
     }
     return capped;
   }

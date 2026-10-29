@@ -66,6 +66,7 @@ import {
   planNativeRelation,
   planRelationshipType,
   RelationshipTypeDraft,
+  RelationshipTypePlan,
   toNativeRelationType,
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
@@ -138,6 +139,43 @@ const loadRegistry = () =>
     (after) => listRelationshipTypes({ limit: 1000, after }),
     MAX_RELATIONSHIP_TYPE_PAGES
   );
+
+const registerInverse = async ({
+  inverse,
+  reusedInverse,
+}: RelationshipTypePlan) =>
+  reusedInverse ?? (inverse ? createRelationshipType(inverse) : undefined);
+
+/**
+ * Links the unlinked inverse with this id back to the type that names it, whatever a retry is
+ * called, so a relabelled retry never gives it a second primary. The registry comes back with the
+ * linked inverse in place, so a retry drawn under the inverse's label is planned as a pair. While
+ * nothing names the inverse, it is returned for the draft to reuse.
+ */
+const finishUnlinkedPair = async (
+  registry: readonly RelationshipType[],
+  id: string | undefined
+): Promise<{
+  registry: readonly RelationshipType[];
+  unlinked?: RelationshipType;
+}> => {
+  const unlinked = registry.find((type) => type.id === id && !type.inverse);
+  if (!unlinked) {
+    return { registry };
+  }
+  const primary = registry.find((type) => type.inverse?.id === unlinked.id);
+  if (!primary) {
+    return { registry, unlinked };
+  }
+  const linked = await patchRelationshipType(
+    unlinked.id,
+    buildInverseBackLink(primary)
+  );
+
+  return {
+    registry: registry.map((type) => (type === unlinked ? linked : type)),
+  };
+};
 
 interface RelationshipTypeDialogProps {
   readonly label: string;
@@ -298,6 +336,9 @@ const OntologyGraphView = ({
     label: string;
     resolve: (draft?: RelationshipTypeDraft) => void;
   }>();
+  // The inverse this view registered and has not linked back yet. A retry reuses or links it, since
+  // a delete needs a right the dialog never checks and a soft delete leaves its name taken.
+  const unlinkedInverseId = useRef<string>();
   const handledCreateConceptRequest = useRef(createConceptRequestKey);
   const [search, setSearch] = useState('');
   const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
@@ -469,9 +510,13 @@ const OntologyGraphView = ({
       if (!draft) {
         return undefined;
       }
-      // The cached list is up to 30 s old. A type registered since then is reused as it is,
-      // inverse included, and new names are chosen apart from everything the registry holds now.
-      const registry = await loadRegistry();
+      // The cached list is up to 30 s old. A type registered since then is reused with its inverse,
+      // and new names are chosen apart from everything the registry holds now.
+      const { registry, unlinked } = await finishUnlinkedPair(
+        await loadRegistry(),
+        unlinkedInverseId.current
+      );
+      unlinkedInverseId.current = unlinked?.id;
       const registered = findNativeRelationTypeByLabel(
         catalogOf(registry),
         draft.label
@@ -481,13 +526,15 @@ const OntologyGraphView = ({
 
         return registered;
       }
-      const plan = planRelationshipType(draft, registry);
-      const inverse = plan.inverse
-        ? await createRelationshipType(plan.inverse)
-        : undefined;
+      const plan = planRelationshipType(draft, registry, unlinked);
+      const inverse = await registerInverse(plan);
+      if (inverse) {
+        unlinkedInverseId.current = inverse.id;
+      }
       const primary = await createRelationshipType(plan.primary);
       if (inverse) {
         await patchRelationshipType(inverse.id, buildInverseBackLink(primary));
+        unlinkedInverseId.current = undefined;
       }
       void refetchRegistry();
 
