@@ -59,6 +59,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -76,6 +77,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AppException;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -87,6 +89,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -1367,6 +1370,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     String triggeredBy = securityContext.getUserPrincipal().getName();
     if (app.getAppType().equals(AppType.Internal)) {
+      authorizeAutoPilotTarget(securityContext, app, configPayload);
       ApplicationHandler.getInstance()
           .triggerApplicationOnDemand(
               app, Entity.getCollectionDAO(), searchRepository, configPayload, triggeredBy);
@@ -1645,6 +1649,33 @@ public class AppResource extends EntityResource<App, AppRepository> {
         securityContext,
         new OperationContext(entityType, operation),
         getResourceContextByName(name));
+  }
+
+  private void authorizeAutoPilotTarget(
+      SecurityContext securityContext, App app, Map<String, Object> configPayload) {
+    if (AutoPilotApp.class.getName().equals(app.getClassName())) {
+      AutoPilotAppConfig runtimeConfig =
+          JsonUtils.readOrConvertValue(
+              AutoPilotApp.getRuntimeConfig(app, configPayload), AutoPilotAppConfig.class);
+      if (runtimeConfig.getActive() == null) {
+        throw new BadRequestException("AutoPilot active must be a boolean");
+      }
+      if (!runtimeConfig.getActive()) {
+        return;
+      }
+      if (nullOrEmpty(runtimeConfig.getEntityLink())) {
+        throw new BadRequestException("AutoPilot requires a service entity link");
+      }
+      EntityLink entityLink = EntityLink.parse(runtimeConfig.getEntityLink());
+      if (!Entity.getServiceEntityTypes().contains(entityLink.getEntityType())) {
+        throw new BadRequestException("AutoPilot requires a service entity link");
+      }
+      ServiceEntityInterface service = Entity.getEntity(entityLink, "", Include.NON_DELETED);
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
+          new ResourceContext<>(entityLink.getEntityType(), service.getId(), null));
+    }
   }
 
   private void authorizeAppOperation(
