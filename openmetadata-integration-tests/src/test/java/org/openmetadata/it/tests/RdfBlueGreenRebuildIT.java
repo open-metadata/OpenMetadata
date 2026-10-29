@@ -58,6 +58,7 @@ import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore.JournalLimits;
 import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
+import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
@@ -152,6 +153,31 @@ public class RdfBlueGreenRebuildIT {
       try (RdfStorageInterface previous = raw("openmetadata")) {
         assertName(previous, id, "before-promotion");
       }
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
+  void theDatasetAPromotionRetiredIsEmptiedWhileTheNewOneKeepsServing(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      final UUID id = UUID.randomUUID();
+      write(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "old-graph");
+      final BuildTarget target = fixture.primary.begin();
+      write(fixture.primary.buildStorage(target), id, "rebuilt");
+      fixture.primary.promote(target, "test");
+
+      assertThrows(
+          IllegalStateException.class,
+          () -> fixture.primary.clearRetired(target.dataset(), Duration.ofMinutes(5)),
+          "the serving dataset is never cleared as retired");
+      final CompactionResult cleared =
+          fixture.primary.clearRetired("openmetadata", Duration.ofMinutes(5));
+
+      assertEquals(CompactionResult.Outcome.SUCCEEDED, cleared.outcome(), cleared.detail());
+      try (RdfStorageInterface retired = raw("openmetadata")) {
+        assertFalse(hasEntity(retired, id), "the retired dataset keeps no copy of the old graph");
+      }
+      assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "rebuilt");
     }
   }
 

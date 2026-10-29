@@ -330,6 +330,14 @@ public class RdfRepository {
     requireDatasetManager().heartbeat(target);
   }
 
+  /**
+   * Returns the disk of a dataset a blue/green promotion retired: nothing reads it again, and the
+   * next build would clear it before use anyway. Call it holding the reindex lock.
+   */
+  public CompactionResult clearRetiredDataset(final String dataset) {
+    return requireDatasetManager().clearRetired(dataset, maintenanceBudget());
+  }
+
   public void abandonBuild(final BuildTarget target) {
     requireDatasetManager().abort(target, "RDF indexing run failed or was stopped");
   }

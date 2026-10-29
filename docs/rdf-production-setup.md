@@ -375,12 +375,13 @@ server stops mid-run (a rolling deploy, an OOM kill, a node drain), the graph st
 enough to overlap a deploy; an interrupted blue/green run leaves the previous graph serving. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
 (alongside *Recreate RDF Store*) changes the shape of a rebuild:
 the run builds into an idle second dataset and switches to it only after the build succeeds, so the
-previous graph keeps serving until cutover, and its dataset is retained until the next rebuild
-reuses it.
+previous graph keeps serving until cutover. Once the new dataset serves, the run empties and
+compacts the previous one, which nothing reads again. A run that fails or is stopped leaves its
+half-built dataset in place for inspection; the next rebuild clears it.
 
 Builds alternate between the fixed `openmetadata_a` and `openmetadata_b` names derived from the
-configured endpoint. The original `openmetadata` directory remains present too: allow space for
-up to three dataset copies plus compaction headroom until an operator retires the unused original.
+configured endpoint. The original `openmetadata` dataset is emptied the same way once a promotion
+retires it, so between runs only the serving dataset holds a full copy.
 Custom endpoint names need matching base, `_a`, and `_b` assembler declarations.
 
 The run records the selected dataset, rebuild generation, and payload budget on the job, and
@@ -428,7 +429,8 @@ OpenMetadata compacts the serving dataset itself:
 - **On a schedule.** One server compacts every `RDF_COMPACTION_INTERVAL_HOURS`, while the RDF
   reindex lock keeps it from overlapping an indexing run.
 - **During indexing.** A recreate run clears the dataset, compacts it while it is empty, and
-  compacts again after loading. Blue/green runs compact the target before promotion.
+  compacts again after loading. Blue/green runs compact the target before promotion and empty
+  the dataset the promotion retires.
 
 Fuseki blocks every writer to a dataset for the whole compaction, so OpenMetadata pauses its own
 writes to the serving dataset first, on every server. Queued live writes wait in SQL and are
