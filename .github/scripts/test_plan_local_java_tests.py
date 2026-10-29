@@ -396,11 +396,10 @@ def test_discovery_skips_placeholders_and_keeps_inherited_test_classes(
     }
 
 
-def test_ai_context_plan_excludes_the_empty_mcp_service_placeholder() -> None:
+def test_ai_context_plan_selects_the_mcp_and_llm_service_its() -> None:
     _, plan = plan_for(f"{SERVICE}/aicontext/AIContextMarkdown.java")
 
     selected = its(plan)
-    assert "McpServiceResourceIT" not in selected
     assert "McpServerResourceIT" in selected
     assert "LLMServiceResourceIT" in selected
 
