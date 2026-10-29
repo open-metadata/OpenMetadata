@@ -117,14 +117,11 @@ const getTabStyles = ({
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
     isSelected && 'tw:bg-active tw:text-secondary'
   ),
-  // Dark override (`tw:dark:bg-tertiary`, also on button-minimal): `primary_alt` is gray-900 in
-  // dark, the muted step other surfaces rely on, and barely differs from the gray-950 tab bar, so
-  // the selected tab was invisible. gray-800 separates it; text-secondary stays at 9.7:1.
   'button-border': cx(
     'tw:outline-focus-ring',
     isSelected ? 'tw:font-semibold' : 'tw:font-medium',
     (isSelected || isHovered) &&
-      'tw:bg-primary_alt tw:text-secondary tw:shadow-sm tw:dark:bg-tertiary',
+      'tw:bg-primary_alt tw:text-secondary tw:shadow-sm',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
   ),
   'button-minimal': cx(
@@ -133,7 +130,7 @@ const getTabStyles = ({
     isHovered && 'tw:text-secondary',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
     isSelected &&
-      `tw:bg-primary_alt tw:text-secondary tw:shadow-xs tw:dark:bg-tertiary ${borderAfter} tw:after:outline-primary`
+      `tw:bg-primary_alt tw:text-secondary tw:shadow-xs ${borderAfter} tw:after:outline-primary`
   ),
   underline: cx(
     'tw:rounded-none tw:border-b-2 tw:border-transparent tw:outline-focus-ring',
