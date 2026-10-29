@@ -16,6 +16,7 @@
 # playwright-e2e-reusable.yml) is restored onto the same engine and search
 # backend. The PostgreSQL stack pairs with OpenSearch, the MySQL stack with
 # Elasticsearch, mirroring their docker/development compose files.
+# ADR:2026-10-28-playwright-golden-fixtures-are-scoped-to-their-seed-database
 load_playwright_fixture_profile() {
   case "$1" in
     postgresql)
