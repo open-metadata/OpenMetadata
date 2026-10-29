@@ -81,7 +81,6 @@ const UserAssetStats: React.FC<{
     <Grid className="tw:shrink-0" gap="4">
       <Grid.Item span={6}>
         <StatCard
-          cardVariant={cardVariant}
           isSelected
           breakdown={
             failed.assets
@@ -98,6 +97,7 @@ const UserAssetStats: React.FC<{
                   },
                 ]
           }
+          cardVariant={cardVariant}
           icon={<Star04 data-icon />}
           label={t('label.asset-owned-plural')}
           loading={isLoading}
