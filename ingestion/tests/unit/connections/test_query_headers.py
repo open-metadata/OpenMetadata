@@ -17,6 +17,9 @@ import pytest
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.microsoftFabricConnection import (
+    MicrosoftFabricConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -131,9 +134,11 @@ class TestInlineQueryHeader:
         [
             MssqlConnection(username="u", hostPort="h:1433", database="d"),
             AzureSQLConnection(username="u", hostPort="h:1433", database="d"),
+            MicrosoftFabricConnection(hostPort="h", tenantId="t", clientId="c", authType={"clientSecret": "s"}),
         ],
+        ids=["mssql", "azuresql", "microsoftfabric"],
     )
-    def test_both_sql_server_connections_dispatch_to_the_inline_header(self, connection):
+    def test_sql_server_family_connections_dispatch_to_the_inline_header(self, connection):
         statement, _ = inject_query_header_by_conn(connection, None, None, "SELECT 1 AS a", None, None, False)
 
         assert statement.startswith("SELECT " + HEADER_START)
