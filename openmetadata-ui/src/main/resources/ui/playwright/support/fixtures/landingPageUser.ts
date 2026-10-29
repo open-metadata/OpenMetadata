@@ -21,6 +21,7 @@ import {
   disableEtagConditionalReads,
   getWorkerAdminAPIContext,
 } from '../../utils/common';
+import { registerStorageState } from '../../utils/storageStateRecovery';
 import { PersonaClass } from '../persona/PersonaClass';
 import { UserClass } from '../user/UserClass';
 import { test as base } from './base';
@@ -156,7 +157,13 @@ export const test = base.extend<
           await loginPage.close();
         }
 
-        await use({ ...account, storageState });
+        const unregisterState = registerStorageState(storageState);
+
+        try {
+          await use({ ...account, storageState });
+        } finally {
+          unregisterState();
+        }
       } finally {
         await deleteLandingPageAccount(apiContext, account);
       }

@@ -36,7 +36,7 @@ import { APP_STATE_KEY, getToken, OIDC_TOKEN_KEY } from './tokenStorage';
  *
  * The recovery is deliberately narrow so it cannot mask a real auth bug. It
  * only acts when the app landed on /signin, the context still holds a session
- * cookie, a storageState file owns that exact session, and IndexedDB has no
+ * cookie, a known storage state owns that exact session, and IndexedDB has no
  * token at all. A logout, a revoked session or an expired token all leave one
  * of those conditions false and fall through to the original failure.
  */
@@ -57,6 +57,7 @@ const isSignInRoute = (url: string) =>
 type StorageStateFile = {
   cookies?: { name: string; value: string }[];
   origins?: {
+    origin: string;
     indexedDB?: {
       stores: { records: { key?: unknown; value?: unknown }[] }[];
     }[];
@@ -136,9 +137,31 @@ const tokenFromStateFile = (state: StorageStateFile): string | undefined => {
   return undefined;
 };
 
+const tokenForSession = (state: StorageStateFile, session: string) =>
+  state.cookies?.some(
+    ({ name, value }) => name === SESSION_COOKIE_NAME && value === session
+  )
+    ? tokenFromStateFile(state)
+    : undefined;
+
+const registeredStates = new Set<StorageStateFile>();
+
+/**
+ * Makes a storage state that lives only in memory (a worker fixture's own
+ * sign-in) recoverable like the `playwright/.auth` files. Returns the
+ * unregister call for the fixture's teardown.
+ */
+export const registerStorageState = (state: StorageStateFile) => {
+  registeredStates.add(state);
+
+  return () => {
+    registeredStates.delete(state);
+  };
+};
+
 /**
  * The session cookie is restored through a different path than IndexedDB and
- * survives, so it identifies which storageState file this context came from —
+ * survives, so it identifies which storage state this context came from —
  * without it, recovering with the admin token could silently turn a
  * dataConsumer permission test into an admin one.
  */
@@ -153,19 +176,23 @@ const findStateTokenForSession = async (
     return undefined;
   }
 
+  for (const state of registeredStates) {
+    const token = tokenForSession(state, session);
+
+    if (token) {
+      return token;
+    }
+  }
+
   const files = (await readdir(AUTH_STATE_DIR)).filter((file) =>
     file.endsWith('.json')
   );
 
   for (const file of files) {
-    const state: StorageStateFile = JSON.parse(
-      await readFile(path.join(AUTH_STATE_DIR, file), 'utf8')
+    const token = tokenForSession(
+      JSON.parse(await readFile(path.join(AUTH_STATE_DIR, file), 'utf8')),
+      session
     );
-    const ownsSession = state.cookies?.some(
-      ({ name, value }) => name === SESSION_COOKIE_NAME && value === session
-    );
-
-    const token = ownsSession ? tokenFromStateFile(state) : undefined;
 
     if (token) {
       return token;
@@ -252,7 +279,7 @@ const recover = async (
 
     annotateRecovery(
       'storageState token missing from IndexedDB at boot; re-seeded from ' +
-        `${AUTH_STATE_DIR} and reloaded ${reloadUrl} (landed on ${page.url()})`
+        `its storage state and reloaded ${reloadUrl} (landed on ${page.url()})`
     );
     await writeTokenThroughServiceWorker(page, token);
     await page.goto(reloadUrl, { waitUntil: 'domcontentloaded' });
