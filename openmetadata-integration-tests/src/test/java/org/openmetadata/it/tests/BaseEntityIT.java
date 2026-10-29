@@ -529,6 +529,14 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
         "Getting non-existent entity by name should fail");
   }
 
+  /** A name that cannot be parsed as an FQN (here an unbalanced quote) is a client error. */
+  @Test
+  void get_entityByMalformedName_400() {
+    ApiAssertions.assertBadRequest(
+        () -> getEntityByName("\""),
+        "Getting " + getEntityType() + " by a malformed name should be a bad request");
+  }
+
   /**
    * Test: Update entity description
    * Equivalent to: patch_entityAttributes_200_OK in EntityResourceTest
