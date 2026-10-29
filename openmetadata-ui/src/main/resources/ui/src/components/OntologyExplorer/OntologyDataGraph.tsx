@@ -199,12 +199,16 @@ function getLineageNotes(node: OntologyNode, t: TFunction): string[] {
   );
 }
 
-function getNativeAssetSummary(node: OntologyNode, t: TFunction): string {
+function getNativeAssetSummary(
+  node: OntologyNode,
+  lineageNotes: string[],
+  t: TFunction
+): string {
   const columns = t('message.native-asset-summary', {
     connector: getAssetServiceLabel(node),
     count: node.columnCount ?? 0,
   });
-  const [firstNote, ...otherNotes] = getLineageNotes(node, t);
+  const [firstNote, ...otherNotes] = lineageNotes;
   if (!firstNote) {
     return columns;
   }
@@ -343,7 +347,7 @@ function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
               </Typography>
               <Typography ellipsis className="tw:text-tertiary" size="text-xs">
                 {isNative
-                  ? getNativeAssetSummary(asset, t)
+                  ? getNativeAssetSummary(asset, lineageNotes, t)
                   : getAssetPath(asset)}
               </Typography>
             </Box>
@@ -676,22 +680,24 @@ function mergeCardLineage(
     );
 
   return edges.flatMap((edge) => {
-    const pairs = edge.anchor === 'cards' ? byCardPair.get(pairKey(edge)) : [];
-    if (!pairs || pairs.length <= 1) {
+    if (edge.anchor !== 'cards') {
       return [edge];
     }
+    const pairs = byCardPair.get(pairKey(edge)) ?? [edge];
     if (pairs[0] !== edge) {
       return [];
     }
 
     return [
-      {
-        ...edge,
-        labelText: t('message.text-and-count-more', {
-          count: pairs.length - 1,
-          text: edge.labelText,
-        }),
-      },
+      pairs.length === 1
+        ? edge
+        : {
+            ...edge,
+            labelText: t('message.text-and-count-more', {
+              count: pairs.length - 1,
+              text: edge.labelText,
+            }),
+          },
     ];
   });
 }
