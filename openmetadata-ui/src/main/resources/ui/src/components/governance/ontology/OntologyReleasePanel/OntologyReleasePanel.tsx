@@ -423,6 +423,11 @@ const OntologyReleasePanel = ({
         nextSemanticVersion(baseVersion, bump)
       : t('label.loading');
 
+  const getChangeCountText = (total: number, isGrouped: boolean) =>
+    isGrouped
+      ? t('label.changed-class-plural') + ': ' + total
+      : total + ' ' + t('label.pending-changes');
+
   const renderAiFooter = () => (
     <div className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4">
       <Typography color="secondary" size="text-sm">
@@ -430,7 +435,11 @@ const OntologyReleasePanel = ({
           {getVersionPreview()}
         </span>
         {working.data
-          ? ` · ${working.data.paging.total} ${t('label.pending-changes')}`
+          ? ' · ' +
+            getChangeCountText(
+              working.data.paging.total,
+              Boolean(working.data.groups)
+            )
           : null}
       </Typography>
       {renderPublicationButtons()}
@@ -444,9 +453,10 @@ const OntologyReleasePanel = ({
       </Typography>
       {working.data && (
         <Typography color="secondary" size="text-sm">
-          {working.data.groups
-            ? t('label.changed-class-plural') + ': ' + working.data.paging.total
-            : working.data.paging.total + ' ' + t('label.pending-changes')}
+          {getChangeCountText(
+            working.data.paging.total,
+            Boolean(working.data.groups)
+          )}
         </Typography>
       )}
     </Box>
