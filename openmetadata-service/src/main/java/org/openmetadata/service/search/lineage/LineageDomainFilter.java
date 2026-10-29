@@ -122,7 +122,8 @@ public final class LineageDomainFilter {
     return domainRefs;
   }
 
-  private static Set<String> reachableFromRoot(
+  /** The visible nodes reachable from {@code rootFqn} through visible nodes only. */
+  static Set<String> reachableFromRoot(
       SearchLineageResult result, Set<String> visible, String rootFqn) {
     Set<String> reachable = new HashSet<>();
     if (visible.contains(rootFqn)) {
@@ -166,7 +167,8 @@ public final class LineageDomainFilter {
     }
   }
 
-  private static void retainEdges(SearchLineageResult result, Set<String> keep) {
+  /** Keeps only the edges whose two ends are both in {@code keep}. */
+  static void retainEdges(SearchLineageResult result, Set<String> keep) {
     edgesOf(result.getUpstreamEdges()).removeIf(edge -> !edgeKept(edge, keep));
     edgesOf(result.getDownstreamEdges()).removeIf(edge -> !edgeKept(edge, keep));
   }
