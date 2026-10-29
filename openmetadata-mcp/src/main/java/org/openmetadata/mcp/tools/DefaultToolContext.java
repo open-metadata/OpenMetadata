@@ -4,6 +4,7 @@ import static org.openmetadata.mcp.McpUtils.getToolProperties;
 
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.ws.rs.WebApplicationException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
@@ -25,6 +27,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
 public class DefaultToolContext {
+  private static final String ALLOWED_TOOLS_ENV = "MCP_ALLOWED_TOOLS";
   private static final int STATUS_BAD_REQUEST = 400;
   private static final int STATUS_FORBIDDEN = 403;
   private static final int STATUS_NOT_FOUND = 404;
@@ -34,8 +37,27 @@ public class DefaultToolContext {
   private static final String OVERSIZED_ADVICE =
       "Response exceeded the size limit and was withheld. Narrow your request — use a more specific "
           + "query, request fewer results, or fetch a single entity by its fullyQualifiedName.";
+  private final boolean allowlistConfigured;
+  private final Set<String> allowedTools;
 
-  public DefaultToolContext() {}
+  public DefaultToolContext() {
+    this(System.getenv(ALLOWED_TOOLS_ENV));
+  }
+
+  public DefaultToolContext(String configuredTools) {
+    allowlistConfigured = configuredTools != null;
+    allowedTools =
+        configuredTools == null
+            ? Set.of()
+            : Arrays.stream(configuredTools.split(","))
+                .map(String::trim)
+                .filter(name -> !name.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
+  }
+
+  public boolean isToolAllowed(String toolName) {
+    return !allowlistConfigured || allowedTools.contains(toolName);
+  }
 
   /**
    * Loads tool definitions from a JSON file located at the specified path.
@@ -73,9 +95,15 @@ public class DefaultToolContext {
         "Catalog Principal: {} is trying to call the tool: {}",
         securityContext.getUserPrincipal().getName(),
         toolName);
-    Map<String, Object> params = request.arguments();
-    Object result;
     try {
+      if (!isToolAllowed(toolName)) {
+        return new CallToolOutcome(
+            errorResult(errorPayload("MCP tool disabled: " + toolName, STATUS_FORBIDDEN)),
+            elapsedMs(startNanos),
+            McpToolCallUsage.ErrorCategory.AUTH);
+      }
+      Map<String, Object> params = request.arguments();
+      Object result;
       McpTool tool;
       switch (toolName) {
         case "search_metadata":

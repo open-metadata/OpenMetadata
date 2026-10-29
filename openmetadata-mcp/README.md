@@ -29,6 +29,7 @@ This module implements a complete OAuth 2.0 Authorization Code Flow with PKCE fo
 - **Rate Limiting** - Registration (10/hour per IP) and token (30/minute per IP) endpoint protection
 - **Thread-Safe Concurrent Processing** - ThreadLocal storage for request isolation
 - **Audit Logging** - OAuth operations logged via SLF4J (oauth_audit_log table available for future use)
+- **MCP Tool Allowlist** - Set `MCP_ALLOWED_TOOLS` to comma-separated tool names to restrict advertised and callable tools.
 
 ### Database-Driven Configuration
 - **Runtime Configuration** - Update MCP settings without server restart via REST API
