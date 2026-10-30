@@ -747,6 +747,34 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_isFirstTimeUserPersistsAcrossSessionsAndPut(TestNamespace ns) {
+    // Whether the user is accessing the product for the first time lives on the user, not in the
+    // browser, so a new browser must read it back; clearing it is not an edit and must not version
+    // the user.
+    CreateUser create = selfLoginUserRequest();
+    User user = createEntity(create);
+    assertTrue(user.getIsFirstTimeUser());
+
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch.addObject().put("op", "add").put("path", "/isFirstTimeUser").put("value", false);
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch);
+
+    User reread = Users.get(user.getId().toString());
+    assertFalse(reread.getIsFirstTimeUser());
+    assertEquals(user.getVersion(), reread.getVersion());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/users", create.withDescription("updated by PUT"), User.class);
+
+    assertFalse(
+        Users.get(user.getId().toString()).getIsFirstTimeUser(),
+        "a PUT must not make a returning user first-time again");
+  }
+
+  @Test
   void test_defaultDomainMustBeARealDomain(TestNamespace ns) {
     User user = createEntity(selfLoginUserRequest());
     user.setDefaultDomain(new EntityReference().withId(UUID.randomUUID()).withType("domain"));
