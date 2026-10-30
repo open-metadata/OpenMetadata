@@ -19,3 +19,13 @@ export interface MoveGlossaryTermWebsocketResponse {
   message: string;
   fullyQualifiedName?: string;
 }
+
+/**
+ * The answer to a move request. A move an approval workflow holds starts no job: it carries no
+ * jobId and waits as a change request instead.
+ */
+export interface MoveGlossaryTermResponse {
+  jobId?: string;
+  message: string;
+  entityName?: string;
+}

@@ -344,6 +344,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
         "openmetadata-ui/src/main/resources/ui/src/utils/GlossaryReview/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ChangeParentHierarchy/**",
+        "openmetadata-ui/src/main/resources/ui/src/interface/governance/glossary.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/glossaryAPI.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Glossary*.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
