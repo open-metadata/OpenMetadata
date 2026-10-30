@@ -20,7 +20,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  ArrowRight,
   ArrowUpRight,
   CheckCircle,
 } from '@openmetadata/ui-core-components/icons';
@@ -31,10 +30,15 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { CreateOntology } from '../../../../generated/api/data/createOntology';
 import type { OntologyPackManifest } from '../../../../generated/api/data/ontologyPackManifest';
 import type { Ontology } from '../../../../generated/entity/data/ontology';
+import type { OntologyPackInstallationRecord } from '../../../../generated/type/ontologyPackInstallationRecord';
 import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { previewNativeOntologyPack } from '../../../../rest/ontologyAPI';
+import {
+  getOntology,
+  previewNativeOntologyPack,
+} from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   defaultModuleIds,
@@ -58,7 +62,7 @@ export interface OntologyNativeLibraryDetailProps {
   ontologies: Ontology[];
   initialOntology?: Ontology;
   canCreate: boolean;
-  completion?: NativeLibraryCompletion;
+  installedIn: OntologyPackInstallationRecord[];
   onCreated: (ontology: Ontology) => void;
   onApplied: (ontology: Ontology) => void;
   onCompleted: (completion: NativeLibraryCompletion) => void;
@@ -72,7 +76,7 @@ const OntologyNativeLibraryDetail = ({
   ontologies,
   initialOntology,
   canCreate,
-  completion: previousCompletion,
+  installedIn,
   onCreated,
   onApplied,
   onCompleted,
@@ -81,15 +85,13 @@ const OntologyNativeLibraryDetail = ({
   onBack,
 }: OntologyNativeLibraryDetailProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const currentUserId = useApplicationStore((state) => state.currentUser?.id);
-  const [targetId, setTargetId] = useState(
-    previousCompletion?.ontology.id ?? 'new'
+  const [targetId, setTargetId] = useState('new');
+  const [target, setTarget] = useState<Ontology>();
+  const [selectedModuleIds, setSelectedModuleIds] = useState(() =>
+    defaultModuleIds(pack)
   );
-  const [target, setTarget] = useState(previousCompletion?.ontology);
-  const [selectedModuleIds, setSelectedModuleIds] = useState(
-    () => previousCompletion?.moduleIds ?? defaultModuleIds(pack)
-  );
-  const [completion, setCompletion] = useState(previousCompletion);
   const [phase, setPhase] = useState<
     'idle' | 'creating' | 'permission' | 'previewing' | 'blocked'
   >('idle');
@@ -133,7 +135,6 @@ const OntologyNativeLibraryDetail = ({
         moduleIds: current.moduleIds,
         outcome,
       };
-      setCompletion(installed);
       setPhase('idle');
       preparing.current = false;
       attempt.current = undefined;
@@ -231,7 +232,7 @@ const OntologyNativeLibraryDetail = ({
   };
 
   const install = async () => {
-    if (preparing.current || isBusy || completion) {
+    if (preparing.current || isBusy) {
       return;
     }
     setError(undefined);
@@ -269,29 +270,13 @@ const OntologyNativeLibraryDetail = ({
   };
 
   const resetCompletion = () => {
-    setCompletion(undefined);
     setError(undefined);
   };
   const isTargetDenied = () =>
     target ? !canEditTarget && !isPermissionLoading : !canCreate;
 
   const renderInstallActions = () => {
-    return completion ? (
-      <>
-        <Alert title={t('label.installed')} variant="success">
-          {completion.outcome === 'unchanged'
-            ? t('message.no-changes-to-save')
-            : completion.ontology.displayName ?? completion.ontology.name}
-        </Alert>
-        <Button
-          color="primary"
-          data-testid="ontology-library-open-graph"
-          iconTrailing={ArrowRight}
-          onPress={() => onOpenOntology(completion.ontology)}>
-          {t('label.open-graph')}
-        </Button>
-      </>
-    ) : (
+    return (
       <>
         {isTargetDenied() && (
           <Alert variant="warning">
@@ -384,7 +369,7 @@ const OntologyNativeLibraryDetail = ({
                   className="tw:flex-1"
                   key={item.id}
                   size="sm"
-                  variant="muted">
+                  variant={isAiMode ? 'default' : 'muted'}>
                   <Card.Content>
                     <Typography
                       as="div"
@@ -424,6 +409,28 @@ const OntologyNativeLibraryDetail = ({
         installPanel: renderInstallPanel(),
         canSelectModules: !isLocked,
         isBusy,
+        installedIn:
+          installedIn.length > 0 ? (
+            <Box align="center" gap={2} wrap="wrap">
+              <Typography color="secondary" size="text-sm">
+                {t('label.ontology-library-installed-in')}
+              </Typography>
+              {installedIn.map((record) => (
+                <Button
+                  color="link-color"
+                  data-testid={`ontology-library-installed-in-${record.ontology.id}`}
+                  key={record.ontology.id}
+                  size="sm"
+                  onPress={() => {
+                    void getOntology(record.ontology.id)
+                      .then(onOpenOntology)
+                      .catch(showErrorToast);
+                  }}>
+                  {record.ontology.displayName ?? record.ontology.name}
+                </Button>
+              ))}
+            </Box>
+          ) : undefined,
       }}
       pack={pack}
       selectedModuleIds={selectedModuleIds}

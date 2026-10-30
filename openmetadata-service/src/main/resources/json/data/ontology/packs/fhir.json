@@ -3,6 +3,8 @@
   "bundled": true,
   "description": "A terminology-safe HL7 FHIR R5 starter subset without third-party terminologies.",
   "id": "fhir",
+  "industry": "healthcare",
+  "layer": "L2",
   "license": "CC0 1.0; excludes third-party terminologies",
   "licenseUrl": "https://fhir.hl7.org/fhir/license.html",
   "modules": [

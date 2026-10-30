@@ -37,7 +37,8 @@
  *
  *   Components (the .less / .css files) never hold raw values: colours read
  *   the Tailwind bridge vars (also in canvas token strings), every other value
- *   var(--om-*). Never add --om-color-* tokens or references.
+ *   the Tailwind theme vars (--tw-spacing, --tw-radius-*, ...). Never add
+ *   --om-* references (ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars).
  *
  * Docs: ./specs/tokens/token-reference.md and ./specs/foundations/*.md
  * Lint: node scripts/token-audit.js   (CI: zero errors required)
@@ -111,7 +112,7 @@
   --om-line-height-relaxed: 1.625;
 
   /* -- Layout -- */
-  --om-page-height: calc(100vh - var(--ant-navbar-height, 80px));
+  --om-page-height: calc(100vh - var(--navbar-height, 80px));
 
   /* -- Elevation -- */
   --om-shadow-xs: var(--shadow-xs, 0px 1px 2px rgba(10, 13, 18, 0.05));
@@ -716,13 +717,10 @@
   --om-legacy-color-0-0-0-0-05: rgba(0, 0, 0, 0.05);
   --om-legacy-color-0-0-0-0-06: rgba(0, 0, 0, 0.06);
   --om-legacy-color-0-0-0-0-1: rgba(0, 0, 0, 0.1);
-  --om-legacy-color-0-0-0-0-102: #0000001a;
   --om-legacy-color-0-0-0-0-12: rgba(0, 0, 0, 0.12);
   --om-legacy-color-0-0-0-0-15: rgba(0, 0, 0, 0.15);
   --om-legacy-color-0-0-0-0-2: rgba(0, 0, 0, 0.2);
-  --om-legacy-color-0-0-0-0-25: rgba(0, 0, 0, 0.25);
   --om-legacy-color-0-0-0-0-5: rgba(0, 0, 0, 0.5);
-  --om-legacy-color-0-0-0-0-6: rgba(0, 0, 0, 0.6);
   --om-legacy-color-0-0-0-0-8: rgba(0, 0, 0, 0.8);
   --om-legacy-color-0-0-0-0-9: rgba(0, 0, 0, 0.9);
   --om-legacy-color-0017e4: #0017e4;
@@ -733,12 +731,8 @@
   --om-legacy-color-06a4a4: #06a4a4;
   --om-legacy-color-07152b: #07152b;
   --om-legacy-color-0c5460: #0c5460;
-  --om-legacy-color-10-13-18-0-04: rgba(10, 13, 18, 0.04);
   --om-legacy-color-10-13-18-0-05: rgba(10, 13, 18, 0.05);
-  --om-legacy-color-10-13-18-0-051: #0a0d120d;
-  --om-legacy-color-10-13-18-0-059: #0a0d120f;
   --om-legacy-color-10-13-18-0-08: rgba(10, 13, 18, 0.08);
-  --om-legacy-color-10-13-18-0-102: #0a0d121a;
   --om-legacy-color-102a72: #102a72;
   --om-legacy-color-107-114-128-0-15: rgba(107, 114, 128, 0.15);
   --om-legacy-color-111827: #111827;
@@ -749,7 +743,6 @@
   --om-legacy-color-15-23-42-0-06: rgba(15, 23, 42, 0.06);
   --om-legacy-color-155724: #155724;
   --om-legacy-color-16-24-40-0-12: rgba(16, 24, 40, 0.12);
-  --om-legacy-color-1677ff: #1677ff;
   --om-legacy-color-1890ff: #1890ff;
   --om-legacy-color-1f242f: #1f242f;
   --om-legacy-color-1f67e9: #1f67e9;
@@ -798,7 +791,6 @@
   --om-legacy-color-52525b: #52525b;
   --om-legacy-color-52607a: #52607a;
   --om-legacy-color-52c41a: #52c41a;
-  --om-legacy-color-595959: #595959;
   --om-legacy-color-5b8def: #5b8def;
   --om-legacy-color-5e5c58: #5e5c58;
   --om-legacy-color-666666: #666666;
@@ -815,7 +807,6 @@
   --om-legacy-color-856404: #856404;
   --om-legacy-color-86-54-205-0-38: rgba(86, 54, 205, 0.38);
   --om-legacy-color-8a5cf0: #8a5cf0;
-  --om-legacy-color-8c8c8c: #8c8c8c;
   --om-legacy-color-9-80-197-0-05: rgba(9, 80, 197, 0.05);
   --om-legacy-color-96-167-251-0-2: rgba(96, 167, 251, 0.2);
   --om-legacy-color-9933ff: #93f;
@@ -835,12 +826,10 @@
   --om-legacy-color-d93025: #d93025;
   --om-legacy-color-d99600: #d99600;
   --om-legacy-color-d9ceee: #d9ceee;
-  --om-legacy-color-d9d9d9: #d9d9d9;
   --om-legacy-color-dadada: #dadada;
   --om-legacy-color-dbe4ff: #dbe4ff;
   --om-legacy-color-dce3ec: rgb(220, 227, 236);
   --om-legacy-color-dddddd: #ddd;
-  --om-legacy-color-dde3ea: #dde3ea;
   --om-legacy-color-e1e4e8: #e1e4e8;
   --om-legacy-color-e2dfd4: #e2dfd4;
   --om-legacy-color-e3d9f8: #e3d9f8;
@@ -865,9 +854,7 @@
   --om-legacy-color-f2f1f5: #f2f1f5;
   --om-legacy-color-f3effc: #f3effc;
   --om-legacy-color-f3f7fd: #f3f7fd;
-  --om-legacy-color-f3f8ff: #f3f8ff;
   --om-legacy-color-f44336: #f44336;
-  --om-legacy-color-f4f0fd: #f4f0fd;
   --om-legacy-color-f4f7f9: #f4f7f9;
   --om-legacy-color-f4f7ff: #f4f7ff;
   --om-legacy-color-f5c6cb: #f5c6cb;
@@ -943,7 +930,6 @@
   --om-radius-999: 999px;
 
   /* Extended font sizes — off-scale values in use. */
-  --om-font-size-8: 8px;
   --om-font-size-9: 9px;
   --om-font-size-10: 10px;
   --om-font-size-11: 11px;
@@ -952,7 +938,6 @@
   --om-font-size-13: 13px;
   --om-font-size-15: 15px;
   --om-font-size-15_2: 15.2px;
-  --om-font-size-22: 22px;
   --om-font-size-32: 32px;
   --om-font-size-55: 55px;
 
@@ -969,10 +954,8 @@
   --om-z-20: 20;
   --om-z-50: 50;
   --om-z-400: 400;
-  --om-z-900: 900;
   --om-z-999: 999;
   --om-z-1001: 1001;
-  --om-z-1500: 1500;
   --om-z-9001: 9001;
   --om-z-9999: 9999;
 

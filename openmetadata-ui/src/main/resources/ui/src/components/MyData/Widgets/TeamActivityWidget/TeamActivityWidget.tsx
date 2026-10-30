@@ -18,21 +18,20 @@ import type { TFunction } from 'i18next';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { EntityTabs } from '../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import { getMyActivityFeed } from '../../../../rest/activityAPI';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import { getUserPath } from '../../../../utils/RouterUtils';
 import { ActivitySentence } from '../Common/TopicWidget/activityVerb';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import {
   TopicEmptyStateConfig,
+  TopicIconTone,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
+import { useTeamActivityPath } from './useTeamActivityPath';
 
 export const TEAM_ACTIVITY_QUERY_KEY = [
   'landingPage',
@@ -51,9 +50,9 @@ const MAX_VISIBLE_ROWS = 6;
  */
 export const TEAM_ACTIVITY_COUNT_CAP = 20;
 
-const TONE = {
+const TONE: TopicIconTone = {
   icon: Teams,
-  tile: 'tw:bg-utility-gray-100 tw:text-utility-gray-700',
+  color: 'gray',
 };
 
 const fetchTeamActivity = async (): Promise<ActivityEvent[]> => {
@@ -83,7 +82,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const currentUser = useApplicationStore((state) => state.currentUser);
+  const teamActivityPath = useTeamActivityPath();
   const { data, isError, isPending, refetch } = useQuery<ActivityEvent[]>({
     queryFn: fetchTeamActivity,
     queryKey: TEAM_ACTIVITY_QUERY_KEY,
@@ -121,11 +120,9 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
     <TopicCard
       action={{
         label: t('label.view-all-entity', { entity: t('label.activity') }),
-        onPress: () =>
-          navigate(
-            getUserPath(currentUser?.name ?? '', EntityTabs.ACTIVITY_FEED)
-          ),
+        onPress: () => navigate(teamActivityPath),
       }}
+      bodyClassName="tw:pt-3"
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
@@ -164,7 +161,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
 
             return (
               <li
-                className="tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:py-3"
+                className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3 tw:first:pt-0"
                 data-testid={`team-activity-${event.id}`}
                 key={event.id}>
                 <Avatar

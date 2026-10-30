@@ -24,7 +24,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.migration.utils.FlywayMigrationFile;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.migration.utils.SqlUnit;
 
 class MigrationWorkflowReprocessingTest {
 
@@ -420,17 +420,17 @@ class MigrationWorkflowReprocessingTest {
     FlywayMigrationFile original =
         new FlywayMigrationFile(sqlFile.toFile(), migrationDAO, ConnectionType.MYSQL, config);
 
-    original.getSchemaChanges().add("CREATE TABLE test (id INT)");
-    original.getPostDDLScripts().add("ALTER TABLE test ADD INDEX idx_id (id)");
+    original.getSchemaChanges().add(SqlUnit.of("CREATE TABLE test (id INT)"));
+    original.getPostDDLScripts().add(SqlUnit.of("ALTER TABLE test ADD INDEX idx_id (id)"));
 
     MigrationFile copy = original.copyWithReprocessing(true);
 
     assertInstanceOf(FlywayMigrationFile.class, copy);
     assertTrue(copy.isReprocessing());
     assertEquals(1, copy.getSchemaChanges().size());
-    assertEquals("CREATE TABLE test (id INT)", copy.getSchemaChanges().get(0));
+    assertEquals("CREATE TABLE test (id INT)", copy.getSchemaChanges().get(0).text());
     assertEquals(1, copy.getPostDDLScripts().size());
-    assertEquals("ALTER TABLE test ADD INDEX idx_id (id)", copy.getPostDDLScripts().get(0));
+    assertEquals("ALTER TABLE test ADD INDEX idx_id (id)", copy.getPostDDLScripts().get(0).text());
     assertFalse(original.isReprocessing());
   }
 
@@ -450,11 +450,11 @@ class MigrationWorkflowReprocessingTest {
 
     // The parser returns the parsed SQL — compute checksums from what the parser actually produces
     // Both statements are new (no prior runs), so both appear
-    List<String> parsed = file.getSchemaChanges();
+    List<SqlUnit> parsed = file.getSchemaChanges();
     assertEquals(2, parsed.size());
 
     // Now test with day1's parsed SQL marked as already ran
-    String day1ParsedChecksum = EntityUtil.hash(parsed.get(0));
+    String day1ParsedChecksum = parsed.get(0).checksum();
     when(migrationDAO.checkIfQueryPreviouslyRan(day1ParsedChecksum)).thenReturn(day1Sql);
 
     // Re-create and re-parse to simulate next run

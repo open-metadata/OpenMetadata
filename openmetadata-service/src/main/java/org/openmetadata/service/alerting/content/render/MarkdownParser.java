@@ -15,7 +15,6 @@ public final class MarkdownParser {
   private MarkdownParser() {}
 
   private static final Parser PARSER;
-  private static final int MAX_INPUT_LENGTH = 50_000;
 
   static {
     List<Extension> extensions =
@@ -29,12 +28,25 @@ public final class MarkdownParser {
       return PARSER.parse("");
     }
 
-    if (markdown.length() > MAX_INPUT_LENGTH) {
+    if (markdown.length() > RenderLimits.MAX_MARKDOWN_CHARS) {
       LOG.warn("Markdown input too large: {} characters", markdown.length());
-      throw new IllegalArgumentException(
-          "Markdown content exceeds maximum length of " + MAX_INPUT_LENGTH);
+      throw new RenderBudgetExceededException(
+          "Markdown content exceeds maximum length of " + RenderLimits.MAX_MARKDOWN_CHARS);
     }
+    requireTableCellsWithinBudget(markdown);
 
     return PARSER.parse(markdown);
+  }
+
+  // A table pads every row to its header's column count, so a wide header over many short rows
+  // parses into far more cells than the text holds.
+  private static void requireTableCellsWithinBudget(String markdown) {
+    long cells = TableCells.in(markdown);
+    if (cells > RenderLimits.MAX_TABLE_CELLS) {
+      throw new RenderBudgetExceededException(
+          String.format(
+              "Markdown tables of up to %d cells exceed the render budget of %d cells",
+              cells, RenderLimits.MAX_TABLE_CELLS));
+    }
   }
 }

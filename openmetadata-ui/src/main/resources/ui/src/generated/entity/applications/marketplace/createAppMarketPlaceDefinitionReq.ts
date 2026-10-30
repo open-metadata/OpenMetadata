@@ -406,6 +406,12 @@ export interface CollateAIAppConfig {
      */
     testCaseResultsRetentionPeriod?: number;
     /**
+     * Enter the retention period in days for the run history of governance workflows. A
+     * finished run older than this is deleted with its stages, but the latest run of each
+     * workflow for every entity is always kept. Use 0 to retain the history forever.
+     */
+    workflowInstanceRetentionPeriod?: number;
+    /**
      * Enter the retention period in days for automation Workflows: the short-lived records left
      * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
      * forever.
@@ -1397,7 +1403,8 @@ export interface CreateEventSubscription {
      */
     alertType: AlertType;
     /**
-     * Maximum number of events sent in a batch (Default 10).
+     * Maximum number of events sent in a batch, from 1 to 1000 (Default 10). An alert stored
+     * past 1000 keeps its value but cannot grow.
      */
     batchSize?: number;
     /**
@@ -1412,7 +1419,8 @@ export interface CreateEventSubscription {
      */
     description?: string;
     /**
-     * Subscription Config.
+     * Subscription Config. At most 50 destinations; an alert stored with more keeps them but
+     * cannot add one.
      */
     destinations?: Destination[];
     /**

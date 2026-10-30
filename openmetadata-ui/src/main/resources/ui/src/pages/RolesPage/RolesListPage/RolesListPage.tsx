@@ -68,7 +68,6 @@ import {
 } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './roles-list.less';
 
 const RolesListPage = () => {
   const navigate = useNavigate();
@@ -116,7 +115,7 @@ const RolesListPage = () => {
         GlobalSettingsMenuCategory.ACCESS,
         t('label.role-plural').toString()
       ),
-    []
+    [t]
   );
 
   const columns: ColumnsType<Role> = useMemo(() => {
@@ -135,7 +134,7 @@ const RolesListPage = () => {
           </Link>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<Role>(),
       {
         title: t('label.policy-plural').toString(),
         dataIndex: 'policies',
@@ -185,7 +184,7 @@ const RolesListPage = () => {
                   </AriaButton>
                   <Popover
                     arrow
-                    containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
+                    containerClassName="tw:w-40 tw:px-4 tw:py-3"
                     placement="bottom">
                     <Box
                       inline
@@ -255,27 +254,30 @@ const RolesListPage = () => {
         },
       },
     ];
-  }, []);
+  }, [deleteRolePermission, t, viewPolicyPermission]);
 
-  const fetchRoles = async (paging?: Partial<Paging>) => {
-    setIsLoading(true);
-    try {
-      const data = await getRoles(
-        'policies',
-        paging?.after,
-        paging?.before,
-        undefined,
-        pageSize
-      );
+  const fetchRoles = useCallback(
+    async (paging?: Partial<Paging>) => {
+      setIsLoading(true);
+      try {
+        const data = await getRoles(
+          'policies',
+          paging?.after,
+          paging?.before,
+          undefined,
+          pageSize
+        );
 
-      setRoles(data.data || []);
-      handlePagingChange(data.paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setRoles(data.data || []);
+        handlePagingChange(data.paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [handlePagingChange, pageSize]
+  );
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchRoles();
@@ -321,7 +323,7 @@ const RolesListPage = () => {
     } else {
       fetchRoles();
     }
-  }, [pageSize, pagingCursor]);
+  }, [fetchRoles, pagingCursor]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.role-plural').toString()}>

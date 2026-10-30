@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { AuthProvider } from '../../../../../../generated/settings/settings';
+import { generateRandomPwd } from '../../../../../../rest/auth-API';
 import { createUser } from '../../../../../../rest/userAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import MembersCreateUserForm from './MembersCreateUserForm';
@@ -25,9 +33,11 @@ jest.mock('react-i18next', () => {
   return { useTranslation: () => ({ t }) };
 });
 
+let mockAuthConfig: { provider?: AuthProvider } = {};
+
 jest.mock('../../../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
-    authConfig: {},
+    authConfig: mockAuthConfig,
     setInlineAlertDetails: jest.fn(),
   }),
 }));
@@ -162,5 +172,45 @@ describe('MembersCreateUserForm', () => {
     fireEvent.click(screen.getByTestId('save-user'));
 
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+  });
+
+  it('keeps Save disabled until the generated password has loaded', async () => {
+    mockAuthConfig = { provider: AuthProvider.Basic };
+    let resolvePassword: (password: string) => void = jest.fn();
+    (generateRandomPwd as jest.Mock).mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        resolvePassword = resolve;
+      })
+    );
+    (createUser as jest.Mock).mockClear().mockResolvedValueOnce({ id: '3' });
+
+    try {
+      render(<MembersCreateUserForm isAdmin onNavigate={jest.fn()} />);
+
+      const emailInput = (await screen.findByTestId('email')).querySelector(
+        'input'
+      ) as HTMLInputElement;
+      fireEvent.change(emailInput, { target: { value: 'early@example.com' } });
+      const save = screen.getByTestId('save-user');
+      fireEvent.click(save);
+
+      expect(save).toBeDisabled();
+      expect(createUser).not.toHaveBeenCalled();
+
+      await act(async () => resolvePassword('Gen3rated!'));
+      await waitFor(() => expect(save).toBeEnabled());
+      fireEvent.click(save);
+
+      await waitFor(() => expect(createUser).toHaveBeenCalledTimes(1));
+
+      expect((createUser as jest.Mock).mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          password: 'Gen3rated!',
+          confirmPassword: 'Gen3rated!',
+        })
+      );
+    } finally {
+      mockAuthConfig = {};
+    }
   });
 });

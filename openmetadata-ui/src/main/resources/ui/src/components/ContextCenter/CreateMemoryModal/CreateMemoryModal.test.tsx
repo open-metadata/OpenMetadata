@@ -89,22 +89,6 @@ jest.mock(
   () => jest.fn(() => <div data-testid="data-asset-select-list" />)
 );
 
-jest.mock('antd', () => ({
-  ConfigProvider: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  )),
-  Form: Object.assign(
-    jest.fn(({ children }: { children: React.ReactNode }) => (
-      <form>{children}</form>
-    )),
-    {
-      Item: jest.fn(({ children }: { children: React.ReactNode }) => (
-        <>{children}</>
-      )),
-    }
-  ),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   Alert: jest.fn(({ title }: { title: string }) => (
     <div role="alert">{title}</div>
@@ -385,6 +369,39 @@ describe('CreateMemoryModal', () => {
     fireEvent.click(termLink);
 
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not offer derived-term navigation while the memory is being edited', () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'monthlyRecurringRevenue',
+      title: 'Monthly recurring revenue',
+      memory: 'Recurring subscription revenue each month.',
+      derivedEntities: [
+        {
+          id: 'term-id',
+          type: 'glossaryTerm',
+          name: 'monthly_recurring_revenue',
+          displayName: 'Monthly recurring revenue',
+          fullyQualifiedName: 'subscription_metrics.monthly_recurring_revenue',
+        },
+      ],
+    } as ContextMemory;
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} canEdit memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    const derivedTermSection = screen.getByTestId('memory-derived-term');
+
+    expect(derivedTermSection).toHaveTextContent('Monthly recurring revenue');
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Monthly recurring revenue'));
+
+    expect(defaultProps.onClose).not.toHaveBeenCalled();
   });
 
   it('shows no derived term section when no glossary term came from the memory', () => {

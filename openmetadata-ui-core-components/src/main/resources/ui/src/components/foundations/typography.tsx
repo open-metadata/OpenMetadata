@@ -68,8 +68,10 @@ type TypographyWeight = 'regular' | 'medium' | 'semibold' | 'bold';
  * Semantic text color, mirroring antd Typography's `type` prop
  * ("secondary" | "success" | "warning" | "danger") so migrated call sites
  * have a first-class equivalent instead of a per-site `className` override.
+ * `brand` is link-coloured text; inside a link it keeps a truncated name, and
+ * its "…", in the link colour the `prose` wrapper would otherwise reset.
  */
-type TypographyColor = 'secondary' | 'success' | 'warning' | 'danger';
+type TypographyColor = 'secondary' | 'success' | 'warning' | 'danger' | 'brand';
 
 type EllipsisRows = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
@@ -190,6 +192,7 @@ const colorClasses: Record<TypographyColor, string> = {
   success: 'tw:text-success-primary',
   warning: 'tw:text-warning-primary',
   danger: 'tw:text-error-primary',
+  brand: 'tw:text-brand-secondary',
 };
 
 export const Typography = forwardRef<HTMLElement, Omit<TypographyProps, 'ref'>>(

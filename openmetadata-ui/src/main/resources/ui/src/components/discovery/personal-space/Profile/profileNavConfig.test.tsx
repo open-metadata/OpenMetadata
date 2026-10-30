@@ -17,6 +17,10 @@ jest.mock('./ProfileDetailsPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('./ProfileTabPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 jest.mock('./components/AccessTokenPanel', () => ({
   __esModule: true,
   default: () => null,
@@ -145,16 +149,65 @@ describe('profileNavConfig', () => {
     );
   });
 
-  it('lists Applications under Features for users who can view apps', () => {
-    const applications = FEATURES_NAV_ITEMS.find(
-      (item) => item.id === 'applications'
+  it('keeps Applications to admins, as classic does', () => {
+    const viewAll = { all: { ViewAll: true } } as unknown as UIPermission;
+    const item = FEATURES_NAV_ITEMS.find(
+      (navItem) => navItem.id === 'applications'
     );
+
+    expect(item?.isVisible?.(viewAll, false)).toBeFalsy();
+    expect(item?.isVisible?.({} as UIPermission, true)).toBe(true);
+  });
+
+  it.each([
+    [{ type: { ViewAll: true } }, true],
+    [{ table: { ViewAll: true } }, false],
+  ])(
+    'shows Custom Properties to a non-admin by type view permission (%j)',
+    (permissions, visible) => {
+      expect(
+        Boolean(
+          getProfileNavItem('custom-properties').isVisible?.(
+            permissions as unknown as UIPermission,
+            false
+          )
+        )
+      ).toBe(visible);
+    }
+  );
+
+  // The settings surfaces behind these tabs are admin-only, whatever view
+  // permissions a non-admin holds (ADR:2026-10-21-settings-pages-are-classic-only).
+  it.each([
+    ['access-control', ResourceEntity.ROLE],
+    ['access-control', ResourceEntity.POLICY],
+    ['bots', ResourceEntity.BOT],
+  ])(
+    'hides %s from a non-admin even with %s view permission',
+    (id, resource) => {
+      const item = getProfileNavItem(id as never);
+      const canView = {
+        [resource]: { ViewAll: true },
+      } as unknown as UIPermission;
+
+      expect(item.id).toBe(id);
+      expect(item.isVisible?.(canView, false)).toBe(false);
+      expect(item.isVisible?.({} as UIPermission, true)).toBe(true);
+    }
+  );
+
+  // As in classic, Members opens to anyone who may view teams or users.
+  it.each([
+    [ResourceEntity.TEAM, true],
+    [ResourceEntity.USER, true],
+    [ResourceEntity.ROLE, false],
+  ])('shows members to a non-admin with %s view: %s', (resource, visible) => {
     const canView = {
-      [ResourceEntity.APPLICATION]: { ViewAll: true },
+      [resource]: { ViewAll: true },
     } as unknown as UIPermission;
 
-    expect(applications?.group).toBe('features');
-    expect(applications?.isVisible?.(canView, false)).toBe(true);
-    expect(applications?.isVisible?.({} as UIPermission, false)).toBeFalsy();
+    expect(getProfileNavItem('members').isVisible?.(canView, false)).toBe(
+      visible
+    );
   });
 });

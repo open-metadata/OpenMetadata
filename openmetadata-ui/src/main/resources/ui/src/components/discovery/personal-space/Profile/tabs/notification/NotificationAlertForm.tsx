@@ -257,10 +257,11 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   return (
     <Box className="tw:flex tw:flex-col tw:h-full" direction="col">
       <Box className="tw:flex-1 tw:overflow-y-auto tw:px-8" direction="col">
-        <Box className="tw:w-1/2" direction="col">
+        <Box className="tw:max-w-[50%] tw:w-full tw:mx-auto" direction="col">
           <AlertAiForm
             alert={alert}
             fieldDocDisplay="popover"
+            fieldDocVariant="muted"
             formId={ALERT_AI_FORM_MODAL_ID}
             inlineAlert={
               inlineAlertDetails

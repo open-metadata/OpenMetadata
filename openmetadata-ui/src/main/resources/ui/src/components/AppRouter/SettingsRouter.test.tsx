@@ -17,27 +17,6 @@ import { AuthProvider } from '../../generated/settings/settings';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import SettingsRouter from './SettingsRouter';
 
-let mockIsAiMode = false;
-
-jest.mock('../../hooks/useAppMode', () => ({
-  ...jest.requireActual('../../hooks/useAppMode'),
-  useIsAiMode: () => mockIsAiMode,
-}));
-
-jest.mock('../observability/Alerts/AlertsPage', () => ({
-  __esModule: true,
-  default: ({ kind }: { kind: { alertType: string } }) => (
-    <div>AI AlertsPage {kind.alertType}</div>
-  ),
-}));
-
-jest.mock('../observability/Alerts/AlertDetailsPage', () => ({
-  __esModule: true,
-  default: ({ kind }: { kind: { alertType: string } }) => (
-    <div>AI AlertDetailsPage {kind.alertType}</div>
-  ),
-}));
-
 jest.mock('../../pages/AddObservabilityPage/AddObservabilityPage', () => ({
   __esModule: true,
   default: jest.fn().mockReturnValue(<div>AddNotificationPage</div>),
@@ -448,36 +427,6 @@ describe('SettingsRouter', () => {
 
     expect(await screen.findByText('AlertDetailsPage')).toBeInTheDocument();
   });
-
-  describe('in AI mode', () => {
-    beforeEach(() => {
-      mockIsAiMode = true;
-    });
-
-    afterEach(() => {
-      mockIsAiMode = false;
-    });
-
-    it('renders the AI alerts page for the notification alert list', async () => {
-      renderAtSettingsPath(ROUTES.NOTIFICATION_ALERT_LIST);
-
-      expect(
-        await screen.findByText('AI AlertsPage Notification')
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText('NotificationListPage')
-      ).not.toBeInTheDocument();
-    });
-
-    it('renders the AI alert details page for a notification alert', async () => {
-      renderAtSettingsPath(ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB);
-
-      expect(
-        await screen.findByText('AI AlertDetailsPage Notification')
-      ).toBeInTheDocument();
-      expect(screen.queryByText('AlertDetailsPage')).not.toBeInTheDocument();
-    });
-  });
 });
 
 // Mounts a sibling `/404` route so a guard's redirect lands somewhere assertable, rather than
@@ -607,4 +556,15 @@ describe('SettingsRouter login configuration routes', () => {
       expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
     }
   );
+});
+
+describe('SettingsRouter unknown routes', () => {
+  // Bots live at /bots/<name>, so /settings/bots/<name> matches no settings
+  // route and used to render an empty page.
+  it('treats an unknown settings path as not found', async () => {
+    renderAt('/settings/bots/ingestion-bot');
+
+    expect(await screen.findByText('NotFound')).toBeInTheDocument();
+    expect(screen.queryByText('BotsPageV1')).not.toBeInTheDocument();
+  });
 });

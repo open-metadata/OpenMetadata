@@ -165,7 +165,7 @@ const ArchiveView: FC<ArchiveViewProps> = ({
       <div className="tw:relative tw:flex-1 tw:min-h-0">
         <NoDataPlaceholder
           description={t('message.archived-items-appear-here')}
-          icon={<ArchiveIcon className="tw:text-utility-gray-600" />}
+          icon={<ArchiveIcon />}
           title={t('label.no-archived-item-plural-yet')}
         />
       </div>

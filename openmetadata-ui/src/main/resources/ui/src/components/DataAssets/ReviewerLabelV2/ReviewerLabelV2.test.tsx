@@ -23,7 +23,7 @@ import { ReviewerLabelV2 } from './ReviewerLabelV2';
 // hatch, not an oversight.
 
 let mockContext: {
-  data: { id: string; reviewers: unknown[] };
+  data: { id: string; reviewers: unknown[]; deleted?: boolean };
   onUpdate: jest.Mock;
   permissions: OperationPermission;
   isVersionView: boolean;
@@ -80,6 +80,15 @@ describe('ReviewerLabelV2 permissions', () => {
       EditAll: true,
       EditReviewers: false,
     });
+
+    render(<ReviewerLabelV2 />);
+
+    expect(screen.queryByTestId('Add')).not.toBeInTheDocument();
+  });
+
+  it('hides the add-reviewer affordance on a soft-deleted entity', () => {
+    setMockContext({ ...ENTITY_PERMISSIONS, EditReviewers: true });
+    mockContext.data.deleted = true;
 
     render(<ReviewerLabelV2 />);
 

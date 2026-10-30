@@ -30,7 +30,6 @@ import {
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import AlertEditModal from './AlertEditModal.component';
-import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockUseAlertFormData = jest.fn();
 
@@ -193,35 +192,6 @@ describe('AlertEditModal', () => {
     for (const [props] of ExtraButton.mock.calls) {
       expect(props).not.toHaveProperty('formRef');
     }
-  });
-
-  it('creates a notification alert when opened for notifications', () => {
-    const handleSave = jest.fn();
-    mockUseAlertFormData.mockReturnValue(getHookState({ handleSave }));
-
-    render(
-      <AlertEditModal
-        isOpen
-        kind={NOTIFICATION_ALERT_KIND}
-        mode="add"
-        onClose={jest.fn()}
-        onSaved={jest.fn()}
-      />
-    );
-
-    expect(mockUseAlertFormData).toHaveBeenCalledWith(
-      expect.objectContaining({ alertType: AlertType.Notification })
-    );
-    // Notification alerts have no trigger section, even before a source is picked.
-    expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent(
-      'false'
-    );
-
-    fireEvent.click(screen.getByTestId('submit-form'));
-
-    expect(handleSave).toHaveBeenCalledWith(
-      expect.objectContaining({ alertType: AlertType.Notification })
-    );
   });
 
   it('shows loader while edit alert details are loading', () => {

@@ -42,6 +42,7 @@ interface ActivityFeedListV1Props {
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: ReactNode;
+  emptyPlaceholderDescription?: ReactNode;
   componentsVisibility?: {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
@@ -68,6 +69,7 @@ const ActivityFeedListV1New = ({
   isForFeedTab = false,
   isFullWidth,
   emptyPlaceholderText,
+  emptyPlaceholderDescription,
   selectedThread,
   selectedActivity,
   onAfterClose,
@@ -219,8 +221,9 @@ const ActivityFeedListV1New = ({
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={emptyPlaceholderText}
+            description={emptyPlaceholderDescription}
             icon={<FeedEmptyIcon height={140} width={140} />}
+            title={emptyPlaceholderText}
           />
         </div>
       </div>

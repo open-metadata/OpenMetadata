@@ -1,6 +1,6 @@
 # Core Dropdown menus cap their own height and scroll
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-10-22-dropdown-popover-scrolls-at-the-space-on-screen
 - **Revisions:** v1 2026-10-21 (initial)
 - **Deciders:** UI team
 - **Guard:** reviewer

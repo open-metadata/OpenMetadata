@@ -220,11 +220,11 @@ const AuthMechanismForm: FC<Props> = ({
         inline
         align="center"
         className="layout-space layout-space-horizontal w-full justify-end"
-        gap={1}
+        gap={3}
         itemClassName="layout-space-item">
         {!isEmpty(authenticationMechanism) && (
           <Button
-            color="link-color"
+            color="secondary"
             data-testid="cancel-edit"
             onClick={onCancel}>
             {t('label.cancel')}

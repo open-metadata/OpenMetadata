@@ -118,7 +118,14 @@ export const useListSearchInput = ({
     onSearchChangeRef.current('');
   }, [debouncedSearch]);
 
-  const searchInputProps = useMemo(
+  const searchInputProps = useMemo<{
+    icon: typeof Search;
+    placeholder: string;
+    value: string;
+    inputClassName: string | undefined;
+    trailingSlot: JSX.Element | undefined;
+    onChange: (value: string) => void;
+  }>(
     () => ({
       icon: Search,
       placeholder: t('label.search'),

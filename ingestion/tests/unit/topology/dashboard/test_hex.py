@@ -41,6 +41,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import (
@@ -173,6 +174,7 @@ class TestHexSource(TestCase):
 
         # Initialize required attributes
         self.hex_source.config = self.config
+        self.hex_source.config.serviceName = "mock_hex"
         self.hex_source.metadata = self.metadata
         self.hex_source.service_connection = MagicMock()
         self.hex_source.source_config = MagicMock()
@@ -189,12 +191,18 @@ class TestHexSource(TestCase):
         self.hex_source.client = MagicMock()
         self.hex_source.client.get_projects = MagicMock(return_value=[SAMPLE_PROJECT, SAMPLE_PROJECT_2])
         self.hex_source.client.get_project_url = MagicMock(
-            return_value="https://app.hex.tech/app/projects/proj_123456789"
+            return_value="https://app.hex.tech/ws-uuid/app/proj_123456789"
         )
 
-        # Initialize lineage components
+        # Initialize lineage components. The cells API is unavailable here, so
+        # lineage falls back to the warehouse queries.
         self.hex_source.hex_project_lineage = {}
         self.hex_source.query_fetcher = MagicMock()
+        self.hex_source.client.get_project_cells = MagicMock(return_value=None)
+        self.hex_source._cell_lineage = None
+        self.hex_source._kept_data_model = None
+        self.hex_source._data_connections = None
+        self.hex_source._data_connections_denied = False
 
         # Mock register_record
         self.hex_source.register_record = MagicMock()
@@ -319,10 +327,21 @@ class TestHexSource(TestCase):
         )
         self.assertEqual(
             dashboard_request.sourceUrl,
-            SourceUrl("https://app.hex.tech/app/projects/proj_123456789"),
+            SourceUrl("https://app.hex.tech/ws-uuid/app/proj_123456789"),
         )
         self.assertEqual(dashboard_request.tags, mock_tag_labels)
         self.assertEqual(dashboard_request.owners, mock_owner_ref)
+
+    def test_yield_dashboard_without_url(self):
+        """The dashboard is still ingested, without a link, when no URL can be built"""
+        self.hex_source.client.get_project_url = MagicMock(return_value=None)
+        self.hex_source._get_dashboard_tags = MagicMock(return_value=None)
+        self.hex_source.get_owner_ref = MagicMock(return_value=None)
+
+        results = list(self.hex_source.yield_dashboard(SAMPLE_PROJECT))
+
+        self.assertIsNone(results[0].left)
+        self.assertIsNone(results[0].right.sourceUrl)
 
     def test_yield_dashboard_error(self):
         """Test dashboard creation with error"""
@@ -357,6 +376,7 @@ class TestHexSource(TestCase):
         self.assertIsInstance(lineage_request, AddLineageRequest)
         self.assertEqual(lineage_request.edge.fromEntity.id, EXAMPLE_TABLE.id)
         self.assertEqual(lineage_request.edge.toEntity.id, EXAMPLE_DASHBOARD.id)
+        self.assertEqual(lineage_request.edge.lineageDetails.source, LineageSource.DashboardLineage)
 
     def test_yield_dashboard_lineage_no_data(self):
         """Test lineage when no lineage data exists"""

@@ -386,8 +386,10 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
         };
       });
 
-    const glossaryTermValue: TagLabel[] = currentTags.filter(
-      (tag: TagLabel) => tag.source === TagSource.Glossary
+    // Local, not derived from `currentTags`: with several rows selected that is
+    // always empty, so a controlled picker would drop every pick.
+    const [glossaryTermValue, setGlossaryTermValue] = useState<TagLabel[]>(() =>
+      currentTags.filter((tag: TagLabel) => tag.source === TagSource.Glossary)
     );
 
     return (
@@ -531,6 +533,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
                 labelType: term.labelType ?? LabelType.Manual,
                 state: term.state ?? State.Confirmed,
               }));
+              setGlossaryTermValue(newTerms);
               selectedRowsData.forEach((selectedRow) => {
                 const rowId = selectedRow.id;
                 const foundRow = allRows.find(
@@ -2589,7 +2592,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   closeDrawerRef.current = closeDrawer;
-  bulkAssetsNotificationRef.current = handleBulkAssetsNotification;
+  // The replayed early messages are fire-and-forget, so a rejection is surfaced here.
+  bulkAssetsNotificationRef.current = (message: string) => {
+    handleBulkAssetsNotification(message).catch(() =>
+      showErrorToast(t('server.entity-updating-error'))
+    );
+  };
   openDrawerRef.current = openDrawer;
 
   // Automatically turn off "View Selected" when selection is cleared

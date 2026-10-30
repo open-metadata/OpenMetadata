@@ -13,14 +13,10 @@
 
 import {
   Box,
-  Button,
-  Card,
   FieldTypes,
   FormField,
   getField,
   HintText,
-  HookForm,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
@@ -30,10 +26,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
-import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -53,12 +45,8 @@ import {
 } from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import i18n from '../../../utils/i18next/LocalUtil';
 import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
-import {
-  fetchEntityDetail,
-  getBreadCrumbList,
-} from '../../../utils/TaskEntityFetchUtils';
+import { fetchEntityDetail } from '../../../utils/TaskEntityFetchUtils';
 import {
   getColumnObjectByPath,
   getTagTaskFieldPath,
@@ -74,6 +62,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
+import TaskFormLayout from '../shared/TaskFormLayout';
 import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -123,8 +112,6 @@ const UpdateTag = () => {
       }),
     [value, entityType, field, entityData]
   );
-
-  const back = () => navigate(-1);
 
   const columnObject = useMemo(() => {
     const fieldPathSegments = sanitizeValue
@@ -245,130 +232,58 @@ const UpdateTag = () => {
   }
 
   return (
-    <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 700,
-        flex: 0.6,
-        wrapInCard: false,
-        allowScroll: true,
-        children: (
-          <Card className="tw:mx-auto tw:max-w-3xl">
-            <Card.Content>
-              <Box direction="col" gap={4}>
-                <TitleBreadcrumb
-                  titleLinks={[
-                    ...getBreadCrumbList(entityData, entityType),
-                    {
-                      name: t('label.create-entity', {
-                        entity: t('label.task'),
-                      }),
-                      activeTitle: true,
-                      url: '',
-                    },
-                  ]}
-                />
-                <div key="update-tags">
-                  <Typography as="p" data-testid="form-title" size="text-md">
-                    {t('label.create-entity', {
-                      entity: t('label.task'),
-                    })}
-                  </Typography>
-                  <HookForm
-                    className="tw:flex tw:flex-col tw:gap-6"
-                    data-testid="form-container"
-                    form={form}
-                    onSubmit={form.handleSubmit(onCreateTask)}>
-                    {getField({
-                      name: 'title',
-                      type: FieldTypes.TEXT,
-                      label: t('label.task-entity', {
-                        entity: t('label.title'),
-                      }),
-                      props: { 'data-testid': 'title', isDisabled: true },
-                    })}
-                    <FormField
-                      control={form.control}
-                      name="assignees"
-                      rules={{
-                        required: t('message.field-text-is-required', {
-                          fieldText: t('label.assignee-plural'),
-                        }),
-                      }}>
-                      {({ field, fieldState }) => (
-                        <Box data-testid="assignees" direction="col" gap={1}>
-                          <Assignees
-                            isRequired
-                            isInvalid={fieldState.invalid}
-                            label={t('label.assignee-plural')}
-                            options={options}
-                            value={field.value}
-                            onBlur={field.onBlur}
-                            onChange={(values) => {
-                              field.onChange(values);
-                              setAssignees(values);
-                            }}
-                            onSearch={onSearch}
-                          />
-                          {fieldState.error?.message && (
-                            <HintText isInvalid>
-                              {fieldState.error.message}
-                            </HintText>
-                          )}
-                        </Box>
-                      )}
-                    </FormField>
-                    <TaskPayloadSchemaFields
-                      payload={payload}
-                      schema={taskFormSchema?.formSchema}
-                      uiSchema={taskFormSchema?.uiSchema}
-                      onChange={setPayload}
-                    />
-                    <Box data-testid="cta-buttons" gap={4} justify="end">
-                      <Button
-                        color="link-gray"
-                        data-testid="cancel-btn"
-                        onPress={back}>
-                        {t('label.back')}
-                      </Button>
-                      <Button
-                        data-testid="submit-tag-request"
-                        isLoading={isLoading}
-                        type="submit">
-                        {t('label.save')}
-                      </Button>
-                    </Box>
-                  </HookForm>
-                </div>
-              </Box>
-            </Card.Content>
-          </Card>
-        ),
-      }}
-      pageTitle={t('label.update-entity', {
-        entity: i18n.t('label.tag'),
+    <TaskFormLayout
+      entityData={entityData}
+      entityType={entityType}
+      form={form}
+      isLoading={isLoading}
+      submitLabel={t('label.save')}
+      submitTestId="submit-tag-request"
+      onSubmit={form.handleSubmit(onCreateTask)}>
+      {getField({
+        name: 'title',
+        type: FieldTypes.TEXT,
+        label: t('label.task-entity', {
+          entity: t('label.title'),
+        }),
+        props: { 'data-testid': 'title', isDisabled: true },
       })}
-      secondPanel={{
-        wrapInCard: false,
-        className: 'content-resizable-panel-container',
-        minWidth: 60,
-        flex: 0.4,
-        children: (
-          <ExploreSearchCard
-            hideBreadcrumbs
-            showTags
-            id={entityData.id ?? ''}
-            source={
-              {
-                ...entityData,
-                entityType,
-              } as SearchedDataProps['data'][number]['_source']
-            }
-          />
-        ),
-      }}
-    />
+      <FormField
+        control={form.control}
+        name="assignees"
+        rules={{
+          required: t('message.field-text-is-required', {
+            fieldText: t('label.assignee-plural'),
+          }),
+        }}>
+        {({ field, fieldState }) => (
+          <Box data-testid="assignees" direction="col" gap={1}>
+            <Assignees
+              isRequired
+              isInvalid={fieldState.invalid}
+              label={t('label.assignee-plural')}
+              options={options}
+              value={field.value}
+              onBlur={field.onBlur}
+              onChange={(values) => {
+                field.onChange(values);
+                setAssignees(values);
+              }}
+              onSearch={onSearch}
+            />
+            {fieldState.error?.message && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+      <TaskPayloadSchemaFields
+        payload={payload}
+        schema={taskFormSchema?.formSchema}
+        uiSchema={taskFormSchema?.uiSchema}
+        onChange={setPayload}
+      />
+    </TaskFormLayout>
   );
 };
 

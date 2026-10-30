@@ -131,7 +131,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
       <div className="tw:overflow-y-auto">
         <HookForm form={form}>
           <Box
-            className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0"
+            className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0 tw:mx-auto"
             data-testid="add-policy-container"
             direction="col"
             gap={5}>

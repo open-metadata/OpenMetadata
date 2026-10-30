@@ -62,6 +62,7 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
@@ -334,7 +335,7 @@ const ExploreExportScopeModal = ({
           </Dialog.Content>
           <Dialog.Footer className="tw:mt-0 tw:border-secondary tw:sm:mt-0 tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
             <Button
-              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
+              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--theme-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--theme-primary-color-hover)]"
               color="tertiary"
               data-testid="export-scope-cancel-button"
               onPress={onCancel}>
@@ -394,6 +395,8 @@ const ExploreFilterStatusRow = ({
   onEditQueryFilter,
   t,
 }: ExploreFilterStatusRowProps) => {
+  const isAiMode = useIsAiMode();
+
   return (
     <>
       {shouldShowQueryFilterChips && (
@@ -410,7 +413,8 @@ const ExploreFilterStatusRow = ({
             onRemoveBrowseLevel={handleRemoveBrowseLevel}
             onRemoveValue={handleRemoveQuickFilterValue}
           />
-          <DomainFilterChip className="tw:mt-2" />
+          {/* AI mode shows the chip in its search header. */}
+          {!isAiMode && <DomainFilterChip className="tw:mt-2" />}
         </div>
       )}
       {isElasticSearchIssue ? (
@@ -1248,7 +1252,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
-      <CoreCard className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle">
+      <CoreCard
+        className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle"
+        data-tour-step="explore-search">
         <div className="tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
           {/* Zero flex-basis: with flex-wrap, a max-content basis would place
               the sort controls on their own row before shrinking is even
@@ -1389,48 +1395,48 @@ const ExploreV1: React.FC<ExploreProps> = ({
         </div>
       </CoreCard>
 
-      <ResizableLeftPanels
-        showLearningIcon
-        className={classNames('content-height-with-resizable-panel', {
-          'filter-applied': Boolean(sqlQuery),
-        })}
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          flex: 0.2,
-          minWidth: 280,
-          title: t('label.browse-estate'),
-          titleClassName: 'tw:capitalize tw:font-medium',
-          titleContainerClassName: 'tw:items-center tw:pb-2',
-          titleStrong: false,
-          children: <div className="p-x-sm">{exploreLeftPanel}</div>,
-        }}
-        secondPanel={{
-          flex: 0.8,
-          minWidth: 800,
-          children: (
-            <ExploreResultsPanel
-              entityDetails={entityDetails}
-              firstEntity={firstEntity}
-              handleClosePanel={handleClosePanel}
-              handleExplorePageChange={handleExplorePageChange}
-              handleExplorePageSizeChange={handleExplorePageSizeChange}
-              handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-              hasActiveFilters={hasActiveFilters}
-              isElasticSearchIssue={isElasticSearchIssue}
-              loading={loading}
-              pageSize={pageSize}
-              parsedSearch={parsedSearch}
-              searchResults={searchResults}
-              selectedQuickFilters={selectedQuickFilters}
-              showRankingDetails={showRankingDetails}
-              showSummaryPanel={showSummaryPanel}
-              totalPages={totalPages}
-              totalValue={totalValue}
-              validCurrentPage={validCurrentPage}
-            />
-          ),
-        }}
-      />
+      <div className="content-height-with-resizable-panel">
+        <ResizableLeftPanels
+          showLearningIcon
+          className="tw:h-full"
+          firstPanel={{
+            className: 'content-resizable-panel-container',
+            flex: 0.2,
+            minWidth: 280,
+            title: t('label.browse-estate'),
+            titleClassName: 'tw:capitalize tw:font-medium',
+            titleContainerClassName: 'tw:items-center tw:pb-2',
+            titleStrong: false,
+            children: <div className="p-x-sm">{exploreLeftPanel}</div>,
+          }}
+          secondPanel={{
+            flex: 0.8,
+            minWidth: 800,
+            children: (
+              <ExploreResultsPanel
+                entityDetails={entityDetails}
+                firstEntity={firstEntity}
+                handleClosePanel={handleClosePanel}
+                handleExplorePageChange={handleExplorePageChange}
+                handleExplorePageSizeChange={handleExplorePageSizeChange}
+                handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                hasActiveFilters={hasActiveFilters}
+                isElasticSearchIssue={isElasticSearchIssue}
+                loading={loading}
+                pageSize={pageSize}
+                parsedSearch={parsedSearch}
+                searchResults={searchResults}
+                selectedQuickFilters={selectedQuickFilters}
+                showRankingDetails={showRankingDetails}
+                showSummaryPanel={showSummaryPanel}
+                totalPages={totalPages}
+                totalValue={totalValue}
+                validCurrentPage={validCurrentPage}
+              />
+            ),
+          }}
+        />
+      </div>
 
       {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
 

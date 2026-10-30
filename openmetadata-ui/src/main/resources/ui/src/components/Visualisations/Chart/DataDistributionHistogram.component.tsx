@@ -65,7 +65,9 @@ const DataDistributionHistogram = ({
         key: 'frequency',
         name: t('label.frequency'),
         status: 'info',
-        seriesOption: { barWidth: 22 },
+        // A cap, not a fixed width: with many bins a slot is narrower than
+        // 22px, and fixed-width bars overlapped their neighbours.
+        seriesOption: { barMaxWidth: 22 },
       },
     ],
     [t]

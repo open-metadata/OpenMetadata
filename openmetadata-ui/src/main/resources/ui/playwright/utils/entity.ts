@@ -945,7 +945,8 @@ export const updateDescriptionForChildren = async (
 // popover before the search input shows, so the open is retried.
 export const openClassificationTagPicker = async (
   page: Page,
-  trigger: Locator
+  trigger: Locator,
+  timeout?: number
 ) => {
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
@@ -953,7 +954,7 @@ export const openClassificationTagPicker = async (
   await clickUntilVisible(
     trigger,
     page.getByTestId('classification-tag-picker-search'),
-    { force: 'onRetry' }
+    { force: 'onRetry', timeout }
   );
 };
 
@@ -1063,6 +1064,7 @@ export const assignTagToChildren = async ({
   action = 'Add',
   rowSelector = 'data-row-key',
   entityEndpoint,
+  pickerTimeout,
 }: {
   page: Page;
   tag: string;
@@ -1070,13 +1072,14 @@ export const assignTagToChildren = async ({
   action?: 'Add' | 'Edit';
   rowSelector?: string;
   entityEndpoint: string;
+  pickerTimeout?: number;
 }) => {
   const trigger = page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
 
-  await openClassificationTagPicker(page, trigger);
+  await openClassificationTagPicker(page, trigger, pickerTimeout);
 
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
@@ -1169,12 +1172,14 @@ export const removeTagsFromChildren = async ({
   tags,
   rowSelector = 'data-row-key',
   entityEndpoint,
+  pickerTimeout,
 }: {
   page: Page;
   tags: string[];
   rowId: string;
   rowSelector?: string;
   entityEndpoint: string;
+  pickerTimeout?: number;
 }) => {
   for (const tag of tags) {
     const trigger = page
@@ -1183,7 +1188,7 @@ export const removeTagsFromChildren = async ({
       .getByTestId('edit-button')
       .first();
 
-    await openClassificationTagPicker(page, trigger);
+    await openClassificationTagPicker(page, trigger, pickerTimeout);
 
     const searchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
@@ -1547,11 +1552,12 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
 // screen. The nudge below resolves the scroller from this root at call time.
 const LANDING_PAGE_SCROLL_CONTAINER = '[data-testid="home-landing-page"]';
 // The standalone Following widget was folded into "Yours and followed", which
-// renders the owned and the followed assets as two columns of one card.
+// shows either the owned or the followed assets, picked by a pill above the list.
 const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.YoursAndFollowed';
 const FOLLOWING_WIDGET_BODY_SKELETON = 'topic-body-skeleton-yoursAndFollowed';
 const FOLLOWED_ASSET_LIST = 'followed-assets';
 const FOLLOWING_WIDGET_CARD = 'topic-card-yoursAndFollowed';
+const FOLLOWING_FILTER_PILL = 'yours-and-followed-filter-following';
 
 const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
@@ -1594,9 +1600,8 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   return followingWidgetPanel;
 };
 
-// Returns the followed-assets column, not the whole card: the owned column can
-// hold the same asset (following something you own is normal), and a card-wide
-// locator would then resolve to two nodes and fail strict mode on click.
+// Returns the followed-assets list, not the whole card, so callers resolve the
+// asset in the followed list specifically.
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
@@ -1609,6 +1614,14 @@ const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await expect(
     followingWidgetPanel.getByTestId(FOLLOWING_WIDGET_BODY_SKELETON)
   ).toBeHidden({ timeout: 60_000 });
+
+  // The pills are absent on the empty state (nothing owned or followed), which
+  // is a valid answer for the unfollow case; once the skeleton is gone the body
+  // has settled, so checking presence here does not race the render.
+  const followingPill = followingWidgetPanel.getByTestId(FOLLOWING_FILTER_PILL);
+  if (await followingPill.isVisible()) {
+    await followingPill.click();
+  }
 
   return followingWidgetPanel.getByTestId(FOLLOWED_ASSET_LIST);
 };
@@ -1745,76 +1758,6 @@ export const createAnnouncement = async (
   await expect(page.getByTestId(announcementContainerTestId)).toContainText(
     data.description
   );
-};
-
-export const replyAnnouncement = async (page: Page) => {
-  await page
-    .locator('[data-testid="entity-header-announcements"]')
-    .getByTestId('announcement-title-btn')
-    .click();
-
-  await page.hover(
-    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
-  );
-
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  await expect(page.getByTestId('add-reply')).toBeVisible();
-
-  await page.getByTestId('add-reply').click();
-
-  await expect(page.locator('.ql-editor')).toBeVisible();
-
-  await expect(page.locator('[data-testid="send-button"]')).toBeDisabled();
-
-  await page.fill('[data-testid="editor-wrapper"] .ql-editor', 'Reply message');
-  await page.click('[data-testid="send-button"]');
-
-  await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message');
-  await expect(page.locator('[data-testid="show-reply-thread"]')).toHaveText(
-    '1 replies'
-  );
-
-  await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-  await page.click('[data-testid="edit-message"]');
-
-  // With the edit box open there are two Quill editors on the page: the reply's
-  // edit box and the drawer's reply composer. A page-level
-  // `[data-testid="editor-wrapper"] .ql-editor` binds to whichever mounted
-  // first, so the text can land in the composer instead. The edit box then
-  // saves unchanged content, the client sends no PATCH at all, and the final
-  // assertion times out on stale text. `.is_edit_post` is set only on the edit
-  // box (FeedCardBody passes it as `editorClass`), so scope to it — and no
-  // `.first()`, so strict mode fails loudly if it ever stops being unique.
-  const replyEditor = page.locator(
-    '[data-testid="editor-wrapper"] .is_edit_post .ql-editor'
-  );
-
-  // Pre-populated with the current reply, which proves the editor is mounted
-  // and that we are addressing the edit box rather than the empty composer.
-  await expect(replyEditor).toHaveText('Reply message');
-
-  await replyEditor.fill('Reply message edited');
-  await expect(replyEditor).toHaveText('Reply message edited');
-
-  const updatedPostResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed/') &&
-      response.request().method() === 'PATCH'
-  );
-
-  await page.click('[data-testid="save-button"]');
-  await updatedPostResponse;
-
-  await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message edited');
-
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForAllLoadersToDisappear(page);
 };
 
 export const deleteAnnouncement = async (page: Page) => {
@@ -2331,7 +2274,7 @@ export const softDeleteEntity = async (
   page: Page,
   entityName: string,
   endPoint: EntityTypeEndpoint,
-  displayName: string
+  _displayName: string
 ) => {
   await deletedEntityCommonChecks({
     page,
@@ -2425,7 +2368,7 @@ export const softDeleteEntity = async (
 
 export const hardDeleteEntity = async (
   page: Page,
-  entityName: string,
+  _entityName: string,
   endPoint: EntityTypeEndpoint
 ) => {
   await clickOutside(page);

@@ -52,7 +52,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   return (
     <Box direction="col">
       {isAdding && (
-        <Card className="tw:m-4" variant="muted">
+        <Card className="tw:m-4">
           <Card.Content className="tw:flex tw:flex-col tw:gap-4">
             <Typography
               className="tw:text-primary"
@@ -154,6 +154,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
         )}
         rowKey="id"
         size="small"
+        variant="muted"
       />
     </Box>
   );

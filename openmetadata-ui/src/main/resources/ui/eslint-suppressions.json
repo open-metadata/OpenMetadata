@@ -187,11 +187,6 @@
       "count": 5
     }
   },
-  "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -205,11 +200,6 @@
   "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    }
-  },
-  "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
     }
   },
   "playwright/e2e/Features/ImpactAnalysis.spec.ts": {
@@ -362,7 +352,7 @@
   },
   "playwright/e2e/Features/Topic.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts": {
@@ -378,11 +368,6 @@
   "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
-    }
-  },
-  "playwright/e2e/Flow/IngestionBot.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/e2e/Flow/ObservabilityAlerts.spec.ts": {
@@ -575,7 +560,7 @@
   },
   "playwright/e2e/Pages/Users.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 16
+      "count": 15
     }
   },
   "playwright/e2e/Search/SearchRelevance.spec.ts": {
@@ -591,6 +576,16 @@
   "playwright/e2e/nightly/ContextCenter.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
+    }
+  },
+  "playwright/e2e/nightly/GlossaryStatusFilterLargeDataset.spec.ts": {
+    "om-playwright/no-positional-locator": {
+      "count": 2
+    }
+  },
+  "playwright/e2e/nightly/LargeGlossaryPerformance.spec.ts": {
+    "om-playwright/no-positional-locator": {
+      "count": 5
     }
   },
   "playwright/e2e/nightly/ServiceIngestion.spec.ts": {
@@ -689,7 +684,7 @@
   },
   "playwright/utils/entity.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 14
+      "count": 12
     }
   },
   "playwright/utils/entityPanel.ts": {
@@ -757,7 +752,7 @@
   },
   "playwright/utils/task.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "playwright/utils/taskWorkflow.ts": {

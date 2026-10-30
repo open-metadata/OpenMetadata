@@ -19,7 +19,6 @@ import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.util.EntityUtil;
 
 public class FlywayMigrationFile extends MigrationFile {
   private static final Pattern FLYWAY_FILE_PATTERN =
@@ -70,9 +69,9 @@ public class FlywayMigrationFile extends MigrationFile {
                 new FileSystemResource(
                     null, sqlFile.getAbsolutePath(), StandardCharsets.UTF_8, true))) {
           while (sqlIterator.hasNext()) {
-            String sqlStatement = sqlIterator.next().getSql();
-            if (!checkIfQueryPreviouslyRan(sqlStatement)) {
-              schemaChanges.add(sqlStatement);
+            SqlUnit unit = SqlUnit.of(sqlIterator.next().getSql());
+            if (!isApplied(unit)) {
+              schemaChanges.add(unit);
             }
           }
         }
@@ -161,16 +160,5 @@ public class FlywayMigrationFile extends MigrationFile {
     }
 
     return dbSpecificDir.listFiles((dir1, name) -> FLYWAY_FILE_PATTERN.matcher(name).matches());
-  }
-
-  private boolean checkIfQueryPreviouslyRan(String query) {
-    try {
-      String checksum = EntityUtil.hash(query);
-      String sqlStatement = migrationDAO.checkIfQueryPreviouslyRan(checksum);
-      return sqlStatement != null;
-    } catch (Exception e) {
-      // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
-      return false;
-    }
   }
 }

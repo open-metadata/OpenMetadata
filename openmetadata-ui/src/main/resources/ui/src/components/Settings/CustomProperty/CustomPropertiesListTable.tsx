@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   Badge,
   Box,
@@ -19,14 +20,15 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Edit05, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnSorter } from '../../../utils/EntitySortUtils';
-import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import {
@@ -110,6 +112,7 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation();
+  const actionsButtonRef = useRef<HTMLButtonElement>(null);
 
   if (!canEdit && !canDelete) {
     return null;
@@ -120,13 +123,16 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
       <Dropdown.DotsButton
         className={ACTIONS_BUTTON_CLASS}
         data-testid="property-actions"
+        ref={actionsButtonRef}
       />
       <Dropdown.Popover className="tw:w-55">
         <Dropdown.Menu
           aria-label={t('label.action-plural')}
           selectionMode="none"
           onAction={(key) =>
-            key === OPERATION.DELETE ? onDelete(property) : onEdit(property)
+            key === OPERATION.DELETE
+              ? onDelete(property, actionsButtonRef.current ?? undefined)
+              : onEdit(property)
           }>
           {canEdit && (
             <Dropdown.Item
@@ -166,6 +172,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
   canDelete,
   emptyText,
   containerClassName,
+  variant,
   'data-testid': dataTestId = 'entity-custom-properties-table',
   onEdit,
   onDelete,
@@ -188,6 +195,9 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
     [typeFilters, typeOptions]
   );
   const isFiltered = Boolean(searchText) || activeTypeFilters.length > 0;
+  const EmptyStatePlaceholder = searchText
+    ? NoSearchResultsPlaceholder
+    : NoFilteredResultsPlaceholder;
 
   const filteredProperties = useMemo(
     () =>
@@ -296,7 +306,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
       loading={isLoading}
       locale={{
         emptyText: isFiltered ? (
-          <NoDataPlaceholder
+          <EmptyStatePlaceholder
             description={t('message.try-adjusting-filter')}
             title={t('label.no-entity-found', {
               entity: t('label.property-plural'),
@@ -318,6 +328,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
         typingInterval: 300,
         onSearch: setSearchText,
       }}
+      variant={variant}
     />
   );
 };

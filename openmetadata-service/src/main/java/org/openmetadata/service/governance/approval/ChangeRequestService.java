@@ -834,8 +834,7 @@ public final class ChangeRequestService {
       EntityRepository<?> repository, UUID entityId, List<MutationOp> ops) {
     List<MutationOp> restated = ops;
     if (MutationPlanner.hasFieldChange(ops)) {
-      JsonNode current =
-          JsonUtils.valueToTree(ChangeApplyService.readCurrent(repository, entityId, ops));
+      JsonNode current = ChangeApplyService.currentTree(repository, entityId, ops);
       restated = MutationPlanner.rebase(current, ops);
     }
     return restated;

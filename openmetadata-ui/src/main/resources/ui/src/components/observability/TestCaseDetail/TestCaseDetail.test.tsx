@@ -882,6 +882,7 @@ describe('TestCaseDetail', () => {
           onRestoreEntity: handleRestore,
         })
       );
+      expect(screen.getByTestId('deleted-badge')).toBeInTheDocument();
     });
   });
 });

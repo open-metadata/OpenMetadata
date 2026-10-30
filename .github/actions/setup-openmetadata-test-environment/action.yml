@@ -8,9 +8,6 @@ inputs:
   java-version:
     description: Java Version to install
     default: '21'
-  npm-version:
-    description: NPM Version to install
-    default: 'v22.x'
   args:
     description: Arguments to pass to run_local_docker.sh
     required: false
@@ -28,7 +25,7 @@ inputs:
     required: false
     default: "true"
   fast-mode:
-    description: Restore a pre-seeded PostgreSQL/OpenSearch fixture and start the server on the host
+    description: Restore a pre-seeded Playwright fixture (PostgreSQL/OpenSearch or MySQL/Elasticsearch) and start the server on the host
     required: false
     default: "false"
   fixture-path:
@@ -79,11 +76,11 @@ runs:
     # ------------------------------------------------------------------------------
 
     # ---- Setup Node --------------------------------------------------------------
-    - name: Use Node.js ${{ inputs.npm-version }}
+    - name: Use Node.js
       if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
       with:
-        node-version: ${{ inputs.npm-version }}
+        node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
 
     - name: Install yarn
       if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
@@ -225,6 +222,19 @@ runs:
         max_attempts: 2
         retry_on: error
         command: ${{ inputs.startup-script }} ${{ inputs.args }}
+
+    # ADR:2026-10-28-playwright-fast-mode-pulls-images-outside-the-startup-budget
+    - name: Pull fast Playwright environment images
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
+      run: |
+        # Assigned rather than read through process substitution, whose exit
+        # status is lost: an unreadable fixture must fail here, not skip the pull.
+        manifest=$(tar --zstd --occurrence=1 -xOf "${{ inputs.fixture-path }}" ./fixture-manifest.json)
+        database_image=$(jq -er '.databaseImage' <<<"$manifest")
+        search_image=$(jq -er '.searchImage' <<<"$manifest")
+        timeout --signal=TERM --kill-after=30s 15m \
+          ./.github/scripts/pull_playwright_fixture_images.sh "$database_image" "$search_image"
+      shell: bash
 
     - name: Restore fast Playwright environment
       if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}

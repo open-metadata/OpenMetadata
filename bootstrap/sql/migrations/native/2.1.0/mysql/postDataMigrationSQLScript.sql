@@ -688,3 +688,56 @@ WHERE name = 'columnValuesToBeInSet'
 UPDATE test_definition
 SET json = JSON_SET(json, '$.description', 'Checks column values against an allowed set according to the matchEnum mode.')
 WHERE name = 'columnValuesToBeInSet';
+
+-- `tableCustomSQLQuery.operator` was seeded in #20307 and `partitionExpression` in #22697, but
+-- seeding only creates missing definitions (EntityRepository.initializeEntity returns early once
+-- the entity exists) — a definition record created from a pre-#20307 seed keeps neither, and no
+-- earlier migration backfilled them: the deployment then renders the Add Test Case form with no
+-- Operator to compare the query result to the threshold, and no Partition Expression for Compute
+-- Row Count. Both are appended to the migrated definition, after the `thresholdUnit` statement
+-- above, so a migrated install matches a fresh install except for these two trailing entries.
+-- Each parameter is guarded on being absent, which keeps re-runs — and every deployment that
+-- already has it — a no-op.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'operator',
+        'displayName', 'Operator',
+        'description', 'Operator to use to compare the result of the custom SQL query to the threshold.',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', JSON_ARRAY('==', '>', '>=', '<', '<=', '!=')
+    )
+)
+WHERE name = 'tableCustomSQLQuery'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"operator"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'partitionExpression',
+        'displayName', 'Partition Expression',
+        'description', 'Partition expression that will be used to compute the passed/failed row count, if compute row count is enabled.',
+        'dataType', 'STRING',
+        'required', false
+    )
+)
+WHERE name = 'tableCustomSQLQuery'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"partitionExpression"'
+  );
+
+-- Remove personal access token rows whose user no longer exists. A missing user row here always
+-- means the user was hard-deleted, so this is safe on every upgrade; the second run deletes
+-- nothing. Other token types keep their own lifecycle.
+DELETE FROM user_tokens
+WHERE tokenType = 'PERSONAL_ACCESS_TOKEN'
+  AND NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.id = user_tokens.userId);
