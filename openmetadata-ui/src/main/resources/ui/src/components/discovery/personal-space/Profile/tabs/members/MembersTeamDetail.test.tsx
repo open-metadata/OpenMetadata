@@ -468,24 +468,26 @@ describe('MembersTeamDetail', () => {
     ).toBeInTheDocument();
   });
 
-  it('gives the tab body a scrollable block container', async () => {
+  it('gives a non-table tab body a scrollable block container', async () => {
     renderWithRouter(
       <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
     );
 
-    await screen.findByTestId('team-detail');
+    fireEvent.click(
+      await screen.findByRole('tab', { name: /custom-property/ })
+    );
 
-    const body = document.querySelector('.tw\\:overflow-y-auto.tw\\:py-4');
+    const body = (await screen.findByTestId('save-extension')).closest(
+      '.tw\\:overflow-y-auto'
+    );
 
     // Measured in Chromium: as a flex container the tab content becomes a flex
     // item and shrinks to the container height, so scrollHeight never exceeds
     // clientHeight and `overflow-y-auto` has nothing to scroll. It must stay a
-    // block, and must not grow its flex parent (`min-h-0`).
+    // block, and must be able to shrink inside the card (`min-h-0`).
     expect(body).not.toHaveClass('tw:flex');
     expect(body).not.toHaveClass('tw:flex-col');
     expect(body).toHaveClass('tw:min-h-0');
-    expect(body).toHaveClass('tw:flex-1');
-    expect(body).toHaveClass('tw:w-full');
   });
 
   it('renders a contributed ReactNode label as-is', async () => {

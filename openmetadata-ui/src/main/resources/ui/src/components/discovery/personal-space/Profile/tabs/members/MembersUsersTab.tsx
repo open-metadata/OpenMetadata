@@ -52,10 +52,11 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box direction="col" gap={3}>
+    <Box className="tw:min-h-0" direction="col" gap={3}>
       <Table
+        sticky
         columns={userColumns}
-        containerClassName="tw:rounded-none tw:border-0"
+        containerClassName="tw:flex tw:min-h-0 tw:flex-col tw:rounded-none tw:border-0"
         data-testid="team-users-table"
         dataSource={filteredTeamUsers}
         extraTableFilters={
@@ -126,6 +127,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
         }}
         pagination={false}
         rowKey="id"
+        scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:overflow-y-auto"
         searchProps={{
           placeholder: t('label.search-for-type', {
             type: t('label.user-lowercase'),

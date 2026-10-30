@@ -59,7 +59,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
         aria-label={t('label.move-entity-to-root', {
           entity: t('label.team'),
         })}
-        className="tw:block"
+        className="tw:flex tw:min-h-0 tw:flex-col"
         getDropOperation={(types) =>
           types.has(TEAM_DRAG_TYPE) ? 'move' : 'cancel'
         }
@@ -72,9 +72,10 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
           }
         }}>
         <Table
+          sticky
           className={isTableHovered ? 'drop-over-table' : undefined}
           columns={childTeamColumns}
-          containerClassName="tw:rounded-none tw:border-0"
+          containerClassName="tw:flex tw:min-h-0 tw:flex-col tw:rounded-none tw:border-0"
           data-testid="sub-teams-table"
           dataSource={filteredChildTeams}
           dragAndDropHooks={dragAndDropHooks}
@@ -119,6 +120,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
           }}
           pagination={false}
           rowKey="fullyQualifiedName"
+          scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:overflow-y-auto"
           searchProps={{
             containerClassName: 'tw:w-80!',
             placeholder: t('label.search-entity', {

@@ -1364,15 +1364,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
       {/* Tabs */}
       <Box className="tw:px-8 tw:flex-1 tw:min-h-0" direction="col">
-        {/* A plain block, NOT a `Box`: `Box` is display:flex, and inside a flex
-            container the tab content becomes a flex item that shrinks to the
-            container's height instead of overflowing it, so `overflow-auto`
-            never has anything to scroll (measured: scrollHeight stays equal to
-            clientHeight). A block container lets the content keep its natural
-            height and scroll. `min-h-0` keeps the flex parent from growing. */}
-        <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
+        {/* The card shrinks to the space left and scrolls inside itself, so the
+            tabs, a table's toolbar and its header stay put while the rows scroll. */}
+        <Box className="tw:flex-1 tw:min-h-0 tw:w-full tw:py-4" direction="col">
           <TableCard.Root
-            className="tw:rounded-xl tw:shadow-none"
+            className="tw:flex tw:flex-col tw:rounded-xl tw:shadow-none"
             size="compact"
             variant="muted">
             <Tabs
@@ -1418,12 +1414,18 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             {TABLE_TABS.has(activeTab) ? (
               renderActiveTab()
             ) : (
-              <Box className="tw:p-4" direction="col">
-                {renderActiveTab()}
-              </Box>
+              // A plain block, NOT a `Box`: as flex items the tab content
+              // shrinks to the scroller's height instead of overflowing it, so
+              // `overflow-auto` never has anything to scroll (measured:
+              // scrollHeight stays equal to clientHeight).
+              <div className="tw:min-h-0 tw:overflow-y-auto">
+                <Box className="tw:p-4" direction="col">
+                  {renderActiveTab()}
+                </Box>
+              </div>
             )}
           </TableCard.Root>
-        </div>
+        </Box>
       </Box>
 
       <DeleteEntityPopover
