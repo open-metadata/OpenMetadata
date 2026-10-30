@@ -18,6 +18,8 @@ import type { toManageMenuItems } from './ManageMenu';
 export interface ManageButtonProps {
   allowSoftDelete?: boolean;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
+  /** Called when an async delete job reports failure, to undo optimistic UI. */
+  onDeleteFailure?: () => void;
   buttonClassName?: string;
   entityName: string;
   entityId?: string;

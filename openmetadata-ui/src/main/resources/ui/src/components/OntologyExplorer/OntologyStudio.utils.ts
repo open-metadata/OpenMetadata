@@ -12,7 +12,6 @@
  */
 
 import { isEqual } from 'lodash';
-import serviceQuerySettings from '../../../../../../../../openmetadata-service/src/main/resources/json/data/settings/sparqlQuerySettings.json';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import type { SavedSparqlQuery } from '../../rest/rdfAPI';
@@ -22,6 +21,7 @@ import {
   OntologyGraphData,
   OntologyNode,
 } from './OntologyExplorer.interface';
+import { BUNDLED_GLOSSARY_QUERY_TEMPLATES } from './OntologyStudio.constants';
 import {
   isTermNode,
   METRIC_NODE_TYPE,
@@ -88,7 +88,7 @@ LIMIT 100`;
 export const isCanonicalGlossaryQueryTemplate = (
   template: SavedSparqlQuery
 ): boolean =>
-  serviceQuerySettings.queryTemplates.some((seed) => isEqual(template, seed));
+  BUNDLED_GLOSSARY_QUERY_TEMPLATES.some((seed) => isEqual(template, seed));
 
 // A native ontology's endpoint reads only its active release, which holds OWL classes, not glossary terms.
 export const NEW_NATIVE_ONTOLOGY_QUERY = `PREFIX owl: <http://www.w3.org/2002/07/owl#>

@@ -2,6 +2,7 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -126,11 +127,20 @@ class FullyQualifiedNameTest {
 
   @Test
   void test_invalid() {
-    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("..a"));
-    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a.."));
-    // Empty quoted segments ("") are not valid FQN segments.
-    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("\"\""));
-    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a.\"\".b"));
+    // Empty quoted segments ("") and unbalanced quotes are not valid FQN segments either.
+    for (final String malformed : List.of("..a", "a..", "\"\"", "a.\"\".b", "\"", "a.\"b")) {
+      final IllegalArgumentException error =
+          assertThrows(IllegalArgumentException.class, () -> FullyQualifiedName.split(malformed));
+      assertEquals("Invalid fully qualified name " + malformed, error.getMessage());
+      assertInstanceOf(ParseCancellationException.class, error.getCause());
+    }
+  }
+
+  @Test
+  void test_buildHash_rejectsMalformedFqn() {
+    // Request paths like /tables/name/" hash the raw value; it must fail as a client error.
+    assertThrows(IllegalArgumentException.class, () -> FullyQualifiedName.buildHash("\""));
+    assertFalse(FullyQualifiedName.isValid("\""));
   }
 
   @Test

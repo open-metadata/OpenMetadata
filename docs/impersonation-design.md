@@ -1,5 +1,9 @@
 # Bot Impersonation Feature - Design Document
 
+> **Status:** Historical. Impersonation shipped as the `X-Impersonate-User` header.
+> `generateImpersonationToken` and `IMPERSONATED_USER_CLAIM`, which sections 6 and 10 describe, no
+> longer exist.
+
 ## 1. Overview
 
 ### 1.1 Purpose

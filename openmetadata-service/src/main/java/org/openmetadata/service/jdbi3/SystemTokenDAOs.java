@@ -613,6 +613,19 @@ public interface SystemTokenDAOs {
     @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
     void deleteTokenByUserAndType(
         @BindUUID("userid") UUID userid, @Bind("tokenType") String tokenType);
+
+    /** Every token row of the user, whatever its type. */
+    @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid")
+    void deleteAllForUser(@BindUUID("userid") UUID userid);
+
+    @SqlUpdate(
+        value =
+            "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType"
+                + " AND token IN (<tokenIds>)")
+    void deletePersonalAccessTokens(
+        @BindUUID("userid") UUID userid,
+        @Bind("tokenType") String tokenType,
+        @BindList("tokenIds") List<String> tokenIds);
   }
 
   interface UserSessionDAO {
