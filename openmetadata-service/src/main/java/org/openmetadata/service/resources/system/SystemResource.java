@@ -702,6 +702,7 @@ public class SystemResource {
 
   @POST
   @Path("/settings/source/{configType}/adopt")
+  @IdentityEndpoint
   @Operation(
       operationId = "adoptDeploymentConfig",
       summary = "Use the deployment configuration for stored settings",

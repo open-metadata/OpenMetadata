@@ -32,6 +32,7 @@ class ImpersonationRestrictionFilterTest {
             "createUser",
             "importCsv",
             "importCsvAsync",
+            "restoreTable",
             "generateRandomPassword",
             "logoutUser",
             "generateToken",
@@ -50,7 +51,7 @@ class ImpersonationRestrictionFilterTest {
   @Test
   void securityConfigurationWritesAreBoundToTheFilter() {
     assertEquals(
-        Set.of("updateSecurityConfig", "patchSecurityConfig"),
+        Set.of("updateSecurityConfig", "patchSecurityConfig", "adoptDeploymentConfig"),
         identityEndpoints(SystemResource.class));
   }
 
