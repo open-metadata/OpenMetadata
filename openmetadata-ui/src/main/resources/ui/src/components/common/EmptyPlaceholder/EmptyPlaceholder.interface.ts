@@ -25,7 +25,9 @@ export type EmptyPlaceholderVariantProps = Omit<
 
 export interface FeaturesPlaceholderFeature extends EmptyPlaceholderFeature {
   /** Renders the feature's title as a button that runs this action. */
-  action?: Omit<EmptyPlaceholderAction, 'key' | 'label'>;
+  action?: Omit<EmptyPlaceholderAction, 'key' | 'label'> & {
+    'data-testid'?: string;
+  };
 }
 
 export interface FeaturesPlaceholderProps

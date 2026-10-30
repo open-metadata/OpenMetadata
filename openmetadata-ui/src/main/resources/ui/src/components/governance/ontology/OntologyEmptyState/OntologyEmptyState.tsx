@@ -41,7 +41,7 @@ const OntologyEmptyState = ({
       color: id === 'library' ? 'primary' : 'secondary',
       isDisabled: !canCreate,
       onPress,
-      ...{ 'data-testid': `ontology-empty-${id}` },
+      'data-testid': `ontology-empty-${id}`,
     },
   });
 
