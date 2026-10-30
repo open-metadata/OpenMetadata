@@ -20,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +59,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -1467,6 +1471,151 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     dbRequest.setService(service.getFullyQualifiedName());
     return SdkClients.adminClient().databases().create(dbRequest);
   }
+
+  @Test
+  void test_ownerCannotAddRolesOrPoliciesToOwnTeam(TestNamespace ns) {
+    User owner = createLoginUser(ns, "grantowner");
+    Team team = createOwnedTeam(ns, "grantTeam", TeamType.GROUP, owner);
+    OpenMetadataClient ownerClient = clientFor(owner);
+
+    assertTeamPatchForbidden(
+        ownerClient, team, addRefsOp("/defaultRoles", dataStewardRole().getEntityReference()));
+    assertTeamPatchForbidden(
+        ownerClient, team, addRefsOp("/policies", shared().POLICY1.getEntityReference()));
+    ownerClient
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/teams/" + team.getId(), replaceOp("/description", "owned"));
+
+    Team reread =
+        SdkClients.adminClient().teams().get(team.getId().toString(), "defaultRoles,policies");
+    assertTrue(reread.getDefaultRoles() == null || reread.getDefaultRoles().isEmpty());
+    assertTrue(reread.getPolicies() == null || reread.getPolicies().isEmpty());
+    assertEquals("owned", reread.getDescription());
+  }
+
+  @Test
+  void test_ownerCannotAddRolesToOwnTeamThroughPut(TestNamespace ns) {
+    User owner = createLoginUser(ns, "putgrantowner");
+    Team team = createOwnedTeam(ns, "putGrantTeam", TeamType.GROUP, owner);
+    CreateTeam update =
+        new CreateTeam()
+            .withName(team.getName())
+            .withTeamType(TeamType.GROUP)
+            .withOwners(List.of(owner.getEntityReference()))
+            .withDefaultRoles(List.of(dataStewardRole().getId()));
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                clientFor(owner)
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/teams", update));
+    assertEquals(403, exception.getStatusCode(), exception.getMessage());
+  }
+
+  @Test
+  void test_ownerCanOnlyMoveOwnTeamUnderTeamTheyCanEdit(TestNamespace ns) {
+    User owner = createLoginUser(ns, "parentowner");
+    Team group = createOwnedTeam(ns, "movedGroup", TeamType.GROUP, owner);
+    Team foreignDepartment =
+        createEntity(
+            new CreateTeam().withName(ns.prefix("foreignDept")).withTeamType(TeamType.DEPARTMENT));
+    Team ownedDepartment = createOwnedTeam(ns, "ownedDept", TeamType.DEPARTMENT, owner);
+    OpenMetadataClient ownerClient = clientFor(owner);
+
+    assertTeamPatchForbidden(
+        ownerClient, group, replaceRefsOp("/parents", foreignDepartment.getEntityReference()));
+    ownerClient
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/teams/" + group.getId(),
+            replaceRefsOp("/parents", ownedDepartment.getEntityReference()));
+
+    Team reread = SdkClients.adminClient().teams().get(group.getId().toString(), "parents");
+    assertEquals(
+        List.of(ownedDepartment.getId()),
+        reread.getParents().stream().map(EntityReference::getId).toList());
+  }
+
+  @Test
+  void test_importCsv_ownerCannotAddRolesToTeams(TestNamespace ns) {
+    User owner = createLoginUser(ns, "csvgrantowner");
+    Team department = createOwnedTeam(ns, "csvGrantDept", TeamType.DEPARTMENT, owner);
+    String group = ns.prefix("csvGrantGroup");
+    String csv =
+        "name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n"
+            + String.format(
+                "%s,%s,,Group,%s,,false,%s,\n",
+                group, group, department.getName(), dataStewardRole().getName());
+
+    String result = clientFor(owner).teams().importCsv(department.getName(), csv, false);
+
+    assertTrue(result.contains("Only an admin can add defaultRoles"), result);
+    assertThrows(
+        OpenMetadataException.class, () -> SdkClients.adminClient().teams().getByName(group));
+  }
+
+  // Signed in by email, so the name must match the email's local part to resolve the user.
+  private User createLoginUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    return SdkClients.adminClient()
+        .users()
+        .create(new CreateUser().withName(localPart).withEmail(localPart + "@open-metadata.org"));
+  }
+
+  private Team createOwnedTeam(TestNamespace ns, String name, TeamType type, User owner) {
+    return createEntity(
+        new CreateTeam()
+            .withName(ns.prefix(name))
+            .withTeamType(type)
+            .withOwners(List.of(owner.getEntityReference())));
+  }
+
+  private static OpenMetadataClient clientFor(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  private static void assertTeamPatchForbidden(
+      OpenMetadataClient client, Team team, ArrayNode patch) {
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PATCH, "/v1/teams/" + team.getId(), patch));
+    assertEquals(403, exception.getStatusCode(), exception.getMessage());
+  }
+
+  private static ArrayNode replaceOp(String path, String value) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject().put("op", "replace").put("path", path).put("value", value);
+    return ops;
+  }
+
+  private static ArrayNode addRefsOp(String path, EntityReference ref) {
+    return refsOp("add", path, ref);
+  }
+
+  private static ArrayNode replaceRefsOp(String path, EntityReference ref) {
+    return refsOp("replace", path, ref);
+  }
+
+  private static ArrayNode refsOp(String op, String path, EntityReference ref) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ObjectNode operation = ops.addObject().put("op", op).put("path", path);
+    operation
+        .putArray("value")
+        .addObject()
+        .put("id", ref.getId().toString())
+        .put("type", ref.getType());
+    return ops;
+  }
+
+  private static final ObjectMapper PATCH_MAPPER = new ObjectMapper();
 
   private User createTestUser(TestNamespace ns, String suffix) {
     String name = ns.prefix(suffix);

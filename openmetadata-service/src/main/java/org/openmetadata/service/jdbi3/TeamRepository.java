@@ -1407,6 +1407,8 @@ public class TeamRepository extends EntityRepository<Team> {
               .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
               .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
 
+      rejectGrantsFromNonAdmin(printer, csvRecord, team);
+
       // Pre-track the entity so getParents can find it for circular dependency detection
       if (processRecord) {
         dryRunCreatedEntities.put(team.getName(), team);
@@ -1418,6 +1420,51 @@ public class TeamRepository extends EntityRepository<Team> {
       if (processRecord) {
         createEntity(printer, csvRecord, team);
       }
+    }
+
+    /**
+     * Members inherit a team's roles and policies, so only an admin may add them, as on the REST
+     * paths. Ones the team already holds are let through so a re-import of an export still works.
+     */
+    private void rejectGrantsFromNonAdmin(CSVPrinter printer, CSVRecord csvRecord, Team team)
+        throws IOException {
+      if (!processRecord || SubjectContext.getSubjectContext(importedBy).isAdmin()) {
+        return;
+      }
+      Team stored = findStoredGrants(team.getName());
+      if (addsReferences(stored.getDefaultRoles(), team.getDefaultRoles())) {
+        importFailure(printer, grantRequiresAdmin(7, DEFAULT_ROLES), csvRecord);
+        processRecord = false;
+      } else if (addsReferences(stored.getPolicies(), team.getPolicies())) {
+        importFailure(printer, grantRequiresAdmin(8, Entity.POLICIES), csvRecord);
+        processRecord = false;
+      }
+    }
+
+    private static Team findStoredGrants(String name) {
+      TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
+      Team stored = repository.findByNameOrNull(name, ALL);
+      return stored == null
+          ? new Team()
+          : repository.get(
+              null,
+              stored.getId(),
+              repository.getFields(DEFAULT_ROLES + "," + Entity.POLICIES),
+              ALL,
+              false);
+    }
+
+    private static boolean addsReferences(
+        List<EntityReference> stored, List<EntityReference> imported) {
+      Set<UUID> storedIds =
+          listOrEmpty(stored).stream().map(EntityReference::getId).collect(Collectors.toSet());
+      return listOrEmpty(imported).stream().anyMatch(ref -> !storedIds.contains(ref.getId()));
+    }
+
+    private static String grantRequiresAdmin(int field, String fieldName) {
+      String error = String.format("Only an admin can add %s during team import", fieldName);
+      return String.format(
+          "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
     }
 
     @Override
