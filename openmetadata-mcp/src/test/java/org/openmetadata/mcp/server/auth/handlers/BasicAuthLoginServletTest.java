@@ -351,8 +351,17 @@ class BasicAuthLoginServletTest {
 
   @Test
   void doPost_afterSwitchToLdap_passwordIsCheckedByTheDirectory() throws Exception {
-    // The servlet was built while another authenticator was registered. After a runtime switch to
-    // LDAP, the directory bind must decide the login, not the authenticator from before.
+    // A login before a runtime switch to LDAP uses the authenticator registered then; the next
+    // login must be decided by the directory bind, not by the earlier authenticator.
+    sessionAttributes();
+    User user = mock(User.class);
+    when(user.getName()).thenReturn("user");
+    when(authenticator.lookUserInProvider(EMAIL, PASSWORD)).thenReturn(user);
+    doThrow(new AuthenticationException("invalid username or password"))
+        .when(authenticator)
+        .validatePassword(any(String.class), any(String.class), any(User.class));
+    servlet.doPost(request, response);
+
     LdapAuthenticator ldap = mock(LdapAuthenticator.class);
     doThrow(
             new CustomExceptionMessage(
@@ -362,12 +371,12 @@ class BasicAuthLoginServletTest {
         .when(ldap)
         .lookUserInProvider(EMAIL, PASSWORD);
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(ldap);
-
+    when(request.getParameter("csrf_token")).thenReturn(csrfTokenOf(responseBody.toString()));
     servlet.doPost(request, response);
 
-    assertThat(responseBody.toString()).contains("Invalid username or password");
+    verify(ldap).lookUserInProvider(EMAIL, PASSWORD);
+    verify(authenticator).lookUserInProvider(EMAIL, PASSWORD);
     verify(authProvider, never()).createAuthorizationCode(any(), any(), any(), any(), any());
-    verify(authenticator, never()).lookUserInProvider(anyString(), anyString());
   }
 
   @Test
