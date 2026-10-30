@@ -57,23 +57,50 @@ public class TestCaseCreateOrUpdateAuthorizationIT {
   private static final String TEST_CASE_RESOURCE = "testCase";
 
   /**
-   * EditTests on the table alone is enough to create a table and a column test case with PUT, then
-   * to update them.
+   * CreateTests on the table alone is enough to create a table and a column test case with PUT, but
+   * not to update them.
    */
   @Test
-  void tableEditTestsPermissionCreatesAndUpdatesTestCase(TestNamespace ns) throws Exception {
+  void tableCreateTestsPermissionCreatesButDoesNotUpdate(TestNamespace ns) throws Exception {
     Table table = createTable(ns);
     List<CreateTestCase> creates =
         List.of(createTestCaseRequest(ns, table), createColumnTestCaseRequest(ns, table));
-    Grantee grantee = grant(ns, MetadataOperation.EDIT_TESTS, TABLE_RESOURCE);
+    Grantee grantee = grant(ns, MetadataOperation.CREATE_TESTS, TABLE_RESOURCE);
     try {
       for (CreateTestCase create : creates) {
         HttpResponse<String> created = putTestCase(create, grantee.token());
         assertEquals(201, created.statusCode(), "Test case must be created: " + created.body());
         HttpResponse<String> updated =
             putTestCase(create.withDescription("updated"), grantee.token());
+        assertEquals(403, updated.statusCode(), "Update must be refused: " + updated.body());
+      }
+    } finally {
+      grantee.delete();
+    }
+  }
+
+  /**
+   * EditTests on the table alone is enough to update an existing table and column test case with
+   * PUT, but not to create one.
+   */
+  @Test
+  void tableEditTestsPermissionUpdatesButDoesNotCreate(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = createTable(ns);
+    List<CreateTestCase> existing =
+        List.of(createTestCaseRequest(ns, table), createColumnTestCaseRequest(ns, table));
+    existing.forEach(create -> admin.testCases().create(create));
+    Grantee grantee = grant(ns, MetadataOperation.EDIT_TESTS, TABLE_RESOURCE);
+    try {
+      for (CreateTestCase create : existing) {
+        HttpResponse<String> updated =
+            putTestCase(create.withDescription("updated"), grantee.token());
         assertEquals(200, updated.statusCode(), "Test case must be updated: " + updated.body());
       }
+      CreateTestCase newTestCase =
+          createTestCaseRequest(ns, table).withName(ns.shortPrefix("new_tc"));
+      HttpResponse<String> created = putTestCase(newTestCase, grantee.token());
+      assertEquals(403, created.statusCode(), "Create must be refused: " + created.body());
     } finally {
       grantee.delete();
     }
