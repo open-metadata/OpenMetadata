@@ -13,6 +13,7 @@
 import { Page, Route } from '@playwright/test';
 import { SystemChartType } from '../../src/enums/DataInsight.enum';
 import { ResourceEntity } from '../../src/enums/permissions.enum';
+import { SearchIndex } from '../../src/enums/search.enum';
 import { ServiceCategory } from '../../src/enums/service.enum';
 import {
   Health,
@@ -20,6 +21,11 @@ import {
   ReasonCode,
 } from '../../src/generated/api/data/metricObservability';
 import { Operation } from '../../src/generated/entity/policies/policy';
+import {
+  AuthenticationMechanism,
+  User,
+} from '../../src/generated/entity/teams/user';
+import { ValidationResponse } from '../../src/generated/system/validationResponse';
 import activity from '../fixtures/visual/activity.json';
 import customProperties from '../fixtures/visual/custom-properties.json';
 import entities from '../fixtures/visual/entities.json';
@@ -149,6 +155,43 @@ export const installVisualBootstrap = async (
     }
     if (url.pathname === '/api/v1/system/search/nlq') {
       await route.fulfill({ json: false });
+
+      return;
+    }
+    if (url.pathname === '/api/v1/system/mcp/config') {
+      // No stored setting exists in this catalog; the MCP form uses its schema defaults.
+      await route.fulfill({
+        status: 404,
+        json: { message: 'MCP configuration is not stored.' },
+      });
+
+      return;
+    }
+    if (url.pathname === '/api/v1/system/status') {
+      await route.fulfill({
+        json: {
+          database: {
+            passed: true,
+            description: 'Database connectivity',
+            message: 'Database connection is healthy.',
+          },
+          migrations: {
+            passed: true,
+            description: 'Database migrations',
+            message: 'Database migrations are current.',
+          },
+          searchInstance: {
+            passed: true,
+            description: 'Search connectivity',
+            message: 'Search connection is healthy.',
+          },
+          pipelineServiceClient: {
+            passed: true,
+            description: 'Pipeline service connectivity',
+            message: 'Pipeline service connection is healthy.',
+          },
+        } satisfies ValidationResponse,
+      });
 
       return;
     }
@@ -383,6 +426,45 @@ export const installVisualData = async (
           lastLoginTime: 1768471200000,
         },
       });
+
+      return;
+    }
+
+    // Bot detail lookups need the service account, while the user-list fixture
+    // represents human accounts and must not acquire an extra bot row.
+    const botUser = fixtureResources.bots
+      .map((bot) => bot.botUser as FixtureEntity)
+      .find(({ id, fullyQualifiedName }) =>
+        [
+          `users/${id}`,
+          `users/name/${fullyQualifiedName}`,
+          `users/auth-mechanism/${id}`,
+        ].includes(path)
+      );
+    if (botUser) {
+      if (path === `users/auth-mechanism/${botUser.id}`) {
+        // An unconfigured mechanism is a valid DTO, distinct from a failed read.
+        await route.fulfill({
+          json: {} satisfies AuthenticationMechanism,
+        });
+      } else {
+        await route.fulfill({
+          json: {
+            id: botUser.id,
+            name: botUser.name,
+            fullyQualifiedName: botUser.fullyQualifiedName,
+            displayName: botUser.displayName,
+            email: `${botUser.name}@open-metadata.org`,
+            isBot: true,
+            isAdmin: false,
+            roles: [],
+            inheritedRoles: [],
+            teams: [],
+            profile: {},
+            deleted: false,
+          } satisfies User,
+        });
+      }
 
       return;
     }
@@ -1430,6 +1512,18 @@ export const installVisualData = async (
     }
 
     if (path === 'search/query') {
+      const indexes = (url.searchParams.get('index') ?? SearchIndex.ALL).split(
+        ','
+      );
+      if (
+        !indexes.every((index) =>
+          Object.values(SearchIndex).includes(index as SearchIndex)
+        )
+      ) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
       if (state === 'error') {
         await route.fulfill({
           status: 503,
@@ -1438,7 +1532,6 @@ export const installVisualData = async (
 
         return;
       }
-      const index = url.searchParams.get('index') ?? 'all';
       const resourceTypes: Record<string, string> = {
         users: 'user',
         teams: 'team',
@@ -1448,7 +1541,7 @@ export const installVisualData = async (
         glossaryTerms: 'glossaryTerm',
       };
       // Incident pickers use a dedicated index outside the discovery corpus.
-      if (index.toLowerCase().includes('testcase'))
+      if (indexes.includes(SearchIndex.TEST_CASE))
         resourceTypes['dataQuality/testCases'] = 'testCase';
       const candidates = [
         ...VISUAL_ENTITIES,
@@ -1467,8 +1560,14 @@ export const installVisualData = async (
               ({ type, entity }, position, items) =>
                 items.findIndex((item) => item.entity.id === entity.id) ===
                   position &&
-                (['all', 'dataAsset'].includes(index) ||
-                  index.toLowerCase().includes(type.toLowerCase())) &&
+                // Index names overlap (glossary/glossaryTerm, for example).
+                // Substring matching silently inserts the wrong entity class.
+                (indexes.some((index) =>
+                  [SearchIndex.ALL, SearchIndex.DATA_ASSET].includes(
+                    index as SearchIndex
+                  )
+                ) ||
+                  indexes.includes(type)) &&
                 (query === '*' ||
                   query === '' ||
                   `${entity.name} ${entity.displayName}`
@@ -1513,6 +1612,12 @@ export const installVisualData = async (
           total,
         },
       });
+
+      return;
+    }
+    if (path === 'limits/features/user') {
+      // OSS has no configured user quota; an empty status list is its unlimited contract.
+      await route.fulfill({ json: { featureLimitStatuses: [] } });
 
       return;
     }
@@ -1763,6 +1868,22 @@ export const installVisualData = async (
         suffix.startsWith(`name/${fullyQualifiedName}/`) ||
         suffix === `name/${name}`
     );
+    if (
+      collection === 'apps' &&
+      !selected &&
+      fixtureResources['apps/marketplace'].some(
+        ({ fullyQualifiedName }) => suffix === `name/${fullyQualifiedName}`
+      )
+    ) {
+      // Marketplace definitions can exist without an installed app. The detail
+      // page uses this exact presence check to choose its installation form.
+      await route.fulfill({
+        status: 404,
+        json: { message: 'The application is not installed.' },
+      });
+
+      return;
+    }
     const childPath = selected
       ? suffix.startsWith(`${selected.id}/`)
         ? suffix.slice(selected.id.length + 1)
@@ -1773,6 +1894,7 @@ export const installVisualData = async (
     const isListRead =
       !suffix ||
       (collection === 'teams' && suffix === 'hierarchy') ||
+      (collection === 'roles' && suffix === 'search') ||
       (collection.startsWith('dataQuality/') && suffix === 'search/list');
     const isMetricHierarchy =
       collection === 'metrics' && suffix === 'hierarchy';
@@ -1848,6 +1970,14 @@ export const installVisualData = async (
       const rows =
         collection === 'events/subscriptions' && alertType
           ? data.filter((subscription) => subscription.alertType === alertType)
+          : collection === 'roles' && suffix === 'search'
+          ? data.filter(({ name, displayName }) =>
+              `${name} ${displayName}`
+                .toLowerCase()
+                .includes(
+                  (url.searchParams.get('q') ?? '').trim().toLowerCase()
+                )
+            )
           : data;
       await route.fulfill({ json: pageOf(state === 'empty' ? [] : rows) });
 

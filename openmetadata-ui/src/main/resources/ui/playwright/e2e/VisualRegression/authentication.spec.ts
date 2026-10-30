@@ -24,11 +24,13 @@ test.describe('Public authentication', { tag: '@Platform' }, () => {
     // Public routes use the Classic shell, whose theme provider is light-only.
     await prepareVisualTheme(page, 'light', 'classic');
     await installVisualBootstrap(page, 'classic');
-    await page.route('**/api/v1/users/registrationConfirmation**', (route) =>
-      route.fulfill({
-        status: 400,
-        json: { message: 'This activation token has expired.' },
-      })
+    await page.route(
+      (url) => url.pathname === '/api/v1/users/registrationConfirmation',
+      (route) =>
+        route.fulfill({
+          status: 400,
+          json: { message: 'This activation token has expired.' },
+        })
     );
   });
   for (const [id, path, ready, submit] of [

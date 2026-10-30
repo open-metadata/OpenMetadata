@@ -514,6 +514,82 @@ test('incident pickers use test-case identities without adding tests to discover
   ).toBe(false);
 });
 
+for (const index of ['databaseSchema', 'glossaryTerm', 'dashboardDataModel']) {
+  test(`search index identity does not include its parent type: ${index}`, async ({
+    page,
+  }) => {
+    await installVisualData(page);
+    const hits = await page.evaluate(
+      async (selectedIndex) =>
+        (
+          await (
+            await fetch(`/api/v1/search/query?index=${selectedIndex}&q=*`)
+          ).json()
+        ).hits.hits,
+      index
+    );
+    expect(hits).not.toHaveLength(0);
+    expect(
+      hits.every(
+        (hit: { _source: { entityType: string } }) =>
+          hit._source.entityType === index
+      )
+    ).toBe(true);
+  });
+}
+
+for (const state of ['populated', 'error'] as const) {
+  for (const index of ['unmodeledIndex', 'table,unmodeledIndex']) {
+    test(`an unmodeled search index cannot produce an approved empty result: ${state} ${index}`, async ({
+      page,
+    }) => {
+      await installVisualData(page, state);
+      const status = await page.evaluate(
+        async (requestedIndex) =>
+          (
+            await fetch(`/api/v1/search/query?index=${requestedIndex}&q=*`)
+          ).status,
+        index
+      );
+      expect(status).toBe(503);
+      expect(test.info().annotations).toContainEqual({
+        type: 'missing-visual-read-fixture',
+        description: 'Missing visual read fixture: search/query',
+      });
+    });
+  }
+}
+
+test('explicit multi-index searches and valid empty searches retain their scope', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    combined: await (
+      await fetch('/api/v1/search/query?index=user,team&q=*')
+    ).json(),
+    empty: await (
+      await fetch('/api/v1/search/query?index=table&q=not-a-fixture-table')
+    ).json(),
+  }));
+  expect(
+    new Set(
+      result.combined.hits.hits.map(
+        (hit: { _source: { entityType: string } }) => hit._source.entityType
+      )
+    )
+  ).toEqual(new Set(['user', 'team']));
+  expect(result.empty.hits).toEqual({
+    hits: [],
+    total: { value: 0, relation: 'eq' },
+  });
+  expect(
+    test
+      .info()
+      .annotations.filter(({ type }) => type === 'missing-visual-read-fixture')
+  ).toHaveLength(0);
+});
+
 test('typed custom-property metadata and table values share the registered field identities', async ({
   page,
 }) => {
@@ -768,6 +844,12 @@ for (const state of ['populated', 'error'] as const) {
     'a-new-read-endpoint',
     'services/databaseServices/name/unmodeledService',
     'services/unknownServices/name/visual_connection',
+    'apps/name/unmodeledApplication',
+    'apps/name/HelloPipelines/unmodeledChild',
+    'system/mcp/config/unmodeledChild',
+    'limits/features/unmodeledFeature',
+    'users/auth-mechanism/unknown-user',
+    'users/auth-mechanism/24c90c2e-bea6-5eac-ab30-897df917c397/unmodeledChild',
     'services/databaseServices/name/visual_connection/unmodeledChild',
     'tables/name/visual_connection',
     'tables/not-a-fixture-id',
@@ -847,6 +929,94 @@ test('connector drafts have an explicitly available name in every service catego
     )
   );
   expect(statuses).toEqual(Array(11).fill(404));
+  expect(
+    test
+      .info()
+      .annotations.filter(({ type }) => type === 'missing-visual-read-fixture')
+  ).toHaveLength(0);
+});
+
+test('known uninstalled applications and an unwritten MCP setting have explicit absence responses', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const statuses = await page.evaluate(async () =>
+    Promise.all(
+      [
+        '/api/v1/apps/name/DataInsightsReportApplication',
+        '/api/v1/apps/name/HelloPipelines',
+        '/api/v1/system/mcp/config',
+      ].map(async (path) => (await fetch(path)).status)
+    )
+  );
+  expect(statuses).toEqual([404, 404, 404]);
+  expect(
+    test
+      .info()
+      .annotations.filter(({ type }) => type === 'missing-visual-read-fixture')
+  ).toHaveLength(0);
+});
+
+test('bot detail reads retain the service-account identity and explicitly absent credentials', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => {
+    const bot = await (
+      await fetch('/api/v1/bots/name/visual_ingestion_bot')
+    ).json();
+    const user = await (
+      await fetch(`/api/v1/users/name/${bot.botUser.fullyQualifiedName}`)
+    ).json();
+    const authResponse = await fetch(
+      `/api/v1/users/auth-mechanism/${bot.botUser.id}`
+    );
+    return {
+      bot,
+      user,
+      authStatus: authResponse.status,
+      auth: await authResponse.json(),
+    };
+  });
+  expect(result.user).toMatchObject({
+    id: result.bot.botUser.id,
+    isBot: true,
+    isAdmin: false,
+  });
+  expect(result.user).not.toHaveProperty('authenticationMechanism');
+  expect(result.authStatus).toBe(200);
+  expect(result.auth).toEqual({});
+  expect(
+    test
+      .info()
+      .annotations.filter(({ type }) => type === 'missing-visual-read-fixture')
+  ).toHaveLength(0);
+});
+
+test('role search, OSS user limits and health checks use their public response contracts', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    roles: await (await fetch('/api/v1/roles/search?q=visual')).json(),
+    noRoles: await (
+      await fetch('/api/v1/roles/search?q=not-a-fixture-role')
+    ).json(),
+    limits: await (await fetch('/api/v1/limits/features/user')).json(),
+    health: await (await fetch('/api/v1/system/status')).json(),
+  }));
+  expect(result.roles.data).not.toHaveLength(0);
+  expect(result.noRoles).toEqual({ data: [], paging: { total: 0 } });
+  expect(result.limits).toEqual({ featureLimitStatuses: [] });
+  for (const key of [
+    'database',
+    'migrations',
+    'searchInstance',
+    'pipelineServiceClient',
+  ]) {
+    expect(result.health[key]).toMatchObject({ passed: true });
+    expect(result.health[key].message).toBeTruthy();
+  }
   expect(
     test
       .info()

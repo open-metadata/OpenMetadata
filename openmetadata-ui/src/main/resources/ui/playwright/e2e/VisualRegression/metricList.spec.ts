@@ -543,7 +543,7 @@ const setupMetricRoutes = async (page: Page) => {
         paging: { limit: 10, offset: 0, total: 1 },
       });
     }
-    if (path.endsWith('/observability') && path.includes('/api/v1/metrics/')) {
+    if (/^\/api\/v1\/metrics\/[^/]+\/observability$/.test(path)) {
       return fulfillJson(route, observability);
     }
     if (path === `/api/v1/tables/name/${table.fullyQualifiedName}`) {
@@ -739,48 +739,56 @@ for (const scene of [
       await prepareVisualTheme(page, theme);
       await installVisualData(page);
       await setupMetricRoutes(page);
-      await page.route('**/api/v1/search/query**', (route) => {
-        if (!route.request().url().includes(TABLE_ID)) return route.fallback();
-        return route.fulfill({
-          json: {
-            hits: {
-              hits: [
-                {
-                  _id: TABLE_ID,
-                  _index: 'table_search_index',
-                  _source: { ...table, entityType: 'table' },
-                },
-              ],
-              total: { value: 1, relation: 'eq' },
+      // Leaf overrides must leave unmodeled child endpoints to the strict router.
+      await page.route(
+        (url) => url.pathname === '/api/v1/search/query',
+        (route) => {
+          if (!route.request().url().includes(TABLE_ID))
+            return route.fallback();
+          return route.fulfill({
+            json: {
+              hits: {
+                hits: [
+                  {
+                    _id: TABLE_ID,
+                    _index: 'table_search_index',
+                    _source: { ...table, entityType: 'table' },
+                  },
+                ],
+                total: { value: 1, relation: 'eq' },
+              },
+              aggregations: {},
+              took: 1,
             },
-            aggregations: {},
-            took: 1,
-          },
-        });
-      });
+          });
+        }
+      );
       const isList = (METRIC_LIST_SCENES as readonly string[]).includes(scene);
       const isCreate = scene.startsWith('create-');
       const detail = !isList && !isCreate;
       const id = `metric-state-${scene}`;
       const failure = 'Unable to load metrics in the visual catalog.';
       if (['empty', 'no-results', 'load-error'].includes(scene)) {
-        await page.route('**/api/v1/metrics/hierarchy**', (route) => {
-          if (
-            scene === 'no-results' &&
-            !new URL(route.request().url()).searchParams.get('q')
-          )
-            return route.fallback();
-          return route.fulfill(
-            scene === 'load-error'
-              ? { status: 503, json: { message: failure } }
-              : {
-                  json: {
-                    data: [],
-                    paging: { limit: 20, offset: 0, total: 0 },
-                  },
-                }
-          );
-        });
+        await page.route(
+          (url) => url.pathname === '/api/v1/metrics/hierarchy',
+          (route) => {
+            if (
+              scene === 'no-results' &&
+              !new URL(route.request().url()).searchParams.get('q')
+            )
+              return route.fallback();
+            return route.fulfill(
+              scene === 'load-error'
+                ? { status: 503, json: { message: failure } }
+                : {
+                    json: {
+                      data: [],
+                      paging: { limit: 20, offset: 0, total: 0 },
+                    },
+                  }
+            );
+          }
+        );
       }
       await gotoForScreenshot(
         page,
