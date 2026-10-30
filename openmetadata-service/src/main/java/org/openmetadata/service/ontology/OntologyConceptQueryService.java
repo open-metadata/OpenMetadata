@@ -144,20 +144,26 @@ public final class OntologyConceptQueryService {
     }
   }
 
+  /**
+   * A hop followed from its property's range runs over the declared inverse, so its join reads the
+   * direction its label names, whether or not the reader may view that inverse.
+   */
   static Hop hop(
       final OntologyProperty relation,
       final OntologyConcept from,
       final Inverses inverses,
       final BoundConcept target) {
+    final boolean incoming = followedFromRange(relation, from);
     final Optional<OntologyProperty> inverse = inverses.of(relation);
-    return new Hop(
-        relation.getId(),
-        inverse.map(OntologyProperty::getId).orElse(null),
+    final String label =
         hopLabel(
+            incoming,
             relation,
-            from,
-            inverse.filter(shown -> inverses.viewable().contains(shown.getId())).orElse(null)),
-        target);
+            inverse.filter(shown -> inverses.viewable().contains(shown.getId())).orElse(null));
+    return incoming && inverse.isPresent()
+        ? new Hop(inverse.get().getId(), relation.getId(), label, target)
+        : new Hop(
+            relation.getId(), inverse.map(OntologyProperty::getId).orElse(null), label, target);
   }
 
   /**
@@ -166,10 +172,18 @@ public final class OntologyConceptQueryService {
    */
   static String hopLabel(
       final OntologyProperty relation, final OntologyConcept from, final OntologyProperty inverse) {
-    final boolean incoming =
-        !listOrEmpty(relation.getDomain()).contains(from.getIri())
-            && listOrEmpty(relation.getRange()).contains(from.getIri());
+    return hopLabel(followedFromRange(relation, from), relation, inverse);
+  }
+
+  private static String hopLabel(
+      final boolean incoming, final OntologyProperty relation, final OntologyProperty inverse) {
     return label(incoming && inverse != null ? inverse : relation);
+  }
+
+  private static boolean followedFromRange(
+      final OntologyProperty relation, final OntologyConcept from) {
+    return !listOrEmpty(relation.getDomain()).contains(from.getIri())
+        && listOrEmpty(relation.getRange()).contains(from.getIri());
   }
 
   /**
