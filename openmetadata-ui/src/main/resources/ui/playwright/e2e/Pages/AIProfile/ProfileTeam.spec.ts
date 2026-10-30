@@ -159,14 +159,22 @@ test.describe('AI Profile Team Detail', () => {
       .getByTestId('sub-teams-table')
       .locator('[data-testid^="team-link-"]');
 
+    // The search filters the loaded teams in the browser (no request to
+    // await). It is debounced, and applying it writes the term back into the
+    // input, so a term typed before that write-back is overwritten by it. Wait
+    // for each step to show in the table — the render that applies the term —
+    // before typing the next one.
     await searchInput.fill(team.responseData.displayName);
-    // The search is debounced, and applying it writes the term back into the
-    // input. A term typed before that write-back is overwritten by it, so wait
-    // until the table lists only this team — the same render applies the term.
     await expect(teamLinks).toHaveCount(1);
     await expect(teamLink).toBeVisible();
 
+    await searchInput.clear();
+    await expect(searchInput).toHaveValue('');
+    // The full list is back once the cleared term has been applied.
+    await expect(teamLinks).not.toHaveCount(1);
+
     await searchInput.fill('non-existent-team-xyz');
+    await expect(searchInput).toHaveValue('non-existent-team-xyz');
     await expect(teamLink).toBeHidden();
   });
 
