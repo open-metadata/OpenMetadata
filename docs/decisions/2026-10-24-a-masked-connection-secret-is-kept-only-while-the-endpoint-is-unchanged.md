@@ -1,9 +1,9 @@
 # A masked connection secret is restored only while the connection still points at the same endpoint
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields)
+- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources)
 - **Deciders:** backend security
-- **Guard:** `ConnectionSecretsGuardTest`
+- **Guard:** `ConnectionSecretsGuardTest`; `IngestionPipelineResourceIT.test_dbtTokenMustBeReenteredWhenTheSourceMoves`
 - **Related:** open-metadata/openmetadata-collate#7797, open-metadata/OpenMetadata#36016
 
 ## Context
@@ -40,3 +40,13 @@ runner send the real password to that server (collate#7797 YMVEJVF6).
   deliberate, safe default; widen `EXEMPT_FIELD_SUFFIXES`/the `supports` prefix only for fields that
   provably cannot change where a secret is sent.
 - The guard compares masked copies of the two configs, so it never needs the cleartext secret.
+
+## Amendment (v3, 2026-10-30)
+
+Ingestion pipelines keep secrets in the source they read from: a dbt project
+(`sourceConfig.config.dbtConfigSource`) or a storage manifest
+(`sourceConfig.config.storageMetadataConfigSource`). The same guard now runs on ingestion pipeline
+PUT and PATCH for callers who are neither admins nor bots, comparing only those two sources, so a
+change to the pipeline's other settings never asks for the secrets again. Storage manifest configs
+are typed like dbt ones (`IngestionPipelineBuilder.addDefinedConfig`), which is what lets the masker
+and the secrets manager reach their credentials at all.

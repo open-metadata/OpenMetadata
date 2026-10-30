@@ -454,6 +454,7 @@ public class JwtFilter implements ContainerRequestFilter {
    * that carries none is refused: the name it signs in under says nothing about a domain, and the
    * {@code userName@principalDomain} address the legacy flow would build for it is in an allowed
    * domain by construction. Either way, a provider token never resolves to a bot account.
+   * ADR:2026-10-30-a-provider-token-must-carry-an-email-while-sign-in-domains-are-restricted
    */
   private void validateLegacyProviderIdentity(Map<String, Claim> claims, String userName) {
     if (!nullOrEmpty(allowedEmailDomains)) {

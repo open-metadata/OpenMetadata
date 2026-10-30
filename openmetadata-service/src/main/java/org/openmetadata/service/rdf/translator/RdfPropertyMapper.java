@@ -74,6 +74,7 @@ public class RdfPropertyMapper {
   //      user email, which reaches the graph only through a deliberate foaf:mbox mapping. The
   //      CREDENTIAL_PROPERTIES below carry stored secrets: a service's connection, a pipeline's
   //      source config and server connection, a user's password hash or bot token.
+  //      ADR:2026-10-30-the-rdf-projection-never-carries-stored-secrets
   //
   // These must not be fetched at all — see isIndexableEntityField.
   static final Set<String> CREDENTIAL_PROPERTIES =

@@ -952,6 +952,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   /**
    * Granting or revoking admin is for admins alone. A PUT carries the whole user, so for anyone else
    * the flag keeps its stored value: leaving it out of the request must not revoke it.
+   * ADR:2026-10-30-only-admins-grant-or-revoke-a-users-admin-flag
    */
   private static boolean mayChangeAdminFlag(
       SecurityContext securityContext, ContainerRequestContext requestContext) {
