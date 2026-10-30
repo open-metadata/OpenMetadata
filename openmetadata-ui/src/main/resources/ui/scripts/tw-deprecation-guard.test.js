@@ -98,14 +98,16 @@ check('FAILS when a diff adds a new import from assets/svg', () => {
 check('PASSES when a file is moved to a different depth (svg specifier depth rewritten)', () => {
   const { dir, git } = makeTmpRepo();
   fs.mkdirSync(path.join(dir, 'a'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'a/Foo.tsx'), `import icon from '../assets/svg/alert.svg';\nexport const x = icon;\n`);
+  // Keep enough unchanged content for Git to recognize a rename rather than a delete/add.
+  const body = `export const x = icon;\nexport const label = 'asset';\nexport const size = 24;\n`;
+  fs.writeFileSync(path.join(dir, 'a/Foo.tsx'), `import icon from '../assets/svg/alert.svg';\n${body}`);
   git('add', '-A');
   git('commit', '-q', '-m', 'base');
   const baseSha = git('rev-parse', 'HEAD').trim();
 
   fs.mkdirSync(path.join(dir, 'a/b'), { recursive: true });
   fs.rmSync(path.join(dir, 'a/Foo.tsx'));
-  fs.writeFileSync(path.join(dir, 'a/b/Foo.tsx'), `import icon from '../../assets/svg/alert.svg';\nexport const x = icon;\n`);
+  fs.writeFileSync(path.join(dir, 'a/b/Foo.tsx'), `import icon from '../../assets/svg/alert.svg';\n${body}`);
   git('add', '-A');
   git('commit', '-q', '-m', 'move Foo deeper');
 
@@ -128,6 +130,54 @@ check('FAILS when a new .svg file is added under assets/svg', () => {
   const result = runGuard(dir, [baseSha]);
   assert.strictEqual(result.code, 1, `expected exit 1, got ${result.code}:\n${result.out}`);
   assert.ok(result.out.includes('new-icon.svg'), `expected the report to name new-icon.svg:\n${result.out}`);
+});
+
+for (const staged of [true, false]) {
+  check(
+    `blocks new --om-* style references and declarations (${
+      staged ? 'staged' : 'branch'
+    })`,
+    () => {
+      const { dir, git } = makeTmpRepo();
+      try {
+        const file = path.join(dir, 'surface.css');
+        fs.writeFileSync(file, '.surface { padding: var(--om-space-4); }\n');
+        git('add', '-A');
+        git('commit', '-q', '-m', 'base');
+        const baseSha = git('rev-parse', 'HEAD').trim();
+        fs.appendFileSync(
+          file,
+          ':root { --om-new: red; } .extra { padding: var(--om-space-4); }\n'
+        );
+        git('add', '-A');
+        if (!staged) git('commit', '-q', '-m', 'add legacy token usage');
+        const result = runGuard(dir, staged ? [] : [baseSha]);
+        assert.strictEqual(result.code, 1);
+        assert.ok(result.out.includes('--om-new'));
+        assert.ok(result.out.includes('--om-space-4'));
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  );
+}
+
+check('allows migrating existing style references and ignores comments', () => {
+  const { dir, git } = makeTmpRepo();
+  try {
+    const file = path.join(dir, 'surface.less');
+    fs.writeFileSync(file, '.surface { padding: var(--om-space-4); }\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'base');
+    fs.writeFileSync(
+      file,
+      '// var(--om-example)\n/* --om-example: red; */\n.surface { padding: calc(var(--tw-spacing) * 4); }\n'
+    );
+    git('add', '-A');
+    assert.strictEqual(runGuard(dir, []).code, 0);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 process.stdout.write(`\n${pass} check(s) passed.\n`);
