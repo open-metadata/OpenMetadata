@@ -13,6 +13,12 @@
 import { Page, Route } from '@playwright/test';
 import { SystemChartType } from '../../src/enums/DataInsight.enum';
 import { ResourceEntity } from '../../src/enums/permissions.enum';
+import { ServiceCategory } from '../../src/enums/service.enum';
+import {
+  Health,
+  MetricObservability,
+  ReasonCode,
+} from '../../src/generated/api/data/metricObservability';
 import { Operation } from '../../src/generated/entity/policies/policy';
 import activity from '../fixtures/visual/activity.json';
 import customProperties from '../fixtures/visual/custom-properties.json';
@@ -1631,6 +1637,21 @@ export const installVisualData = async (
       return;
     }
 
+    const systemProfileRead = /^tables\/([^/]+)\/systemProfile$/.exec(path);
+    if (systemProfileRead) {
+      const table = fixtureResources.tables.find(
+        ({ fullyQualifiedName }) => fullyQualifiedName === systemProfileRead[1]
+      );
+      if (!table) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
+      // The fixture table has no ingestion-produced system profile history.
+      await route.fulfill({ json: pageOf([]) });
+
+      return;
+    }
     const tableProfileRead =
       /^tables\/([^/]+)\/tableProfile(?:\/(latest))?$/.exec(path);
     if (tableProfileRead) {
@@ -1687,6 +1708,23 @@ export const installVisualData = async (
 
       return;
     }
+    const draftServiceRead =
+      /^services\/([^/]+)\/name\/visual_connection$/.exec(path);
+    if (
+      draftServiceRead &&
+      Object.values(ServiceCategory).includes(
+        draftServiceRead[1] as ServiceCategory
+      )
+    ) {
+      // Drafts also use categories with no existing service, such as metadata.
+      // Only this absent name is available; unknown identities still block capture.
+      await route.fulfill({
+        status: 404,
+        json: { message: 'The draft service does not exist.' },
+      });
+
+      return;
+    }
     const collection = collections.find(
       (key) => path === key || path.startsWith(`${key}/`)
     );
@@ -1717,19 +1755,6 @@ export const installVisualData = async (
           }))
         : fixtureResources[collection];
     const suffix = path.slice(collection.length).replace(/^\//, '');
-    if (
-      /^services\/[^/]+Services$/.test(collection) &&
-      suffix === 'name/visual_connection'
-    ) {
-      // Connector drafts debounce a uniqueness check. Only this deliberately
-      // absent name is available; other unknown identities still block capture.
-      await route.fulfill({
-        status: 404,
-        json: { message: 'The draft service does not exist.' },
-      });
-
-      return;
-    }
     const selected = data.find(
       ({ id, name, fullyQualifiedName }) =>
         suffix === id ||
@@ -1762,6 +1787,13 @@ export const installVisualData = async (
       (childPath === 'versions' ||
         /^versions\/\d+(?:\.\d+)?$/.test(childPath)) &&
       Number.isFinite(selected?.version);
+    const isMetricObservability =
+      collection === 'metrics' && suffix === `${selected?.id}/observability`;
+    const isOntologyReleases =
+      collection === 'ontologies' && suffix === `${selected?.id}/releases`;
+    const isOutputPorts =
+      collection === 'dataProducts' &&
+      suffix === `name/${selected?.fullyQualifiedName}/outputPorts`;
     // Validate the route before the deliberate failure state; otherwise an
     // unmodeled child read can masquerade as the expected error feedback.
     if (
@@ -1770,6 +1802,9 @@ export const installVisualData = async (
         !isColumnRead &&
         !isSampleRead &&
         !isVersionRead &&
+        !isMetricObservability &&
+        !isOntologyReleases &&
+        !isOutputPorts &&
         !(collection === 'dataProducts' && childPath === 'portsView') &&
         !(
           collection === 'dataQuality/testSuites' && childPath === 'testCases'
@@ -1820,6 +1855,37 @@ export const installVisualData = async (
     }
 
     if (selected) {
+      if (isMetricObservability) {
+        // No assets are bound to this metric. Its health is unknown, not a
+        // fabricated zero score or a paginated empty response.
+        await route.fulfill({
+          json: {
+            health: Health.Unknown,
+            reasonCode: ReasonCode.NoLinkedAssets,
+            metric: {
+              id: selected.id,
+              name: selected.name,
+              fullyQualifiedName: selected.fullyQualifiedName,
+              type: 'metric',
+            },
+            upstreamAssetCount: 0,
+            evaluatedAssetCount: 0,
+            assets: [],
+            linkedAssets: [],
+            dimensions: [],
+            incidents: [],
+            tests: [],
+          } satisfies MetricObservability,
+        });
+
+        return;
+      }
+      if (isOntologyReleases || isOutputPorts) {
+        // This ontology is unpublished and the product declares no output ports.
+        await route.fulfill({ json: pageOf([]) });
+
+        return;
+      }
       if (collection === 'containers' && childPath === 'ancestors') {
         // The fixture is a root bucket, so it has no container breadcrumb ancestors.
         await route.fulfill({ json: [] });

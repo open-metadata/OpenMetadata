@@ -767,6 +767,7 @@ for (const state of ['populated', 'error'] as const) {
   for (const path of [
     'a-new-read-endpoint',
     'services/databaseServices/name/unmodeledService',
+    'services/unknownServices/name/visual_connection',
     'services/databaseServices/name/visual_connection/unmodeledChild',
     'tables/name/visual_connection',
     'tables/not-a-fixture-id',
@@ -835,6 +836,8 @@ test('connector drafts have an explicitly available name in every service catego
         'searchServices',
         'apiServices',
         'driveServices',
+        'metadataServices',
+        'securityServices',
       ].map(
         async (category) =>
           (
@@ -843,7 +846,52 @@ test('connector drafts have an explicitly available name in every service catego
       )
     )
   );
-  expect(statuses).toEqual(Array(9).fill(404));
+  expect(statuses).toEqual(Array(11).fill(404));
+  expect(
+    test
+      .info()
+      .annotations.filter(({ type }) => type === 'missing-visual-read-fixture')
+  ).toHaveLength(0);
+});
+
+test('uncollected profiles, ports and releases preserve their explicit read contracts', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    profiles: await (
+      await fetch(
+        '/api/v1/tables/visual_warehouse.finance.public.orders/systemProfile'
+      )
+    ).json(),
+    ports: await (
+      await fetch(
+        '/api/v1/dataProducts/name/visual_revenue_product/outputPorts'
+      )
+    ).json(),
+    releases: await (
+      await fetch(
+        '/api/v1/ontologies/1cc8514b-bd7a-5c36-9ac2-4f12aaf998de/releases'
+      )
+    ).json(),
+    health: await (
+      await fetch(
+        '/api/v1/metrics/a2db4c89-cc42-5fad-b381-2dfa9180e5c0/observability'
+      )
+    ).json(),
+  }));
+  for (const response of [result.profiles, result.ports, result.releases]) {
+    expect(response).toEqual({ data: [], paging: { total: 0 } });
+  }
+  expect(result.health).toMatchObject({
+    health: 'Unknown',
+    reasonCode: 'NoLinkedAssets',
+    metric: { id: 'a2db4c89-cc42-5fad-b381-2dfa9180e5c0', type: 'metric' },
+    upstreamAssetCount: 0,
+    assets: [],
+    tests: [],
+  });
+  expect(result.health).not.toHaveProperty('score');
   expect(
     test
       .info()

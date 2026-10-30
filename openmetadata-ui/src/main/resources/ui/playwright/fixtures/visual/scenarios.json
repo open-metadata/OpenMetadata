@@ -2361,7 +2361,9 @@
     "path": "/domain/VisualFinance",
     "initialReady": {
       "testId": "activity_feed",
-      "has": { "text": "5" }
+      "has": {
+        "text": "5"
+      }
     },
     "actions": [
       {
@@ -2442,7 +2444,9 @@
     "path": "/dataProduct/visual_revenue_product",
     "initialReady": {
       "testId": "activity_feed",
-      "has": { "text": "5" }
+      "has": {
+        "text": "5"
+      }
     },
     "actions": [
       {
@@ -2541,7 +2545,8 @@
       {
         "action": "click",
         "role": "button",
-        "name": "Add Data Product"
+        "name": "Add Data Product",
+        "within": "search-header-actions"
       }
     ],
     "target": {
@@ -2833,7 +2838,8 @@
       {
         "action": "click",
         "role": "button",
-        "name": "Add Data Product"
+        "name": "Add Data Product",
+        "within": "search-header-actions"
       },
       {
         "action": "click",
@@ -4561,7 +4567,9 @@
     "path": "/glossary/VisualBusinessGlossary.Customer",
     "initialReady": {
       "testId": "activity_feed",
-      "has": { "text": "5" }
+      "has": {
+        "text": "5"
+      }
     },
     "ready": {
       "testId": "incident-New-type-area-chart-widget-container"
@@ -4728,7 +4736,9 @@
     "path": "/tag/VisualClassification.Confidential",
     "initialReady": {
       "testId": "activity_feed",
-      "has": { "text": "5" }
+      "has": {
+        "text": "5"
+      }
     },
     "ready": {
       "testId": "incident-New-type-area-chart-widget-container"
