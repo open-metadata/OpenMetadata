@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import type { Column } from 'react-data-grid';
-import { getCsvGridRowHeight, getFailedImportRowIds } from './CSVPureUtils';
+import {
+  getCsvGridRowHeight,
+  getCSVStringFromColumnsAndDataSource,
+  getFailedImportRowIds,
+  neutralizeFormula,
+  restoreFormula,
+} from './CSVPureUtils';
 
 type GridColumn = Column<Record<string, string>>;
 
@@ -130,5 +136,34 @@ describe('getFailedImportRowIds', () => {
 
   it('returns no ids without a result', () => {
     expect(getFailedImportRowIds({ submittedCsv }).size).toBe(0);
+  });
+});
+
+describe('formula escaping matches the server CSV export', () => {
+  // Same cases as EntityCsvTest: stored value -> exported cell.
+  const cases: Array<[string, string]> = [
+    ['=HYPERLINK("http://x")', `'=HYPERLINK("http://x")`],
+    ['+1', "'+1"],
+    ['- bullet', "'- bullet"],
+    ['@SUM(A1)', "'@SUM(A1)"],
+    ['\tindented', "'\tindented"],
+    ["'=already quoted", "''=already quoted"],
+    ['"local.mysql".default', '"local.mysql".default'],
+    ["'plain quote", "'plain quote"],
+    ['user:admin;team:data', 'user:admin;team:data'],
+  ];
+
+  it.each(cases)('escapes %j once and restores it', (stored, exported) => {
+    expect(neutralizeFormula(stored)).toBe(exported);
+    expect(restoreFormula(exported)).toBe(stored);
+  });
+
+  it('re-escapes grid values sent back for import', () => {
+    const csv = getCSVStringFromColumnsAndDataSource(
+      [{ key: 'name' }, { key: 'description' }],
+      [{ name: 'term', description: "'=already quoted" }]
+    );
+
+    expect(csv).toBe("name,description\nterm,''=already quoted");
   });
 });

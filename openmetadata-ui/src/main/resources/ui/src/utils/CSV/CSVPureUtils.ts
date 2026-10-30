@@ -314,6 +314,19 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
   }
 };
 
+// Mirrors CsvUtil.java: a formula trigger, possibly behind leading quotes (e.g. "=x", "'=x").
+const isFormulaLike = (value: string) => /^'*[=+\-@\t\r]/.test(value);
+
+// Prefix cells a spreadsheet would evaluate (e.g. "=HYPERLINK(..)") the way the server export does.
+export const neutralizeFormula = (value: string) =>
+  isFormulaLike(value) ? `'${value}` : value;
+
+// Undo neutralizeFormula, so the grid shows the stored value.
+export const restoreFormula = (value: string) =>
+  value.startsWith("'") && isFormulaLike(value.slice(1))
+    ? value.slice(1)
+    : value;
+
 export const getCSVStringFromColumnsAndDataSource = (
   columns: Array<Pick<Column<unknown>, 'key'>>,
   dataSource: Record<string, string>[]
@@ -323,7 +336,7 @@ export const getCSVStringFromColumnsAndDataSource = (
   const data = dataSource.map((row) =>
     Object.fromEntries(
       fieldNames.map((key) => {
-        const value = String(row[key] ?? '');
+        const value = neutralizeFormula(String(row[key] ?? ''));
 
         return [key, value];
       })

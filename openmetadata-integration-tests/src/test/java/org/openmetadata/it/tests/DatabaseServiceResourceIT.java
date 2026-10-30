@@ -796,6 +796,61 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void test_importExportRecursive_escapesFormulaCellsOnce(TestNamespace ns)
+      throws IOException, InterruptedException {
+    DatabaseService service =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("formula_service")));
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db"))
+                    .withService(service.getFullyQualifiedName())
+                    .withDescription("=HYPERLINK(\"http://example.com\")"));
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withDescription("- schema bullet"));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withDescription("'=already quoted")
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    // Schema and table rows come from the nested database export; each cell is escaped once.
+    assertTrue(exportedCsv.contains(",'- schema bullet,"), exportedCsv);
+    assertFalse(exportedCsv.contains("''- schema bullet"), exportedCsv);
+    assertTrue(exportedCsv.contains(",''=already quoted,"), exportedCsv);
+    assertFalse(exportedCsv.contains("'''=already quoted"), exportedCsv);
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), exportedCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus(), result.getImportResultsCsv());
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    assertEquals(
+        "=HYPERLINK(\"http://example.com\")",
+        client.databases().getByName(database.getFullyQualifiedName()).getDescription());
+    assertEquals(
+        "- schema bullet",
+        client.databaseSchemas().getByName(schema.getFullyQualifiedName()).getDescription());
+    assertEquals(
+        "'=already quoted",
+        client.tables().getByName(table.getFullyQualifiedName()).getDescription());
+  }
+
+  @Test
   void test_importExportRecursive_preservesTableConstraints(TestNamespace ns)
       throws IOException, InterruptedException {
     String serviceName = ns.prefix("import_export_recursive_constraints_service");
