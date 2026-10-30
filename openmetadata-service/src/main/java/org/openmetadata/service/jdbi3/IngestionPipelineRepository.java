@@ -706,6 +706,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
   protected IngestionPipeline prepareForStorage(IngestionPipeline ingestionPipeline) {
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 

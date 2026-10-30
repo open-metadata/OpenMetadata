@@ -34,11 +34,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowType;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -52,7 +55,6 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -106,8 +108,12 @@ class EntityRepositorySecretStorageTest {
   }
 
   private void captureWrites(CollectionDAO.IngestionPipelineDAO dao) {
-    when(dao.findJsonByIdForUpdate(any(UUID.class), eq(Include.ALL)))
-        .thenAnswer(invocation -> storedJson.get());
+    when(dao.findVersionByIdForUpdate(anyString(), any(UUID.class)))
+        .thenAnswer(
+            invocation ->
+                storedJson.get() == null
+                    ? null
+                    : JsonUtils.readTree(storedJson.get()).path("version").asText());
     doAnswer(
             invocation -> {
               storedJson.set(invocation.getArgument(3));
@@ -157,6 +163,33 @@ class EntityRepositorySecretStorageTest {
     IngestionPipeline stored = JsonUtils.readValue(storedJson.get(), IngestionPipeline.class);
     assertEquals(0.2, stored.getVersion());
     assertFalse(JsonUtils.readTree(storedJson.get()).has("service"));
+  }
+
+  @Test
+  void ordinaryConditionalWriteUsesAtomicVersionCheck() {
+    CollectionDAO.TopicDAO topicDAO = mock(CollectionDAO.TopicDAO.class);
+    when(Entity.getCollectionDAO().topicDAO()).thenReturn(topicDAO);
+    when(topicDAO.getTableName()).thenReturn("topic_entity");
+    when(topicDAO.getNameHashColumn()).thenReturn("fqnHash");
+    when(topicDAO.updateWithVersion(
+            anyString(), anyString(), anyString(), anyString(), anyString(), eq("0.1")))
+        .thenAnswer(
+            invocation -> {
+              storedJson.set(invocation.getArgument(4));
+              return 1;
+            });
+    Topic topic =
+        new Topic()
+            .withId(UUID.randomUUID())
+            .withName("topic")
+            .withFullyQualifiedName("service.topic")
+            .withDescription("updated")
+            .withVersion(0.2);
+
+    new TopicRepository().storeEntityWithVersion(topic, true, 0.1, 1L);
+
+    assertEquals("updated", JsonUtils.readTree(storedJson.get()).path("description").asText());
+    assertEquals(0.2, JsonUtils.readValue(storedJson.get(), Topic.class).getVersion());
   }
 
   @Test
@@ -212,8 +245,10 @@ class EntityRepositorySecretStorageTest {
     assertEquals(liveSecrets, vault.getSecretsMap());
   }
 
-  @Test
-  void rejectedConditionalWriteDoesNotOverwriteExternalSecrets() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "0.2")
+  void rejectedConditionalWriteDoesNotOverwriteExternalSecrets(String storedVersion) {
     InMemorySecretsManager vault =
         new InMemorySecretsManager(
             new SecretsManager.SecretsConfig("conditional-storage-test", "", List.of(), null)) {};
@@ -224,6 +259,8 @@ class EntityRepositorySecretStorageTest {
     repository.storeEntity(winner, false);
     String committedJson = storedJson.get();
     Map<String, String> committedSecrets = Map.copyOf(vault.getSecretsMap());
+    when(pipelineDAO.findVersionByIdForUpdate(anyString(), any(UUID.class)))
+        .thenReturn(storedVersion);
     when(pipelineDAO.updateWithVersion(
             anyString(), anyString(), anyString(), anyString(), anyString(), eq("0.1")))
         .thenReturn(0);
@@ -234,6 +271,27 @@ class EntityRepositorySecretStorageTest {
 
     assertEquals(committedJson, storedJson.get());
     assertEquals(committedSecrets, vault.getSecretsMap());
+  }
+
+  @Test
+  void matchingConditionalWriteUpdatesExternalSecrets() {
+    InMemorySecretsManager vault =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig("matching-storage-test", "", List.of(), null)) {};
+    SecretsManagerFactory.setSecretsManager(vault);
+    IngestionPipeline original = pipeline();
+    repository.storeEntity(original, false);
+    IngestionPipeline updated =
+        pipeline("updated-secret").withId(original.getId()).withVersion(0.2);
+
+    repository.storeEntityWithVersion(updated, true, 0.1, 1L);
+
+    IngestionPipeline stored = JsonUtils.readValue(storedJson.get(), IngestionPipeline.class);
+    vault.decryptIngestionPipeline(stored);
+    assertEquals(0.2, stored.getVersion());
+    assertEquals(
+        "updated-secret",
+        JsonUtils.readTree(JsonUtils.pojoToJson(stored)).at(PIPELINE_SECRET).asText());
   }
 
   @Test

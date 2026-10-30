@@ -52,6 +52,11 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
   protected Workflow prepareForStorage(Workflow entity) {
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     return secretsManager == null ? entity : secretsManager.encryptWorkflow(entity);

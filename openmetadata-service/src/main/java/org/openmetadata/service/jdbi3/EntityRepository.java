@@ -6525,6 +6525,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return entity;
   }
 
+  protected boolean isStoragePreparationSideEffecting() {
+    return false;
+  }
+
   protected String serializeForStorage(T entity) {
     return JsonStorageUtils.sanitizeNulCharacters(
         storageJsonNode(prepareForStorage(entity)).toString());
@@ -6545,7 +6549,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   protected void store(T entity, boolean update, Double expectedVersion) {
     EntityDAO<T> writeDAO = entityDAOForWrite();
-    if (update && expectedVersion != null) {
+    if (update && expectedVersion != null && isStoragePreparationSideEffecting()) {
       lockAndValidateVersion(writeDAO, entity, expectedVersion);
     }
     String json = serializeForStorage(entity);
@@ -6589,11 +6593,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void lockAndValidateVersion(EntityDAO<T> writeDAO, T entity, Double expectedVersion) {
     // Secret preparation can mutate an external vault before the conditional SQL update.
-    String currentJson = writeDAO.findJsonByIdForUpdate(entity.getId(), Include.ALL);
-    if (currentJson == null
-        || !expectedVersion
-            .toString()
-            .equals(JsonUtils.readTree(currentJson).path("version").asText())) {
+    String currentVersion =
+        writeDAO.findVersionByIdForUpdate(writeDAO.getTableName(), entity.getId());
+    if (!expectedVersion.toString().equals(currentVersion)) {
       throw new PreconditionFailedException(
           "The entity has been modified by another user. Please refresh and retry.");
     }

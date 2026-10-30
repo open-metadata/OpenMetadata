@@ -352,6 +352,11 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
   protected User prepareForStorage(User user) {
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
