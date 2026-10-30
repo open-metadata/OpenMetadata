@@ -10,6 +10,8 @@
 #  limitations under the License.
 """IOMETE observability must use the attached table's catalog."""
 
+import subprocess
+import sys
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -179,3 +181,23 @@ def test_catalog_copy_resolves_id_only_database_reference(context):
     table.database.name = None
     copied = copy_connection_for_table(connection(None), table, metadata)
     assert copied.catalog == database.name.root
+
+
+def test_service_spec_loads_without_optional_iomete_driver():
+    script = """
+import importlib.abc
+import sys
+
+class NoIometeDriver(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split(".")[0] == "iomete_sqlalchemy":
+            raise AssertionError("Optional IOMETE driver imported eagerly")
+
+sys.meta_path.insert(0, NoIometeDriver())
+from metadata.ingestion.source.database.iomete.service_spec import ServiceSpec
+from metadata.utils.importer import import_from_module
+for field in ["sampler_class", "test_suite_class", "profiler_class"]:
+    assert import_from_module(getattr(ServiceSpec, field)).__name__.startswith("Iomete")
+"""
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
