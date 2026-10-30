@@ -232,6 +232,7 @@ class RdfStorageMaintenanceServiceTest {
   void scheduledChecksReportOverdueEvenWhileTheFirstCompactionStillWaits() throws Exception {
     final CountDownLatch entered = new CountDownLatch(1);
     final CountDownLatch release = new CountDownLatch(1);
+    final CountDownLatch overdueReports = new CountDownLatch(2);
     doAnswer(
             invocation -> {
               entered.countDown();
@@ -241,7 +242,17 @@ class RdfStorageMaintenanceServiceTest {
         .when(repository)
         .compact(any());
     final Logger logger = (Logger) LoggerFactory.getLogger(RdfStorageMaintenanceService.class);
-    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    final ListAppender<ILoggingEvent> appender =
+        new ListAppender<>() {
+          @Override
+          protected void append(final ILoggingEvent event) {
+            super.append(event);
+            if (event.getLevel() == Level.ERROR
+                && event.getFormattedMessage().contains("has not compacted")) {
+              overdueReports.countDown();
+            }
+          }
+        };
     appender.start();
     logger.addAppender(appender);
     try {
@@ -251,16 +262,17 @@ class RdfStorageMaintenanceServiceTest {
 
       serverA.check();
 
-      assertTrue(
-          appender.list.stream()
-              .anyMatch(
-                  event ->
-                      event.getLevel() == Level.ERROR
-                          && event.getFormattedMessage().contains("has not compacted")));
+      assertEquals(
+          1, overdueReports.getCount(), "the scheduled check reports while the worker waits");
     } finally {
       release.countDown();
-      logger.detachAppender(appender);
-      appender.stop();
+      try {
+        assertTrue(
+            overdueReports.await(10, TimeUnit.SECONDS), "wait for the worker's trailing report");
+      } finally {
+        logger.detachAppender(appender);
+        appender.stop();
+      }
     }
   }
 
