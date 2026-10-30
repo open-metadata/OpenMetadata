@@ -18,6 +18,7 @@ from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import TableData, TableType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.profiler.orm.registry import CustomTypes
 from metadata.sampler.sqlalchemy.sampler import (
     ProfileSampleType,
     SQASampler,
@@ -34,7 +35,7 @@ class AzureSQLSampler(SQASampler):
     # These types are not supported by pyodbc - it throws
     # an error when trying to fetch data from these columns
     # pyodbc.ProgrammingError: ('ODBC SQL type -151 is not yet supported.  column-index=x  type=-151', 'HY106')
-    NOT_COMPUTE_PYODBC = {"SQASGeography", "UndeterminedType"}  # noqa: RUF012
+    NOT_COMPUTE_PYODBC = {"SQASGeography", "UndeterminedType", CustomTypes.GEOMETRY.value.__name__}  # noqa: RUF012
 
     def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
         """Set the TABLESAMPLE clause for MSSQL
