@@ -28,6 +28,7 @@ import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 
 @Slf4j
 public final class IngestionPipelineBuilder {
+  private static final String CONFIG_TYPE_FIELD = "type";
 
   private IngestionPipelineBuilder() {
     // Final
@@ -63,7 +64,9 @@ public final class IngestionPipelineBuilder {
     Object config = ingestionPipeline.getSourceConfig().getConfig();
     return config instanceof StorageServiceMetadataPipeline
         || (config instanceof Map<?, ?> map
-            && (StorageMetadataConfigType.STORAGE_METADATA.value().equals(map.get("type"))
+            && (StorageMetadataConfigType.STORAGE_METADATA
+                    .value()
+                    .equals(map.get(CONFIG_TYPE_FIELD))
                 || (METADATA.equals(ingestionPipeline.getPipelineType())
                     && ingestionPipeline.getService() != null
                     && Entity.STORAGE_SERVICE.equals(ingestionPipeline.getService().getType()))));
