@@ -28,6 +28,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Direction } from '../../../../generated/api/data/ontologyConceptQuery';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useClipboard } from '../../../../hooks/useClipBoard';
@@ -54,6 +55,7 @@ interface OntologyConceptLiveDataProps {
 }
 
 export interface SearchAroundStep {
+  readonly direction: Direction;
   readonly key: string;
   readonly label: string;
   readonly propertyId: string;
@@ -67,17 +69,20 @@ export const getSearchAroundSteps = (
 ): SearchAroundStep[] => {
   const steps = new Map<string, SearchAroundStep>();
   getConceptRelationRows(relations, conceptId).forEach(
-    ({ direction, other, relation }) => {
+    ({ direction: rowDirection, other, relation }) => {
       const property = relation.property;
       if (property?.kind !== Kind.Object) {
         return;
       }
+      const direction =
+        rowDirection === 'incoming' ? Direction.Incoming : Direction.Outgoing;
       const inverse =
-        direction === 'incoming'
+        direction === Direction.Incoming
           ? getInverseRelationLabel(relation, model)
           : undefined;
-      const key = `${property.id}:${other.id}`;
+      const key = `${property.id}:${direction}:${other.id}`;
       steps.set(key, {
+        direction,
         key,
         label: humanizeName(inverse ?? getModelRelationLabel(relation)),
         propertyId: property.id,
@@ -110,9 +115,10 @@ const OntologyConceptLiveData = ({
   const [isPicking, setIsPicking] = useState(false);
   const request = useMemo(
     () =>
-      hops.map(({ propertyId, target }) => ({
+      hops.map(({ direction, propertyId, target }) => ({
         property: propertyId,
         target: target.id,
+        direction,
       })),
     [hops]
   );
