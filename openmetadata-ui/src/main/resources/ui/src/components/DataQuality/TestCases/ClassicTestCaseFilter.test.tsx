@@ -228,12 +228,17 @@ describe('ClassicTestCaseFilter', () => {
     );
     expect(screen.queryByTestId('clear-date-picker')).not.toBeInTheDocument();
 
+    // The URL-backed value also carries the preset key and title the menu displays.
+    const lastSevenDays = {
+      startTs: 1,
+      endTs: 2,
+      key: 'last7days',
+      title: '7 days',
+    };
+
     rerender(
       <ClassicTestCaseFilter
-        filter={{
-          ...dateDescriptor,
-          value: { startTs: 1, endTs: 2, key: 'last7days', title: '7 days' },
-        }}
+        filter={{ ...dateDescriptor, value: lastSevenDays }}
         testId="filter"
       />
     );
