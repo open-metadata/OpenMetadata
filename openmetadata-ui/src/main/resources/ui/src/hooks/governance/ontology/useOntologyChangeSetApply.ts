@@ -34,6 +34,7 @@ const CHANGE_SET_FIELDS = 'operations,applicationResult';
 
 // A 4xx is the server's definite refusal. With no response, or a 5xx, the
 // apply may still commit, so its outcome stays unknown.
+// ADR:2026-10-30-native-class-authoring-rebuilds-only-after-a-definite-refusal
 const isRefusedByServer = (error: unknown) =>
   isAxiosError(error) &&
   error.response !== undefined &&
