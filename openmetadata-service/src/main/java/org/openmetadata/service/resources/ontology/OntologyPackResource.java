@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.ontology;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotAuthorizedException;
@@ -23,25 +24,35 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.security.Principal;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import org.openmetadata.schema.api.data.InstallOntologyPack;
 import org.openmetadata.schema.api.data.OntologyPackInstallResult;
 import org.openmetadata.schema.api.data.OntologyPackList;
 import org.openmetadata.schema.api.data.OntologyPackManifest;
+import org.openmetadata.schema.api.data.OntologyPackSample;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.jdbi3.OntologyRepository;
+import org.openmetadata.service.ontology.OntologyPackContentLoader;
+import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyPackInstaller;
+import org.openmetadata.service.ontology.OntologyPackSampler;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -52,8 +63,11 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ontologyPacks", order = 6)
 public final class OntologyPackResource {
+  private static final int INSTALLATIONS_PAGE_SIZE = 1000;
+
   private final Authorizer authorizer;
   private final OntologyPackInstaller installer;
+  private final OntologyPackSampler sampler;
 
   public OntologyPackResource(final Authorizer authorizer) {
     this(
@@ -64,13 +78,46 @@ public final class OntologyPackResource {
   OntologyPackResource(final Authorizer authorizer, final OntologyPackInstaller installer) {
     this.authorizer = authorizer;
     this.installer = installer;
+    this.sampler =
+        new OntologyPackSampler(
+            installer.catalog(), new OntologyPackContentLoader(getClass().getClassLoader()));
   }
 
   @GET
   @Operation(operationId = "listOntologyPacks", summary = "List ontology library packs")
   public OntologyPackList list(@Context final SecurityContext securityContext) {
     requireUser(securityContext);
-    return new OntologyPackList().withPacks(installer.catalog().list());
+    return new OntologyPackList()
+        .withPacks(installer.catalog().list())
+        .withInstallations(OntologyPackInstallations.records(viewable(securityContext)));
+  }
+
+  @GET
+  @Path("/{packId}/sample")
+  @Operation(operationId = "sampleOntologyPack", summary = "Preview selected library concepts")
+  public OntologyPackSample sample(
+      @Context final SecurityContext securityContext,
+      @PathParam("packId") final String packId,
+      @QueryParam("moduleIds") @NotBlank final String moduleIds) {
+    requireUser(securityContext);
+    return sampler.sample(packId, Arrays.asList(moduleIds.split(",", -1)));
+  }
+
+  private List<Ontology> viewable(final SecurityContext securityContext) {
+    final OntologyRepository repository =
+        (OntologyRepository) Entity.getEntityRepository(Entity.ONTOLOGY);
+    if (DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return repository.listWithInstalledPacks(INSTALLATIONS_PAGE_SIZE, page -> page);
+    }
+    final ViewPermissionFilter permissions = new ViewPermissionFilter(authorizer);
+    return repository.listWithInstalledPacks(
+        INSTALLATIONS_PAGE_SIZE,
+        page -> {
+          final var visibleIds =
+              permissions.viewableIds(
+                  securityContext, page.stream().map(Ontology::getEntityReference).toList());
+          return page.stream().filter(ontology -> visibleIds.contains(ontology.getId())).toList();
+        });
   }
 
   @GET
