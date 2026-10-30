@@ -172,6 +172,10 @@ export const installVisualData = async (
       ...(state === 'long-content'
         ? {
             displayName: `${item.entity.displayName} — Finance reporting metadata with a deliberately long title that must remain readable in headers, tables, and dialogs`,
+            description:
+              'Finance reporting fields describe the daily revenue calculations, ownership, freshness checks, and approved usage for cross-team reporting. '
+                .repeat(3)
+                .trim(),
           }
         : {}),
     },
