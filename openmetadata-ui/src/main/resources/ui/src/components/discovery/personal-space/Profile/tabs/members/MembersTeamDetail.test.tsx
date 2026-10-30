@@ -24,6 +24,7 @@ import {
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
@@ -641,6 +642,54 @@ describe('MembersTeamDetail', () => {
 
       expect(lastParams).toEqual(expect.objectContaining({ limit: 10 }));
       expect(lastParams.after).toBeUndefined();
+    });
+
+    it('keeps the rows of the latest search when an earlier one answers late', async () => {
+      (getTeams as jest.Mock).mockResolvedValue(firstPage);
+      const firstSearch: { answer?: (value: unknown) => void } = {};
+      (searchQuery as jest.Mock)
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            firstSearch.answer = resolve;
+          })
+        )
+        .mockResolvedValueOnce(searchHits(subTeams(1, 'second'), 1));
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+      const search = await screen.findByTestId('sub-teams-table-search');
+
+      fireEvent.change(search, { target: { value: 'first' } });
+      fireEvent.change(search, { target: { value: 'second' } });
+      await waitFor(() =>
+        expect(latestSubTeamRows().map(({ name }) => name)).toEqual([
+          'second-0',
+        ])
+      );
+      await act(async () => {
+        firstSearch.answer?.(searchHits(subTeams(1, 'first'), 1));
+      });
+
+      expect(latestSubTeamRows().map(({ name }) => name)).toEqual(['second-0']);
+    });
+
+    it('reports a failed search and clears the rows', async () => {
+      (getTeams as jest.Mock).mockResolvedValue(firstPage);
+      (searchQuery as jest.Mock).mockRejectedValueOnce(
+        new Error('search down')
+      );
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+      await waitFor(() => expect(latestSubTeamRows()).toHaveLength(10));
+
+      fireEvent.change(await screen.findByTestId('sub-teams-table-search'), {
+        target: { value: 'sales' },
+      });
+
+      await waitFor(() => expect(latestSubTeamRows()).toHaveLength(0));
+
+      expect(showErrorToast).toHaveBeenCalled();
     });
   });
 
