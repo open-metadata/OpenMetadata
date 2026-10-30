@@ -39,14 +39,14 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
@@ -78,7 +78,6 @@ class BasicAuthLoginServletTest {
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
   @Mock private HttpSession session;
-  @Mock private AuthenticationConfiguration authConfig;
 
   private MockedConstruction<McpPendingAuthRequestRepository> pendingRepoConstruction;
   private MockedConstruction<OAuthClientRepository> clientRepoConstruction;
@@ -86,6 +85,7 @@ class BasicAuthLoginServletTest {
   private OAuthClientRepository clientRepo;
   private StringWriter responseBody;
   private BasicAuthLoginServlet servlet;
+  private AuthenticatorHandler registeredBefore;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -93,7 +93,9 @@ class BasicAuthLoginServletTest {
     // their real constructors (which call Entity.getCollectionDAO()) never run.
     pendingRepoConstruction = mockConstruction(McpPendingAuthRequestRepository.class);
     clientRepoConstruction = mockConstruction(OAuthClientRepository.class);
-    servlet = new BasicAuthLoginServlet(authProvider, authenticator);
+    servlet = new BasicAuthLoginServlet(authProvider);
+    registeredBefore = SecurityConfigurationManager.getInstance().getAuthenticatorHandler();
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticator);
     pendingRepo = pendingRepoConstruction.constructed().get(0);
     clientRepo = clientRepoConstruction.constructed().get(0);
 
@@ -125,13 +127,11 @@ class BasicAuthLoginServletTest {
     // Capture the re-rendered login form body.
     responseBody = new StringWriter();
     when(response.getWriter()).thenReturn(new PrintWriter(responseBody));
-
-    // Default to a non-LDAP provider so validatePassword is invoked by the servlet.
-    when(authConfig.getProvider()).thenReturn(AuthProvider.BASIC);
   }
 
   @AfterEach
   void tearDown() {
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(registeredBefore);
     clientRepoConstruction.close();
     pendingRepoConstruction.close();
   }
@@ -170,12 +170,7 @@ class BasicAuthLoginServletTest {
         .when(authenticator)
         .validatePassword(any(String.class), any(String.class), any(User.class));
 
-    try (MockedStatic<SecurityConfigurationManager> scm =
-        mockStatic(SecurityConfigurationManager.class)) {
-      scm.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(authConfig);
-
-      servlet.doPost(request, response);
-    }
+    servlet.doPost(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_OK);
     verify(response, never()).sendError(anyInt(), anyString());
@@ -211,10 +206,7 @@ class BasicAuthLoginServletTest {
         .when(authenticator)
         .validatePassword(any(String.class), any(String.class), any(User.class));
 
-    try (MockedStatic<SecurityConfigurationManager> scm =
-            mockStatic(SecurityConfigurationManager.class);
-        MockedStatic<LoginAttemptCache> attempts = mockStatic(LoginAttemptCache.class)) {
-      scm.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(authConfig);
+    try (MockedStatic<LoginAttemptCache> attempts = mockStatic(LoginAttemptCache.class)) {
       attempts.when(LoginAttemptCache::getInstance).thenReturn(mock(LoginAttemptCache.class));
 
       servlet.doPost(request, response);
@@ -353,5 +345,40 @@ class BasicAuthLoginServletTest {
         .sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Login processing failed");
     verify(response, never()).setStatus(HttpServletResponse.SC_OK);
     assertThat(responseBody.toString()).doesNotContain("Invalid username or password");
+  }
+
+  // ── authenticator replaced by a security reload ──────────────────────────
+
+  @Test
+  void doPost_afterSwitchToLdap_passwordIsCheckedByTheDirectory() throws Exception {
+    // The servlet was built while another authenticator was registered. After a runtime switch to
+    // LDAP, the directory bind must decide the login, not the authenticator from before.
+    LdapAuthenticator ldap = mock(LdapAuthenticator.class);
+    doThrow(
+            new CustomExceptionMessage(
+                Response.Status.UNAUTHORIZED,
+                "INVALID_USER_OR_PASSWORD",
+                "You have entered an invalid username or password."))
+        .when(ldap)
+        .lookUserInProvider(EMAIL, PASSWORD);
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(ldap);
+
+    servlet.doPost(request, response);
+
+    assertThat(responseBody.toString()).contains("Invalid username or password");
+    verify(authProvider, never()).createAuthorizationCode(any(), any(), any(), any(), any());
+    verify(authenticator, never()).lookUserInProvider(anyString(), anyString());
+  }
+
+  @Test
+  void doPost_providerWithoutPasswords_refusesLogin() throws Exception {
+    // SAML and OIDC register a NoopAuthenticator: a password kept from before the move to SSO
+    // must not sign anyone in.
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(new NoopAuthenticator());
+
+    servlet.doPost(request, response);
+
+    verify(response).sendError(HttpServletResponse.SC_FORBIDDEN, "Password login is not enabled");
+    verify(authProvider, never()).createAuthorizationCode(any(), any(), any(), any(), any());
   }
 }
