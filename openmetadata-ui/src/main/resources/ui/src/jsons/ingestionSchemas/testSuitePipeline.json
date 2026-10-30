@@ -3117,7 +3117,16 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                              "^guest$",
+                              "^information_schema$",
+                              "^sys$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -3127,7 +3136,15 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^msdb$",
+                              "^model$",
+                              "^tempdb$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -3258,7 +3275,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$",
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -3902,7 +3926,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^SYS(CAT|FUN|IBM|IBMADM|IBMINTERNAL|IBMTS|PROC|PUBLIC|STAT|TOOLS)$",
+                              "^NULLID$",
+                              "^SQLJ$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -4016,7 +4048,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^INFORMATION_SCHEMA$",
+                              "^sys$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -4317,7 +4356,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^sys$",
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -4451,7 +4497,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^_impala_builtins$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -4556,7 +4608,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^performance_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -5792,7 +5851,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -5802,7 +5867,13 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -6324,7 +6395,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^performance_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -6734,7 +6812,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -6744,7 +6828,13 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -7400,7 +7490,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^SYS$",
+                              "^_SYS_(?!BIC$).*"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -7510,7 +7607,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^admin$",
+                              "^local$",
+                              "^config$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -7640,7 +7745,19 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$",
+                              "^system_auth$",
+                              "^system_schema$",
+                              "^system_distributed$",
+                              "^system_traces$",
+                              "^system_views$",
+                              "^system_virtual_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -7719,7 +7836,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^_system$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -7829,7 +7952,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^gp_toolkit$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -7839,7 +7969,14 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^template1$",
+                              "^template0$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -7953,7 +8090,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^performance_schema$",
+                              "^__internal_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -8512,7 +8657,40 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^DBC$",
+                              "^SYS_CALENDAR$",
+                              "^SYSLIB$",
+                              "^SYSUDTLIB$",
+                              "^SYSADMIN$",
+                              "^SYSSPATIAL$",
+                              "^SYSTEMFE$",
+                              "^SYSBAR$",
+                              "^SYSJDBC$",
+                              "^SYSXML$",
+                              "^SYSUIF$",
+                              "^TD_SYS.*",
+                              "^TD_SERVER_DB$",
+                              "^TDSTATS$",
+                              "^TDQCD$",
+                              "^TDWM$",
+                              "^TDMAPS$",
+                              "^DBCMNGR$",
+                              "^LOCKLOGSHREDDER$",
+                              "^CRASHDUMPS$",
+                              "^EXTERNAL_AP$",
+                              "^SQLJ$",
+                              "^TDPUSER$",
+                              "^EXTUSER$",
+                              "^PUBLIC$",
+                              "^ALL$",
+                              "^DEFAULT$",
+                              "^CONSOLE$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -8773,7 +8951,16 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                              "^guest$",
+                              "^information_schema$",
+                              "^sys$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -8783,7 +8970,15 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^msdb$",
+                              "^model$",
+                              "^tempdb$"
+                            ]
+                          }
                         },
                         "storedProcedureFilterPattern": {
                           "title": "Default Stored Procedure Filter Pattern",
@@ -8897,7 +9092,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^SYS$",
+                              "^EXA_STATISTICS$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -9017,7 +9219,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^crdb_internal$",
+                              "^pg_extension$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -9027,7 +9237,13 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
