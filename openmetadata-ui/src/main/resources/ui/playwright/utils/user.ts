@@ -40,6 +40,7 @@ import { clickUpdateButtonIfVisible } from './explore';
 import { getCellByName } from './scopedLocators';
 import { waitForAggregation } from './searchAggregation';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const visitUserListPage = async (page: Page) => {
   const fetchUsers = page.waitForResponse('/api/v1/users?*');
@@ -713,9 +714,17 @@ export const addUser = async (
   }
 
   const saveResponse = page.waitForResponse('/api/v1/users');
+  const userListResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === '/api/v1/users',
+    200
+  );
   await page.click('[data-testid="save-user"]');
 
   expect((await saveResponse).status()).toBe(201);
+  await userListResponse;
   await expect(page.getByTestId('add-user')).toBeVisible();
 };
 
