@@ -558,7 +558,7 @@ describe('native Data mode lineage', () => {
 describe('scrolling the rows of a native cluster', () => {
   const renderCounted = () => {
     const commits = jest.fn();
-    render(
+    const view = render(
       <Profiler id="graph" onRender={commits}>
         <OntologyDataGraph
           data={graphData({ loaded: 8, total: 8 })}
@@ -577,7 +577,7 @@ describe('scrolling the rows of a native cluster', () => {
     fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
     commits.mockClear();
 
-    return commits;
+    return { commits, unmount: view.unmount };
   };
   const scrollTo = (top: number) => {
     const rows = screen.getByTestId('ontology-data-cluster-rows-transfer');
@@ -586,15 +586,60 @@ describe('scrolling the rows of a native cluster', () => {
   };
 
   it('renders nothing for a burst of scroll events inside one row', () => {
-    const commits = renderCounted();
+    const { commits } = renderCounted();
 
     [10, 25, 40, 63].forEach(scrollTo);
 
     expect(commits).not.toHaveBeenCalled();
   });
 
+  describe('once a burst of scroll events settles', () => {
+    let logo: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      logo = jest.spyOn(serviceUtilClassBase, 'getServiceTypeLogo');
+    });
+
+    afterEach(() => {
+      logo.mockRestore();
+      jest.useRealTimers();
+    });
+
+    it('renders once, 100 ms after the last event of a burst inside one row, and leaves no timer on unmount', () => {
+      const { commits, unmount } = renderCounted();
+      logo.mockClear();
+
+      [10, 25, 40, 63].forEach((top, index) => {
+        if (index > 0) {
+          act(() => {
+            jest.advanceTimersByTime(30);
+          });
+        }
+        scrollTo(top);
+      });
+      act(() => {
+        jest.advanceTimersByTime(99);
+      });
+
+      expect(commits).not.toHaveBeenCalled();
+
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+
+      expect(commits).toHaveBeenCalledTimes(1);
+      expect(logo).not.toHaveBeenCalled();
+
+      scrollTo(20);
+      unmount();
+
+      expect(jest.getTimerCount()).toBe(0);
+    });
+  });
+
   it('renders once when the first row in view changes, and renders no row again', () => {
-    const commits = renderCounted();
+    const { commits } = renderCounted();
     const logo = jest.spyOn(serviceUtilClassBase, 'getServiceTypeLogo');
 
     scrollTo(70);
