@@ -4570,7 +4570,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // The import records its author as impersonatedBy too; it carries no bot impersonation.
     authorizeImportedDomains(originals, updates, ChangeActor.recorded(updatedBy, null));
 
-    List<T> previousVersions = withStoredRelationships(originals);
+    // Each original is a fresh read that nothing else holds, so it takes the relationships a PUT or
+    // PATCH records in history in place. Serializing here keeps the transaction to the inserts.
+    setFieldsInBulk(putFields, originals);
+    VersionHistoryRows previousVersions = versionHistoryRows(originals);
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
       T original = originals.get(i);
@@ -4606,16 +4609,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         });
 
     return updatedEntities;
-  }
-
-  /** Copies of the stored entities with the relationships a PUT or PATCH records in history. */
-  private List<T> withStoredRelationships(List<T> storedEntities) {
-    List<T> copies = new ArrayList<>(storedEntities.size());
-    for (T stored : storedEntities) {
-      copies.add(JsonUtils.deepCopy(stored, entityClass));
-    }
-    setFieldsInBulk(putFields, copies);
-    return copies;
   }
 
   /**
@@ -8702,26 +8695,34 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
     try (var ignored = phase(phasePrefix + "VersionHistory")) {
       storeVersionHistory(
-          changed.stream()
-              .filter(EntityUpdater::isVersionChanged)
-              .map(EntityUpdater::getOriginal)
-              .toList());
+          versionHistoryRows(
+              changed.stream()
+                  .filter(EntityUpdater::isVersionChanged)
+                  .map(EntityUpdater::getOriginal)
+                  .toList()));
     }
   }
 
-  private void storeVersionHistory(List<T> previousVersions) {
-    List<UUID> historyIds = new ArrayList<>();
-    List<String> historyExtensions = new ArrayList<>();
-    List<String> historyJsons = new ArrayList<>();
+  /** The id, version extension and serialized entity of each history row, column by column. */
+  private record VersionHistoryRows(List<UUID> ids, List<String> extensions, List<String> jsons) {}
+
+  private VersionHistoryRows versionHistoryRows(List<T> previousVersions) {
+    List<UUID> ids = new ArrayList<>(previousVersions.size());
+    List<String> extensions = new ArrayList<>(previousVersions.size());
+    List<String> jsons = new ArrayList<>(previousVersions.size());
     for (T previous : previousVersions) {
-      historyIds.add(previous.getId());
-      historyExtensions.add(EntityUtil.getVersionExtension(entityType, previous.getVersion()));
-      historyJsons.add(serializeForVersionHistory(previous));
+      ids.add(previous.getId());
+      extensions.add(EntityUtil.getVersionExtension(entityType, previous.getVersion()));
+      jsons.add(serializeForVersionHistory(previous));
     }
-    if (!historyIds.isEmpty()) {
+    return new VersionHistoryRows(ids, extensions, jsons);
+  }
+
+  private void storeVersionHistory(VersionHistoryRows rows) {
+    if (!rows.ids().isEmpty()) {
       daoCollection
           .entityExtensionDAO()
-          .insertMany(historyIds, historyExtensions, entityType, historyJsons);
+          .insertMany(rows.ids(), rows.extensions(), entityType, rows.jsons());
     }
   }
 
