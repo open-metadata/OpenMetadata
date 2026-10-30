@@ -80,7 +80,9 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   );
 
   const isActiveScope = activeDomain !== DEFAULT_DOMAIN_VALUE;
-  const showAllDomains = !isDomainRestricted;
+  // As in the navbar, a restricted user with several domains also gets "All Domains": the server
+  // then lists all of their domains, never more.
+  const showAllDomains = true;
   const isSingleDomainUser = isDomainRestricted && userDomains.length === 1;
   const restrictedDomains = isDomainRestricted ? userDomains : undefined;
 

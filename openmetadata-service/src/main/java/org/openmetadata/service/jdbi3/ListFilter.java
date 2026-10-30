@@ -1133,7 +1133,7 @@ public class ListFilter extends Filter<ListFilter> {
     return testSuiteName == null ? "" : getFqnPrefixCondition(null, testSuiteName, "testSuite");
   }
 
-  private String getDomainCondition(String tableName) {
+  String getDomainCondition(String tableName) {
     String domainId = getQueryParam("domainId");
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
     String domainAccessControl = getQueryParam("domainAccessControl");

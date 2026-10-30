@@ -76,10 +76,12 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
+import org.openmetadata.service.jdbi3.DomainFilterExclusions;
 import org.openmetadata.service.jdbi3.DomainNavFilter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -1095,9 +1097,7 @@ public final class EntityUtil {
       return;
     }
     // Domain-only role: admins are exempt; everyone else is restricted to their assigned domains.
-    boolean domainRestricted =
-        !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
-    if (domainRestricted) {
+    if (isDomainRestricted(subjectContext)) {
       List<EntityReference> allowed = subjectContext.getUserDomains();
       if (!nullOrEmpty(allowed)) {
         // The navbar selection narrows within the role's scope; it can never widen past it.
@@ -1114,7 +1114,7 @@ public final class EntityUtil {
       }
       return;
     }
-    applyNavbarDomain(securityContext, filter, entityType, parent);
+    applyNavbarDomain(securityContext, subjectContext, filter, entityType, parent);
   }
 
   /**
@@ -1126,8 +1126,9 @@ public final class EntityUtil {
       ListFilter filter,
       String entityType,
       Supplier<ResourceContextInterface> parent) {
-    if (!getSubjectContext(securityContext).isBot()) {
-      applyNavbarDomain(securityContext, filter, entityType, parent);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isBot()) {
+      applyNavbarDomain(securityContext, subjectContext, filter, entityType, parent);
     }
   }
 
@@ -1135,21 +1136,91 @@ public final class EntityUtil {
   // never restricts access, so it applies to admins too.
   private static void applyNavbarDomain(
       SecurityContext securityContext,
+      SubjectContext subjectContext,
       ListFilter filter,
       String entityType,
       Supplier<ResourceContextInterface> parent) {
-    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
-    String selectedFqn = selected == null ? null : selected.getFullyQualifiedName();
+    List<EntityReference> scope = navbarScope(securityContext, subjectContext);
     DomainNavFilter.apply(
         filter,
         entityType,
         supportsDomains(entityType),
-        selected == null ? null : selected.getId().toString(),
-        () -> domainAndSubDomainIds(selected),
+        scope.isEmpty() ? null : joinIds(scope),
+        () -> scopeAndSubDomainIds(scope),
         () ->
-            nullOrEmpty(selectedFqn)
+            scope.isEmpty()
                 ? DomainNavFilter.ParentScope.NONE
-                : parentScope(parent.get(), selectedFqn));
+                : parentScope(parent.get(), scopeFqns(scope)));
+  }
+
+  /** The navbar domain filter for a search-backed list (e.g. articles sorted by update time). */
+  public static void addNavbarDomainFilter(
+      SecurityContext securityContext, SearchListFilter filter, String entityType) {
+    List<EntityReference> scope = navbarScope(securityContext, getSubjectContext(securityContext));
+    boolean applies =
+        !scope.isEmpty()
+            && DomainNavFilter.shouldApply(
+                entityType,
+                supportsDomains(entityType),
+                filter.getQueryParam("domains") != null,
+                joinIds(scope));
+    if (applies) {
+      filter.addQueryParam(
+          SearchListFilter.NAV_DOMAIN_PARAM, JsonUtils.pojoToJson(scopeFqns(scope)));
+      filter.addQueryParam(
+          SearchListFilter.NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM,
+          String.valueOf(DomainFilterExclusions.keepsUnassigned(entityType)));
+    }
+  }
+
+  /**
+   * The caller's navbar domain and its sub-domains as ids, or empty when the pick does not narrow
+   * {@code entityType}; for lists that build their own query (e.g. a search aggregation).
+   */
+  public static List<String> navbarDomainIds(SecurityContext securityContext, String entityType) {
+    List<EntityReference> scope = navbarScope(securityContext, getSubjectContext(securityContext));
+    boolean applies =
+        !scope.isEmpty()
+            && DomainNavFilter.shouldApply(
+                entityType, supportsDomains(entityType), false, joinIds(scope));
+    return applies ? List.of(scopeAndSubDomainIds(scope).split(",")) : List.of();
+  }
+
+  /**
+   * The caller's navbar domain and its sub-domains as a search query filter, or null with no pick;
+   * for reads that query search documents directly (e.g. Data Insights charts).
+   */
+  public static String navbarDomainSearchFilter(SecurityContext securityContext) {
+    List<EntityReference> scope = navbarScope(securityContext, getSubjectContext(securityContext));
+    if (scope.isEmpty()) {
+      return null;
+    }
+    List<Map<String, Object>> inSubtrees = new ArrayList<>();
+    for (String fqn : scopeFqns(scope)) {
+      inSubtrees.add(Map.of("term", Map.of("domains.fullyQualifiedName", fqn)));
+      inSubtrees.add(
+          Map.of("prefix", Map.of("domains.fullyQualifiedName", fqn + Entity.SEPARATOR)));
+    }
+    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("should", inSubtrees))));
+  }
+
+  /**
+   * Ids of the {@code entityType} entities in the caller's navbar domain or its sub-domains, or
+   * empty when the pick does not narrow that type; for lists that page their own rows.
+   */
+  public static Optional<Set<UUID>> navbarDomainMemberIds(
+      SecurityContext securityContext, String entityType) {
+    List<String> domainIds = navbarDomainIds(securityContext, entityType);
+    if (domainIds.isEmpty()) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findToBatch(domainIds, Relationship.HAS.ordinal(), Entity.DOMAIN, entityType)
+            .stream()
+            .map(row -> UUID.fromString(row.getToId()))
+            .collect(Collectors.toSet()));
   }
 
   // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a
@@ -1199,8 +1270,8 @@ public final class EntityUtil {
 
   /** Where {@code parent}'s effective domain (own or inherited) sits relative to the selection. */
   private static DomainNavFilter.ParentScope parentScope(
-      ResourceContextInterface parent, String selectedFqn) {
-    if (parent == null || nullOrEmpty(selectedFqn)) {
+      ResourceContextInterface parent, List<String> selectedFqns) {
+    if (parent == null || nullOrEmpty(selectedFqns)) {
       return DomainNavFilter.ParentScope.NONE;
     }
     try {
@@ -1210,16 +1281,68 @@ public final class EntityUtil {
       boolean inSelection =
           listOrEmpty(parent.getDomains()).stream()
               .map(EntityReference::getFullyQualifiedName)
-              .anyMatch(
-                  fqn ->
-                      selectedFqn.equals(fqn)
-                          || (fqn != null && fqn.startsWith(selectedFqn + Entity.SEPARATOR)));
+              .anyMatch(fqn -> fqn != null && inAnySubtree(fqn, selectedFqns));
       return inSelection
           ? DomainNavFilter.ParentScope.IN_SELECTION
           : DomainNavFilter.ParentScope.OUTSIDE_SELECTION;
     } catch (EntityNotFoundException e) {
       return DomainNavFilter.ParentScope.UNRESOLVED;
     }
+  }
+
+  private static boolean inAnySubtree(String fqn, List<String> rootFqns) {
+    return rootFqns.stream()
+        .anyMatch(root -> root.equals(fqn) || fqn.startsWith(root + Entity.SEPARATOR));
+  }
+
+  private static boolean isDomainRestricted(SubjectContext subjectContext) {
+    return !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
+  }
+
+  // Matches no domain: the scope of a domain-only user who has been given no domains.
+  private static final EntityReference NO_DOMAIN =
+      new EntityReference()
+          .withId(new UUID(0, 0))
+          .withType(Entity.DOMAIN)
+          .withFullyQualifiedName("");
+
+  /**
+   * The domains a list that follows the navbar narrows to: the pick, or for a domain-only user the
+   * pick when it is one of theirs, else all of their domains (e.g. "All Domains"), so these lists
+   * never widen past the role. Empty means no narrowing.
+   */
+  private static List<EntityReference> navbarScope(
+      SecurityContext securityContext, SubjectContext subjectContext) {
+    if (subjectContext.isBot()) {
+      return List.of();
+    }
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    if (!isDomainRestricted(subjectContext)) {
+      return selected == null ? List.of() : List.of(selected);
+    }
+    List<EntityReference> allowed = listOrEmpty(subjectContext.getUserDomains());
+    boolean selectedAllowed =
+        selected != null && allowed.stream().anyMatch(d -> coversDomain(d, selected));
+    if (selectedAllowed) {
+      return List.of(selected);
+    }
+    return allowed.isEmpty() ? List.of(NO_DOMAIN) : allowed;
+  }
+
+  private static String joinIds(List<EntityReference> domains) {
+    return domains.stream().map(d -> d.getId().toString()).collect(Collectors.joining(","));
+  }
+
+  private static List<String> scopeFqns(List<EntityReference> domains) {
+    return domains.stream().map(EntityReference::getFullyQualifiedName).toList();
+  }
+
+  private static String scopeAndSubDomainIds(List<EntityReference> domains) {
+    return domains.stream()
+        .map(EntityUtil::domainAndSubDomainIds)
+        .flatMap(ids -> Arrays.stream(ids.split(",")))
+        .distinct()
+        .collect(Collectors.joining(","));
   }
 
   /**

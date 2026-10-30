@@ -114,7 +114,7 @@ public class DataInsightSystemChartResource
       throws IOException {
     DataInsightCustomChart diChart = getByNameInternal(uriInfo, securityContext, fqn, null, null);
     DataInsightCustomChartResultList resultList =
-        repository.getPreviewData(diChart, start, end, filter);
+        repository.getPreviewData(diChart, start, end, scopedToPick(securityContext, filter));
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -172,7 +172,8 @@ public class DataInsightSystemChartResource
           String serviceName)
       throws IOException {
     Map<String, DataInsightCustomChartResultList> resultList =
-        repository.listChartData(chartNames, start, end, filter, live, serviceName);
+        repository.listChartData(
+            chartNames, start, end, scopedToPick(securityContext, filter), live, serviceName);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -320,5 +321,11 @@ public class DataInsightSystemChartResource
       errorResponse.put("error", "Failed to stop streaming: " + e.getMessage());
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(errorResponse).build();
     }
+  }
+
+  // Charts read search documents, so the navbar domain pick is added as a query filter.
+  private static String scopedToPick(SecurityContext securityContext, String filter) {
+    return DataInsightSystemChartRepository.combineFilters(
+        filter, EntityUtil.navbarDomainSearchFilter(securityContext));
   }
 }

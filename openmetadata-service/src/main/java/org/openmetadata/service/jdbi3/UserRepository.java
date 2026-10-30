@@ -139,8 +139,10 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
+  // Inline JSON fields must be loaded for a PATCH, or the write-back drops them (e.g.
+  // lastLoginTime).
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences,lastLoginTime,lastActivityTime";
   static final String USER_UPDATE_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
   private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";

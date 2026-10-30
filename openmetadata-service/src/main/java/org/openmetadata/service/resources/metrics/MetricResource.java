@@ -54,8 +54,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
@@ -92,6 +94,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil;
 
 @Path("/v1/metrics")
 @Tag(
@@ -147,18 +150,39 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     ResultList<MetricHierarchyItem> result;
-    if (canListHierarchyWithoutFiltering(securityContext)) {
+    Optional<Set<UUID>> pickedMetrics =
+        EntityUtil.navbarDomainMemberIds(securityContext, Entity.METRIC);
+    if (pickedMetrics.isEmpty() && canListHierarchyWithoutFiltering(securityContext)) {
       result = repository.listHierarchy(limit, offset, query);
     } else {
+      Predicate<EntityReference> canViewMetric =
+          metric ->
+              pickedMetrics.map(ids -> ids.contains(metric.getId())).orElse(true)
+                  && canAccessEntity(securityContext, metric, MetadataOperation.VIEW_BASIC);
+      Predicate<EntityReference> groupInPick =
+          groupInPick(securityContext, pickedMetrics, canViewMetric);
       result =
           repository.listHierarchy(
               limit,
               offset,
               query,
-              metric -> canAccessEntity(securityContext, metric, MetadataOperation.VIEW_BASIC),
-              group -> canAccessEntity(securityContext, group, MetadataOperation.VIEW_BASIC));
+              canViewMetric,
+              group ->
+                  canAccessEntity(securityContext, group, MetadataOperation.VIEW_BASIC)
+                      && groupInPick.test(group));
     }
     return result;
+  }
+
+  // The hierarchy pages its own rows, so the navbar domain pick is applied here, as on /metrics.
+  private Predicate<EntityReference> groupInPick(
+      SecurityContext securityContext,
+      Optional<Set<UUID>> pickedMetrics,
+      Predicate<EntityReference> canViewMetric) {
+    return pickedMetrics.isEmpty()
+        ? group -> true
+        : repository.groupInDomainPick(
+            EntityUtil.navbarDomainMemberIds(securityContext, Entity.METRIC_GROUP), canViewMetric);
   }
 
   private boolean canListHierarchyWithoutFiltering(SecurityContext securityContext) {

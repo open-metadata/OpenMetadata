@@ -15,7 +15,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { ForwardedRef } from 'react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_DOMAIN_VALUE } from '../../constants/constants';
 import { ALL_SERVICES_CATEGORY } from '../../constants/Services.constant';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { getServiceByFQN, postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
@@ -405,6 +407,55 @@ describe('EmbeddedAddServicePage', () => {
     });
 
     expect(postService).toHaveBeenCalled();
+    expect((postService as jest.Mock).mock.calls[0][1]).not.toHaveProperty(
+      'domains'
+    );
+    expect(triggerOnDemandApp).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
+  });
+
+  it('creates the service in the picked domain', async () => {
+    useDomainStore.getState().updateActiveDomain({
+      id: 'domain-1',
+      type: 'domain',
+      fullyQualifiedName: 'Engineering',
+    });
+    await act(async () => {
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    expect(screen.getByText('Save Connection')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Service Name'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Connection'));
+    });
+
+    expect(await screen.findByText('Save Filters')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Filters'));
+    });
+
+    expect(postService).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ domains: ['Engineering'] })
+    );
+
+    useDomainStore.setState({
+      activeDomain: DEFAULT_DOMAIN_VALUE,
+      activeDomainEntityRef: undefined,
+    });
+
     expect(triggerOnDemandApp).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
   });

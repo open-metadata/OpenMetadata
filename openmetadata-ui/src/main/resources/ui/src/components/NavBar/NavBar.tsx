@@ -493,16 +493,17 @@ const NavBar = () => {
       />
     </CoreTooltip>
   ) : (
+    // A domain-restricted user with several domains also gets "All Domains": the server then lists
+    // all of their domains, never more.
     <DomainSelect
       bordered
+      showAllDomains
       className="tw:self-center"
       data-testid="domain-dropdown"
-      isClearable={!isDomainRestricted}
       isOpen={isDomainDropdownOpen}
       label={domainDisplayName}
       restrictedDomains={restrictedDomains}
       selectedDomain={activeDomainEntityRef}
-      showAllDomains={!isDomainRestricted}
       triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
       triggerVariant="button"
       onOpenChange={setIsDomainDropdownOpen}

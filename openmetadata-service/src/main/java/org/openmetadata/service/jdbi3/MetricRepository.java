@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -1062,6 +1063,19 @@ public class MetricRepository extends EntityRepository<Metric> {
     Map<UUID, MetricGroup> groups =
         loadGroupsById(hierarchyIds(rows, Entity.METRIC_GROUP), canViewMetric);
     return buildHierarchyResult(scan, limit, offset, metrics, groups);
+  }
+
+  /**
+   * Under a navbar domain pick, a group stays in the hierarchy when it is in the picked domain or
+   * holds a metric that is (e.g. a group with no domain whose metrics are all in the pick).
+   */
+  public Predicate<EntityReference> groupInDomainPick(
+      Optional<Set<UUID>> pickedGroups, Predicate<EntityReference> canViewMetric) {
+    MetricGroupRepository groups =
+        (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+    return group ->
+        pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
+            || groups.hasVisibleMemberMatching(group.getId(), null, canViewMetric);
   }
 
   HierarchyScan scanUnrestrictedHierarchyRows(int limit, int offset, String nameLike) {

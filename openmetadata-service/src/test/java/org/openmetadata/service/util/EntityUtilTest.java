@@ -1269,8 +1269,9 @@ class EntityUtilTest {
 
   @Test
   void addDomainQueryParam_listKeyedBySeveralEntityIdsIsNotOneParent() {
-    // Some resources put a quoted id list in entityId (e.g. pages related to several users):
-    // there is no single parent, so the list is narrowed like any unscoped list.
+    // Some resources put a quoted id list in entityId (e.g. lists related to several users):
+    // there is no single parent, so the list is narrowed like any unscoped list. Uses a type
+    // with the strict rule, since pages also keep items with no domain.
     EntityReference selected =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -1291,8 +1292,8 @@ class EntityUtilTest {
       // Other test classes leave a SearchRepository set statically; pin the no-search fallback.
       entity.when(Entity::getSearchRepository).thenReturn(null);
       stubSubDomainIds(entity, List.of());
-      entity.when(() -> Entity.hasEntityRepository("page")).thenReturn(true);
-      entity.when(() -> Entity.getEntityRepository("page")).thenReturn(domainAwareRepository);
+      entity.when(() -> Entity.hasEntityRepository("dashboard")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("dashboard")).thenReturn(domainAwareRepository);
       entity
           .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
           .thenReturn(selected);
@@ -1303,7 +1304,7 @@ class EntityUtilTest {
       ListFilter filter = new ListFilter();
       filter.addQueryParam("entityId", "'" + UUID.randomUUID() + "','" + UUID.randomUUID() + "'");
       filter.addQueryParam("entityType", "user");
-      EntityUtil.addDomainQueryParam(carried, filter, "page");
+      EntityUtil.addDomainQueryParam(carried, filter, "dashboard");
 
       assertEquals(selected.getId().toString(), filter.getQueryParam("domainId"));
       assertNull(filter.getQueryParam("domainAccessControl"));

@@ -54,10 +54,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
@@ -559,6 +561,44 @@ class DriveFileUploadIT {
         rest.getById("v1/contextCenter/drive/files", file.getId(), "folder", ContextFile.class);
     assertNotNull(fetched.getFolder(), "File should be in folder");
     assertEquals(folder.getId(), fetched.getFolder().getId());
+  }
+
+  @Test
+  void testUploadIntoDomain(TestNamespace ns) throws Exception {
+    // The UI uploads under the navbar domain pick, so the file must not be left without a domain.
+    RestClient rest = RestClient.admin();
+    Domain domain =
+        rest.create(
+            "v1/domains",
+            new CreateDomain()
+                .withName(ns.prefix("upload-domain"))
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("upload target"),
+            Domain.class);
+
+    ContextFile file;
+    try (FormDataMultiPart multipart = new FormDataMultiPart()) {
+      multipart.field("domain", domain.getFullyQualifiedName());
+      multipart.bodyPart(
+          new StreamDataBodyPart(
+              "file",
+              new ByteArrayInputStream(readFixture("/drive/sample-report.pdf")),
+              uniqueUploadedFileName(ns, "/drive/sample-report.pdf"),
+              MediaType.APPLICATION_OCTET_STREAM_TYPE));
+      Response response =
+          uploadTarget
+              .request()
+              .headers(adminAuthHeaders())
+              .post(Entity.entity(multipart, multipart.getMediaType()));
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      file = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile fetched =
+        rest.getById("v1/contextCenter/drive/files", file.getId(), "domains", ContextFile.class);
+    assertEquals(
+        List.of(domain.getId()), fetched.getDomains().stream().map(d -> d.getId()).toList());
   }
 
   @Test

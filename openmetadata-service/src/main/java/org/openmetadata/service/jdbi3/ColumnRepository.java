@@ -79,6 +79,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.ChildFieldResolver;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -426,6 +427,9 @@ public class ColumnRepository {
         Entity.getEntityRepository(entityType);
     ListFilter filter =
         buildSearchFilter(entityType, serviceName, databaseName, schemaName, domainId);
+    if (domainId == null) {
+      EntityUtil.addNavbarDomainFilter(securityContext, filter, entityType, () -> null);
+    }
 
     List<? extends EntityInterface<?>> parents =
         viewableParents(

@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -711,9 +712,11 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
   private void addDomainFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (!nullOrEmpty(request.getDomainId())) {
+      // One domain, or a navbar pick with its sub-domains (comma-separated ids).
+      List<FieldValue> domainIds =
+          Arrays.stream(request.getDomainId().split(",")).map(FieldValue::of).toList();
       boolBuilder.filter(
-          Query.of(
-              q -> q.term(t -> t.field("domains.id").value(FieldValue.of(request.getDomainId())))));
+          Query.of(q -> q.terms(t -> t.field("domains.id").terms(tv -> tv.value(domainIds)))));
     }
   }
 

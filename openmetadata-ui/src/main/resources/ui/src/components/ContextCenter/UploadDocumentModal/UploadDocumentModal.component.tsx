@@ -23,8 +23,10 @@ import { AxiosError } from 'axios';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { uploadDriveFile } from '../../../rest/assetAPI';
 import { runWithConcurrencyLimit } from '../../../utils/AsyncUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -47,6 +49,10 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   onUploaded,
 }) => {
   const { t } = useTranslation();
+  const { activeDomain } = useDomainStore();
+  // A file uploaded under a domain pick belongs to it, as the create forms pre-fill it.
+  const domainFqn =
+    activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain;
   const [files, setFiles] = useState<QueuedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const cancelledRef = useRef(false);
@@ -93,7 +99,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     entry: QueuedFile
   ): Promise<ContextFile | null> => {
     try {
-      return await uploadDriveFile(entry.file, folderFqn);
+      return await uploadDriveFile(entry.file, folderFqn, domainFqn);
     } catch (err) {
       setFiles((prev) =>
         prev.map((f) =>
@@ -127,7 +133,11 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     );
 
     try {
-      const contextFile = await uploadDriveFile(entry.file, folderFqn);
+      const contextFile = await uploadDriveFile(
+        entry.file,
+        folderFqn,
+        domainFqn
+      );
       setFiles((prev) => prev.filter((f) => f.id !== id));
       showSuccessToast(t('message.documents-uploaded-successfully'));
       onUploaded?.([contextFile]);
