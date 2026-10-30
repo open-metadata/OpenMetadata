@@ -33,13 +33,10 @@ all of the entities it names are gone.
    - classification and glossary delete — only on hard delete. A soft delete cascades to the child
      tags or terms without removing their labels, so the condition is left as written.
 4. Search RBAC (`RBACConditionEvaluator`) reads a `false` literal as match-nothing, the same value
-   the in-memory evaluator gives it. A literal otherwise contributes no clause, which the collector
-   reads as match-all.
+   the in-memory evaluator gives it.
 
 ## Consequences
 
-- A rename never changes a condition's structure, and a delete never makes a condition match more
-  than it did.
 - A rule that named a deleted entity stops applying, Allow and Deny alike; it can no longer match
   anything.
 - Conditions such as `isOwner() && false` stay visible in the policy editor. They read as a rule
