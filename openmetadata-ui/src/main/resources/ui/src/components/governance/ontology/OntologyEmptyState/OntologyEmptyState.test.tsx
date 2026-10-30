@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import OntologyEmptyState from './OntologyEmptyState';
 
@@ -37,6 +37,37 @@ describe('OntologyEmptyState', () => {
     expect(
       screen.getByText('message.ontology-first-run-description')
     ).toBeVisible();
+  });
+
+  it('renders through the shared onboarding placeholder with brand icon tiles', () => {
+    renderEmptyState();
+    const emptyState = screen.getByTestId('ontology-empty-state');
+    const icons = Array.from(emptyState.querySelectorAll('[data-icon]'));
+    const tiles = icons.map((icon) => icon.parentElement?.className ?? '');
+
+    expect(within(emptyState).getByTestId('empty-placeholder')).toBeVisible();
+    expect(icons).toHaveLength(3);
+
+    tiles.forEach((tile) => {
+      expect(tile).toContain('tw:text-fg-brand-primary');
+    });
+    [
+      ...tiles,
+      ...icons.map((icon) => icon.getAttribute('class') ?? ''),
+    ].forEach((classes) => {
+      expect(classes).not.toMatch(/gray|text-secondary|text-quaternary/);
+    });
+  });
+
+  it('puts the placeholder in a scroll host where it flows and grows instead of shrinking to the host', () => {
+    renderEmptyState();
+    const emptyState = screen.getByTestId('ontology-empty-state');
+    const placeholder = within(emptyState).getByTestId('empty-placeholder');
+
+    expect(emptyState).toHaveClass('tw:overflow-auto');
+    expect(placeholder).toHaveClass('tw:static', 'tw:h-auto', 'tw:flex-1');
+    expect(placeholder).not.toHaveClass('tw:absolute');
+    expect(placeholder).not.toHaveClass('tw:min-h-full');
   });
 
   it.each([

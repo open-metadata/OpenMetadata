@@ -10,10 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
 import i18next from 'i18next';
 import { Profiler } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import enUS from '../../locale/languages/en-us.json';
 import {
   pageFixture,
@@ -28,6 +36,11 @@ import {
 } from '../../utils/governance/ontology/OntologyNativeDataGraph.utils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import OntologyDataGraph from './OntologyDataGraph';
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 const assetSeeds = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
@@ -165,6 +178,22 @@ describe('native Data mode clusters', () => {
       '/logos/BigQuery.svg',
       '/logos/Mysql.svg',
     ]);
+
+    logo.mockRestore();
+  });
+
+  it('sets the logo tile on the card surface colour, not the page colour', () => {
+    const logo = jest
+      .spyOn(serviceUtilClassBase, 'getServiceTypeLogo')
+      .mockReturnValue('/logos/Snowflake.svg');
+    renderGraph();
+
+    const tile = within(
+      screen.getByTestId('ontology-data-asset-asset:transfer:t0')
+    ).getByRole('img', { hidden: true }).parentElement;
+
+    expect(tile?.className.split(' ')).toContain('tw:bg-surface');
+    expect(tile?.className.split(' ')).not.toContain('tw:bg-primary');
 
     logo.mockRestore();
   });
@@ -669,10 +698,29 @@ describe('native Data mode in English', () => {
 
   afterEach(() => {
     translate.mockReturnValue(keyTranslation);
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   const heading = () =>
     screen.getByTestId('ontology-data-layer-heading').textContent;
+
+  it('draws the AI-mode heading as a card, and the classic heading without a surface', () => {
+    renderGraph();
+    const classic = screen.getByTestId('ontology-data-layer-heading');
+
+    expect(classic.className.split(' ')).not.toContain('tw:bg-surface');
+    expect(classic.className.split(' ')).toContain('tw:top-15');
+
+    cleanup();
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderGraph();
+    const card = screen.getByTestId('ontology-data-layer-heading');
+
+    expect(card.className.split(' ')).toContain('tw:bg-surface');
+    expect(card.className.split(' ')).not.toContain('tw:top-15');
+    expect(card).toHaveTextContent('Data layer');
+    expect(card).toHaveTextContent('3 concepts · 152 bindings');
+  });
 
   it('counts the bindings each cluster totals, in the plural', () => {
     renderGraph();

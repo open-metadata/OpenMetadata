@@ -271,15 +271,13 @@ function AssetLogo({
       });
 
   return (
-    <Box
-      align="center"
+    <span
       className={classNames(
-        'tw:size-8 tw:shrink-0 tw:rounded-lg tw:border',
+        'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border',
         isMetric
           ? 'tw:border-utility-purple-200 tw:bg-utility-purple-50 tw:text-utility-purple-600'
-          : 'tw:border-secondary tw:bg-primary'
-      )}
-      justify="center">
+          : 'tw:border-secondary tw:bg-surface'
+      )}>
       {isMetric ? (
         <BarChart01 aria-hidden="true" className="tw:size-4" />
       ) : null}
@@ -292,7 +290,7 @@ function AssetLogo({
           width={16}
         />
       ) : null}
-    </Box>
+    </span>
   );
 }
 
@@ -325,6 +323,7 @@ function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
         const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
 
         return (
+          // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
           <Button
             noTextPadding
             aria-describedby={
@@ -349,7 +348,7 @@ function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
                 weight="medium">
                 {asset.originalLabel ?? asset.label}
               </Typography>
-              <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+              <Typography ellipsis color="secondary" size="text-xs">
                 {isNative
                   ? getNativeAssetSummary(asset, lineageNotes, t)
                   : getAssetPath(asset)}
@@ -1339,7 +1338,7 @@ const OntologyDataGraph = ({
         className="tw:h-full"
         data-testid="ontology-data-graph-empty"
         justify="center">
-        <Typography as="p" className="tw:text-tertiary" size="text-sm">
+        <Typography as="p" color="secondary" size="text-sm">
           {t('message.no-data-available')}
         </Typography>
       </Box>
@@ -1419,33 +1418,33 @@ const OntologyDataGraph = ({
     }
 
     return (
-      <Box
-        className="tw:border-t tw:border-secondary tw:px-5 tw:py-2.5"
-        gap={4}>
-        {hiddenAssetCount > 0 || term.isLoadingAssets ? (
-          <Button
-            color="link-color"
-            data-testid={`ontology-load-more-assets-${term.id}`}
-            iconLeading={ChevronDown}
-            isDisabled={term.isLoadingAssets}
-            size="sm"
-            onClick={() => toggleCard(term, unloadedAssetCount)}>
-            {term.isLoadingAssets
-              ? t('label.loading')
-              : t('label.load-more-count', { count: hiddenAssetCount })}
-          </Button>
-        ) : null}
-        {canShowLess ? (
-          <Button
-            color="link-color"
-            data-testid={`ontology-show-less-assets-${term.id}`}
-            iconLeading={ChevronUp}
-            size="sm"
-            onClick={() => showLess(term)}>
-            {t('label.show-less')}
-          </Button>
-        ) : null}
-      </Box>
+      <div className="tw:border-t tw:border-secondary tw:px-5 tw:py-2.5">
+        <Box gap={4}>
+          {hiddenAssetCount > 0 || term.isLoadingAssets ? (
+            <Button
+              color="link-color"
+              data-testid={`ontology-load-more-assets-${term.id}`}
+              iconLeading={ChevronDown}
+              isDisabled={term.isLoadingAssets}
+              size="sm"
+              onClick={() => toggleCard(term, unloadedAssetCount)}>
+              {term.isLoadingAssets
+                ? t('label.loading')
+                : t('label.load-more-count', { count: hiddenAssetCount })}
+            </Button>
+          ) : null}
+          {canShowLess ? (
+            <Button
+              color="link-color"
+              data-testid={`ontology-show-less-assets-${term.id}`}
+              iconLeading={ChevronUp}
+              size="sm"
+              onClick={() => showLess(term)}>
+              {t('label.show-less')}
+            </Button>
+          ) : null}
+        </Box>
+      </div>
     );
   };
 
@@ -1476,6 +1475,7 @@ const OntologyDataGraph = ({
         onPointerDown={(event) => handleCardPointerDown(event, term)}
         onPointerMove={handleCardPointerMove}
         onPointerUp={handleCardPointerUp}>
+        {/* ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button */}
         <Button
           noTextPadding
           className={classNames(
@@ -1498,14 +1498,16 @@ const OntologyDataGraph = ({
           </Typography>
           {isNative ? (
             <Typography
-              className="tw:shrink-0 tw:text-tertiary"
+              className="tw:shrink-0"
+              color="secondary"
               data-testid="ontology-data-cluster-count"
               size="text-sm">
               {`· ${assetState.totalAssetCount}`}
             </Typography>
           ) : (
             <Typography
-              className="tw:ml-auto tw:shrink-0 tw:text-tertiary"
+              className="tw:ml-auto tw:shrink-0"
+              color="secondary"
               size="text-xs">
               {assetState.totalAssetCount} {t('label.asset-plural-lowercase')}
             </Typography>

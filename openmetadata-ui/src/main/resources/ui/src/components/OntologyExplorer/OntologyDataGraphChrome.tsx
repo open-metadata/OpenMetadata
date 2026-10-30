@@ -52,32 +52,34 @@ const FOOTNOTE_CLASS = 'tw:absolute tw:left-1/2 tw:-translate-x-1/2';
 
 export const DataEdgeLegend = ({ entries }: DataEdgeLegendProps) =>
   entries.length > 0 ? (
-    <Card
-      className="tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2"
-      data-testid="ontology-data-edge-legend"
-      variant="elevated">
-      {entries.map(({ color, isSolid, key, label }) => (
-        <Box
-          align="center"
-          data-testid={`ontology-data-legend-${key}`}
-          gap={2}
-          key={key}>
-          <svg aria-hidden="true" height="2" width="24">
-            <line
-              stroke={color}
-              strokeDasharray={isSolid ? undefined : '4 3'}
-              strokeWidth="2"
-              x1="0"
-              x2="24"
-              y1="1"
-              y2="1"
-            />
-          </svg>
-          <Typography className="tw:text-secondary" size="text-xs">
-            {label}
-          </Typography>
+    <Card data-testid="ontology-data-edge-legend" size="sm" variant="elevated">
+      <Card.Content>
+        <Box align="center" gap={4}>
+          {entries.map(({ color, isSolid, key, label }) => (
+            <Box
+              align="center"
+              data-testid={`ontology-data-legend-${key}`}
+              gap={2}
+              key={key}>
+              <svg aria-hidden="true" height="2" width="24">
+                <line
+                  stroke={color}
+                  strokeDasharray={isSolid ? undefined : '4 3'}
+                  strokeWidth="2"
+                  x1="0"
+                  x2="24"
+                  y1="1"
+                  y2="1"
+                />
+              </svg>
+              {/* ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button */}
+              <Typography className="tw:text-secondary" size="text-xs">
+                {label}
+              </Typography>
+            </Box>
+          ))}
         </Box>
-      ))}
+      </Card.Content>
     </Card>
   ) : null;
 
@@ -94,30 +96,47 @@ export const DataLayerHeading = ({
         count: conceptCount,
       })} · ${t('message.native-binding-count', { count: assetCount })}`
     : t('message.data-layer-summary', { assetCount, termCount: conceptCount });
-  const nativeClassName = isAiMode
-    ? 'tw:top-3.5 tw:left-3.5 tw:z-6 tw:max-w-md tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-3 tw:shadow-xs'
-    : 'tw:left-4 tw:top-15 tw:max-w-md';
+  const lines = (
+    <>
+      <Typography size="text-sm" weight="medium">
+        {t('label.data-layer')}
+      </Typography>
+      <Typography color="secondary" size="text-xs">
+        {summary}
+      </Typography>
+      {isNative ? (
+        <Typography color="secondary" size="text-xs">
+          {t('message.ontology-data-graph-scope')}
+        </Typography>
+      ) : null}
+    </>
+  );
+
+  if (isNative && isAiMode) {
+    return (
+      <Card
+        className="tw:pointer-events-none tw:absolute tw:top-3.5 tw:left-3.5 tw:z-6 tw:max-w-md"
+        data-testid="ontology-data-layer-heading"
+        size="sm">
+        <Card.Content>
+          <Box direction="col" gap={0}>
+            {lines}
+          </Box>
+        </Card.Content>
+      </Card>
+    );
+  }
 
   return (
     <Box
       className={classNames(
         'tw:pointer-events-none tw:absolute',
-        isNative ? nativeClassName : 'tw:left-6 tw:top-5'
+        isNative ? 'tw:left-4 tw:top-15 tw:max-w-md' : 'tw:left-6 tw:top-5'
       )}
       data-testid="ontology-data-layer-heading"
       direction="col"
       gap={0}>
-      <Typography className="tw:text-primary" size="text-sm" weight="medium">
-        {t('label.data-layer')}
-      </Typography>
-      <Typography className="tw:text-tertiary" size="text-xs">
-        {summary}
-      </Typography>
-      {isNative ? (
-        <Typography className="tw:text-tertiary" size="text-xs">
-          {t('message.ontology-data-graph-scope')}
-        </Typography>
-      ) : null}
+      {lines}
     </Box>
   );
 };
