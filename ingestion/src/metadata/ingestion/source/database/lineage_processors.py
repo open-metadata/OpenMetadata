@@ -39,8 +39,8 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.parser import TSQL_SWITCH_STATEMENT
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.lineage.tsql import TSQL_SWITCH_STATEMENT
 from metadata.ingestion.models.ometa_lineage import (
     LineageRequest,
     OMetaFQNLineageRequest,

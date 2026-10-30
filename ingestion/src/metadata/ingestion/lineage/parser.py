@@ -13,7 +13,6 @@ Lineage Parser configuration
 """
 
 import hashlib
-import re
 import time
 import traceback
 from collections import defaultdict
@@ -37,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.tsql import rewrite_switch_statements
 from metadata.utils.helpers import (
     find_in_iter,
     get_formatted_entity_name,
@@ -65,19 +65,6 @@ LINEAGE_PARSING_TIMEOUT = 30
 # max memory in MB that lineage parsing can consume
 LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
 
-_TSQL_NAME_PART = r'(?:\[(?:[^\]]|\]\])+\]|"(?:[^"]|"")+"|[\w@#$]+)'
-_TSQL_TABLE_NAME = rf"{_TSQL_NAME_PART}(?:\s*\.\s*{_TSQL_NAME_PART}){{0,3}}"
-_TSQL_PARTITION = r"PARTITION\s+(?:\$PARTITION\s*\.\s*[\w\[\]]+\s*\([^()]*\)|[\w@]+)"
-# T-SQL `ALTER TABLE source SWITCH [PARTITION p] TO target [PARTITION p] [WITH (...)]`, which
-# moves the rows of `source` into `target`. No parser understands it, so it is rewritten
-# into the INSERT ... SELECT it is equivalent to for lineage.
-TSQL_SWITCH_STATEMENT = re.compile(
-    rf"\bALTER\s+TABLE\s+(?P<source>{_TSQL_TABLE_NAME})\s+SWITCH"
-    rf"(?:\s+{_TSQL_PARTITION})?\s+TO\s+(?P<target>{_TSQL_TABLE_NAME})"
-    rf"(?:\s+{_TSQL_PARTITION})?(?:\s+WITH\s*\((?:[^()]|\([^()]*\))*\))?",
-    re.IGNORECASE,
-)
-
 
 class LineageParser:
     """
@@ -103,6 +90,8 @@ class LineageParser:
         self.dialect = dialect
         self.masked_query = None
         self._clean_query = self.clean_raw_query(query)
+        if self._clean_query and dialect == Dialect.TSQL:
+            self._clean_query = rewrite_switch_statements(self._clean_query)
         self.parser = self._evaluate_best_parser(
             self._clean_query,
             dialect=dialect,
@@ -493,10 +482,6 @@ class LineageParser:
             or insensitive_match(clean_query, r"^COPY\s+INTO\s+@.*\s+FROM\s+.*")
         ):
             return None
-
-        clean_query = TSQL_SWITCH_STATEMENT.sub(
-            lambda switch: f"INSERT INTO {switch['target']} SELECT * FROM {switch['source']}", clean_query
-        )
 
         # Filter out CREATE TRIGGER statements - they don't provide lineage information
         if insensitive_match(clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+"):

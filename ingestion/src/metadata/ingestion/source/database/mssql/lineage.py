@@ -12,7 +12,6 @@
 MSSQL lineage module
 """
 
-import re
 import traceback
 from collections.abc import Iterator
 from datetime import datetime
@@ -21,7 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from metadata.ingestion.lineage.parser import TSQL_SWITCH_STATEMENT
+from metadata.ingestion.lineage.tsql import extract_switch_statements
 from metadata.ingestion.source.database.lineage_processors import QueryByProcedure
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.mssql.constants import (
@@ -45,27 +44,6 @@ from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-# Quoted names, string literals and comments, matched left to right so that a quote or a
-# comment marker inside one of them is not read as the start of another.
-_SQL_QUOTED_OR_COMMENT = re.compile(
-    r"""\[(?:[^\]]|\]\])*\]|"(?:[^"]|"")*"|'(?:[^']|'')*'|/\*.*?\*/|--[^\n]*""",
-    re.DOTALL,
-)
-
-
-def _blank_strings_and_comments(code: str) -> str:
-    return _SQL_QUOTED_OR_COMMENT.sub(lambda match: match.group(0) if match.group(0)[0] in '["' else " ", code)
-
-
-def extract_switch_statements(definition: str | None) -> list[str]:
-    """
-    The ALTER TABLE ... SWITCH statements of a procedure body, in order and each once.
-    String literals and comments are blanked first, so a SWITCH that is printed or
-    commented out yields no lineage.
-    """
-    code = _blank_strings_and_comments(definition or "")
-    return list(dict.fromkeys(match.group(0) for match in TSQL_SWITCH_STATEMENT.finditer(code)))
 
 
 class MssqlLineageSource(MssqlQueryParserSource, StoredProcedureLineageMixin, LineageSource):
@@ -132,15 +110,24 @@ class MssqlLineageSource(MssqlQueryParserSource, StoredProcedureLineageMixin, Li
         )
         try:
             rows = conn.execute(text(statement)).all()
-        except SQLAlchemyError as exc:
+        # mssql+pytds leaks socket timeouts and resets as raw OSError subclasses, which
+        # SQLAlchemy neither wraps nor recognises as a disconnect
+        except (SQLAlchemyError, OSError) as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                "Could not read executed stored procedures for ALTER TABLE ... SWITCH lineage: %s",
-                getattr(exc, "orig", exc),
-            )
-            rows = []
+            if isinstance(exc, OSError):
+                # The socket is in an unknown state: keep it out of the pool for later reads
+                conn.invalidate()
+            reason = f"Could not read executed stored procedures for ALTER TABLE ... SWITCH lineage: {getattr(exc, 'orig', exc)}"
+            logger.warning(reason)
+            self.status.warning("Stored Procedure SWITCH lineage", reason)
+            return
         for row in rows:
-            procedure_run = QueryByProcedure.model_validate(row._asdict())
+            try:
+                procedure_run = QueryByProcedure.model_validate(row._asdict())
+            except ValueError as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Skipping an unreadable executed stored procedure: %s", exc)
+                continue
             for switch in extract_switch_statements(procedure_run.procedure_text):
                 yield procedure_run.model_copy(update={"query_text": switch})
 

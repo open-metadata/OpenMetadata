@@ -33,11 +33,11 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.tsql import extract_switch_statements
 from metadata.ingestion.source.database.lineage_processors import (
     _yield_procedure_lineage,
     is_lineage_query,
 )
-from metadata.ingestion.source.database.mssql import lineage as mssql_lineage
 from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 
@@ -101,6 +101,18 @@ class TestSwitchParsing:
         assert _table_names(parser.intermediate_tables) == {"fact"}
         assert _table_names(parser.target_tables) == {"fact_archive"}
 
+    def test_switch_text_in_a_quoted_name_is_not_rewritten(self):
+        parser = LineageParser("INSERT INTO [ALTER TABLE a SWITCH TO b] SELECT * FROM dbo.real_source", Dialect.TSQL)
+
+        assert _table_names(parser.source_tables) == {"dbo.real_source"}
+        assert _table_names(parser.target_tables) == {"alter table a switch to b"}
+
+    def test_switch_is_only_rewritten_for_tsql(self):
+        parser = LineageParser("ALTER TABLE dbo.stage SWITCH TO dbo.archive", Dialect.MYSQL)
+
+        assert not parser.source_tables
+        assert not parser.target_tables
+
     def test_other_alter_table_statements_are_not_rewritten(self):
         query = "ALTER TABLE dbo.stage ADD loaded_at DATETIME"
 
@@ -125,10 +137,10 @@ class TestExtractSwitchStatements:
     """SWITCH statements are read out of a procedure body"""
 
     def test_reported_procedure(self):
-        assert mssql_lineage.extract_switch_statements(REPORTED_PROCEDURE) == [REPORTED_SWITCH]
+        assert extract_switch_statements(REPORTED_PROCEDURE) == [REPORTED_SWITCH]
 
     def test_switch_with_wait_option_keeps_the_whole_statement(self):
-        assert mssql_lineage.extract_switch_statements(MIXED_PROCEDURE) == [WAIT_OPTION_SWITCH]
+        assert extract_switch_statements(MIXED_PROCEDURE) == [WAIT_OPTION_SWITCH]
 
     def test_commented_out_switch_is_ignored(self):
         body = """CREATE PROCEDURE dbo.p AS
@@ -138,34 +150,57 @@ BEGIN
     SELECT 1;
 END"""
 
-        assert mssql_lineage.extract_switch_statements(body) == []
+        assert extract_switch_statements(body) == []
 
     def test_switch_inside_a_string_is_ignored(self):
         body = "CREATE PROCEDURE dbo.p AS PRINT N'ALTER TABLE dbo.a SWITCH TO dbo.b';"
 
-        assert mssql_lineage.extract_switch_statements(body) == []
+        assert extract_switch_statements(body) == []
 
     def test_comment_marker_inside_a_string_keeps_the_switch_after_it(self):
         body = "CREATE PROCEDURE dbo.p AS BEGIN PRINT '--'; ALTER TABLE dbo.a SWITCH TO dbo.b; END"
 
-        assert mssql_lineage.extract_switch_statements(body) == ["ALTER TABLE dbo.a SWITCH TO dbo.b"]
+        assert extract_switch_statements(body) == ["ALTER TABLE dbo.a SWITCH TO dbo.b"]
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "CREATE PROCEDURE dbo.p AS SELECT 1 AS [ALTER TABLE dbo.a SWITCH TO dbo.b];",
+            'CREATE PROCEDURE dbo.p AS SELECT 1 AS "ALTER TABLE dbo.a SWITCH TO dbo.b";',
+            "CREATE PROCEDURE dbo.p AS /* outer /* inner */ ALTER TABLE dbo.a SWITCH TO dbo.b; */ SELECT 1;",
+            "CREATE PROCEDURE dbo.p AS SELECT 1; /* ALTER TABLE dbo.a SWITCH TO dbo.b;",
+        ],
+        ids=["bracketed_alias", "quoted_alias", "nested_comment", "unclosed_comment"],
+    )
+    def test_switch_text_that_is_not_a_statement_is_ignored(self, body):
+        assert extract_switch_statements(body) == []
+
+    def test_switch_after_a_nested_comment_is_kept(self):
+        body = "CREATE PROCEDURE dbo.p AS /* a /* b */ c */ ALTER TABLE dbo.a SWITCH TO dbo.b;"
+
+        assert extract_switch_statements(body) == ["ALTER TABLE dbo.a SWITCH TO dbo.b"]
+
+    def test_quoted_operands_are_kept_as_written(self):
+        body = 'CREATE PROCEDURE dbo.p AS ALTER TABLE [dbo].[stage table] SWITCH TO "dbo"."archive";'
+
+        assert extract_switch_statements(body) == ['ALTER TABLE [dbo].[stage table] SWITCH TO "dbo"."archive"']
 
     def test_escaped_bracket_name_is_kept_whole(self):
         body = "CREATE PROCEDURE dbo.p AS ALTER TABLE dbo.stage SWITCH TO dbo.[archive]]old];"
 
-        assert mssql_lineage.extract_switch_statements(body) == ["ALTER TABLE dbo.stage SWITCH TO dbo.[archive]]old]"]
+        assert extract_switch_statements(body) == ["ALTER TABLE dbo.stage SWITCH TO dbo.[archive]]old]"]
 
     def test_repeated_switch_is_returned_once(self):
         body = "BEGIN ALTER TABLE a SWITCH TO b; ALTER TABLE a SWITCH TO b; ALTER TABLE b SWITCH TO c; END"
 
-        assert mssql_lineage.extract_switch_statements(body) == [
+        assert extract_switch_statements(body) == [
             "ALTER TABLE a SWITCH TO b",
             "ALTER TABLE b SWITCH TO c",
         ]
 
     @pytest.mark.parametrize("body", [None, "", "CREATE PROCEDURE dbo.p AS SELECT 'switch'"])
     def test_body_without_switch(self, body):
-        assert mssql_lineage.extract_switch_statements(body) == []
+        assert extract_switch_statements(body) == []
 
 
 def _row(data: dict) -> MagicMock:
@@ -197,10 +232,10 @@ class TestMssqlSwitchQueryHistory:
     """Executed procedures contribute their SWITCH statements to the stored procedure queries"""
 
     @staticmethod
-    def _source(procedure_runs, history=()):
+    def _engine(procedure_runs, history=()):
         """
-        A lineage source whose statement history holds only `history`: nothing, by default,
-        as SQL Server leaves it for a procedure that only switches partitions.
+        An engine whose statement history holds only `history`: nothing, by default, as
+        SQL Server leaves it for a procedure that only switches partitions.
         `procedure_runs` is what the procedure execution stats return, or the exception
         reading them raises.
         """
@@ -212,7 +247,7 @@ class TestMssqlSwitchQueryHistory:
             executed.append(sql)
             result = MagicMock()
             if "dm_exec_procedure_stats" in sql and "SWITCH" in sql:
-                if isinstance(procedure_runs, Exception):
+                if isinstance(procedure_runs, BaseException):
                     raise procedure_runs
                 result.all.return_value = procedure_runs
             else:
@@ -223,15 +258,23 @@ class TestMssqlSwitchQueryHistory:
         engine = MagicMock()
         engine.connect.return_value.__enter__.return_value = connection
         engine.connect.return_value.__exit__.return_value = False
+        return engine, connection, executed
 
+    @classmethod
+    def _source(cls, procedure_runs, history=()):
+        engine, _, executed = cls._engine(procedure_runs, history)
+        return cls._source_over(engine), executed
+
+    @staticmethod
+    def _source_over(*engines):
         source = MssqlLineageSource.__new__(MssqlLineageSource)
-        source.engine = engine
+        source.engine = engines[0]
         source._query_store_enabled = True
         source._active_query_store = True
         source.source_config = MagicMock(queryLogDuration=1)
         source.status = MagicMock()
-        source.get_stored_procedure_engines = lambda: iter([engine])
-        return source, executed
+        source.get_stored_procedure_engines = lambda: iter(engines)
+        return source
 
     @staticmethod
     def _queries(source) -> list[QueryByProcedure]:
@@ -281,6 +324,30 @@ class TestMssqlSwitchQueryHistory:
         source.status.failed.assert_not_called()
         logger.warning.assert_called_once()
         assert "VIEW SERVER STATE permission denied" in str(logger.warning.call_args)
+        source.status.warning.assert_called_once()
+
+    def test_driver_timeout_on_procedure_stats_keeps_the_rest_of_the_lineage(self):
+        # mssql+pytds raises socket timeouts as a raw OSError that SQLAlchemy does not wrap
+        insert = "INSERT INTO dbo.archive_table SELECT * FROM dbo.stage_table"
+        history_row = _procedure_run(MIXED_PROCEDURE, name="LoadAndSwitchProc")
+        history_row._asdict.return_value = {**history_row._asdict(), "QUERY_TYPE": "INSERT", "QUERY_TEXT": insert}
+        timed_out, timed_out_connection, _ = self._engine(TimeoutError("timed out"), history=[history_row])
+        healthy, _, _ = self._engine([_procedure_run(REPORTED_PROCEDURE)])
+        source = self._source_over(timed_out, healthy)
+
+        queries = self._queries(source)
+
+        assert [query.query_text for query in queries] == [insert, REPORTED_SWITCH]
+        timed_out_connection.invalidate.assert_called_once()
+        source.status.failed.assert_not_called()
+        source.status.warning.assert_called_once()
+        assert "timed out" in str(source.status.warning.call_args)
+
+    def test_unreadable_procedure_run_skips_only_that_run(self):
+        unreadable = _row({"PROCEDURE_NAME": None})
+        source, _ = self._source([unreadable, _procedure_run(REPORTED_PROCEDURE)])
+
+        assert [query.query_text for query in self._queries(source)] == [REPORTED_SWITCH]
 
 
 class TestSwitchProcedureLineage:

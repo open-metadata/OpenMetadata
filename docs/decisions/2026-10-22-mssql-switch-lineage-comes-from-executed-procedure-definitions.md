@@ -18,13 +18,21 @@ that it ran. No SQL parser we use understands `SWITCH` either.
 
 - The MSSQL lineage source reads `sys.dm_exec_procedure_stats` for procedures that ran in the
   query log window and whose definition mentions `SWITCH`, and yields every `ALTER TABLE ... SWITCH`
-  in the definition, comments removed, as a query of that procedure. It is read in Query Store and
+  statement in the definition as a query of that procedure. Statements are matched on a copy of
+  the definition with string literals and comments (which nest in T-SQL) blanked and the inside of
+  quoted names masked, so `SWITCH` text that is printed, commented out or part of a name is never
+  read as a statement. It is read in Query Store and
   plan-cache mode alike, through `StoredProcedureLineageMixin.yield_supplementary_stored_procedure_queries`.
 - The read is best effort. It needs `VIEW SERVER STATE` (`VIEW SERVER PERFORMANCE STATE` on 2022),
-  which a user who only reads Query Store may lack, so a failed read logs a warning and loses only
-  the `SWITCH` lineage. It is not reported as a failure of the run.
-- The parser rewrites a `SWITCH` into `INSERT INTO b SELECT * FROM a` before parsing, so the edge
-  runs from the switched table to the `TO` table, which is the direction the rows move.
+  which a user who only reads Query Store may lack, so a failed read, including a raw `OSError` that
+  mssql+pytds raises on a socket timeout or reset, logs a warning, records a status warning and loses
+  only the `SWITCH` lineage. It is not reported as a failure of the run and does not stop the
+  lineage read after it. A connection that failed with an `OSError` is invalidated so the pool
+  does not hand it out again.
+- `LineageParser` rewrites each `SWITCH` into `INSERT INTO b SELECT * FROM a` before parsing, for
+  the `tsql` dialect only, so the edge runs from the switched table to the `TO` table, which is the
+  direction the rows move. The rewrite uses the same masked matching, so a quoted name that contains
+  `SWITCH` text is left as written.
 
 ## Consequences
 
