@@ -278,7 +278,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void anInverseTheReaderMayViewAsItsOwnerLabelsAHopFollowedFromTheRange(final TestNamespace ns) {
+  void anInverseTheReaderMayViewAsItsOwnerLabelsAnIncomingHop(final TestNamespace ns) {
     final Payments payments =
         payments(ns, "ownedInversePayments", DatabaseServiceTestFactory.createPostgres(ns));
     final Table customers = table(payments, "customers", List.of("customer_id", "name"));
@@ -298,7 +298,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
       final OntologyProperty keeps =
           objectProperty(payments.ontology(), "keeps", CUSTOMER, ACCOUNT, keptBy, owners);
 
-      final OntologyConceptQuery fromRange =
+      final OntologyConceptQuery incoming =
           query(reader, payments.account(), hop(keeps, INCOMING, payments.customer()));
 
       assertEquals(
@@ -307,7 +307,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
               + ".accounts t0\nJOIN "
               + payments.schema().getName()
               + ".customers t1 ON t0.customer_id = t1.customer_id -- kept by\nLIMIT 50",
-          fromRange.getSql());
+          incoming.getSql());
     }
   }
 

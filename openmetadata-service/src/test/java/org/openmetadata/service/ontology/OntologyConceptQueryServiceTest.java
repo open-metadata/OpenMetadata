@@ -186,7 +186,7 @@ class OntologyConceptQueryServiceTest {
   }
 
   @Test
-  void aHopFollowedFromItsRangeJoinsTheWayItsLabelReads() {
+  void anIncomingHopJoinsTheWayItsLabelReads() {
     final OntologyProperty manages = manages();
     final OntologyProperty managedBy = managedBy(manages);
     final OntologyConceptQueryService.Inverses inverses =
@@ -208,7 +208,7 @@ class OntologyConceptQueryServiceTest {
                 sql(
                     employees,
                     OntologyConceptQueryService.hop(manages, INCOMING, inverses, managers)),
-                "Employee to Manager over manages, followed from its range"),
+                "Employee to Manager over manages, incoming"),
         () ->
             assertEquals(
                 employeesJoinedOn("t0.employee_id = t1.manager_id -- manages"),
@@ -222,11 +222,11 @@ class OntologyConceptQueryServiceTest {
                 sql(
                     managers,
                     OntologyConceptQueryService.hop(managedBy, INCOMING, inverses, employees)),
-                "Manager to Employee over managed by, followed from its range"));
+                "Manager to Employee over managed by, incoming"));
   }
 
   @Test
-  void aHopFollowedFromItsRangeOverAHiddenInverseJoinsTheSameWayAndNamesOnlyItsOwnProperty() {
+  void anIncomingHopOverAHiddenInverseJoinsTheSameWayAndNamesOnlyItsOwnProperty() {
     final OntologyProperty manages = manages();
     final OntologyProperty managedBy = managedBy(manages);
     final BoundConcept employees = managerBoundEmployees("Employee", managedBy);
