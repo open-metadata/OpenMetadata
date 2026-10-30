@@ -698,6 +698,7 @@ describe('native Data mode in English', () => {
 
   afterEach(() => {
     translate.mockReturnValue(keyTranslation);
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   const heading = () =>
@@ -719,8 +720,6 @@ describe('native Data mode in English', () => {
     expect(card.className.split(' ')).not.toContain('tw:top-15');
     expect(card).toHaveTextContent('Data layer');
     expect(card).toHaveTextContent('3 concepts · 152 bindings');
-
-    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   it('counts the bindings each cluster totals, in the plural', () => {

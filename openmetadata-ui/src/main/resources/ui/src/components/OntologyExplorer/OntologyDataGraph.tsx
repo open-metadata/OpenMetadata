@@ -1338,7 +1338,7 @@ const OntologyDataGraph = ({
         className="tw:h-full"
         data-testid="ontology-data-graph-empty"
         justify="center">
-        <Typography as="p" className="tw:text-tertiary" size="text-sm">
+        <Typography as="p" color="secondary" size="text-sm">
           {t('message.no-data-available')}
         </Typography>
       </Box>

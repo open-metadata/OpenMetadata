@@ -29,8 +29,8 @@ call site, as an exception to ADR:2026-10-11-migrated-antd-components-adopt-core
 - the legend label `Typography` in `OntologyDataGraphChrome.tsx` — `tw:text-secondary`, a step darker
   than `color="secondary"` and a step lighter than the primary text it would otherwise inherit.
 
-The overrides stay in those two modules; no other call site copies them. Every other text colour in
-Data mode uses the `color` prop.
+The overrides stay in those two modules; no other call site copies them. Every other `Typography`
+colour in Data mode uses the `color` prop.
 
 ## Consequences
 These rows can drift when core changes `Button` radius or padding or the `tertiary` colours, so a
