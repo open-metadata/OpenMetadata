@@ -98,6 +98,8 @@ for (const theme of VISUAL_THEMES) {
       });
     }
 
+    // The light "blue-dark" name must differ from the dark "blue" name.
+    // Put a noun after the color so "-dark" remains the theme suffix.
     for (const color of Object.values(AnnouncementColor)) {
       test(`announcement-palette-${color}-card`, async ({ page }) => {
         await prepareVisualTheme(page, theme);
