@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { lazy, useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -67,6 +67,7 @@ export const ContractTab = () => {
   const { id, name: entityName } = entityData ?? {};
   // An inherited contract belongs to the schema or Data Product the asset inherits from.
   const isInheritedContract = Boolean(contract?.inherited);
+  const currentEntityIdRef = useRef(id);
 
   // Fetch mechanism (entity-level by id once a contract exists, else a resource-level
   // Create check) is unchanged — only the raw `.EditAll` read is routed through the
@@ -128,11 +129,16 @@ export const ContractTab = () => {
   // against values that were never saved.
   const handleEdit = async () => {
     if (contract?.id && !isInheritedContract) {
+      const requestedEntityId = id;
       try {
-        setStoredContract(
-          await getContractById(contract.id, [TabSpecificField.OWNERS])
-        );
-        setTabMode(DataContractTabMode.EDIT);
+        const stored = await getContractById(contract.id, [
+          TabSpecificField.OWNERS,
+        ]);
+        // Drop a response that lands after the user moved to another asset.
+        if (currentEntityIdRef.current === requestedEntityId) {
+          setStoredContract(stored);
+          setTabMode(DataContractTabMode.EDIT);
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -171,6 +177,9 @@ export const ContractTab = () => {
   };
 
   useEffect(() => {
+    currentEntityIdRef.current = id;
+    setStoredContract(undefined);
+    setTabMode(DataContractTabMode.VIEW);
     fetchContract();
   }, [id]);
 

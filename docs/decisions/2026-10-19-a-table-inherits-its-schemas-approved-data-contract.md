@@ -1,6 +1,6 @@
 # A table inherits its schema's approved data contract, after its Data Product's
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-10-30-an-inherited-data-contract-carries-its-approved-parents-status
 - **Revisions:** v1 2026-10-19 (initial)
 - **Deciders:** Governance (OpenMetadata)
 - **Guard:** `DataContractResourceIT.testTableInheritsApprovedSchemaContract`, `DataContractSchemaContract.spec.ts`

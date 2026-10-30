@@ -1844,7 +1844,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     inherited.setLatestResult(null);
     inherited.setContractUpdates(null);
     // entityStatus stays the parent's: only an approved parent contract is inherited, and the copy
-    // is in force just as that contract is.
+    // is in force just as that contract is
+    // (ADR:2026-10-30-an-inherited-data-contract-carries-its-approved-parents-status).
 
     // Mark all fields as inherited
     if (inherited.getTermsOfUse() != null) {

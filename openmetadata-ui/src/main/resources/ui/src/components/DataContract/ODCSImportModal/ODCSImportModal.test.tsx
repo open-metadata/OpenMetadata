@@ -21,11 +21,15 @@ import {
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import React from 'react';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  DataContract,
+  EntityStatus,
+} from '../../../generated/entity/data/dataContract';
 import {
   createContract,
   createOrUpdateContractFromODCSYaml,
   deleteContractById,
+  getContractById,
   importContractFromODCSYaml,
   parseODCSYaml,
   updateContract,
@@ -339,6 +343,7 @@ jest.mock('../../../rest/contractAPI', () => ({
   createContract: jest.fn(),
   createOrUpdateContractFromODCSYaml: jest.fn(),
   deleteContractById: jest.fn(),
+  getContractById: jest.fn(),
   importContractFromODCSYaml: jest.fn(),
   parseODCSYaml: jest.fn(),
   updateContract: jest.fn(),
@@ -548,6 +553,7 @@ schema:
 describe('ContractImportModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getContractById as jest.Mock).mockResolvedValue(mockExistingContract);
     (parseODCSYaml as jest.Mock).mockResolvedValue({
       schemaObjects: ['users'],
       hasMultipleObjects: false,
@@ -2111,6 +2117,67 @@ describe('ContractImportModal', () => {
       });
     });
 
+    it('should diff a merge against the stored contract, not the effective one shown', async () => {
+      (updateContract as jest.Mock).mockResolvedValue(mockImportedContract);
+      (getContractById as jest.Mock).mockResolvedValue({
+        ...mockExistingContract,
+        entityStatus: EntityStatus.Draft,
+      });
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          existingContract={{
+            ...mockExistingContract,
+            entityStatus: EntityStatus.Approved,
+          }}
+          format="openmetadata"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File(
+        ['name: om-contract\nentityStatus: Approved'],
+        'om-contract.yaml',
+        { type: 'application/x-yaml' }
+      );
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Import' }));
+      });
+
+      await waitFor(() => {
+        expect(getContractById).toHaveBeenCalledWith('existing-contract-id', [
+          'owners',
+        ]);
+
+        const [contractId, patchOps] = (updateContract as jest.Mock).mock
+          .calls[0];
+
+        expect(contractId).toBe('existing-contract-id');
+        expect(patchOps).toContainEqual({
+          op: 'replace',
+          path: '/entityStatus',
+          value: 'Approved',
+        });
+      });
+    });
+
     it('should convert termsOfUse from string to object in merge mode patch', async () => {
       (updateContract as jest.Mock).mockResolvedValue(mockImportedContract);
 
@@ -2118,6 +2185,7 @@ describe('ContractImportModal', () => {
         ...mockExistingContract,
         termsOfUse: { content: 'Original terms', inherited: true },
       };
+      (getContractById as jest.Mock).mockResolvedValue(existingWithTerms);
 
       render(
         <ContractImportModal

@@ -306,6 +306,50 @@ describe('ContractTab', () => {
       expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
     });
 
+    it('should not open the edit form on another asset when the stored contract loads late', async () => {
+      const mockUseGenericContext = jest.requireMock(
+        '../../Customization/GenericProvider/GenericContext'
+      ).useGenericContext;
+      mockUseGenericContext.mockReturnValue({
+        data: { id: 'table-1', name: 'test-table' },
+      });
+      let resolveStored: (contract: DataContract) => void = jest.fn();
+      (getContractById as jest.Mock).mockReturnValue(
+        new Promise<DataContract>((resolve) => {
+          resolveStored = resolve;
+        })
+      );
+      const { rerender } = render(<ContractTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('edit-contract'));
+      });
+
+      try {
+        mockUseGenericContext.mockReturnValue({
+          data: { id: 'table-2', name: 'different-table' },
+        });
+        rerender(<ContractTab />);
+
+        await act(async () => {
+          resolveStored(mockContract);
+        });
+
+        expect(
+          screen.queryByTestId('add-data-contract')
+        ).not.toBeInTheDocument();
+        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+      } finally {
+        mockUseGenericContext.mockReturnValue({
+          data: { id: 'table-1', name: 'test-table' },
+        });
+      }
+    });
+
     it('should switch to add mode when edit is clicked', async () => {
       render(<ContractTab />);
 
