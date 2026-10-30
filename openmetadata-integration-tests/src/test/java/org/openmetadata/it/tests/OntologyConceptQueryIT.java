@@ -56,6 +56,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
   private static final URI TRANSFER = URI.create("urn:payments:FundsTransfer");
   private static final URI CUSTOMER = URI.create("urn:payments:Customer");
   private static final URI ACCOUNT = URI.create("urn:payments:Account");
+  private static final URI EMPLOYEE = URI.create("urn:payments:Employee");
   private static final URI XSD_STRING = URI.create("http://www.w3.org/2001/XMLSchema#string");
 
   private record Payments(
@@ -287,6 +288,58 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
               + ".customers t1 ON t0.customer_id = t1.customer_id -- kept by\nLIMIT 50",
           fromRange.getSql());
     }
+  }
+
+  @Test
+  void aBoundInverseOrientsAKeyFromATableToItself(final TestNamespace ns) {
+    final Payments payments =
+        payments(ns, "selfKeyPayments", DatabaseServiceTestFactory.createPostgres(ns));
+    final OntologyConcept employee = declareClass(payments.ontology(), "Employee", EMPLOYEE);
+    final Table created = table(payments, "employees", List.of("employee_id", "manager_id"));
+    final Table employees =
+        admin()
+            .tables()
+            .update(
+                created.getId().toString(),
+                admin()
+                    .tables()
+                    .get(created.getId().toString(), "tableConstraints")
+                    .withTableConstraints(
+                        List.of(foreignKey("manager_id", created, "employee_id"))));
+    final OntologyProperty managedBy =
+        objectProperty(payments.ontology(), "managedBy", EMPLOYEE, EMPLOYEE);
+    final OntologyProperty manages =
+        objectProperty(
+            payments.ontology(), "manages", EMPLOYEE, EMPLOYEE, managedBy.getIri(), null);
+    final OntologyProperty employeeId =
+        dataProperty(payments.ontology(), "employeeId", employee, true);
+    bind(
+        employee,
+        employees,
+        List.of(column(employeeId, "employee_id"), column(managedBy, "manager_id")),
+        0L);
+
+    final String schema = payments.schema().getName();
+    assertEquals(
+        manages.getIri(),
+        admin().ontologyProperties().get(managedBy.getId().toString()).getInverse());
+    assertEquals(
+        managedBy.getIri(),
+        admin().ontologyProperties().get(manages.getId().toString()).getInverse());
+    assertEquals(
+        "SELECT t1.employee_id, t1.manager_id\nFROM "
+            + schema
+            + ".employees t0\nJOIN "
+            + schema
+            + ".employees t1 ON t0.employee_id = t1.manager_id -- manages\nLIMIT 50",
+        query(admin(), employee, hop(manages, employee)).getSql());
+    assertEquals(
+        "SELECT t1.employee_id, t1.manager_id\nFROM "
+            + schema
+            + ".employees t0\nJOIN "
+            + schema
+            + ".employees t1 ON t0.manager_id = t1.employee_id -- managed by\nLIMIT 50",
+        query(admin(), employee, hop(managedBy, employee)).getSql());
   }
 
   private static OpenMetadataClient ownerOnlyPropertyReader(final RdfAccessFixtures fixtures) {
