@@ -116,6 +116,8 @@ export const registerVisualScenarios = (group: string) => {
           await gotoForScreenshot(page, scene.path, {
             readyTestId: scene.mode === 'classic' ? undefined : 'app-shell',
           });
+          // Late badge counts change tab widths and can undo horizontal tab
+          // scrolling. Resolve those reads before selecting a far-right tab.
           if (scene.initialReady)
             await expect(locate(page, scene.initialReady)).toBeVisible();
           for (const action of scene.actions ?? []) {

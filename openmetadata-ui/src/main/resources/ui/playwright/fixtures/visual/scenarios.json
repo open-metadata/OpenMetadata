@@ -958,9 +958,9 @@
     "group": "Pages",
     "path": "/observability/data-quality",
     "ready": {
-      "role": "heading",
-      "name": "Data Quality"
-    }
+      "testId": "entity-health-pie-chart-widget"
+    },
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "page-alerts",
@@ -2359,6 +2359,10 @@
     "id": "tab-domain-data-observability",
     "group": "Entity tabs",
     "path": "/domain/VisualFinance",
+    "initialReady": {
+      "testId": "activity_feed",
+      "has": { "text": "5" }
+    },
     "actions": [
       {
         "role": "tab",
@@ -2368,7 +2372,8 @@
     ],
     "ready": {
       "testId": "incident-New-type-area-chart-widget-container"
-    }
+    },
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "tab-dataProduct-activity-feeds---tasks",
@@ -2435,6 +2440,10 @@
     "id": "tab-dataProduct-data-observability",
     "group": "Entity tabs",
     "path": "/dataProduct/visual_revenue_product",
+    "initialReady": {
+      "testId": "activity_feed",
+      "has": { "text": "5" }
+    },
     "actions": [
       {
         "role": "tab",
@@ -2444,7 +2453,8 @@
     ],
     "ready": {
       "testId": "incident-New-type-area-chart-widget-container"
-    }
+    },
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "tab-dataProduct-custom-properties",
@@ -4549,6 +4559,10 @@
     "id": "glossaryTerm-tab-data-observability",
     "group": "Entity tabs",
     "path": "/glossary/VisualBusinessGlossary.Customer",
+    "initialReady": {
+      "testId": "activity_feed",
+      "has": { "text": "5" }
+    },
     "ready": {
       "testId": "incident-New-type-area-chart-widget-container"
     },
@@ -4558,7 +4572,8 @@
         "role": "tab",
         "namePattern": "^Data\\ Observability\\s*\\d*$"
       }
-    ]
+    ],
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "metric-tab-lineage",
@@ -4711,6 +4726,10 @@
     "id": "tag-tab-data-observability",
     "group": "Entity tabs",
     "path": "/tag/VisualClassification.Confidential",
+    "initialReady": {
+      "testId": "activity_feed",
+      "has": { "text": "5" }
+    },
     "ready": {
       "testId": "incident-New-type-area-chart-widget-container"
     },
@@ -4720,7 +4739,8 @@
         "role": "tab",
         "namePattern": "^Data\\ Observability\\s*\\d*$"
       }
-    ]
+    ],
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "table-long-header",

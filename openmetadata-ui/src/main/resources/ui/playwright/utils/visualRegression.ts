@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
+import { resolve } from 'path';
 import {
   disableAiAppMode,
   enableAiAppMode,
@@ -65,6 +66,73 @@ const waitForSkeletonsToResolve = async (page: Page) => {
 
 export const FIXED_DATE = new Date('2026-01-15T10:00:00.000Z');
 
+const waitForPieChartsToPaint = async (page: Page) => {
+  for (const chart of await page.locator('.custom-pie-chart:visible').all()) {
+    // ECharts animates with JavaScript; screenshot CSS animation controls do
+    // not finish its sweep. Require a full outer loop before capture.
+    await expect
+      .poll(() =>
+        chart.locator('svg path').evaluateAll((paths: SVGPathElement[]) =>
+          paths.some((path) => {
+            const svg = path.ownerSVGElement;
+            if (!svg || !path.getAttribute('d')) return false;
+            const length = path.getTotalLength();
+            if (!length) return false;
+            const start = path.getPointAtLength(0);
+            // CustomPieChart centers its SVG track at 50% in both dimensions.
+            const radius = Math.hypot(
+              start.x - svg.width.baseVal.value / 2,
+              start.y - svg.height.baseVal.value / 2
+            );
+            if (!radius) return false;
+            const circumference = 2 * Math.PI * radius;
+            const end = path.getPointAtLength(circumference);
+
+            return (
+              length > circumference &&
+              Math.hypot(start.x - end.x, start.y - end.y) < 0.1
+            );
+          })
+        )
+      )
+      .toBe(true);
+  }
+};
+
+const waitForChartGeometryToSettle = async (page: Page) => {
+  // SVG sweeps and resize work can outlive React's loaders, especially after
+  // collapsing the sidebar. Compare real frames so a temporary bar cap or
+  // clip path cannot become a baseline merely because two screenshots match.
+  for (const chart of await page.locator('.echarts-for-react:visible').all()) {
+    await expect
+      .poll(async () => {
+        const before = await chart
+          .locator('svg')
+          .evaluateAll((elements) =>
+            elements.map((element) => element.outerHTML)
+          );
+        await page.evaluate(
+          () =>
+            new Promise<void>((resolve) => {
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => resolve())
+              );
+            })
+        );
+        const after = await chart
+          .locator('svg')
+          .evaluateAll((elements) =>
+            elements.map((element) => element.outerHTML)
+          );
+
+        return (
+          before.length > 0 && JSON.stringify(before) === JSON.stringify(after)
+        );
+      })
+      .toBe(true);
+  }
+};
+
 const waitForCanvasPaint = async (canvases: Locator, message: string) => {
   await expect(canvases).not.toHaveCount(0);
   await expect
@@ -114,6 +182,10 @@ export const SCREENSHOT_OPTS = {
   animations: 'disabled' as const,
   caret: 'hide' as const,
   maxDiffPixelRatio: 0.01,
+  // This footer uses React Query's client-side completion timestamp, not an API
+  // date. Its elapsed-time text varies with fetch/render speed even with fixtures.
+  // Preserve the footer and action layout while excluding only that live label.
+  stylePath: resolve(__dirname, '../fixtures/visual/screenshot.css'),
 };
 
 // Scroll behaviour only. `animation: none` used to live here too, but rc-motion
@@ -173,7 +245,6 @@ export const expectVisualScreenshot = async (
     Parameters<ReturnType<typeof expect<Page>>['toHaveScreenshot']>[0]
   > & { target?: Locator; allowErrorFeedback?: boolean } = {}
 ) => {
-  await page.clock.setFixedTime(FIXED_DATE);
   // Classic deliberately resolves dark preferences to light. Requiring the
   // actual root theme prevents a duplicate light image from claiming dark coverage.
   if (theme === 'dark') {
@@ -184,6 +255,10 @@ export const expectVisualScreenshot = async (
   await waitForAllLoadersToDisappear(page);
   await waitForSkeletonsToResolve(page);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  await waitForPieChartsToPaint(page);
+  await waitForChartGeometryToSettle(page);
+  // Keep the anchored clock advancing: React can replace chart options while
+  // the assertion settles, and a fixed Date would freeze the new sweep at zero.
   const {
     target = page,
     allowErrorFeedback = false,
