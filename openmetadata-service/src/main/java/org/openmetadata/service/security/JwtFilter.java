@@ -40,6 +40,7 @@ import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.PathSegment;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
@@ -77,6 +78,7 @@ import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -209,9 +211,7 @@ public class JwtFilter implements ContainerRequestFilter {
   @SneakyThrows
   @Override
   public void filter(ContainerRequestContext requestContext) {
-    UriInfo uriInfo = requestContext.getUriInfo();
-    if (EXCLUDED_ENDPOINTS.stream()
-        .anyMatch(endpoint -> uriInfo.getPath().equalsIgnoreCase(endpoint))) {
+    if (isExcludedEndpoint(requestContext.getUriInfo())) {
       return;
     }
 
@@ -298,6 +298,20 @@ public class JwtFilter implements ContainerRequestFilter {
     return target;
   }
 
+  /**
+   * Whether the request targets an endpoint that bypasses authentication (and, for the event
+   * filter, auditing). Matches the resource path exactly, after dropping matrix parameters from
+   * each segment: a substring or raw-path match would let {@code ;x=…} or an encoded separator in
+   * an entity name make a different endpoint look like an excluded one.
+   */
+  public static boolean isExcludedEndpoint(UriInfo uriInfo) {
+    String path =
+        uriInfo.getPathSegments().stream()
+            .map(PathSegment::getPath)
+            .collect(Collectors.joining("/"));
+    return EXCLUDED_ENDPOINTS.stream().anyMatch(path::equalsIgnoreCase);
+  }
+
   public void checkValidationsForToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName, String impersonatedBy) {
     String tokenKeyId = null;
@@ -324,14 +338,8 @@ public class JwtFilter implements ContainerRequestFilter {
     // stay exempt - consistent with how bot tokens are already handled (validateDomainEnforcement
     // returns early for isBot=true tokens). The isInternallyIssuedToken check is guarded by
     // enforcePrincipalDomain to avoid the singleton lookup where enforcement is disabled.
-    if (enforcePrincipalDomain && !isInternallyIssuedToken(claims, tokenKeyId)) {
-      validateDomainEnforcement(
-          jwtPrincipalClaimsMapping,
-          jwtPrincipalClaims,
-          claims,
-          principalDomain,
-          allowedDomains,
-          enforcePrincipalDomain);
+    if (!isBot(claims) && !isInternallyIssuedToken(claims, tokenKeyId)) {
+      validateProviderIdentity(claims, userName);
     }
 
     // Validate Bot token matches what was created in OM. Under impersonation the presented token
@@ -348,6 +356,46 @@ public class JwtFilter implements ContainerRequestFilter {
     validatePersonalAccessToken(claims, tokenFromHeader, userName);
 
     validateSessionBoundToken(claims, userName);
+  }
+
+  /**
+   * The claim flow names the user after a claim's local part, so a provider token for any address
+   * with that local part would resolve to the account of that name. The principal domain is
+   * checked when it is enforced, and a provider token never resolves to a bot account.
+   */
+  private void validateProviderIdentity(Map<String, Claim> claims, String userName) {
+    if (enforcePrincipalDomain) {
+      validateDomainEnforcement(
+          jwtPrincipalClaimsMapping,
+          jwtPrincipalClaims,
+          claims,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
+    }
+    rejectProviderTokenForBotAccount(userName);
+  }
+
+  /**
+   * A provider token names the user after a claim's local part, so one whose local part matches a bot
+   * account's name - with or without an email - would otherwise sign in as that bot and inherit its
+   * roles. Bots authenticate with their own issued tokens, never through the provider flow, so a
+   * provider token must never resolve to a bot account. Uses the cached user context so this stays off
+   * the database on the per-request path.
+   */
+  private static void rejectProviderTokenForBotAccount(String userName) {
+    User account;
+    try {
+      account = SubjectCache.getUserContext(userName);
+    } catch (EntityNotFoundException e) {
+      // No account holds the name yet: a first login, which provisioning handles. Any other failure
+      // propagates, so an unreadable account is refused rather than waved through.
+      return;
+    }
+    if (account != null && Boolean.TRUE.equals(account.getIsBot())) {
+      throw new AuthenticationException(
+          "Authentication failed: a provider token cannot sign in to a bot account");
+    }
   }
 
   private boolean isInternallyIssuedToken(Map<String, Claim> claims, String tokenKeyId) {
@@ -562,7 +610,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (!isAuthenticated
         || session.isExpired(System.currentTimeMillis())
         || nullOrEmpty(session.getUsername())
-        || !session.getUsername().equalsIgnoreCase(userName)) {
+        || !SecurityUtil.sameIdentifier(session.getUsername(), userName)) {
       throw AuthenticationException.getInvalidTokenException("Invalid session.");
     }
     validateSessionProviderIsCurrent(session);

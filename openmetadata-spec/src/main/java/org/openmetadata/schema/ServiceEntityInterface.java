@@ -29,6 +29,10 @@ public interface ServiceEntityInterface extends EntityInterface {
 
   void setPipelines(List<EntityReference> pipelines);
 
+  default List<EntityReference> getPipelines() {
+    return null;
+  }
+
   void setIngestionRunner(EntityReference ingestionRunner);
 
   void setTestConnectionResult(TestConnectionResult testConnectionResult);

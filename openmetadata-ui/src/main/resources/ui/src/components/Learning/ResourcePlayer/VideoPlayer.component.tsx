@@ -14,6 +14,7 @@
 import { Spin } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import './video-player.less';
 
 interface VideoPlayerProps {
@@ -23,8 +24,13 @@ interface VideoPlayerProps {
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
   const [isLoading, setIsLoading] = useState(true);
 
+  // Only an http(s) URL may become the frame's src: with allow-scripts and
+  // allow-same-origin, a javascript: or data: src would run as this page.
   const embedUrl = useMemo(() => {
-    const url = resource.source.url;
+    const url = getSafeHttpUrl(resource.source.url);
+    if (!url) {
+      return undefined;
+    }
 
     let parsedUrl: URL | undefined;
     try {

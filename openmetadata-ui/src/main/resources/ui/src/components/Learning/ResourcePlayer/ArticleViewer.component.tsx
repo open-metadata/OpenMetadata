@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -84,7 +85,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
             showIcon
             action={
               <Button
-                href={resource.source.url}
+                href={getSafeHttpUrl(resource.source.url)}
                 icon={<LinkOutlined />}
                 rel="noopener noreferrer"
                 size="small"

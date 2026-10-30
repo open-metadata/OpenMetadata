@@ -1625,8 +1625,12 @@ public class TeamRepository extends EntityRepository<Team> {
 
       List<EntityReference> origDomains =
           EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getDomains()));
+      // A team read carries its parents' domains marked inherited; storing them would make them the
+      // team's own and keep them after the parent's domain is removed. Keep only the team's own.
       List<EntityReference> updatedDomains =
-          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains())).stream()
+              .filter(domain -> domain.getInherited() == null || !domain.getInherited())
+              .collect(Collectors.toList());
 
       // Remove Domains for the user
       deleteTo(original.getId(), TEAM, Relationship.HAS, Entity.DOMAIN);
