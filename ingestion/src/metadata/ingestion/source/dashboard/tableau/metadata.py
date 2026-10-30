@@ -574,7 +574,7 @@ class TableauSource(DashboardServiceSource):
             Lineage request between Data Models and Dashboards
         """
         # The dashboard failed in yield_dashboard: there is no edge to draw
-        if not self.context.get().dashboard:
+        if not getattr(self.context.get(), "dashboard", None):
             return
         if hasattr(self.context.get(), "dataModels") and self.context.get().dataModels:
             for datamodel in self.context.get().dataModels:
@@ -1123,10 +1123,10 @@ class TableauSource(DashboardServiceSource):
             )
             # The database was matched above, after its lineage mapping; the raw fullName is not mapped
             if prefix_schema_name and schema_query and prefix_schema_name.lower() != schema_query.lower():
-                logger.debug(f"Schema {schema_query} does not match prefix {prefix_schema_name}")
+                logger.debug("Schema %s does not match prefix %s", schema_query, prefix_schema_name)
                 return None
             if prefix_table_name and table_query and prefix_table_name.lower() != table_query.lower():
-                logger.debug(f"Table {table_query} does not match prefix {prefix_table_name}")
+                logger.debug("Table %s does not match prefix %s", table_query, prefix_table_name)
                 return None
             if table_query:
                 fqn_search_string = build_es_fqn_search_string(
