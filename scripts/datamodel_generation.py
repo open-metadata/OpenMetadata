@@ -97,10 +97,25 @@ finally:
 # --isolated --no-respect-gitignore: the generated tree is ruff-excluded and gitignored. The post-processing below
 # matches black's layout (88 columns), which ruff's defaults reproduce.
 subprocess.run(
-    ["ruff", "check", "--isolated", "--no-respect-gitignore", "--select", "I", "--fix", "--quiet", str(output_root)],
+    [
+        sys.executable,
+        "-m",
+        "ruff",
+        "check",
+        "--isolated",
+        "--no-respect-gitignore",
+        "--select",
+        "I",
+        "--fix",
+        "--quiet",
+        str(output_root),
+    ],
     check=True,
 )
-subprocess.run(["ruff", "format", "--isolated", "--no-respect-gitignore", "--quiet", str(output_root)], check=True)
+subprocess.run(
+    [sys.executable, "-m", "ruff", "format", "--isolated", "--no-respect-gitignore", "--quiet", str(output_root)],
+    check=True,
+)
 
 # Replace Unicode regex flags
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
