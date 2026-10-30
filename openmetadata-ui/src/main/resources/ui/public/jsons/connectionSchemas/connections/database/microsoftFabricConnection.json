@@ -160,7 +160,6 @@
           "^guest$",
           "^information_schema$",
           "^sys$",
-          "^queryinsights$",
           "^_rsc$"
         ]
       },
