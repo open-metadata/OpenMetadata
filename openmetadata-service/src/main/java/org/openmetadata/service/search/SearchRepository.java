@@ -4348,7 +4348,8 @@ public class SearchRepository {
    * embed their test case instead, and the incident listing scopes on {@code testCase.deleted}. A
    * cascade soft-deletes the descendant test cases without search writes of their own, so the flag
    * is set here for every incident under the parent, through the same synchronous update as the
-   * soft delete above: a failure reaches the retry queue, and a quick restore cannot race it.
+   * soft delete above, so a quick restore cannot race it. The retry of a failed soft delete does not
+   * reach incident documents; a reindex of testCaseResolutionStatus repairs them.
    */
   private void softDeleteOrRestoreIncidentTestCases(
       Pair<String, String> parentMatch, boolean delete) throws IOException {
