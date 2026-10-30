@@ -301,13 +301,18 @@ public class RdfMaintenanceRecoveryIT {
                 : unreadableStart
                     ? "[]"
                     : "{\"task\":\"Compact\",\"finished\":\"now\",\"success\":true}";
-      } else {
+      } else if (isUpdate(exchange)) {
         writes.incrementAndGet();
       }
       final byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
       exchange.sendResponseHeaders(status, bytes.length == 0 ? -1 : bytes.length);
       exchange.getResponseBody().write(bytes);
       exchange.close();
+    }
+
+    private static boolean isUpdate(final HttpExchange exchange) {
+      final String contentType = exchange.getRequestHeaders().getFirst("Content-Type");
+      return contentType != null && contentType.contains("sparql-update");
     }
 
     @Override
