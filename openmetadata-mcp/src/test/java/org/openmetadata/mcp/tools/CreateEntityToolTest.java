@@ -147,6 +147,7 @@ class CreateEntityToolTest {
             Entity.EVENT_SUBSCRIPTION,
             Entity.INGESTION_PIPELINE,
             Entity.TEST_CASE,
+            Entity.TEST_SUITE,
             Entity.ANNOUNCEMENT,
             Entity.INTAKE_FORM,
             Entity.PERSONA,
@@ -196,6 +197,29 @@ class CreateEntityToolTest {
       assertTrue(failure.getMessage().contains(Entity.GLOSSARY));
       assertTrue(failure.getMessage().contains("describe_entity_type"));
     }
+  }
+
+  @Test
+  void aParentReferenceThatNamesNothingIsRejectedBeforeAuthorization() {
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Domain.class);
+    Authorizer authorizer = mock(Authorizer.class);
+    Map<String, Object> input = params(Entity.DOMAIN);
+    input.put("description", "no parent named");
+    input.put("attributes", Map.of("parent", new EntityReference().withType(Entity.DOMAIN)));
+
+    IllegalArgumentException failure;
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(() -> Entity.getEntityRepository(Entity.DOMAIN)).thenReturn(repository);
+      failure =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  new CreateEntityTool()
+                      .execute(authorizer, mock(Limits.class), securityContext(), input));
+    }
+
+    assertTrue(failure.getMessage().contains("needs an 'id' or a 'fullyQualifiedName'"));
+    verify(authorizer, never()).authorize(any(), any(), any());
   }
 
   @Test

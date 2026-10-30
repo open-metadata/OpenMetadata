@@ -57,6 +57,7 @@ record EntityCreationSpec(
               Entity.INGESTION_PIPELINE,
               "ingestion pipeline creation uses pipeline-specific permissions and secret handling"),
           entry(Entity.TEST_CASE, "test case creation authorizes against the tested asset"),
+          entry(Entity.TEST_SUITE, "test suite creation authorizes against the tested table"),
           entry(
               Entity.WORKFLOW,
               "workflow creation requires connection-secret masking and unmasking"),

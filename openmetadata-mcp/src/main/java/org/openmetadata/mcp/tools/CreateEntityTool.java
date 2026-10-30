@@ -166,8 +166,9 @@ public class CreateEntityTool implements McpTool {
     return entity;
   }
 
-  // Hierarchy references are resolved as the type each field holds, as the REST mappers build
-  // them, before authorization reads them: the attributes bind straight to the entity class.
+  // The hierarchy references of domains, glossary terms, teams and tags are resolved as the type
+  // each field holds, as the REST mappers build them, before authorization reads them: the
+  // attributes bind straight to the entity class.
   private static void applyRepositoryDefaults(EntityInterface<?> entity) {
     if (entity instanceof Tag tag) {
       deriveTagClassification(tag);
