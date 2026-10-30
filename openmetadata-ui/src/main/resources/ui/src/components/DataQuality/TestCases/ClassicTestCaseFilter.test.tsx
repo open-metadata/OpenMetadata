@@ -184,6 +184,24 @@ describe('ClassicTestCaseFilter', () => {
     expect(onChange).toHaveBeenCalledWith('service.table');
   });
 
+  it('renders the placeholder on an empty date filter instead of a range that was never applied', () => {
+    render(
+      <ClassicTestCaseFilter
+        filter={{
+          ...descriptor,
+          key: 'lastRunRange',
+          label: 'Last Run',
+          controlType: 'date',
+        }}
+        testId="last-run-filter"
+      />
+    );
+
+    expect(screen.getByTestId('date-picker-menu')).toHaveTextContent(
+      'label.all-time'
+    );
+  });
+
   it('clears the single selection without choosing a different option', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(

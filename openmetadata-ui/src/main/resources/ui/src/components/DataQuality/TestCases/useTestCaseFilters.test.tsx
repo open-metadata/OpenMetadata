@@ -298,21 +298,24 @@ describe('useTestCaseFilters', () => {
     ]);
   });
 
-  it('should surface the date control for the default lastRun and the multiselect control for platform when selected', () => {
+  it('should surface the lastRun date control by default with no value, and the multiselect control for platform when selected', () => {
     const { result } = renderFilters();
+
+    const lastRunDescriptor = result.current.filters.find(
+      (descriptor) => descriptor.key === TEST_CASE_FILTERS.lastRun
+    );
+
+    expect(lastRunDescriptor?.controlType).toBe('date');
+    expect(lastRunDescriptor?.value).toBeUndefined();
 
     act(() => {
       result.current.handleMenuClick({ key: TEST_CASE_FILTERS.platform });
     });
 
-    const lastRunDescriptor = result.current.filters.find(
-      (descriptor) => descriptor.key === TEST_CASE_FILTERS.lastRun
-    );
     const platformDescriptor = result.current.filters.find(
       (descriptor) => descriptor.key === TEST_CASE_FILTERS.platform
     );
 
-    expect(lastRunDescriptor?.controlType).toBe('date');
     expect(platformDescriptor?.controlType).toBe('multiselect');
   });
 

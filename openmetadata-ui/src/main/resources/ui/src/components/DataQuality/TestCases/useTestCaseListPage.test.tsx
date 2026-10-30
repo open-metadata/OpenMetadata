@@ -633,6 +633,7 @@ describe('useTestCaseListPage', () => {
     );
 
     expect(lastRunDescriptor?.controlType).toBe('date');
+    expect(lastRunDescriptor?.value).toBeUndefined();
     expect(platformDescriptor?.controlType).toBe('multiselect');
   });
 
