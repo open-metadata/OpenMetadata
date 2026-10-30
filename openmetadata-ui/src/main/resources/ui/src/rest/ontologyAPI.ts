@@ -63,6 +63,7 @@ import { OntologyRelationshipSuggestionList } from '../generated/api/data/ontolo
 import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ontologyRelationshipSuggestionRequest';
 import type { OntologyReleaseDiff } from '../generated/api/data/ontologyReleaseDiff';
 import type { OntologyReleaseReview } from '../generated/api/data/ontologyReleaseReview';
+import { OntologyReleaseReviewList } from '../generated/api/data/ontologyReleaseReviewList';
 import type { OntologyReleaseStructureReport } from '../generated/api/data/ontologyReleaseStructureReport';
 import type { OntologyReleaseValidation } from '../generated/api/data/ontologyReleaseValidation';
 import type { OntologyWorkingDiff } from '../generated/api/data/ontologyWorkingDiff';
@@ -602,8 +603,13 @@ export const patchRelationshipType = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteRelationshipType = async (id: string) => {
-  await APIClient.delete(`${RELATIONSHIP_TYPES_PATH}/${id}`);
+export const deleteRelationshipType = async (
+  id: string,
+  hardDelete = false
+) => {
+  await APIClient.delete(`${RELATIONSHIP_TYPES_PATH}/${id}`, {
+    params: { hardDelete },
+  });
 };
 
 export const listOntologyAxioms = async (
@@ -999,6 +1005,22 @@ export const previewNativeOntologyPack = async (
   const response = await APIClient.post<CreateOntologyChangeSet>(
     `/ontologies/${ontologyId}/library/${packId}/preview`,
     request
+  );
+
+  return response.data;
+};
+
+export const getOntologyReleaseReviews = async (
+  params: {
+    view: 'assigned' | 'created' | 'pending';
+    limit: number;
+    after?: string;
+  },
+  signal?: AbortSignal
+): Promise<OntologyReleaseReviewList> => {
+  const response = await APIClient.get<OntologyReleaseReviewList>(
+    ONTOLOGIES_PATH + '/reviews',
+    { params, signal }
   );
 
   return response.data;

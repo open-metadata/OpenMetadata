@@ -64,23 +64,37 @@ const OntologyStudioHeader = <M extends string>({
         data-testid="ontology-studio-header"
         data-tour-step="ontology-studio">
         <PageHeader
-          actions={
-            <Box align="center" gap={2}>
-              {scopeMenu}
-              {actions}
-            </Box>
-          }
           breadcrumb={breadcrumb}
           data-testid="ontology-studio-page-header"
+          // PageHeader's actions slot never shrinks or wraps, so beside the AI
+          // side panel it ran past the viewport; the tab row can wrap instead.
           footer={
-            <Tabs
-              className="tw:w-auto"
-              selectedKey={mode}
-              onSelectionChange={handleSelectionChange}>
-              <Tabs.List aria-label={t('label.mode')} type="underline">
-                {modeItems}
-              </Tabs.List>
-            </Tabs>
+            <Box
+              align="center"
+              className="tw:w-full"
+              gap={2}
+              justify="between"
+              wrap="wrap">
+              <Tabs
+                className="tw:w-auto tw:shrink-0"
+                selectedKey={mode}
+                onSelectionChange={handleSelectionChange}>
+                <Tabs.List aria-label={t('label.mode')} type="underline">
+                  {modeItems}
+                </Tabs.List>
+              </Tabs>
+              <Box
+                align="center"
+                className="tw:min-w-0"
+                gap={2}
+                justify="end"
+                wrap="wrap">
+                <Box className="tw:min-w-18 tw:max-w-48 tw:shrink">
+                  {scopeMenu}
+                </Box>
+                {actions}
+              </Box>
+            </Box>
           }
           subtitle={t('message.ontology-studio-description')}
           title={t('label.ontology-studio')}
@@ -96,18 +110,19 @@ const OntologyStudioHeader = <M extends string>({
       data-testid="ontology-studio-header"
       data-tour-step="ontology-studio">
       {breadcrumb ? <div className="tw:px-4 tw:pt-2">{breadcrumb}</div> : null}
-      <Box align="center" className="tw:h-14 tw:px-4" gap={3}>
+      <Box align="center" className="tw:h-14 tw:min-w-0 tw:px-4" gap={2}>
         <Box align="center" className="tw:shrink-0" gap={2}>
           <FeaturedIcon color="brand" icon={Share07} size="sm" theme="dark" />
           <Typography
             as="h1"
-            className="tw:m-0! tw:text-sm! tw:leading-5! tw:whitespace-nowrap"
+            className="not-prose tw:whitespace-nowrap"
+            size="text-sm"
             weight="bold">
             {t('label.ontology-studio')}
           </Typography>
         </Box>
         <Divider className="tw:h-5.5 tw:self-center" orientation="vertical" />
-        {scopeMenu}
+        <Box className="tw:min-w-18 tw:max-w-48 tw:shrink">{scopeMenu}</Box>
         <Tabs
           className="tw:w-auto tw:shrink-0"
           selectedKey={mode}
@@ -119,7 +134,7 @@ const OntologyStudioHeader = <M extends string>({
             {modeItems}
           </Tabs.List>
         </Tabs>
-        <span className="tw:flex-1" />
+        <span className="tw:min-w-0 tw:flex-1" />
         {actions ? (
           <Box align="center" className="tw:shrink-0" gap={2}>
             {actions}
