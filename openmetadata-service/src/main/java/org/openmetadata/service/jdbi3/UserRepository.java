@@ -83,6 +83,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -353,6 +354,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected User createNewEntity(User user) {
+    user.setProfile(ProfileWebhookSecrets.ofANewEntity(user.getProfile()));
+    return super.createNewEntity(user);
+  }
+
+  @Override
   protected boolean isStoragePreparationSideEffecting() {
     return true;
   }
@@ -384,7 +391,14 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void storeEntities(List<User> entities) {
-    storeMany(entities);
+    // A batch insert can be retried after a rollback, so the users keep what was submitted and
+    // copies carry the encrypted profile: a retry would read server ciphertext as submitted.
+    storeMany(entities.stream().map(UserRepository::withNewProfileEncrypted).toList());
+  }
+
+  private static User withNewProfileEncrypted(User user) {
+    User stored = JsonUtils.deepCopy(user, User.class);
+    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -496,7 +510,14 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public EntityRepository<User>.EntityUpdater getUpdater(
       User original, User updated, Operation operation, ChangeSource changeSource) {
+    // Before the diff, so the change description and the stored row carry ciphertext only.
+    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
     return new UserUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void validatePatch(User original, User updated, JsonPatch patch) {
+    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override
