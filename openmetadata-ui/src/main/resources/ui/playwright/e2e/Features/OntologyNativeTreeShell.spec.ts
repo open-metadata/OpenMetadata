@@ -328,7 +328,7 @@ test.describe(
             }
             await shell.getByTestId('ontology-library-trigger').click();
             await expect(page.locator('#ontology-library-title')).toHaveText(
-              'Ontology Library'
+              'Ontology library'
             );
             await expect(page.getByTestId('ontology-library')).toContainText(
               'Pre-built, standards-aligned ontologies'
