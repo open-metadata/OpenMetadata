@@ -671,8 +671,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       return;
     }
 
-    // ponytail: cursor paging only steps ±1, as on the Users tab; the pager is
-    // minimal while browsing, so no jump is offered.
+    // Cursor paging only steps ±1, as on the Users tab; the pager is minimal
+    // while browsing, so no jump is offered.
     const cursorType =
       newPage > teamsPage ? CursorType.AFTER : CursorType.BEFORE;
     const cursor = teamsPaging[cursorType];
