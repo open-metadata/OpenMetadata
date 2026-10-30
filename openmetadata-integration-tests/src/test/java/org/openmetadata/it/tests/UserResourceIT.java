@@ -2732,7 +2732,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertNull(putResponse.getAuthenticationMechanism());
   }
 
-  /** Versions and history return stored snapshots, which anyone who can view a user reads. */
   @Test
   void test_versionsAndHistoryNeverShowAPersonsPasswordHash(TestNamespace ns) {
     long startTs = System.currentTimeMillis() - 1000;
@@ -2770,7 +2769,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertFalse(user.has(AUTH_MECHANISM_FIELD), user.toString());
   }
 
-  /** The entity-scoped audit log needs only view access on the user, so it must hold no hash. */
   @Test
   void test_auditLogNeverShowsAPersonsPasswordHash(TestNamespace ns) {
     User user = createPasswordUser(ns.shortPrefix("auditpwd"));
@@ -2805,7 +2803,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertFalse(auditLog.contains("JWTToken"), auditLog);
   }
 
-  /** The server seeds its admins at startup and records that as a change event too. */
   @Test
   void test_auditLogNeverShowsTheSeededAdminsPasswordHash() {
     String auditLog = awaitAuditLogOf("admin", 1);

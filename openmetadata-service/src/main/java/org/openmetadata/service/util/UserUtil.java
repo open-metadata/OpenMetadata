@@ -465,7 +465,7 @@ public final class UserUtil {
             user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
       }
 
-      // Masked like every event the REST layer records: the stored user carries its password hash.
+      // Change events never carry a user's authentication mechanism.
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
     } catch (Exception e) {
       // Don't fail user creation if ChangeEvent fails

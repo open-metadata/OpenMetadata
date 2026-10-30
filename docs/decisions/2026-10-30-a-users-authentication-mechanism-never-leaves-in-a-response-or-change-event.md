@@ -3,34 +3,24 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-30 (initial)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `UserResourceIT` (`test_writeResponsesNeverCarryAPersonsPasswordHash` and the
-  `test_auditLogNeverShows*` tests), `JsonUtilsTest.testPojoToMaskedJsonLeavesOutAUsersAuthenticationMechanism`
+- **Guard:** `UserResourceIT`, `JsonUtilsTest.testPojoToMaskedJsonLeavesOutAUsersAuthenticationMechanism`
 - **Related:** [Service connection visibility](2026-10-26-service-connection-visibility-follows-edit-permission.md)
 
 ## Context
 
-A stored user carries `authenticationMechanism`: a person's bcrypt password hash, or a bot's token.
-User reads withhold it. A change event records the entity a write returns, and the stores that keep
-events (the change-event list, the audit log, and the delivered and failed event records of alerts)
-serve them to readers of their own, so a credential must not travel in either.
+A stored user carries `authenticationMechanism`: a person's password hash, or a bot's token. User
+reads leave it out.
 
 ## Decision
 
-- The `authenticationMechanism` definition in `user.json` carries `"mask": true`, so every change
-  event serialized through `JsonUtils.pojoToMaskedJson` leaves it out. The marker sits on the
+- Change events never carry a user's `authenticationMechanism`. The definition in `user.json` is
+  marked `"mask": true`, so `JsonUtils.pojoToMaskedJson` leaves it out. The marker sits on the
   definition because the generator resolves a `$ref` before it reads the property's keys, so a
-  `"mask"` beside a `$ref` adds no annotation. The event written when the server seeds its users is
-  serialized the masked way too.
-- A user write (create, PUT, PATCH, delete, restore) returns no mechanism for a person. A bot's is
-  returned as before; the bot-token endpoints, which require an admin, stay the way to read a token.
-  Routing write responses through the read path's `decryptOrNullify` was rejected: its bot handling
-  is meant for callers an admin check has already passed, and it would mask a non-admin's own email
-  in their profile edits.
-- The 2.0.8 post-data migration removes the mechanism from the user events already stored in
-  `change_event`, `audit_log_event`, `successful_sent_change_events` and `consumers_dlq`, whether
-  the event holds the entity as an object or as serialized JSON text.
+  `"mask"` beside a `$ref` adds no annotation.
+- User writes (create, PUT, PATCH, delete, restore) return no mechanism for a person. A bot's token
+  is read through the bot-token endpoints.
+- The 2.0.8 post-data migration applies the first rule to events stored before it.
 
 ## Consequences
 
-- Nothing that consumes change events can read a user's credentials from them. Code that needs a
-  bot's token loads the user from the repository.
+- Code that needs a bot's token loads the user from the repository, not from a change event.

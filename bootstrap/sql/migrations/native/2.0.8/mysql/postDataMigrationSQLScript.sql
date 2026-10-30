@@ -1,5 +1,4 @@
--- A user's authenticationMechanism holds a password hash, or a bot's token. Change events used to be
--- written with it, and the audit log and alert delivery records copy them. Remove it from every copy.
+-- Change events never carry a user's authenticationMechanism; apply that to events stored earlier.
 UPDATE change_event
 SET json = JSON_REMOVE(json, '$.entity.authenticationMechanism')
 WHERE entityType = 'user'
