@@ -263,7 +263,7 @@ describe('Learning resources settings', () => {
       );
     });
 
-    expect(deleteLearningResource).toHaveBeenCalled();
+    expect(deleteLearningResource).toHaveBeenCalledWith(RESOURCE.id, true);
     expect(showSuccessToast).toHaveBeenCalled();
   });
 
