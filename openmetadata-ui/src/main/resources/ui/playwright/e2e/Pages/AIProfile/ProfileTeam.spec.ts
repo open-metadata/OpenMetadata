@@ -154,15 +154,36 @@ test.describe('AI Profile Team Detail', () => {
     const searchInput = page
       .getByTestId('team-detail')
       .getByTestId('searchbar');
-    await searchInput.fill(team.responseData.displayName);
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeVisible();
+    const teamLink = page.getByTestId(`team-link-${team.responseData.name}`);
+    const teamLinks = page
+      .getByTestId('sub-teams-table')
+      .locator('[data-testid^="team-link-"]');
 
-    await searchInput.fill('non-existent-team-xyz');
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeHidden();
+    // The search bar is debounced and the table echoes the applied term back
+    // into it, so an echo landing after a newer fill reverts the input to the
+    // older term. Re-fill until the term sticks and the table shows its result.
+    const searchTeams = async (
+      term: string,
+      assertResult: () => Promise<void>
+    ) =>
+      expect(async () => {
+        if ((await searchInput.inputValue()) !== term) {
+          await searchInput.fill(term);
+        }
+        await expect(searchInput).toHaveValue(term, { timeout: 2000 });
+        await assertResult();
+      }).toPass({ timeout: 30_000 });
+
+    await searchTeams(team.responseData.displayName, async () => {
+      // Visible alone, so the filter has applied rather than the full list.
+      await expect(teamLinks).toHaveCount(1, { timeout: 2000 });
+      await expect(teamLink).toBeVisible({ timeout: 2000 });
+    });
+
+    await searchTeams('non-existent-team-xyz', () =>
+      expect(teamLink).toBeHidden({ timeout: 2000 })
+    );
+    await expect(searchInput).toHaveValue('non-existent-team-xyz');
   });
 
   test('Should rename a team inline', async ({ browser, page }) => {

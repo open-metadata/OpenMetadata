@@ -61,6 +61,10 @@ const waitForCustomProperties = (page: Page) =>
     200
   );
 
+// Far below the 180s slow-test budget, so a deep link the boot dropped still
+// leaves time to re-apply it.
+const PERSONA_DEEP_LINK_TIMEOUT = 45_000;
+
 const openPersonaSettings = async (
   page: Page,
   personaName: string,
@@ -68,19 +72,35 @@ const openPersonaSettings = async (
   // Set for the Home page routes, whose widgets pull in custom properties.
   waitsForCustomProperties = false
 ) => {
-  const personaResponse = waitForResponseWithStatus(
-    page,
-    (response) =>
-      response.url().includes(`/api/v1/personas/name/${personaName}`) &&
-      response.request().method() === 'GET',
-    200
-  );
+  const deepLink = `/#personas/${personaName}${subPath}`;
+  const waitForPersona = () =>
+    waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.url().includes(`/api/v1/personas/name/${personaName}`) &&
+        response.request().method() === 'GET',
+      200,
+      { timeout: PERSONA_DEEP_LINK_TIMEOUT }
+    );
+  const personaResponse = waitForPersona();
   // Armed before the navigation that triggers it, so it cannot be missed.
   const customProperties = waitsForCustomProperties
     ? waitForCustomProperties(page)
     : undefined;
-  await page.goto(`/#personas/${personaName}${subPath}`);
-  await personaResponse;
+  // Awaited below; handled here so a rejection while the deep link is being
+  // re-applied is not reported as unhandled.
+  customProperties?.catch(() => undefined);
+  await page.goto(deepLink);
+  try {
+    await personaResponse;
+  } catch {
+    // Under load the boot can drop the hash before the settings store reads
+    // it: the app settles on Home and never requests the persona. Re-apply
+    // the deep link to the booted app, which picks the hash up on navigation.
+    const retriedPersonaResponse = waitForPersona();
+    await page.goto(deepLink);
+    await retriedPersonaResponse;
+  }
   await customProperties;
   // Home page and entity customize links open full page, without the modal.
   await expect(
@@ -957,17 +977,32 @@ test.describe(
           'Display Name',
           true
         );
-        await selectOption(
-          page,
-          rule.getByTestId('advanced-search-operator-select'),
-          'Contains'
+        const operatorSelect = rule.getByTestId(
+          'advanced-search-operator-select'
         );
-        await rule
+        const operatorInput = operatorSelect.locator('input[role="combobox"]');
+        const valueInput = rule
           .getByTestId('advanced-search-value')
-          .locator('input')
-          .fill('pw');
-
-        await expect(page.getByTestId('saveButton')).toBeEnabled();
+          .locator('input');
+        const saveButton = page.getByTestId('saveButton');
+        await selectOption(page, operatorSelect, 'Contains');
+        // The operator list re-renders while it opens, so a pick can land on
+        // a neighbouring option ("Not in") or be dropped when the rule
+        // re-renders. Re-pick until the rule reads "Contains" and holds the
+        // value, which is what enables Save.
+        await expect(async () => {
+          if ((await operatorInput.inputValue()) !== 'Contains') {
+            await selectOption(page, operatorSelect, 'Contains');
+          }
+          await expect(operatorInput).toHaveValue('Contains', {
+            timeout: 2000,
+          });
+          if ((await valueInput.inputValue()) !== 'pw') {
+            await valueInput.fill('pw', { timeout: 2000 });
+          }
+          await expect(valueInput).toHaveValue('pw', { timeout: 2000 });
+          await expect(saveButton).toBeEnabled({ timeout: 2000 });
+        }).toPass({ timeout: 60_000 });
       });
 
       await test.step('saving the widget persists the layout', async () => {
