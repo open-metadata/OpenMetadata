@@ -1,7 +1,7 @@
 # The native query console hides only unchanged bundled templates
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial); v2 2026-10-30 (compare against the UI's own copy of the seeds)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-30 (compare against the UI's own copy of the seeds)
 - **Deciders:** Ontology Studio implementation review
 - **Guard:** `OntologyStudioQueryConsole.test.tsx`, `OntologyStudio.constants.test.ts` (the UI copy
   equals `sparqlQuerySettings.json`)
@@ -23,17 +23,22 @@ in any field, including `id`, `name` or `savedAt`, or authored by a user, stays 
 preserves the hidden seeds.
 
 The console compares against the UI's own copy of the seeds in `OntologyStudio.constants.ts`,
-because production UI code cannot import files outside `openmetadata-ui/src/main/resources/ui/`.
-Collate builds the UI from another folder. A Jest test pins the copy to `sparqlQuerySettings.json`.
+because production UI code cannot import files outside `openmetadata-ui/src/main/resources/ui/src/`.
+Collate copies only that folder into its own UI. A Jest test pins the copy to
+`sparqlQuerySettings.json`.
 
 ## Consequences
 
 The template filter couples the display to the exact shape of the bundled seeds: if the server
 stores a seed with an added or defaulted field, it shows again in native scopes.
 
+A PR that changes only `sparqlQuerySettings.json` does not trigger the UI Jest job, because its
+paths filter covers only the UI, so the nightly run catches drift after merge.
+
 ## Amendment 2026-10-30: the UI's own copy of the seeds
 
 v1 imported `sparqlQuerySettings.json` from `openmetadata-service` into production UI code. Collate
-builds this UI from `collate-ui/src/main/resources/ui/src/openmetadata-ui/`, where that relative path
-resolves to nothing, so its release build failed. The console now compares against a UI copy, and
+copies only the UI's `src/` folder, so that relative path resolves to nothing there and its release
+build failed. The console now compares against a UI copy, per
+ADR:2026-10-30-production-ui-code-imports-only-from-the-ui-src-folder, and
 `OntologyStudio.constants.test.ts` fails when the copy and the server seeds differ.

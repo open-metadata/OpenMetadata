@@ -17,16 +17,25 @@ import path from 'path';
 const UI_ROOT = path.resolve(__dirname, '../..');
 const SRC_ROOT = path.join(UI_ROOT, 'src');
 
-const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
+const SCRIPT_SPECIFIER =
+  /(?:\bfrom|\bimport|\bimport\s*\(|\brequire\s*\()\s*['"](\.{1,2}(?:\/[^'"\n]*)?)['"]/g;
+const STYLE_SPECIFIER =
+  /(?:@import\s*(?:\([^)]*\)\s*)?(?:url\(\s*)?|\burl\(\s*)['"]?(\.{1,2}\/[^'"()\s;]*)/g;
+
+const SPECIFIER_BY_EXTENSION = new Map([
+  ['.ts', SCRIPT_SPECIFIER],
+  ['.tsx', SCRIPT_SPECIFIER],
+  ['.js', SCRIPT_SPECIFIER],
+  ['.jsx', SCRIPT_SPECIFIER],
+  ['.less', STYLE_SPECIFIER],
+  ['.css', STYLE_SPECIFIER],
+]);
 const TEST_DIRECTORIES = new Set(['__mocks__', '__tests__']);
 const TEST_PATHS = new Set([
   path.join(SRC_ROOT, 'test'),
   path.join(SRC_ROOT, 'setupTests.js'),
 ]);
 const TEST_FILE = /\.(test|spec)\.[jt]sx?$/;
-
-const RELATIVE_SPECIFIER =
-  /(?:\bfrom|\bimport|\bimport\s*\(|\brequire\s*\()\s*['"](\.{1,2}(?:\/[^'"\n]*)?)['"]/g;
 
 const collectProductionFiles = (directory: string): string[] =>
   fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -42,7 +51,7 @@ const collectProductionFiles = (directory: string): string[] =>
         : collectProductionFiles(fullPath);
     }
 
-    return SOURCE_EXTENSIONS.has(path.extname(entry.name)) &&
+    return SPECIFIER_BY_EXTENSION.has(path.extname(entry.name)) &&
       !TEST_FILE.test(entry.name)
       ? [fullPath]
       : [];
@@ -51,22 +60,33 @@ const collectProductionFiles = (directory: string): string[] =>
 const toUiRelativePath = (file: string): string =>
   path.relative(UI_ROOT, file).split(path.sep).join('/');
 
-const findImportsLeavingUi = (file: string): string[] =>
-  [...fs.readFileSync(file, 'utf8').matchAll(RELATIVE_SPECIFIER)]
+const findImportsLeavingSrc = (file: string): string[] => {
+  const specifierPattern = SPECIFIER_BY_EXTENSION.get(path.extname(file));
+
+  if (!specifierPattern) {
+    return [];
+  }
+
+  return [...fs.readFileSync(file, 'utf8').matchAll(specifierPattern)]
     .map(([, specifier]) => specifier)
     .filter((specifier) => {
-      const target = path.resolve(path.dirname(file), specifier.split('?')[0]);
+      const target = path.resolve(
+        path.dirname(file),
+        specifier.split(/[?#]/)[0]
+      );
 
-      return path.relative(UI_ROOT, target).startsWith('..');
+      return path.relative(SRC_ROOT, target).startsWith('..');
     })
     .map((specifier) => `${toUiRelativePath(file)}: ${specifier}`);
+};
 
 describe('UI import boundary', () => {
-  // Collate builds this folder from a different parent directory, so a
-  // relative import that leaves it does not resolve there.
-  it('keeps every production import inside the UI folder', () => {
+  // Collate copies only src/ into its own UI, so a relative import that
+  // leaves src/ does not resolve there.
+  // ADR:2026-10-30-production-ui-code-imports-only-from-the-ui-src-folder
+  it('keeps every production import inside src/', () => {
     expect(
-      collectProductionFiles(SRC_ROOT).flatMap(findImportsLeavingUi)
+      collectProductionFiles(SRC_ROOT).flatMap(findImportsLeavingSrc)
     ).toEqual([]);
   });
 });

@@ -17,7 +17,7 @@ import { BUNDLED_GLOSSARY_QUERY_TEMPLATES } from './OntologyStudio.constants';
 describe('BUNDLED_GLOSSARY_QUERY_TEMPLATES', () => {
   // ADR:2026-10-26-native-query-console-hides-only-unchanged-bundled-templates
   it('matches the server seed templates field for field', () => {
-    expect(BUNDLED_GLOSSARY_QUERY_TEMPLATES).toEqual(
+    expect(BUNDLED_GLOSSARY_QUERY_TEMPLATES).toStrictEqual(
       serviceQuerySettings.queryTemplates
     );
   });
