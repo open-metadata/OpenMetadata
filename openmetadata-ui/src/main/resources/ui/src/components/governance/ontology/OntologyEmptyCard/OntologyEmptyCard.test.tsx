@@ -50,6 +50,7 @@ describe('OntologyEmptyCard', () => {
       within(card).getByText('message.ontology-empty-card-description')
     ).toBeVisible();
     expect(icon?.parentElement).toHaveClass('tw:text-fg-brand-primary');
+
     [icon?.parentElement?.className, icon?.getAttribute('class')].forEach(
       (classes) => {
         expect(classes ?? '').not.toMatch(
