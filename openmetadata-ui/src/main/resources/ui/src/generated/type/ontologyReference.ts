@@ -34,6 +34,7 @@ export enum Role {
     Property = "PROPERTY",
     PropertyChain = "PROPERTY_CHAIN",
     Range = "RANGE",
+    ReplacedBy = "REPLACED_BY",
     SuperClass = "SUPER_CLASS",
 }
 

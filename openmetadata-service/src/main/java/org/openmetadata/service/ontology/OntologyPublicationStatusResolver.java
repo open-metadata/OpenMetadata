@@ -11,6 +11,8 @@ import org.openmetadata.schema.type.OntologyActiveRelease;
 import org.openmetadata.schema.type.OntologyLatestRelease;
 import org.openmetadata.schema.type.OntologyPublicationStage;
 import org.openmetadata.schema.type.OntologyPublicationStatus;
+import org.openmetadata.schema.type.OntologyReviewLock;
+import org.openmetadata.schema.type.OntologyReviewLockRelease;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 
@@ -45,7 +47,17 @@ public final class OntologyPublicationStatusResolver {
       final int unpublishedChanges) {
     final OntologyRelease active = roles.active();
     final OntologyRelease latest = roles.latest();
+    final OntologyRelease inReview = roles.inReview();
     return new OntologyPublicationStatus()
+        .withReviewLock(
+            new OntologyReviewLock()
+                .withInReview(
+                    inReview == null
+                        ? null
+                        : new OntologyReviewLockRelease()
+                            .withReleaseId(inReview.getId())
+                            .withReleaseRevision(inReview.getReleaseRevision())
+                            .withSemanticVersion(inReview.getSemanticVersion())))
         .withActive(
             active == null
                 ? null

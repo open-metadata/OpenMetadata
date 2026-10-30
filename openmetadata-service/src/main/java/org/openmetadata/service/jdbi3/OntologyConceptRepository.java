@@ -41,7 +41,7 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
         OntologyConcept.class,
         Entity.getCollectionDAO().ontologyConceptDAO(),
         COLLECTION_PATH,
-        "ontology,iri,conceptType,synonyms,conceptMappings");
+        "ontology,iri,conceptType,synonyms,conceptMappings,abstract,definitionSource,deprecated,replacedBy");
     fieldFetchers.put(SUPER_CLASSES, this::fetchSuperClasses);
     fieldFetchers.put(SUB_CLASSES, this::fetchSubClasses);
     fieldFetchers.put(LIFECYCLE_STATUS, this::fetchLifecycleStatus);
@@ -52,6 +52,12 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
   protected void validateDefinition(final OntologyConcept entity) {
     if (entity.getConceptType() == null) {
       throw new BadRequestException("Ontology concept type is required");
+    }
+    if (entity.getDefinitionSource() != null) {
+      requireAbsoluteIri(entity.getDefinitionSource(), "definitionSource");
+    }
+    if (entity.getReplacedBy() != null) {
+      requireAbsoluteIri(entity.getReplacedBy(), "replacedBy");
     }
     entity.withSuperClasses(null).withSubClasses(null).withLifecycleStatus(null);
   }
@@ -101,6 +107,11 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
     return DERIVED_FIELDS;
+  }
+
+  @Override
+  protected void entitySpecificCleanup(final OntologyConcept concept) {
+    daoCollection.ontologyConceptBindingDAO().deleteConcept(concept.getId());
   }
 
   @Override

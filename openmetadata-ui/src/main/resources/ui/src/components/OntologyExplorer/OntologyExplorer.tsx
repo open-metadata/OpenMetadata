@@ -1552,8 +1552,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     if (surface === 'tree') {
       return (
         <OntologyTreeView
-          groups={treeGroups}
           metrics={treeMetrics}
+          source={{ kind: 'glossary', groups: treeGroups }}
           onConnect={handleConnectTerm}
           onSelect={setSelectedNode}
         />

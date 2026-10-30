@@ -13,6 +13,8 @@
 
 import {
   Format,
+  Industry,
+  Layer,
   OntologyPackManifest,
 } from '../../generated/api/data/ontologyPackManifest';
 import {
@@ -26,6 +28,8 @@ const PACK: OntologyPackManifest = {
   bundled: true,
   description: 'Test pack',
   id: 'test',
+  industry: Industry.Healthcare,
+  layer: Layer.L2,
   license: 'CC0',
   licenseUrl: 'https://example.com/license',
   modules: [

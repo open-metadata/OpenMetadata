@@ -6367,9 +6367,14 @@ public class WorkflowDefinitionResourceIT {
                     .withName("upsertTerm")
                     .withGlossary(glossary.getFullyQualifiedName())
                     .withDescription(published));
+    // The term has a reviewer the creator is not, so the seeded glossary approval workflow moves
+    // it to In Review asynchronously. An upsert staged before that write lands is refused as a
+    // concurrent change; the term is quiet once it waits on that review.
+    awaitGlossaryTermStatus(client, term, EntityStatus.IN_REVIEW);
 
-    deployHookWorkflow(
-        client, "glossaryTerm", term.getFullyQualifiedName(), List.of("description"));
+    String hookWorkflowId =
+        deployHookWorkflow(
+            client, "glossaryTerm", term.getFullyQualifiedName(), List.of("description"));
 
     // An upsert body carries no id; the stored term must be matched as the same asset.
     client
@@ -6383,8 +6388,11 @@ public class WorkflowDefinitionResourceIT {
                 .withDescription("proposed via upsert"),
             RequestOptions.builder().build());
 
-    awaitOpenApprovalTaskAssignedTo(
-        client, term.getFullyQualifiedName(), SharedEntities.get().USER1.getId());
+    // The seeded review also has a task for USER1, so only the gate's own task proves the hold.
+    Task gateTask =
+        awaitOpenApprovalTaskOf(
+            client, term.getFullyQualifiedName(), UUID.fromString(hookWorkflowId));
+    assertTrue(assigneeIds(gateTask).contains(SharedEntities.get().USER1.getId()));
     assertEquals(
         published, client.glossaryTerms().get(term.getId().toString(), "").getDescription());
     JsonNode request = onlyChangeRequest(client, term.getId());
@@ -16234,6 +16242,18 @@ public class WorkflowDefinitionResourceIT {
             () ->
                 assertEquals(
                     status, admin.domains().get(domain.getId().toString()).getEntityStatus()));
+  }
+
+  private static void awaitGlossaryTermStatus(
+      OpenMetadataClient admin, GlossaryTerm term, EntityStatus status) {
+    await("glossary term %s to reach %s".formatted(term.getName(), status))
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    status,
+                    admin.glossaryTerms().get(term.getId().toString(), "").getEntityStatus()));
   }
 
   /** A lifecycle playbook whose only gate never opens, so whatever it enrols stays put. */
