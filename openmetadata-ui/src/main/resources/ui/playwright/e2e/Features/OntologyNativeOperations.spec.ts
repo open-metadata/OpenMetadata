@@ -455,10 +455,10 @@ test.describe(
         await page.route('**/api/v1/tasks', (route) =>
           route.request().method() === 'POST'
             ? route.fulfill({
-                status: 503,
+                status: 422,
                 contentType: 'application/json',
                 body: JSON.stringify({
-                  message: 'Temporary task service failure',
+                  message: 'Task request rejected',
                 }),
               })
             : route.continue()
@@ -474,7 +474,8 @@ test.describe(
           await captured,
           'Capture review candidate'
         );
-        await expect(page.getByTestId('ontology-request-review')).toHaveText(
+        // Only a definitive rejection offers a retry; a 5xx only offers Check status.
+        await expect(page.getByTestId('ontology-recovery-action')).toHaveText(
           'Retry review'
         );
         await page.getByTestId('ontology-publication-tab-releases').click();
@@ -491,7 +492,7 @@ test.describe(
             new URL(response.url()).pathname === '/api/v1/tasks' &&
             response.request().method() === 'POST'
         );
-        await page.getByTestId('ontology-request-review').click();
+        await page.getByTestId('ontology-recovery-action').click();
         task = await okJson<Task>(
           await submitted,
           'Retry real review task submission'
