@@ -732,9 +732,7 @@ describe('MembersTeamDetail', () => {
       fireEvent.click(next);
       fireEvent.click(next);
       await waitFor(() =>
-        expect(latestSubTeamRows().map(({ name }) => name)).toContain(
-          'page2-0'
-        )
+        expect(latestSubTeamRows().map(({ name }) => name)).toContain('page2-0')
       );
 
       // Both presses were made from page one, so both asked for page two.
@@ -764,9 +762,7 @@ describe('MembersTeamDetail', () => {
 
       fireEvent.click(await screen.findByTestId('next'));
       await waitFor(() =>
-        expect(latestSubTeamRows().map(({ name }) => name)).toContain(
-          'page2-0'
-        )
+        expect(latestSubTeamRows().map(({ name }) => name)).toContain('page2-0')
       );
       fireEvent.click(screen.getByTestId('previous'));
 
@@ -801,7 +797,9 @@ describe('MembersTeamDetail', () => {
         )
       );
 
-      expect((getTeams as jest.Mock).mock.calls.at(-1)[0].after).toBeUndefined();
+      expect(
+        (getTeams as jest.Mock).mock.calls.at(-1)[0].after
+      ).toBeUndefined();
     });
 
     it('escapes and encodes the search term for the URL', async () => {

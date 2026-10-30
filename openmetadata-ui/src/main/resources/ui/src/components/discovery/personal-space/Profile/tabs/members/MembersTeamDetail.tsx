@@ -80,16 +80,16 @@ import type { TabContribution } from '../../../../../../utils/ExtensionPointType
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../../../../utils/StringUtils';
 import { getTableExpandableConfig } from '../../../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../../../utils/TeamUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../../../../utils/StringUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
