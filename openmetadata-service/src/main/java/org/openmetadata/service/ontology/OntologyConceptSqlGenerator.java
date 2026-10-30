@@ -190,7 +190,10 @@ public final class OntologyConceptSqlGenerator {
     final Optional<Join> join;
     if (isBound(previous, candidates, property)) {
       join =
-          firstJoin(candidates, table -> agreeingKeyPairs(previous, table, property), step.hop())
+          firstJoin(
+                  candidates,
+                  table -> agreeingKeyPairs(step, previous, table, property),
+                  step.hop())
               .or(
                   () ->
                       firstJoin(
@@ -202,7 +205,7 @@ public final class OntologyConceptSqlGenerator {
       join =
           firstJoin(
                   candidates,
-                  table -> converse(agreeingKeyPairs(table, previous, inverse)),
+                  table -> converse(agreeingKeyPairs(step, table, previous, inverse)),
                   step.hop())
               .or(
                   () ->
@@ -247,20 +250,39 @@ public final class OntologyConceptSqlGenerator {
     return Optional.empty();
   }
 
-  /** The {@code from} table's binding wins over {@code to}'s, as in {@link #bindingPairs}. */
+  /**
+   * The {@code from} table's binding wins over {@code to}'s, as in {@link #bindingPairs}. A key on
+   * exactly the bound column wins; otherwise the one key that contains it orients and joins on all
+   * of its columns.
+   */
   private static List<ColumnPair> agreeingKeyPairs(
-      final BoundTable from, final BoundTable to, final UUID property) {
+      final Step step, final BoundTable from, final BoundTable to, final UUID property) {
     final boolean reversed = !from.objectColumns().containsKey(property);
     final BoundTable owner = reversed ? to : from;
     final List<String> bound = owner.objectColumns().get(property);
     if (bound == null) {
       return List.of();
     }
-    return foreignKeys(owner, reversed ? from : to).stream()
-        .filter(key -> key.getColumns().equals(bound))
-        .findFirst()
+    final List<TableConstraint> keys = foreignKeys(owner, reversed ? from : to);
+    final Optional<TableConstraint> exact =
+        keys.stream().filter(key -> key.getColumns().equals(bound)).findFirst();
+    final List<TableConstraint> containing =
+        keys.stream()
+            .filter(key -> bound.size() == 1 && key.getColumns().contains(bound.getFirst()))
+            .toList();
+    if (exact.isEmpty() && containing.size() > 1) {
+      throw severalKeys(step, from == step.previous() ? to : from);
+    }
+    return exact
+        .or(() -> containing.stream().findFirst())
         .map(key -> pairs(key, reversed))
         .orElse(List.of());
+  }
+
+  private static BadRequestException severalKeys(final Step step, final BoundTable candidate) {
+    return step.failure(
+        ": several foreign keys join %s and %s; bind the %s property to one of their columns",
+        step.previous().fullyQualifiedName(), candidate.fullyQualifiedName(), step.hop().label());
   }
 
   private static List<ColumnPair> onlyKeyPairs(final Step step, final BoundTable candidate) {
@@ -271,22 +293,21 @@ public final class OntologyConceptSqlGenerator {
     final List<TableConstraint> incoming =
         toItself ? List.of() : foreignKeys(candidate, step.previous());
     if (outgoing.size() + incoming.size() > 1) {
-      throw step.failure(
-          ": several foreign keys join %s and %s; bind the %s property to one of their columns",
-          step.previous().fullyQualifiedName(), candidate.fullyQualifiedName(), step.hop().label());
+      throw severalKeys(step, candidate);
     }
     // The property and its inverse read the key in opposite directions, and neither says which.
     if (toItself && !outgoing.isEmpty() && step.hop().otherInverse().isPresent()) {
       final TableConstraint key = outgoing.getFirst();
       throw step.failure(
           ": the foreign key from %s to %s joins %s to itself in either direction;"
-              + " bind the %s property or its inverse to %s",
+              + " bind the %s property or its inverse to %s%s",
           String.join(", ", key.getColumns()),
           pairs(key, false).stream()
               .map(pair -> String.join(".", pair.right()))
               .collect(Collectors.joining(", ")),
           candidate.fullyQualifiedName(),
           step.hop().label(),
+          key.getColumns().size() > 1 ? "one of " : "",
           String.join(", ", key.getColumns()));
     }
     return outgoing.isEmpty()
