@@ -1,7 +1,7 @@
 # An MCP OAuth grant ends 30 days after sign-in; refreshing does not extend it
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-30 (a deleted user's grants end at once)
 - **Deciders:** Vishnu Jain
 - **Guard:** `UserSSOOAuthProviderTest` (`exchangeRefreshToken_rotationKeepsTheEndOfTheGrant`,
   `exchangeRefreshToken_afterTheEndOfTheGrant_mustSignInAgain`)
@@ -28,3 +28,12 @@ and was never sent back to the identity provider. Web sessions already work the 
   deleting the user in OpenMetadata ends the grant at the next refresh. Checking the identity
   provider on refresh, or letting admins list and revoke MCP grants, would close that and needs
   its own change.
+
+## Amendment: deleting a user ends its grants at once
+
+- Deleting a user, soft or hard, now ends every MCP grant held under its name on all clients:
+  codes and access tokens are deleted and refresh tokens revoked (`UserRepository`
+  `beginDeleteLifecycle`). Grants are keyed by user name, so this also keeps a later user given
+  the same name from taking them over. A restored user signs in again.
+- The 2.1.0 post-data migration ends the grants of users deleted before this change.
+- Guard: `McpOAuthIT` (`testDeletedUsersGrant_doesNotPassToANewUserWithTheSameName`).

@@ -214,6 +214,28 @@ public interface OAuthDAOs {
       revoke(tokenHash);
       deleteAccessTokensForUser(clientId, userName);
     }
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE user_name = :userName")
+    void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
+
+    @SqlUpdate(
+        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE user_name = :userName AND revoked = FALSE")
+    void revokeRefreshTokensOfUser(@Bind("userName") String userName);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE user_name = :userName")
+    void deleteAccessTokensOfUser(@Bind("userName") String userName);
+
+    /**
+     * Ends every grant held under a user name, on all clients. Grants are keyed by name only, so a
+     * later account with the same name would otherwise take them over. Codes go first so no new
+     * grant starts while the rest are revoked.
+     */
+    @Transaction
+    default void revokeAllGrantsOfUser(String userName) {
+      deleteAuthorizationCodesOfUser(userName);
+      revokeRefreshTokensOfUser(userName);
+      deleteAccessTokensOfUser(userName);
+    }
   }
 
   interface McpPendingAuthRequestDAO {
