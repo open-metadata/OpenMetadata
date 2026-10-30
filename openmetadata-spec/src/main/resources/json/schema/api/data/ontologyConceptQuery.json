@@ -19,13 +19,20 @@
           "description": "Id of the concept this hop reaches.",
           "$ref": "../../type/basic.json#/definitions/uuid"
         },
+        "direction": { "$ref": "#/definitions/direction" },
         "label": {
           "description": "Relation label written as the JOIN comment. Set by the server.",
           "type": "string"
         }
       },
-      "required": ["property", "target"],
+      "required": ["property", "target", "direction"],
       "additionalProperties": false
+    },
+    "direction": {
+      "description": "Which way the hop follows its property, as the Studio's chip shows it. `outgoing` follows the property from its subject to its object, and `incoming` follows it back from its object to its subject.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.data.OntologyConceptQueryDirection",
+      "enum": ["outgoing", "incoming"]
     },
     "dialect": {
       "description": "Identifier quoting family of the bound table's service.",

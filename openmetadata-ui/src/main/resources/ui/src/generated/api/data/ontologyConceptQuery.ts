@@ -56,6 +56,7 @@ export enum Dialect {
  * One step from the previous concept to a related concept through an object property.
  */
 export interface Hop {
+    direction: Direction;
     /**
      * Relation label written as the JOIN comment. Set by the server.
      */
@@ -68,4 +69,14 @@ export interface Hop {
      * Id of the concept this hop reaches.
      */
     target: string;
+}
+
+/**
+ * Which way the hop follows its property, as the Studio's chip shows it. `outgoing` follows
+ * the property from its subject to its object, and `incoming` follows it back from its
+ * object to its subject.
+ */
+export enum Direction {
+    Incoming = "incoming",
+    Outgoing = "outgoing",
 }
