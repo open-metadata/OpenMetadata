@@ -24,9 +24,9 @@ class ImpersonationRestrictionFilterTest {
 
   @Test
   void identityEndpointsAreBoundToTheFilter() {
-    // Impersonation lasts one request; a credential or account it reads, mints, creates or revokes
-    // outlives the grant, so the whole identity surface is off-limits while the principal has been
-    // swapped. Removing the annotation from any of these reopens that surface.
+    // Impersonation lasts one request; a credential it reads, mints or revokes outlives the grant,
+    // so the whole identity surface is off-limits while the principal has been swapped. Removing
+    // the annotation from any of these reopens that surface.
     Set<String> expected =
         Set.of(
             "createUser",
