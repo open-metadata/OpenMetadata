@@ -16,6 +16,7 @@ import { OntologyConceptType } from '../generated/api/data/createOntologyConcept
 import { Kind } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { Direction } from '../generated/api/data/ontologyConceptQuery';
 import { AssetType } from '../generated/api/data/updateOntologyConceptBinding';
 import { OntologyChangeSetState } from '../generated/entity/data/ontologyChangeSet';
 import APIClient from './axiosClient';
@@ -26,6 +27,7 @@ import {
   createOntologyConcept,
   deleteOntologyConceptBinding,
   exportOntologyRelease,
+  generateOntologyConceptQuery,
   generateOntologyDomainDraft,
   generateOntologySparql,
   getNativeOntologyDataGraphPage,
@@ -105,6 +107,31 @@ describe('ontologyAPI', () => {
       { propertyId: 'name', columnPath: ['customer_name'], state: 'resolved' },
     ],
   };
+
+  it('posts the search-around hops to the concept query and returns the generated SQL', async () => {
+    const signal = new AbortController().signal;
+    const hops = [
+      {
+        property: 'part-of',
+        target: 'customer',
+        direction: Direction.Outgoing,
+      },
+    ];
+    const body = {
+      hops: [{ ...hops[0], label: 'part of' }],
+      sql: 'SELECT t1.name\nFROM payments.transfers t0\nLIMIT 50',
+    };
+    mockedApiClient.post.mockResolvedValueOnce({ data: body });
+
+    expect(await generateOntologyConceptQuery('concept/id', hops, signal)).toBe(
+      body
+    );
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologyConcepts/concept%2Fid/query',
+      { hops },
+      { signal }
+    );
+  });
 
   it('posts one graph page selection to the ontology and returns the page body', async () => {
     const signal = new AbortController().signal;
