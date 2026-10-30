@@ -38,6 +38,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.column_helpers import (
+    column_from_parsed,
+    parse_complex_column_type,
+)
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -130,12 +134,14 @@ def _get_column(ordinal, field, _type, null, default, comment):
     arr_data_type = None
     children = None
     if system_data_type == "ARRAY":
-        arr_data_type = _parse_type(extract_child(_type))
-    if system_data_type == "STRUCT":
-        children = []
-        for key_, child in enumerate(extract_child(_type).split(",")):
-            name_type = child.split(":")
-            children.append(_get_column(key_, name_type[0], name_type[1], "YES", None, None))
+        element_type = extract_child(_type) or "string"
+        arr_data_type = _parse_type(element_type)
+        if arr_data_type == "STRUCT":
+            element_parsed = parse_complex_column_type(element_type)
+            children = element_parsed.get("children") if element_parsed else None
+    elif system_data_type == "STRUCT":
+        struct_parsed = parse_complex_column_type(_type)
+        children = struct_parsed.get("children") if struct_parsed else None
     return {
         "name": field,
         "default": default,
@@ -244,21 +250,8 @@ class DorisSource(CommonDbSourceService):
         for column in columns:
             try:
                 children = None
-                if column["children"]:
-                    children = [
-                        Column(
-                            name=child["name"] if child["name"] else " ",
-                            description=child.get("comment"),
-                            dataType=child["system_data_type"],
-                            dataTypeDisplay=child["display_type"],
-                            dataLength=self._check_col_length(child["system_data_type"], child["data_type"]),
-                            constraint=None,
-                            children=child["children"],
-                            arrayDataType=child["arr_data_type"],
-                            ordinalPosition=child.get("ordinalPosition"),
-                        )
-                        for child in column["children"]
-                    ]
+                if column.get("children"):
+                    children = [column_from_parsed(ordinal, child) for ordinal, child in enumerate(column["children"])]
                 self.process_additional_table_constraints(column=column, table_constraints=table_constraints)
 
                 col_constraint = self._get_column_constraints(column, primary_columns, [])

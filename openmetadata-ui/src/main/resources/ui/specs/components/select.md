@@ -7,8 +7,7 @@
 | **Name** | Select |
 | **Category** | Base / input |
 | **Status** | Stable |
-| **Styles** | [`src/styles/components/select.less`](../../src/styles/components/select.less) |
-| **Component** | `@openmetadata/ui-core-components` → `Select`, `Select.ComboBox`, `MultiSelect` (new work); Ant Design `Select` (legacy) |
+| **Component** | `@openmetadata/ui-core-components` → `Select`, `Select.ComboBox`, `MultiSelect` |
 
 ## Overview
 

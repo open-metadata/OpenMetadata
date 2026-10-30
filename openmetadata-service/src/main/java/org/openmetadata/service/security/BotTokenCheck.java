@@ -90,10 +90,10 @@ public final class BotTokenCheck {
       String botName, String token, JwtFilter jwtFilter) {
     Optional<TokenProblem> problem = Optional.empty();
     try {
-      jwtFilter.validateJwtAndGetClaims(token);
+      jwtFilter.verifySignatureOnly(token);
     } catch (Exception e) {
-      // Not RuntimeException: validateJwtAndGetClaims is @SneakyThrows, and a JWKS key lookup
-      // throws the checked JwkException through it. Same catch as the JWKS status step.
+      // Not RuntimeException: a JWKS key lookup throws the checked JwkException through
+      // verifySignatureOnly, which does not declare it. Same catch as the JWKS status step.
       LOG.error("System bot {} token was rejected: {}", botName, e.getMessage(), e);
       problem = Optional.of(TokenProblem.REJECTED);
     }

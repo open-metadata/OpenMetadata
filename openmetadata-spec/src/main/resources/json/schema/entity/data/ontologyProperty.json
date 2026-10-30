@@ -102,13 +102,17 @@
       "default": []
     },
     "enumValues": {
-      "description": "Allowed typed values for a DATA property, projected as an OWL data enumeration. An absent datatype denotes xsd:string. Empty means no enumeration constraint.",
+      "description": "Allowed typed values for a DATA property, projected as an OWL data enumeration. An absent datatype denotes xsd:string. Empty means no enumeration constraint; an enumeration needs at least two allowed values.",
       "type": "array",
       "items": {
         "$ref": "../../type/ontologyExpression.json#/definitions/literal"
       },
       "uniqueItems": true,
       "maxItems": 1000,
+      "not": {
+        "minItems": 1,
+        "maxItems": 1
+      },
       "existingJavaType": "java.util.List<org.openmetadata.schema.type.OntologyLiteral>",
       "default": []
     },
@@ -152,6 +156,15 @@
       "uniqueItems": true,
       "existingJavaType": "java.util.List<java.net.URI>",
       "default": []
+    },
+    "deprecated": {
+      "description": "A deprecated definition stays resolvable for existing references but should not be used for new ones.",
+      "type": "boolean",
+      "default": false
+    },
+    "replacedBy": {
+      "description": "IRI of the property in the same ontology that replaces this one.",
+      "$ref": "../../type/ontologyIri.json"
     }
   },
   "required": [
