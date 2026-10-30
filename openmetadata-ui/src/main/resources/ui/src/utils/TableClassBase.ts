@@ -27,7 +27,6 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Table } from '../generated/entity/data/table';
 import { Tab } from '../generated/system/ui/uiCustomization';
-import { useApplicationStore } from '../hooks/useApplicationStore';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
@@ -116,7 +115,7 @@ class TableClassBase {
     return getTableDetailPageBaseTabs(tableDetailsPageProps);
   }
 
-  public getTableDetailPageTabsIds(): Tab[] {
+  public getTableDetailPageTabsIds(rdfEnabled: boolean): Tab[] {
     return [
       EntityTabs.SCHEMA,
       EntityTabs.ACTIVITY_FEED,
@@ -124,9 +123,7 @@ class TableClassBase {
       EntityTabs.TABLE_QUERIES,
       EntityTabs.PROFILER,
       EntityTabs.LINEAGE,
-      ...(useApplicationStore.getState().rdfEnabled
-        ? [EntityTabs.KNOWLEDGE_GRAPH]
-        : []),
+      ...(rdfEnabled ? [EntityTabs.KNOWLEDGE_GRAPH] : []),
       EntityTabs.DBT,
       EntityTabs.VIEW_DEFINITION,
       EntityTabs.CONTRACT,
