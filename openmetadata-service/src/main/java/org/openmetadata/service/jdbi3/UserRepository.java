@@ -1910,7 +1910,8 @@ public class UserRepository extends EntityRepository<User> {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
       // The server records these on login and on each request, and a PUT body never carries them,
-      // so a PUT keeps the stored values instead of clearing them.
+      // so a PUT keeps the stored values instead of clearing them
+      // (ADR:2026-10-30-user-writes-keep-login-and-activity-times).
       if (operation.isPut()) {
         keepServerRecordedTimes();
       }
