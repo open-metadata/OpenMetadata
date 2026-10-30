@@ -42,18 +42,31 @@ describe('OntologyEmptyState', () => {
   it('renders through the shared onboarding placeholder with brand icon tiles', () => {
     renderEmptyState();
     const emptyState = screen.getByTestId('ontology-empty-state');
-    const iconTiles = Array.from(
-      emptyState.querySelectorAll('[data-icon]'),
-      (icon) => icon.parentElement?.className ?? ''
-    );
+    const icons = Array.from(emptyState.querySelectorAll('[data-icon]'));
+    const tiles = icons.map((icon) => icon.parentElement?.className ?? '');
 
     expect(within(emptyState).getByTestId('empty-placeholder')).toBeVisible();
-    expect(iconTiles).toHaveLength(3);
+    expect(icons).toHaveLength(3);
 
-    iconTiles.forEach((tile) => {
+    tiles.forEach((tile) => {
       expect(tile).toContain('tw:text-fg-brand-primary');
-      expect(tile).not.toMatch(/gray|text-secondary|text-quaternary/);
     });
+    [
+      ...tiles,
+      ...icons.map((icon) => icon.getAttribute('class') ?? ''),
+    ].forEach((classes) => {
+      expect(classes).not.toMatch(/gray|text-secondary|text-quaternary/);
+    });
+  });
+
+  it('scrolls from the top instead of clipping when the options outgrow the viewport', () => {
+    renderEmptyState();
+    const emptyState = screen.getByTestId('ontology-empty-state');
+    const placeholder = within(emptyState).getByTestId('empty-placeholder');
+
+    expect(emptyState).toHaveClass('tw:overflow-auto');
+    expect(placeholder).toHaveClass('tw:static');
+    expect(placeholder).not.toHaveClass('tw:absolute');
   });
 
   it.each([
