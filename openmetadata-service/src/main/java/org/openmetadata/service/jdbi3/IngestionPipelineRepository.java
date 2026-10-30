@@ -550,6 +550,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
+  public void restorePatchAttributes(
+      final IngestionPipeline original, final IngestionPipeline updated) {
+    super.restorePatchAttributes(original, updated);
+    updated.setService(original.getService());
+  }
+
+  @Override
   protected IngestionPipeline restorePatchSecrets(
       IngestionPipeline original, IngestionPipeline updated) {
     EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(updated, original);

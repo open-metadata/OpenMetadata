@@ -9,6 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.util.Config;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -30,10 +33,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -49,6 +55,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.Progress;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressProperty;
 import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
@@ -57,19 +64,23 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.OpenMetadataWorkflowConfig;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.clients.pipeline.config.YAMLUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
@@ -225,6 +236,108 @@ public class IngestionPipelineResourceIT
     assertTrue(response.body().contains("sourceConfig.config.type is required"));
     assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
   }
+
+  @ParameterizedTest(name = "PATCH by name: {0}")
+  @ValueSource(booleans = {false, true})
+  void patchRedeployKeepsOriginalService(boolean byName, TestNamespace ns) throws Exception {
+    final ServiceBindingScenario scenario = serviceBindingScenario(ns);
+    final IngestionPipeline pipeline = scenario.pipeline();
+    deployPipeline(scenario.client(), pipeline);
+    assertEquals(
+        pipeline.getService().getName(), deployedWorkflow(pipeline).getSource().getServiceName());
+
+    final IngestionPipeline updated = patchServiceAndRedeploy(scenario, byName);
+
+    final OpenMetadataWorkflowConfig deployed = deployedWorkflow(pipeline);
+    assertEquals(LogLevels.DEBUG, deployed.getWorkflowConfig().getLoggerLevel());
+    assertEquals(pipeline.getService().getName(), deployed.getSource().getServiceName());
+    assertEquals(pipeline.getService().getId(), updated.getService().getId());
+    assertEquals(
+        pipeline.getService().getId(), getEntity(pipeline.getId().toString()).getService().getId());
+  }
+
+  private IngestionPipeline patchServiceAndRedeploy(
+      ServiceBindingScenario scenario, boolean byName) {
+    final IngestionPipeline pipeline = scenario.pipeline();
+    final String target =
+        byName ? "name/" + pipeline.getFullyQualifiedName() : pipeline.getId().toString();
+    return scenario
+        .client()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PATCH,
+            IngestionPipelineResource.COLLECTION_PATH + target,
+            serviceRebindingPatch(scenario.foreignService()),
+            IngestionPipeline.class);
+  }
+
+  private ArrayNode serviceRebindingPatch(EntityReference foreignService) {
+    final ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/service")
+        .set("value", JsonUtils.getObjectMapper().valueToTree(foreignService));
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/loggerLevel")
+        .put("value", LogLevels.DEBUG.value());
+    return patch;
+  }
+
+  private ServiceBindingScenario serviceBindingScenario(TestNamespace ns) {
+    final User owner = UserTestFactory.createUser(ns, "pipelineOwner");
+    final OpenMetadataClient client =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    final DatabaseService originalService = ownedDatabaseService(ns, owner);
+    final DatabaseService foreignService =
+        ownedDatabaseService(ns, UserTestFactory.createUser(ns, "foreignOwner"));
+    final CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.uniqueShortId())
+            .withPipelineType(PipelineType.METADATA)
+            .withService(originalService.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(new DatabaseServiceMetadataPipeline()))
+            .withAirflowConfig(
+                new AirflowConfig().withStartDate(START_DATE).withScheduleInterval("0 0 1 1 *"));
+    final IngestionPipeline pipeline = client.ingestionPipelines().create(request);
+    request.withName(ns.uniqueShortId()).withService(foreignService.getEntityReference());
+    assertThrows(ForbiddenException.class, () -> client.ingestionPipelines().create(request));
+    return new ServiceBindingScenario(client, pipeline, foreignService.getEntityReference());
+  }
+
+  private DatabaseService ownedDatabaseService(TestNamespace ns, User owner) {
+    final DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    service.setOwners(List.of(owner.getEntityReference()));
+    return SdkClients.adminClient().databaseServices().update(service.getId().toString(), service);
+  }
+
+  private void deployPipeline(OpenMetadataClient client, IngestionPipeline pipeline) {
+    final PipelineServiceClientResponse response =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                IngestionPipelineResource.COLLECTION_PATH + "deploy/" + pipeline.getId(),
+                null,
+                PipelineServiceClientResponse.class);
+    assertEquals(200, response.getCode());
+  }
+
+  private OpenMetadataWorkflowConfig deployedWorkflow(IngestionPipeline pipeline) throws Exception {
+    final var apiClient =
+        Config.fromConfig(new StringReader(TestSuiteBootstrap.getKubeConfigYaml()));
+    apiClient.setReadTimeout(30000);
+    final var configMap =
+        new CoreV1Api(apiClient)
+            .readNamespacedConfigMap("om-config-" + pipeline.getName(), "openmetadata-pipelines")
+            .execute();
+    return YAMLUtils.readValue(configMap.getData().get("config"), OpenMetadataWorkflowConfig.class);
+  }
+
+  private record ServiceBindingScenario(
+      OpenMetadataClient client, IngestionPipeline pipeline, EntityReference foreignService) {}
 
   @Test
   void migrationRepairsLegacySourceConfigTypeBeforeDeployment(TestNamespace ns) {
