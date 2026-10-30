@@ -144,7 +144,7 @@ const tokenForSession = (state: StorageStateFile, session: string) =>
     ? tokenFromStateFile(state)
     : undefined;
 
-// ponytail: kept for the worker's life, no eviction; a worker captures a handful.
+const MAX_CAPTURED_STATES = 100;
 const capturedStates = new Set<StorageStateFile>();
 
 /**
@@ -156,6 +156,10 @@ export const captureRecoverableStorageState = async (
   context: BrowserContext
 ) => {
   const state = await context.storageState({ indexedDB: true });
+  if (capturedStates.size >= MAX_CAPTURED_STATES) {
+    const [oldest] = capturedStates;
+    capturedStates.delete(oldest);
+  }
   capturedStates.add(state);
 
   return state;
