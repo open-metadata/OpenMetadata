@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-30 (compare against the UI's own copy of the seeds)
+  · v3 2026-10-30 (both Collate copy steps)
 - **Deciders:** Ontology Studio implementation review
 - **Guard:** `OntologyStudioQueryConsole.test.tsx`, `OntologyStudio.constants.test.ts` (the UI copy
   equals `sparqlQuerySettings.json`)
@@ -24,8 +25,9 @@ preserves the hidden seeds.
 
 The console compares against the UI's own copy of the seeds in `OntologyStudio.constants.ts`,
 because production UI code cannot import files outside `openmetadata-ui/src/main/resources/ui/src/`.
-Collate copies only that folder into its own UI. A Jest test pins the copy to
-`sparqlQuerySettings.json`.
+Collate's `copy-om-to-collate` step copies only that folder into its own UI, and a separate
+`copy-om-playwright-to-collate` step copies the end-to-end tests in `playwright/**`. A Jest test
+pins the copy to `sparqlQuerySettings.json`.
 
 ## Consequences
 
@@ -37,8 +39,14 @@ paths filter covers only the UI, so the nightly run catches drift after merge.
 
 ## Amendment 2026-10-30: the UI's own copy of the seeds
 
-v1 imported `sparqlQuerySettings.json` from `openmetadata-service` into production UI code. Collate
-copies only the UI's `src/` folder, so that relative path resolves to nothing there and its release
-build failed. The console now compares against a UI copy, per
+v1 imported `sparqlQuerySettings.json` from `openmetadata-service` into production UI code.
+Collate's build copies only the UI's `src/` folder, so that relative path resolves to nothing there
+and its release build failed. The console now compares against a UI copy, per
 ADR:2026-10-30-production-ui-code-imports-only-from-the-ui-src-folder, and
 `OntologyStudio.constants.test.ts` fails when the copy and the server seeds differ.
+
+## Amendment 2026-10-30: both Collate copy steps
+
+v2 said Collate copies only the UI's `src/` folder. Its `copy-om-to-collate` step copies `src/**`,
+and `copy-om-playwright-to-collate` copies `playwright/**`. The boundary is unchanged, because
+`playwright/` is not part of the build.

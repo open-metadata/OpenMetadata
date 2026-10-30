@@ -1,7 +1,8 @@
 # Production UI code imports only from the UI's src folder
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-10-30 (both Collate copy steps; the guard reads
+  Tailwind at-rules and `data-uri()`)
 - **Deciders:** Ontology Studio implementation review
 - **Guard:** `uiImportBoundary.test.ts`
 - **Related:** ADR:2026-10-26-native-query-console-hides-only-unchanged-bundled-templates, PR #36190,
@@ -9,18 +10,20 @@
 
 ## Context
 
-Collate builds its UI from a copy of OpenMetadata's. Its `copy-om-to-collate` step copies only
-`src/**` and `playwright/**` from `openmetadata-ui/src/main/resources/ui/` into
-`collate-ui/src/main/resources/ui/src/openmetadata-ui/`. The UI folder's `public/`, `vite/` and
-`package.json` are not copied, and neither is any other part of the repository. A relative import
-that leaves `src/` resolves in OpenMetadata's build and to nothing in Collate's. PR #36190 imported
-`sparqlQuerySettings.json` from `openmetadata-service` into production code, and Collate's release
-build failed with `UNRESOLVED_IMPORT`.
+Collate builds its UI from a copy of OpenMetadata's. Its `copy-om-to-collate` step copies the
+`src/**` of `openmetadata-ui/src/main/resources/ui/`, except three test-setup files, into
+`collate-ui/src/main/resources/ui/src/openmetadata-ui/`. A separate `copy-om-playwright-to-collate`
+step copies `playwright/**`, which holds only end-to-end tests. The UI folder's `public/`,
+`vite/` and `package.json` are not copied, and neither is any other part of the repository. A
+relative import that leaves `src/` resolves in OpenMetadata's build and to nothing in Collate's.
+PR #36190 imported `sparqlQuerySettings.json` from `openmetadata-service` into production code, and
+Collate's release build failed with `UNRESOLVED_IMPORT`.
 
 ## Decision
 
 Production UI code resolves every relative import inside `openmetadata-ui/src/main/resources/ui/src/`,
-because Collate copies only that folder into its own UI. Anything else it needs comes from a package.
+because it is the only part of the UI folder that Collate copies into its UI build. Anything else
+it needs comes from a package.
 
 Test files may import files outside `src/`, such as server fixtures, by relative path. Collate's
 Jest ignores `src/openmetadata-ui/*`, and its build bundles only modules that production code
@@ -34,10 +37,21 @@ is a second file to change when the server file changes.
 
 The guard reads `.ts`, `.tsx`, `.js` and `.jsx` files for `import ... from`, side-effect `import`,
 `export ... from`, `import('...')` and `require('...')`, and `.less` and `.css` files for
-`@import`, including `@import (reference)`, and `url(...)`. It does not check
-`import.meta.glob`, `new URL(..., import.meta.url)`, a template-literal `import()`, or
-`require.resolve`, and it also matches specifiers inside comments and strings. No production file
-used any of those forms to leave `src/` when the guard was added. A reviewer checks them.
+`@import`, including `@import (reference)`, Tailwind's `@source`, `@reference`, `@plugin` and
+`@config`, `url(...)` and Less's `data-uri(...)`. It does not check `import.meta.glob`,
+`new URL(..., import.meta.url)`, a template-literal `import()` or `require.resolve` in scripts. In
+style files it does not check a specifier without a leading `./` or `../`, which Less resolves
+through `less.paths`, `image-set('...')` without `url(`, a comment between an at-rule and its path,
+or an upper-case at-rule. It also matches specifiers inside comments and strings. No production
+file used any of those forms to leave `src/` when the guard was added. A reviewer checks them.
 
 This would be revisited if Collate copied the whole UI folder or consumed OpenMetadata's UI as a
 built package.
+
+## Amendment 2026-10-30: both copy steps, and Tailwind at-rules
+
+v1 said `copy-om-to-collate` copies `src/**` and `playwright/**`. That step copies `src/**`, and
+`copy-om-playwright-to-collate` copies `playwright/**`. The rule is unchanged. The guard now also
+reads Tailwind's `@source`, `@reference`, `@plugin` and `@config` and Less's `data-uri(...)`, because
+`src/styles/tailwind.css` already uses `@source` and `@plugin`, and a relative path in any of them
+that leaves `src/` resolves to nothing in Collate.
