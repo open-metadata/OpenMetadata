@@ -1,9 +1,9 @@
 # A masked connection secret is restored only while the connection still points at the same endpoint
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources)
+- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources); v4 2026-10-30 (a storage manifest no schema matches)
 - **Deciders:** backend security
-- **Guard:** `ConnectionSecretsGuardTest`; `IngestionPipelineResourceIT.test_dbtTokenMustBeReenteredWhenTheSourceMoves`
+- **Guard:** `ConnectionSecretsGuardTest`; `IngestionPipelineBuilderTest`; `IngestionPipelineResourceIT.test_dbtTokenMustBeReenteredWhenTheSourceMoves`, `IngestionPipelineResourceIT.test_storageManifestMatchingNoSourceSchemaIsRefused`
 - **Related:** open-metadata/openmetadata-collate#7797, open-metadata/OpenMetadata#36016
 
 ## Context
@@ -50,3 +50,13 @@ PUT and PATCH for callers who are neither admins nor bots, comparing only those 
 change to the pipeline's other settings never asks for the secrets again. Storage manifest configs
 are typed like dbt ones (`IngestionPipelineBuilder.addDefinedConfig`), which is what lets the masker
 and the secrets manager reach their credentials at all.
+
+## Amendment (v4, 2026-10-30)
+
+Typing is what lets the masker and the secrets manager reach a storage manifest's credentials, so a
+manifest source that matches none of the source schemas fails closed instead of staying a map:
+- **Written:** the create or update is refused with 400.
+- **Read back** (a config stored before this check): the manifest source is left out of what is
+  returned and decrypted, and the rest of the pipeline stays readable so it can be repaired.
+- **Re-stored by a secrets-manager migration**, which reads each pipeline back as above before
+  encrypting it again: such a source is dropped and has to be entered again.

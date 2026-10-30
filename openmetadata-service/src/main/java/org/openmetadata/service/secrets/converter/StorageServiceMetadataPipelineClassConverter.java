@@ -42,7 +42,9 @@ public class StorageServiceMetadataPipelineClassConverter extends ClassConverter
     StorageServiceMetadataPipeline pipeline =
         (StorageServiceMetadataPipeline) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvert(pipeline.getStorageMetadataConfigSource(), MANIFEST_SOURCE_CLASSES)
+    // Fails rather than keeping a source no schema matches: left as a map, the masker and the
+    // secrets manager never reach the credentials in it.
+    tryToConvertOrFail(pipeline.getStorageMetadataConfigSource(), MANIFEST_SOURCE_CLASSES)
         .ifPresent(pipeline::setStorageMetadataConfigSource);
 
     return pipeline;
