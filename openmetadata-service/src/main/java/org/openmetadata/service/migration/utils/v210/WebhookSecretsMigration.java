@@ -29,12 +29,10 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /**
- * A webhook keeps its endpoint, header values and credentials encrypted wherever it is stored: an
- * alert's destinations, and the profile of a user or a team. Rows written before that hold them as
- * written, in the entity row, in every version and in the change descriptions recorded with them.
- * New writes encrypt; this encrypts what is already stored, and masks the profile webhooks the
- * stored change events of users and teams carry, which no reader needs. Ciphertext is kept as it
- * is, so running it again changes nothing.
+ * Brings stored webhook configurations, on alert destinations and on user and team profiles, to the
+ * form new writes store: encrypted in the entity row, its versions and the change descriptions
+ * recorded with them, and masked in the stored change events of users and teams. Values already in
+ * that form are kept, so running it again changes nothing.
  */
 @Slf4j
 public final class WebhookSecretsMigration {

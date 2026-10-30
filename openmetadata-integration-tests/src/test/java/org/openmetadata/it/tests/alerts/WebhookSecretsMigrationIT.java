@@ -38,9 +38,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
 /**
- * Rows stored before webhook secrets were encrypted on profiles and on every alert channel hold
- * them as written. The 2.1.0 migration encrypts them where they are kept and masks them in the
- * change events that recorded them, and a second run changes nothing.
+ * The 2.1.0 migration brings stored webhook configurations to the form new writes store, and a
+ * second run changes nothing.
  *
  * <p>Isolated: the migration rewrites every user, team and alert row, which another test may be
  * writing behind the server on purpose.
