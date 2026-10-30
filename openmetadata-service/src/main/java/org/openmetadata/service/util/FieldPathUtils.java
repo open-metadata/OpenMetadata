@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
@@ -39,6 +40,15 @@ import org.openmetadata.service.jdbi3.EntityRepository;
  */
 @Slf4j
 public class FieldPathUtils {
+
+  /**
+   * Segments that {@link #parseFieldPath} treats as the trailing "property" of a dot-separated
+   * field path (e.g. {@code columns.profile.tags}). Any other trailing segment is part of the
+   * field name, not a property: a bare path like {@code columns.profile.child} (produced by the
+   * v2.0.0 suggestion→task migration, which never appends an explicit property) must resolve to
+   * the nested column {@code profile.child}, not to the parent column {@code profile}.
+   */
+  private static final Set<String> KNOWN_FIELD_PROPERTIES = Set.of("description", "tags");
 
   private FieldPathUtils() {}
 
@@ -137,6 +147,18 @@ public class FieldPathUtils {
       return Optional.empty();
     }
 
+    // The description readers ignore `property` (they walk `fieldName`), so a field path whose
+    // parsed property is not "description" must be refused rather than returning the description
+    // of an unrelated field. This mirrors resolveSuggestionChangeSummaryField's contract and
+    // keeps a mis-parsed or mismatched path (e.g. a tags path) from being read as a description.
+    if (!"description".equals(components.property())) {
+      LOG.warn(
+          "[FieldPathUtils] Could not read description at '{}': parsed property '{}' is not 'description'",
+          fieldPath,
+          components.property());
+      return Optional.empty();
+    }
+
     return navigateAndGetDescription(entity, components);
   }
 
@@ -160,6 +182,19 @@ public class FieldPathUtils {
     FieldPathComponents components = parseFieldPath(fieldPath);
     if (components == null) {
       LOG.warn("[FieldPathUtils] Could not parse field path: {}", fieldPath);
+      return false;
+    }
+
+    // The description walkers ignore `property` (they walk `fieldName` and write its
+    // description), so a field path whose parsed property is not "description" must be refused
+    // rather than silently writing the new text onto the field named by `fieldName` (e.g. a
+    // tags path, or a bare nested-column path mis-parsed with the child as the property). This
+    // restores the machine-checkable contract every real description producer assumes.
+    if (!"description".equals(components.property())) {
+      LOG.warn(
+          "[FieldPathUtils] Could not update description at '{}': parsed property '{}' is not 'description'",
+          fieldPath,
+          components.property());
       return false;
     }
 
@@ -218,15 +253,20 @@ public class FieldPathUtils {
       }
     }
 
-    // Handle dot separator format. The property is always the final segment; everything
-    // between the container and it is the field name, which may itself be a dotted path
-    // into nested children (e.g. columns.profile.personal.full_name.description).
+    // Handle dot separator format. The final segment is a "property" only when it names one
+    // (description/tags); every other trailing segment is part of the field name, which may
+    // itself be a dotted path into nested children. A bare 3-segment path such as
+    // "columns.parent.child" — which the v2.0.0 suggestion→task migration emits without an
+    // explicit ".description" — resolves to the nested column "parent.child" with an implied
+    // description property, instead of mis-parsing "child" as a property and writing onto the
+    // parent column "parent".
     if (fieldPath.contains(".")) {
       try {
         String[] parts = FullyQualifiedName.split(fieldPath);
         if (parts.length >= 2) {
-          boolean hasProperty = parts.length >= 3;
-          String property = hasProperty ? parts[parts.length - 1] : "description";
+          String last = parts[parts.length - 1];
+          boolean hasProperty = parts.length >= 3 && KNOWN_FIELD_PROPERTIES.contains(last);
+          String property = hasProperty ? last : "description";
           int fieldEnd = hasProperty ? parts.length - 1 : parts.length;
           String fieldName =
               FullyQualifiedName.unquoteName(
