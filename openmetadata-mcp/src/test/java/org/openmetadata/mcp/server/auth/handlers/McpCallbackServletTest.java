@@ -329,7 +329,7 @@ class McpCallbackServletTest {
         List.of("openid", "profile"),
         "pac4j-state-abc",
         "pac4j-nonce",
-        "pac4j-verifier",
+        "v".repeat(43),
         System.currentTimeMillis() + 600_000L);
   }
 
@@ -496,7 +496,7 @@ class McpCallbackServletTest {
     // code. ID token credentials an earlier MCP login left in the session must not be used.
     UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
-    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(pendingWithValidVerifier());
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
     AuthenticationCodeFlowHandler ssoHandler =
         mock(AuthenticationCodeFlowHandler.class, RETURNS_DEEP_STUBS);
     doAnswer(
@@ -508,6 +508,8 @@ class McpCallbackServletTest {
         .handleCallback(any(), any());
     McpCallbackServlet servlet = makeServletWithHandler(provider, pendingRepo, ssoHandler);
     IdTokenValidator validator = mock(IdTokenValidator.class);
+    when(validator.validateAndDecode("earlier.id.token"))
+        .thenReturn(new JWTClaimsSet.Builder().claim("email", "alice@example.com").build());
     setField(servlet, "idTokenValidator", validator);
     setField(servlet, "validatorBuiltFrom", ssoHandler);
 
@@ -518,13 +520,12 @@ class McpCallbackServletTest {
         .thenReturn(earlierLogin);
     HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
     when(request.getSession(true)).thenReturn(session);
-    when(request.getSession()).thenReturn(session);
     HttpServletResponse response = mock(HttpServletResponse.class);
 
     servlet.doGet(request, response);
 
+    verify(ssoHandler).handleCallback(eq(request), any());
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-    verify(validator, never()).validateAndDecode(any());
     verify(provider, never()).handleSSOCallbackWithDbState(any(), any(), any(), any(), any());
   }
 
@@ -532,7 +533,7 @@ class McpCallbackServletTest {
   void doGet_completedLogin_usesTheCredentialsThisCallbackValidated() throws Exception {
     UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
-    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(pendingWithValidVerifier());
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
     HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
     when(request.getSession(true)).thenReturn(mock(HttpSession.class));
     Map<String, Object> attributes = new HashMap<>();
@@ -566,22 +567,6 @@ class McpCallbackServletTest {
     verify(provider)
         .handleSSOCallbackWithDbState(
             eq(request), any(), eq("alice"), eq("alice@example.com"), eq("mcp:auth-req-1"));
-  }
-
-  /** A pending request whose PKCE verifier is long enough for the callback to reach the IdP step. */
-  private static McpPendingAuthRequest pendingWithValidVerifier() {
-    return new McpPendingAuthRequest(
-        "auth-req-1",
-        "client-1",
-        "codeChallenge-123456789012345678901234567890123456789012",
-        "S256",
-        "https://mcp-client.example.com/callback",
-        "mcp-client-state-xyz",
-        List.of("openid"),
-        "pac4j-state-abc",
-        "pac4j-nonce",
-        "v".repeat(43),
-        System.currentTimeMillis() + 600_000L);
   }
 
   private static McpCallbackServlet makeServletWithHandler(
