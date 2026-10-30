@@ -3,6 +3,8 @@
   "bundled": true,
   "description": "A compact OpenMetadata starter subset aligned to the Financial Industry Business Ontology.",
   "id": "fibo",
+  "industry": "finance",
+  "layer": "L2",
   "license": "MIT",
   "licenseUrl": "https://spec.edmcouncil.org/fibo/page/how-to-contribute",
   "modules": [

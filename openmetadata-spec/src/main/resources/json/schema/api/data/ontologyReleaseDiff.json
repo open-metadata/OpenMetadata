@@ -12,6 +12,7 @@
       "enum": [
         "ADDED",
         "CHANGED",
+        "DEPRECATED",
         "REMOVED"
       ]
     },

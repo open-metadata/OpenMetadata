@@ -53,6 +53,7 @@ import OntologyStudioHeader from '../../components/governance/ontology/OntologyS
 import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
 import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
 import OntologyStudioWorkspace from '../../components/governance/ontology/OntologyStudioWorkspace/OntologyStudioWorkspace';
+import OntologyTasksDrawer from '../../components/governance/ontology/OntologyTasksDrawer/OntologyTasksDrawer';
 import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
 import OntologyAiAssistant from '../../components/OntologyExplorer/OntologyAiAssistant';
 import OntologyEditLeaseStatus from '../../components/OntologyExplorer/OntologyEditLeaseStatus';
@@ -78,6 +79,7 @@ import {
   OntologyEditLeaseState,
   useOntologyEditLease,
 } from '../../hooks/governance/ontology/useOntologyEditLease';
+import { ONTOLOGY_WORKING_DIFF_QUERY_KEY } from '../../hooks/governance/ontology/useOntologyPublication';
 import {
   ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
   useAllOntologyStudioModels,
@@ -86,6 +88,7 @@ import {
   ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
   useOntologyStudioScopes,
 } from '../../hooks/governance/ontology/useOntologyStudioScopes';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { getOntology, getOntologyWorkingDiff } from '../../rest/ontologyAPI';
@@ -124,8 +127,6 @@ interface StudioSubMode {
   id: string;
   items: StudioTab[];
 }
-
-const ONTOLOGY_WORKING_DIFF_QUERY_KEY = 'ontology-working-diff';
 
 function getStatCount(stats: string[], label: string): string {
   const normalizedLabel = label.toLocaleLowerCase();
@@ -579,6 +580,7 @@ const OntologyExplorerPage: React.FC = () => {
   const { isAdminUser } = useAuth();
   const { permissions } = usePermissionProvider();
   const queryClient = useQueryClient();
+  const userId = useApplicationStore((store) => store.currentUser?.id);
   const {
     isEnabled: isOntologyAiEnabled,
     isRdfEnabled,
@@ -649,7 +651,12 @@ const OntologyExplorerPage: React.FC = () => {
     }
   }, [queryClient, selectedOntologyId]);
   const workingDiff = useQuery({
-    queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, selectedOntologyId, undefined],
+    queryKey: [
+      ONTOLOGY_WORKING_DIFF_QUERY_KEY,
+      selectedOntologyId,
+      undefined,
+      userId,
+    ],
     enabled: Boolean(selectedOntologyId),
     queryFn: ({ signal }) =>
       getOntologyWorkingDiff(selectedOntologyId, { limit: 25 }, signal),
@@ -665,15 +672,19 @@ const OntologyExplorerPage: React.FC = () => {
     selectedOntology?.deleted
   );
   const [publicationScopeKey, setPublicationScopeKey] = useState<string>();
+  const [publicationTab, setPublicationTab] = useState<'changes' | 'releases'>(
+    'changes'
+  );
   const currentScopeKey = getScopeKey(studioScope);
+  const [selectedReviewTaskId] = searchParams.getAll('task');
   const isPublicationOpen = publicationScopeKey === currentScopeKey;
   const setIsPublicationOpen = (open: boolean) =>
     setPublicationScopeKey(open ? currentScopeKey : undefined);
   useEffect(() => {
     setPublicationScopeKey((key) =>
-      key === currentScopeKey ? key : undefined
+      !selectedReviewTaskId && key === currentScopeKey ? key : undefined
     );
-  }, [currentScopeKey]);
+  }, [currentScopeKey, selectedReviewTaskId]);
 
   useEffect(() => {
     if (!ontologyId) {
@@ -1248,6 +1259,24 @@ const OntologyExplorerPage: React.FC = () => {
     return null;
   }
 
+  function activePublicationLabel() {
+    const publicationStatus = studioScopes.ontologies.find(
+      (entry) => entry.id === selectedOntologyId
+    )?.publicationStatus;
+    const active = publicationStatus?.active;
+
+    if (active) {
+      return (
+        active.semanticVersion ??
+        t('label.ontology-release-revision', {
+          revision: active.releaseRevision,
+        })
+      );
+    }
+
+    return t(publicationStatus ? 'label.draft' : 'label.unavailable');
+  }
+
   function renderPublicationCount() {
     if (!selectedOntology || !workingDiff.data) {
       return null;
@@ -1297,6 +1326,22 @@ const OntologyExplorerPage: React.FC = () => {
 
     return (
       <>
+        {selectedOntology && (
+          <Button
+            color="secondary"
+            data-testid="ontology-release-history-trigger"
+            isDisabled={
+              studioScopes.isOntologyLoading || studioScopes.isOntologyError
+            }
+            size={headerActionSize}
+            tooltip={t('label.release-history')}
+            onPress={() => {
+              setPublicationTab('releases');
+              setIsPublicationOpen(true);
+            }}>
+            {activePublicationLabel()}
+          </Button>
+        )}
         <Button
           color={isAiMode ? 'secondary-brand' : 'primary'}
           data-testid="ontology-publication-trigger"
@@ -1306,7 +1351,10 @@ const OntologyExplorerPage: React.FC = () => {
             (studioScopes.isOntologyLoading || studioScopes.isOntologyError)
           }
           size={headerActionSize}
-          onPress={() => setIsPublicationOpen(true)}>
+          onPress={() => {
+            setPublicationTab('changes');
+            setIsPublicationOpen(true);
+          }}>
           {renderPublicationLabel()}
         </Button>
         {isolatedCount > 0 && (
@@ -1340,11 +1388,26 @@ const OntologyExplorerPage: React.FC = () => {
     );
   }
 
-  function renderHeader() {
+  function selectReviewTask(taskId?: string) {
+    setIsPublicationOpen(false);
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (taskId) {
+        next.set('task', taskId);
+      } else {
+        next.delete('task');
+      }
+
+      return next;
+    });
+  }
+
+  function renderHeader(tasksAction: React.ReactNode) {
     return (
       <OntologyStudioHeader
         actions={
           <Box align="center" gap={2} wrap="wrap">
+            {tasksAction}
             {isAiMode ? null : renderLibraryTrigger()}
             {!isCreatingOntology && isNativeOntology && selectedOntology ? (
               <OntologyImportExportMenu
@@ -1828,16 +1891,18 @@ const OntologyExplorerPage: React.FC = () => {
   };
 
   function renderPublicationModal() {
-    if (!isPublicationOpen) {
+    if (selectedReviewTaskId || !isPublicationOpen) {
       return null;
     }
     if (selectedOntology) {
       return (
         <OntologyPublicationModal
           canEdit={canEditNativeOntology}
+          initialTab={publicationTab}
           key={selectedOntology.id}
           ontology={selectedOntology}
           onClose={() => setIsPublicationOpen(false)}
+          onOpenTask={selectReviewTask}
         />
       );
     }
@@ -1853,8 +1918,10 @@ const OntologyExplorerPage: React.FC = () => {
             model.concepts.some((concept) => concept.id === selectedConceptId)
           )?.ontology
         }
+        initialTab={publicationTab}
         ontologies={availableOntologies}
         onClose={() => setIsPublicationOpen(false)}
+        onOpenTask={selectReviewTask}
       />
     );
   }
@@ -1928,13 +1995,20 @@ const OntologyExplorerPage: React.FC = () => {
         className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-primary tw:font-body tw:antialiased"
         data-testid="ontology-studio-shell"
         style={ONTOLOGY_STUDIO_STYLE}>
-        {renderHeader()}
-
-        <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
-          {renderWorkspace()}
-        </OntologyGraphSearchSlotContext.Provider>
-
-        {renderOverlays()}
+        <OntologyTasksDrawer
+          taskId={selectedReviewTaskId}
+          onTaskChange={selectReviewTask}>
+          {({ tasksAction, banner }) => (
+            <>
+              {renderHeader(tasksAction)}
+              {banner}
+              <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
+                {renderWorkspace()}
+              </OntologyGraphSearchSlotContext.Provider>
+              {renderOverlays()}
+            </>
+          )}
+        </OntologyTasksDrawer>
       </main>
     </PageLayoutV1>
   );

@@ -12,6 +12,8 @@ import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.OntologyReleaseChangeSummary;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
@@ -82,8 +84,27 @@ public final class OntologyReleaseCapture {
     final Members members = new Members(release.getId());
     working.entries().forEach(entry -> members.add(entry.kind(), entry.definition()));
     OntologyStructureValidator.requireValid(release, members.values);
+    release.setChangeSummary(changeSummary(state, members.values, access));
+    members.requireTimeRemaining();
     seal(release, state, members);
     return release;
+  }
+
+  private OntologyReleaseChangeSummary changeSummary(
+      final OntologyState state, final List<OntologyReleaseMember> proposed, final Access access) {
+    final List<OntologyReleaseMember> base =
+        state.getActiveReleaseId() == null
+            ? List.of()
+            : new OntologyReleaseReader(dao)
+                .read(
+                    releases.get(
+                        null,
+                        state.getActiveReleaseId(),
+                        releases.getFields("owners,reviewers"),
+                        Include.NON_DELETED,
+                        false),
+                    access.authorize());
+    return OntologyReleaseComparison.summarize(base, proposed);
   }
 
   private void setPublicationMetadata(

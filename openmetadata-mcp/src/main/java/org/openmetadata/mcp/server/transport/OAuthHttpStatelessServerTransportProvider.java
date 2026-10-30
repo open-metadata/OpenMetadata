@@ -43,6 +43,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration.TokenVal
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 
 /**
  * Extended transport provider that handles both MCP messages and OAuth routes. This class
@@ -105,9 +106,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               AuthEnrichedMcpContextExtractor.CLIENT_NAME,
               AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER));
 
-  // After a 401 the client reads WWW-Authenticate to find this authorization server. Browsers hide
-  // response headers unless we expose them, so without this the client cannot start the OAuth flow.
-  private static final String CORS_EXPOSED_HEADERS = "WWW-Authenticate";
+  // Browsers hide response headers unless we expose them. A client reads WWW-Authenticate after a
+  // 401 to find this authorization server, and Retry-After after a 503 to know when to try again.
+  private static final String CORS_EXPOSED_HEADERS = "WWW-Authenticate, Retry-After";
 
   // Public key set for the tokens JWTTokenGenerator signs, MCP access tokens included.
   private static final String JWKS_PATH = "/api/v1/system/config/jwks";
@@ -443,6 +444,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       try {
         validatePrefixedTokenRequest(jwtFilter, tokenWithType);
         authenticated = true;
+      } catch (CredentialUnavailableException e) {
+        LOG.debug("Bearer token could not be confirmed", e);
+        writeUnavailable(response, e.retryAfterSeconds());
       } catch (Exception e) {
         LOG.debug("Bearer token authentication failed", e);
         sendAuthErrorWithChallenge(response, AuthFailure.INVALID_TOKEN);
@@ -588,6 +592,24 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     PrintWriter writer = response.getWriter();
     // The id is null and not echoed: authentication runs before the request body is read.
     writer.write(JsonRpcErrorBody.of(null, failure.jsonRpcCode(), failure.message()));
+    writer.flush();
+  }
+
+  /**
+   * 503 for a bearer token whose stored credential could not be confirmed. It carries no
+   * challenge: the token is not invalid, so the client retries it rather than starting OAuth again.
+   */
+  static void writeUnavailable(HttpServletResponse response, long retryAfterSeconds)
+      throws IOException {
+    response.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+    response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+
+    PrintWriter writer = response.getWriter();
+    writer.write(
+        JsonRpcErrorBody.of(
+            null, JsonRpcErrorBody.UNAVAILABLE, CredentialUnavailableException.CLIENT_MESSAGE));
     writer.flush();
   }
 
@@ -1136,27 +1158,17 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         return;
       }
 
-      revocationHandler.revokeToken(token, tokenTypeHint).join();
+      revocationHandler.revokeToken(token, tokenTypeHint, credentials.clientId()).join();
 
       setCorsHeaders(request, response);
       response.setStatus(200);
       LOG.info("Token revocation completed successfully");
 
     } catch (CompletionException ex) {
-      // Per RFC 7009, return 200 for "token not found" to prevent token guessing
-      // But return 500 for actual server errors
-      Throwable cause = ex.getCause();
-      if (cause instanceof IllegalArgumentException) {
-        // Token not found or invalid - this is OK per RFC 7009
-        LOG.debug("Token revocation: token not found or invalid", ex);
-        setCorsHeaders(request, response);
-        response.setStatus(200);
-      } else {
-        // Actual server error
-        LOG.error("Token revocation failed with server error", ex);
-        sendOAuthError(
-            request, response, 500, "server_error", "Token revocation failed due to server error");
-      }
+      // RevocationHandler answers an unknown token 200 (RFC 7009); only server errors get here.
+      LOG.error("Token revocation failed with server error", ex);
+      sendOAuthError(
+          request, response, 500, "server_error", "Token revocation failed due to server error");
     } catch (Exception ex) {
       LOG.error("Unexpected error during token revocation", ex);
       sendOAuthError(
