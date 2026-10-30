@@ -2,16 +2,23 @@ package org.openmetadata.mcp.server.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
@@ -19,6 +26,7 @@ import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,11 +46,17 @@ import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeReposit
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider.AuthFailure;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 class OAuthHttpStatelessServerTransportProviderTest {
 
@@ -301,8 +315,9 @@ class OAuthHttpStatelessServerTransportProviderTest {
         .contains("Mcp-Name")
         .contains("Mcp-Client-Name")
         .contains("X-OpenMetadata-Persona");
-    // Without this the browser hides the 401's challenge and the client cannot start OAuth.
-    verify(response).setHeader("Access-Control-Expose-Headers", "WWW-Authenticate");
+    // Without these the browser hides the 401's challenge, which the client needs to start OAuth,
+    // and the 503's retry hint.
+    verify(response).setHeader("Access-Control-Expose-Headers", "WWW-Authenticate, Retry-After");
     verify(response).setHeader("Vary", "Origin");
   }
 
@@ -325,6 +340,68 @@ class OAuthHttpStatelessServerTransportProviderTest {
   // Note: the committed-response guard in handleAuthorizeRequest() cannot be meaningfully
   // exercised at unit level because handleAuthorizeRequest is private and the class constructor
   // requires a full running auth stack. The guard is covered by integration tests.
+
+  // ── bearer token principal resolution ────────────────────────────────────
+
+  /**
+   * {@code authenticateRequest} shares {@code SocketAddressFilter.validatePrefixedTokenRequest},
+   * which binds the principal through {@link JwtFilter#resolveUserName}: with {@code emailClaim}
+   * configured, a token carrying only an email claim resolves to the stored username, exactly as
+   * the HTTP filter does. A token with no legacy principal claim must therefore authenticate here.
+   */
+  @Test
+  void authenticateRequest_emailFirstToken_resolvesThePrincipalLikeHttp() throws Exception {
+    initializeJwtTokenGenerator();
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getPublicKeyUrls()).thenReturn(List.of());
+    when(authConfig.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+    when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
+    when(authConfig.getEmailClaim()).thenReturn("email");
+    JwtFilter jwtFilter = spy(new JwtFilter(authConfig, mock(AuthorizerConfiguration.class)));
+    Claim emailClaim = mock(Claim.class);
+    when(emailClaim.asString()).thenReturn("mcp.user@company.com");
+    doReturn(Map.of("email", emailClaim)).when(jwtFilter).verifySignatureOnly("token");
+    doNothing().when(jwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    setField(transport, "jwtFilter", jwtFilter);
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.getActiveUserByEmailForAuth(eq("mcp.user@company.com"), any()))
+        .thenReturn(new User().withName("mcp.user_q9z1"));
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn("Bearer token");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    boolean authenticated;
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(userRepository);
+      authenticated = transport.authenticateRequest(request, response);
+    }
+
+    assertThat(authenticated).isTrue();
+    verify(response, never()).setStatus(anyInt());
+    verify(jwtFilter).checkValidationsForToken(any(), eq("token"), eq("mcp.user_q9z1"), isNull());
+  }
+
+  /** The real {@link JwtFilter} reads the local signing key from the generator at construction. */
+  private static void initializeJwtTokenGenerator() throws Exception {
+    JWTTokenConfiguration tokenConfiguration = new JWTTokenConfiguration();
+    tokenConfiguration.setJwtissuer("open-metadata.org");
+    tokenConfiguration.setKeyId("test-key");
+    tokenConfiguration.setRsaprivateKeyFilePath(resourceFilePath("private_key.der"));
+    tokenConfiguration.setRsapublicKeyFilePath(resourceFilePath("public_key.der"));
+    JWTTokenGenerator.getInstance()
+        .init(
+            new AuthenticationConfiguration()
+                .withTokenValidationAlgorithm(
+                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
+            tokenConfiguration);
+  }
+
+  private static String resourceFilePath(String resourceName) throws Exception {
+    return Path.of(Thread.currentThread().getContextClassLoader().getResource(resourceName).toURI())
+        .toString();
+  }
 
   // ── bearer credential classification ─────────────────────────────────────
 
@@ -454,6 +531,25 @@ class OAuthHttpStatelessServerTransportProviderTest {
       assertThat(failure.statusCode()).isEqualTo(HttpServletResponse.SC_UNAUTHORIZED);
       assertThat(failure.jsonRpcCode()).isEqualTo(JsonRpcErrorBody.UNAUTHORIZED);
     }
+  }
+
+  // ── 503 for a token that cannot be confirmed ─────────────────────────────
+
+  @Test
+  void writeUnavailable_answers503WithTheRetryHintAndNoChallenge() throws Exception {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter body = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+
+    OAuthHttpStatelessServerTransportProvider.writeUnavailable(response, 2);
+
+    verify(response).setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+    verify(response).setHeader("Retry-After", "2");
+    verify(response, never()).setHeader(eq("WWW-Authenticate"), anyString());
+    assertThat(body.toString())
+        .isEqualTo(
+            "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32003,"
+                + "\"message\":\"Credential verification is temporarily unavailable\"}}");
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────

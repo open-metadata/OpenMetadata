@@ -71,6 +71,8 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskReviewVote;
+import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -92,6 +94,7 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
+import org.openmetadata.service.tasks.TaskReviewVotes;
 import org.openmetadata.service.util.FreshReadScope;
 
 @Slf4j
@@ -1194,6 +1197,7 @@ public class WorkflowHandler {
                           .executeCommand(
                               context ->
                                   handleMultiApproval(
+                                      customTaskId,
                                       task,
                                       new HashMap<>(variables),
                                       approvalThreshold,
@@ -1274,6 +1278,32 @@ public class WorkflowHandler {
         : TaskResolutionOutcome.PROCESS_FAILED;
   }
 
+  public List<TaskReviewVote> recordedReviewVotes(
+      final String processInstanceId, final UUID taskId) {
+    final var running =
+        processEngine
+            .getRuntimeService()
+            .createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .includeProcessVariables()
+            .singleResult();
+    if (running != null) {
+      return TaskReviewVotes.read(
+          running.getProcessVariables().get(TaskReviewVotes.variable(taskId)));
+    }
+    final var completed =
+        processEngine
+            .getHistoryService()
+            .createHistoricProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .includeProcessVariables()
+            .singleResult();
+    return completed == null
+        ? List.of()
+        : TaskReviewVotes.read(
+            completed.getProcessVariables().get(TaskReviewVotes.variable(taskId)));
+  }
+
   public Optional<OntologyWorkflowDecision> completedOntologyDecision(
       final String processInstanceId) {
     if (taskResolutionOutcome(processInstanceId) != TaskResolutionOutcome.COMPLETED) {
@@ -1287,9 +1317,15 @@ public class WorkflowHandler {
             .includeProcessVariables()
             .singleResult();
     final Object receipt = completed.getProcessVariables().get(OntologyWorkflowDecision.VARIABLE);
-    return receipt instanceof String json
-        ? Optional.of(JsonUtils.readValue(json, OntologyWorkflowDecision.class))
-        : Optional.empty();
+    if (!(receipt instanceof String json)) {
+      return Optional.empty();
+    }
+    final OntologyWorkflowDecision decision =
+        JsonUtils.readValue(json, OntologyWorkflowDecision.class);
+    return Optional.of(
+        decision.withReviewVotes(
+            TaskReviewVotes.read(
+                completed.getProcessVariables().get(TaskReviewVotes.variable(decision.taskId())))));
   }
 
   private static boolean hasWorkflowFailure(final Map<String, Object> variables) {
@@ -1435,6 +1471,7 @@ public class WorkflowHandler {
   }
 
   private boolean handleMultiApproval(
+      UUID customTaskId,
       Task task,
       Map<String, Object> variables,
       Integer approvalThreshold,
@@ -1491,6 +1528,17 @@ public class WorkflowHandler {
       rejectersList.add(currentUser);
     }
 
+    // Commit vote details with the count so a delayed task-row write cannot lose a comment.
+    final String voteVariable = TaskReviewVotes.variable(customTaskId);
+    if (variables.containsKey(voteVariable)) {
+      final String votes =
+          JsonUtils.pojoToJson(
+              TaskReviewVotes.merge(
+                  TaskReviewVotes.read(taskService.getVariable(task.getId(), voteVariable)),
+                  TaskReviewVotes.read(variables.get(voteVariable))));
+      taskService.setVariable(task.getId(), voteVariable, votes);
+      variables.put(voteVariable, votes);
+    }
     taskService.setVariable(task.getId(), "approversList", approversList);
     taskService.setVariable(task.getId(), "rejectersList", rejectersList);
     if (variables.get(OntologyWorkflowDecision.VARIABLE) instanceof String json) {
@@ -1566,19 +1614,8 @@ public class WorkflowHandler {
   }
 
   private Boolean parseApprovalDecision(Object value) {
-    if (value instanceof Boolean boolValue) {
-      return boolValue;
-    }
-
-    if (value instanceof String stringValue) {
-      return switch (stringValue.trim().toLowerCase(java.util.Locale.ROOT)) {
-        case "true", "approve", "approved" -> true;
-        case "false", "reject", "rejected" -> false;
-        default -> null;
-      };
-    }
-
-    return null;
+    final TaskReviewVoteDecision decision = TaskReviewVotes.decisionForResult(value);
+    return decision == null ? null : decision == TaskReviewVoteDecision.Approved;
   }
 
   public boolean isTaskStillOpen(UUID customTaskId) {
