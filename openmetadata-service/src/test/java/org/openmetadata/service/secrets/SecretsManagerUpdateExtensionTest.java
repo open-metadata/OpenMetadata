@@ -19,7 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.ServiceConfigurationError;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.exception.SecretsManagerUpdateException;
 
@@ -31,8 +34,9 @@ class SecretsManagerUpdateExtensionTest {
 
     SecretsManagerUpdateService.runExtensions(
         List.of(
-            extension("first", () -> ran.add("first")),
-            extension("second", () -> ran.add("second"))));
+                extension("first", () -> ran.add("first")),
+                extension("second", () -> ran.add("second")))
+            .iterator());
 
     assertEquals(List.of("first", "second"), ran);
   }
@@ -40,14 +44,15 @@ class SecretsManagerUpdateExtensionTest {
   @Test
   void aFailingExtensionDoesNotStopTheOthersButFailsTheUpdate() {
     List<String> ran = new ArrayList<>();
-    List<SecretsManagerUpdateExtension> extensions =
+    Iterator<SecretsManagerUpdateExtension> extensions =
         List.of(
-            extension(
-                "broken",
-                () -> {
-                  throw new IllegalStateException("vault unreachable");
-                }),
-            extension("healthy", () -> ran.add("healthy")));
+                extension(
+                    "broken",
+                    () -> {
+                      throw new IllegalStateException("vault unreachable");
+                    }),
+                extension("healthy", () -> ran.add("healthy")))
+            .iterator();
 
     SecretsManagerUpdateException failure =
         assertThrows(
@@ -59,8 +64,44 @@ class SecretsManagerUpdateExtensionTest {
   }
 
   @Test
+  void anExtensionThatCannotBeLoadedDoesNotStopTheOthersButFailsTheUpdate() {
+    List<String> ran = new ArrayList<>();
+    Iterator<SecretsManagerUpdateExtension> extensions =
+        new UnloadableFirst(extension("healthy", () -> ran.add("healthy")));
+
+    assertThrows(
+        SecretsManagerUpdateException.class,
+        () -> SecretsManagerUpdateService.runExtensions(extensions));
+
+    assertEquals(List.of("healthy"), ran);
+  }
+
+  @Test
+  void registrationsThatNeverLoadStopDiscovery() {
+    Iterator<SecretsManagerUpdateExtension> neverLoads =
+        new Iterator<>() {
+          @Override
+          public boolean hasNext() {
+            throw new ServiceConfigurationError("unreadable registration");
+          }
+
+          @Override
+          public SecretsManagerUpdateExtension next() {
+            throw new NoSuchElementException();
+          }
+        };
+
+    assertThrows(
+        SecretsManagerUpdateException.class,
+        () -> SecretsManagerUpdateService.runExtensions(neverLoads));
+  }
+
+  @Test
   void noExtensionsIsANoOp() {
-    assertDoesNotThrow(() -> SecretsManagerUpdateService.runExtensions(List.of()));
+    assertDoesNotThrow(
+        () ->
+            SecretsManagerUpdateService.runExtensions(
+                List.<SecretsManagerUpdateExtension>of().iterator()));
   }
 
   private static SecretsManagerUpdateExtension extension(String name, Runnable update) {
@@ -75,5 +116,29 @@ class SecretsManagerUpdateExtensionTest {
         update.run();
       }
     };
+  }
+
+  /** Fails to load its first registration, the way {@code ServiceLoader} reports one, then loads. */
+  private static final class UnloadableFirst implements Iterator<SecretsManagerUpdateExtension> {
+    private final SecretsManagerUpdateExtension loadable;
+    private int calls;
+
+    private UnloadableFirst(SecretsManagerUpdateExtension loadable) {
+      this.loadable = loadable;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return calls < 2;
+    }
+
+    @Override
+    public SecretsManagerUpdateExtension next() {
+      calls++;
+      if (calls == 1) {
+        throw new ServiceConfigurationError("provider class not found");
+      }
+      return loadable;
+    }
   }
 }

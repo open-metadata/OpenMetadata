@@ -15,10 +15,12 @@ package org.openmetadata.service.secrets;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Function;
@@ -55,6 +57,10 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  */
 @Slf4j
 public class SecretsManagerUpdateService {
+  /** After this many unreadable registrations, discovery stops rather than looping on them. */
+  static final int MAX_EXTENSION_LOAD_ERRORS = 10;
+
+  private static final String UNLOADABLE_EXTENSION = "an extension that could not be loaded";
   private final SecretsManager secretManager;
   private final SecretsManager oldSecretManager;
   private final UserRepository userRepository;
@@ -81,24 +87,44 @@ public class SecretsManagerUpdateService {
     updateServices();
     updateBotUsers();
     updateIngestionPipelines();
-    runExtensions(ServiceLoader.load(SecretsManagerUpdateExtension.class));
+    runExtensions(ServiceLoader.load(SecretsManagerUpdateExtension.class).iterator());
   }
 
   /**
-   * Runs every extension, even after one fails, and then fails the update if any did, so the
-   * command reports the failure instead of finishing as if every credential was updated.
+   * Runs every extension, even after one fails or cannot be loaded, and then fails the update if
+   * any did, so the command reports the failure instead of finishing as if every credential was
+   * updated. ADR:2026-10-30-distributions-update-their-own-credentials-through-an-extension
    */
-  static void runExtensions(Iterable<SecretsManagerUpdateExtension> extensions) {
+  static void runExtensions(Iterator<SecretsManagerUpdateExtension> extensions) {
     List<String> failed = new ArrayList<>();
-    for (SecretsManagerUpdateExtension extension : extensions) {
+    int loadErrors = 0;
+    boolean exhausted = false;
+    while (!exhausted && loadErrors < MAX_EXTENSION_LOAD_ERRORS) {
       try {
-        LOG.info("Updating the secrets of extension [{}]", extension.name());
-        extension.updateSecrets();
-      } catch (RuntimeException e) {
-        LOG.error("Failed to update the secrets of extension [{}]", extension.name(), e);
-        failed.add(extension.name());
+        exhausted = !extensions.hasNext();
+        if (!exhausted) {
+          runExtension(extensions.next(), failed);
+        }
+      } catch (ServiceConfigurationError e) {
+        loadErrors++;
+        LOG.error("Skipping a secrets update extension that could not be loaded", e);
+        failed.add(UNLOADABLE_EXTENSION);
       }
     }
+    requireNoFailures(failed);
+  }
+
+  private static void runExtension(SecretsManagerUpdateExtension extension, List<String> failed) {
+    try {
+      LOG.info("Updating the secrets of extension [{}]", extension.name());
+      extension.updateSecrets();
+    } catch (RuntimeException e) {
+      LOG.error("Failed to update the secrets of extension [{}]", extension.name(), e);
+      failed.add(extension.name());
+    }
+  }
+
+  private static void requireNoFailures(List<String> failed) {
     if (!failed.isEmpty()) {
       throw new SecretsManagerUpdateException(
           String.format("Failed to update the secrets of extensions %s", failed));
