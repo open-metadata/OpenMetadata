@@ -902,42 +902,16 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   /**
-   * What a PUT is checked against, the same as {@code ODCSTestCaseWriteGuard}: creating a test case
-   * needs CreateTests on the table or Create on the test case, as POST does; updating one needs
-   * EditTests on the table, or Create or EditAll on the test case. A new test case is checked
-   * against the request, because a context built by name looks the test case up, which fails for
-   * one that does not exist, and AuthorizationLogic.ANY evaluates every request.
+   * A new test case is checked as a create, an existing one as an update. Checked by FQN first:
+   * AuthorizationLogic.ANY evaluates every request, so a new test case must not get the update
+   * requests, which look the test case up by name.
    */
   private List<AuthRequest> createOrUpdateRequests(TestCase test) {
-    ResourceContextInterface tableContext =
-        TestCaseResourceContext.builder()
-            .entityLink(EntityLink.parse(test.getEntityLink()))
-            .build();
     boolean testCaseExists =
         repository.findByNameOrNull(test.getFullyQualifiedName(), Include.ALL) != null;
-    return testCaseExists ? updateRequests(test, tableContext) : createRequests(test, tableContext);
-  }
-
-  private List<AuthRequest> createRequests(TestCase test, ResourceContextInterface tableContext) {
-    return List.of(
-        new AuthRequest(
-            new OperationContext(Entity.TABLE, MetadataOperation.CREATE_TESTS), tableContext),
-        new AuthRequest(
-            new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE),
-            new CreateResourceContext<>(entityType, test)));
-  }
-
-  private static List<AuthRequest> updateRequests(
-      TestCase test, ResourceContextInterface tableContext) {
-    ResourceContextInterface testCaseContext =
-        TestCaseResourceContext.builder().name(test.getFullyQualifiedName()).build();
-    return List.of(
-        new AuthRequest(
-            new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS), tableContext),
-        new AuthRequest(
-            new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE), testCaseContext),
-        new AuthRequest(
-            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL), testCaseContext));
+    return testCaseExists
+        ? TestCaseWriteAuthRequests.forUpdate(test)
+        : TestCaseWriteAuthRequests.forCreate(test);
   }
 
   @DELETE
