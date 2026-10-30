@@ -39,9 +39,9 @@ paths filter covers only the UI, so the nightly run catches drift after merge.
 
 ## Amendment 2026-10-30: the UI's own copy of the seeds
 
-v1 imported `sparqlQuerySettings.json` from `openmetadata-service` into production UI code.
-Collate's build copies only the UI's `src/` folder, so that relative path resolves to nothing there
-and its release build failed. The console now compares against a UI copy, per
+v1 imported `sparqlQuerySettings.json` from `openmetadata-service` into production UI code. Collate
+copies only the UI's `src/` folder, so that relative path resolves to nothing there and its release
+build failed. The console now compares against a UI copy, per
 ADR:2026-10-30-production-ui-code-imports-only-from-the-ui-src-folder, and
 `OntologyStudio.constants.test.ts` fails when the copy and the server seeds differ.
 
