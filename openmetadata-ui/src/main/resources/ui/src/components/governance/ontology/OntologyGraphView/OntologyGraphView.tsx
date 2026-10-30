@@ -96,7 +96,7 @@ import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/gra
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
-import OntologyConceptDataGraph from '../OntologyGraphView/OntologyConceptDataGraph';
+import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
@@ -359,6 +359,18 @@ const OntologyGraphView = ({
 
   const [search, setSearch] = useState('');
   const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
+  const [hasOpenedData, setHasOpenedData] = useState(false);
+  const [dataRevision, setDataRevision] = useState(0);
+  const noteWorkingChange = useCallback(() => {
+    setDataRevision((revision) => revision + 1);
+    onWorkingChange?.();
+  }, [onWorkingChange]);
+  const changeGraphMode = useCallback((mode: 'model' | 'data') => {
+    setGraphMode(mode);
+    if (mode === 'data') {
+      setHasOpenedData(true);
+    }
+  }, []);
   const [localSelectedId, setLocalSelectedId] = useState<string>();
   const selectedId = onSelectedConceptChange
     ? selectedConceptId
@@ -607,7 +619,6 @@ const OntologyGraphView = ({
         for (const step of steps) {
           written = true;
           await writeStep(step);
-          onWorkingChange?.();
         }
 
         return true;
@@ -617,6 +628,7 @@ const OntologyGraphView = ({
         return false;
       } finally {
         if (written) {
+          noteWorkingChange();
           await refetch();
         }
       }
@@ -626,7 +638,7 @@ const OntologyGraphView = ({
       catalog,
       createType,
       model,
-      onWorkingChange,
+      noteWorkingChange,
       refetch,
       showWriteError,
       t,
@@ -643,7 +655,7 @@ const OntologyGraphView = ({
         await createOntologyProperty(
           buildDataPropertyRequest(model, concept, input)
         );
-        onWorkingChange?.();
+        noteWorkingChange();
         await refetch();
 
         return true;
@@ -653,7 +665,7 @@ const OntologyGraphView = ({
         return false;
       }
     },
-    [canCreateProperty, model, onWorkingChange, refetch, showWriteError]
+    [canCreateProperty, model, noteWorkingChange, refetch, showWriteError]
   );
 
   useEffect(() => {
@@ -752,7 +764,7 @@ const OntologyGraphView = ({
             setNodePositions(positions);
             setSelectedId(created.id);
             setConceptEditor(undefined);
-            onWorkingChange?.();
+            noteWorkingChange();
 
             return true;
           }}
@@ -792,7 +804,7 @@ const OntologyGraphView = ({
             onSaved={(saved) => {
               setSelectedId(saved.id);
               setConceptEditor(undefined);
-              onWorkingChange?.();
+              noteWorkingChange();
               void refetch();
             }}
           />
@@ -838,7 +850,7 @@ const OntologyGraphView = ({
           }
           onOpenData={() => {
             onRequestGraphSurface();
-            setGraphMode('data');
+            changeGraphMode('data');
           }}
           onSelectConcept={(concept) => setSelectedId(concept.id)}
         />
@@ -853,6 +865,25 @@ const OntologyGraphView = ({
       />
     );
   };
+
+  const renderDataSurface = () =>
+    hasOpenedData ? (
+      <div
+        className={
+          graphMode === 'data'
+            ? 'tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col'
+            : undefined
+        }
+        hidden={graphMode !== 'data'}>
+        <OntologyNativeDataMode
+          isActive={graphMode === 'data'}
+          ontologyId={ontology.id}
+          revision={dataRevision}
+          selectedConceptId={selectedId}
+          onSelectConcept={setSelectedId}
+        />
+      </div>
+    ) : null;
 
   const renderGraphControls = () => {
     const controls = (
@@ -898,19 +929,12 @@ const OntologyGraphView = ({
       );
     }
     if (graphMode === 'data') {
-      return (
-        <OntologyConceptDataGraph
-          concept={selected}
-          concepts={model.concepts}
-          key={selected?.id}
-          model={model}
-          onSelectConcept={setSelectedId}
-        />
-      );
+      return <>{renderDataSurface()}</>;
     }
 
     return (
       <>
+        {renderDataSurface()}
         <div
           aria-hidden="true"
           className={isAiMode ? AI_GRAPH_BACKDROP_CLASS : GRAPH_BACKDROP_CLASS}
@@ -955,7 +979,7 @@ const OntologyGraphView = ({
     }
 
     return isAiMode ? (
-      <OntologyGraphModeTabs mode={graphMode} onChange={setGraphMode} />
+      <OntologyGraphModeTabs mode={graphMode} onChange={changeGraphMode} />
     ) : (
       <Box
         className="tw:absolute tw:top-3.5 tw:right-4 tw:z-10 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1"
@@ -967,7 +991,7 @@ const OntologyGraphView = ({
             data-testid={`ontology-graph-mode-${mode}`}
             key={mode}
             size="xs"
-            onPress={() => setGraphMode(mode)}>
+            onPress={() => changeGraphMode(mode)}>
             {t(`label.${mode}`)}
           </Button>
         ))}

@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { OntologyConceptType } from '../generated/api/data/createOntologyConcept';
+import { Kind } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
 import { AssetType } from '../generated/api/data/updateOntologyConceptBinding';
@@ -27,6 +28,7 @@ import {
   exportOntologyRelease,
   generateOntologyDomainDraft,
   generateOntologySparql,
+  getNativeOntologyDataGraphPage,
   getOntologyBulkTemplate,
   getOntologyByName,
   getOntologyChangeSet,
@@ -103,6 +105,25 @@ describe('ontologyAPI', () => {
       { propertyId: 'name', columnPath: ['customer_name'], state: 'resolved' },
     ],
   };
+
+  it('posts one graph page selection to the ontology and returns the page body', async () => {
+    const signal = new AbortController().signal;
+    const request = {
+      loaded: [],
+      page: { kind: Kind.Clusters, limit: 12, offset: 0 },
+    };
+    const body = { clusters: [], contextFull: false, loaded: [] };
+    mockedApiClient.post.mockResolvedValueOnce({ data: body });
+
+    expect(
+      await getNativeOntologyDataGraphPage('ontology/id', request, signal)
+    ).toBe(body);
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologies/ontology%2Fid/dataGraph/pages',
+      request,
+      { signal }
+    );
+  });
 
   it('collects bindings through empty pages and preserves the starting revision', async () => {
     const signal = new AbortController().signal;
