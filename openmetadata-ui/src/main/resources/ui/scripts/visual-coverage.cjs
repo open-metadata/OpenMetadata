@@ -13,7 +13,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const uiRoot = path.resolve(__dirname, '../..');
+const uiRoot = path.resolve(__dirname, '..');
 const readFixture = (name) =>
   JSON.parse(
     fs.readFileSync(
