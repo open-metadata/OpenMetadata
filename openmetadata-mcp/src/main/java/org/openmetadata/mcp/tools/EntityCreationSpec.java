@@ -66,6 +66,13 @@ record EntityCreationSpec(
               "announcement creation restricts system-wide announcements to administrators"),
           entry(Entity.INTAKE_FORM, "intake form creation is restricted to administrators"),
           entry(Entity.PERSONA, "persona creation is restricted to administrators"),
+          entry(Entity.DOCUMENT, "document creation keeps private document types out of reach"),
+          entry(
+              Entity.AUDIT_REPORT,
+              "audit report creation deduplicates the request and queues its generation"),
+          entry(
+              Entity.ONTOLOGY_CHANGE_SET,
+              "ontology change set creation authorizes its glossary scope and starts as a draft"),
           entry(
               Entity.TASK,
               "task creation stamps the filer and authorizes against the task's target entity"));

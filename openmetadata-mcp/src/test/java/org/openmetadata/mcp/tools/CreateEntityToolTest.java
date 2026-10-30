@@ -151,6 +151,9 @@ class CreateEntityToolTest {
             Entity.ANNOUNCEMENT,
             Entity.INTAKE_FORM,
             Entity.PERSONA,
+            Entity.DOCUMENT,
+            Entity.AUDIT_REPORT,
+            Entity.ONTOLOGY_CHANGE_SET,
             Entity.TASK)) {
       IllegalArgumentException createFailure =
           assertThrows(
