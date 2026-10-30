@@ -59,14 +59,15 @@ describe('OntologyEmptyState', () => {
     });
   });
 
-  it('scrolls from the top instead of clipping when the options outgrow the viewport', () => {
+  it('puts the placeholder in a scroll host where it flows and grows instead of shrinking to the host', () => {
     renderEmptyState();
     const emptyState = screen.getByTestId('ontology-empty-state');
     const placeholder = within(emptyState).getByTestId('empty-placeholder');
 
     expect(emptyState).toHaveClass('tw:overflow-auto');
-    expect(placeholder).toHaveClass('tw:static');
+    expect(placeholder).toHaveClass('tw:static', 'tw:flex-1');
     expect(placeholder).not.toHaveClass('tw:absolute');
+    expect(placeholder).not.toHaveClass('tw:min-h-full');
   });
 
   it.each([

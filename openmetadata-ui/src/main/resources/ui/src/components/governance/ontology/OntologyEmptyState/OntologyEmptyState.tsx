@@ -50,7 +50,7 @@ const OntologyEmptyState = ({
       className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-auto"
       data-testid="ontology-empty-state">
       <FeaturesPlaceholder
-        className="tw:static tw:h-auto tw:min-h-full tw:p-8"
+        className="tw:static tw:h-auto tw:flex-1 tw:p-8"
         description={t('message.ontology-first-run-description')}
         features={[
           option(

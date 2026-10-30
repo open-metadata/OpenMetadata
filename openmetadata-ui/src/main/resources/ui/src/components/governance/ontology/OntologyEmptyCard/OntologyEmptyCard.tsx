@@ -30,22 +30,24 @@ const OntologyEmptyCard = ({ canAdd, onAdd }: OntologyEmptyCardProps) => {
         className="tw:pointer-events-auto tw:w-85"
         data-testid="ontology-empty-card"
         variant="elevated">
-        <NoDataPlaceholder
-          className="tw:static tw:px-4 tw:py-6"
-          description={t('message.ontology-empty-card-description')}
-          footer={
-            canAdd ? (
-              <Button
-                data-testid="ontology-empty-card-add-concept"
-                size="sm"
-                onPress={onAdd}>
-                {t('label.add-entity', { entity: t('label.concept') })}
-              </Button>
-            ) : undefined
-          }
-          icon={Share07}
-          title={t('label.ontology-has-no-concepts')}
-        />
+        <Card.Content>
+          <NoDataPlaceholder
+            className="tw:static"
+            description={t('message.ontology-empty-card-description')}
+            footer={
+              canAdd ? (
+                <Button
+                  data-testid="ontology-empty-card-add-concept"
+                  size="sm"
+                  onPress={onAdd}>
+                  {t('label.add-entity', { entity: t('label.concept') })}
+                </Button>
+              ) : undefined
+            }
+            icon={Share07}
+            title={t('label.ontology-has-no-concepts')}
+          />
+        </Card.Content>
       </Card>
     </div>
   );
