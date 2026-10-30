@@ -661,9 +661,15 @@ const OntologyExplorerPage: React.FC = () => {
     { id: selectedOntologyId },
     { enabled: Boolean(selectedOntology), deleted: selectedOntology?.deleted }
   );
-  const { canCreate: canCreateNativeConcept } = getDerivedPermissionFlags(
-    permissions[ResourceEntity.ONTOLOGY_CONCEPT] ?? DEFAULT_ENTITY_PERMISSION,
-    selectedOntology?.deleted
+  const canCreateNativeClass = [
+    ResourceEntity.ONTOLOGY_CONCEPT,
+    ResourceEntity.ONTOLOGY_CHANGE_SET,
+  ].every(
+    (resource) =>
+      getDerivedPermissionFlags(
+        permissions[resource] ?? DEFAULT_ENTITY_PERMISSION,
+        selectedOntology?.deleted
+      ).canCreate
   );
   const [publicationScopeKey, setPublicationScopeKey] = useState<string>();
   const [publicationTab, setPublicationTab] = useState<'changes' | 'releases'>(
@@ -732,6 +738,7 @@ const OntologyExplorerPage: React.FC = () => {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [nativeStats, setNativeStats] = useState<OntologyModelStats>();
   const [nativeRefresh, setNativeRefresh] = useState(0);
+  const [nativeAuthoringLocked, setNativeAuthoringLocked] = useState(false);
   const [nativeConceptRequest, setNativeConceptRequest] = useState<{
     key: number;
     ontologyId: string;
@@ -787,6 +794,11 @@ const OntologyExplorerPage: React.FC = () => {
     conceptId?: string,
     nextMode: StudioMode = 'view'
   ) => {
+    if (nativeAuthoringLocked) {
+      showErrorToast(t('message.ontology-class-attempt-pending'));
+
+      return;
+    }
     setIsPublicationOpen(false);
     setLoadedOntology(undefined);
     setOntologyLoadAttempt((attempt) => attempt + 1);
@@ -1025,6 +1037,11 @@ const OntologyExplorerPage: React.FC = () => {
 
   const handleSubModeChange = useCallback(
     (id: string) => {
+      if (nativeAuthoringLocked) {
+        showErrorToast(t('message.ontology-class-attempt-pending'));
+
+        return;
+      }
       if (mode === 'edit' && (id === 'graph' || id === 'definitions')) {
         setEditSurface(id);
       }
@@ -1043,7 +1060,7 @@ const OntologyExplorerPage: React.FC = () => {
         }
       }
     },
-    [mode]
+    [mode, nativeAuthoringLocked, t]
   );
 
   const {
@@ -1099,6 +1116,11 @@ const OntologyExplorerPage: React.FC = () => {
   );
 
   function handleScopeChange(nextScope: OntologyStudioScope) {
+    if (nativeAuthoringLocked) {
+      showErrorToast(t('message.ontology-class-attempt-pending'));
+
+      return;
+    }
     setIsPublicationOpen(false);
     setIsLibraryOpen(false);
     if (nextScope.kind === 'allOntologies') {
@@ -1158,6 +1180,11 @@ const OntologyExplorerPage: React.FC = () => {
   }
 
   function handleModeChange(nextMode: StudioMode) {
+    if (nativeAuthoringLocked) {
+      showErrorToast(t('message.ontology-class-attempt-pending'));
+
+      return;
+    }
     if (isAllOntologies && nextMode === 'edit') {
       const owner = allModels.models?.find((model) =>
         model.concepts.some((concept) => concept.id === selectedConceptId)
@@ -1190,7 +1217,7 @@ const OntologyExplorerPage: React.FC = () => {
         ontologies={availableOntologies}
         scope={isCreatingOntology ? ALL_ONTOLOGIES_SCOPE : studioScope}
         onCreateOntology={
-          canCreateOntology
+          canCreateOntology && !nativeAuthoringLocked
             ? () => {
                 selectOntology(undefined);
                 setIsCreatingOntology(true);
@@ -1237,7 +1264,7 @@ const OntologyExplorerPage: React.FC = () => {
 
   function renderPrimaryAction() {
     const canAddConcept = isNativeOntology
-      ? canCreateNativeConcept && editSurface === 'graph'
+      ? canCreateNativeClass && canEditNativeOntology && editSurface === 'graph'
       : canCreateConcept;
 
     if (mode === 'edit' && canAddConcept) {
@@ -1666,6 +1693,8 @@ const OntologyExplorerPage: React.FC = () => {
         ontology={selectedOntology}
         selectedConceptId={selectedConceptId}
         viewSurface={explorerSurface}
+        onAuthoringLockChange={setNativeAuthoringLocked}
+        onRequestCreateConcept={handleAddConcept}
         onRequestEdit={() => {
           setEditSurface('graph');
           handleModeChange('edit');
