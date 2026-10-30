@@ -19,8 +19,9 @@ A database connector whose engine exposes its own system databases/schemas to th
 connector uses gets a connection-level `default` that excludes them.
 
 - Patterns are anchored exact names (`^name$`). A prefix wildcard is allowed only when the prefix
-  is engine-reserved (`^db_.*` on SQL Server roles, `^TD_SYS.*` on Teradata) — never `^SYS.*` or
-  `^system_.*`, which would hide user schemas such as `SYSTEM_DATA` or `system_logs`.
+  is engine-reserved (`^TD_SYS.*` on Teradata) — never a naming convention a user can share:
+  `^SYS.*`, `^system_.*` or `^db_.*` would hide `SYSTEM_DATA`, `system_logs` or `db_staging`, so
+  Azure SQL and Synapse list SQL Server's nine fixed `db_*` roles by name.
 - SAP HANA excludes `^_SYS_(?!BIC$).*`: `_SYS_BIC` holds the calculation views its lineage
   resolves against and must stay ingested.
 - No default is added where it would be a no-op: the Vertica dialect already drops `v_*` schemas

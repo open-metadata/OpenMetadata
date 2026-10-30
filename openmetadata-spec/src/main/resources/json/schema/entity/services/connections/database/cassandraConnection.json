@@ -65,10 +65,10 @@
             "title": "Default Schema Filter Pattern",
             "description": "Regex to only include/exclude schemas that matches the pattern.",
             "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
-      "default": {
-        "includes": [],
-        "excludes": ["^system$", "^system_auth$", "^system_schema$", "^system_distributed$", "^system_traces$", "^system_views$", "^system_virtual_schema$"]
-      }
+            "default": {
+              "includes": [],
+              "excludes": ["^system$", "^system_auth$", "^system_schema$", "^system_distributed$", "^system_traces$", "^system_views$", "^system_virtual_schema$"]
+            }
         },
         "tableFilterPattern": {
             "title": "Default Table Filter Pattern",

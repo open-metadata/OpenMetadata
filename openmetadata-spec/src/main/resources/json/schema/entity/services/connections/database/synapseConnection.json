@@ -127,7 +127,7 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^db_.*", "^guest$", "^information_schema$", "^sys$"]
+        "excludes": ["^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$", "^guest$", "^information_schema$", "^sys$"]
       }
     },
     "tableFilterPattern": {

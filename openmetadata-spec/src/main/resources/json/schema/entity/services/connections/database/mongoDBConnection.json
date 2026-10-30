@@ -72,10 +72,10 @@
             "title": "Default Schema Filter Pattern",
             "description": "Regex to only include/exclude schemas that matches the pattern.",
             "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
-      "default": {
-        "includes": [],
-        "excludes": ["^admin$", "^local$", "^config$"]
-      }
+            "default": {
+              "includes": [],
+              "excludes": ["^admin$", "^local$", "^config$"]
+            }
         },
           "tableFilterPattern": {
             "title": "Default Table Filter Pattern",
