@@ -501,6 +501,7 @@ const TableRow = <T extends object>({
           // every table came up one column-share short of its own right edge.
           'tw:relative tw:outline-focus-ring tw:transition-colors tw:[&:hover]:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
           TABLE_SIZES[size].rowHeight,
+          props.onAction && 'tw:cursor-pointer',
           highlightSelectedRow &&
             'tw:selected:bg-secondary tw:dark:selected:bg-primary_hover',
 

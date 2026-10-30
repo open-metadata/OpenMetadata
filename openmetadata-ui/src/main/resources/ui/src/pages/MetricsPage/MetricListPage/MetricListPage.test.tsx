@@ -12,6 +12,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  createEvent,
   fireEvent,
   render,
   screen,
@@ -26,6 +27,7 @@ import {
   MetricGranularity,
   MetricType,
 } from '../../../generated/entity/data/metric';
+import { TagSource } from '../../../generated/type/tagLabel';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
@@ -563,18 +565,30 @@ const buildSearchResponse = (metrics: Metric[], total = metrics.length) => ({
   },
 });
 
+jest.mock('../../../utils/ownerUtils', () => ({
+  getOwnerPath: ({ name }: { name?: string }) => `/users/${name}`,
+}));
+
+let mockAsyncDeleteJob: { jobId?: string; status?: string } | undefined;
+
+jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
+  useAsyncDeleteProvider: () => ({ asyncDeleteJob: mockAsyncDeleteJob }),
+}));
+
 const renderPage = () => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
-
-  return render(
+  const buildUi = () => (
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <MetricListPage />
       </MemoryRouter>
     </QueryClientProvider>
   );
+  const result = render(buildUi());
+
+  return { ...result, rerender: () => result.rerender(buildUi()) };
 };
 
 describe('MetricListPage', () => {
@@ -614,7 +628,10 @@ describe('MetricListPage', () => {
         name: 'label.glossary-term-plural',
       })
     ).toBeInTheDocument();
-    expect(screen.getByText('AL')).toHaveAttribute('data-avatar-size', 'xs');
+    // Owners render through ProfilePicture, which shows the first letter like the entity header.
+    expect(document.querySelector('[data-avatar-size="xs"]')).toHaveTextContent(
+      /^A$/
+    );
     expect(screen.getByTestId('metric-icon-metric-1')).toBeInTheDocument();
     expect(screen.queryByText(/preview/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/value trend/i)).not.toBeInTheDocument();
@@ -835,6 +852,35 @@ describe('MetricListPage', () => {
       'aria-checked',
       'true'
     );
+  });
+
+  it('marks an expanded empty group as empty so the next metric is not read as a member', async () => {
+    const emptyGroupRow = {
+      id: 'group:group-empty',
+      isGroupRow: true,
+      group: { id: 'group-empty', name: 'empty_group' },
+      memberCount: 0,
+    };
+    mockUseMetricHierarchy.mockReturnValue({
+      topLevelNodes: [
+        { row: emptyGroupRow, groupId: 'group-empty', members: [] },
+        { row: rootMetric },
+      ],
+      buildRows: () => [emptyGroupRow, rootMetric],
+      paging: { total: 1, offset: 0, limit: 20 },
+      isPending: false,
+      isFetching: false,
+      expandedRowKeys: [],
+      collapsedGroupIds: [],
+      loadingParentIds: [],
+      loadingGroupIds: [],
+      ...hierarchyActions,
+    });
+    renderPage();
+
+    expect(
+      await screen.findByTestId('metric-group-empty-empty_group')
+    ).toHaveTextContent('label.no-entity-found');
   });
 
   it('keeps group context when hierarchy search matches a group or descendant', async () => {
@@ -1236,12 +1282,97 @@ describe('MetricListPage', () => {
     fireEvent.click(screen.getByTestId('confirm-button'));
 
     expect(screen.getByTestId('confirm-button')).toBeDisabled();
-    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1');
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
 
     resolveDelete();
     await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
 
     expect(mockShowSuccessToast).toHaveBeenCalled();
+  });
+
+  it('refreshes the list when its own delete job completes, not for jobs started elsewhere', async () => {
+    mockAsyncDeleteJob = undefined;
+    mockDeleteMetric.mockResolvedValueOnce({ jobId: 'job-1', message: '' });
+    const { rerender } = renderPage();
+    fireEvent.click(await screen.findByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+    await waitFor(() =>
+      expect(hierarchyActions.reset).toHaveBeenCalledTimes(1)
+    );
+
+    mockAsyncDeleteJob = { jobId: 'other-job', status: 'COMPLETED' };
+    rerender();
+
+    expect(hierarchyActions.reset).toHaveBeenCalledTimes(1);
+
+    mockAsyncDeleteJob = { jobId: 'job-1', status: 'COMPLETED' };
+    rerender();
+
+    await waitFor(() =>
+      expect(hierarchyActions.reset).toHaveBeenCalledTimes(2)
+    );
+
+    mockAsyncDeleteJob = undefined;
+  });
+
+  it('refreshes when its job finished before the delete request resolved', async () => {
+    mockAsyncDeleteJob = { jobId: 'job-early', status: 'COMPLETED' };
+    mockDeleteMetric.mockResolvedValueOnce({ jobId: 'job-early', message: '' });
+    renderPage();
+    fireEvent.click(await screen.findByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    // Once from handleBulkDelete, once when the already-stored message matches the new job id.
+    await waitFor(() =>
+      expect(hierarchyActions.reset).toHaveBeenCalledTimes(2)
+    );
+
+    mockAsyncDeleteJob = undefined;
+  });
+
+  it('links glossary terms and owners to their own pages without opening the metric', async () => {
+    const taggedMetric = {
+      ...rootMetric,
+      tags: [
+        {
+          tagFQN: 'Finance.Revenue',
+          name: 'Revenue',
+          source: TagSource.Glossary,
+        },
+      ],
+    };
+    mockUseMetricHierarchy.mockReturnValue({
+      topLevelNodes: [{ row: taggedMetric }],
+      buildRows: () => [taggedMetric],
+      paging: { total: 1, offset: 0, limit: 20 },
+      isPending: false,
+      isFetching: false,
+      expandedRowKeys: [],
+      collapsedGroupIds: [],
+      loadingParentIds: [],
+      loadingGroupIds: [],
+      ...hierarchyActions,
+    });
+    renderPage();
+
+    const glossaryLink = await screen.findByTestId(
+      'metric-tag-link-Finance.Revenue'
+    );
+
+    expect(glossaryLink).toHaveAttribute('href', '/glossary/Finance.Revenue');
+    expect(screen.getByTestId('metric-owner-link-owner-1')).toHaveAttribute(
+      'href',
+      '/users/alice'
+    );
+
+    // The real table starts its row press on pointerdown; the link must keep that from bubbling.
+    const pointerDown = createEvent.pointerDown(glossaryLink);
+    const stopPropagation = jest.spyOn(pointerDown, 'stopPropagation');
+    fireEvent(glossaryLink, pointerDown);
+
+    expect(stopPropagation).toHaveBeenCalled();
   });
 
   it('exports metrics from the core action menu', async () => {

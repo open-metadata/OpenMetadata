@@ -464,17 +464,12 @@ export const selectSubDomain = async (
   subDomain: SubDomain['data']
 ) => {
   const menuItem = page.getByRole('menuitem', { name: domain.displayName });
-  const isSelected = await menuItem.evaluate((element) => {
-    return element.classList.contains('ant-menu-item-selected');
-  });
 
-  if (!isSelected) {
-    const subDomainRes = page.waitForResponse(
-      '/api/v1/search/query?q=*&from=0&size=0&index=domain&deleted=false&track_total_hits=true'
-    );
-    await menuItem.click();
-    await subDomainRes;
-  }
+  const domainRes = page.waitForResponse(
+    '/api/v1/search/query?q=*&from=0&size=0&index=domain&deleted=false&track_total_hits=true'
+  );
+  await menuItem.click();
+  await domainRes;
 
   const subDomainRes = page.waitForResponse(
     '/api/v1/search/query?q=*&from=0&size=50&index=domain&deleted=false&track_total_hits=true'

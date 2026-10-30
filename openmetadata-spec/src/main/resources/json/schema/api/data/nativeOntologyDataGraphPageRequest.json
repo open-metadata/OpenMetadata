@@ -1,0 +1,60 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/nativeOntologyDataGraphPageRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "nativeOntologyDataGraphPageRequest",
+  "description": "Read one native graph page and a bounded topology page over the resulting loaded prefixes.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.NativeOntologyDataGraphPageRequest",
+  "definitions": {
+    "loadedPrefix": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyLoadedPrefix",
+      "properties": {
+        "conceptId": { "$ref": "../../type/basic.json#/definitions/uuid" },
+        "bindingRevision": { "$ref": "../../type/ontologyConceptBindings.json#/definitions/revision" },
+        "throughAssetId": {
+          "description": "Inclusive UUID high-water mark, including hidden rows traversed by a binding page. Absent means no assets have been loaded for this concept. This is a context hint, not an authorization grant.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        }
+      },
+      "required": ["conceptId", "bindingRevision"],
+      "additionalProperties": false
+    },
+    "selection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyGraphPageSelection",
+      "properties": {
+        "kind": { "type": "string", "enum": ["clusters", "bindings", "topology"] },
+        "offset": { "type": "integer", "minimum": 0 },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "conceptId": { "$ref": "../../type/basic.json#/definitions/uuid" },
+        "after": { "type": "string", "minLength": 1, "maxLength": 8192 }
+      },
+      "required": ["kind"],
+      "oneOf": [
+        {
+          "properties": { "kind": { "const": "clusters" }, "limit": { "maximum": 12 } },
+          "required": ["offset", "limit"],
+          "not": { "anyOf": [{ "required": ["conceptId"] }, { "required": ["after"] }] }
+        },
+        {
+          "properties": { "kind": { "const": "bindings" }, "after": { "maxLength": 256 } },
+          "required": ["conceptId", "after", "limit"],
+          "not": { "required": ["offset"] }
+        },
+        {
+          "properties": { "kind": { "const": "topology" } },
+          "required": ["after"],
+          "not": { "anyOf": [{ "required": ["offset"] }, { "required": ["limit"] }, { "required": ["conceptId"] }] }
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "loaded": { "type": "array", "maxItems": 60, "items": { "$ref": "#/definitions/loadedPrefix" } },
+    "page": { "$ref": "#/definitions/selection" }
+  },
+  "required": ["loaded", "page"],
+  "additionalProperties": false
+}

@@ -81,6 +81,7 @@ const renderDefinitions = () =>
       mode="definitions"
       ontology={ontology}
       viewSurface="graph"
+      onRequestGraphSurface={jest.fn()}
       onSaved={jest.fn()}
     />
   );

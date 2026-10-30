@@ -28,7 +28,8 @@
         "DATATYPE",
         "MAPPING_TARGET",
         "MAPPING_SCHEME",
-        "SUPER_CLASS"
+        "SUPER_CLASS",
+        "REPLACED_BY"
       ]
     },
     "iri": {
