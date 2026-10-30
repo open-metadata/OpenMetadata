@@ -766,6 +766,9 @@ test('notification lists load the built-in feed alert without duplicating it in 
 for (const state of ['populated', 'error'] as const) {
   for (const path of [
     'a-new-read-endpoint',
+    'services/databaseServices/name/unmodeledService',
+    'services/databaseServices/name/visual_connection/unmodeledChild',
+    'tables/name/visual_connection',
     'tables/not-a-fixture-id',
     'tables/hierarchy',
     'tables/name/visual_warehouse.finance.public.orders/versions/not-a-version',
@@ -815,6 +818,38 @@ for (const state of ['populated', 'error'] as const) {
     });
   }
 }
+
+test('connector drafts have an explicitly available name in every service category', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const statuses = await page.evaluate(async () =>
+    Promise.all(
+      [
+        'databaseServices',
+        'pipelineServices',
+        'messagingServices',
+        'dashboardServices',
+        'mlmodelServices',
+        'storageServices',
+        'searchServices',
+        'apiServices',
+        'driveServices',
+      ].map(
+        async (category) =>
+          (
+            await fetch(`/api/v1/services/${category}/name/visual_connection`)
+          ).status
+      )
+    )
+  );
+  expect(statuses).toEqual(Array(9).fill(404));
+  expect(
+    test
+      .info()
+      .annotations.filter(({ type }) => type === 'missing-visual-read-fixture')
+  ).toHaveLength(0);
+});
 
 test('capabilities and persona context reads return their public shapes', async ({
   page,

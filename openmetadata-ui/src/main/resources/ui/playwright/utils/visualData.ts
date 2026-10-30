@@ -1717,6 +1717,19 @@ export const installVisualData = async (
           }))
         : fixtureResources[collection];
     const suffix = path.slice(collection.length).replace(/^\//, '');
+    if (
+      /^services\/[^/]+Services$/.test(collection) &&
+      suffix === 'name/visual_connection'
+    ) {
+      // Connector drafts debounce a uniqueness check. Only this deliberately
+      // absent name is available; other unknown identities still block capture.
+      await route.fulfill({
+        status: 404,
+        json: { message: 'The draft service does not exist.' },
+      });
+
+      return;
+    }
     const selected = data.find(
       ({ id, name, fullyQualifiedName }) =>
         suffix === id ||
