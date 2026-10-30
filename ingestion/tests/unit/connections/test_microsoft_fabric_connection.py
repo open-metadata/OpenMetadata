@@ -26,12 +26,12 @@ DEFAULT_SCHEMA_FILTER = FilterPattern.model_validate(
 )
 
 
-@pytest.mark.parametrize("schema", ["queryinsights", "_rsc"])
-def test_the_default_schema_filter_leaves_out_fabric_system_schemas(schema):
-    """Every Warehouse and Lakehouse has both: query history views and an internal, empty schema"""
-    assert filter_by_schema(DEFAULT_SCHEMA_FILTER, schema)
+def test_the_default_schema_filter_leaves_out_the_internal_schema():
+    """Every Warehouse and Lakehouse has `_rsc`, an internal schema that is always empty"""
+    assert filter_by_schema(DEFAULT_SCHEMA_FILTER, "_rsc")
 
 
-@pytest.mark.parametrize("schema", ["dbo", "qa_crm"])
-def test_the_default_schema_filter_keeps_user_schemas(schema):
+@pytest.mark.parametrize("schema", ["queryinsights", "dbo", "qa_crm"])
+def test_the_default_schema_filter_keeps_queried_schemas(schema):
+    """queryinsights holds the query history views, which reports such as Power BI dataflows read"""
     assert not filter_by_schema(DEFAULT_SCHEMA_FILTER, schema)

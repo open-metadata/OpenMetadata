@@ -88,7 +88,7 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^db_.*", "^guest$", "^information_schema$", "^sys$", "^queryinsights$", "^_rsc$"]
+        "excludes": ["^db_.*", "^guest$", "^information_schema$", "^sys$", "^_rsc$"]
       }
     },
     "tableFilterPattern": {
