@@ -1963,15 +1963,15 @@ public class UserRepository extends EntityRepository<User> {
       if (operation.isPut()) {
         // CreateUser does not carry isFirstTimeUser; PUT must not make a returning user first-time
         updated.setIsFirstTimeUser(original.getIsFirstTimeUser());
-        return;
+      } else {
+        recordChange(
+            IS_FIRST_TIME_USER_FIELD,
+            original.getIsFirstTimeUser(),
+            updated.getIsFirstTimeUser(),
+            false,
+            objectMatch,
+            false);
       }
-      recordChange(
-          IS_FIRST_TIME_USER_FIELD,
-          original.getIsFirstTimeUser(),
-          updated.getIsFirstTimeUser(),
-          false,
-          objectMatch,
-          false);
     }
 
     private void updateAllowImpersonation() {
