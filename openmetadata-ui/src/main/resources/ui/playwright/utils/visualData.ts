@@ -1008,6 +1008,13 @@ export const installVisualData = async (
 
       return;
     }
+    if (path === 'services/ingestionPipelines/ip') {
+      // Connector forms display this value, so use a documentation-only address
+      // instead of querying the shared ingestion service's actual host.
+      await route.fulfill({ json: { ip: '192.0.2.10' } });
+
+      return;
+    }
     if (
       state === 'error' &&
       ([

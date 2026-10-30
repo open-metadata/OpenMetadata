@@ -1076,3 +1076,14 @@ test('dashboard data models retain their own paginated column endpoint', async (
     response.data.every((column: { name: string }) => Boolean(column.name))
   ).toBe(true);
 });
+
+test('connector host information is isolated from the live ingestion service', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => {
+    const response = await fetch('/api/v1/services/ingestionPipelines/ip');
+    return { status: response.status, body: await response.json() };
+  });
+  expect(result).toEqual({ status: 200, body: { ip: '192.0.2.10' } });
+});
