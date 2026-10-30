@@ -25,11 +25,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
+import { MASKED_PASSWORD_VALUE } from '../../../../../constants/Secrets.constants';
 import {
   SUBSCRIPTION_WEBHOOK,
   SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../../constants/Teams.constants';
-import { Webhook } from '../../../../../generated/type/profile';
 import { isValidUrl } from '../../../../../utils/SSOUtils';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
 import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
@@ -66,13 +66,17 @@ const TeamsSubscription = ({
   }, []);
 
   const isWebhookEmpty = form.watch('webhook') === NO_WEBHOOK;
+  // A masked endpoint stands for the one stored for this webhook, and only for it.
+  const storedWebhook = Object.keys(subscription ?? {})[0];
+  const keepsStoredEndpoint = (value: string) =>
+    value === MASKED_PASSWORD_VALUE &&
+    form.getValues('webhook') === storedWebhook;
 
+  // The endpoint is a secret the server masks, so the subscription shows only its webhook.
   const cellItem = useCallback(
-    (key: string, value: Webhook) => (
+    (key: string) => (
       <Typography>
-        <a href={value.endpoint} rel="noopener noreferrer" target="_blank">
-          {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
-        </a>
+        {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
       </Typography>
     ),
     [getWebhookIconByKey]
@@ -103,7 +107,7 @@ const TeamsSubscription = ({
       );
     }
 
-    return cellItem(webhook[0], webhook[1]);
+    return cellItem(webhook[0]);
   }, [subscription, hasEditPermission, cellItem, t]);
 
   const handleSave = async (values: SubscriptionWebhook) => {
@@ -217,9 +221,18 @@ const TeamsSubscription = ({
                       field: t('label.condition'),
                     })}
                     selectedKey={field.value}
-                    onSelectionChange={(key) =>
-                      key !== null && field.onChange(String(key))
-                    }>
+                    onSelectionChange={(key) => {
+                      if (key === null) {
+                        return;
+                      }
+                      field.onChange(String(key));
+                      if (
+                        String(key) !== storedWebhook &&
+                        form.getValues('endpoint') === MASKED_PASSWORD_VALUE
+                      ) {
+                        form.setValue('endpoint', '');
+                      }
+                    }}>
                     {(item) => <Select.Item id={item.id} label={item.label} />}
                   </Select>
                 )}
@@ -236,6 +249,7 @@ const TeamsSubscription = ({
                   validate: (value) =>
                     isWebhookEmpty ||
                     isValidUrl(value) ||
+                    keepsStoredEndpoint(value) ||
                     t('message.endpoint-should-be-valid'),
                 }}>
                 {({ field, fieldState }) => (
