@@ -49,7 +49,7 @@ jest.mock('../../rest/ontologyAPI', () => ({
   ...jest.requireActual('../../rest/ontologyAPI'),
   getOntologyConceptBindings: jest
     .fn()
-    .mockResolvedValue({ revision: 0, assets: [] }),
+    .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
   getOntology: jest.fn(),
   getOntologyWorkingDiff: jest.fn(),
   listOntologyAxioms: jest.fn(),
@@ -360,7 +360,10 @@ describe('OntologyExplorerPage', () => {
     <output data-testid="location">{useLocation().search}</output>
   );
 
-  const renderNativeStudio = (search: string) => {
+  const renderNativeStudio = (
+    search: string,
+    ontology: Ontology = nativeOntology
+  ) => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
       permissions: {
         ontologyConcept: { Create: true },
@@ -369,7 +372,7 @@ describe('OntologyExplorerPage', () => {
       },
     });
     mockUseRealRouter = true;
-    (getOntology as jest.Mock).mockResolvedValue(nativeOntology);
+    (getOntology as jest.Mock).mockResolvedValue(ontology);
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
       state: {
         ontologyId: nativeOntology.id,
@@ -381,7 +384,7 @@ describe('OntologyExplorerPage', () => {
       paging: { total: 0 },
     });
     (listOntologies as jest.Mock).mockResolvedValue({
-      data: [nativeOntology],
+      data: [ontology],
       paging: { total: 1 },
     });
     mockUseOntologyStudioScopes.mockReturnValue({
@@ -391,7 +394,7 @@ describe('OntologyExplorerPage', () => {
       isOntologyError: false,
       isOntologyLoading: false,
       refetchOntologies: jest.fn(),
-      ontologies: [nativeOntology],
+      ontologies: [ontology],
       refetch: jest.fn(),
     });
     (listOntologyConcepts as jest.Mock).mockResolvedValue({
@@ -438,6 +441,58 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
+  it('opens Releases from the version chip and Changes from Publish', async () => {
+    renderNativeStudio('?ontology=native-sales');
+    fireEvent.click(
+      await screen.findByTestId('ontology-release-history-trigger')
+    );
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
+    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-changes')
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('names the version chip by the version it shows', async () => {
+    renderNativeStudio('?ontology=native-sales', {
+      ...nativeOntology,
+      publicationStatus: {
+        unpublishedChanges: 0,
+        active: {
+          releaseId: 'release-2',
+          releaseRevision: 2,
+          semanticVersion: '1.2.0',
+        },
+      },
+    });
+
+    const chip = await screen.findByRole('button', { name: '1.2.0' });
+
+    expect(chip).toHaveAttribute(
+      'data-testid',
+      'ontology-release-history-trigger'
+    );
+
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => chip.focus());
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.release-history'
+    );
+
+    fireEvent.click(chip);
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('shows the feature placeholder for an empty catalog in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     mockSearchParams = new URLSearchParams();
@@ -455,6 +510,18 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(screen.getByTestId('all-ontologies-new-ontology'));
 
     expect(await screen.findByTestId('ontology-create-form')).toBeVisible();
+  });
+
+  it('opens Releases from the version chip in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderNativeStudio('?ontology=native-sales');
+    fireEvent.click(
+      await screen.findByTestId('ontology-release-history-trigger')
+    );
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   it('shows native list failure without falling back to glossary data', async () => {

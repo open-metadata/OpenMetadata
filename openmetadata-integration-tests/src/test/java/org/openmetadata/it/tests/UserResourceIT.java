@@ -33,15 +33,19 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -62,6 +66,7 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PersonalAccessToken;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.entity.ai.PolicyType;
@@ -103,6 +108,10 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.credentials.CredentialSourceTestSupport;
+import org.openmetadata.service.security.credentials.TokenDigest;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.TokenUtil;
 
 /**
  * Integration tests for User entity operations.
@@ -3092,7 +3101,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   @Test
   void test_createPersonalAccessToken_impersonatedBot_forbidden(TestNamespace ns) {
     // The bot's stored name must equal its email local-part: JwtFilter resolves the bot's
-    // username from the token's email claim, and BotTokenCache is keyed by that name.
+    // username from the token's email claim, and the stored-credential check reads that name.
     String localPart = "patbot" + ns.shortPrefix();
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()
@@ -3190,9 +3199,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     OpenMetadataClient firstClient = clientWithToken(firstToken);
     assertEquals(botUser.getId(), getLoggedInUser(firstClient).getId());
 
-    // JWT timestamps have second precision, so two tokens minted within the same second with the
-    // same expiry are byte-identical (and therefore both "current"). A different expiry makes the
-    // rotation observable without sleeping across a second boundary.
     String secondToken = generateBotToken(botUser, JWTTokenExpiry.Thirty);
     assertNotEquals(firstToken, secondToken);
 
@@ -3247,6 +3253,63 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_revokeToken_waitForPropagation(TestNamespace ns) {
+    User botUser = createBotUser(ns, "waitrevokebot");
+    OpenMetadataClient botClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+    String adminToken = SdkClients.getAdminToken();
+    String request = "{\"id\":\"" + botUser.getId() + "\"}";
+
+    TimedResponse revoke = timedPut(WAITING_BOT_REVOKE, adminToken, request);
+
+    assertWaitedForPropagation(revoke);
+    User revoked = JsonUtils.readValue(revoke.response().body(), User.class);
+    assertEquals(botUser.getId(), revoked.getId());
+    assertUnauthorized(botClient);
+    assertWaitedForPropagation(timedPut(WAITING_BOT_REVOKE, adminToken, request));
+  }
+
+  @Test
+  void test_revokePersonalAccessToken_waitForPropagation(TestNamespace ns) {
+    User owner = createRegularUser(ns, "patwait");
+    PersonalAccessToken pat = createPersonalAccessToken(clientFor(owner), ns.prefix("pat"));
+    OpenMetadataClient patClient = clientWithToken(pat.getJwtToken());
+    assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+    String ownerToken = CredentialFixtures.loginToken(owner);
+    String request = "{\"tokenIds\":[\"" + pat.getToken() + "\"]}";
+
+    TimedResponse revoke = timedPut(WAITING_PAT_REVOKE, ownerToken, request);
+
+    assertWaitedForPropagation(revoke);
+    String remaining = revoke.response().body();
+    assertEquals(0, JsonUtils.readTree(remaining).get("data").size(), remaining);
+    assertUnauthorized(patClient);
+    assertWaitedForPropagation(timedPut(WAITING_PAT_REVOKE, ownerToken, request));
+  }
+
+  @Test
+  void test_sameSecondPats_independent(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patsamesec"));
+    PersonalAccessToken first = createPersonalAccessToken(owner, ns.prefix("pat1"));
+    PersonalAccessToken second = createPersonalAccessToken(owner, ns.prefix("pat2"));
+    assertNotEquals(first.getJwtToken(), second.getJwtToken());
+    OpenMetadataClient firstClient = clientWithToken(first.getJwtToken());
+    OpenMetadataClient secondClient = clientWithToken(second.getJwtToken());
+    assertNotNull(getLoggedInUser(firstClient));
+    assertNotNull(getLoggedInUser(secondClient));
+
+    owner
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + first.getToken() + "\"]}");
+
+    assertUnauthorized(firstClient);
+    assertNotNull(getLoggedInUser(secondClient));
+  }
+
+  @Test
   void test_revokeAllPersonalAccessTokens_rejectsEveryToken(TestNamespace ns) {
     OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
     OpenMetadataClient first =
@@ -3291,6 +3354,148 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     restoreEntity(owner.getId().toString());
 
     assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+  }
+
+  @Test
+  void test_hardDelete_removesTokenRows(TestNamespace ns) {
+    User owner = createRegularUser(ns, "pathard");
+    createPersonalAccessToken(clientFor(owner), ns.prefix("pat"));
+    Entity.getTokenRepository()
+        .insertToken(TokenUtil.getEmailVerificationToken(owner.getId(), UUID.randomUUID()));
+    assertEquals(2, tokenRowCount(owner));
+
+    hardDeleteEntity(owner.getId().toString());
+
+    assertEquals(0, tokenRowCount(owner));
+  }
+
+  @Test
+  void test_revokePat_isScopedToTheCaller(TestNamespace ns) {
+    OpenMetadataClient caller = clientFor(createRegularUser(ns, "patcaller"));
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
+    PersonalAccessToken ownerPat = createPersonalAccessToken(owner, ns.prefix("pat"));
+    OpenMetadataClient ownerPatClient = clientWithToken(ownerPat.getJwtToken());
+    assertNotNull(getLoggedInUser(ownerPatClient));
+
+    caller
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + ownerPat.getToken() + "\"]}");
+
+    assertNotNull(getLoggedInUser(ownerPatClient));
+    String listed =
+        owner.getHttpClient().executeForString(HttpMethod.GET, "/v1/users/security/token", null);
+    assertTrue(listed.contains(ownerPat.getToken().toString()), listed);
+  }
+
+  @Test
+  void test_revokePat_withoutIdsDeletesNothing(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patnoids"));
+    OpenMetadataClient first =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat1")).getJwtToken());
+    OpenMetadataClient second =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat2")).getJwtToken());
+
+    owner
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users/security/token/revoke?removeAll=false", "{\"tokenIds\":[]}");
+
+    assertNotNull(getLoggedInUser(first));
+    assertNotNull(getLoggedInUser(second));
+  }
+
+  /**
+   * A PATCH cannot change a user's authentication mechanism: {@code UserRepository} puts the
+   * stored one back before the update, so the token a patch carries is never stored and is
+   * rejected. Until missRefreshMinAge after the server last read the bot, that token could be one
+   * created on another server, so a check may answer 503 first. Bot tokens change through
+   * generateToken and revokeToken, which the tests above cover.
+   */
+  @Test
+  void test_patchBotAuthMechanism_isIgnored(TestNamespace ns) {
+    User botUser = createBotUser(ns, "patchedbot");
+    String storedToken = generateBotToken(botUser, JWTTokenExpiry.Seven);
+    OpenMetadataClient storedClient = clientWithToken(storedToken);
+    assertEquals(botUser.getId(), getLoggedInUser(storedClient).getId());
+    JWTAuthMechanism patched =
+        JWTTokenGenerator.getInstance().generateJWTToken(botUser, JWTTokenExpiry.Thirty);
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/users/" + botUser.getId(), replaceJwtMechanism(patched));
+
+    assertEquals(
+        Set.of(TokenDigest.of(storedToken)),
+        CredentialSourceTestSupport.digests(Entity.getJdbi(), botUser.getName()));
+    assertEquals(botUser.getId(), getLoggedInUser(storedClient).getId());
+    String patchedToken = patched.getJWTToken();
+    Awaitility.await("an answer other than 503 for the patched token")
+        .pollInterval(Duration.ofMillis(100))
+        .atMost(Duration.ofSeconds(10))
+        .until(
+            () ->
+                CredentialFixtures.status(CredentialFixtures.LOGGED_IN_USER, patchedToken) != 503);
+    assertUnauthorized(clientWithToken(patchedToken));
+  }
+
+  @Test
+  void test_unrecognizedOmToken_rejected(TestNamespace ns) throws Exception {
+    User user = createRegularUser(ns, "unrecognized");
+    String loginToken = CredentialFixtures.loginToken(user);
+    String unrecognized = userTokenOfBotType(user);
+    assertEquals(user.getId(), getLoggedInUser(clientWithToken(loginToken)).getId());
+    assertEquals(200, mcpInitializeStatus(loginToken));
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class, () -> getLoggedInUser(clientWithToken(unrecognized)));
+    assertEquals(401, rejected.getStatusCode());
+    assertEquals("Not Authorized! Unrecognized token type!", rejected.getMessage());
+    assertEquals(401, mcpInitializeStatus(unrecognized));
+  }
+
+  private static ArrayNode replaceJwtMechanism(JWTAuthMechanism jwt) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject()
+        .put("op", "replace")
+        .put("path", "/authenticationMechanism")
+        .set(
+            "value",
+            PATCH_MAPPER.valueToTree(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(jwt)));
+    return ops;
+  }
+
+  /** Signed with the server key, but no issuing call pairs isBot=false with tokenType=BOT. */
+  private static String userTokenOfBotType(User user) {
+    return JWTTokenGenerator.getInstance()
+        .getJwtAuthMechanism(
+            user.getName(),
+            new HashSet<>(),
+            false,
+            user.getEmail(),
+            false,
+            ServiceTokenType.BOT,
+            JWTTokenGenerator.getExpiryDate(JWTTokenExpiry.Seven),
+            null)
+        .getJWTToken();
+  }
+
+  private static int tokenRowCount(User user) {
+    return Entity.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM user_tokens WHERE userid = :id")
+                    .bind("id", user.getId().toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   /**
@@ -3350,6 +3555,49 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     OpenMetadataException exception =
         assertThrows(OpenMetadataException.class, () -> getLoggedInUser(client));
     assertEquals(401, exception.getStatusCode(), exception.getMessage());
+  }
+
+  private static final String WAITING_BOT_REVOKE =
+      "/api/v1/users/revokeToken?waitForPropagation=true";
+  private static final String WAITING_PAT_REVOKE =
+      "/api/v1/users/security/token/revoke?waitForPropagation=true";
+
+  private record TimedResponse(HttpResponse<String> response, Duration took) {}
+
+  private static TimedResponse timedPut(String path, String bearerToken, String body) {
+    long started = System.nanoTime();
+    HttpResponse<String> response = CredentialFixtures.put(path, bearerToken, body);
+    return new TimedResponse(response, Duration.ofNanos(System.nanoTime() - started));
+  }
+
+  /** Asserts a lower bound only, as load can stretch the call but never cut the wait short. */
+  private static void assertWaitedForPropagation(TimedResponse revoke) {
+    Duration maxStaleness = CredentialSourceTestSupport.serverMaxStaleness();
+    assertEquals(200, revoke.response().statusCode(), revoke.response().body());
+    assertTrue(
+        revoke.took().compareTo(maxStaleness) >= 0,
+        "the revoke took "
+            + revoke.took().toMillis()
+            + " ms, less than maxStaleness "
+            + maxStaleness);
+  }
+
+  private static final HttpClient MCP_HTTP_CLIENT = HttpClient.newHttpClient();
+
+  /** The MCP transport authenticates the bearer token before it reads the request. */
+  private static int mcpInitializeStatus(String token) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(TestSuiteBootstrap.getBaseUrl() + "/mcp"))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json, text/event-stream")
+            .header("Authorization", "Bearer " + token)
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    JsonUtils.pojoToJson(McpTestUtils.createInitializeRequest())))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return MCP_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
   }
 
   @Test
