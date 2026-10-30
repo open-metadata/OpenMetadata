@@ -573,6 +573,9 @@ class TableauSource(DashboardServiceSource):
         Returns:
             Lineage request between Data Models and Dashboards
         """
+        # The dashboard failed in yield_dashboard: there is no edge to draw
+        if not self.context.get().dashboard:
+            return
         if hasattr(self.context.get(), "dataModels") and self.context.get().dataModels:
             for datamodel in self.context.get().dataModels:
                 try:
@@ -1087,8 +1090,10 @@ class TableauSource(DashboardServiceSource):
                 return None
             if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
                 logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
+                return None
             if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
                 logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
+                return None
 
             fqn_search_string = build_es_fqn_search_string(
                 database_name=prefix_database_name or database_name,
@@ -1116,6 +1121,13 @@ class TableauSource(DashboardServiceSource):
             database_query, schema_query, table_query = get_table_fqn_from_query_name(
                 table.fullName.replace("[", "").replace("]", "")
             )
+            # The database was matched above, after its lineage mapping; the raw fullName is not mapped
+            if prefix_schema_name and schema_query and prefix_schema_name.lower() != schema_query.lower():
+                logger.debug(f"Schema {schema_query} does not match prefix {prefix_schema_name}")
+                return None
+            if prefix_table_name and table_query and prefix_table_name.lower() != table_query.lower():
+                logger.debug(f"Table {table_query} does not match prefix {prefix_table_name}")
+                return None
             if table_query:
                 fqn_search_string = build_es_fqn_search_string(
                     database_name=database_query,
