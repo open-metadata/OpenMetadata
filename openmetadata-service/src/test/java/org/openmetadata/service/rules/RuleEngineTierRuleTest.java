@@ -1,12 +1,14 @@
 package org.openmetadata.service.rules;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 
@@ -17,8 +19,9 @@ import org.openmetadata.schema.utils.JsonUtils;
  *
  * <p>The governance-workflow query builder exports a Tier rule against the entity's {@code tags}
  * list (a {@code Tier.*} entry), since a serialized entity has no {@code tier} property. A rule
- * keyed on {@code {"var":"tier"}} resolves to {@code null} and silently never matches — see
- * {@code jsonLogicTierVar.ts} on the UI side.
+ * keyed on {@code {"var":"tier"}} (the shape saved before the fix) is rewritten to {@code tags} by
+ * {@link RuleEngine} so already-stored rules keep working — see {@code jsonLogicTierVar.ts} on the
+ * UI side.
  */
 class RuleEngineTierRuleTest {
 
@@ -40,10 +43,12 @@ class RuleEngineTierRuleTest {
   private static final String TIER_NOT_CONTAINS_TIER1 =
       "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Tier.Tier1\"]]}]}}";
 
-  // The broken shape the bug introduced (exported from 0bd108b until this fix): the variable points
-  // at a non-existent `tier` property, so it must resolve to null/false for any entity.
-  private static final String BROKEN_TIER_VAR_CONTAINS_TIER1 =
+  // The shape the Tier field saved before the fix. Rules already stored this way must keep working
+  // after upgrade, so RuleEngine rewrites `tier` to `tags` at evaluation time.
+  private static final String LEGACY_TIER_VAR_CONTAINS_TIER1 =
       "{\"some\":[{\"var\":\"tier\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Tier.Tier1\"]]}]}";
+  private static final String LEGACY_TIER_VAR_NOT_CONTAINS_TIER1 =
+      "{\"!\":{\"some\":[{\"var\":\"tier\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Tier.Tier1\"]]}]}}";
 
   @Test
   void tierContainsRuleMatchesTableTaggedTier1() {
@@ -90,16 +95,63 @@ class RuleEngineTierRuleTest {
   }
 
   @Test
-  void brokenTierVarRuleNeverMatchesEvenWhenEntityCarriesTier1() {
-    // Proves the bug: the variable the buggy UI emitted (`tier`) is not a property of any
-    // serialized entity, so the rule resolves to false even for a Tier.Tier1-tagged table.
-    Table table =
+  void legacyTierVarRuleMatchesOnlyEntitiesTaggedTier1() {
+    Table tier1 =
         new Table()
             .withId(UUID.randomUUID())
             .withName("has_tier")
             .withTags(List.of(tag("Tier.Tier1")));
+    Table tier2 =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("other_tier")
+            .withTags(List.of(tag("Tier.Tier2")));
+    Table untagged = new Table().withId(UUID.randomUUID()).withName("no_tier");
 
     assertEquals(
-        false, RuleEngine.getInstance().apply(BROKEN_TIER_VAR_CONTAINS_TIER1, entityMap(table)));
+        true, RuleEngine.getInstance().apply(LEGACY_TIER_VAR_CONTAINS_TIER1, entityMap(tier1)));
+    assertEquals(
+        false, RuleEngine.getInstance().apply(LEGACY_TIER_VAR_CONTAINS_TIER1, entityMap(tier2)));
+    assertEquals(
+        false, RuleEngine.getInstance().apply(LEGACY_TIER_VAR_CONTAINS_TIER1, entityMap(untagged)));
+  }
+
+  @Test
+  void legacyTierVarNotContainsRuleInversesTheMatch() {
+    Table withTier =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("has_tier")
+            .withTags(List.of(tag("Tier.Tier1")));
+    Table withoutTier = new Table().withId(UUID.randomUUID()).withName("no_tier");
+
+    assertEquals(
+        false,
+        RuleEngine.getInstance().apply(LEGACY_TIER_VAR_NOT_CONTAINS_TIER1, entityMap(withTier)));
+    assertEquals(
+        true,
+        RuleEngine.getInstance().apply(LEGACY_TIER_VAR_NOT_CONTAINS_TIER1, entityMap(withoutTier)));
+  }
+
+  @Test
+  void legacyTierVarDataAssetRuleIsEvaluatedAgainstTags() {
+    SemanticsRule rule =
+        new SemanticsRule()
+            .withName("Tier1 only")
+            .withDescription("Legacy Tier rule")
+            .withRule(LEGACY_TIER_VAR_CONTAINS_TIER1)
+            .withEnabled(true);
+    Table tier1 =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("has_tier")
+            .withTags(List.of(tag("Tier.Tier1")));
+    Table untagged = new Table().withId(UUID.randomUUID()).withName("no_tier");
+
+    assertTrue(
+        RuleEngine.getInstance().evaluateAndReturn(tier1, List.of(rule), false, false).isEmpty());
+    assertEquals(
+        List.of(rule),
+        RuleEngine.getInstance().evaluateAndReturn(untagged, List.of(rule), false, false));
   }
 }

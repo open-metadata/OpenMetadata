@@ -13,7 +13,9 @@
 
 // Tier only exists on a serialized entity as a `Tier.*` entry in the `tags` list —
 // there is no `tier` property — so a governance rule keyed on `{"var":"tier"}`
-// resolves to null under `RuleEngine.apply` and silently never matches. The Data
+// resolves to null under `RuleEngine.apply` and silently never matches (the server
+// now rewrites that legacy shape at evaluation time so rules stored before this
+// fix keep working, but new rules should be saved against `tags`). The Data
 // Contract semantics builder avoids this by remapping its Tier group field to
 // `tags` via `fieldName`; the workflow query builder cannot, because the Tags
 // field already serializes to `{"var":"tags"}` and a `fieldName` alias on the Tier
