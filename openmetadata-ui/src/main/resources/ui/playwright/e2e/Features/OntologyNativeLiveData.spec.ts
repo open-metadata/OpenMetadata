@@ -217,10 +217,20 @@ test.describe(
             .click();
           await liveData
             .getByTestId(
-              `ontology-live-data-hop-option-${partOf.id}:${customer.id}`
+              `ontology-live-data-hop-option-${partOf.id}:outgoing:${customer.id}`
             )
             .click();
-          expect((await generated).ok()).toBe(true);
+          const response = await generated;
+          expect(response.ok()).toBe(true);
+          expect(response.request().postDataJSON()).toEqual({
+            hops: [
+              {
+                property: partOf.id,
+                target: customer.id,
+                direction: 'outgoing',
+              },
+            ],
+          });
           await expect(sql).toContainText('SELECT t1.`customer_name`');
           await expect(sql).toContainText(
             't0.`customer_id` = t1.`customer_id` -- part of'

@@ -143,13 +143,15 @@ describe('OntologyConceptLiveData', () => {
 
     fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
     fireEvent.click(
-      screen.getByTestId('ontology-live-data-hop-option-part-of:customer')
+      screen.getByTestId(
+        'ontology-live-data-hop-option-part-of:outgoing:customer'
+      )
     );
 
     expect(await screen.findByText(/-- part of/)).toBeInTheDocument();
     expect(mockGenerate).toHaveBeenLastCalledWith(
       'transfer',
-      [{ property: 'part-of', target: 'customer' }],
+      [{ property: 'part-of', target: 'customer', direction: 'outgoing' }],
       expect.any(AbortSignal)
     );
     expect(screen.getByTestId('ontology-live-data-hops')).toHaveTextContent(
@@ -159,7 +161,9 @@ describe('OntologyConceptLiveData', () => {
     fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
 
     expect(
-      screen.getByTestId('ontology-live-data-hop-option-part-of:transfer')
+      screen.getByTestId(
+        'ontology-live-data-hop-option-part-of:incoming:transfer'
+      )
     ).toHaveTextContent('part of · Funds Transfer');
 
     fireEvent.click(screen.getByTestId('ontology-live-data-remove-hop'));
@@ -200,7 +204,9 @@ describe('OntologyConceptLiveData', () => {
     fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
 
     expect(
-      screen.getByTestId('ontology-live-data-hop-option-part-of:customer')
+      screen.getByTestId(
+        'ontology-live-data-hop-option-part-of:outgoing:customer'
+      )
     ).toHaveTextContent('part of · Customer');
 
     unmount();
@@ -214,22 +220,98 @@ describe('OntologyConceptLiveData', () => {
     fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
 
     expect(
-      screen.getByTestId('ontology-live-data-hop-option-part-of:transfer')
+      screen.getByTestId(
+        'ontology-live-data-hop-option-part-of:incoming:transfer'
+      )
     ).toHaveTextContent('has part · Funds Transfer');
+  });
+
+  it('sends the direction of each chip it follows', async () => {
+    renderWithQueryClient(
+      <OntologyConceptLiveData
+        concept={customer}
+        model={model}
+        relations={relations}
+      />
+    );
+    await screen.findByTestId('ontology-live-data-sql');
+
+    fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
+    fireEvent.click(
+      screen.getByTestId(
+        'ontology-live-data-hop-option-part-of:incoming:transfer'
+      )
+    );
+    fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
+    fireEvent.click(
+      screen.getByTestId(
+        'ontology-live-data-hop-option-part-of:outgoing:customer'
+      )
+    );
+
+    expect(mockGenerate).toHaveBeenLastCalledWith(
+      'customer',
+      [
+        { property: 'part-of', target: 'transfer', direction: 'incoming' },
+        { property: 'part-of', target: 'customer', direction: 'outgoing' },
+      ],
+      expect.any(AbortSignal)
+    );
+  });
+
+  it('keeps an outgoing and an incoming chip with the same property and target', () => {
+    const relatedModel: OntologyStudioModel = {
+      ...model,
+      properties: [
+        {
+          ...model.properties[0],
+          id: 'related-to',
+          name: 'relatedTo',
+          fullyQualifiedName: 'Payments.relatedTo',
+          iri: 'urn:payments:relatedTo',
+          domain: [transfer.iri, customer.iri],
+          range: [transfer.iri, customer.iri],
+        },
+      ],
+    };
+    renderWithQueryClient(
+      <OntologyConceptLiveData
+        concept={transfer}
+        model={relatedModel}
+        relations={getModelRelations(relatedModel)}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
+
+    expect(
+      screen.getByTestId(
+        'ontology-live-data-hop-option-related-to:outgoing:customer'
+      )
+    ).toHaveTextContent('related to · Customer');
+    expect(
+      screen.getByTestId(
+        'ontology-live-data-hop-option-related-to:incoming:customer'
+      )
+    ).toHaveTextContent('related to · Customer');
   });
 
   it('stops offering search-around once the path has five hops', async () => {
     renderLiveData();
     await screen.findByTestId('ontology-live-data-sql');
 
-    ['customer', 'transfer', 'customer', 'transfer', 'customer'].forEach(
-      (target) => {
-        fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
-        fireEvent.click(
-          screen.getByTestId(`ontology-live-data-hop-option-part-of:${target}`)
-        );
-      }
-    );
+    [
+      'outgoing:customer',
+      'incoming:transfer',
+      'outgoing:customer',
+      'incoming:transfer',
+      'outgoing:customer',
+    ].forEach((step) => {
+      fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
+      fireEvent.click(
+        screen.getByTestId(`ontology-live-data-hop-option-part-of:${step}`)
+      );
+    });
 
     expect(screen.getByTestId('ontology-live-data-hops')).toHaveTextContent(
       'part of · Customer'

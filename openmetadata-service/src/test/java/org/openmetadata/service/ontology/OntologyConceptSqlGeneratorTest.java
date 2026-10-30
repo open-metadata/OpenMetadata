@@ -22,6 +22,7 @@ class OntologyConceptSqlGeneratorTest {
   private static final String LEDGER = "finance.warehouse.payments.ledger";
   private static final String EMPLOYEES = "finance.warehouse.payments.employees";
   private static final String CATEGORIES = "finance.warehouse.payments.categories";
+  private static final String VIP_CUSTOMERS = "finance.warehouse.payments.vip_customers";
   private static final UUID PART_OF = UUID.randomUUID();
   private static final UUID PAID_BY = UUID.randomUUID();
   private static final UUID RECEIVED_BY = UUID.randomUUID();
@@ -757,11 +758,10 @@ class OntologyConceptSqlGeneratorTest {
                     List.of("payer_id", "payer_branch"), CUSTOMERS, "customer_id", "branch")));
 
     assertEquals(
-        "Hop 1 (paid by): several foreign keys join "
+        "Hop 1 (paid by): payer_id is in several foreign keys between "
             + TRANSFERS
             + " and "
-            + CUSTOMERS
-            + "; bind the paid by property to one of their columns",
+            + CUSTOMERS,
         assertThrows(
                 BadRequestException.class,
                 () ->
@@ -774,6 +774,71 @@ class OntologyConceptSqlGeneratorTest {
                                 "paid by",
                                 concept("Customer", identifiedCustomers())))))
             .getMessage());
+  }
+
+  @Test
+  void aKeyEqualToTheBoundColumnWinsOverKeysThatContainIt() {
+    final BoundConcept employee =
+        concept(
+            "Employee",
+            new BoundTable(
+                EMPLOYEES,
+                "Postgres",
+                List.of(List.of("employee_id")),
+                Map.of(MANAGED_BY, List.of("manager_id")),
+                List.of("employee_id"),
+                List.of(
+                    foreignKey(
+                        List.of("manager_id", "tenant_id"), EMPLOYEES, "employee_id", "tenant_id"),
+                    foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id"),
+                    foreignKey(
+                        List.of("manager_id", "region"), EMPLOYEES, "employee_id", "region"))));
+
+    assertEquals(
+        "SELECT t1.employee_id\nFROM payments.employees t0\n"
+            + "JOIN payments.employees t1 ON t0.manager_id = t1.employee_id -- managed by\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                employee, List.of(new Hop(MANAGED_BY, MANAGES, "managed by", employee)))
+            .sql());
+  }
+
+  @Test
+  void aLaterCandidatesEqualKeyWinsOverAnEarlierCandidatesContainingKeys() {
+    final BoundTable transfers =
+        new BoundTable(
+            TRANSFERS,
+            "Postgres",
+            List.of(List.of("transfer_id")),
+            Map.of(PAID_BY, List.of("payer_id")),
+            List.of(),
+            List.of(
+                foreignKey(List.of("payer_id", "payer_region"), CUSTOMERS, "customer_id", "region"),
+                foreignKey(List.of("payer_id", "payer_branch"), CUSTOMERS, "customer_id", "branch"),
+                foreignKey(List.of("payer_id"), VIP_CUSTOMERS, "customer_id")));
+    final BoundTable vipCustomers =
+        new BoundTable(
+            VIP_CUSTOMERS,
+            "Postgres",
+            List.of(List.of("customer_id")),
+            Map.of(),
+            List.of("customer_id"),
+            List.of());
+
+    assertEquals(
+        "SELECT t1.customer_id\nFROM payments.transfers t0\n"
+            + "JOIN payments.vip_customers t1 ON t0.payer_id = t1.customer_id -- paid by\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Funds Transfer", transfers),
+                List.of(
+                    new Hop(
+                        PAID_BY,
+                        null,
+                        "paid by",
+                        new BoundConcept(
+                            "Customer", List.of(identifiedCustomers(), vipCustomers)))))
+            .sql());
   }
 
   @Test

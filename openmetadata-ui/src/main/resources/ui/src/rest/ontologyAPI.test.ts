@@ -15,6 +15,7 @@ import { OntologyConceptType } from '../generated/api/data/createOntologyConcept
 import { Kind } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { Direction } from '../generated/api/data/ontologyConceptQuery';
 import { AssetType } from '../generated/api/data/updateOntologyConceptBinding';
 import { OntologyChangeSetState } from '../generated/entity/data/ontologyChangeSet';
 import APIClient from './axiosClient';
@@ -107,7 +108,13 @@ describe('ontologyAPI', () => {
 
   it('posts the search-around hops to the concept query and returns the generated SQL', async () => {
     const signal = new AbortController().signal;
-    const hops = [{ property: 'part-of', target: 'customer' }];
+    const hops = [
+      {
+        property: 'part-of',
+        target: 'customer',
+        direction: Direction.Outgoing,
+      },
+    ];
     const body = {
       hops: [{ ...hops[0], label: 'part of' }],
       sql: 'SELECT t1.name\nFROM payments.transfers t0\nLIMIT 50',
