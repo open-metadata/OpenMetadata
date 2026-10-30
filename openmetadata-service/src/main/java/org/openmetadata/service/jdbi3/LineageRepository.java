@@ -63,6 +63,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
@@ -94,6 +95,7 @@ import org.openmetadata.service.lineage.LineageSceneCache;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -1957,26 +1959,25 @@ public class LineageRepository {
       Long endTime,
       SubjectContext subjectContext) {
     try {
+      EntityCountLineageRequest request =
+          new EntityCountLineageRequest()
+              .withFqn(fqn)
+              .withDirection(direction)
+              .withFrom(from)
+              .withSize(size)
+              .withNodeDepth(nodeDepth)
+              .withMaxDepth(maxDepth)
+              .withQueryFilter(queryFilter)
+              .withIncludeDeleted(deleted)
+              .withIsConnectedVia(isConnectedVia(entityType))
+              .withStartTime(startTime)
+              .withEndTime(endTime)
+              .withIncludeSourceFields(SearchUtils.getRequiredLineageFields(includeSourceFields));
       SearchLineageResult response =
-          Entity.getSearchRepository()
-              .searchLineageByEntityCount(
-                  new org.openmetadata.schema.api.lineage.EntityCountLineageRequest()
-                      .withFqn(fqn)
-                      .withDirection(direction)
-                      .withFrom(from)
-                      .withSize(size)
-                      .withNodeDepth(nodeDepth)
-                      .withMaxDepth(maxDepth)
-                      .withQueryFilter(queryFilter)
-                      .withIncludeDeleted(deleted)
-                      .withIsConnectedVia(isConnectedVia(entityType))
-                      .withStartTime(startTime)
-                      .withEndTime(endTime)
-                      .withIncludeSourceFields(
-                          org.openmetadata.service.search.SearchUtils.getRequiredLineageFields(
-                              includeSourceFields)),
-                  subjectContext);
-      response = SearchLineagePermissionFilter.filterFor(subjectContext, response, fqn);
+          SearchLineagePermissionFilter.filterPageFor(
+              subjectContext,
+              Entity.getSearchRepository().searchLineageByEntityCount(request, subjectContext),
+              request);
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 
