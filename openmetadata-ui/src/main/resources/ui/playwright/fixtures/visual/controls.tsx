@@ -140,10 +140,12 @@ const Control = ({ scenario }: { scenario: string }) => {
         <Table.Body
           items={rows}
           renderEmptyState={() => (
-            <EmptyPlaceholder
-              title="No assets yet"
-              description="Add an asset to begin reviewing metadata."
-            />
+            <Box className="tw:relative tw:h-64 tw:w-full">
+              <EmptyPlaceholder
+                title="No assets yet"
+                description="Add an asset to begin reviewing metadata."
+              />
+            </Box>
           )}>
           {(row) => (
             <Table.Row id={row.id} columns={columns}>
@@ -224,7 +226,9 @@ const Control = ({ scenario }: { scenario: string }) => {
         aria-label="Start date"
         isDisabled={disabled}
         isInvalid={invalid}
-        triggerVariant={scenario.endsWith('-input') ? 'input' : 'button'}
+        triggerVariant={
+          scenario.endsWith('-input') || invalid ? 'input' : 'button'
+        }
       />
     );
   }
@@ -322,10 +326,13 @@ const Control = ({ scenario }: { scenario: string }) => {
   }
   if (scenario === 'empty-default') {
     return (
-      <EmptyPlaceholder
-        title="No data assets"
-        description="Connect a service to start discovering your metadata."
-      />
+      // The placeholder fills its nearest positioned container.
+      <Box className="tw:relative tw:h-64 tw:w-full">
+        <EmptyPlaceholder
+          title="No data assets"
+          description="Connect a service to start discovering your metadata."
+        />
+      </Box>
     );
   }
   if (scenario.startsWith('input-')) {

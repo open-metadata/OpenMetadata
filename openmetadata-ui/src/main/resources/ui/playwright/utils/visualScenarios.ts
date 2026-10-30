@@ -51,6 +51,8 @@ interface VisualScene {
   target?: VisualLocator;
   fullTarget?: boolean;
   absent?: VisualLocator[];
+  checked?: VisualLocator[];
+  inViewport?: VisualLocator[];
   state?: VisualDataState;
   text?: string;
   containsText?: string | string[];
@@ -164,6 +166,11 @@ export const registerVisualScenarios = (group: string) => {
           await expect(locate(page, scene.ready)).toBeVisible();
           for (const missing of scene.absent ?? [])
             await expect(locate(page, missing)).toHaveCount(0);
+          for (const selected of scene.checked ?? [])
+            await expect(locate(page, selected)).toBeChecked();
+          // Overlay footers can report visible while a scroll container clips them.
+          for (const visible of scene.inViewport ?? [])
+            await expect(locate(page, visible)).toBeInViewport({ ratio: 1 });
           if (scene.text)
             await expect(locate(page, scene.ready)).toContainText(scene.text);
           for (const text of [scene.containsText ?? []].flat())

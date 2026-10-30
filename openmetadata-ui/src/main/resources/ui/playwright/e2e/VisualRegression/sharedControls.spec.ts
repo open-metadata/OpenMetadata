@@ -116,12 +116,13 @@ for (const theme of VISUAL_THEMES) {
       test(scenario, async ({ page, controlAssets }) => {
         await page.clock.setFixedTime(FIXED_DATE);
         await page.setViewportSize({ width: 1000, height: 700 });
+        // Portals inherit the application body color outside the control root.
         await page.route('**/__visual_controls__', (route) =>
           route.fulfill({
             contentType: 'text/html',
             body: `<!doctype html><html class="${
               theme === 'dark' ? 'dark-mode' : ''
-            }"><head><title>Metadata controls</title></head><body class="tw:bg-primary"><div id="root" data-scenario="${scenario}"></div></body></html>`,
+            }"><head><title>Metadata controls</title></head><body class="tw:bg-primary tw:text-primary"><div id="root" data-scenario="${scenario}"></div></body></html>`,
           })
         );
         await page.goto('/__visual_controls__', {
@@ -184,6 +185,19 @@ for (const theme of VISUAL_THEMES) {
         if (scenario === 'tooltip-open') {
           await page.getByTestId('control-trigger').hover();
           await expect(page.getByRole('tooltip')).toBeVisible();
+        }
+        if (scenario === 'empty-default' || scenario === 'table-empty') {
+          await expect(
+            page.getByText(
+              scenario === 'empty-default' ? 'No data assets' : 'No assets yet',
+              { exact: true }
+            )
+          ).toBeInViewport({ ratio: 1 });
+        }
+        if (scenario === 'popover-open') {
+          await expect(page.getByRole('dialog')).toContainText(
+            'Owned by the Analytics team.'
+          );
         }
         if (scenario === 'modal-open') {
           await expect(page.getByRole('dialog')).toBeVisible();

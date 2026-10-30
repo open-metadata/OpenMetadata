@@ -2510,7 +2510,8 @@
       {
         "action": "click",
         "role": "button",
-        "name": "Add Domain"
+        "name": "Add Domain",
+        "within": "search-header-actions"
       }
     ],
     "target": {
@@ -2795,7 +2796,8 @@
       {
         "action": "click",
         "role": "button",
-        "name": "Add Domain"
+        "name": "Add Domain",
+        "within": "search-header-actions"
       },
       {
         "action": "click",
@@ -4391,21 +4393,28 @@
     "group": "Interaction states",
     "path": "/observability/test-library",
     "ready": {
-      "testId": "form-heading"
+      "role": "textbox",
+      "within": "sql-expression"
     },
     "actions": [
       {
         "action": "click",
         "testId": "add-test-definition-button"
       }
-    ]
+    ],
+    "target": {
+      "testId": "test-definition-form-body"
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0
   },
   {
     "id": "test-definition-validation",
     "group": "Interaction states",
     "path": "/observability/test-library",
     "ready": {
-      "role": "dialog"
+      "role": "textbox",
+      "within": "sql-expression"
     },
     "actions": [
       {
@@ -4417,7 +4426,13 @@
         "role": "button",
         "name": "Save"
       }
-    ]
+    ],
+    "target": {
+      "testId": "test-definition-form-body"
+    },
+    "fullTarget": true,
+    "maxDiffPixelRatio": 0,
+    "containsText": "Name is required."
   },
   {
     "id": "shell-profile-menu",
@@ -10476,5 +10491,387 @@
     "ready": {
       "text": "Choose Provider"
     }
+  },
+  {
+    "id": "listing-domain-table",
+    "group": "Listing states",
+    "path": "/domain",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "table-view-toggle"
+      }
+    ],
+    "ready": {
+      "role": "rowheader",
+      "namePattern": "Finance"
+    },
+    "text": "Finance"
+  },
+  {
+    "id": "listing-domain-card",
+    "group": "Listing states",
+    "path": "/domain",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "card-view-toggle"
+      }
+    ],
+    "ready": {
+      "testId": "entity-card"
+    },
+    "text": "Finance"
+  },
+  {
+    "id": "listing-domain-selected",
+    "group": "Listing states",
+    "path": "/domain",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "table-view-toggle"
+      },
+      {
+        "action": "press",
+        "role": "row",
+        "value": "Space",
+        "namePattern": "Finance"
+      }
+    ],
+    "ready": {
+      "testId": "delete-selected"
+    },
+    "checked": [
+      {
+        "role": "checkbox",
+        "within": {
+          "role": "row",
+          "namePattern": "Finance"
+        }
+      }
+    ]
+  },
+  {
+    "id": "listing-domain-delete-confirmation",
+    "group": "Listing states",
+    "path": "/domain",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "table-view-toggle"
+      },
+      {
+        "action": "press",
+        "role": "row",
+        "value": "Space",
+        "namePattern": "Finance"
+      },
+      {
+        "action": "click",
+        "testId": "delete-selected"
+      }
+    ],
+    "ready": {
+      "testId": "delete-modal"
+    },
+    "text": "Finance",
+    "target": {
+      "testId": "delete-modal"
+    },
+    "maxDiffPixelRatio": 0
+  },
+  {
+    "id": "listing-domain-read-only",
+    "group": "Listing states",
+    "path": "/domain",
+    "state": "read-only",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "table-view-toggle"
+      }
+    ],
+    "ready": {
+      "role": "rowheader",
+      "namePattern": "Finance"
+    },
+    "absent": [
+      {
+        "role": "button",
+        "name": "Add Domain"
+      }
+    ]
+  },
+  {
+    "id": "listing-product-table",
+    "group": "Listing states",
+    "path": "/dataProduct",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "table-view-toggle"
+      }
+    ],
+    "ready": {
+      "role": "rowheader",
+      "namePattern": "Revenue product"
+    },
+    "text": "Revenue product"
+  },
+  {
+    "id": "listing-product-card",
+    "group": "Listing states",
+    "path": "/dataProduct",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "card-view-toggle"
+      }
+    ],
+    "ready": {
+      "testId": "entity-card"
+    },
+    "text": "Revenue product"
+  },
+  {
+    "id": "listing-product-selected",
+    "group": "Listing states",
+    "path": "/dataProduct",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "table-view-toggle"
+      },
+      {
+        "action": "press",
+        "role": "row",
+        "value": "Space",
+        "namePattern": "Revenue product"
+      }
+    ],
+    "ready": {
+      "testId": "delete-selected"
+    },
+    "checked": [
+      {
+        "role": "checkbox",
+        "within": {
+          "role": "row",
+          "namePattern": "Revenue product"
+        }
+      }
+    ]
+  },
+  {
+    "id": "listing-product-delete-confirmation",
+    "group": "Listing states",
+    "path": "/dataProduct",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "table-view-toggle"
+      },
+      {
+        "action": "press",
+        "role": "row",
+        "value": "Space",
+        "namePattern": "Revenue product"
+      },
+      {
+        "action": "click",
+        "testId": "delete-selected"
+      }
+    ],
+    "ready": {
+      "testId": "delete-modal"
+    },
+    "text": "Revenue product",
+    "target": {
+      "testId": "delete-modal"
+    },
+    "maxDiffPixelRatio": 0
+  },
+  {
+    "id": "listing-product-read-only",
+    "group": "Listing states",
+    "path": "/dataProduct",
+    "state": "read-only",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "table-view-toggle"
+      }
+    ],
+    "ready": {
+      "role": "rowheader",
+      "namePattern": "Revenue product"
+    },
+    "absent": [
+      {
+        "role": "button",
+        "name": "Add Data Product"
+      }
+    ]
+  },
+  {
+    "id": "listing-domain-tree",
+    "group": "Listing states",
+    "path": "/domain",
+    "actions": [
+      {
+        "action": "click",
+        "testId": "tree-view-toggle"
+      }
+    ],
+    "ready": {
+      "testId": "domain-details-panel"
+    },
+    "text": "Curated finance metadata for reliable analytics."
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-calendar-date-cp-footer",
+    "ready": {
+      "role": "button",
+      "name": "Apply"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_date_cp-card"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "within": "date-time-picker"
+      },
+      {
+        "action": "scroll",
+        "role": "button",
+        "name": "Apply"
+      }
+    ],
+    "inViewport": [
+      {
+        "role": "button",
+        "name": "Apply"
+      },
+      {
+        "role": "button",
+        "name": "Cancel",
+        "within": {
+          "role": "dialog",
+          "has": {
+            "role": "button",
+            "name": "Apply"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "group": "Custom property interactions",
+    "path": "/table/visual_warehouse.finance.public.orders",
+    "state": "custom-properties",
+    "initialReady": {
+      "testId": "entity-header-display-name"
+    },
+    "id": "custom-property-calendar-dateTime-cp-footer",
+    "ready": {
+      "role": "button",
+      "name": "Apply"
+    },
+    "actions": [
+      {
+        "action": "click",
+        "role": "tab",
+        "name": "Custom Properties"
+      },
+      {
+        "action": "click",
+        "testId": "edit-icon",
+        "within": "custom-property-visual_dateTime_cp-card"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "within": "date-time-picker"
+      },
+      {
+        "action": "scroll",
+        "role": "button",
+        "name": "Apply"
+      }
+    ],
+    "inViewport": [
+      {
+        "role": "button",
+        "name": "Apply"
+      },
+      {
+        "role": "button",
+        "name": "Cancel",
+        "within": {
+          "role": "dialog",
+          "has": {
+            "role": "button",
+            "name": "Apply"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "customize-curated-create",
+    "group": "Customization states",
+    "path": "/customize-page/VisualAnalystPersona/LandingPage",
+    "mode": "ai",
+    "initialReady": {
+      "testId": "KnowledgePanel.CuratedAssets"
+    },
+    "actions": [
+      {
+        "action": "scroll",
+        "testId": "KnowledgePanel.CuratedAssets"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Create",
+        "within": "KnowledgePanel.CuratedAssets"
+      }
+    ],
+    "ready": {
+      "testId": "curated-assets-modal-container"
+    },
+    "target": {
+      "testId": "curated-assets-modal-container"
+    },
+    "containsText": ["Create Widget"],
+    "inViewport": [
+      {
+        "testId": "saveButton"
+      },
+      {
+        "testId": "cancelButton"
+      },
+      {
+        "role": "combobox",
+        "namePattern": "[Ss]elect [Aa]sset [Tt]ype"
+      }
+    ],
+    "maxDiffPixelRatio": 0
   }
 ]
