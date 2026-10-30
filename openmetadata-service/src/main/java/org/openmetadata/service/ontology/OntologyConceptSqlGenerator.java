@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -189,30 +190,9 @@ public final class OntologyConceptSqlGenerator {
         step.hop().otherInverse().filter(inverse -> isBound(previous, candidates, inverse));
     final Optional<Join> join;
     if (isBound(previous, candidates, property)) {
-      join =
-          firstJoin(
-                  candidates,
-                  table -> agreeingKeyPairs(step, previous, table, property),
-                  step.hop())
-              .or(
-                  () ->
-                      firstJoin(
-                          candidates,
-                          table -> bindingPairs(previous, table, property),
-                          step.hop()));
+      join = bindingJoin(step, candidates, property, false);
     } else if (boundInverse.isPresent()) {
-      final UUID inverse = boundInverse.get();
-      join =
-          firstJoin(
-                  candidates,
-                  table -> converse(agreeingKeyPairs(step, table, previous, inverse)),
-                  step.hop())
-              .or(
-                  () ->
-                      firstJoin(
-                          candidates,
-                          table -> converse(bindingPairs(table, previous, inverse)),
-                          step.hop()));
+      join = bindingJoin(step, candidates, boundInverse.get(), true);
     } else {
       join = firstJoin(candidates, table -> onlyKeyPairs(step, table), step.hop());
     }
@@ -251,31 +231,75 @@ public final class OntologyConceptSqlGenerator {
   }
 
   /**
-   * The {@code from} table's binding wins over {@code to}'s, as in {@link #bindingPairs}. A key on
-   * exactly the bound column wins; otherwise the one key that contains it orients and joins on all
-   * of its columns.
+   * Follows a bound property, or takes the converse of a hop over a bound inverse from each
+   * candidate back to the previous table. Every candidate's key equal to the bound column is tried
+   * before any candidate's key that contains it, and both before the identifier join.
    */
-  private static List<ColumnPair> agreeingKeyPairs(
+  private static Optional<Join> bindingJoin(
+      final Step step,
+      final List<BoundTable> candidates,
+      final UUID property,
+      final boolean overInverse) {
+    final BoundTable previous = step.previous();
+    final Function<BiFunction<BoundTable, BoundTable, List<ColumnPair>>, Optional<Join>> pass =
+        pairs ->
+            firstJoin(
+                candidates,
+                table ->
+                    overInverse
+                        ? converse(pairs.apply(table, previous))
+                        : pairs.apply(previous, table),
+                step.hop());
+    return pass.apply((from, to) -> equalKeyPairs(from, to, property))
+        .or(() -> pass.apply((from, to) -> containingKeyPairs(step, from, to, property)))
+        .or(() -> pass.apply((from, to) -> bindingPairs(from, to, property)));
+  }
+
+  /**
+   * The table that binds {@code property}, {@code from} winning over {@code to} as in {@link
+   * #bindingPairs}, with its bound column and its keys to the other table.
+   */
+  private record BoundKeys(boolean reversed, List<String> bound, List<TableConstraint> keys) {
+    static Optional<BoundKeys> of(final BoundTable from, final BoundTable to, final UUID property) {
+      final boolean reversed = !from.objectColumns().containsKey(property);
+      final BoundTable owner = reversed ? to : from;
+      return Optional.ofNullable(owner.objectColumns().get(property))
+          .map(bound -> new BoundKeys(reversed, bound, foreignKeys(owner, reversed ? from : to)));
+    }
+  }
+
+  private static List<ColumnPair> equalKeyPairs(
+      final BoundTable from, final BoundTable to, final UUID property) {
+    return BoundKeys.of(from, to, property)
+        .flatMap(
+            bound ->
+                bound.keys().stream()
+                    .filter(key -> key.getColumns().equals(bound.bound()))
+                    .findFirst()
+                    .map(key -> pairs(key, bound.reversed())))
+        .orElse(List.of());
+  }
+
+  /** The one key that contains the bound column orients and joins on all of its columns. */
+  private static List<ColumnPair> containingKeyPairs(
       final Step step, final BoundTable from, final BoundTable to, final UUID property) {
-    final boolean reversed = !from.objectColumns().containsKey(property);
-    final BoundTable owner = reversed ? to : from;
-    final List<String> bound = owner.objectColumns().get(property);
-    if (bound == null) {
+    final Optional<BoundKeys> found = BoundKeys.of(from, to, property);
+    if (found.isEmpty() || found.get().bound().size() != 1) {
       return List.of();
     }
-    final List<TableConstraint> keys = foreignKeys(owner, reversed ? from : to);
-    final Optional<TableConstraint> exact =
-        keys.stream().filter(key -> key.getColumns().equals(bound)).findFirst();
+    final String column = found.get().bound().getFirst();
     final List<TableConstraint> containing =
-        keys.stream()
-            .filter(key -> bound.size() == 1 && key.getColumns().contains(bound.getFirst()))
-            .toList();
-    if (exact.isEmpty() && containing.size() > 1) {
-      throw severalKeys(step, from == step.previous() ? to : from);
+        found.get().keys().stream().filter(key -> key.getColumns().contains(column)).toList();
+    if (containing.size() > 1) {
+      throw step.failure(
+          ": %s is in several foreign keys between %s and %s",
+          column,
+          step.previous().fullyQualifiedName(),
+          (from == step.previous() ? to : from).fullyQualifiedName());
     }
-    return exact
-        .or(() -> containing.stream().findFirst())
-        .map(key -> pairs(key, reversed))
+    return containing.stream()
+        .findFirst()
+        .map(key -> pairs(key, found.get().reversed()))
         .orElse(List.of());
   }
 
