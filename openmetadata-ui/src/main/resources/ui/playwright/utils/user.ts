@@ -714,9 +714,9 @@ export const addUser = async (
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');
-  await saveResponse;
 
   expect((await saveResponse).status()).toBe(201);
+  await expect(page.getByTestId('add-user')).toBeVisible();
 };
 
 export const checkForUserExistError = async (
