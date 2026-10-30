@@ -895,3 +895,8 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   PRIMARY KEY (conceptId, assetId)
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
+
+-- Transfer RDF delivery to pause-aware consumers before producing pipelineExecution payloads.
+-- Deleting first waits for an old in-flight delivery; old producers still use the enqueue guard.
+DELETE FROM rdf_live_write_guard WHERE id = 'drain';
+INSERT INTO rdf_live_write_guard (id) VALUES ('drain-v2') ON CONFLICT (id) DO NOTHING;
