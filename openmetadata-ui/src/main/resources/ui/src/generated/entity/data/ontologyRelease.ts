@@ -21,6 +21,11 @@ export interface OntologyRelease {
     baseReleaseId?:     string;
     changeDescription?: ChangeDescription;
     /**
+     * Member change counts against baseReleaseId, assigned by the server at capture. Absent on
+     * releases captured before change summaries existed.
+     */
+    changeSummary?: OntologyReleaseChangeSummary;
+    /**
      * SHA-256 of the sealed manifest, including ordered member identities and payload digests.
      */
     contentDigest: string;
@@ -146,6 +151,26 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * Member change counts against baseReleaseId, assigned by the server at capture. Absent on
+ * releases captured before change summaries existed.
+ *
+ * Member change counts of a release against the release that was active when it was
+ * captured. The counts partition the rows of GET /v1/ontologyReleases/{id}/diff with its
+ * default base.
+ */
+export interface OntologyReleaseChangeSummary {
+    added:   number;
+    changed: number;
+    /**
+     * Existing concepts or properties newly marked deprecated. Disjoint from added, changed and
+     * removed. New captures always set this count; its absence on older summaries means the
+     * total is unavailable.
+     */
+    deprecated?: number;
+    removed:     number;
 }
 
 /**

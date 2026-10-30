@@ -3,20 +3,33 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.openmetadata.schema.api.data.OntologyReleaseReview;
+import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.OntologyApprovalRule;
 import org.openmetadata.schema.type.OntologyReleaseEvent;
 import org.openmetadata.schema.type.OntologyReleaseEvent.EventType;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyReviewTarget;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -24,15 +37,41 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.TaskStateConflictException;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.OntologyWorkflowDecision;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
 import org.openmetadata.service.ontology.OntologyReview;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 
 @Repository
 public final class OntologyReleaseRepository extends OntologyEntityRepository<OntologyRelease> {
   private static final String USER_APPROVAL_TASK = "userApprovalTask";
+  private static final String REVIEW_TASK_FIELDS = "assignees,reviewers,createdBy";
+
+  /** Storage keeps a task's {@code about} out of its JSON, so a read that needs it asks for it. */
+  private static final String LISTED_REVIEW_TASK_FIELDS =
+      REVIEW_TASK_FIELDS + "," + TaskRepository.FIELD_ABOUT;
+
+  private static final String REVIEW_SETUP_CHANGED =
+      "The ontology's reviewers or approval rule changed while this review was being requested; submit the review again";
+
+  /**
+   * Statuses an undecided approval task can carry. The other non-terminal task statuses are
+   * access-request stages that never apply to a review.
+   */
+  private static final List<TaskEntityStatus> OPEN_REVIEW_TASK_STATUSES =
+      List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
+
+  private record OpenReview(OntologyRelease release, OntologyReleaseReviewReader reader) {}
+
+  private static final Comparator<OpenReview> NEWEST_FIRST =
+      Comparator.comparing(
+              (OpenReview review) -> review.release().getUpdatedAt(),
+              Comparator.nullsLast(Comparator.reverseOrder()))
+          .thenComparing(review -> review.release().getId());
 
   public OntologyReleaseRepository() {
     super(
@@ -194,11 +233,159 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     if (nullOrEmpty(entity.getReviewers())) {
       throw new BadRequestException("Configure ontology reviewers before submitting for approval");
     }
+    final List<EntityReference> reviewers = OntologyReview.eligibleReviewers(entity, task);
+    if (reviewers.isEmpty()) {
+      throw new BadRequestException(
+          "Ontology approval requires a reviewer other than the requester and the author");
+    }
     requireReviewWorkflow(task);
-    task.setOntologyReview(OntologyReview.target(entity));
+    task.setOntologyReview(OntologyReview.target(entity).withApprovalRule(approvalRule(entity)));
     task.setAbout(entity.getEntityReference());
-    task.setAssignees(entity.getReviewers());
-    task.setReviewers(entity.getReviewers());
+    task.setAssignees(reviewers);
+    task.setReviewers(reviewers);
+  }
+
+  private static OntologyApprovalRule approvalRule(final OntologyRelease entity) {
+    if (entity.getOntology() == null) {
+      return OntologyApprovalRule.AnyReviewer;
+    }
+    final Ontology ontology =
+        Entity.getEntity(Entity.ONTOLOGY, entity.getOntology().getId(), "", Include.NON_DELETED);
+    return ontology.getApprovalRule() == null
+        ? OntologyApprovalRule.AnyReviewer
+        : ontology.getApprovalRule();
+  }
+
+  public OntologyReleaseReview review(final OntologyRelease release, final String caller) {
+    if (release.getReviewTask() == null) {
+      throw new EntityNotFoundException(
+          "Ontology release " + release.getId() + " has no review task");
+    }
+    return reader(release, release.getReviewTask(), caller).review();
+  }
+
+  /**
+   * Open reviews only; a decided review stays readable through {@link #review}. The list starts
+   * from the caller's own open approval tasks about a release, which the database narrows to the
+   * caller as reviewer, assignee or requester, so a page costs the caller's reviews rather than
+   * every open review or approval in the catalog.
+   */
+  public ResultList<OntologyReleaseReview> listReviews(
+      final OntologyReleaseReviewReader.View view,
+      final String caller,
+      final int limit,
+      final String after,
+      final Predicate<OntologyRelease> canView) {
+    final int offset = offset(after);
+    final List<OpenReview> reviews = openReviews(view, caller, canView);
+    final int from = Math.min(offset, reviews.size());
+    final int to = Math.min(reviews.size(), from + limit);
+    return page(
+        reviews.subList(from, to).stream().map(review -> review.reader().review()).toList(),
+        offset,
+        limit,
+        reviews.size());
+  }
+
+  private List<OpenReview> openReviews(
+      final OntologyReleaseReviewReader.View view,
+      final String caller,
+      final Predicate<OntologyRelease> canView) {
+    final TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    final ListFilter filter = reviewTaskFilter(view, SubjectContext.getSubjectContext(caller));
+    final List<Task> reviewTasks =
+        tasks.listAll(tasks.getFields(LISTED_REVIEW_TASK_FIELDS), filter);
+    final Map<UUID, OntologyRelease> releases = releasesById(reviewTasks);
+    final List<OpenReview> reviews = new ArrayList<>();
+    for (final Task task : reviewTasks) {
+      final OntologyRelease release = reviewedRelease(task, releases);
+      if (release != null && canView.test(release)) {
+        final OntologyReleaseReviewReader reader =
+            new OntologyReleaseReviewReader(release, task, caller);
+        if (reader.matches(view)) {
+          reviews.add(new OpenReview(release, reader));
+        }
+      }
+    }
+    reviews.sort(NEWEST_FIRST);
+    return reviews;
+  }
+
+  private Map<UUID, OntologyRelease> releasesById(final List<Task> tasks) {
+    final List<UUID> ids =
+        tasks.stream()
+            .map(Task::getAbout)
+            .filter(Objects::nonNull)
+            .map(EntityReference::getId)
+            .toList();
+    return dao.findEntitiesByIds(ids, Include.NON_DELETED).stream()
+        .collect(Collectors.toMap(OntologyRelease::getId, release -> release));
+  }
+
+  /** The release {@code task} reviews, when that release is in review under this very task. */
+  private static OntologyRelease reviewedRelease(
+      final Task task, final Map<UUID, OntologyRelease> releases) {
+    final OntologyRelease release =
+        task.getAbout() == null ? null : releases.get(task.getAbout().getId());
+    return release != null
+            && release.getEntityStatus() == EntityStatus.IN_REVIEW
+            && Objects.equals(release.getReviewTask(), task.getId())
+        ? release
+        : null;
+  }
+
+  /** The database-side narrowing to the approval tasks that {@code view} can match for the caller. */
+  static ListFilter reviewTaskFilter(
+      final OntologyReleaseReviewReader.View view, final SubjectContext subject) {
+    final ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("taskType", TaskEntityType.RequestApproval.value());
+    filter.addQueryParam("aboutEntityType", Entity.ONTOLOGY_RELEASE);
+    filter.addQueryParam(
+        "taskStatus",
+        OPEN_REVIEW_TASK_STATUSES.stream()
+            .map(TaskEntityStatus::value)
+            .collect(Collectors.joining(",")));
+    if (view == OntologyReleaseReviewReader.View.CREATED) {
+      filter.addQueryParam("createdById", subject.user().getId().toString());
+    } else {
+      filter.addQueryParam(
+          "reviewerOrAssigneeIds",
+          Stream.concat(
+                  Stream.of(subject.user().getId()),
+                  listOrEmpty(subject.getTeams()).stream().map(EntityReference::getId))
+              .map(UUID::toString)
+              .collect(Collectors.joining(",")));
+    }
+    return filter;
+  }
+
+  static ResultList<OntologyReleaseReview> page(
+      final List<OntologyReleaseReview> rows, final int offset, final int limit, final int total) {
+    return new ResultList<>(
+        rows,
+        offset == 0 ? null : String.valueOf(Math.max(0, offset - limit)),
+        total - offset > rows.size() ? String.valueOf(offset + rows.size()) : null,
+        total);
+  }
+
+  static int offset(final String after) {
+    try {
+      final int offset = after == null ? 0 : Integer.parseInt(RestUtil.decodeCursor(after));
+      if (offset < 0) {
+        throw new IllegalArgumentException("Negative review list offset");
+      }
+      return offset;
+    } catch (IllegalArgumentException invalid) {
+      throw new BadRequestException("The review list cursor is invalid");
+    }
+  }
+
+  private OntologyReleaseReviewReader reader(
+      final OntologyRelease release, final UUID taskId, final String caller) {
+    final TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    final Task task =
+        tasks.get(null, taskId, tasks.getFields(REVIEW_TASK_FIELDS), Include.NON_DELETED, false);
+    return new OntologyReleaseReviewReader(release, task, caller);
   }
 
   public void startReview(final Task task) {
@@ -209,10 +396,30 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     }
     requireAvailableReview(original, task);
     validateReviewTarget(original, task);
+    requireUnchangedReviewSetup(original, task);
     final OntologyRelease updated = JsonUtils.deepCopy(original, entityClass);
     updated.setReviewTask(task.getId());
     updated.setEntityStatus(EntityStatus.IN_REVIEW);
     persistWorkflowState(original, updated, task.getUpdatedBy());
+  }
+
+  /**
+   * prepareReview froze the rule and chose the reviewers before any lock was held, so a change the
+   * ontology committed in between restarts the request instead of starting a review under settings
+   * the ontology no longer has.
+   */
+  private void requireUnchangedReviewSetup(final OntologyRelease entity, final Task task) {
+    final boolean sameRule = approvalRule(entity) == OntologyApprovalWorkflow.approvalRule(task);
+    final boolean sameReviewers =
+        reviewerIds(OntologyReview.eligibleReviewers(entity, task))
+            .equals(reviewerIds(task.getReviewers()));
+    if (!sameRule || !sameReviewers) {
+      throw TaskStateConflictException.of(REVIEW_SETUP_CHANGED);
+    }
+  }
+
+  private static Set<UUID> reviewerIds(final List<EntityReference> reviewers) {
+    return listOrEmpty(reviewers).stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   private void requireAvailableReview(final OntologyRelease entity, final Task task) {
