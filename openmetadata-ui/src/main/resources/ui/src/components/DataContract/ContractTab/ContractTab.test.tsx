@@ -26,6 +26,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import {
   deleteContractById,
   getContractByEntityId,
+  getContractById,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractTab } from './ContractTab';
@@ -39,6 +40,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 
 jest.mock('../../../rest/contractAPI', () => ({
   getContractByEntityId: jest.fn(),
+  getContractById: jest.fn(),
   deleteContractById: jest.fn(),
 }));
 
@@ -175,6 +177,7 @@ describe('ContractTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getContractByEntityId as jest.Mock).mockResolvedValue(mockContract);
+    (getContractById as jest.Mock).mockResolvedValue(mockContract);
   });
 
   describe('Basic Rendering', () => {
@@ -244,6 +247,65 @@ describe('ContractTab', () => {
   });
 
   describe('Tab Mode Management', () => {
+    it('should edit the stored contract rather than the effective one shown', async () => {
+      (getContractByEntityId as jest.Mock).mockResolvedValue({
+        ...mockContract,
+        name: 'Effective Contract',
+      });
+      (getContractById as jest.Mock).mockResolvedValue({
+        ...mockContract,
+        name: 'Stored Contract',
+      });
+      render(<ContractTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('edit-contract'));
+      });
+
+      expect(getContractById).toHaveBeenCalledWith('contract-1', ['owners']);
+      expect(screen.getByText('Contract: Stored Contract')).toBeInTheDocument();
+    });
+
+    it('should open an empty form for an inherited contract without loading it', async () => {
+      (getContractByEntityId as jest.Mock).mockResolvedValue({
+        ...mockContract,
+        inherited: true,
+      });
+      render(<ContractTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('edit-contract'));
+      });
+
+      expect(getContractById).not.toHaveBeenCalled();
+      expect(screen.getByText('Contract: New Contract')).toBeInTheDocument();
+    });
+
+    it('should stay in view mode and show an error when the stored contract fails to load', async () => {
+      const error = new Error('load failed') as AxiosError;
+      (getContractById as jest.Mock).mockRejectedValue(error);
+      render(<ContractTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('edit-contract'));
+      });
+
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+      expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+    });
+
     it('should switch to add mode when edit is clicked', async () => {
       render(<ContractTab />);
 

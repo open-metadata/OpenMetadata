@@ -23,6 +23,7 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
   deleteContractById,
   getContractByEntityId,
+  getContractById,
 } from '../../../rest/contractAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -54,6 +55,7 @@ export const ContractTab = () => {
     DataContractTabMode.VIEW
   );
   const [contract, setContract] = useState<DataContract>();
+  const [storedContract, setStoredContract] = useState<DataContract>();
   const [contractPermissions, setContractPermissions] =
     useState<OperationPermission>();
   const [dataContractResourcePermissions, setDataContractResourcePermissions] =
@@ -63,6 +65,8 @@ export const ContractTab = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { id, name: entityName } = entityData ?? {};
+  // An inherited contract belongs to the schema or Data Product the asset inherits from.
+  const isInheritedContract = Boolean(contract?.inherited);
 
   // Fetch mechanism (entity-level by id once a contract exists, else a resource-level
   // Create check) is unchanged — only the raw `.EditAll` read is routed through the
@@ -119,6 +123,25 @@ export const ContractTab = () => {
     }
   };
 
+  // The tab shows the effective contract, whose status and description can come from the
+  // contract it inherits from. Edits are diffed against what is stored, or a patch would compare
+  // against values that were never saved.
+  const handleEdit = async () => {
+    if (contract?.id && !isInheritedContract) {
+      try {
+        setStoredContract(
+          await getContractById(contract.id, [TabSpecificField.OWNERS])
+        );
+        setTabMode(DataContractTabMode.EDIT);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    } else {
+      // An inherited contract is not edited: saving creates this asset's own contract.
+      setTabMode(DataContractTabMode.ADD);
+    }
+  };
+
   const handleDelete = () => {
     if (contract?.id) {
       setIsDeleteModalVisible(true);
@@ -151,22 +174,15 @@ export const ContractTab = () => {
     fetchContract();
   }, [id]);
 
-  // Check if the contract is inherited from a Data Product
-  // If so, editing should create a NEW contract for this asset, not modify the parent's
-  const isInheritedContract = Boolean(contract?.inherited);
-
   const content = useMemo(() => {
     switch (tabMode) {
       case DataContractTabMode.ADD:
       case DataContractTabMode.EDIT:
         return (
           <AddDataContract
-            // Don't pass the inherited contract - we want to CREATE a new one for this asset
-            // Only pass the contract if it's a direct (non-inherited) contract being edited
+            // EDIT changes the stored contract; ADD creates this asset's own contract
             contract={
-              tabMode === DataContractTabMode.EDIT && !isInheritedContract
-                ? contract
-                : undefined
+              tabMode === DataContractTabMode.EDIT ? storedContract : undefined
             }
             onCancel={() => {
               setTabMode(DataContractTabMode.VIEW);
@@ -188,19 +204,18 @@ export const ContractTab = () => {
             hasEditPermission={hasEditPermission}
             onContractUpdated={fetchContract}
             onDelete={handleDelete}
-            onEdit={() => {
-              // If contract is inherited, use ADD mode to create a new contract for this asset
-              // Only use EDIT mode for direct (non-inherited) contracts
-              setTabMode(
-                contract && !isInheritedContract
-                  ? DataContractTabMode.EDIT
-                  : DataContractTabMode.ADD
-              );
-            }}
+            onEdit={handleEdit}
           />
         );
     }
-  }, [tabMode, contract, entityName, isInheritedContract, hasEditPermission]);
+  }, [
+    tabMode,
+    contract,
+    storedContract,
+    entityName,
+    isInheritedContract,
+    hasEditPermission,
+  ]);
 
   return isLoading ? (
     <Loader />
