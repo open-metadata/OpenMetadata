@@ -105,6 +105,11 @@ public record ReindexingConfiguration(
     }
   }
 
+  /** Retry settings for the job's bulk sinks, from Max Retries / Initial / Max Backoff. */
+  public BulkRetryPolicy bulkRetryPolicy() {
+    return new BulkRetryPolicy(maxRetries, initialBackoff, maxBackoff);
+  }
+
   /**
    * Creates a ReindexingConfiguration from an EventPublisherJob.
    *
