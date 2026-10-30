@@ -32,6 +32,8 @@ import { CreateOntologyProperty } from '../generated/api/data/createOntologyProp
 import { CreateRelationshipType } from '../generated/api/data/createRelationshipType';
 import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyResource';
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
+import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
+import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
 import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
@@ -336,12 +338,43 @@ export const getOntologyWorkingDiff = async (
   return response.data;
 };
 
+/**
+ * The generated preview type carries its own copy of the change-set enums, which
+ * do not unify with the ones the apply flow takes; the wire shape is the same.
+ */
+export interface NativeOntologyImportPreview {
+  summary: NativeOntologyImportSummary;
+  changeSet: CreateOntologyChangeSet;
+}
+
 export const previewNativeOntologyImport = async (
   ontologyId: string,
   request: PreviewNativeOntologyImport
 ) => {
-  const response = await APIClient.post<CreateOntologyChangeSet>(
+  const response = await APIClient.post<NativeOntologyImportPreview>(
     `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/imports/preview`,
+    request
+  );
+
+  return response.data;
+};
+
+export const previewNativeOntologyImportWithoutTarget = async (
+  request: PreviewNativeOntologyImport
+) => {
+  const response = await APIClient.post<NativeOntologyImportSummary>(
+    `${ONTOLOGIES_PATH}/imports/preview`,
+    request
+  );
+
+  return response.data;
+};
+
+export const detectNativeOntologyImportFormat = async (
+  request: PreviewNativeOntologyImport
+) => {
+  const response = await APIClient.post<NativeOntologyImportDetection>(
+    `${ONTOLOGIES_PATH}/imports/detect`,
     request
   );
 
