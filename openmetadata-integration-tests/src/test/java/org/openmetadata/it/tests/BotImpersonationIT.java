@@ -712,6 +712,41 @@ public class BotImpersonationIT {
   }
 
   @Test
+  void test_impersonation_cannotRestoreUser(TestNamespace ns) {
+    // Restoring a soft-deleted user is refused while impersonating, through PUT /v1/users and
+    // through the restore endpoint. The admin can still restore the user directly.
+    User deleted = createRegularUser(ns, "restored");
+    SdkClients.adminClient().users().delete(deleted.getId());
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "restoreuser", "admin");
+    CreateUser put =
+        new CreateUser()
+            .withName(deleted.getName())
+            .withEmail(deleted.getEmail())
+            .withDescription("Restored while impersonating");
+
+    ForbiddenException putDenied =
+        assertThrows(
+            ForbiddenException.class,
+            () -> asAdmin.getHttpClient().execute(HttpMethod.PUT, "/v1/users", put, User.class),
+            "An impersonated PUT must not restore a deleted user");
+    assertTrue(
+        putDenied.getMessage().contains("Impersonated requests cannot"),
+        "Restoring through PUT must be refused: " + putDenied.getMessage());
+
+    ForbiddenException restoreDenied =
+        assertThrows(
+            ForbiddenException.class,
+            () -> asAdmin.users().restore(deleted.getId()),
+            "An impersonated request must not restore a deleted user");
+    assertTrue(
+        restoreDenied.getMessage().contains("identity endpoint"),
+        "Restore must be blocked as an identity endpoint: " + restoreDenied.getMessage());
+
+    User restored = SdkClients.adminClient().users().restore(deleted.getId());
+    assertFalse(Boolean.TRUE.equals(restored.getDeleted()), "Direct admin restore must still work");
+  }
+
+  @Test
   void test_impersonation_cannotChangeSecurityConfiguration(TestNamespace ns) {
     // Writes to the security configuration are refused while impersonating, even an admin. Direct
     // admin writes are covered by SystemResourceIT, which runs isolated because a write reloads the
@@ -726,7 +761,11 @@ public class BotImpersonationIT {
         List.of(
             new IdentityCall(HttpMethod.PUT, "/v1/system/security/config", current),
             new IdentityCall(
-                HttpMethod.PATCH, "/v1/system/security/config", JsonUtils.readTree("[]")));
+                HttpMethod.PATCH, "/v1/system/security/config", JsonUtils.readTree("[]")),
+            new IdentityCall(
+                HttpMethod.POST,
+                "/v1/system/settings/source/authenticationConfiguration/adopt",
+                Map.of()));
     for (IdentityCall call : calls) {
       ForbiddenException denied =
           assertThrows(

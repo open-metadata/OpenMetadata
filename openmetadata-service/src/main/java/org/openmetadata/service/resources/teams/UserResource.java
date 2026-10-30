@@ -844,9 +844,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     repository.setFullyQualifiedName(user);
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     repository.prepareInternal(user, existingUser != null);
-    if (existingUser == null) {
-      // Impersonated requests update existing users only.
+    boolean createsOrRestores =
+        existingUser == null || Boolean.TRUE.equals(existingUser.getDeleted());
+    if (createsOrRestores) {
+      // Impersonated requests update active users only.
       rejectPrivilegedImpersonation(containerRequestContext);
+    }
+    if (existingUser == null) {
       validateEmailDomain(
           user,
           SecurityConfigurationManager.getCurrentAuthConfig(),
@@ -1546,6 +1550,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/restore")
+  @IdentityEndpoint
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted User.",
