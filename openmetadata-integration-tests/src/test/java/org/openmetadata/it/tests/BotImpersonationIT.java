@@ -556,8 +556,8 @@ public class BotImpersonationIT {
 
   @Test
   void test_impersonation_cannotMintBotCredentialViaUserCreate(TestNamespace ns) {
-    // Creating a bot user mints and returns its JWT. User creation is an identity endpoint, so it
-    // is refused while impersonating even though the impersonated principal is an admin.
+    // User creation is an identity endpoint, so creating a bot user is refused while impersonating,
+    // even an admin.
     OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "mintbot", "admin");
     String name = "mintedbot" + ns.shortPrefix();
 
@@ -653,8 +653,8 @@ public class BotImpersonationIT {
 
   @Test
   void test_impersonation_cannotCreateUserThroughPost(TestNamespace ns) {
-    // A new account always comes with a login, so creating one is refused while impersonating,
-    // even an admin. The same request sent by the admin directly still creates the user.
+    // Creating a user is refused while impersonating, even an admin. The same request sent by the
+    // admin directly still creates the user.
     OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "postuser", "admin");
     String name = "imppostuser" + ns.shortPrefix();
     CreateUser request = new CreateUser().withName(name).withEmail(name + "@test.com");
@@ -711,8 +711,8 @@ public class BotImpersonationIT {
 
   @Test
   void test_impersonation_cannotImportUsers(TestNamespace ns) {
-    // A CSV import can create users and set their roles, so both import endpoints are refused while
-    // impersonating. A dry run keeps the direct admin call from changing anything.
+    // Both user import endpoints are refused while impersonating, even an admin. A dry run keeps
+    // the direct admin call from changing anything.
     Team team =
         SdkClients.adminClient()
             .teams()

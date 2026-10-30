@@ -868,7 +868,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     repository.prepareInternal(user, existingUser != null);
     if (existingUser == null) {
-      // A new account always comes with a login, so only updates are open to impersonation.
+      // Impersonated requests update existing users only.
       rejectPrivilegedImpersonation(containerRequestContext);
       validateEmailDomain(
           user,
@@ -1321,10 +1321,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   /**
-   * Creating a user, minting a bot token, granting admin or elevating roles while impersonating
-   * would outlive the request-scoped grant, so a privileged user mutation is closed to impersonated
-   * callers even though the impersonated principal is itself an admin. Read from the request
-   * context: the injected {@link SecurityContext} is a Jersey proxy that hides the impersonation.
+   * Minting a bot token, granting admin or elevating roles while impersonating would outlive the
+   * request-scoped grant, so a privileged user mutation is closed to impersonated callers even
+   * though the impersonated principal is itself an admin. Read from the request context: the
+   * injected {@link SecurityContext} is a Jersey proxy that hides the impersonation.
    */
   private static void rejectPrivilegedImpersonation(ContainerRequestContext requestContext) {
     if (requestContext.getSecurityContext() instanceof CatalogSecurityContext catalogSecurityContext
