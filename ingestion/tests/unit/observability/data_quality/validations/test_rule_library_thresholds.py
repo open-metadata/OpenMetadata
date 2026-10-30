@@ -448,3 +448,74 @@ def test_percentage_boundary_is_inclusive(
 
     assert result.testCaseStatus == expected_status
     assert f"out of 100 evaluated ({negative}.00%)" in result.result
+
+
+@pytest.mark.parametrize(
+    "validator_class,entity_type", [(SQAColumnValidator, EntityType.COLUMN), (SQATableValidator, EntityType.TABLE)]
+)
+@pytest.mark.parametrize("physical_name", ["Order.Items", "select", "rate%:amount", r"slash\:amount"])
+@pytest.mark.parametrize("limit,expected", [("0", TestCaseStatus.Failed), ("-10", TestCaseStatus.Success)])
+def test_physical_target_and_percentage_ignore_metadata_and_sample(
+    validator_class, entity_type, physical_name, limit, expected
+):
+    from sqlalchemy import MetaData, Table
+    from sqlalchemy.orm import Session
+
+    engine = create_engine("sqlite://")
+    physical = Table(physical_name, MetaData(), Column("amount", Integer))
+    decoy = Table("decoy", physical.metadata, Column("amount", Integer))
+    physical.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.execute(physical.insert(), [{"amount": 10}, {"amount": -1}, {"amount": 20}])
+        session.execute(decoy.insert(), [{"amount": -1}] * 2 + [{"amount": 10}] * 8)
+        runner = QueryRunner(session, decoy, physical, profile_sample_query="SELECT * FROM decoy")
+        link = '<#E::table::"dotted.service".reporting.wrong.wrong>'
+        if entity_type == EntityType.COLUMN:
+            link = link[:-1] + "::columns::amount>"
+        test_case = build_test_case(
+            link,
+            "SELECT * FROM {{ table_name }} WHERE amount < {{ limit }}",
+            entity_type,
+            threshold="25",
+            unit="PERCENTAGE",
+            extra_definitions=[TestCaseParameterDefinition(name="limit", dataType="INT")],
+            extra_values=[TestCaseParameterValue(name="limit", value=limit)],
+        )
+        result = validator_class(runner, test_case, EXECUTION_DATE).run_validation()
+        assert result.testCaseStatus == expected
+        assert result.failedRows == (1 if limit == "0" else 0)
+        assert result.passedRows == (2 if limit == "0" else 3)
+        assert "out of 3 evaluated" in result.result
+        assert physical_name in result.result
+        assert runner.table_reference in result.result
+
+
+@pytest.mark.parametrize(
+    "validator_class,entity_type", [(SQAColumnValidator, EntityType.COLUMN), (SQATableValidator, EntityType.TABLE)]
+)
+def test_missing_physical_table_is_aborted_at_suite_boundary(validator_class, entity_type):
+    from unittest.mock import Mock, patch
+
+    from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import SQATestSuiteInterface
+
+    link = COLUMN_LINK if entity_type == EntityType.COLUMN else TABLE_LINK
+    case = build_test_case(link, TABLE_SQL, entity_type)
+    case.testDefinition.fullyQualifiedName = "ruleLibrary"
+    session = Mock()
+    validator = validator_class(QueryRunner(session, None, None), case, EXECUTION_DATE)
+    suite = SQATestSuiteInterface.__new__(SQATestSuiteInterface)
+    suite.ometa_client = Mock()
+    suite.ometa_client.get_by_id.return_value.entityType = entity_type
+    suite.service_connection_config = None
+    suite.table_entity = None
+    suite.sampler = None
+    builder = Mock(validator=validator)
+    with (
+        patch.object(suite, "_get_validator_builder", return_value=builder),
+        patch.object(suite, "_get_runtime_params_setter_fact"),
+    ):
+        response = suite.run_test_case(case)
+    assert response.testCaseResult.testCaseStatus == TestCaseStatus.Aborted
+    assert "physical SQLAlchemy Table" in response.testCaseResult.result
+    session.connection.assert_not_called()
+    session.execute.assert_not_called()

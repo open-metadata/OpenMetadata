@@ -114,7 +114,7 @@ class QueryRunner:
         self,
         session: Session,
         dataset: type | AliasedClass,
-        raw_dataset: Table,
+        raw_dataset: Table | type,
         partition_details: dict | None = None,
         profile_sample_query: str | None = None,
     ):
@@ -147,6 +147,32 @@ class QueryRunner:
     def table_name(self):
         """Table name attribute access"""
         return self.raw_dataset.__table__.name
+
+    @property
+    def table_reference(self) -> str:
+        """Logical SQL reference to the unsampled physical table on the execution bind.
+
+        ADR:2026-10-30-rule-library-uses-runner-physical-table
+        """
+        table = self.raw_dataset
+        if not isinstance(table, Table):
+            table = getattr(table, "__table__", None)
+        if not isinstance(table, Table):
+            raise ValueError("Rule Library SQL requires a physical SQLAlchemy Table in raw_dataset")  # noqa: TRY004
+
+        connection = self.session.connection()
+        reference = str(
+            table.compile(
+                dialect=connection.dialect,
+                schema_translate_map=connection.get_execution_options().get("schema_translate_map") or {},
+                render_schema_translate=True,
+                compile_kwargs={"asfrom": True},
+            )
+        )
+        # TextClause's final compilation applies DBAPI percent escaping; keep this fragment logical.
+        if connection.dialect.paramstyle in {"format", "pyformat"}:
+            reference = reference.replace("%%", "%")
+        return reference
 
     @property
     def schema_name(self):
