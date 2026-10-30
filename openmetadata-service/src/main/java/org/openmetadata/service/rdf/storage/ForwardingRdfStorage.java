@@ -123,6 +123,11 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   }
 
   @Override
+  public CompactionResult compactAndAwait(Duration warningAfter) {
+    return delegate().compactAndAwait(warningAfter);
+  }
+
+  @Override
   public void executeMaintenanceUpdate(String sparqlUpdate, Duration timeout) {
     delegate().executeMaintenanceUpdate(sparqlUpdate, timeout);
   }

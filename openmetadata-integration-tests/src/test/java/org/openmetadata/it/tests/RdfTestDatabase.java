@@ -102,6 +102,11 @@ final class RdfTestDatabase implements AutoCloseable {
 
   void applyReleaseMigration() {
     jdbi.useHandle(handle -> migrationStatements("2.0.2").forEach(handle::execute));
+    applyConsumerProtocolMigration();
+  }
+
+  void applyConsumerProtocolMigration() {
+    applyTableChanges("2.1.0", "rdf_live_write_guard");
   }
 
   /** Every statement of a release that names the table, in file order, on one connection. */

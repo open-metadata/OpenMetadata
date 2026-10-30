@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.apache.jena.rdf.model.Model;
 import org.openmetadata.service.rdf.RdfWriteMode;
+import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
@@ -134,6 +135,16 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
     } else {
       manager.writeBuild(target, storage -> storage.executeMaintenanceUpdate(statement, timeout));
     }
+  }
+
+  @Override
+  public CompactionResult compact(final Duration maxWait) {
+    return target == null ? manager.compactServing(delivery, maxWait) : delegate().compact(maxWait);
+  }
+
+  @Override
+  public CompactionResult compactAndAwait(final Duration warningAfter) {
+    return compact(warningAfter);
   }
 
   @Override

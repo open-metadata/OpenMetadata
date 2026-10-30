@@ -35,6 +35,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -257,6 +259,54 @@ class RdfStorageMaintenanceServiceTest {
     } finally {
       logger.detachAppender(appender);
       appender.stop();
+    }
+  }
+
+  @Test
+  void scheduledChecksReportOverdueEvenWhileTheFirstCompactionStillWaits() throws Exception {
+    final CountDownLatch entered = new CountDownLatch(1);
+    final CountDownLatch release = new CountDownLatch(1);
+    final CountDownLatch overdueReports = new CountDownLatch(2);
+    doAnswer(
+            invocation -> {
+              entered.countDown();
+              assertTrue(release.await(20, TimeUnit.SECONDS));
+              return SUCCEEDED;
+            })
+        .when(repository)
+        .compact(any());
+    final Logger logger = (Logger) LoggerFactory.getLogger(RdfStorageMaintenanceService.class);
+    final ListAppender<ILoggingEvent> appender =
+        new ListAppender<>() {
+          @Override
+          protected void append(final ILoggingEvent event) {
+            super.append(event);
+            if (event.getLevel() == Level.ERROR
+                && event.getFormattedMessage().contains("has not compacted")) {
+              overdueReports.countDown();
+            }
+          }
+        };
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      serverA.check();
+      assertTrue(entered.await(10, TimeUnit.SECONDS));
+      when(compactions.lastCompaction()).thenReturn(Instant.now().minus(Duration.ofHours(49)));
+
+      serverA.check();
+
+      assertEquals(
+          1, overdueReports.getCount(), "the scheduled check reports while the worker waits");
+    } finally {
+      release.countDown();
+      try {
+        assertTrue(
+            overdueReports.await(10, TimeUnit.SECONDS), "wait for the worker's trailing report");
+      } finally {
+        logger.detachAppender(appender);
+        appender.stop();
+      }
     }
   }
 

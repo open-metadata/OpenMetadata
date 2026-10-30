@@ -102,6 +102,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
   }
 
   public void start() {
+    reportOverdue();
     checks =
         RdfBackgroundScheduler.getInstance()
             .scheduleWithFixedDelay(
@@ -116,6 +117,11 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
 
   /** Hands the check to the maintenance thread; the scheduler's threads never wait on Fuseki. */
   void check() {
+    try {
+      reportOverdue();
+    } catch (RuntimeException exception) {
+      LOG.warn("Could not report RDF compaction health; retrying on the next check", exception);
+    }
     if (running.compareAndSet(false, true)) {
       try {
         worker.execute(this::runGuarded);
@@ -146,6 +152,7 @@ public final class RdfStorageMaintenanceService implements AutoCloseable {
    * space. Returns the outcome, if it ran.
    */
   CompactionResult compactIfDue() {
+    compactions.lastCompaction();
     // Lock rows hold a 36-character job id: a bare UUID.
     final String jobId = UUID.randomUUID().toString();
     final String slot =

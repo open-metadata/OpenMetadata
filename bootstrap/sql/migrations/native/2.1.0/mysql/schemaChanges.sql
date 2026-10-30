@@ -934,6 +934,11 @@ PREPARE rdf_projection_health_compaction_stmt FROM @rdf_projection_health_compac
 EXECUTE rdf_projection_health_compaction_stmt;
 DEALLOCATE PREPARE rdf_projection_health_compaction_stmt;
 
+-- Transfer RDF delivery to pause-aware consumers before producing pipelineExecution payloads.
+-- Deleting first waits for an old in-flight delivery; old producers still use the enqueue guard.
+DELETE FROM rdf_live_write_guard WHERE id = 'drain';
+INSERT IGNORE INTO rdf_live_write_guard (id) VALUES ('drain-v2');
+
 -- Independent ontology definitions and releases.
 CREATE TABLE IF NOT EXISTS ontology_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
