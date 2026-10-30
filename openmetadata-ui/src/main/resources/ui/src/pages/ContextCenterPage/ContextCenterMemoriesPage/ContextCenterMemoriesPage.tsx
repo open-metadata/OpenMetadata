@@ -692,7 +692,7 @@ const ContextCenterMemoriesPage: FC = () => {
     }
     setIsDeletingMemory(true);
     try {
-      await deleteContextMemory(memoryToDelete.id);
+      await deleteContextMemory(memoryToDelete.id, true);
       void queryClient.invalidateQueries({
         queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
       });

@@ -156,6 +156,7 @@ export const DataAssetsHeader = ({
   allowRename = false,
   showDomain = true,
   afterDeleteAction,
+  onDeleteFailure,
   dataAsset,
   onUpdateVote,
   onOwnerUpdate,
@@ -970,6 +971,7 @@ export const DataAssetsHeader = ({
       onAnnouncementClick={
         flags.canEditAll ? handleOpenAnnouncementDrawer : undefined
       }
+      onDeleteFailure={onDeleteFailure}
       onEditDisplayName={onDisplayNameUpdate}
       onProfilerSettingUpdate={onProfilerSettingUpdate}
       onRestoreEntity={onRestoreDataAsset}
@@ -1261,9 +1263,13 @@ export const DataAssetsHeader = ({
           <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
             {renderServiceLogo()}
             {renderEntityTitle()}
-            {badge}
-            {statusBadge}
-            {dqFailureAlert}
+            {/* Level with the title line (h-8, like the copy actions), not centred across the
+                title and name lines. A deleted entity shows "Deleted" instead of its status. */}
+            <div className="tw:flex tw:h-8 tw:shrink-0 tw:items-center tw:gap-3 tw:self-start">
+              {badge}
+              {!dataAsset.deleted && statusBadge}
+              {dqFailureAlert}
+            </div>
           </div>
 
           <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">

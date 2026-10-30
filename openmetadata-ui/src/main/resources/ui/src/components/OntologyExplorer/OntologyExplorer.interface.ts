@@ -179,6 +179,7 @@ export interface OntologyGraphProps {
   relationTypeGroups?: RelationTypeOptionGroup[];
   canCreateRelationType?: boolean;
   studioMode?: boolean;
+  keepCanvasOnAdd?: boolean;
   onCreateRelation?: (
     fromId: string,
     toId: string,
