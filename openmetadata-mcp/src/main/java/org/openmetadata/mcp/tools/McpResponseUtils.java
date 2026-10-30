@@ -13,6 +13,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -21,6 +22,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
+import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.secrets.masker.EntityMasker;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
@@ -68,7 +70,9 @@ public final class McpResponseUtils {
     return switch (entity) {
       case WorkflowDefinition definition -> WorkflowDefinitionMasker.mask(definition);
       case IngestionPipeline pipeline -> maskedCopy(pipeline, masker::maskIngestionPipeline);
-      case User user -> maskedCopy(user, copy -> copy.setAuthenticationMechanism(null));
+      case User user -> maskedCopy(
+          user, copy -> ProfileWebhookSecrets.mask(copy.withAuthenticationMechanism(null)));
+      case Team team -> maskedCopy(team, ProfileWebhookSecrets::mask);
       case Workflow workflow -> masker.maskWorkflow(JsonUtils.deepCopy(workflow, Workflow.class));
       case EventSubscription subscription -> maskWebhookSecrets(subscription);
       case ServiceEntityInterface service -> maskConnection(service, masker);

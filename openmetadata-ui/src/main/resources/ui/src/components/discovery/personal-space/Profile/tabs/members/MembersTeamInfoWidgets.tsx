@@ -29,6 +29,7 @@ import { Edit01, InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
+import { MASKED_PASSWORD_VALUE } from '../../../../../../constants/Secrets.constants';
 import {
   SUBSCRIPTION_WEBHOOK,
   SUBSCRIPTION_WEBHOOK_OPTIONS,
@@ -368,8 +369,13 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
         return;
       }
 
+      // A masked endpoint stands for the one stored for this webhook, and only for it.
+      const keepsStoredEndpoint =
+        endpoint === MASKED_PASSWORD_VALUE && webhook === subKey;
       try {
-        new URL(endpoint);
+        if (!keepsStoredEndpoint) {
+          new URL(endpoint);
+        }
       } catch {
         setError(t('message.endpoint-should-be-valid'));
 
@@ -392,12 +398,21 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     if (ok) {
       setIsEditing(false);
     }
-  }, [team, webhook, endpoint, onPatch, t]);
+  }, [team, webhook, endpoint, subKey, onPatch, t]);
 
-  const handleWebhookChange = useCallback((key: string | number | null) => {
-    setWebhook(key && key !== NONE_KEY ? String(key) : '');
-    setError(undefined);
-  }, []);
+  const handleWebhookChange = useCallback(
+    (key: string | number | null) => {
+      const next = key && key !== NONE_KEY ? String(key) : '';
+      setWebhook(next);
+      if (next !== subKey) {
+        setEndpoint((current) =>
+          current === MASKED_PASSWORD_VALUE ? '' : current
+        );
+      }
+      setError(undefined);
+    },
+    [subKey]
+  );
 
   return (
     <InfoWidget
