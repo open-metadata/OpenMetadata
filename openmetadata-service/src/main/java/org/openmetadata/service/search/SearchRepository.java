@@ -4347,16 +4347,15 @@ public class SearchRepository {
    * Incident documents have no {@code deleted} field, so the soft delete above skips them; they
    * embed their test case instead, and the incident listing scopes on {@code testCase.deleted}. A
    * cascade soft-deletes the descendant test cases without search writes of their own, so the flag
-   * is set here for every incident under the parent, as the soft delete above is.
+   * is set here for every incident under the parent, through the same synchronous update as the
+   * soft delete above: a failure reaches the retry queue, and a quick restore cannot race it.
    */
   private void softDeleteOrRestoreIncidentTestCases(
       Pair<String, String> parentMatch, boolean delete) throws IOException {
-    searchClient.updateChildren(
+    searchClient.softDeleteOrRestoreChildren(
         withClusterAlias(List.of(Entity.TEST_CASE_RESOLUTION_STATUS)),
-        parentMatch,
-        new ImmutablePair<>(
-            "if (ctx._source.testCase != null) { ctx._source.testCase.deleted = params.deleted; }",
-            Map.of("deleted", delete)));
+        "if (ctx._source.testCase != null) { ctx._source.testCase.deleted = " + delete + "; }",
+        List.of(parentMatch));
   }
 
   public String getScriptWithParams(

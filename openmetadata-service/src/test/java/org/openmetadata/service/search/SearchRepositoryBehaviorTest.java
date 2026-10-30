@@ -113,6 +113,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorIndexService;
@@ -3472,7 +3473,8 @@ class SearchRepositoryBehaviorTest {
 
     ArgumentCaptor<List<String>> aliasCaptor = ArgumentCaptor.forClass(List.class);
     verify(searchClient)
-        .softDeleteOrRestoreChildren(aliasCaptor.capture(), any(String.class), any(List.class));
+        .softDeleteOrRestoreChildren(
+            aliasCaptor.capture(), eq(new SoftDeleteScript(true).painless()), any(List.class));
     List<String> aliases = aliasCaptor.getValue();
     assertFalse(
         aliases.contains("cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS),
@@ -3486,8 +3488,8 @@ class SearchRepositoryBehaviorTest {
   }
 
   /**
-   * When every declared child alias is a time-series entity, propagation is a no-op — the
-   * search client must not be invoked at all rather than be invoked with an empty list.
+   * When every declared child alias is a time-series entity, the `deleted` script is not sent at
+   * all rather than sent with an empty list.
    */
   @Test
   void softDeleteOrRestoredChildrenIsNoOpWhenEveryChildIsTimeSeries() throws IOException {
@@ -3504,7 +3506,8 @@ class SearchRepositoryBehaviorTest {
     repository.softDeleteOrRestoredChildren(testCase, timeSeriesOnly, false);
 
     verify(searchClient, never())
-        .softDeleteOrRestoreChildren(any(List.class), any(String.class), any(List.class));
+        .softDeleteOrRestoreChildren(
+            any(List.class), eq(new SoftDeleteScript(false).painless()), any(List.class));
   }
 
   // The incident listing scopes on the embedded test case's flag, which no `deleted` script sets.
@@ -3536,17 +3539,16 @@ class SearchRepositoryBehaviorTest {
     assertIncidentTestCasesFlagged("service.id", service.getId(), false);
   }
 
-  @SuppressWarnings("unchecked")
   private void assertIncidentTestCasesFlagged(String parentField, UUID parentId, boolean deleted)
       throws IOException {
-    ArgumentCaptor<Pair<String, Map<String, Object>>> updates = ArgumentCaptor.forClass(Pair.class);
+    ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
     verify(searchClient)
-        .updateChildren(
+        .softDeleteOrRestoreChildren(
             eq(List.of("cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS)),
-            eq(new ImmutablePair<>(parentField, parentId.toString())),
-            updates.capture());
-    assertTrue(updates.getValue().getKey().contains("ctx._source.testCase.deleted"));
-    assertEquals(Map.of("deleted", deleted), updates.getValue().getValue());
+            script.capture(),
+            eq(List.of(new ImmutablePair<>(parentField, parentId.toString()))));
+    assertTrue(
+        script.getValue().contains("ctx._source.testCase.deleted = " + deleted), script.getValue());
   }
 
   @Test
