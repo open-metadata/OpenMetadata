@@ -1441,7 +1441,7 @@ const OntologyExplorerPage: React.FC = () => {
     return (
       <OntologyStudioHeader
         actions={
-          <Box align="center" gap={2}>
+          <Box align="center" gap={2} wrap="wrap">
             {isAiMode ? null : renderLibraryTrigger()}
             {renderImportExport()}
             {isAiMode ? renderLibraryTrigger() : null}
