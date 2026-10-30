@@ -12,6 +12,7 @@
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { UpdateOntologyConceptBinding } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import {
   Kind,
@@ -24,6 +25,8 @@ import {
   State,
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
+import { BindingSnapshot } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
+import APIClient from '../../../../rest/axiosClient';
 import {
   deleteOntologyConceptBinding,
   getOntologyConceptBindings,
@@ -35,10 +38,22 @@ import {
   getModelRelations,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyConceptInspector from './OntologyConceptInspector';
 
 jest.mock('../../../../rest/ontologyAPI');
 jest.mock('../../../../rest/permissionAPI');
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+jest.mock('../../../../rest/axiosClient', () => ({
+  get: jest.fn(),
+  put: jest.fn(),
+  post: jest.fn(),
+  patch: jest.fn(),
+  delete: jest.fn(),
+}));
 jest.mock('../../../../hooks/useAppMode', () => ({
   ...jest.requireActual('../../../../hooks/useAppMode'),
   useIsAiMode: jest.fn().mockReturnValue(false),
@@ -81,7 +96,8 @@ const model: OntologyStudioModel = {
   properties: [property],
   axioms: [],
 };
-const response: OntologyConceptBindingsResponse = {
+const response: BindingSnapshot = {
+  kind: 'complete',
   revision: 4,
   assets: [
     {
@@ -118,6 +134,7 @@ const mockPutBinding = putOntologyConceptBinding as jest.MockedFunction<
 const mockGetPermission = getEntityPermissionById as jest.MockedFunction<
   typeof getEntityPermissionById
 >;
+const mockApiClient = APIClient as jest.Mocked<typeof APIClient>;
 
 const renderInspector = (
   properties: readonly OntologyProperty[],
@@ -141,12 +158,140 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
     jest.clearAllMocks();
     mockGetBindings.mockResolvedValue(response);
     mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
-    mockPutBinding.mockResolvedValue({
-      revision: 5,
-      assets: [
-        { ...response.assets[0], columns: [response.assets[0].columns[1]] },
-      ],
+    mockPutBinding.mockImplementation(async () => {
+      mockGetBindings.mockResolvedValue({
+        kind: 'complete',
+        revision: 5,
+        assets: [
+          { ...response.assets[0], columns: [response.assets[0].columns[1]] },
+        ],
+      });
     });
+  });
+
+  it('keeps an off-page table linked and its columns unchanged when adding another asset', async () => {
+    const api = jest.requireActual<
+      typeof import('../../../../rest/ontologyAPI')
+    >('../../../../rest/ontologyAPI');
+    mockGetBindings.mockImplementation(api.getOntologyConceptBindings);
+    mockPutBinding.mockImplementation(api.putOntologyConceptBinding);
+    const table = structuredClone(response.assets[0]);
+    const columns = structuredClone(table.columns);
+    const stored: OntologyConceptBindingsResponse = {
+      revision: 4,
+      assets: [
+        {
+          assetId: 'a-topic',
+          assetType: AssetType.Topic,
+          asset: { id: 'a-topic', type: 'topic', name: 'existing-topic' },
+          columns: [],
+        },
+        table,
+      ],
+    };
+    const firstPage = () => ({
+      revision: stored.revision,
+      assets: stored.assets.slice(0, 1),
+      after: 'hidden-scan',
+    });
+    mockApiClient.get.mockImplementation(async (url, config) => {
+      if (url.startsWith('/search/query?')) {
+        return {
+          data: {
+            hits: {
+              total: { value: 2 },
+              hits: [
+                { _source: { ...table.asset, entityType: 'table' } },
+                {
+                  _source: {
+                    id: 'new-topic',
+                    name: 'new-topic',
+                    entityType: 'topic',
+                  },
+                },
+              ],
+            },
+          },
+        };
+      }
+
+      expect(url).toBe(`/ontologyConcepts/${concept.id}/bindings`);
+
+      const params = config?.params as { after?: string } | undefined;
+      if (params?.after === 'hidden-scan') {
+        return {
+          data: { revision: stored.revision, assets: [], after: 'last' },
+        };
+      }
+
+      return {
+        data:
+          params?.after === 'last'
+            ? { revision: stored.revision, assets: stored.assets.slice(1) }
+            : firstPage(),
+      };
+    });
+    mockApiClient.put.mockImplementation(async (_url, data) => {
+      const request = data as UpdateOntologyConceptBinding;
+
+      expect(request.expectedRevision).toBe(stored.revision);
+
+      const existing = stored.assets.find(
+        (asset) => asset.assetId === request.asset.assetId
+      );
+      if (existing) {
+        existing.columns = (request.asset.columns ?? []).map((column) => ({
+          ...column,
+          state: State.Resolved,
+        }));
+      } else {
+        stored.assets.push({
+          assetId: request.asset.assetId,
+          assetType: AssetType.Topic,
+          asset: {
+            id: request.asset.assetId,
+            type: 'topic',
+            name: 'new-topic',
+          },
+          columns: [],
+        });
+      }
+      stored.revision += 1;
+
+      return { data: firstPage() };
+    });
+    renderInspector([property]);
+    await screen.findByText('existing-topic');
+    fireEvent.click(await screen.findByTestId('ontology-native-link-assets'));
+    const picker = await screen.findByTestId('ontology-data-asset-picker');
+    await within(picker).findByRole('checkbox', { name: 'customers' });
+
+    fireEvent.click(
+      within(picker).getByRole('checkbox', { name: 'label.select-all' })
+    );
+    fireEvent.click(within(picker).getByTestId('ontology-data-asset-save'));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-data-asset-picker')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(
+      stored.assets.find((asset) => asset.assetId === table.assetId)?.columns
+    ).toEqual(columns);
+    expect(stored.assets.map((asset) => asset.assetId)).toContain('new-topic');
+    expect(
+      await screen.findByText(/former_id.*label.unavailable/)
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-native-link-assets'));
+
+    expect(
+      await within(screen.getByTestId('ontology-data-asset-picker')).findByRole(
+        'checkbox',
+        { name: 'customers' }
+      )
+    ).toBeDisabled();
   });
 
   it.each<{ description: string; properties: OntologyProperty[] }>([
@@ -304,7 +449,11 @@ describe('OntologyConceptInspector relationships', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetBindings.mockResolvedValue({ revision: 0, assets: [] });
+    mockGetBindings.mockResolvedValue({
+      kind: 'complete',
+      revision: 0,
+      assets: [],
+    });
     mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
   });
 
@@ -520,5 +669,38 @@ describe('OntologyConceptInspector in AI mode', () => {
     expect(
       screen.getByTestId('ontology-concept-relationships')
     ).toHaveTextContent(/has part\s*Party/);
+  });
+
+  it('retries a failed bindings read and removes an asset from the AI section', async () => {
+    mockGetBindings.mockRejectedValueOnce(new Error('read failed'));
+    renderAiInspector();
+    const assets = await screen.findByTestId('ontology-native-assets');
+
+    expect(
+      await within(assets).findByText(
+        'message.ontology-binding-read-unavailable'
+      )
+    ).toBeVisible();
+
+    fireEvent.click(
+      within(assets).getByRole('button', { name: 'label.retry' })
+    );
+
+    expect(
+      await within(assets).findByRole('link', { name: 'customers' })
+    ).toBeVisible();
+
+    fireEvent.click(
+      within(assets).getByTestId('ontology-native-asset-remove-table')
+    );
+    await waitFor(() =>
+      expect(showSuccessToast).toHaveBeenCalledWith('label.saved')
+    );
+
+    expect(deleteOntologyConceptBinding).toHaveBeenCalledWith(concept.id, {
+      assetType: AssetType.Table,
+      assetId: 'table',
+      expectedRevision: 4,
+    });
   });
 });
