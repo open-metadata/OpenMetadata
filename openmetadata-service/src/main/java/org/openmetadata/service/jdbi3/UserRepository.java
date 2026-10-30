@@ -352,13 +352,17 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void storeEntity(User user, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected User prepareForStorage(User user) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
       secretsManager.encryptAuthenticationMechanism(
           user.getName(), user.getAuthenticationMechanism());
     }
+    return user;
+  }
 
+  @Override
+  public void storeEntity(User user, boolean update) {
     store(user, update);
     // A new user has no other stored credential, so only a JWT mechanism is worth a hint;
     // storeEntities (bulk import) skips it because one hint per row would publish one Redis
@@ -374,21 +378,7 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void storeEntities(List<User> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (User user : entities) {
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
-        secretsManager.encryptAuthenticationMechanism(
-            user.getName(), user.getAuthenticationMechanism());
-      }
-
-      fqns.add(user.getFullyQualifiedName());
-      jsons.add(serializeForStorage(user));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
