@@ -148,6 +148,32 @@
       "description": "Cache inferred triples for better query performance (requires more storage)",
       "type": "boolean",
       "default": false
+    },
+    "storageMaintenance": {
+      "description": "Automatic maintenance of the RDF store. Apache Jena TDB2 keeps every page a write transaction replaces until the dataset is compacted, so a store that only receives live writes grows until its disk is full. Maintenance compacts the serving dataset on a schedule, with writes to it paused so none is lost or dead-lettered.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig",
+      "properties": {
+        "enabled": {
+          "description": "Compact the serving dataset automatically.",
+          "type": "boolean",
+          "default": true
+        },
+        "compactionIntervalHours": {
+          "description": "Longest time between compactions of a dataset that receives writes. Fuseki blocks writers for the whole compaction, which copies only the live data.",
+          "type": "integer",
+          "default": 24,
+          "minimum": 1
+        },
+        "maxDurationMinutes": {
+          "description": "Longest a compaction or the clear that starts an in-place rebuild may take before the run reports it as unfinished. Writes to the dataset stay paused meanwhile.",
+          "type": "integer",
+          "default": 240,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "default": null
     }
   },
   "required": [

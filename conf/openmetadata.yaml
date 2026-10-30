@@ -877,6 +877,11 @@ rdf:
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
   inferenceEnabled: ${RDF_INFERENCE_ENABLED:-false}
+  # TDB2 keeps every page a write replaces until compaction; compact on a schedule with writes paused.
+  storageMaintenance:
+    enabled: ${RDF_STORAGE_MAINTENANCE_ENABLED:-true}
+    compactionIntervalHours: ${RDF_COMPACTION_INTERVAL_HOURS:-24}
+    maxDurationMinutes: ${RDF_MAINTENANCE_MAX_DURATION_MINUTES:-240}
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
