@@ -178,8 +178,6 @@ export const ContractTab = () => {
 
   useEffect(() => {
     currentEntityIdRef.current = id;
-    setStoredContract(undefined);
-    setTabMode(DataContractTabMode.VIEW);
     fetchContract();
   }, [id]);
 
