@@ -24,6 +24,7 @@ import {
   OntologyConcept,
   OntologyConceptType,
 } from '../../../../generated/entity/data/ontologyConcept';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyConceptEditor from './OntologyConceptEditor';
@@ -34,6 +35,10 @@ jest.mock('../../../../rest/axiosClient', () => ({
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+}));
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
 const post = APIClient.post as jest.MockedFunction<typeof APIClient.post>;
@@ -426,5 +431,67 @@ describe('OntologyConceptEditor', () => {
     expect(
       mapping.getByRole('button', { name: 'label.remove' })
     ).toBeDisabled();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
+
+    afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
+
+    it('adds and removes a mapping and saves the concept', async () => {
+      post.mockResolvedValue({ data: concept });
+      const onSaved = jest.fn();
+      render(
+        <OntologyConceptEditor canEdit ontology={ontology} onSaved={onSaved} />
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.add-mapping' })
+      );
+
+      expect(screen.getByTestId('ontology-concept-mapping')).toBeVisible();
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.remove' }));
+
+      expect(
+        screen.queryByTestId('ontology-concept-mapping')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'label.add-mapping' })
+      ).toHaveFocus();
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
+        target: { value: 'Customer' },
+      });
+
+      expect(screen.getByText('label.unsaved-changes')).toBeVisible();
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(concept));
+
+      expect(post).toHaveBeenCalledWith(
+        '/ontologyConcepts',
+        expect.objectContaining({ name: 'Customer', ontology: 'Sales' })
+      );
+    });
+
+    it('keeps every control disabled without edit permission', () => {
+      render(
+        <OntologyConceptEditor
+          canEdit={false}
+          concept={concept}
+          ontology={ontology}
+          onSaved={jest.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'label.add-mapping' })
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('textbox', { name: 'label.display-name' })
+      ).toBeDisabled();
+    });
   });
 });

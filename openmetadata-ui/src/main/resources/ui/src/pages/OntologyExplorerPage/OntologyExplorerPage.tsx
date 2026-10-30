@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   BadgeWithDot,
   Box,
   Button,
@@ -19,13 +20,15 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  ArrowRight,
+  Cube02,
+  CubeOutline,
   GitBranch01,
   Grid01,
+  LayoutGrid01,
   Plus,
   Share07,
 } from '@openmetadata/ui-core-components/icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import React, {
@@ -37,16 +40,21 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import AllOntologiesGraphView from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView';
+import { FILTERS as NATIVE_FILTERS } from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView.constants';
+import { OntologyGraphSearchSlotContext } from '../../components/governance/ontology/OntologyGraphView/OntologyGraphSearchSlot.context';
 import { OntologyModelStats } from '../../components/governance/ontology/OntologyGraphView/OntologyGraphView';
 import OntologyPublicationModal from '../../components/governance/ontology/OntologyPublicationModal/OntologyPublicationModal';
 import OntologyStudioHeader from '../../components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader';
 import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
 import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
 import OntologyStudioWorkspace from '../../components/governance/ontology/OntologyStudioWorkspace/OntologyStudioWorkspace';
+import OntologyTasksDrawer from '../../components/governance/ontology/OntologyTasksDrawer/OntologyTasksDrawer';
+import OntologyVersionChip from '../../components/governance/ontology/OntologyVersionChip/OntologyVersionChip';
 import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
 import OntologyAiAssistant from '../../components/OntologyExplorer/OntologyAiAssistant';
 import OntologyEditLeaseStatus from '../../components/OntologyExplorer/OntologyEditLeaseStatus';
@@ -56,6 +64,7 @@ import OntologyImportExportMenu from '../../components/OntologyExplorer/Ontology
 import OntologyLibrary from '../../components/OntologyExplorer/OntologyLibrary';
 import OntologyMemoryReviewPanel from '../../components/OntologyExplorer/OntologyMemoryReviewPanel';
 import { ONTOLOGY_STUDIO_STYLE } from '../../components/OntologyExplorer/OntologyStudio.styles';
+import { getOntologyHealthSummary } from '../../components/OntologyExplorer/OntologyStudio.utils';
 import OntologyStudioQueryConsole from '../../components/OntologyExplorer/OntologyStudioQueryConsole';
 import OntologyVisualQueryBuilder from '../../components/OntologyExplorer/OntologyVisualQueryBuilder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -72,6 +81,7 @@ import {
   OntologyEditLeaseState,
   useOntologyEditLease,
 } from '../../hooks/governance/ontology/useOntologyEditLease';
+import { ONTOLOGY_WORKING_DIFF_QUERY_KEY } from '../../hooks/governance/ontology/useOntologyPublication';
 import {
   ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
   useAllOntologyStudioModels,
@@ -80,9 +90,11 @@ import {
   ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
   useOntologyStudioScopes,
 } from '../../hooks/governance/ontology/useOntologyStudioScopes';
+import { useOntologyUnpublishedCount } from '../../hooks/governance/ontology/useOntologyUnpublishedCount';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
-import { getOntology, getOntologyWorkingDiff } from '../../rest/ontologyAPI';
+import { getOntology } from '../../rest/ontologyAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   ALL_ONTOLOGIES_SCOPE,
@@ -118,8 +130,6 @@ interface StudioSubMode {
   id: string;
   items: StudioTab[];
 }
-
-const ONTOLOGY_WORKING_DIFF_QUERY_KEY = 'ontology-working-diff';
 
 function getStatCount(stats: string[], label: string): string {
   const normalizedLabel = label.toLocaleLowerCase();
@@ -565,12 +575,15 @@ function aggregateEnabled(
   );
 }
 
+const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
+
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const { isAdminUser } = useAuth();
   const { permissions } = usePermissionProvider();
   const queryClient = useQueryClient();
+  const userId = useApplicationStore((store) => store.currentUser?.id);
   const {
     isEnabled: isOntologyAiEnabled,
     isRdfEnabled,
@@ -632,6 +645,9 @@ const OntologyExplorerPage: React.FC = () => {
   const selectedOntologyId = selectedOntology?.id ?? '';
   const refreshNativeWorkingDiff = useCallback(() => {
     void queryClient.invalidateQueries({
+      queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+    });
+    void queryClient.invalidateQueries({
       queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY],
     });
     if (selectedOntologyId) {
@@ -640,13 +656,6 @@ const OntologyExplorerPage: React.FC = () => {
       });
     }
   }, [queryClient, selectedOntologyId]);
-  const workingDiff = useQuery({
-    queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, selectedOntologyId, undefined],
-    enabled: Boolean(selectedOntologyId),
-    queryFn: ({ signal }) =>
-      getOntologyWorkingDiff(selectedOntologyId, { limit: 25 }, signal),
-    retry: false,
-  });
   const { canEditAll: canEditNativeOntology } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: selectedOntologyId },
@@ -657,15 +666,20 @@ const OntologyExplorerPage: React.FC = () => {
     selectedOntology?.deleted
   );
   const [publicationScopeKey, setPublicationScopeKey] = useState<string>();
+  const [publicationTab, setPublicationTab] = useState<'changes' | 'releases'>(
+    'changes'
+  );
   const currentScopeKey = getScopeKey(studioScope);
-  const isPublicationOpen = publicationScopeKey === currentScopeKey;
+  const [selectedReviewTaskId] = searchParams.getAll('task');
+  const publicationIdentity = JSON.stringify([userId, currentScopeKey]);
+  const isPublicationOpen = publicationScopeKey === publicationIdentity;
   const setIsPublicationOpen = (open: boolean) =>
-    setPublicationScopeKey(open ? currentScopeKey : undefined);
+    setPublicationScopeKey(open ? publicationIdentity : undefined);
   useEffect(() => {
     setPublicationScopeKey((key) =>
-      key === currentScopeKey ? key : undefined
+      !selectedReviewTaskId && key === publicationIdentity ? key : undefined
     );
-  }, [currentScopeKey]);
+  }, [publicationIdentity, selectedReviewTaskId]);
 
   useEffect(() => {
     if (!ontologyId) {
@@ -709,7 +723,10 @@ const OntologyExplorerPage: React.FC = () => {
   const [authoringGlossaryId, setAuthoringGlossaryId] = useState<string>();
   const [pendingGlossaryName, setPendingGlossaryName] = useState<string>();
   const [explorerRevision, setExplorerRevision] = useState(0);
-  const [generatedQuery, setGeneratedQuery] = useState<string>();
+  const [generatedQuery, setGeneratedQuery] = useState<{
+    scopeKey: string;
+    query: string;
+  }>();
   const [queryConsoleKey, setQueryConsoleKey] = useState(0);
   const [isNewQueryRequested, setIsNewQueryRequested] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -734,9 +751,35 @@ const OntologyExplorerPage: React.FC = () => {
     [selectedOntology, studioScopes.ontologies]
   );
 
+  const unpublishedCount = useOntologyUnpublishedCount(
+    studioScopes.ontologies,
+    aggregateEnabled(isAllOntologies, isCreatingOntology, studioScopes)
+  );
+  const publicationStatus = studioScopes.ontologies.find(
+    (owner) => owner.id === selectedOntologyId
+  )?.publicationStatus;
   const allModels = useAllOntologyStudioModels(
     studioScopes.ontologies,
     aggregateEnabled(isAllOntologies, isCreatingOntology, studioScopes)
+  );
+
+  const aggregateHealth = useMemo(
+    () =>
+      ![
+        allModels.isError,
+        allModels.isLoading,
+        studioScopes.isOntologyError,
+        studioScopes.isOntologyLoading,
+      ].some(Boolean) && allModels.graph
+        ? getOntologyHealthSummary(allModels.graph, NATIVE_FILTERS)
+        : undefined,
+    [
+      allModels.graph,
+      allModels.isError,
+      allModels.isLoading,
+      studioScopes.isOntologyError,
+      studioScopes.isOntologyLoading,
+    ]
   );
 
   const selectOntology = (
@@ -1114,6 +1157,23 @@ const OntologyExplorerPage: React.FC = () => {
     });
   }
 
+  function handleModeChange(nextMode: StudioMode) {
+    if (isAllOntologies && nextMode === 'edit') {
+      const owner = allModels.models?.find((model) =>
+        model.concepts.some((concept) => concept.id === selectedConceptId)
+      );
+      if (owner) {
+        selectOntology(owner.ontology, selectedConceptId, 'edit');
+
+        return;
+      }
+    }
+    if (nextMode !== 'edit') {
+      setConceptDraft(undefined);
+    }
+    setMode(nextMode);
+  }
+
   function renderScopeMenu() {
     return (
       <OntologyStudioScopeMenu
@@ -1137,6 +1197,11 @@ const OntologyExplorerPage: React.FC = () => {
               }
             : undefined
         }
+        onEditOntology={
+          canEditCurrentScope && !isAllOntologies && !isCreatingOntology
+            ? () => handleModeChange('edit')
+            : undefined
+        }
         onOpenChange={(open) =>
           setIsGlossaryScopeMenuOpen(open && isGlossaryScope)
         }
@@ -1148,23 +1213,6 @@ const OntologyExplorerPage: React.FC = () => {
         onScopeChange={handleScopeChange}
       />
     );
-  }
-
-  function handleModeChange(nextMode: StudioMode) {
-    if (isAllOntologies && nextMode === 'edit') {
-      const owner = allModels.models?.find((model) =>
-        model.concepts.some((concept) => concept.id === selectedConceptId)
-      );
-      if (owner) {
-        selectOntology(owner.ontology, selectedConceptId, 'edit');
-
-        return;
-      }
-    }
-    if (nextMode !== 'edit') {
-      setConceptDraft(undefined);
-    }
-    setMode(nextMode);
   }
 
   function handleAddConcept() {
@@ -1185,23 +1233,12 @@ const OntologyExplorerPage: React.FC = () => {
     });
   }
 
-  const canAddConcept = isNativeOntology
-    ? canCreateNativeConcept && editSurface === 'graph'
-    : canCreateConcept;
+  const headerActionSize = getHeaderActionSize(isAiMode);
 
   function renderPrimaryAction() {
-    if (mode === 'view' && canEditCurrentScope && !isAllOntologies) {
-      return (
-        <Button
-          color="primary"
-          data-testid="ontology-edit-ontology"
-          iconTrailing={ArrowRight}
-          size="xs"
-          onPress={() => handleModeChange('edit')}>
-          {t('label.edit-entity', { entity: t('label.ontology') })}
-        </Button>
-      );
-    }
+    const canAddConcept = isNativeOntology
+      ? canCreateNativeConcept && editSurface === 'graph'
+      : canCreateConcept;
 
     if (mode === 'edit' && canAddConcept) {
       return (
@@ -1210,7 +1247,7 @@ const OntologyExplorerPage: React.FC = () => {
           data-testid="ontology-add-concept"
           iconLeading={Plus}
           isDisabled={!isNativeOntology && Boolean(conceptDraft)}
-          size="xs"
+          size={headerActionSize}
           onPress={handleAddConcept}>
           {t('label.add-entity', { entity: t('label.concept') })}
         </Button>
@@ -1223,7 +1260,7 @@ const OntologyExplorerPage: React.FC = () => {
           color="primary"
           data-testid="ontology-new-query"
           iconLeading={Plus}
-          size="xs"
+          size={headerActionSize}
           onPress={() => {
             setGeneratedQuery(undefined);
             setIsNewQueryRequested(true);
@@ -1238,28 +1275,76 @@ const OntologyExplorerPage: React.FC = () => {
     return null;
   }
 
+  function publicationPendingCount() {
+    if (studioScopes.isOntologyError) {
+      return t('label.unavailable');
+    }
+    if (isAllOntologies) {
+      if (unpublishedCount.status === 'unavailable') {
+        return t('label.unavailable');
+      }
+
+      return unpublishedCount.status === 'ready'
+        ? String(unpublishedCount.count)
+        : t('label.loading');
+    }
+    if (studioScopes.isOntologyLoading) {
+      return t('label.loading');
+    }
+
+    return publicationStatus?.unpublishedChanges === undefined
+      ? t('label.unavailable')
+      : String(publicationStatus.unpublishedChanges);
+  }
+
+  function renderPublicationLabel() {
+    if (!isAiMode) {
+      return (
+        <>
+          {t('label.publish')} ({publicationPendingCount()})
+        </>
+      );
+    }
+
+    return (
+      <span className="tw:flex tw:items-center tw:whitespace-nowrap">
+        {t('label.publish')}
+        <Badge
+          className="tw:ml-1.5"
+          color="brand"
+          data-testid="ontology-publication-count"
+          size="sm"
+          type="pill-color">
+          {publicationPendingCount()}
+        </Badge>
+      </span>
+    );
+  }
+
   function renderPublicationActions() {
     if ((!selectedOntology && !isAllOntologies) || isCreatingOntology) {
       return null;
     }
-    const isolatedCount = getIsolatedCount(nativeStats, selectedOntology);
+    const isolatedCount = isAllOntologies
+      ? aggregateHealth?.isolatedTerms.length ?? 0
+      : getIsolatedCount(nativeStats, selectedOntology);
 
     return (
       <>
         <Button
-          color="primary"
+          color={isAiMode ? 'secondary-brand' : 'primary'}
           data-testid="ontology-publication-trigger"
           iconLeading={GitBranch01}
           isDisabled={
             isAllOntologies &&
             (studioScopes.isOntologyLoading || studioScopes.isOntologyError)
           }
-          size="xs"
-          onPress={() => setIsPublicationOpen(true)}>
-          {t(selectedOntology ? 'label.publish' : 'label.review-publish')}
-          {selectedOntology && workingDiff.data
-            ? ` (${workingDiff.data.paging.total})`
-            : ''}
+          size={headerActionSize}
+          onPress={() => {
+            setPublicationTab('changes');
+            setIsPublicationOpen(true);
+          }}>
+          {renderPublicationLabel()}
         </Button>
         {isolatedCount > 0 && (
           <BadgeWithDot color="warning" size="sm">
@@ -1270,59 +1355,112 @@ const OntologyExplorerPage: React.FC = () => {
     );
   }
 
-  function renderHeader() {
+  function renderLibraryTrigger() {
+    if (isCreatingOntology) {
+      return null;
+    }
+
+    return (
+      <Button
+        aria-haspopup="dialog"
+        aria-label={t('label.library')}
+        color="secondary"
+        data-testid="ontology-library-trigger"
+        iconLeading={
+          isAiMode ? Grid01 : <Grid01 className="tw:text-fg-brand-primary" />
+        }
+        size="sm"
+        tooltip={t('label.library')}
+        tooltipPlacement="bottom"
+        onPress={() => setIsLibraryOpen(true)}
+      />
+    );
+  }
+
+  function selectReviewTask(taskId?: string) {
+    setIsPublicationOpen(false);
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (taskId) {
+        next.set('task', taskId);
+      } else {
+        next.delete('task');
+      }
+
+      return next;
+    });
+  }
+
+  function renderImportExport() {
+    if (isCreatingOntology) {
+      return null;
+    }
+
+    return (
+      <>
+        {isNativeOntology && selectedOntology ? (
+          <OntologyImportExportMenu
+            canImport={canEditNativeOntology}
+            key={String(userId) + selectedOntology.id}
+            kind="ontology"
+            ontology={selectedOntology}
+            onApplied={() => {
+              setNativeStats(undefined);
+              setNativeRefresh((value) => value + 1);
+              refreshNativeWorkingDiff();
+            }}
+          />
+        ) : null}
+        {isAllOntologies ? (
+          <OntologyImportExportMenu
+            key={String(userId) + currentScopeKey}
+            kind="allOntologies"
+            ontologies={availableOntologies}
+            onApplied={() => {
+              void studioScopes.refetchOntologies();
+              void allModels.refetch();
+              refreshNativeWorkingDiff();
+            }}
+          />
+        ) : null}
+        {isGlossaryScope ? (
+          <OntologyImportExportMenu
+            glossaries={glossaries}
+            glossary={selectedGlossary}
+            isAdminUser={Boolean(isAdminUser)}
+            kind="glossary"
+            relationCount={relationCount}
+            termCount={termCount}
+          />
+        ) : null}
+      </>
+    );
+  }
+
+  function renderHeader(tasksAction: React.ReactNode) {
     return (
       <OntologyStudioHeader
         actions={
           <Box align="center" gap={2} wrap="wrap">
-            {!isCreatingOntology && (
-              <Button
-                aria-haspopup="dialog"
-                aria-label={t('label.library')}
-                color="secondary"
-                data-testid="ontology-library-trigger"
-                iconLeading={<Grid01 className="tw:text-fg-brand-primary" />}
-                size="sm"
-                tooltip={t('label.library')}
-                tooltipPlacement="bottom"
-                onPress={() => setIsLibraryOpen(true)}
-              />
-            )}
-            {!isCreatingOntology && isNativeOntology && selectedOntology ? (
-              <OntologyImportExportMenu
-                canImport={canEditNativeOntology}
-                key={selectedOntology.id}
-                kind="ontology"
-                ontology={selectedOntology}
-                onApplied={() => {
-                  setNativeStats(undefined);
-                  setNativeRefresh((value) => value + 1);
-                  refreshNativeWorkingDiff();
-                }}
-              />
-            ) : null}
-            {!isCreatingOntology && isGlossaryScope ? (
-              <OntologyImportExportMenu
-                glossaries={glossaries}
-                glossary={selectedGlossary}
-                isAdminUser={Boolean(isAdminUser)}
-                kind="glossary"
-                relationCount={relationCount}
-                termCount={termCount}
-              />
-            ) : null}
-            {!isCreatingOntology ? renderPrimaryAction() : null}
+            {isAiMode ? null : renderLibraryTrigger()}
+            {renderImportExport()}
+            {isAiMode ? renderLibraryTrigger() : null}
             {renderPublicationActions()}
+            {tasksAction}
           </Box>
         }
         breadcrumb={
           isAiMode ? (
             <HeaderBreadcrumb
               noMargin
-              items={[
-                getGlossaryHomeCrumb(t),
-                { label: t('label.ontology-studio') },
-              ]}
+              items={
+                isGlossaryScope
+                  ? [
+                      getGlossaryHomeCrumb(t),
+                      { label: t('label.ontology-studio') },
+                    ]
+                  : [{ label: t('label.ontology-studio') }]
+              }
               showHome={false}
             />
           ) : undefined
@@ -1331,6 +1469,40 @@ const OntologyExplorerPage: React.FC = () => {
         modes={modeTabs}
         scopeMenu={renderScopeMenu()}
         onModeChange={handleModeChange}
+      />
+    );
+  }
+
+  function renderVersionChip() {
+    return selectedOntology ? (
+      <OntologyVersionChip
+        isDisabled={
+          studioScopes.isOntologyLoading || studioScopes.isOntologyError
+        }
+        status={publicationStatus}
+        onPress={() => {
+          setPublicationTab('releases');
+          setIsPublicationOpen(true);
+        }}
+      />
+    ) : null;
+  }
+
+  function renderSearchSlot() {
+    const hasNativeSlot =
+      isAiMode && !isGlossaryScope && (mode === 'view' || mode === 'edit');
+    if (!(isGlossaryScope && showDefaultSurface) && !hasNativeSlot) {
+      return null;
+    }
+
+    return (
+      <div
+        className={
+          isAiMode
+            ? 'tw:w-81 tw:shrink-0 tw:border-l tw:border-secondary tw:pl-3.5 tw:empty:hidden'
+            : 'tw:min-w-35 tw:max-w-70 tw:flex-1 tw:border-l tw:border-secondary tw:pl-3 tw:empty:hidden'
+        }
+        ref={setSearchSlot}
       />
     );
   }
@@ -1367,12 +1539,9 @@ const OntologyExplorerPage: React.FC = () => {
           </Box>
         }
         onSurfaceChange={handleSubModeChange}>
-        {isGlossaryScope && showDefaultSurface ? (
-          <div
-            className="tw:min-w-35 tw:max-w-70 tw:flex-1 tw:border-l tw:border-secondary tw:pl-3 tw:empty:hidden"
-            ref={setSearchSlot}
-          />
-        ) : null}
+        {!isCreatingOntology ? renderPrimaryAction() : null}
+        {renderVersionChip()}
+        {renderSearchSlot()}
       </OntologyStudioSubBar>
     );
   }
@@ -1384,7 +1553,11 @@ const OntologyExplorerPage: React.FC = () => {
           <OntologyStudioQueryConsole
             createQueryOnMount={isNewQueryRequested}
             graphData={isNativeOntology ? null : graphData}
-            initialQuery={generatedQuery}
+            initialQuery={
+              generatedQuery?.scopeKey === currentScopeKey
+                ? generatedQuery.query
+                : undefined
+            }
             key={queryConsoleKey}
             relationTypes={isNativeOntology ? [] : relationTypes}
             selectedGlossaryIds={isNativeOntology ? [] : selectedGlossaryIds}
@@ -1398,7 +1571,7 @@ const OntologyExplorerPage: React.FC = () => {
             relationTypes={relationTypes}
             selectedGlossaryIds={selectedGlossaryIds}
             onEditAsSparql={(query) => {
-              setGeneratedQuery(query);
+              setGeneratedQuery({ scopeKey: currentScopeKey, query });
               setQuerySurface('console');
             }}
           />
@@ -1428,7 +1601,7 @@ const OntologyExplorerPage: React.FC = () => {
           graphData={graphData}
           relationshipTypes={relationTypes}
           onOpenQuery={(query) => {
-            setGeneratedQuery(query);
+            setGeneratedQuery({ scopeKey: currentScopeKey, query });
             setQuerySurface('console');
             setMode('query');
           }}
@@ -1497,6 +1670,7 @@ const OntologyExplorerPage: React.FC = () => {
           setEditSurface('graph');
           handleModeChange('edit');
         }}
+        onRequestGraphSurface={() => setViewSurface('graph')}
         onSaved={(ontology) => {
           void queryClient.invalidateQueries({
             queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
@@ -1547,6 +1721,83 @@ const OntologyExplorerPage: React.FC = () => {
     );
   }
 
+  function renderNoOntologies() {
+    const newOntologyLabel = t('label.new-entity', {
+      entity: t('label.ontology'),
+    });
+    const startCreating = () => setIsCreatingOntology(true);
+
+    if (isAiMode) {
+      return (
+        <div
+          className="tw:relative tw:h-full tw:min-h-70 tw:overflow-hidden tw:rounded-lg tw:bg-primary"
+          data-testid="all-ontologies-empty">
+          <FeaturesPlaceholder
+            description={t('message.ontology-empty-description')}
+            features={[
+              {
+                key: 'relationships',
+                icon: <LayoutGrid01 className="tw:text-fg-brand-primary" />,
+                title: t('label.relationship-plural'),
+                description: t(
+                  'message.ontology-relationships-feature-description'
+                ),
+              },
+              {
+                key: 'the-graph',
+                icon: <Cube02 className="tw:text-fg-warning-primary" />,
+                title: t('label.the-graph'),
+                description: t('message.ontology-graph-feature-description'),
+              },
+              {
+                key: 'what-it-unlocks',
+                icon: <CubeOutline className="tw:text-fg-success-primary" />,
+                title: t('label.what-it-unlocks'),
+                description: t('message.ontology-unlocks-feature-description'),
+              },
+            ]}
+            footer={
+              canCreateOntology ? (
+                <Button
+                  color="primary"
+                  data-testid="all-ontologies-new-ontology"
+                  iconLeading={Plus}
+                  size="sm"
+                  onPress={startCreating}>
+                  {newOntologyLabel}
+                </Button>
+              ) : undefined
+            }
+            title={t('message.ontology-empty-title')}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className="tw:relative tw:h-full tw:min-h-70"
+        data-testid="all-ontologies-empty">
+        <NoDataPlaceholder
+          actions={
+            canCreateOntology
+              ? [
+                  {
+                    key: 'new-ontology',
+                    label: newOntologyLabel,
+                    iconLeading: Plus,
+                    onPress: startCreating,
+                  },
+                ]
+              : undefined
+          }
+          icon={<Share07 className="tw:text-fg-brand-primary" />}
+          title={t('label.no-entity', { entity: t('label.ontology-plural') })}
+        />
+      </div>
+    );
+  }
+
   function renderAllOntologies() {
     if (studioScopes.isOntologyLoading || allModels.isLoading) {
       return <Typography role="status">{t('label.loading')}</Typography>;
@@ -1556,30 +1807,7 @@ const OntologyExplorerPage: React.FC = () => {
     }
 
     if (availableOntologies.length === 0) {
-      return (
-        <div
-          className="tw:relative tw:h-full tw:min-h-70"
-          data-testid="all-ontologies-empty">
-          <NoDataPlaceholder
-            actions={
-              canCreateOntology
-                ? [
-                    {
-                      key: 'new-ontology',
-                      label: t('label.new-entity', {
-                        entity: t('label.ontology'),
-                      }),
-                      iconLeading: Plus,
-                      onPress: () => setIsCreatingOntology(true),
-                    },
-                  ]
-                : undefined
-            }
-            icon={<Share07 className="tw:text-fg-brand-primary" />}
-            title={t('label.no-entity', { entity: t('label.ontology-plural') })}
-          />
-        </div>
-      );
+      return renderNoOntologies();
     }
     if (!allModels.graph) {
       return null;
@@ -1599,6 +1827,7 @@ const OntologyExplorerPage: React.FC = () => {
           void studioScopes.refetchOntologies();
           void allModels.refetch();
         }}
+        onRequestGraphSurface={() => setViewSurface('graph')}
         onSelectedConceptChange={(id) => {
           if (mode === 'edit' && id) {
             const owner = allModels.models?.find((model) =>
@@ -1701,16 +1930,18 @@ const OntologyExplorerPage: React.FC = () => {
   };
 
   function renderPublicationModal() {
-    if (!isPublicationOpen) {
+    if (selectedReviewTaskId || !isPublicationOpen) {
       return null;
     }
     if (selectedOntology) {
       return (
         <OntologyPublicationModal
           canEdit={canEditNativeOntology}
-          key={selectedOntology.id}
+          initialTab={publicationTab}
+          key={String(userId) + selectedOntology.id}
           ontology={selectedOntology}
           onClose={() => setIsPublicationOpen(false)}
+          onOpenTask={selectReviewTask}
         />
       );
     }
@@ -1721,13 +1952,11 @@ const OntologyExplorerPage: React.FC = () => {
     return (
       <OntologyPublicationModal
         canEdit={false}
-        initialOntology={
-          allModels.models?.find((model) =>
-            model.concepts.some((concept) => concept.id === selectedConceptId)
-          )?.ontology
-        }
+        initialTab={publicationTab}
+        key={String(userId)}
         ontologies={availableOntologies}
         onClose={() => setIsPublicationOpen(false)}
+        onOpenTask={selectReviewTask}
       />
     );
   }
@@ -1801,11 +2030,20 @@ const OntologyExplorerPage: React.FC = () => {
         className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-primary tw:font-body tw:antialiased"
         data-testid="ontology-studio-shell"
         style={ONTOLOGY_STUDIO_STYLE}>
-        {renderHeader()}
-
-        {renderWorkspace()}
-
-        {renderOverlays()}
+        <OntologyTasksDrawer
+          taskId={selectedReviewTaskId}
+          onTaskChange={selectReviewTask}>
+          {({ tasksAction, banner }) => (
+            <>
+              {renderHeader(tasksAction)}
+              {banner}
+              <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
+                {renderWorkspace()}
+              </OntologyGraphSearchSlotContext.Provider>
+              {renderOverlays()}
+            </>
+          )}
+        </OntologyTasksDrawer>
       </main>
     </PageLayoutV1>
   );

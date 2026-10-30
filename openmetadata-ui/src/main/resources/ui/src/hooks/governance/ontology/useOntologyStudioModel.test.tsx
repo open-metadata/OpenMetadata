@@ -13,12 +13,14 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
+import { AxiosError, AxiosResponse } from 'axios';
 import { ReactNode } from 'react';
 import { Ontology } from '../../../generated/entity/data/ontology';
 import {
   OntologyConcept,
   OntologyConceptType,
 } from '../../../generated/entity/data/ontologyConcept';
+import { OntologyDefinitionStatus } from '../../../generated/type/ontologyDefinitionStatus';
 import {
   listOntologyAxioms,
   listOntologyConcepts,
@@ -109,6 +111,30 @@ describe('useOntologyStudioModel', () => {
     );
   });
 
+  it('retains server lifecycle status in the owner model', async () => {
+    mockListOntologyConcepts.mockImplementation(async (params) => ({
+      data: [
+        {
+          ...concept('Order'),
+          ...(params?.fields?.includes('lifecycleStatus') && {
+            lifecycleStatus: OntologyDefinitionStatus.Draft,
+          }),
+        },
+      ],
+      paging: { total: 1 },
+    }));
+
+    const { result } = renderHook(() => useOntologyStudioModel(ontology), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.model).toBeDefined());
+
+    expect(result.current.model?.concepts[0].lifecycleStatus).toBe(
+      OntologyDefinitionStatus.Draft
+    );
+  });
+
   it('fails visibly when a cursor repeats instead of returning a truncated model', async () => {
     const page = Array.from({ length: 5_000 }, () => concept('Repeated'));
     mockListOntologyConcepts.mockResolvedValue({
@@ -165,6 +191,30 @@ describe('all native ontology models', () => {
       ontology.id,
       second.id,
     ]);
+  });
+
+  it('retains server lifecycle status in the aggregate models', async () => {
+    mockListOntologyConcepts.mockImplementation(async (params) => ({
+      data: [
+        {
+          ...concept('Order'),
+          ...(params?.fields?.includes('lifecycleStatus') && {
+            lifecycleStatus: OntologyDefinitionStatus.Draft,
+          }),
+        },
+      ],
+      paging: { total: 1 },
+    }));
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([ontology], true),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.models).toBeDefined());
+
+    expect(result.current.models?.[0].concepts[0].lifecycleStatus).toBe(
+      OntologyDefinitionStatus.Draft
+    );
   });
 
   it('fails instead of issuing an unscoped definition request for a missing name', async () => {
@@ -240,5 +290,43 @@ describe('all native ontology models', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(result.current.graph).toBeNull();
+  });
+
+  it.each([
+    ['while counting definitions', 1],
+    ['while loading its model', 2],
+  ])('skips an ontology deleted %s', async (_, failingCall) => {
+    const deleted = {
+      ...ontology,
+      id: 'deleted',
+      name: 'Deleted',
+      fullyQualifiedName: 'Deleted',
+    };
+    const calls = { count: 0 };
+    mockListOntologyConcepts.mockImplementation(async (params) => {
+      if (params?.ontology === deleted.fullyQualifiedName) {
+        calls.count += 1;
+        if (calls.count === failingCall) {
+          throw new AxiosError('Not found', '404', undefined, undefined, {
+            status: 404,
+          } as AxiosResponse);
+        }
+      }
+
+      return {
+        data: [{ ...concept('Order'), id: params?.ontology + '-order' }],
+        paging: { total: 1 },
+      };
+    });
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([deleted, ontology], true),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.graph).not.toBeNull());
+
+    expect(result.current.isError).toBe(false);
+    expect(result.current.models?.map((model) => model.ontology.id)).toEqual([
+      ontology.id,
+    ]);
   });
 });

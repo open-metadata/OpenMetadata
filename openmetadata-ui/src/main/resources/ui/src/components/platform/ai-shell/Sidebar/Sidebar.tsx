@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -29,7 +29,7 @@ import SubPanel from './SubPanel';
 import SubRail from './SubRail';
 import { useContextCenterBadges } from './useContextCenterBadges';
 import { useCustomizedMainNav } from './useCustomizedMainNav';
-import { useMainCollapse } from './useSidebarState';
+import { useMainCollapse, useSubCollapse } from './useSidebarState';
 
 // Sub-nav config key for the Context Center module — its sub-panel carries
 // the dynamic Quick Actions / Recently Viewed / Bookmarks sections below the
@@ -64,7 +64,8 @@ const Sidebar: React.FC = () => {
 
   const inSubMode = activeSubNav !== null;
 
-  // Main nav collapse. Top level: the user's persisted preference (localStorage).
+  // Main nav collapse. Top level: starts from the compact preference; a manual
+  // toggle is transient and never changes the preference.
   // Inside a sub-context: always the icon rail — the persisted preference does
   // NOT keep it expanded, and any expand there is transient, re-railing when the
   // active sub-context (`activeModuleId`) changes or on reload.
@@ -73,19 +74,10 @@ const Sidebar: React.FC = () => {
     activeModuleId
   );
 
-  // Submenu: always expanded on entering a module that has one, collapsing only
-  // when the user intentionally collapses it. Deliberately NOT persisted — it
-  // re-expands on reload and whenever the active sub-context changes.
-  const [subCollapsed, setSubCollapsed] = useState(false);
-
-  useEffect(() => {
-    setSubCollapsed(false);
-  }, [activeModuleId]);
-
-  const toggleSubCollapsed = useCallback(
-    () => setSubCollapsed((prev) => !prev),
-    []
-  );
+  // Submenu: opens per the compact-sidebar preference (railed when compact,
+  // expanded otherwise); user toggles are transient. See `useSubCollapse`.
+  const [subCollapsed, setSubCollapsed, toggleSubCollapsed] =
+    useSubCollapse(activeModuleId);
 
   const isContextCenter = activeSubNav?.key === CONTEXT_CENTER_SUBNAV_KEY;
 

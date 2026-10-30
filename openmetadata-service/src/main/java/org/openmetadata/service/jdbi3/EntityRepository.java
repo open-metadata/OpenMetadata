@@ -284,6 +284,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -1051,6 +1052,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * @see TableRepository#setInheritedFields(Table, Fields) for an example implementation
    */
   @SuppressWarnings("unused")
+  /**
+   * Runs inheritance on a single already-loaded entity, for a caller outside this package such as
+   * the authorization {@code ResourceContext}, which must see inherited tags for a deny rule.
+   */
+  public void setInheritedFieldsInternal(T entity, Fields fields) {
+    setInheritedFields(entity, fields);
+  }
+
   protected void setInheritedFields(T entity, Fields fields) {
     if (!requiresParentForInheritance(entity, fields)) {
       return;
@@ -7908,8 +7917,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
     T restoredEntity = find(id, ALL);
-    return executeEntityWrite(
-        List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity));
+    return RdfUpdater.restoring(
+        () ->
+            executeEntityWrite(
+                List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity)));
   }
 
   private PutResponse<T> restoreLoadedEntity(String updatedBy, UUID id, T restoredEntity) {
@@ -7938,6 +7949,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
       updater.update();
+      RdfUpdater.recordRestored(List.of(updated));
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
@@ -8053,6 +8065,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       List<EntityUpdater> changed = filterChanged(updaters);
       if (!changed.isEmpty()) {
         persistBulkUpdaters(changed, "bulkRestore");
+        RdfUpdater.recordRestored(changed.stream().map(EntityUpdater::getUpdated).toList());
         ListCountCache.invalidate(entityType);
       }
     }
@@ -8716,7 +8729,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * charts attached to dashboards) and entity types without a {@code parent.id} field in
    * their ES mapping would otherwise drift — DB shows restored / soft-deleted, but ES still
    * reflects the previous state. {@code SearchIndexHandler.onEntitiesUpdated} batches the
-   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side.
+   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side. The RDF graph
+   * gets the same descendants for the same reason: no cascade hook reaches it otherwise.
    */
   private void persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
     writeBulkVersionHistory(changed, phasePrefix);
@@ -8731,6 +8745,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       hydrateForSearchIndex(changedEntities);
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
+    RdfUpdater.updateEntities(changedEntities);
     // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
@@ -9755,7 +9770,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** The user a write records as its author; {@code admin} is the system, an unknown name a user. */
   protected static User authorOf(final String userName) {
     final User author =
-        userName.equalsIgnoreCase(ADMIN_USER_NAME)
+        SecurityUtil.sameIdentifier(userName, ADMIN_USER_NAME)
             ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
             : findEntityByNameOrNull(USER, userName, ALL);
     return author == null ? new User().withName(userName).withIsAdmin(false) : author;
@@ -13736,7 +13751,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * tag policy evaluates against tags fetched once for the whole request rather than once per entity.
    */
   public void batchLoadTags(List<T> entities) {
-    fetchAndSetTags(entities, getFields(FIELD_TAGS));
+    Fields tagFields = getFields(FIELD_TAGS);
+    fetchAndSetTags(entities, tagFields);
+    // Inherited tags (from a service, database, ...) must be visible to a tag-based deny rule in
+    // the
+    // bulk authorization path too, just as the single-entity ResourceContext loads them.
+    setInheritedFields(entities, tagFields);
   }
 
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {

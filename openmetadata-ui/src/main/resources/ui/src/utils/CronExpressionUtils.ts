@@ -13,7 +13,6 @@
 
 import { isUndefined, toNumber } from 'lodash';
 
-import type { RuleObject } from 'rc-field-form/es/interface';
 import type {
   Combination,
   StateValue,
@@ -224,7 +223,7 @@ export const getUpdatedStateFromFormState = <T>(
   }
 };
 
-export const cronValidator = async (_: RuleObject, value: string) => {
+export const cronValidator = async (_: unknown, value: string) => {
   const trimmedValue = value.trim();
 
   if (!trimmedValue) {

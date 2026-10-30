@@ -64,6 +64,20 @@ public final class SecurityUtil {
 
   private SecurityUtil() {}
 
+  /**
+   * Whether two user names, emails or email domains identify the same thing. Compares the {@link
+   * Locale#ROOT} lower-case forms, the normalization names get when they are stored, so a token
+   * that carries the original casing still matches. {@link String#equalsIgnoreCase} must not be
+   * used for this: it also compares upper-case forms, which equates characters such as {@code ı}
+   * with {@code i} and {@code ſ} with {@code s}, so two different stored names would compare
+   * equal.
+   */
+  public static boolean sameIdentifier(String first, String second) {
+    return first != null
+        && second != null
+        && first.toLowerCase(Locale.ROOT).equals(second.toLowerCase(Locale.ROOT));
+  }
+
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     return principal == null ? null : principal.getName().split("[/@]")[0];
@@ -250,7 +264,7 @@ public final class SecurityUtil {
       return false;
     }
     String domain = email.substring(email.indexOf('@') + 1);
-    return allowedRegistrationDomains.stream().anyMatch(domain::equalsIgnoreCase);
+    return allowedRegistrationDomains.stream().anyMatch(d -> sameIdentifier(d, domain));
   }
 
   /**
@@ -521,7 +535,8 @@ public final class SecurityUtil {
       if (nullOrEmpty(expectedDomains)) {
         expectedDomains = nullOrEmpty(principalDomain) ? Set.of() : Set.of(principalDomain);
       }
-      if (expectedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      String tokenDomain = domain;
+      if (expectedDomains.stream().noneMatch(d -> sameIdentifier(d, tokenDomain))) {
         throw AuthenticationException.invalidEmailMessage(domain, expectedDomains);
       }
     }
@@ -835,7 +850,7 @@ public final class SecurityUtil {
 
     String domain = normalizedEmail.substring(normalizedEmail.indexOf("@") + 1);
 
-    boolean allowed = allowedEmailDomains.stream().anyMatch(d -> d.equalsIgnoreCase(domain));
+    boolean allowed = allowedEmailDomains.stream().anyMatch(d -> sameIdentifier(d, domain));
 
     if (!allowed) {
       throw new AuthenticationException(
