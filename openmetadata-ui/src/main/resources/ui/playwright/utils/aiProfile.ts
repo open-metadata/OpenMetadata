@@ -71,19 +71,29 @@ export const openOrganizationTeams = async (page: Page): Promise<void> => {
 
 /**
  * Drill from the Organization team into a specific child team via its row link.
- * All child teams are fetched in one page (no server-side paging), so the link
- * is always present in the DOM.
+ * Sub-teams are paged, so the team is searched for first. The search is
+ * ES-backed and a freshly-created team can lag the index — re-issue the search
+ * until its link appears.
  */
 export const openTeamByLink = async (
   page: Page,
   teamName: string
 ): Promise<void> => {
+  const searchInput = page.getByTestId('team-detail').getByTestId('searchbar');
+  const teamLink = page.getByTestId(`team-link-${teamName}`);
+
+  await expect(async () => {
+    await searchInput.fill('');
+    await searchInput.fill(teamName);
+    await expect(teamLink).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 30000 });
+
   const teamResponse = page.waitForResponse((response) =>
     response
       .url()
       .includes(`/api/v1/teams/name/${encodeURIComponent(teamName)}`)
   );
-  await page.getByTestId(`team-link-${teamName}`).click();
+  await teamLink.click();
   await teamResponse;
 
   await expect(page.getByTestId('team-detail')).toBeVisible();
