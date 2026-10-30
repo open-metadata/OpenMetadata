@@ -6,16 +6,21 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.it.tests.OntologyBindingFixtures.wideTableAsset;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -47,6 +52,7 @@ import org.openmetadata.schema.type.OntologyColumnBindingState;
 import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
+import org.openmetadata.schema.type.OntologyHydratedAssetBinding;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -154,8 +160,7 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void successfulMutationsRecoverDeletedAssetCapacityWithoutRemovingHiddenLiveLinks(
-      TestNamespace ns) {
+  void successfulMutationsPruneDeletedTargetsWithoutRemovingHiddenLiveLinks(TestNamespace ns) {
     final var ontology = createOntology(ns);
     final var concept = declareClass(ontology, "Customer", URI.create("urn:Customer"));
     final var hidden =
@@ -171,7 +176,6 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
       assertEquals(index + 2L, put(admin(), concept, asset, index + 1L).getRevision());
     }
     final var addition = topicAsset(ns, service.getFullyQualifiedName());
-    assertStatus(400, () -> put(admin(), concept, addition, 100L));
     final var deleted = topics.getFirst().getAssetId();
     admin().topics().delete(deleted);
     admin().topics().delete(topics.get(1).getAssetId().toString(), Map.of("hardDelete", "true"));
@@ -215,6 +219,125 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
           remaining.getAssets().stream()
               .anyMatch(asset -> asset.getAssetId().equals(topics.get(2).getAssetId())));
     }
+  }
+
+  @Test
+  void oneHundredFiftyBoundAssetsPageWithoutGapsOrRepeats(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    final var concept = declareClass(ontology, "Customer", URI.create("urn:Customer"));
+    final var table = table(ns);
+    final var written = bindTableAndOneHundredFiftyTopics(ns, concept, table);
+    final var assets = assertTwoPagesHoldEveryBoundAsset(concept, written);
+    assertEveryWalkReturnsEachBoundAssetOnce(concept, written.bound());
+    assertServiceTypes(table, assets);
+    assertStatus(400, () -> get(admin(), concept, "?limit=0"));
+    assertStatus(400, () -> get(admin(), concept, "?limit=101"));
+    assertStatus(400, () -> get(admin(), concept, "?after=not-a-cursor"));
+    final var late = topicAsset(ns, written.service());
+    assertStatus(409, () -> put(admin(), concept, late, 3L));
+    assertEquals(151L, get(admin(), concept).getRevision());
+  }
+
+  private static BoundAssets bindTableAndOneHundredFiftyTopics(
+      final TestNamespace ns, final OntologyConcept concept, final Table table) {
+    final var tableAsset =
+        new OntologyAssetBinding()
+            .withAssetType(OntologyBindingAssetType.TABLE)
+            .withAssetId(table.getId());
+    assertEquals(1L, put(admin(), concept, tableAsset, 0L).getRevision());
+    final var service = MessagingServiceTestFactory.createKafka(ns).getFullyQualifiedName();
+    final var bound = new HashSet<>(List.of(table.getId()));
+    OntologyConceptBindingsResponse lastWrite = null;
+    for (int index = 0; index < 150; index++) {
+      final var asset = topicAsset(ns, service);
+      bound.add(asset.getAssetId());
+      lastWrite = put(admin(), concept, asset, index + 1L);
+      assertEquals(index + 2L, lastWrite.getRevision());
+    }
+    return new BoundAssets(bound, lastWrite, service);
+  }
+
+  private static List<OntologyHydratedAssetBinding> assertTwoPagesHoldEveryBoundAsset(
+      final OntologyConcept concept, final BoundAssets written) {
+    assertEquals(100, written.lastWrite().getAssets().size());
+    final var firstPage = get(admin(), concept, "?limit=100");
+    assertEquals(written.lastWrite(), firstPage);
+    final var secondPage = get(admin(), concept, "?limit=100&after=" + firstPage.getAfter());
+    assertEquals(51, secondPage.getAssets().size());
+    assertNull(secondPage.getAfter());
+    final var assets =
+        Stream.concat(firstPage.getAssets().stream(), secondPage.getAssets().stream()).toList();
+    assertEquals(151, assets.size());
+    assertEquals(
+        written.bound(),
+        assets.stream().map(OntologyHydratedAssetBinding::getAssetId).collect(Collectors.toSet()));
+    return assets;
+  }
+
+  private static void assertEveryWalkReturnsEachBoundAssetOnce(
+      final OntologyConcept concept, final Set<UUID> bound) {
+    assertEquals(List.of(), walk(concept, 40).stream().filter(id -> !bound.contains(id)).toList());
+    assertEquals(151, new HashSet<>(walk(concept, 40)).size());
+    assertEquals(151, walk(concept, 40).size());
+  }
+
+  private static void assertServiceTypes(
+      final Table table, final List<OntologyHydratedAssetBinding> assets) {
+    final var byAsset = new HashMap<UUID, String>();
+    assets.forEach(asset -> byAsset.put(asset.getAssetId(), asset.getServiceType()));
+    assertEquals(table.getServiceType().value(), byAsset.remove(table.getId()));
+    assertEquals(Set.of("Kafka"), new HashSet<>(byAsset.values()));
+  }
+
+  private record BoundAssets(
+      Set<UUID> bound, OntologyConceptBindingsResponse lastWrite, String service) {}
+
+  @Test
+  void aReaderHiddenFromMostAssetsPagesInBoundedScans(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    final var concept = declareClass(ontology, "Customer", URI.create("urn:Customer"));
+    final var schema = DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName();
+    for (int index = 0; index < 12; index++) {
+      assertEquals(index + 1L, put(admin(), concept, tableAsset(ns, schema), index).getRevision());
+    }
+    final var topic =
+        topicAsset(ns, MessagingServiceTestFactory.createKafka(ns).getFullyQualifiedName());
+    assertEquals(13L, put(admin(), concept, topic, 12L).getRevision());
+    try (var fixtures = new RdfAccessFixtures("scan" + ns.shortPrefix())) {
+      final var denied = fixtures.denyRole(MetadataOperation.VIEW_ALL, Entity.TABLE);
+      final var reader = client(fixtures.userToken("reader", List.of(denied.getId())));
+      final var pages = pages(reader, concept, 1);
+      assertEquals(2, pages.size(), "13 rows examined 10 per request take two pages");
+      assertEquals(
+          List.of(topic.getAssetId()),
+          pages.stream()
+              .flatMap(page -> page.getAssets().stream())
+              .map(asset -> asset.getAssetId())
+              .toList());
+      assertEquals(1, pages(admin(), concept, 100).size());
+      assertEquals(13, walk(concept, 100).size());
+    }
+  }
+
+  private static List<UUID> walk(OntologyConcept concept, int limit) {
+    final var ids = new ArrayList<UUID>();
+    pages(admin(), concept, limit)
+        .forEach(page -> page.getAssets().forEach(asset -> ids.add(asset.getAssetId())));
+    return ids;
+  }
+
+  private static List<OntologyConceptBindingsResponse> pages(
+      OpenMetadataClient client, OntologyConcept concept, int limit) {
+    final var pages = new ArrayList<OntologyConceptBindingsResponse>();
+    String after = null;
+    do {
+      final var page =
+          get(client, concept, "?limit=" + limit + (after == null ? "" : "&after=" + after));
+      assertTrue(page.getAssets().size() <= limit);
+      pages.add(page);
+      after = page.getAfter();
+    } while (after != null);
+    return pages;
   }
 
   @Test
@@ -372,32 +495,20 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
         .withAssetId(TopicTestFactory.createSimple(ns, service).getId());
   }
 
-  private static OntologyAssetBinding wideTableAsset(
-      TestNamespace ns, String schema, OntologyProperty property) {
-    final var columns =
-        IntStream.range(0, 100)
-            .mapToObj(
-                index -> new Column().withName("field" + index).withDataType(ColumnDataType.STRING))
-            .toList();
+  private static OntologyAssetBinding tableAsset(TestNamespace ns, String schema) {
     final var table =
         admin()
             .tables()
             .create(
                 new CreateTable()
-                    .withName(ns.prefix("wide" + UUID.randomUUID()))
+                    .withName(ns.prefix("t" + UUID.randomUUID()))
                     .withDatabaseSchema(schema)
-                    .withColumns(columns));
+                    .withColumns(
+                        List.of(
+                            new Column().withName("value").withDataType(ColumnDataType.STRING))));
     return new OntologyAssetBinding()
         .withAssetType(OntologyBindingAssetType.TABLE)
-        .withAssetId(table.getId())
-        .withColumns(
-            columns.stream()
-                .map(
-                    column ->
-                        new OntologyColumnBinding()
-                            .withPropertyId(property.getId())
-                            .withColumnPath(List.of(column.getName())))
-                .toList());
+        .withAssetId(table.getId());
   }
 
   private static Table table(TestNamespace ns) {
@@ -446,9 +557,15 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
 
   private static OntologyConceptBindingsResponse get(
       OpenMetadataClient client, OntologyConcept concept) {
+    return get(client, concept, "");
+  }
+
+  private static OntologyConceptBindingsResponse get(
+      OpenMetadataClient client, OntologyConcept concept, String query) {
     return client
         .getHttpClient()
-        .execute(HttpMethod.GET, path(concept), null, OntologyConceptBindingsResponse.class);
+        .execute(
+            HttpMethod.GET, path(concept) + query, null, OntologyConceptBindingsResponse.class);
   }
 
   private static OntologyConceptBindingsResponse put(

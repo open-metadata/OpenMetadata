@@ -67,7 +67,6 @@ import type { PreviewNativeOntologyImport } from '../generated/api/data/previewN
 import { PreviewNativeOntologyPack } from '../generated/api/data/previewNativeOntologyPack';
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';
 import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyChangeSet';
-import { UpdateOntologyConceptBinding } from '../generated/api/data/updateOntologyConceptBinding';
 import type { Ontology } from '../generated/entity/data/ontology';
 import { OntologyAxiom } from '../generated/entity/data/ontologyAxiom';
 import {
@@ -87,6 +86,11 @@ import {
 } from '../generated/type/ontologyReleaseMember';
 import { OntologyState } from '../generated/type/ontologyState';
 import { ListParams } from '../interface/API.interface';
+import {
+  BindingSnapshot,
+  RemoveAsset,
+  ReplaceAsset,
+} from '../interface/governance/ontology/ontologyConceptBindings.types';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 import { EXPORT_FORMAT_TO_ACCEPT_HEADER, OntologyExportFormat } from './rdfAPI';
@@ -108,6 +112,26 @@ const ONTOLOGY_REASONING_PATH = '/ontology/reasoning';
 
 const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
 
+const collectOntologyConceptBindings = async (
+  id: string,
+  firstPage: OntologyConceptBindingsResponse,
+  signal?: AbortSignal
+): Promise<BindingSnapshot> => {
+  const assets = [...firstPage.assets];
+  let after = firstPage.after;
+  while (after) {
+    const { data } = await APIClient.get<OntologyConceptBindingsResponse>(
+      `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/bindings`,
+      { params: { after, limit: 100 }, signal }
+    );
+    assets.push(...data.assets);
+    after = data.after;
+  }
+
+  // Keep the starting revision so a write conflicts if bindings changed during paging.
+  return { kind: 'complete', revision: firstPage.revision, assets };
+};
+
 export const getOntologyConceptBindings = async (
   id: string,
   signal?: AbortSignal
@@ -117,28 +141,24 @@ export const getOntologyConceptBindings = async (
     { signal }
   );
 
-  return response.data;
+  return collectOntologyConceptBindings(id, response.data, signal);
 };
 
 export const putOntologyConceptBinding = async (
   id: string,
-  request: UpdateOntologyConceptBinding
-) => {
-  const response = await APIClient.put<OntologyConceptBindingsResponse>(
+  request: ReplaceAsset
+): Promise<void> => {
+  await APIClient.put(
     `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/bindings`,
     request
   );
-
-  return response.data;
 };
 
 export const deleteOntologyConceptBinding = async (
   id: string,
-  assetType: string,
-  assetId: string,
-  expectedRevision: number
-) => {
-  const response = await APIClient.delete<OntologyConceptBindingsResponse>(
+  { assetType, assetId, expectedRevision }: RemoveAsset
+): Promise<void> => {
+  await APIClient.delete(
     `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(
       id
     )}/bindings/${encodeURIComponent(assetType)}/${encodeURIComponent(
@@ -146,8 +166,6 @@ export const deleteOntologyConceptBinding = async (
     )}`,
     { params: { expectedRevision } }
   );
-
-  return response.data;
 };
 
 export const listOntologyReleaseHistory = async (
