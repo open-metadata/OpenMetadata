@@ -470,7 +470,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
                             false),
                         name))
             .toList(),
-        0L);
+        bindings(concept, "").getRevision());
   }
 
   private static OntologyColumnBinding column(final OntologyProperty property, final String name) {
