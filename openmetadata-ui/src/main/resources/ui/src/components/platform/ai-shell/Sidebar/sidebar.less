@@ -186,6 +186,17 @@
   }
 }
 
+// Dark: rest-state nav SVGs that hardcode the light rest grey (#717680) would sit
+// a step off the currentColor icons beside them; let them follow the item's colour.
+.dark-mode .ask-sidebar svg {
+  [stroke='#717680' i] {
+    stroke: currentColor;
+  }
+  [fill='#717680' i] {
+    fill: currentColor;
+  }
+}
+
 // ---- Shell ----
 // Outer card width = inner panel width + left/right padding (4px each).
 @ask-sidebar-card-width: (@ask-sidebar-width + @ask-sub-outer-padding * 2);
