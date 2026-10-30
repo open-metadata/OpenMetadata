@@ -220,16 +220,23 @@ export const ContractSLAFormTab: React.FC<{
 
   const { columnItems, topLevelColumnIds } = useMemo(() => {
     const { columns } = tableData as Table;
+    const topLevelColumnIds = new Set(
+      (columns ?? []).map((column) => column.fullyQualifiedName ?? column.name)
+    );
 
     return {
+      // The backend resolves `sla.columnName` against top-level columns only
+      // (`ODCSTableTarget.resolveColumn`), so a nested (struct/array child)
+      // selection can never resolve and would silently drop column-level SLA
+      // evaluation. Offer only top-level columns as new selections.
       columnItems: isEmpty(columns)
         ? []
-        : toItems(getColumnOptionsFromTableColumn(columns, true)),
-      topLevelColumnIds: new Set(
-        (columns ?? []).map(
-          (column) => column.fullyQualifiedName ?? column.name
-        )
-      ),
+        : toItems(
+            getColumnOptionsFromTableColumn(columns, true).filter((opt) =>
+              topLevelColumnIds.has(opt.value)
+            )
+          ),
+      topLevelColumnIds,
     };
   }, [tableData]);
 
