@@ -633,11 +633,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       validateNonceIfRequired(pendingSession, idTokenClaims);
 
       // The MCP callback completes its own OAuth exchange off the provider-issued id_token, which
-      // is only available here. Hand the validated credentials over on the session for it to pick
-      // up. Scoped to the MCP flow so a normal web login never parks provider tokens in a session.
+      // is only available here. Hand the validated credentials over on this request, so the MCP
+      // callback only ever reads tokens this callback validated; a session would outlive it.
       if (isMcpRedirectUri(pendingSession.getRedirectUri())) {
-        req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
-        LOG.debug("Stored OIDC credentials on session for MCP callback handoff");
+        req.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+        LOG.debug("Stored OIDC credentials on the request for MCP callback handoff");
       }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
