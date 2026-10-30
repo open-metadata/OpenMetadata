@@ -1,7 +1,7 @@
 # Image JDKs distrust a compromised CA by deleting its roots from cacerts, not by fingerprint-blocking its intermediates
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (three more roots that Oracle's JDK removes)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (three more roots that Oracle's JDK removes) · v3 2026-10-30 (Temurin 21.0.13 drops the CVE-2026-91403 roots; the step only checks them)
 - **Deciders:** @mohityadav766
 - **Guard:** the image build, which the step fails while any root in its list is still in the JDK's `cacerts`; `reviewer` for the rest
 - **Related:** #36087, #36088, open-metadata/openmetadata-collate#7792, open-metadata/openmetadata-collate#7816, open-metadata/ai-platform#1856, #36234, #36235
@@ -45,3 +45,15 @@ Services. The step now lists six roots: the three from v1 plus G1, G2 and AAA.
 - This replaces the v1 consequence that the step deletes nothing once every base is on Temurin
   21.0.13. Temurin is not known to remove G1, G2 or AAA, so the step can only be dropped once no
   base ships any root in its list.
+
+**v3, 2026-10-30.** Temurin 21.0.13+9 reached Docker Hub on 2026-10-29 and no longer ships the three
+roots behind CVE-2026-91403: emSign ECC Root CA - G3, emSign ECC Root CA - C3 and emSign Root CA - C1.
+
+- The step stops deleting those three and only checks that they are absent, so a base older than
+  Temurin 21.0.13 fails the build instead of being patched. The olivaw and oss-scanner bases moved to a Temurin 21.0.13 digest.
+- It still deletes emSign Root CA - G1, emSign Root CA - G2 and AAA Certificate Services
+  (CVE-2026-114820). Temurin 21.0.13 still ships G1, and the v2 rule of listing a root no base ships
+  today still holds.
+- Upstream OpenJDK removed the emSign roots on 2026-10-27 (8395690, jdk21u `d339d5921f`). The step can
+  be dropped once the base images ship that change and no base carries G1, G2 or AAA.
+- Related: open-metadata/openmetadata-collate#7792; the same change in openmetadata-collate, ai-platform and collate-hybrid-ingestion-runner
