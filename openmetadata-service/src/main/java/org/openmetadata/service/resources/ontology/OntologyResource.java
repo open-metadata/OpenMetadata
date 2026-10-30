@@ -21,6 +21,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -51,6 +52,9 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraph;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraphPage;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraphPageRequest;
 import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
@@ -71,13 +75,21 @@ import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.jdbi3.OntologyConceptRepository;
 import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.NativeOntologyDataGraphPager;
+import org.openmetadata.service.ontology.NativeOntologyDataGraphService;
+import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Query;
+import org.openmetadata.service.ontology.NativeOntologyTopologyCursorCodec;
+import org.openmetadata.service.ontology.OntologyConceptBindingService;
+import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
@@ -113,6 +125,23 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   private final OntologyReleaseHistory releaseHistory;
   private final OntologyPackCatalog packCatalog;
   private final OntologyPackContentLoader packContentLoader;
+  private final OntologyConceptBindingStore bindingStore =
+      new OntologyConceptBindingStore(
+          Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables());
+  private final NativeOntologyDataGraphService dataGraph =
+      new NativeOntologyDataGraphService(
+          Entity.getCollectionDAO(),
+          bindingStore,
+          (OntologyConceptRepository) Entity.getEntityRepository(Entity.ONTOLOGY_CONCEPT),
+          authorizer,
+          Entity::getEntityReferencesByIds);
+  private final NativeOntologyDataGraphPager dataGraphPages =
+      new NativeOntologyDataGraphPager(
+          dataGraph,
+          Entity.getCollectionDAO(),
+          bindingStore,
+          new OntologyConceptBindingService(bindingStore, authorizer, Entity::getEntityRepository),
+          NativeOntologyTopologyCursorCodec.forServerKeys(Fernet.getInstance().getCachedKeys()));
 
   public OntologyResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY, authorizer, limits);
@@ -366,6 +395,71 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       reference.setSource(context.getEntity().getEntityReference());
     }
     return references;
+  }
+
+  @GET
+  @Path("/{id}/dataGraph")
+  @Operation(
+      operationId = "getNativeOntologyDataGraph",
+      summary =
+          "Get one page of bound concepts ranked by binding count, each with the assets the caller may view")
+  public NativeOntologyDataGraph getDataGraph(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @Valid @BeanParam final DataGraphQuery query) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    return dataGraph.graph(new Access(uriInfo, securityContext), id, query.toQuery());
+  }
+
+  /** The data graph page shape; JAX-RS fills the fields, so they cannot be final. */
+  public static final class DataGraphQuery {
+    @QueryParam("limit")
+    @DefaultValue("12")
+    @Min(1)
+    @Max(12)
+    private int limit;
+
+    @QueryParam("offset")
+    @DefaultValue("0")
+    @Min(0)
+    private int offset;
+
+    @QueryParam("assetsPerConcept")
+    @DefaultValue("4")
+    @Min(1)
+    @Max(4)
+    private int assetsPerConcept;
+
+    @QueryParam("edgeLimit")
+    @DefaultValue("100")
+    @Min(1)
+    @Max(500)
+    private int edgeLimit;
+
+    @QueryParam("lineageEdgeLimit")
+    @DefaultValue("100")
+    @Min(1)
+    @Max(500)
+    private int lineageEdgeLimit;
+
+    Query toQuery() {
+      return new Query(limit, offset, assetsPerConcept, edgeLimit, lineageEdgeLimit);
+    }
+  }
+
+  @POST
+  @Path("/{id}/dataGraph/pages")
+  @Operation(
+      operationId = "getNativeOntologyDataGraphPage",
+      summary = "Read a graph page with bounded topology over loaded concept prefixes")
+  public NativeOntologyDataGraphPage getDataGraphPage(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @Valid final NativeOntologyDataGraphPageRequest request) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    return dataGraphPages.page(new Access(uriInfo, securityContext), id, request);
   }
 
   @GET
