@@ -581,9 +581,13 @@ test.describe(
           await expect(
             locked.getByRole('combobox', { name: 'Add reviewer' })
           ).toBeDisabled();
+          // A locked control also renders a focusable tooltip trigger with the
+          // same name, so match the disabled select itself.
           await expect(
-            locked.getByRole('button', { name: 'All' })
-          ).toBeDisabled();
+            locked
+              .getByRole('button', { name: 'All' })
+              .and(author.locator('[data-disabled="true"]'))
+          ).toBeVisible();
           await expect(locked).toContainText('locked by review');
           await expect(
             locked.getByRole('row', {
