@@ -1812,6 +1812,35 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._extract_tables_from_sql("", "db", "server")
         assert result is None
 
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_with_line_comments(self):
+        """
+        A `--` comment only comments out its own line, so the tables after it are kept
+        """
+        result = self.powerbi._extract_tables_from_sql(
+            "SELECT yr.res_id,--some comment#(lf)  yr.res_periodTo#(lf)"
+            "FROM yachtReservation yr#(lf)"
+            "LEFT JOIN V_reservationSubCategory  vrsc ON vrsc.res_id = yr.res_id",
+            "MyDb",
+            "server",
+        )
+        assert result is not None
+        tables = {t["table"] for t in result}
+        assert tables == {"yachtReservation", "V_reservationSubCategory"}
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_keeps_dashes_in_string_literals(self):
+        """
+        `--` inside a string literal is not a comment
+        """
+        result = self.powerbi._extract_tables_from_sql(
+            "SELECT id#(lf)FROM orders#(lf)WHERE note = 'a--b'#(lf)  AND status = 1",
+            "MyDb",
+            "server",
+        )
+        assert result is not None
+        assert {t["table"] for t in result} == {"orders"}
+
     @pytest.mark.order(41)
     def test_create_dataflow_table_lineage(self):
         """
