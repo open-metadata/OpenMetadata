@@ -139,11 +139,12 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
-  // lastLoginTime and lastActivityTime are loaded so an update can keep them (see UserUpdater).
+  // lastLoginTime and lastActivityTime are loaded so a PATCH writes them back instead of clearing
+  // them; a PUT keeps them in UserUpdater.
   static final String USER_PATCH_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences,lastLoginTime,lastActivityTime";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences,lastLoginTime,lastActivityTime";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
   private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
   private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
@@ -1911,13 +1912,10 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
-      // The server records these on login and on each request; a PUT or PATCH body leaves them
-      // out, so keep the stored values instead of clearing them.
-      if (updated.getLastLoginTime() == null) {
-        updated.setLastLoginTime(original.getLastLoginTime());
-      }
-      if (updated.getLastActivityTime() == null) {
-        updated.setLastActivityTime(original.getLastActivityTime());
+      // The server records these on login and on each request, and a PUT body never carries them,
+      // so a PUT keeps the stored values instead of clearing them.
+      if (operation.isPut()) {
+        keepServerRecordedTimes();
       }
       compareAndUpdate(
           "lastLoginTime",
@@ -1968,6 +1966,15 @@ public class UserRepository extends EntityRepository<User> {
           "isAdmin");
       JwtFilter.invalidateResolvedEmailIdentity(original.getEmail());
       JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
+    }
+
+    private void keepServerRecordedTimes() {
+      if (updated.getLastLoginTime() == null) {
+        updated.setLastLoginTime(original.getLastLoginTime());
+      }
+      if (updated.getLastActivityTime() == null) {
+        updated.setLastActivityTime(original.getLastActivityTime());
+      }
     }
 
     private void updateAllowImpersonation() {

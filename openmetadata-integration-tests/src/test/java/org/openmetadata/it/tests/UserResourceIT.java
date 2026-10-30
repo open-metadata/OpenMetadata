@@ -2813,7 +2813,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         .put("value", activityTime);
     patchUserAsAdmin(userId, setTimes);
 
-    patchUserAsAdmin(userId, addOp("/description", "edited"));
+    patchUserAsAdmin(userId, replaceOp("/description", "edited"));
     assertLoginAndActivityTimes(userId, loginTime, activityTime);
 
     SdkClients.adminClient()
@@ -2826,12 +2826,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     SdkClients.adminClient()
         .getHttpClient()
         .executeForString(HttpMethod.PATCH, "/v1/users/" + userId, patch);
-  }
-
-  private ArrayNode addOp(String path, String value) {
-    ArrayNode ops = PATCH_MAPPER.createArrayNode();
-    ops.addObject().put("op", "add").put("path", path).put("value", value);
-    return ops;
   }
 
   private void assertLoginAndActivityTimes(String userId, long loginTime, long activityTime) {
