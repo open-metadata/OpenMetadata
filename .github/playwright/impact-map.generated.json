@@ -2474,6 +2474,7 @@
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",
@@ -3408,6 +3409,7 @@
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",
@@ -3706,6 +3708,7 @@
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",
@@ -8428,6 +8431,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
@@ -11788,6 +11792,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportContent.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts"
       ]
     },
@@ -11796,10 +11801,19 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportModal.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportShacl.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts"
       ]
     },
     {
@@ -12325,6 +12339,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyReleaseValidation.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/configuration/sparqlQuerySettings.ts"
       ],
       "specs": [
@@ -12694,6 +12716,7 @@
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",
@@ -12731,6 +12754,7 @@
       "specs": [
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeRelations.spec.ts",
@@ -12757,6 +12781,7 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/ontologyRelease.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
         "playwright/e2e/Features/OntologyReviewTasks.spec.ts"
@@ -13065,6 +13090,7 @@
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",
@@ -13599,6 +13625,7 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/tasks/task.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
         "playwright/e2e/Features/OntologyReviewTasks.spec.ts"
@@ -13653,6 +13680,7 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/type/ontologyState.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
@@ -14095,6 +14123,7 @@
       "specs": [
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
