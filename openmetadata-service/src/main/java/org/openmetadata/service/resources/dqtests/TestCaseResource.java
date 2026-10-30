@@ -96,7 +96,6 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -890,32 +889,29 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCase create) {
-    EntityLink entityLink = EntityLink.parse(create.getEntityLink());
-    OperationContext tableOpContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface tableResourceContext =
-        TestCaseResourceContext.builder().entityLink(entityLink).build();
-    OperationContext testCaseOpCreate =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE);
-    ResourceContextInterface testCaseRC =
-        TestCaseResourceContext.builder()
-            .name(FullyQualifiedName.add(entityLink.getEntityFQN(), create.getName()))
-            .build();
-    OperationContext testCaseOpUpdate =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
-
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(tableOpContext, tableResourceContext),
-            new AuthRequest(testCaseOpCreate, testCaseRC),
-            new AuthRequest(testCaseOpUpdate, testCaseRC));
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    // Only the FQN before authorizing: prepare creates the table's test suite if it is missing.
+    repository.setFullyQualifiedName(test);
+    List<AuthRequest> requests = createOrUpdateRequests(test);
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  /**
+   * A new test case is checked as a create, an existing one as an update. Checked by FQN first:
+   * AuthorizationLogic.ANY evaluates every request, so a new test case must not get the update
+   * requests, which look the test case up by name.
+   */
+  private List<AuthRequest> createOrUpdateRequests(TestCase test) {
+    boolean testCaseExists =
+        repository.findByNameOrNull(test.getFullyQualifiedName(), Include.ALL) != null;
+    return testCaseExists
+        ? TestCaseWriteAuthRequests.forUpdate(test)
+        : TestCaseWriteAuthRequests.forCreate(test);
   }
 
   @DELETE
