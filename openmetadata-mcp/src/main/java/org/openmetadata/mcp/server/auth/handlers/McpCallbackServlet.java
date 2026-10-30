@@ -268,8 +268,8 @@ public class McpCallbackServlet extends HttpServlet {
       LOG.debug("Received SSO callback with pac4j state: {}", pac4jState);
 
       if (pac4jState == null || pac4jState.isEmpty()) {
-        // Every MCP login runs the authorization-code flow (handleLogin), so its callback always
-        // carries the state of a pending request.
+        // Every MCP OIDC login runs the authorization-code flow (handleLogin), so its callback
+        // always carries the state of a pending request.
         LOG.warn("MCP OAuth callback arrived with no state query param");
         response.sendError(HttpServletResponse.SC_BAD_REQUEST, ERR_MISSING_STATE);
         return;

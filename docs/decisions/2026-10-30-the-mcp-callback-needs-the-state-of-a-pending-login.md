@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-10-30 (initial)
 - **Deciders:** Vishnu Jain
 - **Guard:** `McpCallbackServletTest` (`doGet_idTokenWithoutState_returns400AndIssuesNoCode`)
-- **Related:** #29228, #36655
+- **Related:** #29228, #36655, ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
 
 ## Context
 
@@ -18,7 +18,7 @@ with a `state` and `response_mode=query`, so no login the server starts comes ba
 
 - `GET /mcp/callback` without a `state` answers 400 `Invalid MCP OAuth callback - missing state`.
 - `POST /mcp/callback` is not handled (405), and the URL-fragment page is removed.
-- The signed-in user of an MCP SSO login comes only from `handleCallback`, as for the web login.
+- The signed-in user of an MCP OIDC login comes only from `handleCallback`, as for the web login.
 
 ## Consequences
 
