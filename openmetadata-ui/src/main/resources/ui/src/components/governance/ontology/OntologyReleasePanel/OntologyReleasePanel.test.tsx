@@ -33,6 +33,7 @@ import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
+import enUS from '../../../../locale/languages/en-us.json';
 import APIClient from '../../../../rest/axiosClient';
 import {
   renderWithQueryClient,
@@ -993,6 +994,40 @@ describe('OntologyReleasePanel', () => {
       expect(put).not.toHaveBeenCalled();
     }
   );
+
+  it('ships the Open task label the button renders', () => {
+    expect(enUS.label['open-task']).toBe('Open task');
+  });
+
+  it('opens the native task UUID through the Studio callback', async () => {
+    currentRelease = {
+      ...release,
+      entityStatus: EntityStatus.InReview,
+      reviewTask: 'native-task-uuid',
+    };
+    currentState = { ...initialState, lastReleaseRevision: 1 };
+    const onOpenTask = jest.fn();
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <OntologyReleasePanel
+            canEdit
+            ontology={ontology}
+            view="changes"
+            onOpenTask={onOpenTask}
+          />
+        </MemoryRouter>
+      );
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: /^label\.open-task · / })
+    );
+
+    expect(onOpenTask).toHaveBeenCalledWith('native-task-uuid');
+    expect(
+      screen.queryByRole('link', { name: 'TASK-00042' })
+    ).not.toBeInTheDocument();
+  });
 
   it('loads newest-first owner history with numeric cursors and release events', async () => {
     currentState = { ...currentState, lastReleaseRevision: 2 };
