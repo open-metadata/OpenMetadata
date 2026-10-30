@@ -75,6 +75,7 @@ class PerSourceState(Generic[T]):
     in the process, so a second source or a second run inherits the first one's state. Worker threads
     can be the first to touch the state, so it is created with ``vars(instance).setdefault`` rather than
     ``cached_property``, which takes no lock on Python 3.12+ and can hand two threads different objects.
+    See ADR:2026-10-30-topology-source-run-state-is-per-instance.
     """
 
     def __init__(self, factory: Callable[[], T]) -> None:
