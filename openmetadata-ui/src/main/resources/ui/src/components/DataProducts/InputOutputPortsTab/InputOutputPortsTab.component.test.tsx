@@ -16,6 +16,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
   getDataProductInputPorts,
+  getDataProductOutputPorts,
   getDataProductPortsView,
 } from '../../../rest/dataProductAPI';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
@@ -215,6 +216,64 @@ describe('InputOutputPortsTab — port pickers', () => {
           },
         })
       );
+    });
+  });
+
+  it('keeps each picker on its own exclusions when the other picker is opened mid-fetch', async () => {
+    setPortCounts(0, 0);
+    let releaseInputPorts: (value: unknown) => void = jest.fn();
+    (getDataProductInputPorts as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        releaseInputPorts = resolve;
+      })
+    );
+    (getDataProductOutputPorts as jest.Mock).mockResolvedValue({
+      data: [{ id: 'output-port-id' }],
+      paging: { total: 1 },
+    });
+    render(
+      <InputOutputPortsTab
+        {...defaultProps}
+        permissions={
+          { ...basePermissions, EditAll: true } as OperationPermission
+        }
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('add-output-port-button'));
+    fireEvent.click(screen.getByTestId('add-input-port-button'));
+    await waitFor(() => expect(getDataProductOutputPorts).toHaveBeenCalled());
+    releaseInputPorts({
+      data: [{ id: 'input-port-id' }],
+      paging: { total: 1 },
+    });
+
+    const lastPropsOf = (type: AssetsOfEntity) =>
+      mockAssetSelectionDrawer.mock.calls
+        .map(([props]) => props)
+        .filter((props) => props.type === type)
+        .pop();
+
+    await waitFor(() => {
+      expect(
+        lastPropsOf(AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT)
+      ).toMatchObject({
+        open: true,
+        queryFilter: {
+          query: {
+            bool: { must_not: [{ ids: { values: ['input-port-id'] } }] },
+          },
+        },
+      });
+    });
+
+    expect(lastPropsOf(AssetsOfEntity.DATA_PRODUCT_INPUT_PORT)).toMatchObject({
+      open: true,
+      queryFilter: {
+        query: {
+          bool: { must_not: [{ ids: { values: ['output-port-id'] } }] },
+        },
+      },
     });
   });
 });

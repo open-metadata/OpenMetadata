@@ -393,7 +393,12 @@ export const InputOutputPortsTab = forwardRef<
     const { t } = useTranslation();
     const [isAddingInputPort, setIsAddingInputPort] = useState(false);
     const [isAddingOutputPort, setIsAddingOutputPort] = useState(false);
-    const [oppositePortIds, setOppositePortIds] = useState<string[]>([]);
+    const [excludedFromInputPicker, setExcludedFromInputPicker] = useState<
+      string[]
+    >([]);
+    const [excludedFromOutputPicker, setExcludedFromOutputPicker] = useState<
+      string[]
+    >([]);
     const [isLineageFullScreen, setIsLineageFullScreen] = useState(false);
     const [isLineageExpanded, setIsLineageExpanded] = useState(false);
     const [isInputPortsExpanded, setIsInputPortsExpanded] = useState(true);
@@ -418,20 +423,26 @@ export const InputOutputPortsTab = forwardRef<
     // Output ports must be assets of the data product, and an asset cannot be
     // both an input and an output port, so each picker hides the other kind.
     const outputPortQueryFilter = useMemo(
-      () => getQueryFilterForDataProductPorts(dataProductFqn, oppositePortIds),
-      [dataProductFqn, oppositePortIds]
+      () =>
+        getQueryFilterForDataProductPorts(
+          dataProductFqn,
+          excludedFromOutputPicker
+        ),
+      [dataProductFqn, excludedFromOutputPicker]
     );
 
     const inputPortQueryFilter = useMemo(
       () =>
-        oppositePortIds.length > 0
+        excludedFromInputPicker.length > 0
           ? {
               query: {
-                bool: { must_not: [{ ids: { values: oppositePortIds } }] },
+                bool: {
+                  must_not: [{ ids: { values: excludedFromInputPicker } }],
+                },
               },
             }
           : undefined,
-      [oppositePortIds]
+      [excludedFromInputPicker]
     );
 
     // Consumer via prop (Task 8 rule 2): `permissions` is the raw OperationPermission
@@ -516,28 +527,32 @@ export const InputOutputPortsTab = forwardRef<
 
     // ponytail: first 1000 ports (the API max); a product past that can still
     // list an opposite port, which the save then rejects inline.
-    const loadOppositePortIds = useCallback(
+    // Each picker keeps its own list, so a late response for one picker can
+    // never replace the other's exclusions.
+    const fetchPortIds = useCallback(
       async (getPorts: typeof getDataProductInputPorts) => {
         try {
           const { data } = await getPorts(dataProductFqn, { limit: 1000 });
-          setOppositePortIds(data.map(({ id }) => id));
+
+          return data.map(({ id }) => id as string);
         } catch (error) {
-          setOppositePortIds([]);
           showErrorToast(error as AxiosError);
+
+          return [];
         }
       },
       [dataProductFqn]
     );
 
     const handleAddInputPort = useCallback(async () => {
-      await loadOppositePortIds(getDataProductOutputPorts);
+      setExcludedFromInputPicker(await fetchPortIds(getDataProductOutputPorts));
       setIsAddingInputPort(true);
-    }, [loadOppositePortIds]);
+    }, [fetchPortIds]);
 
     const handleAddOutputPort = useCallback(async () => {
-      await loadOppositePortIds(getDataProductInputPorts);
+      setExcludedFromOutputPicker(await fetchPortIds(getDataProductInputPorts));
       setIsAddingOutputPort(true);
-    }, [loadOppositePortIds]);
+    }, [fetchPortIds]);
 
     const handleInputPortSave = useCallback(async () => {
       setIsAddingInputPort(false);
