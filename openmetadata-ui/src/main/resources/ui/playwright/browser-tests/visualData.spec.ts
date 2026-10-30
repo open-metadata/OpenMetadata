@@ -538,6 +538,40 @@ for (const index of ['databaseSchema', 'glossaryTerm', 'dashboardDataModel']) {
   });
 }
 
+for (const scenario of [
+  {
+    index: 'all',
+    included: ['table', 'domain', 'glossary', 'classification'],
+    excluded: ['user', 'team'],
+  },
+  {
+    index: 'dataAsset',
+    included: ['table', 'glossaryTerm', 'tag'],
+    excluded: ['user', 'team', 'domain', 'glossary', 'classification'],
+  },
+  {
+    index: 'dataAsset,user',
+    included: ['table', 'user', 'glossaryTerm'],
+    excluded: ['team', 'domain', 'glossary', 'classification'],
+  },
+]) {
+  test(`broad search alias retains its backend membership: ${scenario.index}`, async ({
+    page,
+  }) => {
+    await installVisualData(page);
+    const result = await page.evaluate(async (index) => {
+      const response = await fetch(`/api/v1/search/query?index=${index}&q=*`);
+      return { status: response.status, body: await response.json() };
+    }, scenario.index);
+    expect(result.status).toBe(200);
+    const kinds = result.body.hits.hits.map(
+      (hit: { _source: { entityType: string } }) => hit._source.entityType
+    );
+    for (const kind of scenario.included) expect(kinds).toContain(kind);
+    for (const kind of scenario.excluded) expect(kinds).not.toContain(kind);
+  });
+}
+
 for (const state of ['populated', 'error'] as const) {
   for (const index of ['unmodeledIndex', 'table,unmodeledIndex']) {
     test(`an unmodeled search index cannot produce an approved empty result: ${state} ${index}`, async ({

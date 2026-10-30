@@ -1552,6 +1552,18 @@ export const installVisualData = async (
           }))
         ),
       ];
+      // Backend catalog aliases exclude owner-picker accounts. dataAsset also
+      // excludes governance containers, as defined by indexMapping.json.
+      const nonCatalogTypes: string[] = [
+        ResourceEntity.USER,
+        ResourceEntity.TEAM,
+      ];
+      const nonAssetTypes: string[] = [
+        ...nonCatalogTypes,
+        ResourceEntity.DOMAIN,
+        ResourceEntity.GLOSSARY,
+        ResourceEntity.CLASSIFICATION,
+      ];
       const query = (url.searchParams.get('q') ?? '*').toLowerCase();
       const matching =
         state === 'empty'
@@ -1562,12 +1574,16 @@ export const installVisualData = async (
                   position &&
                 // Index names overlap (glossary/glossaryTerm, for example).
                 // Substring matching silently inserts the wrong entity class.
-                (indexes.some((index) =>
-                  [SearchIndex.ALL, SearchIndex.DATA_ASSET].includes(
-                    index as SearchIndex
-                  )
-                ) ||
-                  indexes.includes(type)) &&
+                indexes.some((index) => {
+                  if (index === SearchIndex.ALL) {
+                    return !nonCatalogTypes.includes(type);
+                  }
+                  if (index === SearchIndex.DATA_ASSET) {
+                    return !nonAssetTypes.includes(type);
+                  }
+
+                  return index === type;
+                }) &&
                 (query === '*' ||
                   query === '' ||
                   `${entity.name} ${entity.displayName}`
