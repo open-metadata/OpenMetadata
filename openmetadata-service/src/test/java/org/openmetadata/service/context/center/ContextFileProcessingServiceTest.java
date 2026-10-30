@@ -33,6 +33,8 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -185,6 +187,74 @@ class ContextFileProcessingServiceTest {
 
     assertEquals("Current description", stored.get().getDescription());
     assertEquals(MemoryVisibility.PRIVATE, stored.get().getShareConfig().getVisibility());
+    assertEquals("Quarterly results", stored.get().getExtractedText());
+    assertEquals(ProcessingStatus.Processed, stored.get().getProcessingStatus());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void processKeepsContentMetadataEditedDuringTextExtraction(boolean conflictOnResult)
+      throws Exception {
+    AtomicReference<ContextFileContent> stored = new AtomicReference<>(content);
+    AtomicInteger resultWrites = new AtomicInteger();
+    when(contentRepository.getById(contentId))
+        .thenAnswer(
+            ignored -> {
+              ContextFileContent cached =
+                  RequestEntityCache.getById(
+                      Entity.CONTEXT_FILE_CONTENT,
+                      contentId,
+                      null,
+                      null,
+                      false,
+                      ContextFileContent.class);
+              if (cached == null) {
+                cached = JsonUtils.deepCopy(stored.get(), ContextFileContent.class);
+                RequestEntityCache.putById(
+                    Entity.CONTEXT_FILE_CONTENT,
+                    contentId,
+                    null,
+                    null,
+                    false,
+                    cached,
+                    ContextFileContent.class);
+              }
+              return cached;
+            });
+    when(contentRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              ContextFileContent updated = invocation.getArgument(2);
+              if (conflictOnResult
+                  && updated.getProcessingStatus() == ProcessingStatus.Processed
+                  && resultWrites.getAndIncrement() == 0) {
+                stored.set(
+                    JsonUtils.deepCopy(stored.get(), ContextFileContent.class)
+                        .withDescription("Latest description"));
+                throw new PreconditionFailedException("Concurrent content update");
+              }
+              stored.set(invocation.getArgument(2));
+              RequestEntityCache.invalidate(Entity.CONTEXT_FILE_CONTENT, contentId, null);
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenAnswer(
+            ignored -> {
+              stored.set(
+                  JsonUtils.deepCopy(stored.get(), ContextFileContent.class)
+                      .withDescription("Current description"));
+              return ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3);
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(
+        conflictOnResult ? "Latest description" : "Current description",
+        stored.get().getDescription());
     assertEquals("Quarterly results", stored.get().getExtractedText());
     assertEquals(ProcessingStatus.Processed, stored.get().getProcessingStatus());
   }

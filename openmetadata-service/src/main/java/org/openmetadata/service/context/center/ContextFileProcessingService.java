@@ -34,6 +34,7 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.RequestEntityCache;
 
 /**
@@ -522,21 +523,20 @@ public class ContextFileProcessingService {
 
   private boolean updateFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
     for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
-      RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, null);
-      ContextFile current = getFile(fileId);
-      if (current == null) {
-        return false;
-      }
-      ContextFile updated = updater.apply(current);
-      if (updated == null) {
-        return false;
-      }
-      try {
+      try (var ignored = FreshReadScope.enter()) {
+        ContextFile current = getFile(fileId);
+        if (current == null) {
+          return false;
+        }
+        ContextFile updated = updater.apply(current);
+        if (updated == null) {
+          return false;
+        }
         repository.updateIfCurrent(null, current, updated, current.getUpdatedBy());
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file {} changed during extraction update", fileId);
-        RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, current.getFullyQualifiedName());
+        RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, null);
         if (attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS
             && !waitForConditionalUpdateRetry(CONTEXT_FILE_ENTITY, fileId)) {
           return false;
@@ -549,23 +549,22 @@ public class ContextFileProcessingService {
   private boolean updateContent(
       UUID contentId, Function<ContextFileContent, ContextFileContent> updater) {
     for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
-      ContextFileContent current = getContent(contentId);
-      if (current == null) {
-        return false;
-      }
-      ContextFileContent updated = updater.apply(current);
-      if (updated == null) {
-        return false;
-      }
-      try {
+      try (var ignored = FreshReadScope.enter()) {
+        ContextFileContent current = getContent(contentId);
+        if (current == null) {
+          return false;
+        }
+        ContextFileContent updated = updater.apply(current);
+        if (updated == null) {
+          return false;
+        }
         repository
             .getContentRepository()
             .updateIfCurrent(null, current, updated, current.getUpdatedBy());
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file content {} changed during extraction update", contentId);
-        RequestEntityCache.invalidate(
-            CONTEXT_FILE_CONTENT_ENTITY, contentId, current.getFullyQualifiedName());
+        RequestEntityCache.invalidate(CONTEXT_FILE_CONTENT_ENTITY, contentId, null);
         if (attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS
             && !waitForConditionalUpdateRetry(CONTEXT_FILE_CONTENT_ENTITY, contentId)) {
           return false;
