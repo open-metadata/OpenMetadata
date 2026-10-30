@@ -478,6 +478,8 @@ authorizerConfiguration:
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
   allowedDomains: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
+  # Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate): socket
+  # handshakes are always authenticated.
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
   useRolesFromProvider: ${AUTHORIZER_USE_ROLES_FROM_PROVIDER:-false}
   # For MCP OAuth: Default role assigned to new OAuth users (e.g., "DataConsumer")
@@ -992,7 +994,6 @@ rdf:
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
 # Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
 # Redis L2 cache; it falls back to NoopCacheProvider if Redis is unreachable at startup.
-# Multi-server deployments must use Redis so credential revocations reach every server.
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}
@@ -1034,3 +1035,37 @@ cache:
       accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
       secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
       tokenRefreshIntervalSeconds: ${CACHE_REDIS_TOKEN_REFRESH:-900}  # 15 minutes
+
+# In-memory checks of bot and personal access tokens against their stored credentials.
+# Alert on the gauge om_credential_sweep_last_complete_age_seconds (Prometheus name) when it exceeds
+# maxStaleness. It is the age of the last sweep that re-confirmed every batch. A batch fails when
+# one of its statements fails, or when converting one of its principals throws an Error. An entry
+# whose last read or reconfirmation is older than maxStaleness is too old to answer from, so its
+# checks need a read, and answer 503 when the verifier cannot confirm within loadTimeout. Also watch
+# om_credential_unavailable_total. Its cause="subject_read_failed" series counts checks of a
+# principal whose stored credentials could not be converted, which the gauge does not show.
+# waitForPropagation on the token revoke endpoints waits out the receiving server's maxStaleness,
+# so it covers every server only when all of them run the same credentialVerification settings.
+# While a change to maxStaleness rolls out, it covers only the servers whose maxStaleness is no
+# larger than the receiving server's.
+credentialVerification:
+  # Oldest database read a token check may be answered from.
+  maxStaleness: ${CREDENTIAL_VERIFICATION_MAX_STALENESS:-5s}
+  # A sweep pass is due this long after the previous one ends, and checks every cached principal
+  # against the database. At most half of maxStaleness.
+  sweepInterval: ${CREDENTIAL_VERIFICATION_SWEEP_INTERVAL:-2s}
+  # Shortest gap between database reads triggered by tokens of an unknown principal. Less than maxStaleness.
+  missRefreshMinAge: ${CREDENTIAL_VERIFICATION_MISS_REFRESH_MIN_AGE:-500ms}
+  # Longest a request waits for a credential read before answering 503. Less than maxStaleness.
+  loadTimeout: ${CREDENTIAL_VERIFICATION_LOAD_TIMEOUT:-2s}
+  # Threads that run credential reads for checks, so at most this many such reads run at once; a
+  # request thread only waits for its read. Lowered to half the database pool when that is smaller.
+  maxConcurrentRequestReads: ${CREDENTIAL_VERIFICATION_MAX_CONCURRENT_REQUEST_READS:-16}
+  # A principal that presents no token for this long leaves the cache.
+  idleExpiry: ${CREDENTIAL_VERIFICATION_IDLE_EXPIRY:-15m}
+  # Most principals cached at once.
+  maxSubjects: ${CREDENTIAL_VERIFICATION_MAX_SUBJECTS:-4000}
+  # Principals confirmed per database query during a sweep.
+  batchSize: ${CREDENTIAL_VERIFICATION_BATCH_SIZE:-500}
+  # How often a sweep re-reads every cached principal in full instead of trusting its fingerprint.
+  deepVerifyInterval: ${CREDENTIAL_VERIFICATION_DEEP_VERIFY_INTERVAL:-10m}
