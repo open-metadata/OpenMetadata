@@ -19,6 +19,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -190,7 +191,7 @@ public class IndependentOntologyWorkingDiffIT extends BaseOntologyApprovalIT {
                           .previewImport(
                               ontology.getId(),
                               new PreviewNativeOntologyImport()
-                                  .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+                                  .withFormat(NativeOntologyImportFormat.TURTLE)
                                   .withData(
                                       "<https://example.org/New> a <http://www.w3.org/2002/07/owl#Class> .")))
               .getStatusCode());

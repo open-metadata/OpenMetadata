@@ -282,6 +282,14 @@ public class TaskWorkflowHandler {
               "Flowable runtime task for workflow-managed task '%s' is unavailable; retry the resolution",
               taskId));
     }
+    // Settle before anything is written to the workflow: process variables set on a runtime task
+    // Flowable cannot see yet are dropped without an error, so a task still not visible after the
+    // wait is refused while nothing has reached the workflow and a retry is safe.
+    if (!requiresRuntimeTaskReadiness
+        && isRuntimeTaskStillBeingCommitted(workflowHandler, task)
+        && !awaitActiveRuntimeTask(workflowHandler, taskId)) {
+      throw workflowStillPreparing(taskId);
+    }
     if (ontologyReview) {
       OntologyApprovalWorkflow.validateRuntime(task);
     }
@@ -411,9 +419,7 @@ public class TaskWorkflowHandler {
         // its runtime task has not finished creating it. Closing the task directly would leave the
         // workflow waiting on a task nobody can resolve any more.
         if (isWorkflowStillRunning(task)) {
-          throw TaskStateConflictException.of(
-              String.format(
-                  "The workflow is still preparing task '%s'; retry the resolution", taskId));
+          throw workflowStillPreparing(taskId);
         }
         LOG.warn(
             "[TaskWorkflowHandler] No active Flowable runtime task found for '{}'; applying direct task resolution fallback",
@@ -427,6 +433,11 @@ public class TaskWorkflowHandler {
             comment,
             user,
             null);
+      }
+      // The variable lookup ran before the runtime task committed and nothing reached the
+      // workflow, so the caller can retry against the task that now exists.
+      if (namespacedVariables == null) {
+        throw workflowStillPreparing(taskId);
       }
       throw TaskStateConflictException.of(
           String.format(
@@ -1510,6 +1521,20 @@ public class TaskWorkflowHandler {
       return false;
     }
     return WorkflowHandler.getInstance().hasMultiApprovalSupport(task.getId());
+  }
+
+  // CreateTask commits the task row on its own connection before the workflow command that
+  // creates the runtime task commits, so a caller can list the task and resolve it in between.
+  private static boolean isRuntimeTaskStillBeingCommitted(
+      WorkflowHandler workflowHandler, Task task) {
+    return !TaskRepository.isTerminalStatus(task.getStatus())
+        && !workflowHandler.hasActiveRuntimeTask(task.getId())
+        && isWorkflowStillRunning(task);
+  }
+
+  private static TaskStateConflictException workflowStillPreparing(UUID taskId) {
+    return TaskStateConflictException.of(
+        String.format("The workflow is still preparing task '%s'; retry the resolution", taskId));
   }
 
   private static boolean isWorkflowStillRunning(Task task) {
