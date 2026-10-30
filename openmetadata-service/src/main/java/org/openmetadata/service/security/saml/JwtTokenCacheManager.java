@@ -37,7 +37,8 @@ public class JwtTokenCacheManager {
 
   public void markLogoutEventForToken(LogoutRequest logoutRequest) {
     String token = logoutRequest.getToken();
-    if (tokenEventMap.containsKey(token)) {
+    String key = denylistKey(token);
+    if (tokenEventMap.containsKey(key)) {
       LOG.info(
           "Log out token for user [{}] is already present in the cache",
           logoutRequest.getUsername());
@@ -50,12 +51,21 @@ public class JwtTokenCacheManager {
           logoutRequest.getUsername(),
           ttlForToken,
           tokenExpiryDate);
-      tokenEventMap.put(token, logoutRequest, ttlForToken, TimeUnit.SECONDS);
+      tokenEventMap.put(key, logoutRequest, ttlForToken, TimeUnit.SECONDS);
     }
   }
 
   public LogoutRequest getLogoutEventForToken(String token) {
-    return tokenEventMap.get(token);
+    return tokenEventMap.get(denylistKey(token));
+  }
+
+  /**
+   * The signed part of a JWT (header.payload), which identifies a token by what was signed. The
+   * signature's base64url text is not a canonical encoding, so it is left out of the key.
+   */
+  static String denylistKey(String token) {
+    int signatureStart = token.lastIndexOf('.');
+    return signatureStart > 0 ? token.substring(0, signatureStart) : token;
   }
 
   private long getTTLForToken(Date date) {

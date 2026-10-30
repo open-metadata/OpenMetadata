@@ -154,8 +154,11 @@ permissions:
 # Top-level env: derived once from the `database` input so every subsequent
 # reference below (docker compose file paths in the fixture builder, shard-run
 # diagnostics) resolves to the correct flavour without duplicating the ternary.
+# PLAYWRIGHT_DATABASE tells the fixture scripts which engine to snapshot, and
+# makes the validator and fast launcher reject a fixture seeded on another one.
 env:
   DB_COMPOSE_FILE: docker/development/docker-compose${{ inputs.database == 'postgresql' && '-postgres' || '' }}.yml
+  PLAYWRIGHT_DATABASE: ${{ inputs.database }}
 
 concurrency:
   # PR and manual runs for the same branch supersede stale commits. This also
@@ -237,6 +240,8 @@ jobs:
               - '.github/scripts/classify_playwright_outcome.py'
               - '.github/scripts/create_playwright_fixture.sh'
               - '.github/scripts/playwright_cache_fingerprint.py'
+              - '.github/scripts/playwright_fixture_profile.sh'
+              - '.github/scripts/pull_playwright_fixture_images.sh'
               - '.github/scripts/pack_playwright_ingestion_image.sh'
               - '.github/scripts/playwright_distribution_cache.sh'
               - '.github/scripts/rotate_playwright_auth_state.py'
@@ -929,7 +934,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
-          key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
+          key: playwright-golden-fixture-v2-${{ inputs.database }}-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
 
       - name: Validate restored golden fixture
         id: validate-fixture
@@ -1276,7 +1281,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
-          key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
+          key: playwright-golden-fixture-v2-${{ inputs.database }}-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
 
       - name: Upload seeded fixture
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
@@ -2047,15 +2052,16 @@ jobs:
             tail -n 5000 "$PW_SERVER_LOG" > "$DIAGNOSTICS_DIR/openmetadata-server.log" 2>&1 || true
           fi
           if [[ -n "${PW_RUNTIME_ROOT:-}" ]]; then
-            docker compose \
-              -f "$DB_COMPOSE_FILE" \
-              -f docker/development/docker-compose-playwright-fast.yml \
-              ps --all \
+            # Fallbacks cover a release-branch checkout whose launcher predates
+            # the per-database PW_* exports and only runs postgres + opensearch.
+            compose_files=(
+              -f "${PW_COMPOSE_FILE:-$DB_COMPOSE_FILE}"
+              -f "${PW_FAST_COMPOSE_FILE:-docker/development/docker-compose-playwright-fast.yml}"
+            )
+            docker compose "${compose_files[@]}" ps --all \
               > "$DIAGNOSTICS_DIR/docker-compose-ps.txt" 2>&1 || true
-            docker compose \
-              -f "$DB_COMPOSE_FILE" \
-              -f docker/development/docker-compose-playwright-fast.yml \
-              logs --no-color --tail 5000 ${{ inputs.database == 'postgresql' && 'postgresql' || 'mysql' }} opensearch \
+            docker compose "${compose_files[@]}" \
+              logs --no-color --tail 5000 "${PW_DATABASE_SERVICE:-postgresql}" "${PW_SEARCH_SERVICE:-opensearch}" \
               > "$DIAGNOSTICS_DIR/docker-compose.log" 2>&1 || true
             if [[ -n "${PW_AIRFLOW_CONTAINER:-}" ]]; then
               docker logs --tail 5000 "$PW_AIRFLOW_CONTAINER" \

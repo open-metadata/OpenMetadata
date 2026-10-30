@@ -77,6 +77,7 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.OAuthDAOs;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -449,6 +450,7 @@ public class JwtFilter implements ContainerRequestFilter {
       boolean usedEmailFirstFlow) {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
+    validateMcpAccessTokenIsActive(tokenFromHeader, claims, tokenKeyId);
 
     // OM-issued tokens minted before JWTTokenGenerator mirrored the provider's claim shape carry a
     // bare preferred_username, which getFirstMatchJwtClaim-based domain extraction turns into an
@@ -583,8 +585,12 @@ public class JwtFilter implements ContainerRequestFilter {
    * not require the current issuer: long-lived bot tokens minted under an earlier one are still ours.
    */
   private static boolean isSignedWithOpenMetadataKey(DecodedJWT jwt) {
+    return isOpenMetadataKeyId(jwt.getKeyId());
+  }
+
+  private static boolean isOpenMetadataKeyId(String tokenKeyId) {
     String openMetadataKeyId = JWTTokenGenerator.getInstance().getKid();
-    return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(jwt.getKeyId());
+    return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(tokenKeyId);
   }
 
   /** The OIDC client IDs this deployment's sign-in flows request tokens for. */
@@ -681,6 +687,26 @@ public class JwtFilter implements ContainerRequestFilter {
       if (previouslyLoggedOutEvent != null) {
         throw AuthenticationException.invalidTokenMessage();
       }
+    }
+  }
+
+  /**
+   * An MCP OAuth access token is stored when issued and deleted when revoked or when its client is
+   * deleted, so one missing from the store is refused on every server. Only a token OpenMetadata
+   * signed is looked up, a provider's own token may carry a client_id claim too, and it is picked by
+   * our key id like the signature check, not by the current issuer, which can change.
+   * ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
+   */
+  private void validateMcpAccessTokenIsActive(
+      String token, Map<String, Claim> claims, String tokenKeyId) {
+    boolean isMcpAccessToken =
+        claims.containsKey(JWTTokenGenerator.CLIENT_ID_CLAIM) && isOpenMetadataKeyId(tokenKeyId);
+    if (isMcpAccessToken
+        && Entity.getCollectionDAO()
+                .oauthAccessTokenDAO()
+                .findByTokenHash(OAuthDAOs.hashToken(token))
+            == null) {
+      throw AuthenticationException.getInvalidTokenException("Token has been revoked.");
     }
   }
 

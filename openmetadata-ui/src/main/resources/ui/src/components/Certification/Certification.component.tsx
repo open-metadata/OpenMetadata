@@ -52,7 +52,13 @@ const Icon = lazy(() =>
 );
 
 const renderCertificationIcon = (certification: Tag) => {
-  const fallback = <CertificationIcon height={18} width={18} />;
+  const fallback = (
+    <CertificationIcon
+      className="tw:text-fg-secondary"
+      height={18}
+      width={18}
+    />
+  );
   const iconURL = certification.style?.iconURL;
 
   return iconURL ? (
