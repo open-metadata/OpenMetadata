@@ -53,21 +53,31 @@ class McpGrantMigrationIT {
             .filter(statement -> statement.contains("oauth_"))
             .toList();
     assertEquals(3, statements.size(), "the migration carries one statement per grant table");
-    String clientId = "mcp-grant-migration-" + UUID.randomUUID();
-    User live = createUser();
-    User deleted = createUser();
-    SdkClients.adminClient().users().delete(deleted.getId().toString());
+    User live = null;
+    User deleted = null;
+    try {
+      live = createUser();
+      deleted = createUser();
+      SdkClients.adminClient().users().delete(deleted.getId().toString());
+      runOverSeededGrants(statements, live.getName(), deleted.getName());
+    } finally {
+      hardDeleteIfCreated(live);
+      hardDeleteIfCreated(deleted);
+    }
+  }
 
+  private static void runOverSeededGrants(
+      List<String> statements, String liveName, String deletedName) {
+    String clientId = "mcp-grant-migration-" + UUID.randomUUID();
     TestSuiteBootstrap.getJdbi()
         .useHandle(
             handle -> {
               handle.execute("INSERT INTO oauth_clients (client_id) VALUES (?)", clientId);
               try {
                 Grant missingUser = seedGrant(clientId, "mcp_gone_" + UUID.randomUUID());
-                Grant deletedUser = seedGrant(clientId, deleted.getName());
-                Grant liveUser = seedGrant(clientId, live.getName());
-                Grant liveUserOtherCasing =
-                    seedGrant(clientId, live.getName().toUpperCase(Locale.ROOT));
+                Grant deletedUser = seedGrant(clientId, deletedName);
+                Grant liveUser = seedGrant(clientId, liveName);
+                Grant liveUserOtherCasing = seedGrant(clientId, liveName.toUpperCase(Locale.ROOT));
 
                 statements.forEach(handle::execute);
                 statements.forEach(handle::execute);
@@ -78,8 +88,6 @@ class McpGrantMigrationIT {
                 assertActive(liveUserOtherCasing);
               } finally {
                 handle.execute("DELETE FROM oauth_clients WHERE client_id = ?", clientId);
-                hardDelete(live);
-                hardDelete(deleted);
               }
             });
   }
@@ -134,7 +142,11 @@ class McpGrantMigrationIT {
         .create(new CreateUser().withName(name).withEmail(name + "@example.com"));
   }
 
-  private static void hardDelete(User user) {
-    SdkClients.adminClient().users().delete(user.getId().toString(), Map.of("hardDelete", "true"));
+  private static void hardDeleteIfCreated(User user) {
+    if (user != null) {
+      SdkClients.adminClient()
+          .users()
+          .delete(user.getId().toString(), Map.of("hardDelete", "true"));
+    }
   }
 }

@@ -215,6 +215,10 @@ public interface OAuthDAOs {
       deleteAccessTokensForUser(clientId, userName);
     }
 
+    @SqlUpdate(
+        "DELETE FROM mcp_pending_auth_requests WHERE LOWER(consent_user_name) = LOWER(:userName)")
+    void deletePendingConsentsOfUser(@Bind("userName") String userName);
+
     @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)")
     void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
 
@@ -226,13 +230,15 @@ public interface OAuthDAOs {
     void deleteAccessTokensOfUser(@Bind("userName") String userName);
 
     /**
-     * Ends every grant held under a user name, on all clients. Grants are keyed by name only, so a
-     * later account with the same name would otherwise take them over. Names compare ignoring case:
-     * a sign-in can store the provider's spelling of a lowercase account name. Codes go first, so a
-     * code not yet exchanged can no longer start a grant.
+     * Ends every grant held under a user name, on all clients, and any sign-in waiting for its
+     * consent. Grants are keyed by name only, so a later account with the same name would otherwise
+     * take them over. Names compare ignoring case: rows written before grants were stored under the
+     * account's own name may hold the provider's spelling of it. Waiting consents and codes go first,
+     * so neither can start a new grant.
      */
     @Transaction
     default void revokeAllGrantsOfUser(String userName) {
+      deletePendingConsentsOfUser(userName);
       deleteAuthorizationCodesOfUser(userName);
       revokeRefreshTokensOfUser(userName);
       deleteAccessTokensOfUser(userName);

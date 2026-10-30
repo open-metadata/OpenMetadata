@@ -32,11 +32,13 @@ and was never sent back to the identity provider. Web sessions already work the 
 ## Amendment: deleting a user ends its grants at once
 
 - Deleting a user, soft or hard, now ends every MCP grant held under its name on all clients:
-  codes and access tokens are deleted and refresh tokens revoked (`UserRepository`
+  sign-ins waiting for consent, codes and access tokens are deleted and refresh tokens revoked
+  (`UserRepository`
   `beginDeleteLifecycle`). Grants are keyed by user name, so this also keeps a later user given
   the same name from taking them over. A restored user signs in again.
-- Names compare ignoring case: a sign-in could store the provider's spelling of the account's
-  lowercase name. New grants are stored under the account's own name.
+- New grants are stored under the account's own name. Names still compare ignoring case, since
+  rows written before this change may hold the provider's spelling of it.
 - The 2.1.0 post-data migration ends the grants of users deleted before this change.
 - Guard: `McpOAuthIT` (`testDeletedUsersGrant_doesNotPassToANewUserWithTheSameName`,
-  `testSoftDeletedUsersGrant_staysEndedAfterRestore`), `McpGrantMigrationIT`.
+  `testSoftDeletedUsersGrant_staysEndedAfterRestore`), `McpGrantMigrationIT`,
+  `UserSSOOAuthProviderTest` (`handleSSOCallbackWithDbState_keepsTheGrantUnderTheAccountsOwnName`).

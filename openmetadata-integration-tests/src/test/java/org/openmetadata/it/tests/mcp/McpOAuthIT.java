@@ -24,6 +24,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -443,8 +444,9 @@ public class McpOAuthIT extends McpTestBase {
   }
 
   /**
-   * Grants are keyed by user name, so deleting a user ends them before the name can be reused. The
-   * grant is held under another spelling of the name, as a sign-in can store the provider's casing.
+   * Grants are keyed by user name, so deleting a user ends them, and a sign-in waiting for its
+   * consent, before the name can be reused. The grant is held under another spelling of the name,
+   * as rows written before grants used the account's own name can be.
    */
   @Test
   @Order(18)
@@ -453,9 +455,11 @@ public class McpOAuthIT extends McpTestBase {
         registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
     String name = "mcp_grant_" + UUID.randomUUID().toString().substring(0, 8);
     String providerSpelling = name.toUpperCase(Locale.ROOT);
-    User user = createUser(name);
+    User user = null;
     try {
+      user = createUser(name);
       String code = seedAuthorizationCode(providerSpelling);
+      String waitingConsent = seedWaitingConsent(providerSpelling);
       JsonNode tokens =
           OBJECT_MAPPER.readTree(
               refresh(seedRefreshToken(providerSpelling, List.of(), inADay())).body());
@@ -463,13 +467,16 @@ public class McpOAuthIT extends McpTestBase {
       assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
 
       hardDelete(user);
+      user = null;
       user = createUser(name);
 
       assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
       assertThat(refresh(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(400);
       assertThat(new OAuthAuthorizationCodeRepository().findByCode(code)).isNull();
+      assertThat(new McpPendingAuthRequestRepository().findByAuthRequestId(waitingConsent))
+          .isNull();
     } finally {
-      hardDelete(user);
+      hardDeleteIfCreated(user);
     }
   }
 
@@ -479,8 +486,9 @@ public class McpOAuthIT extends McpTestBase {
   void testSoftDeletedUsersGrant_staysEndedAfterRestore() throws Exception {
     Assumptions.assumeTrue(
         registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
-    User user = createUser("mcp_grant_" + UUID.randomUUID().toString().substring(0, 8));
+    User user = null;
     try {
+      user = createUser("mcp_grant_" + UUID.randomUUID().toString().substring(0, 8));
       JsonNode tokens =
           OBJECT_MAPPER.readTree(
               refresh(seedRefreshToken(user.getName(), List.of(), inADay())).body());
@@ -492,7 +500,7 @@ public class McpOAuthIT extends McpTestBase {
 
       assertThat(refresh(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(400);
     } finally {
-      hardDelete(user);
+      hardDeleteIfCreated(user);
     }
   }
 
@@ -502,6 +510,31 @@ public class McpOAuthIT extends McpTestBase {
 
   private static void hardDelete(User user) {
     SdkClients.adminClient().users().delete(user.getId().toString(), Map.of("hardDelete", "true"));
+  }
+
+  private static void hardDeleteIfCreated(User user) {
+    if (user != null) {
+      hardDelete(user);
+    }
+  }
+
+  /** A sign-in that passed the identity provider and waits on the consent page. */
+  private static String seedWaitingConsent(String userName) {
+    McpPendingAuthRequestRepository pending = new McpPendingAuthRequestRepository();
+    String authRequestId =
+        pending.createPendingRequest(
+            registeredClientId,
+            "codeChallenge-123456789012345678901234567890123456789012",
+            "S256",
+            "http://127.0.0.1:9090/callback",
+            null,
+            List.of("openid"),
+            null,
+            null,
+            null);
+    assertThat(pending.storeConsent(authRequestId, UUID.randomUUID().toString(), userName))
+        .isTrue();
+    return authRequestId;
   }
 
   private static String seedAuthorizationCode(String userName) {
