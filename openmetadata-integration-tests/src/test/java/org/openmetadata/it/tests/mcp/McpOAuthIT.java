@@ -9,6 +9,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
@@ -440,31 +442,81 @@ public class McpOAuthIT extends McpTestBase {
     assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
   }
 
-  /** Grants are keyed by user name, so deleting a user ends them before the name can be reused. */
+  /**
+   * Grants are keyed by user name, so deleting a user ends them before the name can be reused. The
+   * grant is held under another spelling of the name, as a sign-in can store the provider's casing.
+   */
   @Test
   @Order(18)
   void testDeletedUsersGrant_doesNotPassToANewUserWithTheSameName() throws Exception {
     Assumptions.assumeTrue(
         registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
     String name = "mcp_grant_" + UUID.randomUUID().toString().substring(0, 8);
-    User deleted = createUser(name);
-    String seeded =
-        seedRefreshToken(
-            name, List.of(), System.currentTimeMillis() + Duration.ofDays(1).toMillis());
-    JsonNode tokens = OBJECT_MAPPER.readTree(refresh(seeded).body());
-    String accessToken = tokens.get("access_token").asText();
-    assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
+    String providerSpelling = name.toUpperCase(Locale.ROOT);
+    User user = createUser(name);
+    try {
+      String code = seedAuthorizationCode(providerSpelling);
+      JsonNode tokens =
+          OBJECT_MAPPER.readTree(
+              refresh(seedRefreshToken(providerSpelling, List.of(), inADay())).body());
+      String accessToken = tokens.get("access_token").asText();
+      assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
 
-    SdkClients.adminClient()
-        .users()
-        .delete(deleted.getId().toString(), Map.of("hardDelete", "true"));
-    User namesake = createUser(name);
+      hardDelete(user);
+      user = createUser(name);
 
-    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
-    assertThat(refresh(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(400);
-    SdkClients.adminClient()
-        .users()
-        .delete(namesake.getId().toString(), Map.of("hardDelete", "true"));
+      assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+      assertThat(refresh(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(400);
+      assertThat(new OAuthAuthorizationCodeRepository().findByCode(code)).isNull();
+    } finally {
+      hardDelete(user);
+    }
+  }
+
+  /** A soft delete ends the grant too, and restoring the user does not bring it back. */
+  @Test
+  @Order(19)
+  void testSoftDeletedUsersGrant_staysEndedAfterRestore() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    User user = createUser("mcp_grant_" + UUID.randomUUID().toString().substring(0, 8));
+    try {
+      JsonNode tokens =
+          OBJECT_MAPPER.readTree(
+              refresh(seedRefreshToken(user.getName(), List.of(), inADay())).body());
+      String accessToken = tokens.get("access_token").asText();
+
+      SdkClients.adminClient().users().delete(user.getId().toString());
+      assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+      SdkClients.adminClient().users().restore(user.getId());
+
+      assertThat(refresh(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(400);
+    } finally {
+      hardDelete(user);
+    }
+  }
+
+  private static long inADay() {
+    return System.currentTimeMillis() + Duration.ofDays(1).toMillis();
+  }
+
+  private static void hardDelete(User user) {
+    SdkClients.adminClient().users().delete(user.getId().toString(), Map.of("hardDelete", "true"));
+  }
+
+  private static String seedAuthorizationCode(String userName) {
+    String code = UUID.randomUUID().toString();
+    new OAuthAuthorizationCodeRepository()
+        .store(
+            code,
+            registeredClientId,
+            userName,
+            "codeChallenge-123456789012345678901234567890123456789012",
+            "S256",
+            URI.create("http://127.0.0.1:9090/callback"),
+            List.of("openid"),
+            System.currentTimeMillis() + Duration.ofMinutes(5).toMillis());
+    return code;
   }
 
   private static User createUser(String name) {

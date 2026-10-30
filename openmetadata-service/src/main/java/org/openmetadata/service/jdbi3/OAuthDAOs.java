@@ -215,20 +215,21 @@ public interface OAuthDAOs {
       deleteAccessTokensForUser(clientId, userName);
     }
 
-    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE user_name = :userName")
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)")
     void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
 
     @SqlUpdate(
-        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE user_name = :userName AND revoked = FALSE")
+        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE")
     void revokeRefreshTokensOfUser(@Bind("userName") String userName);
 
-    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE user_name = :userName")
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)")
     void deleteAccessTokensOfUser(@Bind("userName") String userName);
 
     /**
      * Ends every grant held under a user name, on all clients. Grants are keyed by name only, so a
-     * later account with the same name would otherwise take them over. Codes go first so no new
-     * grant starts while the rest are revoked.
+     * later account with the same name would otherwise take them over. Names compare ignoring case:
+     * a sign-in can store the provider's spelling of a lowercase account name. Codes go first, so a
+     * code not yet exchanged can no longer start a grant.
      */
     @Transaction
     default void revokeAllGrantsOfUser(String userName) {

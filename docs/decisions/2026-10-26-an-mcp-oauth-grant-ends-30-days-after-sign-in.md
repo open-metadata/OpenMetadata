@@ -35,5 +35,8 @@ and was never sent back to the identity provider. Web sessions already work the 
   codes and access tokens are deleted and refresh tokens revoked (`UserRepository`
   `beginDeleteLifecycle`). Grants are keyed by user name, so this also keeps a later user given
   the same name from taking them over. A restored user signs in again.
+- Names compare ignoring case: a sign-in could store the provider's spelling of the account's
+  lowercase name. New grants are stored under the account's own name.
 - The 2.1.0 post-data migration ends the grants of users deleted before this change.
-- Guard: `McpOAuthIT` (`testDeletedUsersGrant_doesNotPassToANewUserWithTheSameName`).
+- Guard: `McpOAuthIT` (`testDeletedUsersGrant_doesNotPassToANewUserWithTheSameName`,
+  `testSoftDeletedUsersGrant_staysEndedAfterRestore`), `McpGrantMigrationIT`.
