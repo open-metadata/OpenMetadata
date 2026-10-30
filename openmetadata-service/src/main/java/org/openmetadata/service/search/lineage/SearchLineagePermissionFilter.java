@@ -58,6 +58,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  *
  * <p>Decisions come from {@link ViewPermissionFilter}, which fails closed: anything past {@link
  * #MAX_FILTERED_REFERENCES} is hidden unchecked. Admins see everything.
+ * ADR:2026-10-30-search-lineage-returns-only-assets-the-caller-can-view
  */
 @Slf4j
 public class SearchLineagePermissionFilter {
