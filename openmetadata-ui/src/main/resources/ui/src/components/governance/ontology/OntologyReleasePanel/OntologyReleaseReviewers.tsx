@@ -124,7 +124,9 @@ const OntologyReleaseReviewers = ({
   const { settings, lock } = model;
   const editable = view.kind === 'ready' && model.canEditSettings && !saving;
   const hasTeam = settings.reviewers.some((entry) => entry.type === 'team');
-  const options = availableReviewerOptions(search.options, model);
+  // Clearing the input after a pick reopens React Aria's list while it still
+  // has items, and the pick stays in them until the save returns.
+  const options = saving ? [] : availableReviewerOptions(search.options, model);
   const searchUnavailable = [
     search.isFetching,
     search.isPlaceholderData,
@@ -219,7 +221,11 @@ const OntologyReleaseReviewers = ({
         emptyState={searchEmptyState()}
         hint={lockHint}
         inputValue={searchText}
-        isDisabled={!editable || hasTeam}
+        // The save marks the publication busy, which clears canEditSettings.
+        // Disabling the focused input then blurs it, and the focus restored
+        // after the save reopens the list over the dialog; stay read-only.
+        isDisabled={(!editable && !saving) || hasTeam}
+        isReadOnly={saving}
         items={options}
         label={t('label.add-reviewer')}
         selectedKey={null}
