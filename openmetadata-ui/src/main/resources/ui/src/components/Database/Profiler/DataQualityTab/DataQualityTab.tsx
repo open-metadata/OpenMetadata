@@ -33,11 +33,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
 import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TestCase,
@@ -143,7 +140,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
   const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [testCaseStatus, setTestCaseStatus] = useState<
@@ -421,43 +417,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setIsStatusLoading(false);
   };
 
-  const fetchTestCasePermissions = async () => {
-    try {
-      setIsPermissionLoading(true);
-      const promises = testCases.map((testCase) => {
-        return getEntityPermissionByFqn(
-          ResourceEntity.TEST_CASE,
-          testCase.fullyQualifiedName ?? ''
-        );
-      });
-      const testCasePermission = await Promise.allSettled(promises);
-      const data = testCasePermission.reduce((acc, status, i) => {
-        if (status.status === 'fulfilled') {
-          return [
-            ...acc,
-            {
-              ...status.value,
-              fullyQualifiedName: testCases[i].fullyQualifiedName,
-            },
-          ];
-        }
-
-        return acc;
-      }, [] as TestCasePermission[]);
-
-      setTestCasePermissions(data);
-    } catch {
-      // do nothing
-    } finally {
-      setIsPermissionLoading(false);
-    }
-  };
-
-  const applyInlinePermissions = (
-    permissions: Record<string, ResourcePermission>
-  ) => {
+  /**
+   * Row permissions come from the list response only. `PagePermissionsResolver`
+   * emits an entry for every row it returns, so a miss here means the row
+   * carries no id and genuinely has no permissions.
+   */
+  const applyInlinePermissions = () => {
     const data = testCases.map((testCase) => {
-      const inline = testCase.id ? permissions[testCase.id] : undefined;
+      const inline = testCase.id ? entityPermissions?.[testCase.id] : undefined;
 
       return {
         ...(inline
@@ -473,13 +440,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   useEffect(() => {
     if (testCases.length) {
       collectInlineIncidentStatuses();
-      // Callers that list with includePermissions=true pass the inline map;
-      // the others (e.g. TestSuiteDetailsPage) keep the per-row fetch.
-      if (entityPermissions) {
-        applyInlinePermissions(entityPermissions);
-      } else {
-        void fetchTestCasePermissions();
-      }
+      applyInlinePermissions();
     } else {
       setIsStatusLoading(false);
     }

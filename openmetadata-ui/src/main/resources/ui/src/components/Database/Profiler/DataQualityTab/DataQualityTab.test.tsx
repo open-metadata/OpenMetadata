@@ -504,7 +504,7 @@ describe('DataQualityTab test', () => {
     expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
   });
 
-  it('should not fetch per-row permissions when the list returned a map, even an empty or partial one', async () => {
+  it('should never fetch per-row permissions, whatever the list returned', async () => {
     const testCases = mockProps.testCases as TestCase[];
     const [covered] = testCases;
     const partialMap = {
@@ -514,7 +514,9 @@ describe('DataQualityTab test', () => {
       },
     } as Record<string, ResourcePermission>;
 
-    for (const entityPermissions of [{}, partialMap]) {
+    // No map, an empty map, and a partial map are all answered from the list
+    // response alone -- the permission endpoint is never called again.
+    for (const entityPermissions of [undefined, {}, partialMap]) {
       const { unmount } = render(
         <DataQualityTab {...mockProps} entityPermissions={entityPermissions} />
       );
@@ -524,17 +526,6 @@ describe('DataQualityTab test', () => {
 
       unmount();
     }
-  });
-
-  it('should fetch permissions per row when the caller passes no map', async () => {
-    await act(async () => {
-      render(<DataQualityTab {...mockProps} entityPermissions={undefined} />);
-    });
-
-    expect(await screen.findByTestId('test-case-table')).toBeVisible();
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(
-      (mockProps.testCases as TestCase[]).length
-    );
   });
 
   it('Table header should be visible', async () => {
