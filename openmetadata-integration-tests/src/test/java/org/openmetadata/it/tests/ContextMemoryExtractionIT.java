@@ -246,6 +246,7 @@ class ContextMemoryExtractionIT {
     assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
     assertEquals(ProcessingStatus.Processed, stored.getProcessingStatus());
     assertNotNull(stored.getExtractionStats().getSourceHash());
+    assertEquals(1, calls.get());
   }
 
   @Test
@@ -263,6 +264,7 @@ class ContextMemoryExtractionIT {
     assertEquals(PageProcessingStatus.Processed, stored.getProcessingStatus());
     assertEquals(
         DigestUtils.sha256Hex("Original definition"), stored.getExtractionStats().getSourceHash());
+    assertEquals(1, calls.get());
   }
 
   @Test

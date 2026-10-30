@@ -11,6 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -57,26 +58,29 @@ class ContextProcessingUpdatesTest {
   }
 
   @Test
-  void fileStatsRejectAnEditBetweenTheReadAndWrite() {
+  void fileStatsRetryAnEditBetweenTheReadAndWrite() {
     AtomicReference<ContextFile> stored =
         new AtomicReference<>(new ContextFile().withId(id).withName("file").withUpdatedAt(100L));
     ContextFileRepository repository = fileRepository(stored);
+    AtomicInteger reads = new AtomicInteger();
     when(repository.get(isNull(), eq(id), any(), eq(Include.NON_DELETED), eq(false)))
         .thenAnswer(
             ignored -> {
-              ContextFile snapshot = JsonUtils.deepCopy(stored.get(), ContextFile.class);
-              stored.set(
-                  JsonUtils.deepCopy(snapshot, ContextFile.class)
-                      .withUpdatedAt(101L)
-                      .withDescription("Concurrent edit"));
+              ContextFile snapshot = readCachedFile(stored);
+              if (reads.getAndIncrement() == 0) {
+                stored.set(
+                    JsonUtils.deepCopy(snapshot, ContextFile.class)
+                        .withUpdatedAt(101L)
+                        .withDescription("Concurrent edit"));
+              }
               return snapshot;
             });
 
-    assertThrows(
-        PreconditionFailedException.class,
-        () -> new FileContextProcessingEngine(repository, null, null).stampStats(id, stats));
+    new FileContextProcessingEngine(repository, null, null).stampStats(id, stats);
 
+    assertEquals(2, reads.get());
     assertEquals("Concurrent edit", stored.get().getDescription());
+    assertEquals(stats, stored.get().getExtractionStats());
   }
 
   @Test
@@ -98,38 +102,61 @@ class ContextProcessingUpdatesTest {
   }
 
   @Test
-  void pageStatsRejectAnEditBetweenTheReadAndWrite() {
+  void pageStatsRetryAnEditBetweenTheReadAndWrite() {
     AtomicReference<Page> stored =
         new AtomicReference<>(new Page().withId(id).withName("page").withUpdatedAt(100L));
     KnowledgePageRepository repository = pageRepository(stored);
+    AtomicInteger reads = new AtomicInteger();
     when(repository.get(isNull(), eq(id), any(), eq(Include.NON_DELETED), eq(false)))
         .thenAnswer(
             ignored -> {
-              Page snapshot = JsonUtils.deepCopy(stored.get(), Page.class);
+              Page snapshot = readCachedPage(stored);
+              if (reads.getAndIncrement() == 0) {
+                stored.set(
+                    JsonUtils.deepCopy(snapshot, Page.class)
+                        .withUpdatedAt(101L)
+                        .withDescription("Concurrent edit"));
+              }
+              return snapshot;
+            });
+
+    new PageContextProcessingEngine(repository, null, null, null).stampStats(id, stats);
+
+    assertEquals(2, reads.get());
+    assertEquals("Concurrent edit", stored.get().getDescription());
+    assertEquals(stats, stored.get().getExtractionStats());
+  }
+
+  @Test
+  void fileStatsYieldAfterPersistentEdits() {
+    AtomicReference<ContextFile> stored =
+        new AtomicReference<>(new ContextFile().withId(id).withName("file").withUpdatedAt(100L));
+    ContextFileRepository repository = fileRepository(stored);
+    AtomicInteger reads = new AtomicInteger();
+    when(repository.get(isNull(), eq(id), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(
+            ignored -> {
+              reads.incrementAndGet();
+              ContextFile snapshot = readCachedFile(stored);
               stored.set(
-                  JsonUtils.deepCopy(snapshot, Page.class)
-                      .withUpdatedAt(101L)
+                  JsonUtils.deepCopy(snapshot, ContextFile.class)
+                      .withUpdatedAt(snapshot.getUpdatedAt() + 1)
                       .withDescription("Concurrent edit"));
               return snapshot;
             });
 
     assertThrows(
-        PreconditionFailedException.class,
-        () -> new PageContextProcessingEngine(repository, null, null, null).stampStats(id, stats));
+        ContextProcessingEngine.ConditionalUpdateExhaustedException.class,
+        () -> new FileContextProcessingEngine(repository, null, null).stampStats(id, stats));
 
+    assertEquals(ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS, reads.get());
     assertEquals("Concurrent edit", stored.get().getDescription());
   }
 
   private ContextFileRepository fileRepository(AtomicReference<ContextFile> stored) {
     ContextFileRepository repository = mock(ContextFileRepository.class);
     when(repository.get(isNull(), eq(id), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenAnswer(
-            ignored -> {
-              ContextFile cached =
-                  RequestEntityCache.getById(
-                      Entity.CONTEXT_FILE, id, null, null, false, ContextFile.class);
-              return cached == null ? JsonUtils.deepCopy(stored.get(), ContextFile.class) : cached;
-            });
+        .thenAnswer(ignored -> readCachedFile(stored));
     lenient()
         .when(repository.update(isNull(), any(), any(), anyString()))
         .thenAnswer(
@@ -154,12 +181,7 @@ class ContextProcessingUpdatesTest {
   private KnowledgePageRepository pageRepository(AtomicReference<Page> stored) {
     KnowledgePageRepository repository = mock(KnowledgePageRepository.class);
     when(repository.get(isNull(), eq(id), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenAnswer(
-            ignored -> {
-              Page cached =
-                  RequestEntityCache.getById(Entity.PAGE, id, null, null, false, Page.class);
-              return cached == null ? JsonUtils.deepCopy(stored.get(), Page.class) : cached;
-            });
+        .thenAnswer(ignored -> readCachedPage(stored));
     lenient()
         .when(repository.update(isNull(), any(), any(), anyString()))
         .thenAnswer(
@@ -179,5 +201,25 @@ class ContextProcessingUpdatesTest {
               return null;
             });
     return repository;
+  }
+
+  private ContextFile readCachedFile(AtomicReference<ContextFile> stored) {
+    ContextFile cached =
+        RequestEntityCache.getById(Entity.CONTEXT_FILE, id, null, null, false, ContextFile.class);
+    if (cached == null) {
+      cached = JsonUtils.deepCopy(stored.get(), ContextFile.class);
+      RequestEntityCache.putById(
+          Entity.CONTEXT_FILE, id, null, null, false, cached, ContextFile.class);
+    }
+    return cached;
+  }
+
+  private Page readCachedPage(AtomicReference<Page> stored) {
+    Page cached = RequestEntityCache.getById(Entity.PAGE, id, null, null, false, Page.class);
+    if (cached == null) {
+      cached = JsonUtils.deepCopy(stored.get(), Page.class);
+      RequestEntityCache.putById(Entity.PAGE, id, null, null, false, cached, Page.class);
+    }
+    return cached;
   }
 }

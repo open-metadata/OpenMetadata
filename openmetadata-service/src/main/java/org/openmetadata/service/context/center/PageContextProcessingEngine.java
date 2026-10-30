@@ -15,7 +15,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.jobs.JobDAO;
-import org.openmetadata.service.util.FreshReadScope;
 
 /**
  * {@link ContextProcessingEngine} for Page (Knowledge Center article) sources. A page's markdown
@@ -96,9 +95,15 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       if (outcome.skipped()) {
         stampStatus(pageId, PageProcessingStatus.Processed, null);
       }
+    } catch (ConditionalUpdateExhaustedException e) {
+      schedule(pageId);
     } catch (RuntimeException e) {
       LOG.error("Knowledge pill extraction failed for page {}", pageId, e);
-      stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+      try {
+        stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+      } catch (ConditionalUpdateExhaustedException exhausted) {
+        schedule(pageId);
+      }
       throw e;
     }
   }
@@ -122,15 +127,17 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
    * so an unchanged-content skip does not churn the row.
    */
   private void stampStatus(UUID pageId, PageProcessingStatus status, String error) {
-    try (var ignored = FreshReadScope.enter()) {
-      Page current = getPage(pageId);
-      if (current != null && current.getProcessingStatus() != status) {
-        Page updated = JsonUtils.deepCopy(current, Page.class);
-        updated.setProcessingStatus(status);
-        updated.setProcessingError(error);
-        pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
-      }
-    }
+    updateSource(
+        pageId,
+        () -> {
+          Page current = getPage(pageId);
+          if (current != null && current.getProcessingStatus() != status) {
+            Page updated = JsonUtils.deepCopy(current, Page.class);
+            updated.setProcessingStatus(status);
+            updated.setProcessingError(error);
+            pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+          }
+        });
   }
 
   /**
@@ -165,16 +172,18 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
 
   @Override
   protected void stampStats(UUID pageId, ExtractionStats stats) {
-    try (var ignored = FreshReadScope.enter()) {
-      Page current = getPage(pageId);
-      if (current != null) {
-        Page updated = JsonUtils.deepCopy(current, Page.class);
-        updated.setExtractionStats(stats);
-        updated.setProcessingStatus(PageProcessingStatus.Processed);
-        updated.setProcessingError(null);
-        pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
-      }
-    }
+    updateSource(
+        pageId,
+        () -> {
+          Page current = getPage(pageId);
+          if (current != null) {
+            Page updated = JsonUtils.deepCopy(current, Page.class);
+            updated.setExtractionStats(stats);
+            updated.setProcessingStatus(PageProcessingStatus.Processed);
+            updated.setProcessingError(null);
+            pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+          }
+        });
   }
 
   @Override

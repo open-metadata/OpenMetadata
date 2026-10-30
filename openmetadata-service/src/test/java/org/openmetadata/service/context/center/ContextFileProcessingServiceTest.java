@@ -322,6 +322,21 @@ class ContextFileProcessingServiceTest {
             eq(fileId.toString()), anyString(), anyString(), anyString(), eq(false));
   }
 
+  @Test
+  void memoryStatsContentionQueuesRetryDespiteRunningJob() {
+    when(fileEngine.runExtraction(fileId))
+        .thenThrow(
+            new ContextProcessingEngine.ConditionalUpdateExhaustedException(
+                Entity.CONTEXT_FILE, fileId));
+
+    service(Runnable::run, () -> assetService, true).runMemoryExtraction(fileId, contentId);
+
+    verify(jobDao)
+        .enqueueFileMemoryJob(
+            eq(fileId.toString()), anyString(), anyString(), anyString(), eq(false));
+    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
+  }
+
   private ContextFile transientFile(ProcessingStatus status) {
     return new ContextFile()
         .withId(UUID.randomUUID())

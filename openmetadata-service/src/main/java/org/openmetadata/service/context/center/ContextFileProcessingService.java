@@ -1,5 +1,6 @@
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.service.context.center.ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS;
 import static org.openmetadata.service.jdbi3.ContextFileContentRepository.CONTEXT_FILE_CONTENT_ENTITY;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
@@ -26,6 +27,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.context.center.ContextProcessingEngine.ConditionalUpdateExhaustedException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -43,7 +45,6 @@ import org.openmetadata.service.util.RequestEntityCache;
  */
 @Slf4j
 public class ContextFileProcessingService {
-  private static final int MAX_CONDITIONAL_UPDATE_ATTEMPTS = 10;
   private static final long CONDITIONAL_UPDATE_RETRY_DELAY_MILLIS = 10;
   private final ContextFileRepository repository;
   private final Supplier<AssetService> assetServiceSupplier;
@@ -582,12 +583,6 @@ public class ContextFileProcessingService {
       Thread.currentThread().interrupt();
       LOG.warn("Interrupted while retrying {} {} extraction update", entityType, entityId);
       return false;
-    }
-  }
-
-  private static class ConditionalUpdateExhaustedException extends RuntimeException {
-    private ConditionalUpdateExhaustedException(String entityType, UUID entityId) {
-      super("Repeated concurrent updates for " + entityType + " " + entityId);
     }
   }
 }
