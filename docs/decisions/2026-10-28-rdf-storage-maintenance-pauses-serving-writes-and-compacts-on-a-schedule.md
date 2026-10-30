@@ -33,6 +33,8 @@ dead-lettered, marking the projection degraded until a full rebuild.
   run holding its lock, a store that cannot be reached): each successful maintenance compaction is
   recorded in `rdf_projection_health.lastCompactedAt`, and once none has succeeded for two intervals
   every check logs an error and the RDF projection status reads `DEGRADED` until one does.
+  The health clock starts before the first compaction; scheduled health checks continue while the
+  compaction worker waits, so an unreachable admin API cannot hide a paused projection indefinitely.
 - Maintenance holds the RDF reindex and inference locks while it runs, so it never overlaps an
   indexing or inference run. The first check runs five minutes after a server starts. Nothing
   waits for a rolling upgrade: a compaction copies only the live data, so it is short, and a server
