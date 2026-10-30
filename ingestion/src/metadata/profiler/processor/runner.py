@@ -114,7 +114,7 @@ class QueryRunner:
         self,
         session: Session,
         dataset: type | AliasedClass,
-        raw_dataset: Table | type,
+        raw_dataset: Table,
         partition_details: dict | None = None,
         profile_sample_query: str | None = None,
     ):
@@ -125,7 +125,7 @@ class QueryRunner:
         self.raw_dataset = raw_dataset
 
     @property
-    def table(self) -> Table | type:
+    def table(self) -> Table:
         """Backward compatibility table attribute access"""
         return self.raw_dataset
 
