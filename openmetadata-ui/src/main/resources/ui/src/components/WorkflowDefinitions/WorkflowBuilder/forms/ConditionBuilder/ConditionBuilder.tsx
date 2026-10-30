@@ -77,7 +77,7 @@ function ConditionBuilderValueControl(
   const isBoolean = fieldDef?.valueType === 'boolean';
   const isText = !fieldDef || fieldDef.valueType === 'text';
   const hasFetchOptions = Boolean(fieldDef?.fetchOptions);
-  const staticOptions = useMemo(() => {
+  const staticOptions = useMemo((): ConditionBuilderOption[] => {
     if (!fieldDef) {
       return [];
     }
