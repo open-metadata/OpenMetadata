@@ -524,3 +524,48 @@ def test_percent_identifier_is_escaped_once_at_final_compilation(validator_class
     expected = str(physical.compile(dialect=dialect, compile_kwargs={"asfrom": True}))
     assert str(compiled).startswith(f"SELECT * FROM {expected} WHERE")
     assert set(compiled.params) == {"limit"}
+
+
+@pytest.mark.parametrize("validator_class", [SQAValidator, TableSQAValidator])
+def test_sql_error_rolls_back_and_allows_a_following_rule(validator_class):
+    from sqlalchemy import Column, Integer, MetaData, Table, create_engine, func, select
+    from sqlalchemy.exc import OperationalError
+    from sqlalchemy.orm import Session
+
+    from metadata.profiler.processor.runner import QueryRunner
+
+    physical = Table("orders", MetaData(), Column("amount", Integer))
+    engine = create_engine("sqlite://")
+    physical.metadata.create_all(engine)
+    with Session(engine) as session:
+        validator = validator_class.__new__(validator_class)
+        validator.runner = QueryRunner(session, None, physical)
+        session.execute(physical.insert(), {"amount": -1})
+        with pytest.raises(OperationalError):
+            validator._run_results(("SELECT invalid_column FROM orders", {}))
+        assert session.execute(select(func.count()).select_from(physical)).scalar() == 0
+        session.execute(physical.insert(), {"amount": -1})
+        assert validator._run_results(("SELECT * FROM orders WHERE amount < :limit", {"limit": "0"})) == 1
+        with pytest.raises(RuntimeError, match="not safe"):
+            validator._run_results(("DELETE FROM orders", {}))
+        assert validator._run_row_count() == 1
+
+
+@pytest.mark.parametrize("validator_class", [SQAValidator, TableSQAValidator])
+def test_row_count_error_rolls_back_and_recovers(validator_class):
+    from sqlalchemy import Column, Integer, MetaData, Table, create_engine
+    from sqlalchemy.exc import OperationalError
+    from sqlalchemy.orm import Session
+
+    from metadata.profiler.processor.runner import QueryRunner
+
+    physical = Table("orders", MetaData(), Column("amount", Integer))
+    engine = create_engine("sqlite://")
+    with Session(engine) as session:
+        validator = validator_class.__new__(validator_class)
+        validator.runner = QueryRunner(session, None, physical)
+        with pytest.raises(OperationalError):
+            validator._run_row_count()
+        physical.metadata.create_all(engine)
+        session.execute(physical.insert(), {"amount": 1})
+        assert validator._run_row_count() == 1

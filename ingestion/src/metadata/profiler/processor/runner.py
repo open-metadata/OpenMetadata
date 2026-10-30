@@ -125,7 +125,7 @@ class QueryRunner:
         self.raw_dataset = raw_dataset
 
     @property
-    def table(self) -> Table:
+    def table(self) -> Table | type:
         """Backward compatibility table attribute access"""
         return self.raw_dataset
 
