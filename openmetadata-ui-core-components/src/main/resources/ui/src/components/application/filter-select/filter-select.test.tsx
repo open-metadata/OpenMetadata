@@ -566,6 +566,8 @@ describe('FilterSelect', () => {
     // The brand set replaces the Button's neutral colours rather than racing them.
     expect(selected).not.toContain('tw:text-secondary ');
     expect(selected).not.toContain('tw:after:outline-primary');
+    // The chevron stays neutral; only the label and outline turn brand.
+    expect(selected).not.toContain('data-icon:text-fg-brand-primary');
 
     rerender(renderTrigger([]));
 

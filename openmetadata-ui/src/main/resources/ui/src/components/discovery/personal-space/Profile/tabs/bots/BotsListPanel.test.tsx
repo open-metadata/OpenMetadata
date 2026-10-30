@@ -310,13 +310,13 @@ describe('BotsListPanel', () => {
 
     expect(screen.getByTestId('bot-delete-system-bot')).toBeDisabled();
     expect(screen.getByTestId('bot-delete-ingest')).not.toBeDisabled();
-    // The disabled button sits in a tooltip trigger and outside the delete popover.
-    expect(
-      screen.getByTestId('bot-delete-tooltip-system-bot')
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('bot-delete-tooltip-ingest')
-    ).not.toBeInTheDocument();
+
+    // The disabled button is the Tooltip's direct child, so core Tooltip wraps it in a hover
+    // span (core tooltip.test covers that the span opens the tooltip on hover).
+    const wrapper = screen.getByTestId('bot-delete-system-bot').parentElement;
+
+    expect(wrapper?.tagName).toBe('SPAN');
+    expect(wrapper?.className).toContain('tw:cursor-not-allowed');
   });
 
   it('restores a soft-deleted bot after confirmation and reloads the list', async () => {

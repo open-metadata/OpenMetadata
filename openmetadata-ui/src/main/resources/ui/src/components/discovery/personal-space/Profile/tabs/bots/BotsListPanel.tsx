@@ -462,19 +462,18 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
           tooltipContent = t('message.admin-only-action');
         }
 
-        // Core ButtonUtility drops its tooltip when disabled, so wrap it instead.
+        // Core ButtonUtility drops its tooltip when disabled. The disabled button must be the
+        // Tooltip's direct child so Tooltip wraps it in a hover-listening span.
         if (isDisabled) {
           return (
             <Tooltip excludeTriggerFromTabOrder title={tooltipContent}>
-              <Box inline data-testid={`bot-delete-tooltip-${bot.name}`}>
-                <ButtonUtility
-                  isDisabled
-                  color="tertiary"
-                  data-testid={`bot-delete-${bot.name}`}
-                  icon={Trash01}
-                  size="xs"
-                />
-              </Box>
+              <ButtonUtility
+                isDisabled
+                color="tertiary"
+                data-testid={`bot-delete-${bot.name}`}
+                icon={Trash01}
+                size="xs"
+              />
             </Tooltip>
           );
         }
