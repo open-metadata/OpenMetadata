@@ -837,10 +837,16 @@ describe('TestCases component', () => {
       });
     });
 
-    it('should show lastRun filter by default', async () => {
+    it('should show the lastRun filter by default, ahead of the other filters', async () => {
       render(<TestCases />);
 
-      expect(await screen.findByTestId('date-picker-menu')).toBeInTheDocument();
+      const datePicker = await screen.findByTestId('date-picker-menu');
+      const tableFilter = await screen.findByTestId('table-select-filter');
+
+      expect(
+        datePicker.compareDocumentPosition(tableFilter) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
     });
   });
 

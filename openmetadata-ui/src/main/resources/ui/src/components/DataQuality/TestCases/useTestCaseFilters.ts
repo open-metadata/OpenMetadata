@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { entries, isEmpty, isEqual, isUndefined, uniq, values } from 'lodash';
+import {
+  entries,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  sortBy,
+  uniq,
+  values,
+} from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -32,13 +40,14 @@ import {
 } from './FilterChip.interface';
 import { FetchedOption } from './useTestCaseFilterOptions';
 
+// Last Run is on by default so the counts visibly read as all-time, matching how the
+// Summary tab always shows the range its counts cover.
 const DEFAULT_SELECTED_FILTERS = [
+  TEST_CASE_FILTERS.lastRun,
   TEST_CASE_FILTERS.status,
   TEST_CASE_FILTERS.type,
   TEST_CASE_FILTERS.table,
   TEST_CASE_FILTERS.tags,
-  // Shown by default so the Last Run range is reachable without the Advanced menu.
-  TEST_CASE_FILTERS.lastRun,
 ];
 
 // The dimension filter is deliberately absent: dimensions are entities, so its options are
@@ -203,9 +212,13 @@ export const useTestCaseFilters = ({
     }));
 
   const filters = useMemo<FilterDescriptor[]>(() => {
-    const keys = entries(TEST_CASE_FILTERS)
-      .map(([, filter]) => filter)
-      .filter((filter) => selectedFilter.includes(filter));
+    // Last Run leads the bar, in the slot the Summary tab gives its date range.
+    const keys = sortBy(
+      entries(TEST_CASE_FILTERS)
+        .map(([, filter]) => filter)
+        .filter((filter) => selectedFilter.includes(filter)),
+      (filter) => filter !== TEST_CASE_FILTERS.lastRun
+    );
 
     return keys.map((key) => {
       const paramKey = key;

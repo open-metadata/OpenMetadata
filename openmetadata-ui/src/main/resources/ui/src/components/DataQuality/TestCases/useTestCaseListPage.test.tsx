@@ -185,13 +185,13 @@ describe('useTestCaseListPage', () => {
     expect(typeof current.pagingData.pagingHandler).toBe('function');
 
     // On mount getTestCases seeds selectedFilter from DEFAULT_SELECTED_FILTERS
-    // (status, type, table, tags, lastRun) merged with the (empty) URL params.
+    // (lastRun, status, type, table, tags) merged with the (empty) URL params.
     expect(current.selectedFilter).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.status,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.tags,
-      TEST_CASE_FILTERS.lastRun,
     ]);
     expect(current.hasActiveFilters).toBe(false);
   });
@@ -531,12 +531,13 @@ describe('useTestCaseListPage', () => {
     const byKey = (key: string) =>
       result.current.filters.find((descriptor) => descriptor.key === key);
 
-    // Descriptors track selectedFilter (defaults: table/type/status/lastRun/tags).
+    // Descriptors track selectedFilter (defaults: lastRun/table/type/status/tags),
+    // with Last Run first.
     expect(result.current.filters.map((descriptor) => descriptor.key)).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.status,
-      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.tags,
     ]);
 
@@ -613,7 +614,7 @@ describe('useTestCaseListPage', () => {
     );
   });
 
-  it('should surface the date control for the default lastRun filter and the multiselect control for platform', async () => {
+  it('should surface the date control type for the default lastRun filter and multiselect for platform', async () => {
     const { result } = renderHook(() => useTestCaseListPage());
 
     await waitFor(() =>
@@ -710,11 +711,11 @@ describe('useTestCaseListPage', () => {
     });
 
     expect(result.current.selectedFilter).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.status,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.tags,
-      TEST_CASE_FILTERS.lastRun,
     ]);
     expect(form.resetFields).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenLastCalledWith({
