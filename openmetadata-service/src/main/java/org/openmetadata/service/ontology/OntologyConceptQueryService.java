@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -97,37 +98,66 @@ public final class OntologyConceptQueryService {
         request == null ? List.of() : listOrEmpty(request.getHops());
     try (final var ignored = FreshReadScope.enter()) {
       final Map<UUID, OntologyConcept> concepts = concepts(access, conceptId, hops);
-      store.requireLiveOntology(concepts.get(conceptId));
-      final List<OntologyConceptQueryHop> labeled = labeled(access, concepts, conceptId, hops);
+      final OntologyConcept root = concepts.get(conceptId);
+      store.requireLiveOntology(root);
+      final Map<UUID, OntologyProperty> relations = relations(access, root, hops);
+      final Inverses inverses = inverses(access, root, relations.values());
       final Map<UUID, BoundConcept> bound = bind(access, concepts.values());
-      final List<Hop> steps =
-          labeled.stream()
-              .map(hop -> new Hop(hop.getProperty(), hop.getLabel(), bound.get(hop.getTarget())))
-              .toList();
+      final List<Hop> steps = new ArrayList<>();
+      final List<OntologyConceptQueryHop> labeled = new ArrayList<>();
+      OntologyConcept from = root;
+      for (final OntologyConceptQueryHop hop : hops) {
+        final Hop step =
+            hop(relations.get(hop.getProperty()), from, inverses, bound.get(hop.getTarget()));
+        steps.add(step);
+        labeled.add(
+            new OntologyConceptQueryHop()
+                .withProperty(hop.getProperty())
+                .withTarget(hop.getTarget())
+                .withLabel(step.label()));
+        from = concepts.get(hop.getTarget());
+      }
       return response(OntologyConceptSqlGenerator.generate(bound.get(conceptId), steps), labeled);
     }
   }
 
-  private List<OntologyConceptQueryHop> labeled(
-      final Access access,
-      final Map<UUID, OntologyConcept> concepts,
-      final UUID conceptId,
-      final List<OntologyConceptQueryHop> hops) {
-    final Map<UUID, OntologyProperty> relations = relations(access, concepts.get(conceptId), hops);
-    final Map<URI, OntologyProperty> inverses =
-        inverses(access, concepts.get(conceptId), relations.values());
-    final List<OntologyConceptQueryHop> labeled = new ArrayList<>();
-    OntologyConcept from = concepts.get(conceptId);
-    for (final OntologyConceptQueryHop hop : hops) {
-      final OntologyProperty relation = relations.get(hop.getProperty());
-      labeled.add(
-          new OntologyConceptQueryHop()
-              .withProperty(hop.getProperty())
-              .withTarget(hop.getTarget())
-              .withLabel(hopLabel(relation, from, inverses.get(relation.getInverse()))));
-      from = concepts.get(hop.getTarget());
+  /**
+   * The live declared inverses of the hop properties by IRI, and the ids of those the reader may
+   * view. A hidden inverse still orients a hop's join, so the join does not depend on the reader,
+   * but only a viewable one labels it.
+   */
+  record Inverses(Map<URI, OntologyProperty> live, Set<UUID> viewable) {
+    static final Inverses NONE = new Inverses(Map.of(), Set.of());
+
+    static Inverses of(
+        final Collection<OntologyProperty> live, final Predicate<OntologyProperty> canView) {
+      return new Inverses(
+          live.stream()
+              .collect(
+                  Collectors.toMap(
+                      OntologyProperty::getIri, Function.identity(), (first, ignored) -> first)),
+          live.stream().filter(canView).map(OntologyProperty::getId).collect(Collectors.toSet()));
     }
-    return labeled;
+
+    Optional<OntologyProperty> of(final OntologyProperty relation) {
+      return Optional.ofNullable(relation.getInverse()).map(live::get);
+    }
+  }
+
+  static Hop hop(
+      final OntologyProperty relation,
+      final OntologyConcept from,
+      final Inverses inverses,
+      final BoundConcept target) {
+    final Optional<OntologyProperty> inverse = inverses.of(relation);
+    return new Hop(
+        relation.getId(),
+        inverse.map(OntologyProperty::getId).orElse(null),
+        hopLabel(
+            relation,
+            from,
+            inverse.filter(shown -> inverses.viewable().contains(shown.getId())).orElse(null)),
+        target);
   }
 
   /**
@@ -143,10 +173,10 @@ public final class OntologyConceptQueryService {
   }
 
   /**
-   * The declared inverses of the hop properties that the reader may view, by IRI. The stored rows
-   * carry no owners, so the inverses are reloaded with the fields their authorization reads.
+   * The stored rows carry no owners, so the inverses are reloaded with the fields their
+   * authorization reads.
    */
-  private Map<URI, OntologyProperty> inverses(
+  private Inverses inverses(
       final Access access,
       final OntologyConcept root,
       final Collection<OntologyProperty> relations) {
@@ -161,21 +191,20 @@ public final class OntologyConceptQueryService {
             .map(OntologyProperty::getId)
             .toList();
     if (ids.isEmpty()) {
-      return Map.of();
+      return Inverses.NONE;
     }
     final EntityRepository<?> repository = repositories.apply(Entity.ONTOLOGY_PROPERTY);
-    return repository
-        .get(
-            access.uriInfo(),
-            ids,
-            ResourceContext.authorizationFields(repository),
-            Include.NON_DELETED)
-        .stream()
-        .map(OntologyProperty.class::cast)
-        .filter(property -> isViewable(access, repository, property))
-        .collect(
-            Collectors.toMap(
-                OntologyProperty::getIri, Function.identity(), (first, ignored) -> first));
+    return Inverses.of(
+        repository
+            .get(
+                access.uriInfo(),
+                ids,
+                ResourceContext.authorizationFields(repository),
+                Include.NON_DELETED)
+            .stream()
+            .map(OntologyProperty.class::cast)
+            .toList(),
+        property -> isViewable(access, repository, property));
   }
 
   private boolean isViewable(

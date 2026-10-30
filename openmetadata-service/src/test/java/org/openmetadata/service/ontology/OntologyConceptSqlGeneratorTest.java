@@ -67,8 +67,11 @@ class OntologyConceptSqlGeneratorTest {
             concept("Funds Transfer", transfers),
             List.of(
                 new Hop(
-                    PART_OF, "part of", concept("Customer", table(CUSTOMERS, "Postgres", "name"))),
-                new Hop(PAID_BY, "holds", concept("Account", accounts))));
+                    PART_OF,
+                    null,
+                    "part of",
+                    concept("Customer", table(CUSTOMERS, "Postgres", "name"))),
+                new Hop(PAID_BY, null, "holds", concept("Account", accounts))));
 
     assertEquals(
         String.join(
@@ -104,11 +107,11 @@ class OntologyConceptSqlGeneratorTest {
     final Generated forward =
         OntologyConceptSqlGenerator.generate(
             concept("Funds Transfer", transfers),
-            List.of(new Hop(PAID_BY, "paid by", concept("Customer", customers))));
+            List.of(new Hop(PAID_BY, null, "paid by", concept("Customer", customers))));
     final Generated inverse =
         OntologyConceptSqlGenerator.generate(
             concept("Customer", customers),
-            List.of(new Hop(PAID_BY, "pays", concept("Funds Transfer", transfers))));
+            List.of(new Hop(PAID_BY, null, "pays", concept("Funds Transfer", transfers))));
 
     assertEquals(
         "SELECT t1.customer_id, t1.name\nFROM payments.transfers t0\n"
@@ -143,6 +146,7 @@ class OntologyConceptSqlGeneratorTest {
             List.of(
                 new Hop(
                     PAID_BY,
+                    null,
                     "paid\nby",
                     new BoundConcept("Customer", List.of(elsewhere, customers)))));
 
@@ -161,7 +165,10 @@ class OntologyConceptSqlGeneratorTest {
                 concept("Funds Transfer", payeeBoundTransfers()),
                 List.of(
                     new Hop(
-                        RECEIVED_BY, "received by", concept("Customer", identifiedCustomers()))))
+                        RECEIVED_BY,
+                        null,
+                        "received by",
+                        concept("Customer", identifiedCustomers()))))
             .sql());
   }
 
@@ -174,7 +181,10 @@ class OntologyConceptSqlGeneratorTest {
                 concept("Customer", identifiedCustomers()),
                 List.of(
                     new Hop(
-                        RECEIVED_BY, "received", concept("Funds Transfer", payeeBoundTransfers()))))
+                        RECEIVED_BY,
+                        null,
+                        "received",
+                        concept("Funds Transfer", payeeBoundTransfers()))))
             .sql());
   }
 
@@ -197,6 +207,7 @@ class OntologyConceptSqlGeneratorTest {
                 List.of(
                     new Hop(
                         RECEIVED_BY,
+                        null,
                         "received by",
                         concept("Customer", table(CUSTOMERS, "Postgres", "name")))))
             .sql());
@@ -224,7 +235,7 @@ class OntologyConceptSqlGeneratorTest {
                 () ->
                     OntologyConceptSqlGenerator.generate(
                         concept("Customer", customers),
-                        List.of(new Hop(HOLDS, "holds", concept("Account", accounts)))))
+                        List.of(new Hop(HOLDS, null, "holds", concept("Account", accounts)))))
             .getMessage());
   }
 
@@ -248,7 +259,7 @@ class OntologyConceptSqlGeneratorTest {
             + "JOIN payments.accounts t1 ON t0.customer_id = t1.customer_id -- holds\nLIMIT 50",
         OntologyConceptSqlGenerator.generate(
                 concept("Customer", customers),
-                List.of(new Hop(HOLDS, "holds", concept("Account", accounts))))
+                List.of(new Hop(HOLDS, null, "holds", concept("Account", accounts))))
             .sql());
   }
 
@@ -283,6 +294,7 @@ class OntologyConceptSqlGeneratorTest {
                 List.of(
                     new Hop(
                         RECEIVED_BY,
+                        null,
                         "received",
                         new BoundConcept("Funds Transfer", List.of(ledger, transfers)))))
             .sql());
@@ -304,7 +316,7 @@ class OntologyConceptSqlGeneratorTest {
             + "JOIN payments.customers t1 ON t0.payee_id = t1.customer_id -- received by\nLIMIT 50",
         OntologyConceptSqlGenerator.generate(
                 concept("Funds Transfer", payeeBoundTransfers()),
-                List.of(new Hop(RECEIVED_BY, "received by", concept("Customer", customers))))
+                List.of(new Hop(RECEIVED_BY, null, "received by", concept("Customer", customers))))
             .sql());
   }
 
@@ -390,11 +402,11 @@ class OntologyConceptSqlGeneratorTest {
     final Generated forward =
         OntologyConceptSqlGenerator.generate(
             concept("Funds Transfer", payments),
-            List.of(new Hop(RECEIVED_BY, "received by", concept("Customer", customers))));
+            List.of(new Hop(RECEIVED_BY, null, "received by", concept("Customer", customers))));
     final Generated inverse =
         OntologyConceptSqlGenerator.generate(
             concept("Customer", customers),
-            List.of(new Hop(RECEIVED_BY, "received", concept("Funds Transfer", payments))));
+            List.of(new Hop(RECEIVED_BY, null, "received", concept("Funds Transfer", payments))));
 
     assertEquals(
         "SELECT t1.customer_id, t1.name\nFROM payments.transfers t0\n"
@@ -423,6 +435,7 @@ class OntologyConceptSqlGeneratorTest {
                     List.of(
                         new Hop(
                             RECEIVED_BY,
+                            null,
                             "received by",
                             concept("Customer", table(CUSTOMERS, "Postgres", "name"))))));
 
@@ -448,7 +461,7 @@ class OntologyConceptSqlGeneratorTest {
             + "JOIN payments.employees t1 ON t0.manager_id = t1.employee_id -- managed by\n"
             + "LIMIT 50",
         OntologyConceptSqlGenerator.generate(
-                employee, List.of(new Hop(MANAGED_BY, "managed by", employee)))
+                employee, List.of(new Hop(MANAGED_BY, null, "managed by", employee)))
             .sql());
   }
 
@@ -469,7 +482,7 @@ class OntologyConceptSqlGeneratorTest {
             + "LIMIT 50",
         OntologyConceptSqlGenerator.generate(
                 concept("Employee", employees),
-                List.of(new Hop(MANAGED_BY, "managed by", concept("Manager", managers))))
+                List.of(new Hop(MANAGED_BY, null, "managed by", concept("Manager", managers))))
             .sql());
   }
 
@@ -492,7 +505,7 @@ class OntologyConceptSqlGeneratorTest {
                 BadRequestException.class,
                 () ->
                     OntologyConceptSqlGenerator.generate(
-                        employee, List.of(new Hop(MANAGED_BY, "managed by", employee))))
+                        employee, List.of(new Hop(MANAGED_BY, null, "managed by", employee))))
             .getMessage());
   }
 
@@ -516,6 +529,7 @@ class OntologyConceptSqlGeneratorTest {
                         List.of(
                             new Hop(
                                 PAID_BY,
+                                null,
                                 "paid by",
                                 concept("Customer", table(otherDatabase, "Snowflake", "name"))))))
             .getMessage());
@@ -549,7 +563,7 @@ class OntologyConceptSqlGeneratorTest {
                 () ->
                     OntologyConceptSqlGenerator.generate(
                         concept("Funds Transfer", payments),
-                        List.of(new Hop(PAID_BY, "paid by", concept("Customer", elsewhere)))))
+                        List.of(new Hop(PAID_BY, null, "paid by", concept("Customer", elsewhere)))))
             .getMessage());
   }
 
@@ -566,7 +580,7 @@ class OntologyConceptSqlGeneratorTest {
             + "JOIN payments.customers t1 ON t0.customer_id = t1.\"cust.id\" -- part of\nLIMIT 50",
         OntologyConceptSqlGenerator.generate(
                 concept("Funds Transfer", payments),
-                List.of(new Hop(PART_OF, "part of", concept("Customer", customers))))
+                List.of(new Hop(PART_OF, null, "part of", concept("Customer", customers))))
             .sql());
   }
 
@@ -613,7 +627,11 @@ class OntologyConceptSqlGeneratorTest {
                     OntologyConceptSqlGenerator.generate(
                         transfers,
                         List.of(
-                            new Hop(PART_OF, "part of", new BoundConcept("Customer", List.of())))))
+                            new Hop(
+                                PART_OF,
+                                null,
+                                "part of",
+                                new BoundConcept("Customer", List.of())))))
             .getMessage());
     assertEquals(
         "Hop 1 (part of): no foreign key or object-property binding joins "
@@ -627,6 +645,7 @@ class OntologyConceptSqlGeneratorTest {
                         List.of(
                             new Hop(
                                 PART_OF,
+                                null,
                                 "part of",
                                 concept("Customer", table(CUSTOMERS, "Postgres", "name"))))))
             .getMessage());

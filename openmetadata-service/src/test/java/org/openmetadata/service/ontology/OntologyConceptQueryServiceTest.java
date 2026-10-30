@@ -117,6 +117,7 @@ class OntologyConceptQueryServiceTest {
                 List.of(
                     new Hop(
                         UUID.randomUUID(),
+                        null,
                         OntologyConceptQueryService.hopLabel(partOf, customer, hasPart),
                         new BoundConcept("Funds Transfer", List.of(transfers)))))
             .sql());

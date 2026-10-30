@@ -94,7 +94,13 @@ public final class OntologyConceptSqlGenerator {
   /** A concept and the tables it binds that the reader may view, in asset id order. */
   public record BoundConcept(String label, List<BoundTable> tables) {}
 
-  public record Hop(UUID property, String label, BoundConcept target) {}
+  /**
+   * One search-around hop.
+   *
+   * @param inverse the live object property of the same ontology that {@code property} names as its
+   *     inverse, whether or not the reader may view it, or null
+   */
+  public record Hop(UUID property, UUID inverse, String label, BoundConcept target) {}
 
   public record Generated(
       String sql,
