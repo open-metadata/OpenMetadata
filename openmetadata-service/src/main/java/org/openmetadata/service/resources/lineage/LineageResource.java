@@ -84,6 +84,7 @@ import org.openmetadata.service.lineage.LineageSceneResolver;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -747,6 +748,7 @@ public class LineageResource {
    */
   private Response acceptLineageExportJob(
       SecurityContext securityContext, CsvAsyncJobArgs.LineageExportArgs args) {
+    args.setImpersonatedBy(ImpersonationContext.getImpersonatedBy());
     CsvAsyncJob job =
         CsvAsyncJobManager.getInstance()
             .createLineageExportJob(securityContext.getUserPrincipal().getName(), args);
@@ -1005,29 +1007,28 @@ public class LineageResource {
       throw new IllegalArgumentException("Lineage Direction is required.");
     }
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    SearchLineageResult lineage =
-        Entity.getSearchRepository()
-            .searchLineageByEntityCount(
-                new EntityCountLineageRequest()
-                    .withFqn(fqn)
-                    .withDirection(direction)
-                    .withFrom(from)
-                    .withSize(size)
-                    .withNodeDepth(nodeDepth)
-                    .withMaxDepth(maxDepth)
-                    .withUpstreamDepth(upstreamDepth)
-                    .withDownstreamDepth(downstreamDepth)
-                    .withQueryFilter(queryFilter)
-                    .withIncludeDeleted(deleted)
-                    .withIsConnectedVia(isConnectedVia(entityType))
-                    .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
-                    .withColumnFilter(columnFilter)
-                    .withPreservePaths(preservePaths)
-                    .withIncludePaginationInfo(includePaginationInfo)
-                    .withStartTime(startTime)
-                    .withEndTime(endTime),
-                subjectContext);
-    return searchLineagePermissionFilter.filter(securityContext, subjectContext, lineage, fqn);
+    EntityCountLineageRequest request =
+        new EntityCountLineageRequest()
+            .withFqn(fqn)
+            .withDirection(direction)
+            .withFrom(from)
+            .withSize(size)
+            .withNodeDepth(nodeDepth)
+            .withMaxDepth(maxDepth)
+            .withUpstreamDepth(upstreamDepth)
+            .withDownstreamDepth(downstreamDepth)
+            .withQueryFilter(queryFilter)
+            .withIncludeDeleted(deleted)
+            .withIsConnectedVia(isConnectedVia(entityType))
+            .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
+            .withColumnFilter(columnFilter)
+            .withPreservePaths(preservePaths)
+            .withIncludePaginationInfo(includePaginationInfo)
+            .withStartTime(startTime)
+            .withEndTime(endTime);
+    SearchLineageResult page =
+        Entity.getSearchRepository().searchLineageByEntityCount(request, subjectContext);
+    return searchLineagePermissionFilter.filterPage(securityContext, subjectContext, page, request);
   }
 
   @PUT

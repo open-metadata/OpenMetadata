@@ -16,6 +16,8 @@ package org.openmetadata.service.search.lineage;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.core.SecurityContext;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -28,11 +30,15 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
@@ -93,6 +99,15 @@ public class SearchLineagePermissionFilter {
         : lineage;
   }
 
+  /** {@link #filterPage} for an entity-count page read after its request, such as an export job. */
+  public static SearchLineageResult filterPageFor(
+      SubjectContext subjectContext, SearchLineageResult page, EntityCountLineageRequest request) {
+    return needsFiltering(subjectContext)
+        ? new SearchLineagePermissionFilter(Entity.getAuthorizer())
+            .filterPage(securityContextOf(subjectContext), subjectContext, page, request)
+        : page;
+  }
+
   /**
    * The data-quality lineage response is a set of node documents and a set of edges rather than a
    * rooted graph, so nodes are kept by visibility alone; edges keep only kept endpoints.
@@ -100,39 +115,102 @@ public class SearchLineagePermissionFilter {
   public static void filterDataQualityLineageFor(
       SubjectContext subjectContext, Set<Map<String, Object>> nodes, Set<EsLineageData> edges) {
     if (needsFiltering(subjectContext) && !nullOrEmpty(nodes)) {
-      SearchLineageResult lineage = asLineage(nodes, edges);
-      filterFor(subjectContext, lineage, null);
-      refill(nodes, lineage.getNodes().values().stream().map(NodeInformation::getEntity).toList());
-      refill(edges, List.copyOf(lineage.getUpstreamEdges().values()));
+      SearchLineageResult view = filterFor(subjectContext, asLineage(nodes, edges), null);
+      refill(nodes, view.getNodes().values().stream().map(NodeInformation::getEntity).toList());
+      refill(edges, List.copyOf(view.getUpstreamEdges().values()));
     }
   }
 
   /**
-   * Prunes {@code lineage} in place. {@code rootFqn} is the node the caller asked about, which the
-   * caller has already been authorized to view; without one, nodes are kept by visibility alone.
+   * {@code lineage} as the caller may see it. The graph builders cache the graph they return and
+   * hand the same one to the next caller, so the caller's view is cut from a copy and {@code
+   * lineage} is left as it was. {@code rootFqn} is the node the caller asked about, which the caller
+   * has already been authorized to view; without one, nodes are kept by visibility alone.
    */
   public SearchLineageResult filter(
       SecurityContext securityContext,
       SubjectContext subjectContext,
       SearchLineageResult lineage,
       String rootFqn) {
-    if (needsFiltering(subjectContext) && lineage != null && !nullOrEmpty(lineage.getNodes())) {
-      prune(securityContext, lineage, rootFqn);
+    if (!needsFiltering(subjectContext) || isEmpty(lineage)) {
+      return lineage;
     }
-    return lineage;
+    SearchLineageResult view = JsonUtils.deepCopy(lineage, SearchLineageResult.class);
+    retainOnly(securityContext, view, reachableThroughViewable(securityContext, view, rootFqn));
+    return view;
+  }
+
+  /**
+   * An entity-count page holds a slice of one depth's nodes, so the node that links one of them to
+   * the root can sit on another page. Which nodes the root reaches through nodes the caller can view
+   * is decided on the graph the page was cut from, and the page keeps only those of its nodes.
+   */
+  public SearchLineageResult filterPage(
+      SecurityContext securityContext,
+      SubjectContext subjectContext,
+      SearchLineageResult page,
+      EntityCountLineageRequest request) {
+    if (!needsFiltering(subjectContext) || isEmpty(page)) {
+      return page;
+    }
+    SearchLineageResult wholeGraph = wholeGraphOf(request, subjectContext);
+    Set<String> keep =
+        isEmpty(wholeGraph)
+            ? new HashSet<>()
+            : reachableThroughViewable(securityContext, wholeGraph, request.getFqn());
+    // The caller was authorized to view the root before the page was read.
+    keep.add(request.getFqn());
+    SearchLineageResult view = JsonUtils.deepCopy(page, SearchLineageResult.class);
+    retainOnly(securityContext, view, keep);
+    return view;
+  }
+
+  /** The depth-based request for the graph an entity-count page is cut from. */
+  static SearchLineageRequest wholeGraphRequest(EntityCountLineageRequest page) {
+    int depth = AbstractLineageGraphBuilder.traversalDepth(page.getNodeDepth(), page.getMaxDepth());
+    boolean upstream = page.getDirection() == LineageDirection.UPSTREAM;
+    return new SearchLineageRequest()
+        .withFqn(page.getFqn())
+        .withDirection(page.getDirection())
+        .withUpstreamDepth(upstream ? depth : 0)
+        .withDownstreamDepth(upstream ? 0 : depth)
+        .withQueryFilter(page.getQueryFilter())
+        .withIncludeDeleted(page.getIncludeDeleted())
+        .withIsConnectedVia(page.getIsConnectedVia())
+        .withStartTime(page.getStartTime())
+        .withEndTime(page.getEndTime());
+  }
+
+  private static SearchLineageResult wholeGraphOf(
+      EntityCountLineageRequest page, SubjectContext subjectContext) {
+    try {
+      return Entity.getSearchRepository().searchLineage(wholeGraphRequest(page), subjectContext);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   private static boolean needsFiltering(SubjectContext subjectContext) {
     return subjectContext != null && !subjectContext.isAdmin();
   }
 
-  private void prune(SecurityContext securityContext, SearchLineageResult lineage, String rootFqn) {
+  private static boolean isEmpty(SearchLineageResult lineage) {
+    return lineage == null || nullOrEmpty(lineage.getNodes());
+  }
+
+  /** The nodes of {@code lineage} its root reaches through nodes the caller can view. */
+  private Set<String> reachableThroughViewable(
+      SecurityContext securityContext, SearchLineageResult lineage, String rootFqn) {
     Map<String, EntityReference> nodeRefs = nodeReferences(lineage.getNodes());
     Set<String> visible = visibleNodeKeys(securityContext, nodeRefs, lineage, rootFqn);
-    Set<String> keep =
-        isRooted(lineage, rootFqn)
-            ? LineageDomainFilter.reachableFromRoot(lineage, visible, rootFqn)
-            : visible;
+    return isRooted(lineage, rootFqn)
+        ? LineageDomainFilter.reachableFromRoot(lineage, visible, rootFqn)
+        : visible;
+  }
+
+  private void retainOnly(
+      SecurityContext securityContext, SearchLineageResult lineage, Set<String> keep) {
+    Map<String, EntityReference> nodeRefs = nodeReferences(lineage.getNodes());
     lineage.getNodes().keySet().retainAll(keep);
     LineageDomainFilter.retainEdges(lineage, keep);
     hideUnviewableReferences(securityContext, lineage, idsOf(keep, nodeRefs));
