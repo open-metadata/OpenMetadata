@@ -344,4 +344,83 @@ describe('LineageTable depth sync', () => {
 
     expect(currentSearch).toContain('depth=2');
   });
+
+  describe('depth change pagination reset', () => {
+    const mockPagingWith = (handlePageChange: jest.Mock, currentPage = 2) => {
+      mockUsePaging.mockReturnValue({
+        currentPage,
+        pageSize: 50,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+    };
+
+    it('resets currentPage to 1 when the node depth changes', async () => {
+      const handlePageChange = jest.fn();
+
+      mockPagingWith(handlePageChange, 2);
+
+      render(buildTree('/?dir=Downstream&depth=3'));
+
+      // The mount run is skipped (guard preserves a deep-link to a page),
+      // so no page reset is requested on initial render.
+      await waitFor(() =>
+        expect(mockGetLineageByEntityCount).toHaveBeenCalled()
+      );
+
+      expect(handlePageChange).not.toHaveBeenCalled();
+
+      // Change depth to 1 via the URL — exactly what the Node Depth dropdown
+      // does (handleNodeDepthUpdate -> updateURLParams({ depth })).
+      await act(async () => {
+        navigateRef({ search: '?dir=Downstream&depth=1' }, { replace: true });
+      });
+
+      await waitFor(() => expect(handlePageChange).toHaveBeenCalledWith(1));
+    });
+
+    it('does NOT reset the page on mount (preserves a URL deep-link to page 2)', async () => {
+      const handlePageChange = jest.fn();
+
+      mockPagingWith(handlePageChange, 2);
+
+      render(buildTree('/?dir=Downstream&depth=3&currentPage=2'));
+
+      await waitFor(() =>
+        expect(mockGetLineageByEntityCount).toHaveBeenCalled()
+      );
+
+      // No depth change occurred, so the page must not be reset — a shared
+      // link to page 2 keeps the user on page 2.
+      expect(handlePageChange).not.toHaveBeenCalled();
+    });
+
+    it('resets currentPage to 1 each time the depth narrows further', async () => {
+      const handlePageChange = jest.fn();
+
+      mockPagingWith(handlePageChange, 2);
+
+      render(buildTree('/?dir=Downstream&depth=5'));
+
+      await waitFor(() =>
+        expect(mockGetLineageByEntityCount).toHaveBeenCalled()
+      );
+      handlePageChange.mockClear();
+
+      await act(async () => {
+        navigateRef({ search: '?dir=Downstream&depth=3' }, { replace: true });
+      });
+      await waitFor(() => expect(handlePageChange).toHaveBeenCalledWith(1));
+      handlePageChange.mockClear();
+
+      // A second narrowing must reset again — the guard must not suppress
+      // resets after the first depth change.
+      await act(async () => {
+        navigateRef({ search: '?dir=Downstream&depth=1' }, { replace: true });
+      });
+      await waitFor(() => expect(handlePageChange).toHaveBeenCalledWith(1));
+    });
+  });
 });
