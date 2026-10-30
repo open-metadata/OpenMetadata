@@ -113,7 +113,7 @@ interface RowMetrics {
 
 // A native card re-renders the graph when the first row in view changes, and
 // once more when its scroll comes to rest. In between, its edges anchor as if
-// the rows were scrolled to the first row's top.
+// the rows were scrolled to the first row's top or the last resting position.
 interface RowWindow {
   firstRow: number;
   metrics?: RowMetrics;
@@ -1085,32 +1085,48 @@ const OntologyDataGraph = ({
     if (!isNative) {
       return;
     }
-    const measured = new Map<string, RowMetrics | undefined>();
+    const measured = new Map<
+      string,
+      { metrics?: RowMetrics; scrollTop: number }
+    >();
     canvasRef.current
       ?.querySelectorAll<HTMLElement>('[data-rows-id]')
       .forEach((container) =>
-        measured.set(container.dataset.rowsId ?? '', measureRows(container))
+        measured.set(container.dataset.rowsId ?? '', {
+          metrics: measureRows(container),
+          scrollTop: container.scrollTop,
+        })
       );
     setRowWindows((current) => {
-      const changed = [...measured].filter(
-        ([id, metrics]) => !isSameMetrics(current[id]?.metrics, metrics)
+      // A remounted rows container starts at scrollTop 0 while its window
+      // may still hold the position from before the card left the graph.
+      const changed = [...measured].flatMap(
+        ([id, { metrics, scrollTop }]): [string, RowWindow][] => {
+          const { firstRow = 0, restingScrollTop } = current[id] ?? {};
+          if (
+            scrollTop !== (restingScrollTop ?? rowSlot(metrics, firstRow).top)
+          ) {
+            return [
+              [
+                id,
+                {
+                  firstRow: firstRowAt(scrollTop, metrics),
+                  metrics,
+                  restingScrollTop: scrollTop,
+                },
+              ],
+            ];
+          }
+
+          return isSameMetrics(current[id]?.metrics, metrics)
+            ? []
+            : [[id, { ...current[id], firstRow, metrics }]];
+        }
       );
 
       return changed.length === 0
         ? current
-        : {
-            ...current,
-            ...Object.fromEntries(
-              changed.map(([id, metrics]) => [
-                id,
-                {
-                  ...current[id],
-                  firstRow: current[id]?.firstRow ?? 0,
-                  metrics,
-                },
-              ])
-            ),
-          };
+        : { ...current, ...Object.fromEntries(changed) };
     });
   }, [assetsByTerm, expandedCardIds, isNative, measuredHeights]);
 
