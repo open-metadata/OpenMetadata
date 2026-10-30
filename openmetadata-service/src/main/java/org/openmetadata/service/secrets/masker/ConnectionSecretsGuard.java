@@ -83,33 +83,45 @@ public final class ConnectionSecretsGuard {
    */
   public static void requireSecretsReenteredOnRetarget(
       IngestionPipeline incoming, IngestionPipeline stored) {
-    if (incoming == null
-        || stored == null
-        || incoming.getSourceConfig() == null
-        || stored.getSourceConfig() == null) {
-      return;
+    if (hasSourceConfig(incoming)
+        && hasSourceConfig(stored)
+        && PipelineSources.read(incoming, stored).retargetsAStoredSecret()) {
+      throw new BadRequestException(SECRETS_REQUIRED);
     }
-    JsonNode incomingConfig;
-    JsonNode storedConfig;
-    JsonNode maskedIncoming;
-    JsonNode maskedStored;
-    try {
-      incomingConfig = pipelineSourceConfig(incoming, false);
-      storedConfig = pipelineSourceConfig(stored, false);
-      maskedIncoming = pipelineSourceConfig(incoming, true);
-      maskedStored = pipelineSourceConfig(stored, true);
-    } catch (RuntimeException e) {
-      // A config that cannot be read fails where it is unmasked and saved, restoring nothing.
-      return;
-    }
-    for (String source : PIPELINE_SECRET_SOURCES) {
-      if (retargetsWithStoredSecret(
-          incomingConfig.path(source),
-          storedConfig.path(source),
-          maskedIncoming.path(source),
-          maskedStored.path(source))) {
-        throw new BadRequestException(SECRETS_REQUIRED);
+  }
+
+  private static boolean hasSourceConfig(IngestionPipeline pipeline) {
+    return pipeline != null && pipeline.getSourceConfig() != null;
+  }
+
+  /** Both pipelines' source configs, as stored and as masked; empty when one cannot be read. */
+  private record PipelineSources(
+      JsonNode incoming, JsonNode stored, JsonNode maskedIncoming, JsonNode maskedStored) {
+    private static final PipelineSources UNREADABLE = new PipelineSources(null, null, null, null);
+
+    static PipelineSources read(IngestionPipeline incoming, IngestionPipeline stored) {
+      try {
+        return new PipelineSources(
+            pipelineSourceConfig(incoming, false),
+            pipelineSourceConfig(stored, false),
+            pipelineSourceConfig(incoming, true),
+            pipelineSourceConfig(stored, true));
+      } catch (RuntimeException e) {
+        // A config that cannot be read fails where it is unmasked and saved, restoring nothing.
+        return UNREADABLE;
       }
+    }
+
+    boolean retargetsAStoredSecret() {
+      return this != UNREADABLE
+          && PIPELINE_SECRET_SOURCES.stream()
+              .anyMatch(
+                  source ->
+                      retargetsWithStoredSecret(
+                          incoming.path(source),
+                          stored.path(source),
+                          maskedIncoming.path(source),
+                          maskedStored.path(source)));
     }
   }
 

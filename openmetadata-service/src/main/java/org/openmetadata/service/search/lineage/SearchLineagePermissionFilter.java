@@ -23,8 +23,10 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -84,11 +86,10 @@ public class SearchLineagePermissionFilter {
    */
   public static SearchLineageResult filterFor(
       SubjectContext subjectContext, SearchLineageResult lineage, String rootFqn) {
-    if (subjectContext == null || subjectContext.isAdmin()) {
-      return lineage;
-    }
-    return new SearchLineagePermissionFilter(Entity.getAuthorizer())
-        .filter(securityContextOf(subjectContext), subjectContext, lineage, rootFqn);
+    return needsFiltering(subjectContext)
+        ? new SearchLineagePermissionFilter(Entity.getAuthorizer())
+            .filter(securityContextOf(subjectContext), subjectContext, lineage, rootFqn)
+        : lineage;
   }
 
   /**
@@ -97,32 +98,12 @@ public class SearchLineagePermissionFilter {
    */
   public static void filterDataQualityLineageFor(
       SubjectContext subjectContext, Set<Map<String, Object>> nodes, Set<EsLineageData> edges) {
-    if (subjectContext == null || subjectContext.isAdmin() || nullOrEmpty(nodes)) {
-      return;
+    if (needsFiltering(subjectContext) && !nullOrEmpty(nodes)) {
+      SearchLineageResult lineage = asLineage(nodes, edges);
+      filterFor(subjectContext, lineage, null);
+      refill(nodes, lineage.getNodes().values().stream().map(NodeInformation::getEntity).toList());
+      refill(edges, List.copyOf(lineage.getUpstreamEdges().values()));
     }
-    SearchLineageResult lineage = new SearchLineageResult().withNodes(new HashMap<>());
-    for (Map<String, Object> node : nodes) {
-      Object fqn = node.get(FQN);
-      if (fqn != null) {
-        lineage.getNodes().put(fqn.toString(), new NodeInformation().withEntity(node));
-      }
-    }
-    Map<String, EsLineageData> edgesByKey = new HashMap<>();
-    int key = 0;
-    for (EsLineageData edge : edges) {
-      edgesByKey.put(String.valueOf(key++), edge);
-    }
-    lineage.setUpstreamEdges(edgesByKey);
-    filterFor(subjectContext, lineage, null);
-    // Both sets hash their elements by content, which the filter may just have changed, so they are
-    // refilled rather than edited in place.
-    List<Map<String, Object>> keptNodes = new ArrayList<>();
-    lineage.getNodes().values().forEach(node -> keptNodes.add(node.getEntity()));
-    List<EsLineageData> keptEdges = new ArrayList<>(lineage.getUpstreamEdges().values());
-    nodes.clear();
-    nodes.addAll(keptNodes);
-    edges.clear();
-    edges.addAll(keptEdges);
   }
 
   /**
@@ -134,13 +115,33 @@ public class SearchLineagePermissionFilter {
       SubjectContext subjectContext,
       SearchLineageResult lineage,
       String rootFqn) {
-    if (lineage == null
-        || nullOrEmpty(lineage.getNodes())
-        || subjectContext == null
-        || subjectContext.isAdmin()) {
-      return lineage;
+    if (needsFiltering(subjectContext) && lineage != null && !nullOrEmpty(lineage.getNodes())) {
+      prune(securityContext, lineage, rootFqn);
     }
+    return lineage;
+  }
+
+  private static boolean needsFiltering(SubjectContext subjectContext) {
+    return subjectContext != null && !subjectContext.isAdmin();
+  }
+
+  private void prune(SecurityContext securityContext, SearchLineageResult lineage, String rootFqn) {
     Map<String, EntityReference> nodeRefs = nodeReferences(lineage.getNodes());
+    Set<String> visible = visibleNodeKeys(securityContext, nodeRefs, lineage, rootFqn);
+    Set<String> keep =
+        isRooted(lineage, rootFqn)
+            ? LineageDomainFilter.reachableFromRoot(lineage, visible, rootFqn)
+            : visible;
+    lineage.getNodes().keySet().retainAll(keep);
+    LineageDomainFilter.retainEdges(lineage, keep);
+    hideUnviewableReferences(securityContext, lineage, idsOf(keep, nodeRefs));
+  }
+
+  private Set<String> visibleNodeKeys(
+      SecurityContext securityContext,
+      Map<String, EntityReference> nodeRefs,
+      SearchLineageResult lineage,
+      String rootFqn) {
     Set<UUID> viewable = viewableIds(securityContext, nodeRefs.values());
     Set<String> visible = new HashSet<>();
     nodeRefs.forEach(
@@ -149,19 +150,22 @@ public class SearchLineagePermissionFilter {
             visible.add(key);
           }
         });
-    boolean rooted = rootFqn != null && lineage.getNodes().containsKey(rootFqn);
-    if (rooted) {
+    if (isRooted(lineage, rootFqn)) {
       visible.add(rootFqn);
     }
-    Set<String> keep =
-        rooted ? LineageDomainFilter.reachableFromRoot(lineage, visible, rootFqn) : visible;
-    lineage.getNodes().keySet().retainAll(keep);
-    LineageDomainFilter.retainEdges(lineage, keep);
-    Set<UUID> keptIds = new HashSet<>();
-    keep.forEach(key -> keptIds.add(nodeRefs.containsKey(key) ? nodeRefs.get(key).getId() : null));
-    keptIds.remove(null);
-    hideUnviewableReferences(securityContext, lineage, keptIds);
-    return lineage;
+    return visible;
+  }
+
+  private static boolean isRooted(SearchLineageResult lineage, String rootFqn) {
+    return rootFqn != null && lineage.getNodes().containsKey(rootFqn);
+  }
+
+  private static Set<UUID> idsOf(Set<String> keys, Map<String, EntityReference> nodeRefs) {
+    return keys.stream()
+        .map(nodeRefs::get)
+        .filter(Objects::nonNull)
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
   }
 
   /**
@@ -171,40 +175,70 @@ public class SearchLineagePermissionFilter {
    */
   private void hideUnviewableReferences(
       SecurityContext securityContext, SearchLineageResult lineage, Set<UUID> keptIds) {
-    List<EsLineageData> edges = new ArrayList<>();
-    edges.addAll(edgesOf(lineage.getUpstreamEdges()));
-    edges.addAll(edgesOf(lineage.getDownstreamEdges()));
-    List<Map<String, Object>> upstreamEntries = new ArrayList<>();
-    for (NodeInformation node : lineage.getNodes().values()) {
-      upstreamEntries.addAll(upstreamLineageOf(node));
-    }
+    List<EsLineageData> edges = allEdges(lineage);
+    Set<UUID> viewable =
+        viewableReferences(securityContext, edges, lineage.getNodes().values(), keptIds);
+    edges.stream()
+        .filter(edge -> !isViewable(edgePipeline(edge), viewable))
+        .forEach(edge -> edge.setPipeline(null));
+    lineage.getNodes().values().forEach(node -> hideUnviewableUpstreamLineage(node, viewable));
+  }
 
+  private Set<UUID> viewableReferences(
+      SecurityContext securityContext,
+      List<EsLineageData> edges,
+      Collection<NodeInformation> nodes,
+      Set<UUID> keptIds) {
     Map<UUID, EntityReference> referenced = new LinkedHashMap<>();
-    for (EsLineageData edge : edges) {
-      addReference(referenced, mapRef(edge.getPipeline(), edge.getPipelineEntityType()));
-    }
-    for (Map<String, Object> entry : upstreamEntries) {
-      addReference(referenced, mapRef(entry.get(FROM_ENTITY), null));
-      addReference(referenced, mapRef(entry.get(PIPELINE), null));
+    edges.forEach(edge -> addReference(referenced, edgePipeline(edge)));
+    for (NodeInformation node : nodes) {
+      for (Map<String, Object> entry : upstreamLineageOf(node)) {
+        addReference(referenced, mapRef(entry.get(FROM_ENTITY), null));
+        addReference(referenced, mapRef(entry.get(PIPELINE), null));
+      }
     }
     referenced.keySet().removeAll(keptIds);
     Set<UUID> viewable = new HashSet<>(viewableIds(securityContext, referenced.values()));
     viewable.addAll(keptIds);
+    return viewable;
+  }
 
-    for (EsLineageData edge : edges) {
-      if (!isViewable(mapRef(edge.getPipeline(), edge.getPipelineEntityType()), viewable)) {
-        edge.setPipeline(null);
+  private static void hideUnviewableUpstreamLineage(NodeInformation node, Set<UUID> viewable) {
+    List<Map<String, Object>> entries = upstreamLineageOf(node);
+    entries.removeIf(entry -> !isViewable(mapRef(entry.get(FROM_ENTITY), null), viewable));
+    entries.stream()
+        .filter(entry -> !isViewable(mapRef(entry.get(PIPELINE), null), viewable))
+        .forEach(entry -> entry.remove(PIPELINE));
+  }
+
+  private static EntityReference edgePipeline(EsLineageData edge) {
+    return mapRef(edge.getPipeline(), edge.getPipelineEntityType());
+  }
+
+  private static List<EsLineageData> allEdges(SearchLineageResult lineage) {
+    List<EsLineageData> edges = new ArrayList<>(edgesOf(lineage.getUpstreamEdges()));
+    edges.addAll(edgesOf(lineage.getDownstreamEdges()));
+    return edges;
+  }
+
+  private static SearchLineageResult asLineage(
+      Set<Map<String, Object>> nodes, Set<EsLineageData> edges) {
+    Map<String, NodeInformation> nodesByFqn = new HashMap<>();
+    for (Map<String, Object> node : nodes) {
+      if (node.get(FQN) != null) {
+        nodesByFqn.put(node.get(FQN).toString(), new NodeInformation().withEntity(node));
       }
     }
-    for (NodeInformation node : lineage.getNodes().values()) {
-      List<Map<String, Object>> entries = upstreamLineageOf(node);
-      entries.removeIf(entry -> !isViewable(mapRef(entry.get(FROM_ENTITY), null), viewable));
-      for (Map<String, Object> entry : entries) {
-        if (!isViewable(mapRef(entry.get(PIPELINE), null), viewable)) {
-          entry.remove(PIPELINE);
-        }
-      }
-    }
+    Map<String, EsLineageData> edgesByKey = new HashMap<>();
+    edges.forEach(edge -> edgesByKey.put(String.valueOf(edgesByKey.size()), edge));
+    return new SearchLineageResult().withNodes(nodesByFqn).withUpstreamEdges(edgesByKey);
+  }
+
+  // Both sets hash their elements by content, which the filter may just have changed, so they are
+  // refilled rather than edited in place.
+  private static <T> void refill(Set<T> target, List<T> kept) {
+    target.clear();
+    target.addAll(kept);
   }
 
   private Set<UUID> viewableIds(
