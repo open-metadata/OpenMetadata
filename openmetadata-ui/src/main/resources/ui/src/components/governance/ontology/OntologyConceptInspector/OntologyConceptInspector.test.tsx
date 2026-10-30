@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { UpdateOntologyConceptBinding } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import {
   Kind,
@@ -23,19 +30,38 @@ import {
   OntologyConceptBindingsResponse,
   State,
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
+import { OntologyDefinitionStatus } from '../../../../generated/type/ontologyDefinitionStatus';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
+import { BindingSnapshot } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
+import APIClient from '../../../../rest/axiosClient';
 import {
   deleteOntologyConceptBinding,
+  generateOntologyConceptQuery,
   getOntologyConceptBindings,
   putOntologyConceptBinding,
 } from '../../../../rest/ontologyAPI';
 import { getEntityPermissionById } from '../../../../rest/permissionAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
-import { OntologyStudioModel } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import {
+  getModelRelations,
+  OntologyStudioModel,
+} from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyConceptInspector from './OntologyConceptInspector';
 
 jest.mock('../../../../rest/ontologyAPI');
 jest.mock('../../../../rest/permissionAPI');
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+jest.mock('../../../../rest/axiosClient', () => ({
+  get: jest.fn(),
+  put: jest.fn(),
+  post: jest.fn(),
+  patch: jest.fn(),
+  delete: jest.fn(),
+}));
 jest.mock('../../../../hooks/useAppMode', () => ({
   ...jest.requireActual('../../../../hooks/useAppMode'),
   useIsAiMode: jest.fn().mockReturnValue(false),
@@ -78,7 +104,8 @@ const model: OntologyStudioModel = {
   properties: [property],
   axioms: [],
 };
-const response: OntologyConceptBindingsResponse = {
+const response: BindingSnapshot = {
+  kind: 'complete',
   revision: 4,
   assets: [
     {
@@ -115,6 +142,7 @@ const mockPutBinding = putOntologyConceptBinding as jest.MockedFunction<
 const mockGetPermission = getEntityPermissionById as jest.MockedFunction<
   typeof getEntityPermissionById
 >;
+const mockApiClient = APIClient as jest.Mocked<typeof APIClient>;
 
 const renderInspector = (
   properties: readonly OntologyProperty[],
@@ -123,11 +151,13 @@ const renderInspector = (
   renderWithQueryClient(
     <MemoryRouter>
       <OntologyConceptInspector
+        isEditing
         canEditBindings={canEditBindings}
         concept={concept}
         model={{ ...model, properties }}
         relations={[]}
         onClose={jest.fn()}
+        onOpenData={jest.fn()}
         onSelectConcept={jest.fn()}
       />
     </MemoryRouter>
@@ -138,12 +168,140 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
     jest.clearAllMocks();
     mockGetBindings.mockResolvedValue(response);
     mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
-    mockPutBinding.mockResolvedValue({
-      revision: 5,
-      assets: [
-        { ...response.assets[0], columns: [response.assets[0].columns[1]] },
-      ],
+    mockPutBinding.mockImplementation(async () => {
+      mockGetBindings.mockResolvedValue({
+        kind: 'complete',
+        revision: 5,
+        assets: [
+          { ...response.assets[0], columns: [response.assets[0].columns[1]] },
+        ],
+      });
     });
+  });
+
+  it('keeps an off-page table linked and its columns unchanged when adding another asset', async () => {
+    const api = jest.requireActual<
+      typeof import('../../../../rest/ontologyAPI')
+    >('../../../../rest/ontologyAPI');
+    mockGetBindings.mockImplementation(api.getOntologyConceptBindings);
+    mockPutBinding.mockImplementation(api.putOntologyConceptBinding);
+    const table = structuredClone(response.assets[0]);
+    const columns = structuredClone(table.columns);
+    const stored: OntologyConceptBindingsResponse = {
+      revision: 4,
+      assets: [
+        {
+          assetId: 'a-topic',
+          assetType: AssetType.Topic,
+          asset: { id: 'a-topic', type: 'topic', name: 'existing-topic' },
+          columns: [],
+        },
+        table,
+      ],
+    };
+    const firstPage = () => ({
+      revision: stored.revision,
+      assets: stored.assets.slice(0, 1),
+      after: 'hidden-scan',
+    });
+    mockApiClient.get.mockImplementation(async (url, config) => {
+      if (url.startsWith('/search/query?')) {
+        return {
+          data: {
+            hits: {
+              total: { value: 2 },
+              hits: [
+                { _source: { ...table.asset, entityType: 'table' } },
+                {
+                  _source: {
+                    id: 'new-topic',
+                    name: 'new-topic',
+                    entityType: 'topic',
+                  },
+                },
+              ],
+            },
+          },
+        };
+      }
+
+      expect(url).toBe(`/ontologyConcepts/${concept.id}/bindings`);
+
+      const params = config?.params as { after?: string } | undefined;
+      if (params?.after === 'hidden-scan') {
+        return {
+          data: { revision: stored.revision, assets: [], after: 'last' },
+        };
+      }
+
+      return {
+        data:
+          params?.after === 'last'
+            ? { revision: stored.revision, assets: stored.assets.slice(1) }
+            : firstPage(),
+      };
+    });
+    mockApiClient.put.mockImplementation(async (_url, data) => {
+      const request = data as UpdateOntologyConceptBinding;
+
+      expect(request.expectedRevision).toBe(stored.revision);
+
+      const existing = stored.assets.find(
+        (asset) => asset.assetId === request.asset.assetId
+      );
+      if (existing) {
+        existing.columns = (request.asset.columns ?? []).map((column) => ({
+          ...column,
+          state: State.Resolved,
+        }));
+      } else {
+        stored.assets.push({
+          assetId: request.asset.assetId,
+          assetType: AssetType.Topic,
+          asset: {
+            id: request.asset.assetId,
+            type: 'topic',
+            name: 'new-topic',
+          },
+          columns: [],
+        });
+      }
+      stored.revision += 1;
+
+      return { data: firstPage() };
+    });
+    renderInspector([property]);
+    await screen.findByText('existing-topic');
+    fireEvent.click(await screen.findByTestId('ontology-native-link-assets'));
+    const picker = await screen.findByTestId('ontology-data-asset-picker');
+    await within(picker).findByRole('checkbox', { name: 'customers' });
+
+    fireEvent.click(
+      within(picker).getByRole('checkbox', { name: 'label.select-all' })
+    );
+    fireEvent.click(within(picker).getByTestId('ontology-data-asset-save'));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-data-asset-picker')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(
+      stored.assets.find((asset) => asset.assetId === table.assetId)?.columns
+    ).toEqual(columns);
+    expect(stored.assets.map((asset) => asset.assetId)).toContain('new-topic');
+    expect(
+      await screen.findByText(/former_id.*label.unavailable/)
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-native-link-assets'));
+
+    expect(
+      await within(screen.getByTestId('ontology-data-asset-picker')).findByRole(
+        'checkbox',
+        { name: 'customers' }
+      )
+    ).toBeDisabled();
   });
 
   it.each<{ description: string; properties: OntologyProperty[] }>([
@@ -249,6 +407,279 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
   });
 });
 
+describe('OntologyConceptInspector relationships', () => {
+  const account = {
+    ...concept,
+    id: 'account',
+    name: 'Account',
+    fullyQualifiedName: 'Sales.Account',
+    iri: 'urn:sales:Account',
+  };
+  const partOf: OntologyProperty = {
+    id: 'part-of',
+    name: 'partOf',
+    displayName: 'Part Of',
+    fullyQualifiedName: 'Sales.partOf',
+    iri: 'https://open-metadata.org/ontology/partOf',
+    ontology: { id: ontology.id, type: 'ontology' },
+    kind: Kind.Object,
+    domain: [account.iri],
+    range: [concept.iri],
+    inverse: 'https://open-metadata.org/ontology/hasPart',
+  };
+  const hasPart: OntologyProperty = {
+    id: 'has-part',
+    name: 'hasPart',
+    displayName: 'Has Part',
+    fullyQualifiedName: 'Sales.hasPart',
+    iri: 'https://open-metadata.org/ontology/hasPart',
+    ontology: { id: ontology.id, type: 'ontology' },
+    kind: Kind.Object,
+    inverse: partOf.iri,
+  };
+  const renderRelations = (properties: OntologyProperty[]) => {
+    const relationModel = {
+      ...model,
+      concepts: [concept, account],
+      properties,
+    };
+
+    return renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyConceptInspector
+          concept={concept}
+          model={relationModel}
+          relations={getModelRelations(relationModel)}
+          onClose={jest.fn()}
+          onOpenData={jest.fn()}
+          onSelectConcept={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetBindings.mockResolvedValue({
+      kind: 'complete',
+      revision: 0,
+      assets: [],
+    });
+    mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
+  });
+
+  it('reads an incoming relation through the inverse the ontology declares', () => {
+    renderRelations([partOf, hasPart]);
+
+    expect(
+      screen.getByTestId('ontology-concept-relationships')
+    ).toHaveTextContent(/has part\s*Account/);
+  });
+
+  it('reads an incoming relation backwards when no inverse is declared', () => {
+    renderRelations([partOf]);
+
+    expect(
+      screen.getByTestId('ontology-concept-relationships')
+    ).toHaveTextContent(/Account\s*part of/);
+  });
+});
+
+describe('OntologyConceptInspector view rail', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetBindings.mockResolvedValue({
+      kind: 'complete',
+      revision: 1,
+      assets: Array.from({ length: 7 }, (_, i) => ({
+        assetId: 'asset-' + i,
+        assetType: AssetType.Table,
+        columns: [],
+        asset: {
+          id: 'asset-' + i,
+          type: 'table',
+          name: 'Asset ' + i,
+          fullyQualifiedName: 'service.db.schema.asset' + i,
+        },
+      })),
+    });
+    mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
+  });
+
+  it.each([
+    [OntologyDefinitionStatus.Draft, 'label.draft'],
+    [OntologyDefinitionStatus.InReview, 'label.in-review'],
+    [OntologyDefinitionStatus.Approved, 'label.approved'],
+  ])(
+    'shows %s, owner and three assets with a Data handoff',
+    async (lifecycleStatus, label) => {
+      const onOpenData = jest.fn();
+      renderWithQueryClient(
+        <MemoryRouter>
+          <OntologyConceptInspector
+            concept={{ ...concept, lifecycleStatus }}
+            model={model}
+            relations={[]}
+            onClose={jest.fn()}
+            onOpenData={onOpenData}
+            onSelectConcept={jest.fn()}
+          />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId('ontology-concept-lifecycle')
+      ).toHaveTextContent(label);
+      expect(screen.getByTestId('ontology-concept-owner')).toHaveTextContent(
+        'Sales'
+      );
+
+      const assets = screen.getByTestId('ontology-native-assets');
+      await within(assets).findByRole('link', { name: 'Asset 0' });
+
+      expect(within(assets).getAllByRole('link')).toHaveLength(3);
+      expect(within(assets).queryByText('Asset 3')).not.toBeInTheDocument();
+      expect(
+        within(assets).queryByRole('link', { name: 'label.sample-data' })
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(within(assets).getByTestId('ontology-assets-more'));
+
+      expect(onOpenData).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByTestId('ontology-native-link-assets')
+      ).not.toBeInTheDocument();
+    }
+  );
+
+  it('retains asset paging in Edit', async () => {
+    mockGetBindings.mockResolvedValue({
+      kind: 'complete',
+      revision: 1,
+      assets: Array.from({ length: 12 }, (_, i) => ({
+        assetId: 'asset-' + i,
+        assetType: AssetType.Table,
+        columns: [],
+        asset: {
+          id: 'asset-' + i,
+          type: 'table',
+          name: 'Asset ' + i,
+          fullyQualifiedName: 'service.db.schema.asset' + i,
+        },
+      })),
+    });
+    renderInspector([], false);
+    const assets = screen.getByTestId('ontology-native-assets');
+    await within(assets).findByRole('link', { name: 'Asset 0' });
+
+    expect(within(assets).getAllByRole('link')).toHaveLength(10);
+
+    fireEvent.click(within(assets).getByRole('button', { name: 'label.next' }));
+
+    expect(within(assets).getAllByRole('link')).toHaveLength(2);
+    expect(
+      within(assets).getByRole('link', { name: 'Asset 11' })
+    ).toBeVisible();
+
+    fireEvent.click(
+      within(assets).getByRole('button', { name: 'label.previous' })
+    );
+
+    expect(within(assets).getByRole('link', { name: 'Asset 0' })).toBeVisible();
+    expect(
+      within(assets).queryByTestId('ontology-assets-more')
+    ).not.toBeInTheDocument();
+  });
+});
+
+it('adds a relationship from the rail, changes its type and retries a refused save', async () => {
+  mockGetBindings.mockResolvedValue({
+    kind: 'complete',
+    revision: 0,
+    assets: [],
+  });
+  const target = {
+    ...concept,
+    id: 'party',
+    iri: 'urn:sales:Party',
+    name: 'Party',
+  };
+  const save = jest
+    .fn()
+    .mockResolvedValueOnce(false)
+    .mockResolvedValueOnce(true);
+  renderWithQueryClient(
+    <MemoryRouter>
+      <OntologyConceptInspector
+        canAddRelation
+        concept={concept}
+        model={{ ...model, concepts: [concept, target] }}
+        relationTypeGroups={[
+          {
+            id: 'hierarchy',
+            title: 'Hierarchy',
+            options: [
+              { id: 'isA', label: 'Is a', paletteKey: PaletteKey.Blue },
+            ],
+          },
+        ]}
+        relations={[]}
+        onAddRelation={save}
+        onClose={jest.fn()}
+        onOpenData={jest.fn()}
+        onSelectConcept={jest.fn()}
+      />
+    </MemoryRouter>
+  );
+  fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+  fireEvent.click(screen.getByTestId('relation-type-isA'));
+  fireEvent.click(screen.getByRole('button', { name: 'label.change' }));
+  fireEvent.click(screen.getByTestId('relation-type-isA'));
+  fireEvent.click(screen.getByRole('button', { name: /label.target/ }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('ontology-relationship-submit'));
+  });
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+
+  expect(screen.getByTestId('ontology-relationship-submit')).toBeVisible();
+
+  await waitFor(() =>
+    expect(screen.getByTestId('ontology-relationship-submit')).toBeEnabled()
+  );
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('ontology-relationship-submit'));
+  });
+  await waitFor(() =>
+    expect(screen.getByTestId('ontology-add-relationship')).toBeVisible()
+  );
+
+  expect(save).toHaveBeenLastCalledWith(target.id, 'isA');
+});
+
+it('ends the rail with the Live data section and its generated SQL', async () => {
+  jest.mocked(getOntologyConceptBindings).mockResolvedValue(response);
+  jest.mocked(generateOntologyConceptQuery).mockResolvedValue({
+    hops: [],
+    sql: 'SELECT customer_name\nFROM sales.customers\nLIMIT 50',
+  });
+  renderInspector([property]);
+
+  const liveData = await screen.findByTestId('ontology-concept-live-data');
+
+  expect(
+    await within(liveData).findByTestId('ontology-live-data-sql')
+  ).toHaveTextContent('SELECT customer_name FROM sales.customers LIMIT 50');
+  expect(
+    within(liveData).getByTestId('ontology-live-data-not-stored')
+  ).toBeVisible();
+  expect(generateOntologyConceptQuery).toHaveBeenCalledWith(
+    'customer',
+    [],
+    expect.any(AbortSignal)
+  );
+});
+
 describe('OntologyConceptInspector in AI mode', () => {
   const party = {
     ...concept,
@@ -273,6 +704,7 @@ describe('OntologyConceptInspector in AI mode', () => {
       onClose: jest.fn(),
       onEdit: jest.fn(),
       onEditMappings: jest.fn(),
+      onOpenData: jest.fn(),
       onSelectConcept: jest.fn(),
     };
     renderWithQueryClient(
@@ -396,5 +828,118 @@ describe('OntologyConceptInspector in AI mode', () => {
 
     expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
     expect(screen.getByTestId('ontology-relationship-form')).toBeVisible();
+  });
+
+  it('reads an incoming relation through its inverse in the AI panel', async () => {
+    const partOf: OntologyProperty = {
+      id: 'part-of',
+      name: 'partOf',
+      displayName: 'Part Of',
+      fullyQualifiedName: 'Sales.partOf',
+      iri: 'urn:sales:partOf',
+      ontology: { id: ontology.id, type: 'ontology' },
+      kind: Kind.Object,
+      domain: [party.iri],
+      range: [concept.iri],
+      inverse: 'urn:sales:hasPart',
+    };
+    const hasPart: OntologyProperty = {
+      id: 'has-part',
+      name: 'hasPart',
+      displayName: 'Has Part',
+      fullyQualifiedName: 'Sales.hasPart',
+      iri: 'urn:sales:hasPart',
+      ontology: { id: ontology.id, type: 'ontology' },
+      kind: Kind.Object,
+      inverse: partOf.iri,
+    };
+    const relationModel = {
+      ...model,
+      concepts: [concept, party],
+      properties: [partOf, hasPart],
+    };
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyConceptInspector
+          concept={concept}
+          model={relationModel}
+          relations={getModelRelations(relationModel)}
+          onClose={jest.fn()}
+          onOpenData={jest.fn()}
+          onSelectConcept={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('ontology-native-assets');
+
+    expect(screen.getByTestId('ontology-concept-completeness')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-concept-relationships')
+    ).toHaveTextContent(/has part\s*Party/);
+  });
+
+  it('shows three assets with a Data handoff in the AI view rail', async () => {
+    mockGetBindings.mockResolvedValue({
+      kind: 'complete',
+      revision: 1,
+      assets: Array.from({ length: 7 }, (_, i) => ({
+        assetId: 'asset-' + i,
+        assetType: AssetType.Table,
+        columns: [],
+        asset: {
+          id: 'asset-' + i,
+          type: 'table',
+          name: 'Asset ' + i,
+          fullyQualifiedName: 'service.db.schema.asset' + i,
+        },
+      })),
+    });
+    const handlers = renderAiInspector();
+    const assets = screen.getByTestId('ontology-native-assets');
+    await within(assets).findByRole('link', { name: 'Asset 0' });
+
+    expect(within(assets).getAllByRole('link')).toHaveLength(3);
+    expect(within(assets).queryByText('Asset 3')).not.toBeInTheDocument();
+    expect(
+      within(assets).queryByRole('button', { name: 'label.next' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(within(assets).getByTestId('ontology-assets-more'));
+
+    expect(handlers.onOpenData).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a failed bindings read and removes an asset from the AI section', async () => {
+    mockGetBindings.mockRejectedValueOnce(new Error('read failed'));
+    renderAiInspector();
+    const assets = await screen.findByTestId('ontology-native-assets');
+
+    expect(
+      await within(assets).findByText(
+        'message.ontology-binding-read-unavailable'
+      )
+    ).toBeVisible();
+
+    fireEvent.click(
+      within(assets).getByRole('button', { name: 'label.retry' })
+    );
+
+    expect(
+      await within(assets).findByRole('link', { name: 'customers' })
+    ).toBeVisible();
+
+    fireEvent.click(
+      within(assets).getByTestId('ontology-native-asset-remove-table')
+    );
+    await waitFor(() =>
+      expect(showSuccessToast).toHaveBeenCalledWith('label.saved')
+    );
+
+    expect(deleteOntologyConceptBinding).toHaveBeenCalledWith(concept.id, {
+      assetType: AssetType.Table,
+      assetId: 'table',
+      expectedRevision: 4,
+    });
   });
 });

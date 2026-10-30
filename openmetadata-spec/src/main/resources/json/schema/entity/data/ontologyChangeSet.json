@@ -103,6 +103,10 @@
       "type": "integer",
       "existingJavaType": "java.lang.Long",
       "minimum": 0
+    },
+    "sourcePack": {
+      "description": "Library pack selection this native change set installs. Applying it records the pack in the ontology's installedPacks.",
+      "$ref": "../../type/ontologyPackSource.json"
     }
   },
   "required": [

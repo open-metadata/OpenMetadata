@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyPackInstallationRecord.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyPackInstallationRecord",
+  "description": "A verified library pack installed into one native ontology, as the library catalogue reports it.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyPackInstallationRecord",
+  "properties": {
+    "ontology": {
+      "description": "Native ontology that holds the installation.",
+      "$ref": "entityReference.json"
+    },
+    "installation": {
+      "description": "Installation entry stored in the ontology's installedPacks.",
+      "$ref": "ontologyPackInstallation.json"
+    }
+  },
+  "required": ["ontology", "installation"],
+  "additionalProperties": false
+}

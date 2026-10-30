@@ -350,23 +350,38 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void changingReviewersInvalidatesPendingReleaseApproval(TestNamespace ns) {
+  void changingReviewersIsRefusedWhileAReleaseIsInReview(TestNamespace ns) {
     Ontology ontology = createOntology(ns);
     OntologyRelease release = capture(ontology, state(ontology).getWorkingRevision());
     Task task = submit(ns, "ontologyRelease", release.getFullyQualifiedName());
-    SdkClients.adminClient()
-        .ontologies()
-        .update(
-            ontology.getId(),
-            ontology.withReviewers(List.of(SharedEntities.get().USER2.getEntityReference())));
-    assertThrows(
-        OpenMetadataException.class,
-        () ->
-            SdkClients.user1Client()
-                .tasks()
-                .resolve(task.getId().toString(), decision(TaskResolutionType.Approved)));
-    assertNotEquals(EntityStatus.APPROVED, get(release.getId()).getEntityStatus());
-    assertEquals(1, events(release, "").path("data").size());
+    OpenMetadataException wrapped =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .ontologies()
+                    .update(
+                        ontology.getId(),
+                        ontology.withReviewers(
+                            List.of(SharedEntities.get().USER2.getEntityReference()))));
+    OpenMetadataException refused =
+        wrapped.getCause() instanceof OpenMetadataException cause ? cause : wrapped;
+    assertEquals(409, refused.getStatusCode());
+    assertTrue(
+        refused
+            .getMessage()
+            .contains(
+                "Reviewers and the approval rule are locked while release "
+                    + release.getName()
+                    + " is in review"),
+        refused.getMessage());
+    assertEquals(
+        SharedEntities.get().USER1.getId(), current(ontology).getReviewers().getFirst().getId());
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(task.getId().toString(), decision(TaskResolutionType.Approved));
+    assertEquals(EntityStatus.APPROVED, get(release.getId()).getEntityStatus());
+    assertEquals(2, events(release, "").path("data").size());
     assertNull(state(ontology).getActiveReleaseId());
   }
 
