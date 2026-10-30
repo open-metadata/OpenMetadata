@@ -10,8 +10,8 @@
 An ontology needs an absolute `iri` and `namespace` on create, and every native definition IRI is
 minted from that namespace. The Studio's first-run create dialog asks only for a name, an optional
 prefix and a description, so the client derives both values. Nothing else in the repository reads
-the `onto/` shape. The server stores whatever it is sent, so the format is fixed and written down
-for the clients that create ontologies.
+the `onto/` shape, and the server does not check it, so the format is fixed and written down for
+the clients that create ontologies.
 
 ## Decision
 The create dialog in `OntologyCreateDialog.tsx` builds the values with `ontologyIris` and
@@ -29,14 +29,16 @@ The create dialog in `OntologyCreateDialog.tsx` builds the values with `ontology
 - The user can replace the prefix. The dialog trims it and accepts it only when it matches
   `^[A-Za-z0-9_][A-Za-z0-9._-]*$`. It also refuses a namespace that an ontology in its loaded list
   already uses.
-- The server does not know this format. It stores `iri` and `namespace` as sent. Both fields are
-  `type/ontologyIri.json`, mapped to `java.net.URI`, so each must parse as a URI, and the
-  repository also rejects a `namespace` that is not absolute, with 400. The `onto/` segment, the
-  prefix rules and the `#` separator are checked only in the client.
+- The server does not know this format. `iri` and `namespace` are `type/ontologyIri.json`, mapped
+  to `java.net.URI`, so each must parse as a URI. The repository then rejects a relative `iri` (the
+  inherited `prepare` calls `requireAbsoluteIri`) and a relative `namespace` (`validateDefinition`),
+  each with 400. The `onto/` segment, the prefix rules and the `#` separator are checked only in
+  the client.
 - The server does not refuse a duplicate `namespace` either. The `ontology_entity` table is unique
-  only on `fqnHash`, its `iriHash` index is not unique, and `OntologyLayerValidator` compares only
-  the prefixes inside one ontology. The duplicate refusal above is therefore client-only, and an API
-  caller can create two ontologies with the same namespace.
+  only on `fqnHash`. Its `iriHash` is the MD5 of `$.iri` behind a non-unique index, no column or
+  index covers `namespace`, and `OntologyLayerValidator` compares only the prefixes inside one
+  ontology. The duplicate refusal above is therefore client-only, and an API caller can create two
+  ontologies with the same namespace.
 
 The `onto/` segment keeps user namespaces apart from the OpenMetadata vocabulary under
 `https://open-metadata.org/ontology/`. On the default configuration a user prefix such as `ontology`

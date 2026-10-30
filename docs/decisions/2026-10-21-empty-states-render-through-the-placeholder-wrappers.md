@@ -52,8 +52,8 @@ description grey. The icon-colour rule was added at the same time, when 16 OSS a
 Collate call sites dropped grey icon overrides. Collate follows all of these rules through the
 same wrappers.
 
-## Amendment 2026-10-30
-v3. `FeaturesPlaceholder` now adds one behaviour, so "adds no behaviour today" in the Decision above
+## Amendment
+v3, 2026-10-30. `FeaturesPlaceholder` now adds one behaviour, so "adds no behaviour today" in the Decision above
 no longer holds. A feature may carry an optional `action`, typed
 `Omit<EmptyPlaceholderAction, 'key' | 'label'> & { 'data-testid'?: string }`. When present, the
 wrapper renders the feature's title as a core `Button` (`size="sm"`, overridable) that takes the
