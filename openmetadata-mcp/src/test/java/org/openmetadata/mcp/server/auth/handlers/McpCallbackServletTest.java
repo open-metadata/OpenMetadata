@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -13,26 +16,32 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 
+import com.nimbusds.jwt.JWTClaimsSet;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
+import org.openmetadata.mcp.server.auth.validators.IdTokenValidator;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.pac4j.oidc.credentials.OidcCredentials;
 
 class McpCallbackServletTest {
 
@@ -479,6 +488,118 @@ class McpCallbackServletTest {
     verify(response)
         .sendError(HttpServletResponse.SC_BAD_REQUEST, McpCallbackServlet.ERR_STATE_NOT_FOUND);
     verify(provider, never()).handleSSOErrorCallback(any(), any(), any(), any());
+  }
+
+  @Test
+  void doGet_callbackWithoutLogin_ignoresCredentialsLeftInSession() throws Exception {
+    // With no pending login in this browser, handleCallback only redirects to /signin and checks no
+    // code. ID token credentials an earlier MCP login left in the session must not be used.
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(pendingWithValidVerifier());
+    AuthenticationCodeFlowHandler ssoHandler =
+        mock(AuthenticationCodeFlowHandler.class, RETURNS_DEEP_STUBS);
+    doAnswer(
+            call -> {
+              call.<HttpServletResponse>getArgument(1).sendRedirect("/signin");
+              return null;
+            })
+        .when(ssoHandler)
+        .handleCallback(any(), any());
+    McpCallbackServlet servlet = makeServletWithHandler(provider, pendingRepo, ssoHandler);
+    IdTokenValidator validator = mock(IdTokenValidator.class);
+    setField(servlet, "idTokenValidator", validator);
+    setField(servlet, "validatorBuiltFrom", ssoHandler);
+
+    OidcCredentials earlierLogin = mock(OidcCredentials.class);
+    when(earlierLogin.getIdToken()).thenReturn("earlier.id.token");
+    HttpSession session = mock(HttpSession.class);
+    when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
+        .thenReturn(earlierLogin);
+    HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
+    when(request.getSession(true)).thenReturn(session);
+    when(request.getSession()).thenReturn(session);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    servlet.doGet(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    verify(validator, never()).validateAndDecode(any());
+    verify(provider, never()).handleSSOCallbackWithDbState(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void doGet_completedLogin_usesTheCredentialsThisCallbackValidated() throws Exception {
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(pendingWithValidVerifier());
+    HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
+    when(request.getSession(true)).thenReturn(mock(HttpSession.class));
+    Map<String, Object> attributes = new HashMap<>();
+    doAnswer(call -> attributes.put(call.getArgument(0), call.getArgument(1)))
+        .when(request)
+        .setAttribute(anyString(), any());
+    when(request.getAttribute(anyString()))
+        .thenAnswer(call -> attributes.get(call.<String>getArgument(0)));
+    OidcCredentials thisLogin = mock(OidcCredentials.class);
+    when(thisLogin.getIdToken()).thenReturn("this.id.token");
+    AuthenticationCodeFlowHandler ssoHandler =
+        mock(AuthenticationCodeFlowHandler.class, RETURNS_DEEP_STUBS);
+    doAnswer(
+            call -> {
+              call.<HttpServletRequest>getArgument(0)
+                  .setAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE, thisLogin);
+              call.<HttpServletResponse>getArgument(1).sendRedirect("https://om.test/mcp/callback");
+              return null;
+            })
+        .when(ssoHandler)
+        .handleCallback(any(), any());
+    McpCallbackServlet servlet = makeServletWithHandler(provider, pendingRepo, ssoHandler);
+    IdTokenValidator validator = mock(IdTokenValidator.class);
+    when(validator.validateAndDecode("this.id.token"))
+        .thenReturn(new JWTClaimsSet.Builder().claim("email", "alice@example.com").build());
+    setField(servlet, "idTokenValidator", validator);
+    setField(servlet, "validatorBuiltFrom", ssoHandler);
+
+    servlet.doGet(request, mock(HttpServletResponse.class));
+
+    verify(provider)
+        .handleSSOCallbackWithDbState(
+            eq(request), any(), eq("alice"), eq("alice@example.com"), eq("mcp:auth-req-1"));
+  }
+
+  /** A pending request whose PKCE verifier is long enough for the callback to reach the IdP step. */
+  private static McpPendingAuthRequest pendingWithValidVerifier() {
+    return new McpPendingAuthRequest(
+        "auth-req-1",
+        "client-1",
+        "codeChallenge-123456789012345678901234567890123456789012",
+        "S256",
+        "https://mcp-client.example.com/callback",
+        "mcp-client-state-xyz",
+        List.of("openid"),
+        "pac4j-state-abc",
+        "pac4j-nonce",
+        "v".repeat(43),
+        System.currentTimeMillis() + 600_000L);
+  }
+
+  private static McpCallbackServlet makeServletWithHandler(
+      UserSSOOAuthProvider provider,
+      McpPendingAuthRequestRepository pendingRepo,
+      AuthenticationCodeFlowHandler handler) {
+    return new McpCallbackServlet(provider, pendingRepo) {
+      @Override
+      protected AuthenticationCodeFlowHandler resolveSsoHandler() {
+        return handler;
+      }
+    };
+  }
+
+  private static void setField(Object target, String name, Object value) throws Exception {
+    Field field = McpCallbackServlet.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(target, value);
   }
 
   @Test
