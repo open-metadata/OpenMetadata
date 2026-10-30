@@ -20,7 +20,7 @@ const SRC_ROOT = path.join(UI_ROOT, 'src');
 const SCRIPT_SPECIFIER =
   /(?:\bfrom|\bimport|\bimport\s*\(|\brequire\s*\()\s*['"](\.{1,2}(?:\/[^'"\n]*)?)['"]/g;
 const STYLE_SPECIFIER =
-  /(?:@import\s*(?:\([^)]*\)\s*)?(?:url\(\s*)?|\burl\(\s*)['"]?(\.{1,2}\/[^'"()\s;]*)/g;
+  /(?:@(?:import|source|reference|plugin|config)\s*(?:\([^)]*\)\s*)?(?:url\(\s*)?|\burl\(\s*|\bdata-uri\(\s*(?:['"][^'"]*['"]\s*,\s*)?)['"]?(\.{1,2}\/[^'"()\s;]*)/g;
 
 const SPECIFIER_BY_EXTENSION = new Map([
   ['.ts', SCRIPT_SPECIFIER],

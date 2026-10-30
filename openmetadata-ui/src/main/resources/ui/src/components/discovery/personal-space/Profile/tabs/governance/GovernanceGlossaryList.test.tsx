@@ -162,7 +162,7 @@ describe('GovernanceGlossaryList', () => {
       );
     });
 
-    expect(mockDeleteRelationshipType).toHaveBeenCalledWith('rt-2');
+    expect(mockDeleteRelationshipType).toHaveBeenCalledWith('rt-2', true);
     expect(
       screen.queryByTestId('relation-name-relatedTo')
     ).not.toBeInTheDocument();
