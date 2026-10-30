@@ -1,9 +1,10 @@
 # The native query console hides only unchanged bundled templates
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial); v2 2026-10-30 (compare against the UI's own copy of the seeds)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** `OntologyStudioQueryConsole.test.tsx`
+- **Guard:** `OntologyStudioQueryConsole.test.tsx`, `OntologyStudio.constants.test.ts` (the UI copy
+  equals `sparqlQuerySettings.json`)
 - **Related:** ADR:2026-10-19-ontology-studio-opens-native-models-by-default, PR #36190
 
 ## Context
@@ -21,7 +22,18 @@ query glossary terms that a native ontology's endpoint does not hold. A template
 in any field, including `id`, `name` or `savedAt`, or authored by a user, stays visible. Saving
 preserves the hidden seeds.
 
+The console compares against the UI's own copy of the seeds in `OntologyStudio.constants.ts`,
+because production UI code cannot import files outside `openmetadata-ui/src/main/resources/ui/`.
+Collate builds the UI from another folder. A Jest test pins the copy to `sparqlQuerySettings.json`.
+
 ## Consequences
 
 The template filter couples the display to the exact shape of the bundled seeds: if the server
 stores a seed with an added or defaulted field, it shows again in native scopes.
+
+## Amendment 2026-10-30: the UI's own copy of the seeds
+
+v1 imported `sparqlQuerySettings.json` from `openmetadata-service` into production UI code. Collate
+builds this UI from `collate-ui/src/main/resources/ui/src/openmetadata-ui/`, where that relative path
+resolves to nothing, so its release build failed. The console now compares against a UI copy, and
+`OntologyStudio.constants.test.ts` fails when the copy and the server seeds differ.
