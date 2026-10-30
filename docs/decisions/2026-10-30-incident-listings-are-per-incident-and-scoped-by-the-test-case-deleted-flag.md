@@ -37,5 +37,6 @@ documents, so incidents of soft-deleted test cases stayed listed.
 ## Consequences
 Counts that read `paging.total` of a `latest` database listing now count incidents, so they can
 rise where a test case had several incidents in range. Incident documents written before this change carry
-the flag the test case had when they were indexed; a reindex of `testCaseResolutionStatus` brings
-them in line. Reverting to per-test-case listings would need the groups to count per test case too.
+the flag the test case had when they were indexed, and the search retry queue does not reach
+incident documents when the flag update fails; a reindex of `testCaseResolutionStatus` brings them
+in line. Reverting to per-test-case listings would need the groups to count per test case too.
