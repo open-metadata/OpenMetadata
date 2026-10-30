@@ -23,6 +23,7 @@ import { performAdminLogin } from '../../../utils/admin';
 import { clickCodeEditor } from '../../../utils/codeEditor';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
+import { selectComboBoxOption } from '../../../utils/destination';
 import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
@@ -303,17 +304,11 @@ test.describe(
         await clickCodeEditor(page);
         await page.keyboard.type(profilerSetting.profileQuery);
 
-        await page
-          .getByTestId('include-column-select')
-          .getByRole('combobox')
-          .fill(profilerSetting.includeColumns);
-        await page
-          .getByRole('listbox')
-          .getByRole('option', {
-            name: profilerSetting.includeColumns,
-            exact: true,
-          })
-          .click();
+        await selectComboBoxOption({
+          page,
+          testId: 'include-column-select',
+          optionName: profilerSetting.includeColumns,
+        });
         await page.locator('[data-testid="enable-partition-switch"]').click();
         await page.locator('[data-testid="interval-type"]').click();
         await page
@@ -324,17 +319,11 @@ test.describe(
           })
           .click();
 
-        await page
-          .getByTestId('column-name')
-          .getByRole('combobox')
-          .fill(profilerSetting.partitionColumnName);
-        await page
-          .getByRole('listbox')
-          .getByRole('option', {
-            name: profilerSetting.partitionColumnName,
-            exact: true,
-          })
-          .click();
+        await selectComboBoxOption({
+          page,
+          testId: 'column-name',
+          optionName: profilerSetting.partitionColumnName,
+        });
         await page
           .locator('[data-testid="partition-value"]')
           .fill(profilerSetting.partitionValues);

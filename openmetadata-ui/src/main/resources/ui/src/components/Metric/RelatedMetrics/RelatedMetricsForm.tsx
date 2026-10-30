@@ -17,7 +17,6 @@ import {
   Checkbox,
   Input,
   Skeleton,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { Check, Search, XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -29,6 +28,8 @@ import type { Metric } from '../../../generated/entity/data/metric';
 import type { EntityReference } from '../../../generated/type/entityReference';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 
 export interface RelatedMetricOption {
   label: string;
@@ -205,9 +206,15 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
                 />
               ))
             ) : (
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('label.no-data')}
-              </Typography>
+              <Box
+                className="tw:relative tw:min-h-48"
+                data-testid="related-metrics-empty">
+                {searchText.trim() ? (
+                  <NoSearchResultsPlaceholder />
+                ) : (
+                  <NoDataPlaceholder />
+                )}
+              </Box>
             )}
           </Box>
         )}
