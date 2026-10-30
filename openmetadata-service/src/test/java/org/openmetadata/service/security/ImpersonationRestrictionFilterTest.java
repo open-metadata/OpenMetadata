@@ -32,6 +32,7 @@ class ImpersonationRestrictionFilterTest {
             "createUser",
             "importCsv",
             "importCsvAsync",
+            "restoreTable",
             "generateRandomPassword",
             "logoutUser",
             "generateToken",
