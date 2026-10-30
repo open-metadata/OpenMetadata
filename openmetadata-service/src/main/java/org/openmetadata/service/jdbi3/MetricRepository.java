@@ -492,6 +492,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public List<Metric> updateManyEntitiesForImport(
       List<Metric> originals, List<Metric> updates, String updatedBy, String impersonatedBy) {
+    // The parent lives only in the CONTAINS edge, which the originals are read without. Load it so
+    // the base batch path can tell which parents a CSV moved metrics away from.
+    fetchAndSetParents(originals, getFields(FIELD_PARENT));
     List<Metric> updated =
         super.updateManyEntitiesForImport(originals, updates, updatedBy, impersonatedBy);
     reconcileImportedHierarchyGroups(updated);
