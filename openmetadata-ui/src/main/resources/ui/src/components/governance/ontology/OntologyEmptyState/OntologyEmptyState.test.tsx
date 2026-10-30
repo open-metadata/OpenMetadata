@@ -65,7 +65,7 @@ describe('OntologyEmptyState', () => {
     const placeholder = within(emptyState).getByTestId('empty-placeholder');
 
     expect(emptyState).toHaveClass('tw:overflow-auto');
-    expect(placeholder).toHaveClass('tw:static', 'tw:flex-1');
+    expect(placeholder).toHaveClass('tw:static', 'tw:h-auto', 'tw:flex-1');
     expect(placeholder).not.toHaveClass('tw:absolute');
     expect(placeholder).not.toHaveClass('tw:min-h-full');
   });
