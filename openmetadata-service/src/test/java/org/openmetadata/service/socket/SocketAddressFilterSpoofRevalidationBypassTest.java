@@ -367,7 +367,7 @@ class SocketAddressFilterSpoofRevalidationBypassTest {
     private void mockTokenClaims() {
       Claim sessionClaim = mock(Claim.class);
       when(sessionClaim.asString()).thenReturn(SESSION_ID);
-      when(jwtFilter.validateJwtAndGetClaims("token"))
+      when(jwtFilter.verifySignatureOnly("token"))
           .thenReturn(Map.of(JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
       when(jwtFilter.resolveUserName(any())).thenReturn(username);
     }
