@@ -35,6 +35,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
@@ -126,6 +127,7 @@ public class SocketAddressFilter implements Filter {
    * @throws AuthenticationException the presented token failed validation
    * @throws HandshakeRejectedException the handshake carries no verifiable credential, or its
    *     credentials do not agree
+   * @throws CredentialUnavailableException the stored-credential check could not be confirmed
    */
   public HandshakeIdentity authenticate(HttpServletRequest request) throws AuthenticationException {
     Map<String, String> query = parseQuery(request);
@@ -147,6 +149,9 @@ public class SocketAddressFilter implements Filter {
       stampIdentity(requestWrapper, authenticate(httpServletRequest));
       // Goes to default servlet.
       chain.doFilter(requestWrapper, response);
+    } catch (CredentialUnavailableException ex) {
+      LOG.debug("[SAFilter] WebSocket handshake token could not be confirmed", ex);
+      sendRetryLater(response, ex.retryAfterSeconds());
     } catch (AuthenticationException ex) {
       LOG.warn("[SAFilter] Rejected WebSocket handshake", ex);
       sendHandshakeError(
@@ -188,6 +193,15 @@ public class SocketAddressFilter implements Filter {
       throws IOException {
     if (response instanceof HttpServletResponse httpResponse && !httpResponse.isCommitted()) {
       httpResponse.sendError(status, message);
+    }
+  }
+
+  private void sendRetryLater(ServletResponse response, long retryAfterSeconds) throws IOException {
+    if (response instanceof HttpServletResponse httpResponse && !httpResponse.isCommitted()) {
+      httpResponse.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+      httpResponse.sendError(
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+          CredentialUnavailableException.CLIENT_MESSAGE);
     }
   }
 
@@ -282,28 +296,14 @@ public class SocketAddressFilter implements Filter {
   public static ValidatedTokenPrincipal validatePrefixedTokenRequest(
       JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
-    Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
+    Map<String, Claim> claims = jwtFilter.verifySignatureOnly(token);
     String userName = jwtFilter.resolveUserName(claims);
-    String impersonatedBy =
-        claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
-            ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
-            : null;
-    jwtFilter.checkValidationsForToken(claims, token, userName, impersonatedBy);
+    jwtFilter.checkValidationsForToken(claims, token, userName, null);
     String sessionId =
         claims.containsKey(JWTTokenGenerator.SESSION_ID_CLAIM)
             ? claims.get(JWTTokenGenerator.SESSION_ID_CLAIM).asString()
             : null;
     return new ValidatedTokenPrincipal(userName, sessionId);
-  }
-
-  public static void checkForUsernameAndImpersonationValidation(
-      String token, Map<String, Claim> claims, JwtFilter jwtFilter) {
-    String userName = jwtFilter.resolveUserName(claims);
-    String impersonatedBy =
-        claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
-            ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
-            : null;
-    jwtFilter.checkValidationsForToken(claims, token, userName, impersonatedBy);
   }
 
   private UUID getUserIdForPrincipal(String userName) {
