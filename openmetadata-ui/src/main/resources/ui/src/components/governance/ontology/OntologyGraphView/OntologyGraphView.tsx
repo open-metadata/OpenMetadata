@@ -85,7 +85,7 @@ import {
 import { OntologyGraphHandle } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
 import {
-  buildOntologyTreeGroups,
+  buildNativeTreeIndex,
   buildOntologyTreeMetrics,
   getOntologyHealthSummary,
 } from '../../../OntologyExplorer/OntologyStudio.utils';
@@ -295,6 +295,7 @@ const RelationshipTypeDialog = ({
 interface OntologyGraphViewProps {
   readonly ontology: Ontology;
   readonly surface: 'graph' | 'tree';
+  readonly onRequestGraphSurface: () => void;
   readonly createConceptRequestKey?: number;
   readonly isEditing?: boolean;
   readonly selectedConceptId?: string;
@@ -318,6 +319,7 @@ interface ConceptEditorRequest {
 const OntologyGraphView = ({
   ontology,
   surface,
+  onRequestGraphSurface,
   createConceptRequestKey = 0,
   isEditing = false,
   selectedConceptId,
@@ -348,14 +350,8 @@ const OntologyGraphView = ({
   const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology);
-  const groups = useMemo(
-    () =>
-      buildOntologyTreeGroups(
-        graph,
-        { ...FILTERS, searchQuery: search },
-        [],
-        []
-      ),
+  const treeIndex = useMemo(
+    () => buildNativeTreeIndex(graph, { ...FILTERS, searchQuery: search }, []),
     [graph, search]
   );
   const metrics = useMemo(
@@ -742,6 +738,7 @@ const OntologyGraphView = ({
           canCreateRelationType={canCreateRelationType}
           canEditBindings={isEditing && canEditConcept}
           concept={selected}
+          isEditing={isEditing}
           model={model}
           relationTypeGroups={relationTypeGroups}
           relations={relations}
@@ -763,6 +760,10 @@ const OntologyGraphView = ({
               ? () => setConceptEditor({ conceptId: selected.id })
               : undefined
           }
+          onOpenData={() => {
+            onRequestGraphSurface();
+            setGraphMode('data');
+          }}
           onSelectConcept={(concept) => setSelectedId(concept.id)}
         />
       );
@@ -812,9 +813,9 @@ const OntologyGraphView = ({
           emptyMessage={t('label.no-entity-found', {
             entity: t('label.concept-plural'),
           })}
-          groups={groups}
           metrics={metrics}
           selectedNodeId={selectedId}
+          source={{ kind: 'native', index: treeIndex }}
           onConnect={connectNode}
           onSelect={selectNode}
         />

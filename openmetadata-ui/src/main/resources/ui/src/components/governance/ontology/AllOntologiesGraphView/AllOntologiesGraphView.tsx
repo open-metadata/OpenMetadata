@@ -38,8 +38,7 @@ import {
 } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
 import {
-  buildOntologyTreeGroups,
-  buildOntologyTreeMetrics,
+  buildNativeTreeIndex,
   getOntologyHealthSummary,
 } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
@@ -67,23 +66,19 @@ interface AllOntologiesGraphViewProps {
   readonly models: OntologyStudioModel[];
   readonly selectedConceptId?: string;
   readonly surface: 'graph' | 'tree';
+  readonly onRequestGraphSurface: () => void;
   readonly isFetching: boolean;
   readonly onRefresh: () => void;
   readonly onEditConcept: (ontology: Ontology, conceptId: string) => void;
   readonly onSelectedConceptChange: (conceptId?: string) => void;
 }
 
-// In AI mode the tree header names the ontology, but only above connected concepts.
-const hasTreeOwnHeading = (
-  isAiMode: boolean,
-  group: { rows: { isIsolated?: boolean }[] }
-) => isAiMode && group.rows.some((row) => !row.isIsolated);
-
 const AllOntologiesGraphView = ({
   graph,
   models,
   selectedConceptId,
   surface,
+  onRequestGraphSurface,
   isFetching,
   onRefresh,
   onEditConcept,
@@ -110,19 +105,9 @@ const AllOntologiesGraphView = ({
     { id: selected?.id ?? '' },
     { enabled: Boolean(selected), deleted: selected?.deleted }
   );
-  const groups = useMemo(
-    () =>
-      buildOntologyTreeGroups(
-        graph,
-        { ...FILTERS, searchQuery: search },
-        [],
-        []
-      ),
+  const treeIndex = useMemo(
+    () => buildNativeTreeIndex(graph, { ...FILTERS, searchQuery: search }, []),
     [graph, search]
-  );
-  const metrics = useMemo(
-    () => buildOntologyTreeMetrics(graph, FILTERS),
-    [graph]
   );
   const highlight = useMemo(
     () => computeGraphSearchHighlight(graph.nodes, graph.edges, search, [], []),
@@ -171,40 +156,12 @@ const AllOntologiesGraphView = ({
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
-        <Box className="tw:h-full tw:overflow-auto" direction="col">
-          {groups.length === 0 ? (
-            <OntologyTreeView
-              emptyMessage={t('label.no-entity-found', {
-                entity: t('label.concept-plural'),
-              })}
-              groups={[]}
-              metrics={[]}
-              onSelect={selectNode}
-            />
-          ) : null}
-          {groups.map((group) => (
-            <Box direction="col" key={group.glossaryId}>
-              {hasTreeOwnHeading(isAiMode, group) ? null : (
-                <Typography
-                  className="tw:px-6 tw:pt-4"
-                  role="heading"
-                  size="text-md"
-                  weight="semibold">
-                  {group.glossaryName}
-                </Typography>
-              )}
-              <OntologyTreeView
-                density="compact"
-                groups={[group]}
-                metrics={metrics.filter(
-                  (metric) => metric.node.glossaryId === group.glossaryId
-                )}
-                selectedNodeId={selectedConceptId}
-                onSelect={selectNode}
-              />
-            </Box>
-          ))}
-        </Box>
+        <OntologyTreeView
+          density="compact"
+          selectedNodeId={selectedConceptId}
+          source={{ kind: 'native', index: treeIndex }}
+          onSelect={selectNode}
+        />
       );
     }
     if (graphMode === 'data') {
@@ -348,6 +305,10 @@ const AllOntologiesGraphView = ({
               ? () => onEditConcept(model.ontology, selected.id)
               : undefined
           }
+          onOpenData={() => {
+            onRequestGraphSurface();
+            setGraphMode('data');
+          }}
           onSelectConcept={selectNode}
         />
       ) : (

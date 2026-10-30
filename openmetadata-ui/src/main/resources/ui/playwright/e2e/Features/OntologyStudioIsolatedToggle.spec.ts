@@ -54,7 +54,7 @@ test.afterAll(async ({ browser }) => {
 });
 
 test.describe('Ontology Studio — isolated concepts', () => {
-  test('shows isolated concepts in the graph, health panel, and header count', async ({
+  test('shows isolated concepts in the graph and health panel', async ({
     page,
   }) => {
     test.slow();
