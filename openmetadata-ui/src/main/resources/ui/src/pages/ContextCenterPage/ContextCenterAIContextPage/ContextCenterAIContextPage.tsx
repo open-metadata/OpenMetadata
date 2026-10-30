@@ -315,7 +315,7 @@ const ContextCenterAIContextPage = () => {
         </PageLayout.Header>
         <PageLayout.Content
           className={classNames(
-            'tw:min-h-0 tw:overflow-y-auto',
+            'tw:min-h-0 tw:overflow-y-auto tw:relative',
             pageLayoutClassNames.content
           )}>
           {isLoading && <Loader />}

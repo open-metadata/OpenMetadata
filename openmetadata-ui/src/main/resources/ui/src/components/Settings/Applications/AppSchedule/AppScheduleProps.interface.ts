@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TableCardVariant } from '@openmetadata/ui-core-components';
 import { RJSFSchema } from '@rjsf/utils';
 import { App } from '../../../../generated/entity/applications/app';
+import { AppRunRecordWithId } from '../AppRunsHistory/AppRunsHistory.interface';
 
 export interface AppScheduleProps {
   appData: App;
@@ -26,7 +28,13 @@ export interface AppScheduleProps {
   canEdit?: boolean;
   canTrigger?: boolean;
   canDeploy?: boolean;
+  /** Table variant for the latest-run history. */
+  runsHistoryVariant?: TableCardVariant;
   onSave: (cron: string) => Promise<void>;
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;
+  /** Opens schedule editing as a page instead of the built-in dialog. */
+  onEditSchedule?: () => void;
+  /** Opens a run's configuration as a page instead of the built-in dialog. */
+  onViewRunConfig?: (record: AppRunRecordWithId) => void;
 }

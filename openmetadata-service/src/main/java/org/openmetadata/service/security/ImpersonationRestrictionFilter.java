@@ -13,15 +13,14 @@
 
 package org.openmetadata.service.security;
 
-import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Priority;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.container.ResourceInfo;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
-import java.util.Locale;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -33,8 +32,10 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
  * changes meaning from "is this me?" to "is this the person I am pretending to be?". For the
  * identity-affecting endpoints - mint a token, revoke tokens, change a password, log out - that
  * turns a request-scoped, revocable grant into a standalone credential that outlives it. Those
- * endpoints deliberately call no authorizer, so there is no funnel to hook; a denylist checked once
- * per request is the cheapest thing that generalises. Adding an endpoint is a one-line review.
+ * endpoints deliberately call no authorizer, so they opt in with {@link IdentityEndpoint} instead.
+ *
+ * <p>Name-bound rather than matched on the request path: Jersey runs this filter only for methods
+ * it has already routed to, so no spelling of the URL can reach the method without passing here.
  *
  * <p>Keyed off {@link CatalogSecurityContext#impersonatedUser()} rather than {@link
  * ImpersonationContext}: that ThreadLocal is audit attribution, and the MCP server sets it to its
@@ -42,54 +43,37 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
  */
 @Slf4j
 @Provider
+@IdentityEndpoint
 @Priority(Priorities.AUTHORIZATION)
 public class ImpersonationRestrictionFilter implements ContainerRequestFilter {
 
-  /**
-   * Lower-case, matched against a lower-cased {@code UriInfo.getPath()}. A trailing {@code /} marks
-   * a path-parameterised family such as {@code generateToken/{id}}.
-   */
-  private static final Set<String> IDENTITY_ENDPOINTS =
-      Set.of(
-          "v1/users/security/token",
-          "v1/users/security/token/",
-          "v1/users/generatetoken",
-          "v1/users/generatetoken/",
-          "v1/users/revoketoken",
-          "v1/users/revoketoken/",
-          "v1/users/token/",
-          "v1/users/auth-mechanism/",
-          "v1/users/changepassword",
-          "v1/users/generaterandompwd",
-          "v1/users/logout");
+  @Context private ResourceInfo resourceInfo;
 
   @Override
   public void filter(ContainerRequestContext requestContext) {
     String impersonatingBot = impersonatingBot(requestContext.getSecurityContext());
-    String path = requestContext.getUriInfo().getPath();
-    if (impersonatingBot == null || !isIdentityEndpoint(path)) {
+    if (impersonatingBot == null) {
       return;
     }
+    String endpoint = endpointName();
     LOG.warn(
         "Impersonation denied: bot={} attempted to reach identity endpoint {} as user={}",
         impersonatingBot,
-        path,
+        endpoint,
         requestContext.getSecurityContext().getUserPrincipal().getName());
     throw new AuthorizationException(
-        "Impersonated requests cannot access identity endpoint " + path);
+        "Impersonated requests cannot access identity endpoint " + endpoint);
+  }
+
+  private String endpointName() {
+    return resourceInfo.getResourceClass().getSimpleName()
+        + "."
+        + resourceInfo.getResourceMethod().getName();
   }
 
   private static String impersonatingBot(SecurityContext securityContext) {
     return securityContext instanceof CatalogSecurityContext catalogSecurityContext
         ? catalogSecurityContext.impersonatedUser()
         : null;
-  }
-
-  @VisibleForTesting
-  static boolean isIdentityEndpoint(String requestPath) {
-    String path = requestPath.toLowerCase(Locale.ROOT);
-    return IDENTITY_ENDPOINTS.stream()
-        .anyMatch(
-            endpoint -> endpoint.endsWith("/") ? path.startsWith(endpoint) : path.equals(endpoint));
   }
 }

@@ -29,15 +29,6 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
-let mockPendingCounts: unknown;
-jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
-  useGlossaryPendingCounts: jest.fn(() => mockPendingCounts),
-  useGlossaryProposalCounts: jest.fn(() => ({
-    counts: { all: 0, ai: 0, person: 0 },
-    isLoading: false,
-  })),
-}));
-
 const mockPush = jest.fn();
 
 jest.mock('../../../utils/FeedUtilsPure', () => {

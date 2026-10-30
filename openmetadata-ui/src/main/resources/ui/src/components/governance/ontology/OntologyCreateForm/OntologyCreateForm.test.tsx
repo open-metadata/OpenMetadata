@@ -13,6 +13,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Layer } from '../../../../generated/api/data/createOntology';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
   renderWithQueryClient,
@@ -20,6 +21,10 @@ import {
 } from '../../../../test/unit/test-utils';
 import OntologyCreateForm from './OntologyCreateForm';
 
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 jest.mock('../../../../rest/axiosClient', () => ({
   post: jest.fn(),
   patch: jest.fn(),
@@ -180,5 +185,91 @@ describe('OntologyCreateForm', () => {
     );
 
     expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+  });
+
+  describe('AI mode', () => {
+    beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
+
+    afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
+
+    it('creates with editable identity rows and the segmented layer', async () => {
+      const user = userEvent.setup();
+      const saved = jest.fn();
+      renderWithQueryClient(
+        <OntologyCreateForm canCreate currentUserId="author" onSaved={saved} />
+      );
+
+      expect(screen.getByText('label.new-entity')).toBeInTheDocument();
+      expect(screen.getByText('label.owner-plural')).toBeInTheDocument();
+      expect(screen.getByText('label.reviewer-plural')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('ontology-create-form'));
+      });
+
+      expect(await screen.findAllByText('label.field-required')).toHaveLength(
+        3
+      );
+
+      await user.type(
+        screen.getByRole('textbox', { name: 'label.name' }),
+        'Sales'
+      );
+      await user.type(
+        screen.getByRole('textbox', { name: 'label.ontology-iri' }),
+        'urn:sales'
+      );
+      await user.type(
+        screen.getByRole('textbox', { name: 'label.namespace' }),
+        'urn:sales:'
+      );
+      await user.click(screen.getByRole('tab', { name: Layer.L2 }));
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('ontology-create-form'));
+      });
+
+      await waitFor(() => expect(saved).toHaveBeenCalled());
+
+      expect(post).toHaveBeenCalledWith(
+        '/ontologies',
+        expect.objectContaining({
+          name: 'Sales',
+          iri: 'urn:sales',
+          namespace: 'urn:sales:',
+          layer: Layer.L2,
+          owners: [{ id: 'author', type: 'user' }],
+        })
+      );
+    });
+
+    it('keeps name and IRI read-only in settings and gates save', () => {
+      renderWithQueryClient(
+        <OntologyCreateForm
+          canCreate={false}
+          ontology={{
+            id: 'sales',
+            name: 'Sales',
+            fullyQualifiedName: 'Sales',
+            iri: 'urn:sales',
+            namespace: 'urn:sales:',
+            layer: Layer.L2,
+          }}
+          onSaved={jest.fn()}
+        />
+      );
+
+      expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: 'label.name' })
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('textbox', { name: 'label.ontology-iri' })
+      ).toBeDisabled();
+      expect(screen.getByRole('tab', { name: Layer.L2 })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+    });
   });
 });

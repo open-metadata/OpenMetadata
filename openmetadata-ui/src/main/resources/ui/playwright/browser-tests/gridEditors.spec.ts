@@ -46,7 +46,7 @@ const bundle = buildSync({
       const columns = [{ key: 'name', name: 'Name', editable: true, renderEditCell: textEditor }];
       function App() {
         const [rows, setRows] = useState([{ name: 'Original' }]);
-        return <main className="ant-layout-content"><input aria-label="Unrelated search" defaultValue="Keep this query" />
+        return <main><input aria-label="Unrelated search" defaultValue="Keep this query" />
           <DataGrid columns={columns} rows={rows} onRowsChange={setRows} style={{ height: 160 }} />
           <output data-testid="saved-cell">{rows[0].name}</output></main>;
       }
@@ -172,7 +172,7 @@ for (const selection of ['click', 'keyboard']) {
         const columns = [{ key: 'tier', name: 'Tier', editable: true, renderEditCell: TierEditor }];
         function App() {
           const [rows, setRows] = useState([{ tier: 'Unassigned' }]);
-          return <main className="ant-layout-content">
+          return <main>
             <DataGrid columns={columns} rows={rows} onRowsChange={setRows}
               onCellClick={(args, event) => { args.selectCell(true); event.preventGridDefault(); }}
               style={{ height: 160 }} />

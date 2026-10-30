@@ -176,7 +176,7 @@ export const searchDomains = async (
     params.query_filter = JSON.stringify(queryFilter);
   }
 
-  const { data } = await APIClient.get(apiUrl, {
+  const { data } = await APIClient.get<Domain[]>(apiUrl, {
     params,
     signal,
   });

@@ -14,10 +14,6 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import EntityHeaderTitle from './EntityHeaderTitle.component';
 
-jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest.fn().mockImplementation(() => ({ pathname: '/explore' }));
-});
-
 describe('EntityHeaderTitle', () => {
   it('should render icon', () => {
     render(

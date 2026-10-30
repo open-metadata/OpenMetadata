@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,11 +15,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
@@ -28,9 +31,14 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TopicRepository;
+import org.openmetadata.service.security.mask.PIIMasker;
 
 /**
  * Integration tests for Topic entity operations.
@@ -383,6 +391,124 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
     // Verify sample data was set (may need to fetch with fields)
     assertNotNull(updated);
+  }
+
+  @Test
+  void sampleDataPutPersistsMessagesAndStoresPiiTag(final TestNamespace ns) {
+    final var fixture = storeSampleData(ns);
+
+    assertEquals(PIIMasker.SENSITIVE_PII_TAG, firstSchemaFieldTagFqn(fixture.sensitive()));
+    assertEquals(
+        secretSample().getMessages(),
+        sampleMessages(SdkClients.adminClient(), fixture.sensitive()));
+  }
+
+  @Test
+  void sampleDataReadMasksSensitiveTopicForNonPrivilegedReader(final TestNamespace ns) {
+    final var fixture = storeSampleData(ns);
+    final var reader = UserTestFactory.createUser(ns, "topic_sample_reader");
+    final var readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+
+    assertEquals(
+        List.of(PIIMasker.MASKED_VALUE), sampleMessages(readerClient, fixture.sensitive()));
+    assertEquals(ordinarySample().getMessages(), sampleMessages(readerClient, fixture.plain()));
+    assertEquals(
+        secretSample().getMessages(),
+        sampleMessages(SdkClients.adminClient(), fixture.sensitive()));
+  }
+
+  @Test
+  void sampleDataDeleteClearsOnlyTheTargetTopic(final TestNamespace ns) {
+    final var admin = SdkClients.adminClient();
+    final var fixture = storeSampleData(ns);
+
+    admin
+        .getHttpClient()
+        .execute(HttpMethod.DELETE, samplePath(fixture.sensitive()), null, Topic.class);
+
+    assertNull(readSampleData(admin, fixture.sensitive()).getSampleData());
+    assertEquals(ordinarySample().getMessages(), sampleMessages(admin, fixture.plain()));
+  }
+
+  private record SampleDataFixture(Topic sensitive, Topic plain) {}
+
+  private SampleDataFixture storeSampleData(final TestNamespace ns) {
+    final var admin = SdkClients.adminClient();
+    final var service = MessagingServiceTestFactory.createKafka(ns);
+    final var sensitive = createEmailSchemaTopic(service, ns.prefix("sample_sensitive"));
+    final var plain = createSinglePartitionTopic(service, ns.prefix("sample_plain"));
+    tagFirstSchemaFieldPii(sensitive);
+    putSampleData(admin, sensitive, secretSample());
+    putSampleData(admin, plain, ordinarySample());
+    return new SampleDataFixture(sensitive, plain);
+  }
+
+  private Topic createEmailSchemaTopic(final MessagingService service, final String name) {
+    final var schema =
+        new MessageSchema()
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(
+                List.of(new Field().withName("email").withDataType(FieldDataType.STRING)));
+    return createEntity(
+        new CreateTopic()
+            .withName(name)
+            .withService(service.getFullyQualifiedName())
+            .withPartitions(1)
+            .withMessageSchema(schema));
+  }
+
+  private Topic createSinglePartitionTopic(final MessagingService service, final String name) {
+    return createEntity(
+        new CreateTopic()
+            .withName(name)
+            .withService(service.getFullyQualifiedName())
+            .withPartitions(1));
+  }
+
+  private void tagFirstSchemaFieldPii(final Topic topic) {
+    final var tagged = getEntityWithFields(topic.getId().toString(), "tags,messageSchema");
+    final var pii =
+        new TagLabel()
+            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    tagged.getMessageSchema().getSchemaFields().get(0).setTags(List.of(pii));
+    patchEntity(tagged.getId().toString(), tagged);
+  }
+
+  private String firstSchemaFieldTagFqn(final Topic topic) {
+    return getEntityWithFields(topic.getId().toString(), "tags,messageSchema")
+        .getMessageSchema()
+        .getSchemaFields()
+        .get(0)
+        .getTags()
+        .get(0)
+        .getTagFQN();
+  }
+
+  private static TopicSampleData secretSample() {
+    return new TopicSampleData().withMessages(List.of("{\"email\":\"secret@example.com\"}"));
+  }
+
+  private static TopicSampleData ordinarySample() {
+    return new TopicSampleData().withMessages(List.of("public"));
+  }
+
+  private static String samplePath(final Topic topic) {
+    return "/v1/topics/" + topic.getId() + "/sampleData";
+  }
+
+  private static void putSampleData(
+      final OpenMetadataClient client, final Topic topic, final TopicSampleData data) {
+    client.getHttpClient().execute(HttpMethod.PUT, samplePath(topic), data, Topic.class);
+  }
+
+  private static Topic readSampleData(final OpenMetadataClient client, final Topic topic) {
+    return client.getHttpClient().execute(HttpMethod.GET, samplePath(topic), null, Topic.class);
+  }
+
+  private static List<String> sampleMessages(final OpenMetadataClient client, final Topic topic) {
+    return readSampleData(client, topic).getSampleData().getMessages();
   }
 
   @Test
@@ -1282,6 +1408,120 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Test
+  void listedTopicsResolveTheirOwnService(final TestNamespace ns) {
+    final var listed = createListedTopics(ns);
+    final var response = listBothHydrated(listed.service());
+
+    assertEquals(
+        listed.service().getId(), findListed(response, listed.tagged()).getService().getId());
+    assertEquals(
+        listed.service().getId(), findListed(response, listed.untagged()).getService().getId());
+  }
+
+  @Test
+  void listedTopicsHydrateNestedSchemaFieldTagsPerTopic(final TestNamespace ns) {
+    final var listed = createListedTopics(ns);
+    final var response = listBothHydrated(listed.service());
+
+    assertEquals(
+        shared().PII_SENSITIVE_TAG_LABEL.getTagFQN(),
+        findListed(response, listed.tagged())
+            .getMessageSchema()
+            .getSchemaFields()
+            .get(0)
+            .getChildren()
+            .get(0)
+            .getTags()
+            .get(0)
+            .getTagFQN());
+    assertNull(findListed(response, listed.untagged()).getMessageSchema());
+  }
+
+  @Test
+  void listedTopicsHydrateFollowersPerTopic(final TestNamespace ns) {
+    final var listed = createListedTopics(ns);
+    final var response = listBothHydrated(listed.service());
+
+    final var taggedFollowers = findListed(response, listed.tagged()).getFollowers();
+    assertNotNull(taggedFollowers);
+    assertEquals(1, taggedFollowers.size());
+    assertEquals(testUser1().getId(), taggedFollowers.get(0).getId());
+    final var untaggedFollowers = findListed(response, listed.untagged()).getFollowers();
+    assertTrue(untaggedFollowers == null || untaggedFollowers.isEmpty());
+  }
+
+  private record ListedTopics(MessagingService service, Topic tagged, Topic untagged) {}
+
+  private ListedTopics createListedTopics(final TestNamespace ns) {
+    final var service = MessagingServiceTestFactory.createKafka(ns);
+    final var tagged =
+        createEntity(
+            new CreateTopic()
+                .withName(ns.prefix("listed_tagged"))
+                .withService(service.getFullyQualifiedName())
+                .withPartitions(1)
+                .withMessageSchema(nestedEmailSchema()));
+    final var untagged = createSinglePartitionTopic(service, ns.prefix("listed_untagged"));
+    tagNestedEmailField(tagged);
+    followAsTestUser(tagged);
+    return new ListedTopics(service, tagged, untagged);
+  }
+
+  private static MessageSchema nestedEmailSchema() {
+    final var email = new Field().withName("email").withDataType(FieldDataType.STRING);
+    final var recordField =
+        new Field()
+            .withName("record")
+            .withDataType(FieldDataType.RECORD)
+            .withChildren(List.of(email));
+    return new MessageSchema()
+        .withSchemaType(SchemaType.Avro)
+        .withSchemaFields(List.of(recordField));
+  }
+
+  private void tagNestedEmailField(final Topic topic) {
+    final var update = getEntityWithFields(topic.getId().toString(), "tags,messageSchema");
+    update
+        .getMessageSchema()
+        .getSchemaFields()
+        .get(0)
+        .getChildren()
+        .get(0)
+        .setTags(List.of(shared().PII_SENSITIVE_TAG_LABEL));
+    patchEntity(topic.getId().toString(), update);
+  }
+
+  private void followAsTestUser(final Topic topic) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/topics/" + topic.getId() + "/followers",
+            testUser1().getId(),
+            ChangeEvent.class);
+  }
+
+  private static ListResponse<Topic> listBothHydrated(final MessagingService service) {
+    final var response =
+        SdkClients.adminClient()
+            .topics()
+            .list(
+                new ListParams()
+                    .setService(service.getFullyQualifiedName())
+                    .setFields("service,tags,messageSchema,followers")
+                    .setLimit(100));
+    assertEquals(2, response.getData().size());
+    return response;
+  }
+
+  private static Topic findListed(final ListResponse<Topic> response, final Topic expected) {
+    return response.getData().stream()
+        .filter(topic -> topic.getId().equals(expected.getId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  @Test
   void patch_topicSchemaFieldGlossaryTerm_200(TestNamespace ns) {
     MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
@@ -1332,6 +1572,87 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Override
   protected BulkOperationResult executeBulkCreate(List<CreateTopic> createRequests) {
     return SdkClients.adminClient().topics().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Test
+  void bulkCreatedTopicsKeepTheirOwnServiceContainment(final TestNamespace ns) {
+    final var kafka = MessagingServiceTestFactory.createKafka(ns);
+    final var redpanda = MessagingServiceTestFactory.createRedpanda(ns);
+    final var first = bulkRequest(kafka, ns.prefix("bulk_kafka"));
+    final var second = bulkRequest(redpanda, ns.prefix("bulk_redpanda"));
+
+    assertEquals(2, executeBulkCreate(List.of(first, second)).getNumberOfRowsPassed());
+    final var kafkaTopic = topicInService(kafka, first);
+    final var redpandaTopic = topicInService(redpanda, second);
+    assertEquals(kafka.getId(), kafkaTopic.getService().getId());
+    assertEquals(redpanda.getId(), redpandaTopic.getService().getId());
+
+    first.setPartitions(3);
+    second.setPartitions(4);
+    assertEquals(2, executeBulkCreate(List.of(first, second)).getNumberOfRowsPassed());
+    assertRepartitionedInPlace(kafka, first, kafkaTopic, 3);
+    assertRepartitionedInPlace(redpanda, second, redpandaTopic, 4);
+  }
+
+  private static CreateTopic bulkRequest(final MessagingService service, final String name) {
+    return new CreateTopic()
+        .withName(name)
+        .withService(service.getFullyQualifiedName())
+        .withPartitions(1);
+  }
+
+  private Topic topicInService(final MessagingService service, final CreateTopic request) {
+    return getEntityByNameWithFields(
+        service.getFullyQualifiedName() + "." + request.getName(), "service");
+  }
+
+  private void assertRepartitionedInPlace(
+      final MessagingService service,
+      final CreateTopic request,
+      final Topic original,
+      final int partitions) {
+    final var updated = topicInService(service, request);
+    assertEquals(original.getId(), updated.getId());
+    assertEquals(partitions, updated.getPartitions());
+    assertEquals(service.getId(), updated.getService().getId());
+  }
+
+  @Test
+  void batchImportUpdatesKeepDistinctTopicContainment(final TestNamespace ns) {
+    final var kafka = MessagingServiceTestFactory.createKafka(ns);
+    final var redpanda = MessagingServiceTestFactory.createRedpanda(ns);
+    final var first = createSinglePartitionTopic(kafka, ns.prefix("import_kafka"));
+    final var second = createSinglePartitionTopic(redpanda, ns.prefix("import_redpanda"));
+    final var control = createSinglePartitionTopic(kafka, ns.prefix("import_control"));
+    final var firstUpdate = importUpdate(first, "Imported Kafka topic", 3);
+    final var secondUpdate = importUpdate(second, "Imported Redpanda topic", 4);
+
+    final var repository = (TopicRepository) Entity.getEntityRepository(Entity.TOPIC);
+    repository.updateManyEntitiesForImport(
+        List.of(first, second), List.of(firstUpdate, secondUpdate), Entity.ADMIN_USER_NAME);
+
+    final var updatedFirst = assertPartitionsAndService(first, 3, kafka);
+    final var updatedSecond = assertPartitionsAndService(second, 4, redpanda);
+    assertPartitionsAndService(control, 1, kafka);
+    assertEquals("Imported Kafka topic", updatedFirst.getDescription());
+    assertEquals("Imported Redpanda topic", updatedSecond.getDescription());
+  }
+
+  private static Topic importUpdate(
+      final Topic original, final String description, final int partitions) {
+    final var update = JsonUtils.deepCopy(original, Topic.class);
+    update.setDescription(description);
+    update.setPartitions(partitions);
+    return update;
+  }
+
+  private Topic assertPartitionsAndService(
+      final Topic original, final int partitions, final MessagingService service) {
+    final var fetched = getEntityWithFields(original.getId().toString(), "service");
+    assertEquals(original.getId(), fetched.getId());
+    assertEquals(partitions, fetched.getPartitions());
+    assertEquals(service.getId(), fetched.getService().getId());
+    return fetched;
   }
 
   @Override

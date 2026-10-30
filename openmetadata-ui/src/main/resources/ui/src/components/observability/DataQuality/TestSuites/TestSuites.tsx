@@ -117,7 +117,6 @@ const TestSuites = () => {
         <UserTeamSelectableList
           hasPermission
           owner={selectedOwner}
-          popoverProps={{ placement: 'bottomLeft' }}
           onUpdate={handleOwnerSelect}>
           <button
             className={chipTriggerClassName(Boolean(ownerFilterValue))}

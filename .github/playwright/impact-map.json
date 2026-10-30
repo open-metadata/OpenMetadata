@@ -79,10 +79,12 @@
     "docker/run_local_docker_common.sh",
     "openmetadata-ui/src/main/resources/ui/playwright.config.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts",
+    "openmetadata-ui/src/main/resources/ui/playwright/e2e/lineage-data.helper.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/fixtures/**",
     "openmetadata-ui/src/main/resources/ui/playwright/reporters/**",
     "openmetadata-ui/src/main/resources/ui/playwright/support/user/**",
     "openmetadata-ui/src/main/resources/ui/playwright/utils/**",
+    "openmetadata-ui/src/main/resources/ui/src/enums/permissions.enum.ts",
     "openmetadata-ui/src/main/resources/ui/vite.config.ts",
     "openmetadata-ui/src/main/resources/ui/vite/**"
   ],
@@ -96,8 +98,18 @@
       "specs": ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
     },
     {
+      "_comment": "The Data Insight page, its provider, tabs and chart cards.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataInsight/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DataInsightPage/**"
+      ],
+      "projects": ["Data Insight"],
+      "specs": ["playwright/e2e/Pages/DataInsight.spec.ts"]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/**",
+        "openmetadata-ui/src/main/resources/ui/src/mocks/ActivityFeedProvider.mock.tsx",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLink.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtilsPure.ts",
@@ -105,6 +117,8 @@
         "openmetadata-ui/src/main/resources/ui/src/rest/feedsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/tasksAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/Task.constant.ts",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Feeds.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCloseOnNavigation*",
         "openmetadata-service/src/main/java/org/openmetadata/service/tasks/**"
       ],
       "specs": [
@@ -181,6 +195,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/**",
         "openmetadata-ui/src/main/resources/ui/src/components/IncidentManager/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Visualisations/Chart/DataDistributionHistogram*",
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataQuality/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/IncidentManager/**",
@@ -212,7 +227,9 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestCase*.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestSuiteRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinitionRepository.java",
-        "openmetadata-spec/src/main/resources/json/schema/tests/**"
+        "openmetadata-spec/src/main/resources/json/schema/tests/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/dataQualityReportBatcher.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/dataQualityReportBatcher.test.ts"
       ],
       "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
       "specs": [
@@ -594,17 +611,21 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.interface.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useSparqlQueryLibrary.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Ontology*.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/Ontology*Test.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**",
         "openmetadata-spec/src/main/resources/json/schema/api/rdf/**"
       ],
       "projects": ["chromium"],
-      "specs": ["playwright/e2e/Features/OntologyStudio*.spec.ts"]
+      "specs": ["playwright/e2e/Features/Ontology*.spec.ts"]
     },
     {
       "sources": [
@@ -894,12 +915,28 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeAppModeSidebarPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeDetailsPage/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Customization/GenericTab/**",
+        "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeWidgets.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/enums/CustomizeDetailPage.enum.ts"
       ],
       "projects": ["chromium", "Data Insight"],
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Default glossary and glossary-term page layouts and their widget registry. Persona customization edits these layouts, and the glossary pages render them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeGlossaryPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeGlossaryTerm/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
+        "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
@@ -1054,7 +1091,7 @@
     {
       "_comment": "Settings modal Custom Properties panel.",
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/custom-properties/**"
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"]
@@ -1302,6 +1339,37 @@
       ]
     },
     {
+      "_comment": "The product tour: its engine, the Classic tour's steps and recorded fixtures, the request mock that serves them, the page code it loads up front, the recording tools, and the pages carrying its data-tour-step markers. ProductTour.spec.ts walks the tour, closes it early, follows Back/Forward and a reload, and fails on any tour page request that reaches the server; WelcomeScreen.spec.ts starts the tour from the welcome screen.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/constants/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/interface/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/product-tour/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ProductTourClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/ProductTourPagesClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/@types/regenerator-runtime.d.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/constant/productTour.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/TopicsSectionHeader.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/ExploreV1/ExploreV1.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/Services.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/GlossaryLeftPanel/GlossaryLeftPanel.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/DataQualityDashboard/DataQualityDashboard.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/ContextCenterDashboardPage/ContextCenterDashboardPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/ContextCenterMemoriesPage/ContextCenterMemoriesPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/useDismissedAnnouncements.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Flow/ProductTour.spec.ts",
+        "playwright/e2e/Features/WelcomeScreen.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/SignUp/**"
       ],
@@ -1452,6 +1520,53 @@
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Flow/Navbar.spec.ts"]
+    },
+    {
+      "_comment": "The lineage seed behind LineageDataClass: LineageFilters.spec.ts reads its entities and edges. The helper also writes shared-infra.json, which most specs read through ParentResolver, so it is listed under sharedInfrastructure as well.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/e2e/lineage-data.helper.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"]
+    },
+    {
+      "_comment": "The lineage UI types (nodes, edges, lineage responses). Only the lineage pages and their specs read them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/interface/lineage.interface.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Browser helper tests run under playwright/browser-helper-tests.config.ts, not in any e2e project, so no change to them can alter a spec outcome. Mapped to no specs rather than left unmapped, so a change does not escalate to a full-suite run.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/browser-tests/**"
+      ],
+      "projects": [],
+      "specs": []
+    },
+    {
+      "_comment": "Jest files beside the audit-log components. The generated map routes only the components (by testId), so a test-only change would otherwise escalate the PR to the full suite.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/AuditLog/*.test.tsx"
+      ],
+      "projects": ["Basic"],
+      "specs": ["playwright/e2e/Pages/AuditLogs.spec.ts"]
+    },
+    {
+      "_comment": "The navbar domain scope applied to every request (withDomainFilter, also read by the batched Data Quality report) and the subdomain glyph in the scope picker. The DomainIsolation specs select a domain and check each surface narrows to it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/hoc/withDomainFilter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/ic-subdomain.svg"
+      ],
+      "projects": ["DomainIsolation"],
+      "specs": ["playwright/e2e/Features/DomainIsolation/**/*.spec.ts"]
     }
   ]
 }
