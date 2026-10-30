@@ -87,10 +87,10 @@ public class TestCaseSoftDeleteSearchIT {
     }
   }
 
-  // A table soft delete reaches its test cases through the cascade, which writes no search
-  // document per test case; their incidents must still leave the default listing.
+  // A table soft delete or restore reaches its test cases through the cascade, which writes no
+  // search document per test case; their incidents must still leave and rejoin the default listing.
   @Test
-  void softDeletingTableScopesItsIncidentsAsDeleted() throws Exception {
+  void softDeletingAndRestoringTableScopesItsIncidents() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     IncidentFixture fixture = createTestCaseWithIncident(client, "soft_delete_table_cascade");
     try {
@@ -101,6 +101,9 @@ public class TestCaseSoftDeleteSearchIT {
               Map.of("hardDelete", "false", "recursive", "true"));
 
       assertIncidentListedOnlyWithDeleted(client, fixture.testCase().getFullyQualifiedName());
+
+      client.tables().restore(fixture.table().getId());
+      assertIncidentListedOnlyWithoutDeleted(client, fixture.testCase().getFullyQualifiedName());
     } finally {
       hardDeleteQuietly(client, fixture.database());
     }
@@ -226,6 +229,18 @@ public class TestCaseSoftDeleteSearchIT {
             () -> {
               assertEquals(0, searchIncidents(client, testCaseFqn, null).size());
               assertEquals(1, searchIncidents(client, testCaseFqn, "deleted").size());
+            });
+  }
+
+  private void assertIncidentListedOnlyWithoutDeleted(
+      OpenMetadataClient client, String testCaseFqn) {
+    await("Incident of a restored test case returns to the default listing")
+        .atMost(Duration.ofMinutes(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              assertEquals(1, searchIncidents(client, testCaseFqn, null).size());
+              assertEquals(0, searchIncidents(client, testCaseFqn, "deleted").size());
             });
   }
 
