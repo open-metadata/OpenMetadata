@@ -49,6 +49,8 @@ export interface BulkEditListingGridArgs {
   isBulkEdit: boolean;
   signal: AbortSignal;
   onProgress?: (loadedCount: number, matchedCount: number) => void;
+  /** Lets an open editor grow its row instead of covering the rows below. */
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void;
 }
 
 export interface BulkEditListingGrid {
