@@ -720,3 +720,10 @@ SET json = jsonb_set(
 )
 WHERE name = 'tableCustomSQLQuery'
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "partitionExpression"}]'::jsonb);
+
+-- Remove personal access token rows whose user no longer exists. A missing user row here always
+-- means the user was hard-deleted, so this is safe on every upgrade; the second run deletes
+-- nothing. Other token types keep their own lifecycle.
+DELETE FROM user_tokens
+WHERE tokenType = 'PERSONAL_ACCESS_TOKEN'
+  AND NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.id = user_tokens.userId);

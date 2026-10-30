@@ -129,7 +129,6 @@
     "@uiw/react-codemirror": "^4.25.12",
     "@windmillcode/quill-emoji": "2.0.3000",
     "analytics": "^0.8.1",
-    "antd": "4.24.16",
     "antlr4": "4.9.2",
     "autoprefixer": "^10.6.1",
     "axios": "1.20.0",
@@ -165,9 +164,8 @@
     "quill-mention": "^6.0.1",
     "quilljs-markdown": "^1.2.0",
     "rapidoc": "^9.3.8",
-    "rc-picker": "^4.5.0",
+    "rc-virtual-list": "3.19.2",
     "react": "^18.2.0",
-    "react-antd-column-resize": "1.0.3",
     "react-aria": "^3.47.0",
     "react-aria-components": "^1.16.0",
     "react-data-grid": "7.0.0-beta.47",
@@ -347,6 +345,7 @@
     "postcss-selector-parser": "7.1.7",
     "socket.io-parser": "4.2.7",
     "undici": "^6.29.1",
+    "follow-redirects": "^1.16.2",
     "@codemirror/state": "^6",
     "@codemirror/view": "^6"
   }

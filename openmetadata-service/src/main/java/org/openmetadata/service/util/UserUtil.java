@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -106,7 +107,7 @@ public final class UserUtil {
       throw new IllegalArgumentException("ExistsChecker predicate cannot be null");
     }
 
-    String baseUsername = email.toLowerCase().split("@")[0];
+    String baseUsername = email.toLowerCase(Locale.ROOT).split("@")[0];
 
     if (!existsChecker.test(baseUsername)) {
       return baseUsername;
@@ -237,7 +238,7 @@ public final class UserUtil {
         if (nullOrEmpty(email)) {
           continue;
         }
-        String normalizedEmail = email.toLowerCase();
+        String normalizedEmail = email.toLowerCase(Locale.ROOT);
         if (processedEmails.contains(normalizedEmail)) {
           continue;
         }
@@ -260,7 +261,7 @@ public final class UserUtil {
         if (nullOrEmpty(principal)) {
           continue;
         }
-        String email = (principal + "@" + domain).toLowerCase();
+        String email = (principal + "@" + domain).toLowerCase(Locale.ROOT);
         if (processedEmails.contains(email)) {
           LOG.debug(
               "[BootstrapUser] Skipping adminPrincipal '{}' - already processed via adminEmails",
@@ -605,12 +606,12 @@ public final class UserUtil {
     User user =
         new User()
             .withId(UUID.randomUUID())
-            .withName(botName.toLowerCase())
-            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase()))
+            .withName(botName.toLowerCase(Locale.ROOT))
+            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase(Locale.ROOT)))
             .withEmail(botEmail)
             .withIsBot(true)
             .withIsAdmin(false)
-            .withUpdatedBy(botName.toLowerCase())
+            .withUpdatedBy(botName.toLowerCase(Locale.ROOT))
             .withUpdatedAt(System.currentTimeMillis());
 
     return addOrUpdateBotUser(user);
@@ -636,6 +637,15 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user) {
     User originalUser = retrieveWithAuthMechanism(user);
+    if (originalUser != null && !Boolean.TRUE.equals(originalUser.getIsBot())) {
+      // Turning a person's account into a bot would hand the bot's role to every credential the
+      // account already holds, such as its password and personal access tokens.
+      throw new IllegalStateException(
+          String.format(
+              "User '%s' already exists and is not a bot, so the bot of that name was not created. "
+                  + "Rename or delete that user, then restart the server.",
+              user.getName()));
+    }
     AuthenticationMechanism authMechanism =
         originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
@@ -800,9 +810,10 @@ public final class UserUtil {
   public static User getUser(String updatedBy, CreateUser create) {
     return new User()
         .withId(UUID.randomUUID())
-        .withName(create.getName().toLowerCase())
-        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
-        .withEmail(create.getEmail().toLowerCase())
+        .withName(create.getName().toLowerCase(Locale.ROOT))
+        .withFullyQualifiedName(
+            EntityInterfaceUtil.quoteName(create.getName().toLowerCase(Locale.ROOT)))
+        .withEmail(create.getEmail().toLowerCase(Locale.ROOT))
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())
         .withIsBot(create.getIsBot())
@@ -812,7 +823,7 @@ public final class UserUtil {
         .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
         .withExtension(create.getExtension())
-        .withUpdatedBy(updatedBy.toLowerCase())
+        .withUpdatedBy(updatedBy.toLowerCase(Locale.ROOT))
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
@@ -836,9 +847,8 @@ public final class UserUtil {
       return false;
     }
 
-    String normalizedEmail = email.toLowerCase();
     return adminEmails.stream()
-        .anyMatch(adminEmail -> adminEmail.equalsIgnoreCase(normalizedEmail));
+        .anyMatch(adminEmail -> SecurityUtil.sameIdentifier(adminEmail, email));
   }
 
   /**
@@ -878,7 +888,8 @@ public final class UserUtil {
     if (nullOrEmpty(botDomain)) {
       throw new IllegalArgumentException("Bot domain cannot be null or empty");
     }
-    return String.format("%s@%s", botName.toLowerCase(), botDomain.toLowerCase());
+    return String.format(
+        "%s@%s", botName.toLowerCase(Locale.ROOT), botDomain.toLowerCase(Locale.ROOT));
   }
 
   /**

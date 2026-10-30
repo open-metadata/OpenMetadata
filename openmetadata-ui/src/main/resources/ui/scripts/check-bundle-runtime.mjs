@@ -26,8 +26,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Exports that are `undefined` in a healthy build, per chunk (name without
-// hash). antd's bundle exports one binding that is never assigned.
-const ALLOWED_UNDEFINED_EXPORTS = { 'vendor-antd': 1 };
+// hash).
+const ALLOWED_UNDEFINED_EXPORTS = {};
 const CONCURRENCY = 8;
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));

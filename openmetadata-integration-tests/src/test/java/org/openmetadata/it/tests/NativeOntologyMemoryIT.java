@@ -5,11 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -75,7 +80,7 @@ class NativeOntologyMemoryIT extends BaseOntologyApprovalIT {
             .withDomain(List.of(customer.getIri()))
             .withRange(List.of(party.getIri()))
             .withVersion(0.1);
-    final var axiom = axiom(ontology, customer, party);
+    final var axiom = axiom(ontology, OntologyAxiomType.SUBCLASS_OF, customer, party);
     final var operations =
         List.of(
             upsert(customer),
@@ -127,9 +132,9 @@ class NativeOntologyMemoryIT extends BaseOntologyApprovalIT {
                 upsert(first),
                 upsert(second),
                 operation(OntologyChangeOperationType.UPSERT_AXIOM)
-                    .withAxiom(axiom(ontology, first, second)),
+                    .withAxiom(axiom(ontology, OntologyAxiomType.SUBCLASS_OF, first, second)),
                 operation(OntologyChangeOperationType.UPSERT_AXIOM)
-                    .withAxiom(axiom(ontology, second, first))));
+                    .withAxiom(axiom(ontology, OntologyAxiomType.SUBCLASS_OF, second, first))));
     final long revision =
         SdkClients.adminClient().ontologies().state(ontology.getId()).getWorkingRevision();
     assertThrows(OpenMetadataException.class, () -> apply(draft));
@@ -140,6 +145,108 @@ class NativeOntologyMemoryIT extends BaseOntologyApprovalIT {
     assertEquals(
         OntologyChangeSetState.DRAFT,
         SdkClients.adminClient().ontologyChangeSets().get(draft.getId().toString()).getState());
+  }
+
+  @Test
+  void oneChangeSetCreatesAClassWithItsAxiomsAndProperties(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    final var payment = declareClass(ontology, "Payment", URI.create("urn:Payment"));
+    final var transaction = declareClass(ontology, "Transaction", URI.create("urn:Transaction"));
+    final var moneyTransfer =
+        declareClass(ontology, "MoneyTransfer", URI.create("urn:MoneyTransfer"));
+    final var refund = declareClass(ontology, "Refund", URI.create("urn:Refund"));
+    final var source = URI.create("https://standards.example.org/payments#transfer");
+    final var fundsTransfer =
+        concept(ontology, "FundsTransfer").withAbstract(true).withDefinitionSource(source);
+    final var axioms =
+        List.of(
+            axiom(ontology, OntologyAxiomType.SUBCLASS_OF, fundsTransfer, payment, transaction),
+            axiom(ontology, OntologyAxiomType.EQUIVALENT_CLASS, fundsTransfer, moneyTransfer),
+            axiom(ontology, OntologyAxiomType.DISJOINT_WITH, fundsTransfer, refund));
+    final var properties =
+        Stream.of("amount", "payer", "payee")
+            .map(name -> property(ontology, name, fundsTransfer))
+            .toList();
+    final var operations = new ArrayList<OntologyChangeOperation>();
+    operations.add(upsert(fundsTransfer));
+    axioms.forEach(
+        axiom ->
+            operations.add(operation(OntologyChangeOperationType.UPSERT_AXIOM).withAxiom(axiom)));
+    properties.forEach(
+        property ->
+            operations.add(
+                operation(OntologyChangeOperationType.UPSERT_PROPERTY).withProperty(property)));
+    final var client = SdkClients.adminClient();
+    final var draft = draft(ns, ontology, operations);
+    final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
+
+    final var applied = apply(draft);
+
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+    assertEquals(7, applied.getApplicationResult().getOperationsApplied());
+    assertEquals(
+        revision + operations.size(),
+        client.ontologies().state(ontology.getId()).getWorkingRevision());
+    final var created = client.ontologyConcepts().get(fundsTransfer.getId().toString());
+    assertEquals(Boolean.TRUE, created.getAbstract());
+    assertEquals(source, created.getDefinitionSource());
+    assertEquals(
+        List.of(
+            List.of(payment.getIri(), transaction.getIri()),
+            List.of(moneyTransfer.getIri()),
+            List.of(refund.getIri())),
+        axioms.stream()
+            .map(axiom -> client.ontologyAxioms().get(axiom.getId().toString()))
+            .map(
+                axiom ->
+                    axiom.getExpressions().stream().map(OntologyExpression::getClassIri).toList())
+            .toList());
+    for (final var property : properties) {
+      assertEquals(
+          List.of(fundsTransfer.getIri()),
+          client.ontologyProperties().get(property.getId().toString()).getDomain());
+    }
+  }
+
+  @Test
+  void aClassChangeSetWhoseLastOperationFailsLeavesNothingBehind(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    final var payment = declareClass(ontology, "Payment", URI.create("urn:Payment"));
+    final var fundsTransfer = concept(ontology, "FundsTransfer").withAbstract(true);
+    final var subclass = axiom(ontology, OntologyAxiomType.SUBCLASS_OF, fundsTransfer, payment);
+    final var amount = property(ontology, "amount", fundsTransfer);
+    final var beneficiary =
+        property(ontology, "beneficiary", fundsTransfer)
+            .withRange(List.of(URI.create("urn:UnknownParty")));
+    final var draft =
+        draft(
+            ns,
+            ontology,
+            List.of(
+                upsert(fundsTransfer),
+                operation(OntologyChangeOperationType.UPSERT_AXIOM).withAxiom(subclass),
+                operation(OntologyChangeOperationType.UPSERT_PROPERTY).withProperty(amount),
+                operation(OntologyChangeOperationType.UPSERT_PROPERTY).withProperty(beneficiary)));
+    final var client = SdkClients.adminClient();
+    final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
+
+    assertEquals(
+        400, assertThrows(OpenMetadataException.class, () -> apply(draft)).getStatusCode());
+
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertEquals(
+        OntologyChangeSetState.DRAFT,
+        client.ontologyChangeSets().get(draft.getId().toString()).getState());
+    final List<Executable> reads =
+        List.of(
+            () -> client.ontologyConcepts().get(fundsTransfer.getId().toString()),
+            () -> client.ontologyAxioms().get(subclass.getId().toString()),
+            () -> client.ontologyProperties().get(amount.getId().toString()),
+            () -> client.ontologyProperties().get(beneficiary.getId().toString()));
+    for (final var read : reads) {
+      assertEquals(404, assertThrows(OpenMetadataException.class, read).getStatusCode());
+    }
+    assertEquals(2, capture(ontology).getMemberCount());
   }
 
   @Test
@@ -178,23 +285,44 @@ class NativeOntologyMemoryIT extends BaseOntologyApprovalIT {
   }
 
   private static OntologyAxiom axiom(
-      Ontology ontology, OntologyConcept child, OntologyConcept parent) {
+      Ontology ontology,
+      OntologyAxiomType type,
+      OntologyConcept subject,
+      OntologyConcept... targets) {
+    final String name =
+        subject.getName()
+            + type.value()
+            + Arrays.stream(targets).map(OntologyConcept::getName).collect(Collectors.joining());
     return new OntologyAxiom()
         .withId(UUID.randomUUID())
-        .withName(child.getName() + "Is" + parent.getName())
-        .withFullyQualifiedName(
-            ontology.getFullyQualifiedName() + "." + child.getName() + "Is" + parent.getName())
-        .withDisplayName("Subclass")
-        .withDescription("A named subclass assertion")
+        .withName(name)
+        .withFullyQualifiedName(ontology.getFullyQualifiedName() + "." + name)
+        .withDisplayName("Class axiom")
+        .withDescription("A named class axiom")
         .withProvenance(RelationProvenance.MANUAL)
         .withOntology(ontology.getEntityReference())
-        .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
-        .withSubjectIri(child.getIri())
+        .withAxiomType(type)
+        .withSubjectIri(subject.getIri())
         .withExpressions(
-            List.of(
-                new OntologyExpression()
-                    .withKind(OntologyExpressionKind.NAMED_CLASS)
-                    .withClassIri(parent.getIri())))
+            Arrays.stream(targets)
+                .map(
+                    target ->
+                        new OntologyExpression()
+                            .withKind(OntologyExpressionKind.NAMED_CLASS)
+                            .withClassIri(target.getIri()))
+                .toList())
+        .withVersion(0.1);
+  }
+
+  private static OntologyProperty property(Ontology ontology, String name, OntologyConcept domain) {
+    return new OntologyProperty()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(ontology.getFullyQualifiedName() + "." + name)
+        .withOntology(ontology.getEntityReference())
+        .withIri(URI.create("urn:" + name))
+        .withKind(OntologyPropertyKind.OBJECT)
+        .withDomain(List.of(domain.getIri()))
         .withVersion(0.1);
   }
 
