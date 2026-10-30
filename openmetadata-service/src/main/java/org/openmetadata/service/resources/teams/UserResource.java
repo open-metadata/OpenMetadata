@@ -903,6 +903,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     PutResponse<User> response =
         repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
+    withoutPersonsAuthenticationMechanism(response.getEntity());
     return response.toResponse();
   }
 
@@ -1196,7 +1197,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         }
       }
     }
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return withPersonsAuthenticationMechanismRedacted(
+        patchInternal(uriInfo, securityContext, id, patch));
   }
 
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
@@ -1543,7 +1545,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return withPersonsAuthenticationMechanismRedacted(
+        deleteByName(uriInfo, securityContext, name, false, hardDelete));
   }
 
   @PUT
@@ -1565,7 +1568,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return withPersonsAuthenticationMechanismRedacted(
+        restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   @GET
@@ -2389,8 +2393,25 @@ public class UserResource extends EntityResource<User, UserRepository> {
             "Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
   }
 
+  private Response withPersonsAuthenticationMechanismRedacted(Response response) {
+    return withRedactedEntity(response, UserResource::withoutPersonsAuthenticationMechanism);
+  }
+
+  /**
+   * A person's mechanism holds their password hash, which no response needs. A bot's is left as it
+   * is, for the callers that handle bot tokens to decide on.
+   * ADR:2026-10-30-a-users-authentication-mechanism-never-leaves-in-a-response-or-change-event
+   */
+  private static User withoutPersonsAuthenticationMechanism(User user) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      user.setAuthenticationMechanism(null);
+    }
+    return user;
+  }
+
   private void decryptOrNullify(SecurityContext securityContext, User user) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    withoutPersonsAuthenticationMechanism(user);
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
         authorizer.authorize(

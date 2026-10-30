@@ -37,7 +37,6 @@ import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
-import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.AuthenticationErrorResponse;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
 import com.nimbusds.openid.connect.sdk.AuthenticationResponse;
@@ -152,6 +151,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final String LOGOUT_PATH = "/logout";
 
   static final String SESSION_REVOKED_DURING_REFRESH = "Session revoked during refresh";
+  static final String AUTHORIZATION_CODE_REQUIRED = "Authorization code is required";
 
   /** The browser renews a minute before its token expires; a shorter-lived one would loop. */
   private static final long BROWSER_RENEWAL_MARGIN_MILLIS = TimeUnit.SECONDS.toMillis(60);
@@ -612,15 +612,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Optional state validation
       validateStateIfRequired(pendingSession, resp, successResponse);
 
-      // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
-
-      // The identity below must come from the ID token the back-channel exchange returns, and that
-      // exchange only runs when the callback carries an authorization code. Reject a callback that
-      // brings only a front-channel token: it never passed through the provider's token endpoint.
       requireAuthorizationCode(pendingSession, credentials);
-
-      // Validations
       validateAndSendTokenRequest(pendingSession, credentials, computedCallbackUrl);
 
       // pac4j 6 re-parses the serialized id token on every toIdToken() call; parse once and reuse.
@@ -921,52 +914,36 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new HashMap<>(authParams);
   }
 
+  /**
+   * A callback carries an authorization code for every configured response type: the client asks to
+   * be redirected back in query mode, where providers return one.
+   * ADR:2026-10-30-confidential-oidc-callback-takes-only-the-code
+   */
   private void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
-    if (expectsAuthorizationCode() && credentials.getCode() == null) {
+    if (credentials.getCode() == null) {
       LOG.warn(
           "Rejecting OIDC callback without an authorization code for session {}",
           SessionService.truncateId(session.getId()));
-      throw new IllegalArgumentException("Authorization code is required");
+      throw new IllegalArgumentException(AUTHORIZATION_CODE_REQUIRED);
     }
-  }
-
-  private boolean expectsAuthorizationCode() {
-    // The default and documented confidential mode is the authorization-code flow. Per OIDC, any
-    // response_type that includes "code" (plain or hybrid) returns an authorization code, so the
-    // callback must carry one. A response_type configured for pure implicit delivery is not a code
-    // flow and keeps its existing handling.
-    String responseType = client.getConfiguration().getResponseType();
-    if (nullOrEmpty(responseType)) {
-      return true;
-    }
-    for (String part : responseType.trim().split("\\s+")) {
-      if ("code".equalsIgnoreCase(part)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private void validateAndSendTokenRequest(
       UserSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
       throws URISyntaxException {
-    if (oidcCredentials.getCode() != null) {
-      LOG.debug(
-          "Initiating Token Request - Session: {}, redirect_uri: {}",
-          session.getId(),
-          computedCallbackUrl);
-      CodeVerifier verifier =
-          nullOrEmpty(session.getPkceVerifier())
-              ? null
-              : new CodeVerifier(session.getPkceVerifier());
-      TokenRequest request =
-          createTokenRequest(
-              client.getConfiguration(),
-              clientAuthentication,
-              new AuthorizationCodeGrant(
-                  oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
-      executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
-    }
+    LOG.debug(
+        "Initiating Token Request - Session: {}, redirect_uri: {}",
+        session.getId(),
+        computedCallbackUrl);
+    CodeVerifier verifier =
+        nullOrEmpty(session.getPkceVerifier()) ? null : new CodeVerifier(session.getPkceVerifier());
+    TokenRequest request =
+        createTokenRequest(
+            client.getConfiguration(),
+            clientAuthentication,
+            new AuthorizationCodeGrant(
+                oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
+    executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
   }
 
   private void validateStateIfRequired(
@@ -1010,27 +987,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return configuration.getOpMetadataResolver().load();
   }
 
+  /**
+   * Keeps only the authorization code from the callback redirect; the ID token is the one the token
+   * endpoint returns for that code. ADR:2026-10-30-confidential-oidc-callback-takes-only-the-code
+   */
   static OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
     OidcCredentials credentials = new OidcCredentials();
-    // get authorization code
     AuthorizationCode code = successResponse.getAuthorizationCode();
     if (code != null) {
       // pac4j 6 stores the code as a String; toAuthorizationCode() reconstructs the nimbus type.
       credentials.setCode(code.getValue());
     }
-    // get ID token
-    JWT idToken = successResponse.getIDToken();
-    if (idToken != null) {
-      // pac4j 6 stores the id token as a serialized String; toIdToken() re-parses it to a JWT.
-      credentials.setIdToken(idToken.serialize());
-    }
-    // get access token
-    AccessToken accessToken = successResponse.getAccessToken();
-    if (accessToken != null) {
-      // pac4j 6 setAccessToken takes a Map; setAccessTokenObject keeps the nimbus AccessToken.
-      credentials.setAccessTokenObject(accessToken);
-    }
-
     return credentials;
   }
 
