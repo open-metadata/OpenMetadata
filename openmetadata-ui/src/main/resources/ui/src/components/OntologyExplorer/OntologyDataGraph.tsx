@@ -323,6 +323,7 @@ function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
         const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
 
         return (
+          // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
           <Button
             noTextPadding
             aria-describedby={
@@ -1417,33 +1418,33 @@ const OntologyDataGraph = ({
     }
 
     return (
-      <Box
-        className="tw:border-t tw:border-secondary tw:px-5 tw:py-2.5"
-        gap={4}>
-        {hiddenAssetCount > 0 || term.isLoadingAssets ? (
-          <Button
-            color="link-color"
-            data-testid={`ontology-load-more-assets-${term.id}`}
-            iconLeading={ChevronDown}
-            isDisabled={term.isLoadingAssets}
-            size="sm"
-            onClick={() => toggleCard(term, unloadedAssetCount)}>
-            {term.isLoadingAssets
-              ? t('label.loading')
-              : t('label.load-more-count', { count: hiddenAssetCount })}
-          </Button>
-        ) : null}
-        {canShowLess ? (
-          <Button
-            color="link-color"
-            data-testid={`ontology-show-less-assets-${term.id}`}
-            iconLeading={ChevronUp}
-            size="sm"
-            onClick={() => showLess(term)}>
-            {t('label.show-less')}
-          </Button>
-        ) : null}
-      </Box>
+      <div className="tw:border-t tw:border-secondary tw:px-5 tw:py-2.5">
+        <Box gap={4}>
+          {hiddenAssetCount > 0 || term.isLoadingAssets ? (
+            <Button
+              color="link-color"
+              data-testid={`ontology-load-more-assets-${term.id}`}
+              iconLeading={ChevronDown}
+              isDisabled={term.isLoadingAssets}
+              size="sm"
+              onClick={() => toggleCard(term, unloadedAssetCount)}>
+              {term.isLoadingAssets
+                ? t('label.loading')
+                : t('label.load-more-count', { count: hiddenAssetCount })}
+            </Button>
+          ) : null}
+          {canShowLess ? (
+            <Button
+              color="link-color"
+              data-testid={`ontology-show-less-assets-${term.id}`}
+              iconLeading={ChevronUp}
+              size="sm"
+              onClick={() => showLess(term)}>
+              {t('label.show-less')}
+            </Button>
+          ) : null}
+        </Box>
+      </div>
     );
   };
 
@@ -1474,6 +1475,7 @@ const OntologyDataGraph = ({
         onPointerDown={(event) => handleCardPointerDown(event, term)}
         onPointerMove={handleCardPointerMove}
         onPointerUp={handleCardPointerUp}>
+        {/* ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button */}
         <Button
           noTextPadding
           className={classNames(

@@ -72,6 +72,7 @@ export const DataEdgeLegend = ({ entries }: DataEdgeLegendProps) =>
                   y2="1"
                 />
               </svg>
+              {/* ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button */}
               <Typography className="tw:text-secondary" size="text-xs">
                 {label}
               </Typography>
@@ -97,7 +98,7 @@ export const DataLayerHeading = ({
     : t('message.data-layer-summary', { assetCount, termCount: conceptCount });
   const lines = (
     <>
-      <Typography className="tw:text-primary" size="text-sm" weight="medium">
+      <Typography size="text-sm" weight="medium">
         {t('label.data-layer')}
       </Typography>
       <Typography color="secondary" size="text-xs">
