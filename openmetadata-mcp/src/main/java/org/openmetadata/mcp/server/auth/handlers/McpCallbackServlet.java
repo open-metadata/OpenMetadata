@@ -486,9 +486,9 @@ public class McpCallbackServlet extends HttpServlet {
                 + errorBody);
       }
 
-      OidcCredentials credentials = (OidcCredentials) session.getAttribute(OIDC_CREDENTIAL_PROFILE);
+      OidcCredentials credentials = (OidcCredentials) request.getAttribute(OIDC_CREDENTIAL_PROFILE);
       if (credentials == null || credentials.getIdToken() == null) {
-        throw new IllegalStateException("No OIDC credentials found in session after SSO callback");
+        throw new IllegalStateException("No OIDC credentials found on request after SSO callback");
       }
 
       // pac4j 6 stores the id token as a serialized String; use it directly for validation.
