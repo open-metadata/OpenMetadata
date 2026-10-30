@@ -19,7 +19,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Reorder } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
@@ -39,6 +38,7 @@ import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
   ROUTES,
 } from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
@@ -55,6 +55,7 @@ import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Include } from '../../../../../../generated/type/include';
+import { Paging } from '../../../../../../generated/type/paging';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -181,6 +182,16 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   // The team menu lives in the page header; the delete popover anchors to it.
   const teamMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  // Sub-team paging is local, not `usePaging`: that hook keeps its page in URL
+  // params the Users tab already uses, and most team types show both tabs.
+  const [teamsPage, setTeamsPage] = useState(INITIAL_PAGING_VALUE);
+  const [teamsPageSize, setTeamsPageSize] = useState(PAGE_SIZE);
+  const [teamsPaging, setTeamsPaging] = useState<Paging>({ total: 0 });
+  // Kept apart from `teamsPaging`, whose total labels the tab with every sub-team.
+  const [teamsSearchTotal, setTeamsSearchTotal] = useState(0);
+  // Bumped on each sub-team fetch or search, so a slow response for an earlier
+  // page or term can't overwrite the rows of the request that followed it.
+  const latestChildTeamsFetchIdRef = useRef(0);
   const [usersSearchTerm, setUsersSearchTerm] = useState('');
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [movedTeam, setMovedTeam] = useState<MovedTeam>();
@@ -321,30 +332,95 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
   }, []);
 
-  const fetchChildTeams = useCallback(async () => {
-    if (!team?.fullyQualifiedName) {
-      return;
-    }
-    setIsChildTeamsLoading(true);
-    void fetchTeamAssetCounts();
-    try {
-      const { data } = await getTeams({
-        parentTeam: team.fullyQualifiedName,
-        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
-        fields: [
-          TabSpecificField.USER_COUNT,
-          TabSpecificField.CHILDREN_COUNT,
-          TabSpecificField.PARENTS,
-        ],
-      });
-      setChildTeams(withTeamChildrenPlaceholder(data));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setChildTeams([]);
-    } finally {
-      setIsChildTeamsLoading(false);
-    }
-  }, [team?.fullyQualifiedName, showDeletedTeam, fetchTeamAssetCounts]);
+  const fetchChildTeams = useCallback(
+    async (cursor?: { after?: string; before?: string }) => {
+      if (!team?.fullyQualifiedName) {
+        return;
+      }
+      const fetchId = ++latestChildTeamsFetchIdRef.current;
+      setIsChildTeamsLoading(true);
+      void fetchTeamAssetCounts();
+      try {
+        const { data, paging } = await getTeams({
+          parentTeam: team.fullyQualifiedName,
+          include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
+          fields: [
+            TabSpecificField.USER_COUNT,
+            TabSpecificField.CHILDREN_COUNT,
+            TabSpecificField.PARENTS,
+          ],
+          limit: teamsPageSize,
+          ...cursor,
+        });
+        if (fetchId !== latestChildTeamsFetchIdRef.current) {
+          return;
+        }
+        setChildTeams(withTeamChildrenPlaceholder(data));
+        setTeamsPaging(paging);
+      } catch (error) {
+        if (fetchId === latestChildTeamsFetchIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setChildTeams([]);
+        }
+      } finally {
+        if (fetchId === latestChildTeamsFetchIdRef.current) {
+          setIsChildTeamsLoading(false);
+        }
+      }
+    },
+    [
+      team?.fullyQualifiedName,
+      showDeletedTeam,
+      fetchTeamAssetCounts,
+      teamsPageSize,
+    ]
+  );
+
+  // Whole-list sub-team search on the team index, as the classic team page does:
+  // `/teams` has no name filter, so filtering one cursor page would miss
+  // sub-teams on other pages. `parents.id` keeps it to this team's direct
+  // children; number paging lets pageNumber drive the result page.
+  const searchChildTeams = useCallback(
+    async (query: string, page: number = INITIAL_PAGING_VALUE) => {
+      if (!team?.id) {
+        return;
+      }
+      const fetchId = ++latestChildTeamsFetchIdRef.current;
+      setIsChildTeamsLoading(true);
+      try {
+        const response = await searchQuery({
+          query: `${WILD_CARD_CHAR}${query}${WILD_CARD_CHAR}`,
+          pageNumber: page,
+          pageSize: teamsPageSize,
+          searchIndex: SearchIndex.TEAM,
+          includeDeleted: showDeletedTeam,
+          queryFilter: {
+            query: { bool: { must: [{ term: { 'parents.id': team.id } }] } },
+          },
+        });
+        if (fetchId !== latestChildTeamsFetchIdRef.current) {
+          return;
+        }
+        setChildTeams(
+          withTeamChildrenPlaceholder(
+            response.hits.hits.map((hit) => hit._source as Team)
+          )
+        );
+        setTeamsSearchTotal(response.hits.total.value);
+      } catch (error) {
+        if (fetchId === latestChildTeamsFetchIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setChildTeams([]);
+          setTeamsSearchTotal(0);
+        }
+      } finally {
+        if (fetchId === latestChildTeamsFetchIdRef.current) {
+          setIsChildTeamsLoading(false);
+        }
+      }
+    },
+    [team?.id, showDeletedTeam, teamsPageSize]
+  );
 
   // Lazy-load a row's sub-teams on first expand and graft them into the tree,
   // so the hierarchy is revealed without fetching every level upfront.
@@ -524,13 +600,18 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     []
   );
 
-  // Keyed on the stable team fqn + deleted toggle; the team object and the fetch
-  // callbacks change identity on every refresh, so they're read through refs here
-  // to avoid over-firing.
+  // Keyed on the stable team fqn + deleted toggle + page size; the team object and
+  // the fetch callbacks change identity on every refresh, so they're read through
+  // refs here to avoid over-firing. Restarts from the first page.
   const refetchChildTeams = useRef<() => void>(() => undefined);
   refetchChildTeams.current = () => {
     if (team) {
-      void fetchChildTeams();
+      setTeamsPage(INITIAL_PAGING_VALUE);
+      if (searchTerm) {
+        void searchChildTeams(searchTerm);
+      } else {
+        void fetchChildTeams();
+      }
     }
   };
 
@@ -547,7 +628,49 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   useEffect(() => {
     refetchChildTeams.current();
-  }, [team?.fullyQualifiedName, showDeletedTeam]);
+  }, [team?.fullyQualifiedName, showDeletedTeam, teamsPageSize]);
+
+  // The search box debounces, so each settled term is one backend search; a
+  // cleared term goes back to the first cursor page.
+  const handleTeamsSearch = useCallback(
+    (term: string) => {
+      setSearchTerm(term);
+      setTeamsPage(INITIAL_PAGING_VALUE);
+      if (term) {
+        void searchChildTeams(term);
+      } else {
+        void fetchChildTeams();
+      }
+    },
+    [searchChildTeams, fetchChildTeams]
+  );
+
+  const handleTeamsPageChange = (newPage: number) => {
+    if (newPage === teamsPage) {
+      return;
+    }
+
+    // A search pages by number, so any page can be jumped to.
+    if (searchTerm) {
+      setTeamsPage(newPage);
+      void searchChildTeams(searchTerm, newPage);
+
+      return;
+    }
+
+    // ponytail: cursor paging only steps ±1, as on the Users tab; the pager is
+    // minimal while browsing, so no jump is offered.
+    const cursorType =
+      newPage > teamsPage ? CursorType.AFTER : CursorType.BEFORE;
+    const cursor = teamsPaging[cursorType];
+
+    if (Math.abs(newPage - teamsPage) !== 1 || !cursor) {
+      return;
+    }
+
+    setTeamsPage(newPage);
+    void fetchChildTeams({ [cursorType]: cursor });
+  };
 
   useEffect(() => {
     refetchTeamUsers.current();
@@ -827,13 +950,13 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- patch needs the fetched id + diff
       await patchTeamDetail(data.id, patch);
       showSuccessToast(t('message.team-moved-success'));
-      void fetchChildTeams();
+      refetchChildTeams.current();
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.team-moved-error'));
     } finally {
       setMovedTeam(undefined);
     }
-  }, [movedTeam, team, t, fetchChildTeams]);
+  }, [movedTeam, team, t]);
 
   // DnD hooks for the team hierarchy table — index nested teams too so dragging
   // a lazily-loaded sub-team resolves its record.
@@ -1038,19 +1161,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
   }, [requestedTab, allTabKeys]);
 
-  const filteredChildTeams = useMemo(() => {
-    if (!searchTerm) {
-      return childTeams;
-    }
-    const lower = searchTerm.toLowerCase();
-
-    return childTeams.filter(
-      (ct) =>
-        ct.name.toLowerCase().includes(lower) ||
-        getEntityName(ct).toLowerCase().includes(lower)
-    );
-  }, [childTeams, searchTerm]);
-
   // The users rows are now sourced entirely from the backend: getUsers for the
   // paginated list and searchQuery (whole-team) when a search term is active,
   // so no client-side filter is applied here — both paths write `teamUsers`.
@@ -1225,18 +1335,23 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             childTeamExpandable={childTeamExpandable}
             dragAndDropHooks={dragAndDropHooks}
             draggedTeamRef={draggedTeamRef}
-            filteredChildTeams={filteredChildTeams}
+            filteredChildTeams={childTeams}
             isChildTeamsLoading={isChildTeamsLoading}
             isTableHovered={isTableHovered}
             movedTeam={movedTeam}
             searchTerm={searchTerm}
             showDeletedTeam={showDeletedTeam}
             team={team}
+            teamsPage={teamsPage}
+            teamsPageSize={teamsPageSize}
+            teamsTotal={searchTerm ? teamsSearchTotal : teamsPaging.total}
             onMoveConfirm={handleMoveConfirm}
             onNavigate={onNavigate}
-            onSearchTermChange={setSearchTerm}
+            onSearchTermChange={handleTeamsSearch}
             onSetMovedTeam={setMovedTeam}
             onShowDeletedTeamChange={setShowDeletedTeam}
+            onTeamsPageChange={handleTeamsPageChange}
+            onTeamsPageSizeChange={setTeamsPageSize}
           />
         );
       case 'users':
@@ -1328,20 +1443,13 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   };
 
   return (
+    // The whole detail scrolls as one page, so a page of sub-teams shows in full
+    // instead of being squeezed into the space under the header.
     <Box
-      className="tw:flex-1 tw:h-full tw:min-h-0 tw:overflow-hidden"
+      className="tw:flex-1 tw:h-full tw:min-h-0 tw:overflow-y-auto"
       data-testid="team-detail"
       direction="col">
-      {/* Pinned header: info widgets + description. Capped at half the height and
-          scrollable so a long description can't push the tab table to zero
-          height; its cards never shrink (they would clip instead of scroll), and
-          the cap lifts while the editor is open so Save/Cancel stay in view. */}
-      <Box
-        className={classNames(
-          'tw:shrink-0 tw:overflow-y-auto tw:[&>*]:shrink-0',
-          !isDescEditing && 'tw:max-h-[50%]'
-        )}
-        direction="col">
+      <Box className="tw:shrink-0" direction="col">
         {/* Info widget section */}
         <MembersTeamInfoWidgets
           canEdit={canEditAll && !team.deleted}
@@ -1363,69 +1471,59 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       </Box>
 
       {/* Tabs */}
-      <Box className="tw:px-8 tw:flex-1 tw:min-h-0" direction="col">
-        {/* The card shrinks to the space left and scrolls inside itself, so the
-            tabs, a table's toolbar and its header stay put while the rows scroll. */}
-        <Box className="tw:flex-1 tw:min-h-0 tw:w-full tw:py-4" direction="col">
-          <TableCard.Root
-            className="tw:flex tw:flex-col tw:rounded-xl tw:shadow-none"
-            size="compact"
-            variant="muted">
-            <Tabs
-              selectedKey={activeTab}
-              onSelectionChange={(key: Key) => {
-                setActiveTab(String(key));
-                // Record the tab in the hash, so a later link to another tab of
-                // this team changes the hash and is applied, as is Back/Forward.
-                updateParams({ activeTab: String(key) });
-              }}>
-              {/* -mb-px lays the tab underline over the row border so the divider
+      <Box className="tw:px-8 tw:py-4" direction="col">
+        <TableCard.Root
+          className="tw:rounded-xl tw:shadow-none"
+          size="compact"
+          variant="muted">
+          <Tabs
+            selectedKey={activeTab}
+            onSelectionChange={(key: Key) => {
+              setActiveTab(String(key));
+              // Record the tab in the hash, so a later link to another tab of
+              // this team changes the hash and is applied, as is Back/Forward.
+              updateParams({ activeTab: String(key) });
+            }}>
+            {/* -mb-px lays the tab underline over the row border so the divider
                   also runs under the actions. */}
-              <Box
-                align="center"
-                className="tw:border-b tw:border-secondary tw:pr-4"
-                direction="row"
-                gap={4}
-                justify="between">
-                <Tabs.List
-                  className="tw:-mb-px tw:px-4 tw:pt-3"
-                  size="sm"
-                  type="underline">
-                  {allTabKeys.map((tab) => {
-                    const plugin = pluginTabs.find((item) => item.key === tab);
+            <Box
+              align="center"
+              className="tw:border-b tw:border-secondary tw:pr-4"
+              direction="row"
+              gap={4}
+              justify="between">
+              <Tabs.List
+                className="tw:-mb-px tw:px-4 tw:pt-3"
+                size="sm"
+                type="underline">
+                {allTabKeys.map((tab) => {
+                  const plugin = pluginTabs.find((item) => item.key === tab);
 
-                    return (
-                      <Tabs.Item id={tab} key={tab}>
-                        {plugin
-                          ? plugin.label
-                          : getTabLabel(
-                              tab as TeamTab,
-                              t,
-                              team,
-                              childTeams.length,
-                              assetCount
-                            )}
-                      </Tabs.Item>
-                    );
-                  })}
-                </Tabs.List>
-              </Box>
-            </Tabs>
-            {TABLE_TABS.has(activeTab) ? (
-              renderActiveTab()
-            ) : (
-              // A plain block, NOT a `Box`: as flex items the tab content
-              // shrinks to the scroller's height instead of overflowing it, so
-              // `overflow-auto` never has anything to scroll (measured:
-              // scrollHeight stays equal to clientHeight).
-              <div className="tw:min-h-0 tw:overflow-y-auto">
-                <Box className="tw:p-4" direction="col">
-                  {renderActiveTab()}
-                </Box>
-              </div>
-            )}
-          </TableCard.Root>
-        </Box>
+                  return (
+                    <Tabs.Item id={tab} key={tab}>
+                      {plugin
+                        ? plugin.label
+                        : getTabLabel(
+                            tab as TeamTab,
+                            t,
+                            team,
+                            teamsPaging.total,
+                            assetCount
+                          )}
+                    </Tabs.Item>
+                  );
+                })}
+              </Tabs.List>
+            </Box>
+          </Tabs>
+          {TABLE_TABS.has(activeTab) ? (
+            renderActiveTab()
+          ) : (
+            <Box className="tw:p-4" direction="col">
+              {renderActiveTab()}
+            </Box>
+          )}
+        </TableCard.Root>
       </Box>
 
       <DeleteEntityPopover

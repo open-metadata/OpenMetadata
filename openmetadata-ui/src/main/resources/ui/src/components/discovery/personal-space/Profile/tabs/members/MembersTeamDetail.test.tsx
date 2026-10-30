@@ -15,7 +15,9 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import React, { ReactElement, ReactNode, useCallback, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../../../enums/search.enum';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
+import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
   getTeams,
   getTeamsAssetCounts,
@@ -108,6 +110,13 @@ jest.mock('../../../../../../rest/userAPI', () => ({
   getUsers: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
 }));
 
+jest.mock('../../../../../../rest/searchAPI', () => ({
+  ...jest.requireActual('../../../../../../rest/searchAPI'),
+  searchQuery: jest
+    .fn()
+    .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
+}));
+
 jest.mock('../../../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: { id: 'me', teams: [] } }),
 }));
@@ -159,10 +168,27 @@ jest.mock('../../../../../common/Loader/Loader', () => () => (
   <div data-testid="loader" />
 ));
 
+// Renders the table's search box so tab searches can be typed into.
 jest.mock('../../../../../common/Table/TableV2', () =>
-  jest.fn(({ 'data-testid': testId }: { 'data-testid'?: string }) => (
-    <div data-testid={testId ?? 'table'} />
-  ))
+  jest.fn(
+    ({
+      'data-testid': testId,
+      searchProps,
+    }: {
+      'data-testid'?: string;
+      searchProps?: { onSearch?: (value: string) => void };
+    }) => (
+      <div data-testid={testId ?? 'table'}>
+        {searchProps?.onSearch && (
+          <input
+            aria-label={`${testId}-search`}
+            data-testid={`${testId}-search`}
+            onChange={(event) => searchProps.onSearch?.(event.target.value)}
+          />
+        )}
+      </div>
+    )
+  )
 );
 
 // Stands in for the shared list: one button saves a changed extension and
@@ -468,26 +494,154 @@ describe('MembersTeamDetail', () => {
     ).toBeInTheDocument();
   });
 
-  it('gives a non-table tab body a scrollable block container', async () => {
+  it('scrolls the team detail as one page instead of squeezing the tab card', async () => {
     renderWithRouter(
       <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
     );
 
-    fireEvent.click(
-      await screen.findByRole('tab', { name: /custom-property/ })
-    );
+    const detail = await screen.findByTestId('team-detail');
 
-    const body = (await screen.findByTestId('save-extension')).closest(
-      '.tw\\:overflow-y-auto'
-    );
+    // A scroller inside the detail bounded the tab card to the space under
+    // the header, showing a page of sub-teams a few rows at a time.
+    expect(detail).toHaveClass('tw:overflow-y-auto');
+    expect(detail.querySelector('.tw\\:overflow-y-auto')).toBeNull();
+  });
 
-    // Measured in Chromium: as a flex container the tab content becomes a flex
-    // item and shrinks to the container height, so scrollHeight never exceeds
-    // clientHeight and `overflow-y-auto` has nothing to scroll. It must stay a
-    // block, and must be able to shrink inside the card (`min-h-0`).
-    expect(body).not.toHaveClass('tw:flex');
-    expect(body).not.toHaveClass('tw:flex-col');
-    expect(body).toHaveClass('tw:min-h-0');
+  describe('sub-team paging', () => {
+    const subTeams = (count: number, prefix: string) =>
+      Array.from({ length: count }, (_, index) => ({
+        id: `${prefix}-${index}`,
+        name: `${prefix}-${index}`,
+        fullyQualifiedName: `${prefix}-${index}`,
+      }));
+
+    const firstPage = {
+      data: subTeams(10, 'team'),
+      paging: { after: 'cursor-2', total: 25 },
+    };
+
+    const latestSubTeamRows = () =>
+      (Table as unknown as jest.Mock).mock.calls
+        .filter(([props]) => props['data-testid'] === 'sub-teams-table')
+        .pop()?.[0].dataSource as { name: string }[];
+
+    it('loads ten sub-teams at a time and labels the tab with the full count', async () => {
+      (getTeams as jest.Mock).mockResolvedValue(firstPage);
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      await waitFor(() =>
+        expect(getTeams).toHaveBeenCalledWith(
+          expect.objectContaining({ parentTeam: 'engineering', limit: 10 })
+        )
+      );
+
+      expect(
+        await screen.findByRole('tab', { name: /label.team-plural \(25\)/ })
+      ).toBeInTheDocument();
+    });
+
+    it('opens the next page with the after cursor', async () => {
+      (getTeams as jest.Mock).mockResolvedValue(firstPage);
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      fireEvent.click(await screen.findByTestId('next'));
+
+      await waitFor(() =>
+        expect(getTeams).toHaveBeenLastCalledWith(
+          expect.objectContaining({ after: 'cursor-2', limit: 10 })
+        )
+      );
+    });
+
+    const searchHits = (teams: { name: string }[], total: number) => ({
+      hits: {
+        hits: teams.map((team) => ({ _source: team })),
+        total: { value: total },
+      },
+    });
+
+    it('finds a sub-team that is not on the loaded page through the team index', async () => {
+      (getTeams as jest.Mock).mockResolvedValue(firstPage);
+      (searchQuery as jest.Mock).mockResolvedValue(
+        searchHits(subTeams(1, 'audit'), 1)
+      );
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+      await waitFor(() => expect(latestSubTeamRows()).toHaveLength(10));
+
+      expect(latestSubTeamRows().map(({ name }) => name)).not.toContain(
+        'audit-0'
+      );
+
+      fireEvent.change(await screen.findByTestId('sub-teams-table-search'), {
+        target: { value: 'audit' },
+      });
+
+      await waitFor(() =>
+        expect(latestSubTeamRows().map(({ name }) => name)).toEqual(['audit-0'])
+      );
+
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: '*audit*',
+          pageNumber: 1,
+          pageSize: 10,
+          searchIndex: SearchIndex.TEAM,
+          queryFilter: {
+            query: { bool: { must: [{ term: { 'parents.id': '1' } }] } },
+          },
+        })
+      );
+    });
+
+    it('pages search results by number on the backend', async () => {
+      (getTeams as jest.Mock).mockResolvedValue(firstPage);
+      (searchQuery as jest.Mock).mockResolvedValue(
+        searchHits(subTeams(10, 'sales'), 25)
+      );
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      fireEvent.change(await screen.findByTestId('sub-teams-table-search'), {
+        target: { value: 'sales' },
+      });
+      await waitFor(() => expect(searchQuery).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId('next'));
+
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenLastCalledWith(
+          expect.objectContaining({ query: '*sales*', pageNumber: 2 })
+        )
+      );
+    });
+
+    it('goes back to the first cursor page when the search is cleared', async () => {
+      (getTeams as jest.Mock).mockResolvedValue(firstPage);
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+      const search = await screen.findByTestId('sub-teams-table-search');
+
+      fireEvent.change(search, { target: { value: 'sales' } });
+      await waitFor(() => expect(searchQuery).toHaveBeenCalled());
+      const callsBeforeClear = (getTeams as jest.Mock).mock.calls.length;
+      fireEvent.change(search, { target: { value: '' } });
+
+      await waitFor(() =>
+        expect(getTeams).toHaveBeenCalledTimes(callsBeforeClear + 1)
+      );
+
+      const [lastParams] = (getTeams as jest.Mock).mock.calls.at(-1);
+
+      expect(lastParams).toEqual(expect.objectContaining({ limit: 10 }));
+      expect(lastParams.after).toBeUndefined();
+    });
   });
 
   it('renders a contributed ReactNode label as-is', async () => {

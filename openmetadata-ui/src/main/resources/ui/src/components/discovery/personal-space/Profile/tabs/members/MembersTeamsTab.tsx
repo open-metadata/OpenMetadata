@@ -18,6 +18,7 @@ import {
   FeaturedIcon,
   Modal,
   ModalOverlay,
+  PaginationCardWithControls,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -25,10 +26,15 @@ import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { DropZone } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE } from '../../../../../../constants/constants';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
+import {
+  TEAMS_PAGE_SIZE_OPTIONS,
+  TEAMS_TABLE_SCROLL,
+} from './Members.constants';
 import type { MembersTeamsTabProps } from './MembersTeamDetail.types';
 import { TEAM_DRAG_TYPE } from './MembersTeamDetail.utils';
 
@@ -45,13 +51,22 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
   searchTerm,
   canCreateTeam,
   movedTeam,
+  teamsPage,
+  teamsPageSize,
+  teamsTotal,
   onShowDeletedTeamChange,
   onSearchTermChange,
   onNavigate,
   onSetMovedTeam,
   onMoveConfirm,
+  onTeamsPageChange,
+  onTeamsPageSizeChange,
 }) => {
   const { t } = useTranslation();
+  const teamsTotalPages = Math.max(1, Math.ceil(teamsTotal / teamsPageSize));
+  // A changed page size keeps the pager, so the size can be set back.
+  const showTeamsPagination =
+    teamsTotalPages > 1 || teamsPageSize !== PAGE_SIZE;
 
   return (
     <>
@@ -59,7 +74,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
         aria-label={t('label.move-entity-to-root', {
           entity: t('label.team'),
         })}
-        className="tw:flex tw:min-h-0 tw:flex-col"
+        className="tw:block"
         getDropOperation={(types) =>
           types.has(TEAM_DRAG_TYPE) ? 'move' : 'cancel'
         }
@@ -72,10 +87,9 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
           }
         }}>
         <Table
-          sticky
           className={isTableHovered ? 'drop-over-table' : undefined}
           columns={childTeamColumns}
-          containerClassName="tw:flex tw:min-h-0 tw:flex-col tw:rounded-none tw:border-0"
+          containerClassName="tw:rounded-none tw:border-0"
           data-testid="sub-teams-table"
           dataSource={filteredChildTeams}
           dragAndDropHooks={dragAndDropHooks}
@@ -120,7 +134,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
           }}
           pagination={false}
           rowKey="fullyQualifiedName"
-          scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:overflow-y-auto"
+          scroll={TEAMS_TABLE_SCROLL}
           searchProps={{
             containerClassName: 'tw:w-80!',
             placeholder: t('label.search-entity', {
@@ -134,6 +148,19 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
           variant="muted"
         />
       </DropZone>
+      {showTeamsPagination && (
+        <PaginationCardWithControls
+          // Browsing steps page by page on `/teams` cursors; a search pages by
+          // number, so its page numbers can be jumped to.
+          minimal={!searchTerm}
+          page={teamsPage}
+          pageSize={teamsPageSize}
+          pageSizeOptions={TEAMS_PAGE_SIZE_OPTIONS}
+          total={teamsTotalPages}
+          onPageChange={onTeamsPageChange}
+          onPageSizeChange={onTeamsPageSizeChange}
+        />
+      )}
 
       {movedTeam && (
         <ModalOverlay

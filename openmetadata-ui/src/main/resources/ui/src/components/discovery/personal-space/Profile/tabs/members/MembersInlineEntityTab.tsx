@@ -50,7 +50,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box className="tw:min-h-0" direction="col">
+    <Box direction="col">
       {isAdding && (
         <Card className="tw:m-4">
           <Card.Content className="tw:flex tw:flex-col tw:gap-4">
@@ -100,9 +100,8 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
         </Card>
       )}
       <Table
-        sticky
         columns={columns}
-        containerClassName="tw:flex tw:min-h-0 tw:flex-col tw:rounded-none tw:border-0"
+        containerClassName="tw:rounded-none tw:border-0"
         data-testid={tableTestId}
         dataSource={dataSource}
         locale={{
@@ -154,7 +153,6 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
           </Box>
         )}
         rowKey="id"
-        scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:overflow-y-auto"
         size="small"
         variant="muted"
       />
