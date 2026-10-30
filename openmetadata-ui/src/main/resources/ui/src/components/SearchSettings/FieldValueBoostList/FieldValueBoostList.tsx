@@ -21,7 +21,6 @@ import {
 } from '../../../constants/SearchSettings.constant';
 import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
 import Table from '../../common/Table/TableV2';
-import './field-value-boost-list.less';
 
 interface FieldValueBoostListProps {
   entitySearchSettingsPage?: boolean;
