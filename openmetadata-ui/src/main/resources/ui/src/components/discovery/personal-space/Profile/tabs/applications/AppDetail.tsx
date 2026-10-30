@@ -613,6 +613,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
           {appData.developerUrl && (
             <Button
               noTextPadding
+              className="tw:gap-1"
               color="link-color"
               data-testid="developer-website"
               href={appData.developerUrl}

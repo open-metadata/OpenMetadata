@@ -37,6 +37,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   entityLabel,
   entityPluralLabel,
   entityDescription,
+  emptyIcon,
   tableTestId,
   addButtonTestId,
   addSelectTestId,
@@ -115,6 +116,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
                   'message.adding-new-entity-is-easy-just-give-it-a-spin',
                   { entity: entityLabel }
                 )}
+                icon={emptyIcon}
                 title={t('label.no-entity-found', {
                   entity: entityPluralLabel,
                 })}

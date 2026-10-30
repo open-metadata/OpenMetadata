@@ -281,6 +281,9 @@ describe('AppDetail', () => {
       'href',
       'https://www.getcollate.io'
     );
+    // Same icon-to-text gap as the other meta items.
+    expect(screen.getByTestId('developer-website')).toHaveClass('tw:gap-1');
+    expect(screen.getByTestId('developer-website')).not.toHaveClass('tw:gap-0');
   });
 
   it('shows the hint toggle only on the configuration tab', async () => {

@@ -22,14 +22,50 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Render only the filter slot of the table so the toggle/add-team button the
-// component owns are exercised without TableV2 internals.
+// Render the filter slot and bare keyed rows so the toggle/add-team button and
+// the move anchor are exercised without TableV2 internals.
 jest.mock('../../../../../common/Table/TableV2', () => ({
   __esModule: true,
-  default: ({ extraTableFilters }: { extraTableFilters: React.ReactNode }) => (
-    <div data-testid="table">{extraTableFilters}</div>
+  default: ({
+    extraTableFilters,
+    dataSource,
+  }: {
+    extraTableFilters: React.ReactNode;
+    dataSource: Team[];
+  }) => (
+    <div data-testid="table">
+      {extraTableFilters}
+      {dataSource.map((row) => (
+        <div data-row-key={row.fullyQualifiedName} key={row.name} />
+      ))}
+    </div>
   ),
 }));
+
+// jsdom has no layout, so expose which element the popover is anchored to.
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    ConfirmPopover: (props: {
+      triggerRef?: React.RefObject<Element | null>;
+      isOpen?: boolean;
+    }) => (
+      <>
+        {props.isOpen && (
+          <span
+            data-anchor={
+              props.triggerRef?.current?.getAttribute('data-row-key') ?? 'table'
+            }
+            data-testid="move-anchor"
+          />
+        )}
+        <actual.ConfirmPopover {...props} />
+      </>
+    ),
+  };
+});
 
 const team = { name: 'Engineering', fullyQualifiedName: 'Engineering' } as Team;
 
@@ -122,6 +158,35 @@ describe('MembersTeamsTab', () => {
 
     expect(onSetMovedTeam).toHaveBeenCalledWith(undefined);
     expect(onMoveConfirm).not.toHaveBeenCalled();
+  });
+
+  it('anchors the move popover to the drop-target row, not the whole table', () => {
+    const source = { name: 'Src', fullyQualifiedName: 'Src' } as Team;
+    const target = { name: 'Dst', fullyQualifiedName: 'Dst' } as Team;
+    const props = { ...baseProps, filteredChildTeams: [source, target] };
+    const { rerender } = render(<MembersTeamsTab {...props} />);
+
+    rerender(
+      <MembersTeamsTab {...props} movedTeam={{ from: source, to: target }} />
+    );
+
+    expect(screen.getByTestId('move-anchor')).toHaveAttribute(
+      'data-anchor',
+      'Dst'
+    );
+  });
+
+  it('anchors a move to root on the dragged row', () => {
+    const source = { name: 'Src', fullyQualifiedName: 'Src' } as Team;
+    const props = { ...baseProps, filteredChildTeams: [source] };
+    const { rerender } = render(<MembersTeamsTab {...props} />);
+
+    rerender(<MembersTeamsTab {...props} movedTeam={{ from: source }} />);
+
+    expect(screen.getByTestId('move-anchor')).toHaveAttribute(
+      'data-anchor',
+      'Src'
+    );
   });
 
   it('shows no move popover when nothing is being moved', () => {

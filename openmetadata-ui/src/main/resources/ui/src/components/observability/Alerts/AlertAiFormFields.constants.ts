@@ -72,6 +72,7 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   teamUserSelectOptionButton:
     'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-start tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:text-left tw:hover:bg-secondary',
   teamUserSelectOptionLabel: 'tw:truncate tw:text-primary',
+  teamUserSelectOptionRow: 'tw:flex tw:min-w-0 tw:items-center tw:gap-2',
   teamUserSelectOptions: 'tw:mt-2 tw:max-h-48 tw:overflow-y-auto',
   teamUserSelectRoot: 'tw:relative tw:w-full',
   teamUserSelectSkeletonWrapper: 'tw:space-y-1 tw:p-2',

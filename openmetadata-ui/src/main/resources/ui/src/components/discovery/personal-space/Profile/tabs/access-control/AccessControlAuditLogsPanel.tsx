@@ -787,6 +787,7 @@ const AccessControlAuditLogsPanel: React.FC<
       {/* Anchored to the header's Export button; the popover stays open while the export runs. */}
       <ConfirmPopover
         asForm
+        className="tw:w-96"
         confirmText={t('label.export')}
         content={
           <>

@@ -44,18 +44,6 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../../../../../hooks/paging/usePaging', () => ({
-  usePaging: () => ({
-    paging: { total: 0 },
-    handlePagingChange: jest.fn(),
-    currentPage: 1,
-    handlePageChange: jest.fn(),
-    pageSize: 10,
-    handlePageSizeChange: jest.fn(),
-    showPagination: false,
-  }),
-}));
-
 jest.mock('../../../../../common/Table/TableV2', () =>
   jest.fn(
     ({
@@ -79,6 +67,30 @@ jest.mock('../../../../../common/Table/TableV2', () =>
     )
   )
 );
+
+const mockSetHashPage = jest.fn();
+
+// Stateful stand-in for the settings-hash pager: jsdom has no settings hash, so
+// record what would be written to the URL and keep the page in state.
+jest.mock('../../../../../../hooks/useSettingsHash', () => {
+  const { useState } = jest.requireActual('react');
+
+  return {
+    useSettingsHash: () => ({ goTo: jest.fn() }),
+    useHashPagingParams: () => {
+      const [page, setPage] = useState(1);
+
+      return {
+        page,
+        pageSize: undefined,
+        setPage: (...args: [number, ...unknown[]]) => {
+          mockSetHashPage(...args);
+          setPage(args[0]);
+        },
+      };
+    },
+  };
+});
 
 import MembersOnlineUsersPanel from './MembersOnlineUsersPanel';
 
@@ -111,6 +123,31 @@ describe('MembersOnlineUsersPanel', () => {
       expect(mockSearchQuery).toHaveBeenCalledWith(
         expect.objectContaining({ query: '*ali*', searchIndex: 'user' })
       )
+    );
+  });
+
+  it('pages with the cursor but writes only page and size to the URL', async () => {
+    mockGetOnlineUsers
+      .mockResolvedValueOnce({ data: [], paging: { after: 'c2', total: 40 } })
+      .mockResolvedValueOnce({ data: [], paging: { before: 'c1', total: 40 } });
+    renderPanel();
+
+    const next = await screen.findByTestId('next');
+    await waitFor(() => expect(next).toBeEnabled());
+    fireEvent.click(next);
+
+    await waitFor(() =>
+      expect(mockGetOnlineUsers).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'c2' })
+      )
+    );
+
+    // Only the page and size reach the URL; the cursor stays in state.
+    expect(mockSetHashPage).toHaveBeenLastCalledWith(
+      2,
+      undefined,
+      undefined,
+      15
     );
   });
 

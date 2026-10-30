@@ -40,6 +40,7 @@ import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
+  pagingObject,
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -52,9 +53,12 @@ import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { Include } from '../../../../../../generated/type/include';
+import { Paging } from '../../../../../../generated/type/paging';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { usePaging } from '../../../../../../hooks/paging/usePaging';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getUsers, restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -96,15 +100,29 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const [searchValue, setSearchValue] = useState('');
   const latestSearchIdRef = useRef(0);
 
+  // Only page + size go to the settings hash; cursors stay in state, so a
+  // reloaded page > 1 has no cursor to resume from and restarts at page 1.
   const {
-    currentPage,
-    handlePageChange,
-    handlePageSizeChange,
-    handlePagingChange,
-    pageSize,
-    paging,
-    showPagination,
-  } = usePaging();
+    page: currentPage,
+    pageSize: hashPageSize,
+    setPage: setHashPage,
+  } = useHashPagingParams();
+  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const showPagination =
+    Boolean(paging.before || paging.after) ||
+    paging.total > pageSize ||
+    pageSize !== PAGE_SIZE_BASE;
+
+  const handlePageChange = useCallback(
+    (page: number) => setHashPage(page, undefined, undefined, pageSize),
+    [setHashPage, pageSize]
+  );
+  const handlePageSizeChange = useCallback(
+    (size: number) =>
+      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size),
+    [setHashPage]
+  );
 
   const canCreateUser = useMemo(
     () =>
@@ -127,7 +145,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           ...params,
         });
         setUsers(response.data);
-        handlePagingChange(response.paging);
+        setPaging(response.paging);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -138,7 +156,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setIsLoading(false);
       }
     },
-    [pageSize, isAdmin, showDeleted, handlePagingChange, t]
+    [pageSize, isAdmin, showDeleted, setPaging, t]
   );
 
   const searchUsers = useCallback(
@@ -162,7 +180,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         }
         const data = response.hits.hits.map(({ _source }) => _source as User);
         setUsers(data);
-        handlePagingChange({ total: response.hits.total.value });
+        setPaging({ total: response.hits.total.value });
       } catch (error) {
         showErrorToast(error as AxiosError);
         setUsers([]);
@@ -170,7 +188,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setIsLoading(false);
       }
     },
-    [pageSize, isAdmin, showDeleted, handlePagingChange]
+    [pageSize, isAdmin, showDeleted, setPaging]
   );
 
   const handleSearch = useCallback(
@@ -249,7 +267,11 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   };
 
   useEffect(() => {
+    if (currentPage !== INITIAL_PAGING_VALUE) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+    }
     refetchUsers.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on size/deleted only
   }, [pageSize, showDeleted]);
 
   useEffect(() => {

@@ -95,8 +95,18 @@ const ResourceDateDuration: FC<{ resource: LearningResource }> = ({
   const formattedDate = getFormattedDate(resource);
   const formattedDuration = getFormattedDuration(resource, t);
 
+  if (!formattedDate && !formattedDuration) {
+    return null;
+  }
+
+  // The extra right margin separates the metadata from the header icon buttons,
+  // which stay tightly grouped by the parent's gap.
   return (
-    <>
+    <Box
+      align="center"
+      className="tw:mr-2"
+      data-testid="resource-date-duration"
+      gap={1}>
       {formattedDate && (
         <Typography as="span" className="tw:text-tertiary" size="text-xs">
           {formattedDate}
@@ -112,7 +122,7 @@ const ResourceDateDuration: FC<{ resource: LearningResource }> = ({
           {formattedDuration}
         </Typography>
       )}
-    </>
+    </Box>
   );
 };
 

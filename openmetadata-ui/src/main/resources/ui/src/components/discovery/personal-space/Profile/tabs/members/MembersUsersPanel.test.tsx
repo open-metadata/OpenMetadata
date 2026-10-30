@@ -85,6 +85,30 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+const mockSetHashPage = jest.fn();
+
+// Stateful stand-in for the settings-hash pager: jsdom has no settings hash, so
+// record what would be written to the URL and keep the page in state.
+jest.mock('../../../../../../hooks/useSettingsHash', () => {
+  const { useState } = jest.requireActual('react');
+
+  return {
+    useSettingsHash: () => ({ goTo: jest.fn() }),
+    useHashPagingParams: () => {
+      const [page, setPage] = useState(1);
+
+      return {
+        page,
+        pageSize: undefined,
+        setPage: (...args: [number, ...unknown[]]) => {
+          mockSetHashPage(...args);
+          setPage(args[0]);
+        },
+      };
+    },
+  };
+});
+
 import MembersUsersPanel from './MembersUsersPanel';
 
 const renderComponent = (isAdmin = false) =>
@@ -213,6 +237,13 @@ describe('MembersUsersPanel', () => {
       'label.page 2'
     );
     expect(screen.getByTestId('previous')).toBeEnabled();
+    // Only the page and size reach the URL; the cursor stays in state.
+    expect(mockSetHashPage).toHaveBeenLastCalledWith(
+      2,
+      undefined,
+      undefined,
+      15
+    );
   });
 
   it('renders the users list container', async () => {

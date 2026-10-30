@@ -281,16 +281,19 @@ const TeamUserSelectInput = ({
         data-testid={`team-user-option-${value}`}
         key={value}
         onPress={() => handleOptionClick(value)}>
-        <Checkbox
-          data-testid={`${label}-option-checkbox`}
-          isSelected={selectedOptions.includes(value)}
-        />
-        <Typography
-          as="span"
-          className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionLabel}
-          data-testid={`${label}-option-label`}>
-          {label}
-        </Typography>
+        {/* Button wraps children in an inline span; the flex Checkbox would otherwise stack above the label. */}
+        <span className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionRow}>
+          <Checkbox
+            data-testid={`${label}-option-checkbox`}
+            isSelected={selectedOptions.includes(value)}
+          />
+          <Typography
+            as="span"
+            className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionLabel}
+            data-testid={`${label}-option-label`}>
+            {label}
+          </Typography>
+        </span>
       </Button>
     ))
   );

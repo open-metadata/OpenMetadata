@@ -18,7 +18,7 @@ import {
   Toggle,
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@openmetadata/ui-core-components/icons';
-import { FC, useRef } from 'react';
+import { FC, useMemo, useRef } from 'react';
 import { DropZone } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -49,6 +49,19 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
 }) => {
   const { t } = useTranslation();
   const tableRef = useRef<HTMLDivElement>(null);
+
+  // Anchor the confirmation to the row the team was dropped on (or the dragged
+  // row for a root move). Anchored to the whole table, a list taller than the
+  // viewport pushes the popover off-screen, so the drop looks like a no-op.
+  const moveAnchorRef = useMemo(() => {
+    const rowKey =
+      movedTeam?.to?.fullyQualifiedName ?? movedTeam?.from.fullyQualifiedName;
+    const row = Array.from(
+      tableRef.current?.querySelectorAll('[data-row-key]') ?? []
+    ).find((el) => el.getAttribute('data-row-key') === rowKey);
+
+    return { current: row ?? tableRef.current };
+  }, [movedTeam]);
 
   return (
     <>
@@ -158,7 +171,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
         isOpen={Boolean(movedTeam)}
         placement="top"
         title={t('label.move-the-entity', { entity: t('label.team') })}
-        triggerRef={tableRef}
+        triggerRef={moveAnchorRef}
         variant="primary"
         onConfirm={onMoveConfirm}
         onOpenChange={(isOpen) => !isOpen && onSetMovedTeam(undefined)}
