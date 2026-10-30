@@ -110,7 +110,8 @@ public interface OntologyConceptBindingDAO {
   @SqlQuery(
       "SELECT "
           + COLUMNS
-          + " FROM ontology_concept_binding WHERE conceptId = :conceptId AND assetId = :assetId")
+          + " FROM ontology_concept_binding WHERE conceptId = :conceptId AND assetId = :assetId "
+          + "LIMIT 1")
   @RegisterRowMapper(BindingRowMapper.class)
   BindingRow find(@BindUUID("conceptId") UUID conceptId, @BindUUID("assetId") UUID assetId);
 
