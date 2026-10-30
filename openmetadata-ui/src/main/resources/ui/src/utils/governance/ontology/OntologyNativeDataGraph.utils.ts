@@ -33,6 +33,7 @@ import {
 import { getEntityName } from '../../EntityNameUtils';
 
 export const NATIVE_CLUSTER_PAGE_SIZE = 12;
+// The server leaves this size to the client; ADR:2026-10-19-native-concept-bindings-remain-operational-metadata.
 export const NATIVE_ASSET_PAGE_SIZE = 25;
 export const NATIVE_CONTEXT_CONCEPT_LIMIT = 60;
 export const NATIVE_INFERRED_RELATION_TYPE = 'inferred';
