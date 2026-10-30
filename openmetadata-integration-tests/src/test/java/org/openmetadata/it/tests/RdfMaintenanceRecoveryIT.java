@@ -47,10 +47,12 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfDatasetNames;
 import org.openmetadata.service.rdf.RdfLiveWrite;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
+import org.openmetadata.service.rdf.maintenance.RdfStorageMaintenanceService;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
@@ -241,6 +243,58 @@ public class RdfMaintenanceRecoveryIT {
     assertTrue(queue.processNext(payload -> assertEquals("legacy write", payload)));
     assertEquals(
         0, scalar(database, "SELECT COUNT(*) FROM rdf_live_write_guard WHERE id = 'drain'"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void healthClockStartsBeforeTheFirstScheduledCompactionAndDegradesEvenWhilePaused(
+      final RdfTestDatabase.Backend backend) {
+    final RdfTestDatabase database = database(backend);
+    database
+        .jdbi()
+        .useHandle(
+            handle ->
+                handle.execute(
+                    "UPDATE rdf_projection_health SET lastCompactedAt = 0, failureVersion = 0, repairedVersion = 0"));
+    final Clock clock = Clock.systemUTC();
+    final Duration deadline = Duration.ofHours(48);
+    final RdfLiveWriteStore health = new RdfLiveWriteStore(database.jdbi(), clock, deadline);
+    try (RdfStorageMaintenanceService maintenance =
+        new RdfStorageMaintenanceService(
+            new RdfStorageMaintenanceConfig(),
+            database.lockDao(),
+            health,
+            () -> {
+              throw new AssertionError("the first scheduled compaction is five minutes away");
+            },
+            clock,
+            "new")) {
+      maintenance.start();
+      final long started =
+          database
+              .jdbi()
+              .withHandle(
+                  handle ->
+                      handle
+                          .createQuery(
+                              "SELECT lastCompactedAt FROM rdf_projection_health WHERE id = 'active'")
+                          .mapTo(Long.class)
+                          .one());
+      assertTrue(started > 0);
+      final Clock later = Clock.offset(clock, Duration.ofHours(49));
+      database
+          .lockDao()
+          .tryAcquireLock(
+              RdfLiveWritePause.LOCK_KEY,
+              UUID.randomUUID().toString(),
+              "still-compacting",
+              clock.millis(),
+              later.millis() + TimeUnit.MINUTES.toMillis(5));
+      final boolean paused =
+          database.jdbi().withHandle(handle -> RdfLiveWritePause.isPaused(handle, later.millis()));
+      assertTrue(paused);
+      assertTrue(new RdfLiveWriteStore(database.jdbi(), later, deadline).isDegraded());
+    }
   }
 
   private static RdfTestDatabase database(final RdfTestDatabase.Backend backend) {
