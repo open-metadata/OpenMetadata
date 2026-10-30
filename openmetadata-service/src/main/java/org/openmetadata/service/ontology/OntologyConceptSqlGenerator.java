@@ -100,7 +100,12 @@ public final class OntologyConceptSqlGenerator {
    * @param inverse the live object property of the same ontology that {@code property} names as its
    *     inverse, whether or not the reader may view it, or null
    */
-  public record Hop(UUID property, UUID inverse, String label, BoundConcept target) {}
+  public record Hop(UUID property, UUID inverse, String label, BoundConcept target) {
+    /** A self-inverse names no other direction, so it never orients a join. */
+    Optional<UUID> otherInverse() {
+      return inverse == null || inverse.equals(property) ? Optional.empty() : Optional.of(inverse);
+    }
+  }
 
   public record Generated(
       String sql,
@@ -171,16 +176,43 @@ public final class OntologyConceptSqlGenerator {
 
   /**
    * A bound hop property follows its binding: through a foreign key on the bound column, else to
-   * the other table's identifier. An unbound one follows the one foreign key between the tables.
+   * the other table's identifier. An unbound one whose declared inverse is bound takes the
+   * converse of the join a hop over the inverse would take back. Otherwise it follows the one
+   * foreign key between the tables.
    */
   private static Join join(final Step step, final List<String> database) {
     final List<BoundTable> candidates =
         candidates(step).stream().filter(table -> database.equals(fqnParts(table, 2))).toList();
-    final Optional<Join> join =
-        isBound(step, candidates)
-            ? firstJoin(candidates, table -> agreeingKeyPairs(step, table), step.hop())
-                .or(() -> firstJoin(candidates, table -> bindingPairs(step, table), step.hop()))
-            : firstJoin(candidates, table -> onlyKeyPairs(step, table), step.hop());
+    final BoundTable previous = step.previous();
+    final UUID property = step.hop().property();
+    final Optional<UUID> boundInverse =
+        step.hop().otherInverse().filter(inverse -> isBound(previous, candidates, inverse));
+    final Optional<Join> join;
+    if (isBound(previous, candidates, property)) {
+      join =
+          firstJoin(candidates, table -> agreeingKeyPairs(previous, table, property), step.hop())
+              .or(
+                  () ->
+                      firstJoin(
+                          candidates,
+                          table -> bindingPairs(previous, table, property),
+                          step.hop()));
+    } else if (boundInverse.isPresent()) {
+      final UUID inverse = boundInverse.get();
+      join =
+          firstJoin(
+                  candidates,
+                  table -> converse(agreeingKeyPairs(table, previous, inverse)),
+                  step.hop())
+              .or(
+                  () ->
+                      firstJoin(
+                          candidates,
+                          table -> converse(bindingPairs(table, previous, inverse)),
+                          step.hop()));
+    } else {
+      join = firstJoin(candidates, table -> onlyKeyPairs(step, table), step.hop());
+    }
     return join.orElseThrow(
         () ->
             step.failure(
@@ -196,9 +228,9 @@ public final class OntologyConceptSqlGenerator {
     return target.tables();
   }
 
-  private static boolean isBound(final Step step, final List<BoundTable> candidates) {
-    final UUID property = step.hop().property();
-    return step.previous().objectColumns().containsKey(property)
+  private static boolean isBound(
+      final BoundTable previous, final List<BoundTable> candidates, final UUID property) {
+    return previous.objectColumns().containsKey(property)
         || candidates.stream().anyMatch(table -> table.objectColumns().containsKey(property));
   }
 
@@ -215,16 +247,16 @@ public final class OntologyConceptSqlGenerator {
     return Optional.empty();
   }
 
-  /** The previous table's binding wins over the candidate's, as in {@link #bindingPairs}. */
-  private static List<ColumnPair> agreeingKeyPairs(final Step step, final BoundTable candidate) {
-    final UUID property = step.hop().property();
-    final boolean reversed = !step.previous().objectColumns().containsKey(property);
-    final BoundTable owner = reversed ? candidate : step.previous();
+  /** The {@code from} table's binding wins over {@code to}'s, as in {@link #bindingPairs}. */
+  private static List<ColumnPair> agreeingKeyPairs(
+      final BoundTable from, final BoundTable to, final UUID property) {
+    final boolean reversed = !from.objectColumns().containsKey(property);
+    final BoundTable owner = reversed ? to : from;
     final List<String> bound = owner.objectColumns().get(property);
     if (bound == null) {
       return List.of();
     }
-    return foreignKeys(owner, reversed ? step.previous() : candidate).stream()
+    return foreignKeys(owner, reversed ? from : to).stream()
         .filter(key -> key.getColumns().equals(bound))
         .findFirst()
         .map(key -> pairs(key, reversed))
@@ -233,15 +265,29 @@ public final class OntologyConceptSqlGenerator {
 
   private static List<ColumnPair> onlyKeyPairs(final Step step, final BoundTable candidate) {
     final List<TableConstraint> outgoing = foreignKeys(step.previous(), candidate);
+    final boolean toItself =
+        candidate.fullyQualifiedName().equals(step.previous().fullyQualifiedName());
     // A key from a table to itself is both outgoing and incoming; count it once.
     final List<TableConstraint> incoming =
-        candidate.fullyQualifiedName().equals(step.previous().fullyQualifiedName())
-            ? List.of()
-            : foreignKeys(candidate, step.previous());
+        toItself ? List.of() : foreignKeys(candidate, step.previous());
     if (outgoing.size() + incoming.size() > 1) {
       throw step.failure(
           ": several foreign keys join %s and %s; bind the %s property to one of their columns",
           step.previous().fullyQualifiedName(), candidate.fullyQualifiedName(), step.hop().label());
+    }
+    // The property and its inverse read the key in opposite directions, and neither says which.
+    if (toItself && !outgoing.isEmpty() && step.hop().otherInverse().isPresent()) {
+      final TableConstraint key = outgoing.getFirst();
+      throw step.failure(
+          ": the foreign key from %s to %s joins %s to itself in either direction;"
+              + " bind the %s property or its inverse to %s",
+          String.join(", ", key.getColumns()),
+          pairs(key, false).stream()
+              .map(pair -> String.join(".", pair.right()))
+              .collect(Collectors.joining(", ")),
+          candidate.fullyQualifiedName(),
+          step.hop().label(),
+          String.join(", ", key.getColumns()));
     }
     return outgoing.isEmpty()
         ? incoming.stream().findFirst().map(key -> pairs(key, true)).orElse(List.of())
@@ -286,16 +332,20 @@ public final class OntologyConceptSqlGenerator {
         .toList();
   }
 
-  private static List<ColumnPair> bindingPairs(final Step step, final BoundTable to) {
-    final BoundTable from = step.previous();
-    final List<String> outgoing = from.objectColumns().get(step.hop().property());
+  private static List<ColumnPair> bindingPairs(
+      final BoundTable from, final BoundTable to, final UUID property) {
+    final List<String> outgoing = from.objectColumns().get(property);
     if (outgoing != null && !to.identifier().isEmpty()) {
       return List.of(new ColumnPair(outgoing, to.identifier()));
     }
-    final List<String> incoming = to.objectColumns().get(step.hop().property());
+    final List<String> incoming = to.objectColumns().get(property);
     return incoming != null && !from.identifier().isEmpty()
         ? List.of(new ColumnPair(from.identifier(), incoming))
         : List.of();
+  }
+
+  private static List<ColumnPair> converse(final List<ColumnPair> pairs) {
+    return pairs.stream().map(pair -> new ColumnPair(pair.right(), pair.left())).toList();
   }
 
   private static String sql(
