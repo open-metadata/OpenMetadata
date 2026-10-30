@@ -123,6 +123,61 @@ class OntologyConceptQueryServiceTest {
             .sql());
   }
 
+  @Test
+  void anInverseTheReaderMayNotViewStillOrientsASelfRelationAndNamesNothing() {
+    final URI employeeIri = URI.create("urn:hr:Employee");
+    final URI managesIri = URI.create("urn:hr:manages");
+    final URI managedByIri = URI.create("urn:hr:managedBy");
+    final OntologyProperty manages =
+        new OntologyProperty()
+            .withId(UUID.randomUUID())
+            .withName("manages")
+            .withKind(OntologyPropertyKind.OBJECT)
+            .withIri(managesIri)
+            .withDomain(List.of(employeeIri))
+            .withRange(List.of(employeeIri))
+            .withInverse(managedByIri);
+    final OntologyProperty managedBy =
+        new OntologyProperty()
+            .withId(UUID.randomUUID())
+            .withName("managedBy")
+            .withKind(OntologyPropertyKind.OBJECT)
+            .withIri(managedByIri)
+            .withDomain(List.of(employeeIri))
+            .withRange(List.of(employeeIri))
+            .withInverse(managesIri);
+    final BoundConcept employees =
+        new BoundConcept(
+            "Employee",
+            List.of(
+                new BoundTable(
+                    "finance.warehouse.payments.employees",
+                    "Postgres",
+                    List.of(List.of("employee_id"), List.of("manager_id")),
+                    Map.of(managedBy.getId(), List.of("manager_id")),
+                    List.of(),
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of("manager_id"))
+                            .withReferredColumns(
+                                List.of("finance.warehouse.payments.employees.employee_id"))))));
+
+    final Hop hop =
+        OntologyConceptQueryService.hop(
+            manages,
+            new OntologyConcept().withIri(employeeIri),
+            OntologyConceptQueryService.Inverses.of(List.of(managedBy), property -> false),
+            employees);
+
+    assertEquals("manages", hop.label());
+    assertEquals(
+        "SELECT t1.employee_id, t1.manager_id\nFROM payments.employees t0\n"
+            + "JOIN payments.employees t1 ON t0.employee_id = t1.manager_id -- manages\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(employees, List.of(hop)).sql());
+  }
+
   private static List<BindingRow> rows(final UUID concept, final int count) {
     return IntStream.rangeClosed(1, count)
         .mapToObj(

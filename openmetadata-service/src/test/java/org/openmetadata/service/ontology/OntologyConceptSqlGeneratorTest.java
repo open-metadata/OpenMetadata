@@ -26,6 +26,9 @@ class OntologyConceptSqlGeneratorTest {
   private static final UUID RECEIVED_BY = UUID.randomUUID();
   private static final UUID HOLDS = UUID.randomUUID();
   private static final UUID MANAGED_BY = UUID.randomUUID();
+  private static final UUID MANAGES = UUID.randomUUID();
+  private static final UUID PRIMARY_ACCOUNT = UUID.randomUUID();
+  private static final UUID PRIMARY_ACCOUNT_OF = UUID.randomUUID();
 
   @Test
   void oneTableSelectsTheBoundColumnsWithTheRowLimit() {
@@ -510,6 +513,135 @@ class OntologyConceptSqlGeneratorTest {
   }
 
   @Test
+  void anUnboundSelfRelationWhoseInverseIsBoundJoinsAgainstTheKey() {
+    final BoundConcept employee = concept("Employee", managerBoundEmployees());
+
+    assertEquals(
+        "SELECT t1.employee_id, t1.manager_id\nFROM payments.employees t0\n"
+            + "JOIN payments.employees t1 ON t0.employee_id = t1.manager_id -- manages\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                employee, List.of(new Hop(MANAGES, MANAGED_BY, "manages", employee)))
+            .sql());
+  }
+
+  @Test
+  void aBoundSelfRelationWithADeclaredInverseJoinsAlongTheKey() {
+    final BoundConcept employee = concept("Employee", managerBoundEmployees());
+
+    assertEquals(
+        "SELECT t1.employee_id, t1.manager_id\nFROM payments.employees t0\n"
+            + "JOIN payments.employees t1 ON t0.manager_id = t1.employee_id -- managed by\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                employee, List.of(new Hop(MANAGED_BY, MANAGES, "managed by", employee)))
+            .sql());
+  }
+
+  @Test
+  void anUnboundHopBetweenTwoConceptsOfOneTableFollowsTheTargetsBindingOfTheInverse() {
+    final BoundTable managers =
+        withConstraints(
+            table(EMPLOYEES, "Postgres", "name"),
+            foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id"));
+
+    assertEquals(
+        "SELECT t1.employee_id, t1.manager_id\nFROM payments.employees t0\n"
+            + "JOIN payments.employees t1 ON t0.employee_id = t1.manager_id -- manages\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Manager", managers),
+                List.of(
+                    new Hop(
+                        MANAGES,
+                        MANAGED_BY,
+                        "manages",
+                        concept("Employee", managerBoundEmployees()))))
+            .sql());
+  }
+
+  @Test
+  void anUnboundSelfRelationWithAnUnboundInverseIsANamedBadRequest() {
+    final BoundConcept employee =
+        concept(
+            "Employee",
+            withConstraints(
+                table(EMPLOYEES, "Postgres", "employee_id"),
+                foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id")));
+
+    assertEquals(
+        "Hop 1 (manages): the foreign key from manager_id to employee_id joins "
+            + EMPLOYEES
+            + " to itself in either direction; bind the manages property or its inverse to"
+            + " manager_id",
+        assertThrows(
+                BadRequestException.class,
+                () ->
+                    OntologyConceptSqlGenerator.generate(
+                        employee, List.of(new Hop(MANAGES, MANAGED_BY, "manages", employee))))
+            .getMessage());
+    assertEquals(
+        "Hop 1 (managed by): the foreign key from manager_id to employee_id joins "
+            + EMPLOYEES
+            + " to itself in either direction; bind the managed by property or its inverse to"
+            + " manager_id",
+        assertThrows(
+                BadRequestException.class,
+                () ->
+                    OntologyConceptSqlGenerator.generate(
+                        employee, List.of(new Hop(MANAGED_BY, MANAGES, "managed by", employee))))
+            .getMessage());
+  }
+
+  @Test
+  void anUnboundSelfRelationThatIsItsOwnInverseJoinsAlongTheKey() {
+    final BoundConcept employee =
+        concept(
+            "Employee",
+            withConstraints(
+                table(EMPLOYEES, "Postgres", "employee_id"),
+                foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id")));
+
+    assertEquals(
+        "SELECT t1.employee_id\nFROM payments.employees t0\n"
+            + "JOIN payments.employees t1 ON t0.manager_id = t1.employee_id -- managed by\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                employee, List.of(new Hop(MANAGED_BY, MANAGED_BY, "managed by", employee)))
+            .sql());
+  }
+
+  @Test
+  void anUnboundHopWhoseInverseIsBoundPicksBetweenForeignKeysInEachDirection() {
+    final BoundTable accounts =
+        withConstraints(
+            table(ACCOUNTS, "Postgres", "account_id"),
+            foreignKey(List.of("customer_id"), CUSTOMERS, "customer_id"));
+    final BoundTable customers =
+        new BoundTable(
+            CUSTOMERS,
+            "Postgres",
+            List.of(List.of("customer_id")),
+            Map.of(PRIMARY_ACCOUNT, List.of("primary_account_id")),
+            List.of(),
+            List.of(foreignKey(List.of("primary_account_id"), ACCOUNTS, "account_id")));
+
+    assertEquals(
+        "SELECT t1.customer_id\nFROM payments.accounts t0\n"
+            + "JOIN payments.customers t1 ON t0.account_id = t1.primary_account_id"
+            + " -- primary account of\nLIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Account", accounts),
+                List.of(
+                    new Hop(
+                        PRIMARY_ACCOUNT_OF,
+                        PRIMARY_ACCOUNT,
+                        "primary account of",
+                        concept("Customer", customers))))
+            .sql());
+  }
+
+  @Test
   void aHopNeverJoinsATableInAnotherDatabaseOfTheService() {
     final String otherDatabase = "finance.analytics.crm.customers";
     final BoundTable payments =
@@ -670,6 +802,16 @@ class OntologyConceptSqlGeneratorTest {
         Map.of(RECEIVED_BY, List.of("payee_id")),
         List.of("transfer_id"),
         List.of(foreignKey(List.of("payer_id"), CUSTOMERS, "customer_id")));
+  }
+
+  private static BoundTable managerBoundEmployees() {
+    return new BoundTable(
+        EMPLOYEES,
+        "Postgres",
+        List.of(List.of("employee_id"), List.of("manager_id")),
+        Map.of(MANAGED_BY, List.of("manager_id")),
+        List.of(),
+        List.of(foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id")));
   }
 
   private static BoundTable identifiedCustomers() {
