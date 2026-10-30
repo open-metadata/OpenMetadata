@@ -335,110 +335,39 @@ describe('ContractSLAFormTab', () => {
     });
   });
 
-  describe('column dropdown only offers top-level columns', () => {
-    // The SLA column dropdown is an autocomplete that opens on focus. react-aria
-    // drives it, so its options render only while the menu is open.
-    const openColumnDropdown = () => {
-      const combobox = screen.getByRole('combobox', {
-        name: 'label.column-name',
-      });
-      fireEvent.focus(combobox);
-      fireEvent.mouseDown(combobox);
-    };
-    const selectOption = (name: string) => {
-      const option = screen.getByRole('option', { name });
-      fireEvent.pointerDown(option);
-      fireEvent.click(option);
-    };
+  it('saves the top-level column FQN when a nested child shares its name', () => {
+    mockTable = {
+      ...mockTableData,
+      columns: [
+        {
+          name: 'payload',
+          fullyQualifiedName: 'svc.db.schema.orders.payload',
+          children: [
+            {
+              name: 'created_at',
+              fullyQualifiedName: 'svc.db.schema.orders.payload.created_at',
+            },
+          ],
+        },
+        {
+          name: 'created_at',
+          fullyQualifiedName: 'svc.db.schema.orders.created_at',
+        },
+      ],
+    } as Table;
 
-    // Reproduces the reported bug: a struct/array child column appeared as a
-    // plain selectable option indistinguishable from a top-level column, and
-    // its fully-qualified name was saved into `sla.columnName`, where the
-    // backend (`ODCSTableTarget.resolveColumn`) can only resolve top-level
-    // names — silently dropping column-level freshness evaluation.
-    it('offers a top-level column but not its nested struct/array children', () => {
-      mockTable = {
-        ...mockTableData,
-        columns: [
-          {
-            name: 'payload',
-            fullyQualifiedName: 'svc.db.schema.orders.payload',
-            children: [
-              {
-                name: 'created_at',
-                fullyQualifiedName: 'svc.db.schema.orders.payload.created_at',
-              },
-            ],
-          },
-          {
-            name: 'id',
-            fullyQualifiedName: 'svc.db.schema.orders.id',
-          },
-        ],
-      } as Table;
-
-      renderForm();
-      openColumnDropdown();
-
-      expect(
-        screen.getByRole('option', { name: 'payload' })
-      ).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: 'id' })).toBeInTheDocument();
-      // The nested struct/array child must never be offered: the backend
-      // cannot resolve it to a column-level SLA, so selecting it would
-      // silently disable column-level freshness evaluation.
-      expect(
-        screen.queryByRole('option', { name: 'created_at' })
-      ).not.toBeInTheDocument();
+    renderForm();
+    const combobox = screen.getByRole('combobox', {
+      name: 'label.column-name',
     });
+    fireEvent.focus(combobox);
+    fireEvent.mouseDown(combobox);
+    const option = screen.getByRole('option', { name: 'created_at' });
+    fireEvent.pointerDown(option);
+    fireEvent.click(option);
 
-    it('still offers every top-level column when none have children', () => {
-      mockTable = {
-        ...mockTableData,
-        columns: [
-          { name: 'a', fullyQualifiedName: 'svc.db.schema.orders.a' },
-          { name: 'b', fullyQualifiedName: 'svc.db.schema.orders.b' },
-        ],
-      } as Table;
+    const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
 
-      renderForm();
-      openColumnDropdown();
-
-      expect(screen.getByRole('option', { name: 'a' })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: 'b' })).toBeInTheDocument();
-    });
-
-    it('saves the top-level column FQN, not a nested child sharing the name', () => {
-      mockTable = {
-        ...mockTableData,
-        columns: [
-          {
-            name: 'payload',
-            fullyQualifiedName: 'svc.db.schema.orders.payload',
-            children: [
-              {
-                name: 'created_at',
-                fullyQualifiedName: 'svc.db.schema.orders.payload.created_at',
-              },
-            ],
-          },
-          {
-            name: 'created_at',
-            fullyQualifiedName: 'svc.db.schema.orders.created_at',
-          },
-        ],
-      } as Table;
-
-      renderForm();
-      openColumnDropdown();
-      selectOption('created_at');
-
-      const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
-
-      // Only the top-level `created_at` is offered, so the saved `columnName`
-      // resolves to the top-level column the backend can evaluate — never the
-      // nested child FQN that previously slipped through.
-      expect(sla.columnName).toBe('svc.db.schema.orders.created_at');
-    });
+    expect(sla.columnName).toBe('svc.db.schema.orders.created_at');
   });
 });

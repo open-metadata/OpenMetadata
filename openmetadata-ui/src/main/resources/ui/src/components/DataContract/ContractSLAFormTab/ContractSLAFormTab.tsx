@@ -225,10 +225,7 @@ export const ContractSLAFormTab: React.FC<{
     );
 
     return {
-      // The backend resolves `sla.columnName` against top-level columns only
-      // (`ODCSTableTarget.resolveColumn`), so a nested (struct/array child)
-      // selection can never resolve and would silently drop column-level SLA
-      // evaluation. Offer only top-level columns as new selections.
+      // Freshness evaluation resolves only top-level columns.
       columnItems: isEmpty(columns)
         ? []
         : toItems(
