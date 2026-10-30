@@ -21,6 +21,7 @@ class OntologyConceptSqlGeneratorTest {
   private static final String ACCOUNTS = "finance.warehouse.payments.accounts";
   private static final String LEDGER = "finance.warehouse.payments.ledger";
   private static final String EMPLOYEES = "finance.warehouse.payments.employees";
+  private static final String CATEGORIES = "finance.warehouse.payments.categories";
   private static final UUID PART_OF = UUID.randomUUID();
   private static final UUID PAID_BY = UUID.randomUUID();
   private static final UUID RECEIVED_BY = UUID.randomUUID();
@@ -29,6 +30,7 @@ class OntologyConceptSqlGeneratorTest {
   private static final UUID MANAGES = UUID.randomUUID();
   private static final UUID PRIMARY_ACCOUNT = UUID.randomUUID();
   private static final UUID PRIMARY_ACCOUNT_OF = UUID.randomUUID();
+  private static final UUID HAS_PART = UUID.randomUUID();
 
   @Test
   void oneTableSelectsTheBoundColumnsWithTheRowLimit() {
@@ -642,6 +644,139 @@ class OntologyConceptSqlGeneratorTest {
   }
 
   @Test
+  void anUnboundSelfRelationWhoseInverseIsBoundToAColumnWithoutAKeyJoinsAgainstTheIdentifier() {
+    final BoundConcept employee =
+        concept(
+            "Employee",
+            new BoundTable(
+                EMPLOYEES,
+                "Postgres",
+                List.of(List.of("employee_id"), List.of("boss_id")),
+                Map.of(MANAGED_BY, List.of("boss_id")),
+                List.of("employee_id"),
+                List.of()));
+
+    assertEquals(
+        "SELECT t1.employee_id, t1.boss_id\nFROM payments.employees t0\n"
+            + "JOIN payments.employees t1 ON t0.employee_id = t1.boss_id -- manages\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                employee, List.of(new Hop(MANAGES, MANAGED_BY, "manages", employee)))
+            .sql());
+  }
+
+  @Test
+  void anUnboundSelfRelationWhoseInverseIsBoundToOneColumnOfACompositeKeyJoinsTheWholeKey() {
+    final BoundConcept category = concept("Category", partOfBoundCategories());
+
+    assertEquals(
+        "SELECT t1.category_id, t1.parent_id\nFROM payments.categories t0\n"
+            + "JOIN payments.categories t1"
+            + " ON t0.category_id = t1.parent_id AND t0.region = t1.parent_region -- has part\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                category, List.of(new Hop(HAS_PART, PART_OF, "has part", category)))
+            .sql());
+  }
+
+  @Test
+  void aSelfRelationBoundToOneColumnOfACompositeKeyJoinsTheWholeKey() {
+    final BoundConcept category = concept("Category", partOfBoundCategories());
+
+    assertEquals(
+        "SELECT t1.category_id, t1.parent_id\nFROM payments.categories t0\n"
+            + "JOIN payments.categories t1"
+            + " ON t0.parent_id = t1.category_id AND t0.parent_region = t1.region -- part of\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                category, List.of(new Hop(PART_OF, HAS_PART, "part of", category)))
+            .sql());
+  }
+
+  @Test
+  void anUnboundSelfRelationOverACompositeKeyAsksForABindingToOneOfItsColumns() {
+    final BoundConcept category =
+        concept(
+            "Category",
+            withConstraints(
+                table(CATEGORIES, "Postgres", "category_id", "parent_id"),
+                foreignKey(
+                    List.of("parent_id", "parent_region"), CATEGORIES, "category_id", "region")));
+
+    assertEquals(
+        "Hop 1 (has part): the foreign key from parent_id, parent_region to category_id, region"
+            + " joins "
+            + CATEGORIES
+            + " to itself in either direction; bind the has part property or its inverse to one"
+            + " of parent_id, parent_region",
+        assertThrows(
+                BadRequestException.class,
+                () ->
+                    OntologyConceptSqlGenerator.generate(
+                        category, List.of(new Hop(HAS_PART, PART_OF, "has part", category))))
+            .getMessage());
+  }
+
+  @Test
+  void aHopBoundToOneColumnOfACompositeKeyToAnotherTableJoinsTheWholeKey() {
+    final BoundTable transfers =
+        new BoundTable(
+            TRANSFERS,
+            "Postgres",
+            List.of(List.of("transfer_id")),
+            Map.of(PAID_BY, List.of("payer_id")),
+            List.of(),
+            List.of(
+                foreignKey(
+                    List.of("payer_id", "payer_region"), CUSTOMERS, "customer_id", "region")));
+
+    assertEquals(
+        "SELECT t1.customer_id\nFROM payments.transfers t0\n"
+            + "JOIN payments.customers t1"
+            + " ON t0.payer_id = t1.customer_id AND t0.payer_region = t1.region -- paid by\n"
+            + "LIMIT 50",
+        OntologyConceptSqlGenerator.generate(
+                concept("Funds Transfer", transfers),
+                List.of(
+                    new Hop(PAID_BY, null, "paid by", concept("Customer", identifiedCustomers()))))
+            .sql());
+  }
+
+  @Test
+  void aBoundColumnInSeveralCompositeKeysToTheTargetIsANamedBadRequest() {
+    final BoundTable transfers =
+        new BoundTable(
+            TRANSFERS,
+            "Postgres",
+            List.of(List.of("transfer_id")),
+            Map.of(PAID_BY, List.of("payer_id")),
+            List.of(),
+            List.of(
+                foreignKey(List.of("payer_id", "payer_region"), CUSTOMERS, "customer_id", "region"),
+                foreignKey(
+                    List.of("payer_id", "payer_branch"), CUSTOMERS, "customer_id", "branch")));
+
+    assertEquals(
+        "Hop 1 (paid by): several foreign keys join "
+            + TRANSFERS
+            + " and "
+            + CUSTOMERS
+            + "; bind the paid by property to one of their columns",
+        assertThrows(
+                BadRequestException.class,
+                () ->
+                    OntologyConceptSqlGenerator.generate(
+                        concept("Funds Transfer", transfers),
+                        List.of(
+                            new Hop(
+                                PAID_BY,
+                                null,
+                                "paid by",
+                                concept("Customer", identifiedCustomers())))))
+            .getMessage());
+  }
+
+  @Test
   void aHopNeverJoinsATableInAnotherDatabaseOfTheService() {
     final String otherDatabase = "finance.analytics.crm.customers";
     final BoundTable payments =
@@ -812,6 +947,18 @@ class OntologyConceptSqlGeneratorTest {
         Map.of(MANAGED_BY, List.of("manager_id")),
         List.of(),
         List.of(foreignKey(List.of("manager_id"), EMPLOYEES, "employee_id")));
+  }
+
+  private static BoundTable partOfBoundCategories() {
+    return new BoundTable(
+        CATEGORIES,
+        "Postgres",
+        List.of(List.of("category_id"), List.of("parent_id")),
+        Map.of(PART_OF, List.of("parent_id")),
+        List.of("category_id"),
+        List.of(
+            foreignKey(
+                List.of("parent_id", "parent_region"), CATEGORIES, "category_id", "region")));
   }
 
   private static BoundTable identifiedCustomers() {
