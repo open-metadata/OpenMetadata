@@ -13,7 +13,12 @@
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
 import { expect, test } from '../support/fixtures/base';
-import { installVisualData, VISUAL_ENTITIES } from '../utils/visualData';
+import {
+  installVisualBootstrap,
+  installVisualData,
+  VISUAL_ENTITIES,
+} from '../utils/visualData';
+import { expectVisualScreenshot } from '../utils/visualRegression';
 
 let server: Server;
 let origin: string;
@@ -756,4 +761,281 @@ test('notification lists load the built-in feed alert without duplicating it in 
     provider: 'system',
     alertType: 'ActivityFeed',
   });
+});
+
+for (const state of ['populated', 'error'] as const) {
+  for (const path of [
+    'a-new-read-endpoint',
+    'tables/not-a-fixture-id',
+    'tables/hierarchy',
+    'tables/name/visual_warehouse.finance.public.orders/versions/not-a-version',
+    'permissions/table/name/orders/unmodeledChild',
+    'users/admin/preferences/unmodeledChild',
+    'personas/a6fde953-d444-53db-a80c-e62a9b95e2b4/aiContext/unmodeledChild',
+    'tables/name/visual_warehouse.finance.public.orders/unmodeledChild',
+    'users/name/visual_steward/unmodeledChild',
+    'system/settings/unmodeledSetting',
+    'system/config/auth/unmodeledChild',
+    'metadata/types/name/table/unmodeledChild',
+    'metadata/types/name/unknownType/customProperties',
+    'dataQuality/testCases/testCaseIncidentStatus/unmodeledChild',
+    'kpi/unknownMetric/kpiResult',
+    'docStore/name/persona.VisualAnalystPersona/unmodeledChild',
+    'lineage/unmodeledRead',
+    'activity/unmodeledRead',
+    'analytics/dataInsights/system/charts/unmodeledRead',
+    'analytics/dataInsights/system/charts/name/unmodeledChart/data',
+  ]) {
+    test(`unmodeled reads block capture even when their errors are swallowed: ${state} ${path}`, async ({
+      page,
+    }) => {
+      await installVisualData(page, state);
+      const status = await page.evaluate(async (endpoint) => {
+        // A component may catch a failed read without showing a notification.
+        const response = await fetch(`/api/v1/${endpoint}`);
+        await response.json();
+        return response.status;
+      }, path);
+      expect(status).toBe(503);
+      expect(test.info().annotations).toContainEqual({
+        type: 'missing-visual-read-fixture',
+        description: `Missing visual read fixture: ${path}`,
+      });
+      await expect(page.getByText(/^Missing visual read fixture:/)).toHaveCount(
+        0
+      );
+      await expect(
+        expectVisualScreenshot(page, 'unmodeled-read-must-not-capture', 'light')
+      ).rejects.toThrow(`Missing visual read fixture: ${path}`);
+    });
+  }
+}
+
+test('capabilities and persona context reads return their public shapes', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => {
+    const capabilities = await (
+      await fetch('/api/v1/system/search/nlq')
+    ).json();
+    const statuses = await (
+      await fetch('/api/v1/personas/aiContext/status')
+    ).json();
+    const context = await (
+      await fetch(`/api/v1/personas/${statuses.data[0].personaId}/aiContext`)
+    ).json();
+    return { capabilities, statuses, context };
+  });
+  expect(result.capabilities).toBe(false);
+  expect(result.statuses.data[0]).toMatchObject({
+    cacheState: 'STALE',
+    entitiesIncluded: 0,
+    tokensEst: 0,
+  });
+  expect(result.context).toMatchObject({ enabled: false, rules: [] });
+  expect(result.context).not.toHaveProperty('data');
+});
+
+test('latest KPI and incident search reads retain numeric results and populated identities', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    kpi: await (
+      await fetch('/api/v1/kpi/visual_completed_target/latestKpiResult')
+    ).json(),
+    incidents: await (
+      await fetch(
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
+      )
+    ).json(),
+  }));
+  expect(Number.isFinite(Number(result.kpi.targetResult[0].value))).toBe(true);
+  expect(result.kpi.targetResult[0].targetMet).toBe(true);
+  expect(result.kpi.timestamp).toBeGreaterThan(0);
+  expect(result.incidents.data).not.toHaveLength(0);
+  expect(result.incidents.data[0].id).toBeTruthy();
+});
+
+test('repeated missing reads keep one diagnostic rather than growing test state', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  await page.evaluate(async () => {
+    for (let attempt = 0; attempt < 32; attempt++) {
+      await (await fetch('/api/v1/unmodeled-polling-read')).json();
+    }
+  });
+  expect(
+    test
+      .info()
+      .annotations.filter(({ type }) => type === 'missing-visual-read-fixture')
+  ).toHaveLength(1);
+});
+
+test('hierarchy, policy and application reads use explicit list contracts', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    domains: await (
+      await fetch('/api/v1/domains/hierarchy?limit=1&offset=0')
+    ).json(),
+    children: await (
+      await fetch('/api/v1/domains/hierarchy?directChildrenOf=VisualFinance')
+    ).json(),
+    permission: await (
+      await fetch(
+        '/api/v1/permissions/table/name/visual_warehouse.finance.public.orders'
+      )
+    ).json(),
+    pipelines: await (await fetch('/api/v1/pipelines/summary')).json(),
+    resources: await (await fetch('/api/v1/policies/resources')).json(),
+    history: await (
+      await fetch('/api/v1/apps/name/SearchIndexingApplication/status')
+    ).json(),
+  }));
+  expect(result.domains.data[0].fullyQualifiedName).toBe('VisualFinance');
+  expect(result.domains.paging.total).toBe(1);
+  expect(result.children).toEqual({ data: [], paging: { total: 0 } });
+  expect(result.permission.resource).toBe('table');
+  expect(result.pipelines.data[0].impactedAssetsCount).toBe(
+    result.pipelines.data[0].impactedAssets.length
+  );
+  expect(
+    result.resources.data.find(
+      (resource: { name: string }) => resource.name === 'table'
+    ).operations
+  ).toContain('All');
+  expect(result.history).toEqual({ data: [], paging: { total: 0 } });
+  expect(
+    test
+      .info()
+      .annotations.filter(({ type }) => type === 'missing-visual-read-fixture')
+  ).toHaveLength(0);
+});
+
+test('quality summary and configuration reads retain scalar contracts and scope', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    summary: await (
+      await fetch('/api/v1/dataQuality/testSuites/executionSummary')
+    ).json(),
+    otherSuite: await (
+      await fetch(
+        '/api/v1/dataQuality/testSuites/executionSummary?testSuiteId=another-suite'
+      )
+    ).json(),
+    counts: await (
+      await fetch('/api/v1/dataQuality/dimensions/testCaseCounts')
+    ).json(),
+    security: await (await fetch('/api/v1/system/security/config')).json(),
+    login: await (await fetch('/api/v1/system/config/loginConfig')).json(),
+    functions: await (await fetch('/api/v1/policies/functions')).json(),
+  }));
+  expect(result.summary).toMatchObject({
+    total: 2,
+    success: 1,
+    failed: 1,
+    aborted: 0,
+    queued: 0,
+  });
+  expect(result.otherSuite.total).toBe(0);
+  expect(result.counts.Completeness).toBe(1);
+  expect(result.counts.Integrity).toBe(1);
+  expect(result.security.authenticationConfiguration.provider).toBe('basic');
+  expect(result.security.authorizerConfiguration.adminPrincipals).toContain(
+    'admin'
+  );
+  expect(result.login).not.toHaveProperty('config_value');
+  expect(result.functions.data[0].examples).toContain('isOwner()');
+});
+
+test('public bootstrap reads cannot fall through to the shared backend', async ({
+  page,
+}) => {
+  await installVisualBootstrap(page, 'classic');
+  const status = await page.evaluate(
+    async () => (await fetch('/api/v1/unmodeled-public-read')).status
+  );
+  expect(status).toBe(503);
+  await expect(
+    expectVisualScreenshot(page, 'public-read-must-not-capture', 'light')
+  ).rejects.toThrow('Missing visual read fixture: unmodeled-public-read');
+});
+
+test('asset and dimension count maps describe the same fixture catalog', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    domains: await (await fetch('/api/v1/domains/assets/counts')).json(),
+    products: await (await fetch('/api/v1/dataProducts/assets/counts')).json(),
+    terms: await (
+      await fetch(
+        '/api/v1/glossaryTerms/assets/counts?parent=VisualBusinessGlossary'
+      )
+    ).json(),
+    definitions: await (
+      await fetch('/api/v1/dataQuality/dimensions/testDefinitionCounts')
+    ).json(),
+    cases: await (
+      await fetch('/api/v1/dataQuality/dimensions/testCaseCounts')
+    ).json(),
+  }));
+  expect(result.domains.VisualFinance).toBeGreaterThan(0);
+  expect(Number.isFinite(result.products.visual_revenue_product)).toBe(true);
+  expect(result.terms['VisualBusinessGlossary.Customer']).toBe(0);
+  expect(result.definitions.Uniqueness).toBe(1);
+  expect(result.cases.Uniqueness).toBe(0);
+});
+
+test('profile and history endpoints preserve their document and paged-list shapes', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => ({
+    profile: await (
+      await fetch(
+        '/api/v1/tables/visual_warehouse.finance.public.orders/tableProfile/latest'
+      )
+    ).json(),
+    history: await (
+      await fetch(
+        '/api/v1/tables/visual_warehouse.finance.public.orders/tableProfile'
+      )
+    ).json(),
+    pipeline: await (
+      await fetch('/api/v1/pipelines/visual_airflow.customer_sync/status')
+    ).json(),
+    children: await (
+      await fetch('/api/v1/containers/name/visual_s3.analytics/children')
+    ).json(),
+    ancestors: await (
+      await fetch('/api/v1/containers/name/visual_s3.analytics/ancestors')
+    ).json(),
+    assets: await (
+      await fetch('/api/v1/metrics/a2db4c89-cc42-5fad-b381-2dfa9180e5c0/assets')
+    ).json(),
+    kpiHistory: await (
+      await fetch('/api/v1/kpi/visual_completed_target/kpiResult')
+    ).json(),
+    latestKpi: await (
+      await fetch('/api/v1/kpi/visual_completed_target/latestKpiResult')
+    ).json(),
+  }));
+  expect(result.profile.columns).toHaveLength(3);
+  expect(result.profile).not.toHaveProperty('paging');
+  expect(result.history).toEqual({ data: [], paging: { total: 0 } });
+  expect(result.pipeline.data[0].executionStatus).toBe('Successful');
+  expect(result.pipeline.data[0].taskStatus).toHaveLength(2);
+  expect(result.children).toEqual({ data: [], paging: { total: 0 } });
+  expect(result.ancestors).toEqual([]);
+  expect(result.assets).toEqual({ data: [], paging: { total: 0 } });
+  expect(result.kpiHistory.results.at(-1).count).toBe(
+    Number(result.latestKpi.targetResult[0].value)
+  );
 });

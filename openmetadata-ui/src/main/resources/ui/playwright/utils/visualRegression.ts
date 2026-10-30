@@ -19,6 +19,7 @@ import {
 } from '../e2e/Utils/appMode';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
+import { assertVisualReadFixtures } from './visualData';
 
 export const VISUAL_THEMES = ['light', 'dark'] as const;
 export type VisualTheme = (typeof VISUAL_THEMES)[number];
@@ -245,6 +246,7 @@ export const expectVisualScreenshot = async (
     Parameters<ReturnType<typeof expect<Page>>['toHaveScreenshot']>[0]
   > & { target?: Locator; allowErrorFeedback?: boolean } = {}
 ) => {
+  assertVisualReadFixtures();
   // Classic deliberately resolves dark preferences to light. Requiring the
   // actual root theme prevents a duplicate light image from claiming dark coverage.
   if (theme === 'dark') {
@@ -265,8 +267,7 @@ export const expectVisualScreenshot = async (
     ...screenshotOptions
   } = options;
   // An unmodeled API must fail even if its notification arrives after readiness.
-  const missingFixture = page.getByText(/^Missing visual read fixture:/);
-  await expect(missingFixture).toHaveCount(0);
+  assertVisualReadFixtures();
   if (!allowErrorFeedback) {
     await expect(
       page.getByRole('alertdialog'),
@@ -286,7 +287,7 @@ export const expectVisualScreenshot = async (
       ...screenshotOptions,
     }
   );
-  await expect(missingFixture).toHaveCount(0);
+  assertVisualReadFixtures();
   if (!allowErrorFeedback) {
     await expect(page.getByRole('alertdialog')).toHaveCount(0);
   }

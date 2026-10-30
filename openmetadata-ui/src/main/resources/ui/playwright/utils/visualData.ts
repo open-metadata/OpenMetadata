@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { Page, Route } from '@playwright/test';
+import { SystemChartType } from '../../src/enums/DataInsight.enum';
 import { ResourceEntity } from '../../src/enums/permissions.enum';
 import { Operation } from '../../src/generated/entity/policies/policy';
 import activity from '../fixtures/visual/activity.json';
@@ -24,6 +25,7 @@ import systemSettings from '../fixtures/visual/system-settings.json';
 import workflowInstanceStates from '../fixtures/visual/workflow-instance-states.json';
 import workflowInstances from '../fixtures/visual/workflow-instances.json';
 import workflowTriggerFields from '../fixtures/visual/workflow-trigger-fields.json';
+import { test } from '../support/fixtures/base';
 
 interface FixtureEntity extends Record<string, unknown> {
   id: string;
@@ -58,24 +60,76 @@ const pageOf = (data: unknown[]) => ({
   paging: { total: data.length },
 });
 
+const MISSING_READ_ANNOTATION = 'missing-visual-read-fixture';
+
+// The latest-result endpoint and the final historical point describe the same
+// measurement, so keep their values together rather than inventing a fallback.
+const KPI_RESULT_VALUES: Record<string, number[]> = {
+  visual_description_coverage: [55, 59, 63, 67, 71, 75, 79],
+  visual_owner_coverage: [55, 56, 57, 58, 59, 60, 61],
+  visual_completed_target: [80, 82, 84, 86, 88, 90, 92],
+};
+
+const failMissingVisualRead = async (route: Route) => {
+  const path = decodeURIComponent(
+    new URL(route.request().url()).pathname.replace('/api/v1/', '')
+  );
+  const message = `Missing visual read fixture: ${path}`;
+  const annotations = test.info().annotations;
+  // Components can swallow failed reads. Keep the first missing fixture on the
+  // test itself, bounded to one diagnostic and independent of rendered toasts.
+  if (!annotations.some(({ type }) => type === MISSING_READ_ANNOTATION)) {
+    annotations.push({ type: MISSING_READ_ANNOTATION, description: message });
+  }
+  await route.fulfill({ status: 503, json: { message } });
+};
+
+export const assertVisualReadFixtures = () => {
+  const missing = test
+    .info()
+    .annotations.find(({ type }) => type === MISSING_READ_ANNOTATION);
+  if (missing) throw new Error(missing.description);
+};
+
 /** Public configuration is independent of the data service used by a test run. */
 export const installVisualBootstrap = async (
   page: Page,
   appMode: 'ai' | 'classic' = 'ai'
 ) => {
+  // Public authentication uses bootstrap without catalog data. Its unexpected
+  // reads must be reported too, rather than falling through to the real server.
+  await page.route('**/api/v1/**', async (route) => {
+    if (route.request().method() === 'GET') {
+      await failMissingVisualRead(route);
+    } else {
+      await route.fulfill({
+        status: 503,
+        json: { message: 'The visual fixture service is unavailable.' },
+      });
+    }
+  });
   // Live feed subscriptions can refresh a captured page with unrelated shared
   // catalog events even when every HTTP read is deterministic.
   await page.routeWebSocket('**/api/v1/push/**', async (socket) => {
     await socket.close({ code: 1000, reason: 'Visual data is isolated.' });
   });
-  await page.route('**/api/v1/users/*/preferences**', (route) =>
-    route.fulfill({
+  await page.route('**/api/v1/users/*/preferences**', async (route) => {
+    if (
+      !/^\/api\/v1\/users\/[^/]+\/preferences$/.test(
+        new URL(route.request().url()).pathname
+      )
+    ) {
+      await failMissingVisualRead(route);
+
+      return;
+    }
+    await route.fulfill({
       json: {
         userId: '00000000-0000-4000-8000-000000000999',
         preferences: [{ type: 'appMode', config: { value: appMode } }],
       },
-    })
-  );
+    });
+  });
   await page.route('**/api/v1/system/**', async (route) => {
     const url = new URL(route.request().url());
     const key = url.pathname.split('/').pop() ?? '';
@@ -87,7 +141,16 @@ export const installVisualBootstrap = async (
 
       return;
     }
-    if (url.pathname.includes('/settings/entityRulesSettings/')) {
+    if (url.pathname === '/api/v1/system/search/nlq') {
+      await route.fulfill({ json: false });
+
+      return;
+    }
+    if (
+      /^\/api\/v1\/system\/settings\/entityRulesSettings\/[^/]+$/.test(
+        url.pathname
+      )
+    ) {
       await route.fulfill({
         json: systemSettings.entityRulesSettings.entitySemantics
           .filter(
@@ -125,14 +188,50 @@ export const installVisualBootstrap = async (
       },
       rdf: { rdfEnabled: true, basePath: '/rdf', aiEnabled: false },
       customUiThemePreference: {},
+      // These pages intentionally exercise their unsaved/default form values.
+      // New setting types need an explicit fixture instead of an implicit {}.
+      emailConfiguration: {},
+      loginConfiguration: {},
+      loginConfig: {},
+      profilerConfiguration: {},
+      lineageSettings: {},
+      openMetadataBaseUrlConfiguration: {},
+      glossarySettings: {},
+      glossaryTermRelationSettings: {},
+      workflowSettings: {},
     };
+    if (url.pathname === '/api/v1/system/security/config') {
+      await route.fulfill({
+        json: {
+          authenticationConfiguration: configuration.auth,
+          authorizerConfiguration: configuration.authorizer,
+        },
+      });
+
+      return;
+    }
+    if (url.pathname === '/api/v1/system/settings/source') {
+      await route.fulfill({ json: { settings: [] } });
+
+      return;
+    }
+    if (
+      !/^\/api\/v1\/system\/(?:config\/|settings\/)?[^/]+$/.test(
+        url.pathname
+      ) ||
+      ![...Object.keys(settings), ...Object.keys(configuration)].includes(key)
+    ) {
+      await failMissingVisualRead(route);
+
+      return;
+    }
     await route.fulfill({
       json: url.pathname.includes('/settings/')
         ? {
             config_type: key,
-            config_value: settings[key] ?? configuration[key] ?? {},
+            config_value: settings[key] ?? configuration[key],
           }
-        : configuration[key] ?? settings[key] ?? {},
+        : configuration[key] ?? settings[key],
     });
   });
 };
@@ -216,8 +315,8 @@ export const installVisualData = async (
       return;
     }
 
-    // A few rendering APIs use POST for reads. All other submissions fail
-    // locally, including endpoints handled before the generic entity router.
+    // Reports use POST for reads, and local page creation opens an editor from
+    // fixture data. Telemetry is discarded; other writes fail before routing.
     const isolatedPosts = [
       'analytics/web/events/collect',
       'contextCenter/pages',
@@ -280,6 +379,20 @@ export const installVisualData = async (
     }
 
     if (request.method() === 'GET' && path.startsWith('lineage/')) {
+      if (
+        ![
+          'lineage/getPaginationInfo',
+          'lineage/scene',
+          'lineage/getLineage',
+          'lineage/getLineage/upstream',
+          'lineage/getLineage/downstream',
+        ].includes(path) &&
+        !/^lineage\/getLineageEdge\/[^/]+\/[^/]+$/.test(path)
+      ) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
       const assets = VISUAL_ENTITIES.filter(({ type }) =>
         ['table', 'pipeline', 'dashboard'].includes(type)
       );
@@ -369,6 +482,15 @@ export const installVisualData = async (
     }
 
     if (parts[0] === 'permissions' && parts[1] !== 'debug') {
+      if (
+        (parts.length > 3 && !(parts.length === 4 && parts[2] === 'name')) ||
+        (parts[1] &&
+          !Object.values(ResourceEntity).includes(parts[1] as ResourceEntity))
+      ) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
       await route.fulfill({
         json: parts[1]
           ? permissionFor(parts[1])
@@ -415,7 +537,7 @@ export const installVisualData = async (
 
       return;
     }
-    if (path.startsWith('attachments/fqn/')) {
+    if (/^attachments\/fqn\/[^/]+\/(?:Inline|External)$/.test(path)) {
       await route.fulfill({ json: [] });
 
       return;
@@ -536,12 +658,136 @@ export const installVisualData = async (
 
       return;
     }
+    if (path === 'pipelines/summary') {
+      const impactedAssets = VISUAL_ENTITIES.filter(({ type }) =>
+        ['table', 'dashboard'].includes(type)
+      ).map(({ entity }) => entity.fullyQualifiedName);
+      await route.fulfill({
+        json: pageOf(
+          state === 'empty'
+            ? []
+            : fixtureResources.pipelines.map((pipeline) => ({
+                pipelineId: pipeline.id,
+                pipelineName: pipeline.displayName,
+                pipelineFqn: pipeline.fullyQualifiedName,
+                serviceType: pipeline.serviceType,
+                scheduleInterval: pipeline.scheduleInterval,
+                lastRunStatus: 'Successful',
+                lastRunTime: 1768467600000,
+                impactedAssets,
+                impactedAssetsCount: impactedAssets.length,
+              }))
+        ),
+      });
+
+      return;
+    }
+    if (path === 'policies/resources') {
+      await route.fulfill({
+        json: pageOf(
+          Object.values(ResourceEntity).map((name) => ({
+            name,
+            // The wildcard is valid for every resource; unrelated operations
+            // would create impossible policy choices for that resource.
+            operations: [Operation.All],
+          }))
+        ),
+      });
+
+      return;
+    }
+    if (path === 'policies/functions') {
+      await route.fulfill({
+        json: pageOf([
+          {
+            name: 'isOwner',
+            description: 'True when the current user owns the resource.',
+            input: '',
+            examples: ['isOwner()'],
+            parameterInputType: 'NotRequired',
+          },
+        ]),
+      });
+
+      return;
+    }
+    const assetCountCollection =
+      /^(teams|domains|dataProducts|glossaryTerms)\/assets\/counts$/.exec(
+        path
+      )?.[1];
+    if (assetCountCollection) {
+      const parentFqn = url.searchParams.get('parent');
+      await route.fulfill({
+        // These APIs return FQN-keyed maps; a paginated list silently renders
+        // every badge as zero even when the catalog contains matching assets.
+        json: Object.fromEntries(
+          fixtureResources[assetCountCollection]
+            .filter(
+              (item) =>
+                !parentFqn ||
+                assetCountCollection !== 'glossaryTerms' ||
+                item.fullyQualifiedName.startsWith(`${parentFqn}.`)
+            )
+            .map((item) => [
+              item.fullyQualifiedName,
+              state === 'empty'
+                ? 0
+                : VISUAL_ENTITIES.filter(({ entity }) => {
+                    if (assetCountCollection === 'glossaryTerms') {
+                      return (
+                        entity.tags as
+                          | { source: string; tagFQN: string }[]
+                          | undefined
+                      )?.some(
+                        (tag) =>
+                          tag.source === 'Glossary' &&
+                          tag.tagFQN === item.fullyQualifiedName
+                      );
+                    }
+                    const key =
+                      assetCountCollection === 'teams'
+                        ? 'owners'
+                        : assetCountCollection;
+
+                    return (entity[key] as FixtureEntity[] | undefined)?.some(
+                      ({ id }) => id === item.id
+                    );
+                  }).length,
+            ])
+        ),
+      });
+
+      return;
+    }
+    if (path === 'domains/hierarchy') {
+      const parentFqn = url.searchParams.get('directChildrenOf');
+      const rows =
+        state === 'empty'
+          ? []
+          : fixtureResources.domains.filter((domain) => {
+              const parent = domain.parent as FixtureEntity | undefined;
+
+              return parentFqn
+                ? parent?.fullyQualifiedName === parentFqn
+                : !parent;
+            });
+      const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
+      const limit = Math.max(1, Number(url.searchParams.get('limit')) || 15);
+      await route.fulfill({
+        json: {
+          data: rows.slice(offset, offset + limit),
+          paging: { total: rows.length },
+        },
+      });
+
+      return;
+    }
     if (path === 'governance/intakeForms' || path === 'taskFormSchemas') {
       await route.fulfill({ json: pageOf([]) });
 
       return;
     }
-    if (path.startsWith('governance/intakeForms/entityType/')) {
+    if (/^governance\/intakeForms\/entityType\/[^/]+$/.test(path)) {
       await route.fulfill({
         status: 404,
         json: { message: 'No intake form is configured for this entity type.' },
@@ -588,6 +834,22 @@ export const installVisualData = async (
     }
     if (path === 'metadata/types/workflows/approvalEnforcedEntityTypes') {
       await route.fulfill({ json: [] });
+
+      return;
+    }
+    if (path === 'personas/aiContext/status') {
+      await route.fulfill({
+        json: pageOf(
+          state === 'empty'
+            ? []
+            : fixtureResources.personas.map(({ id }) => ({
+                personaId: id,
+                cacheState: 'STALE',
+                entitiesIncluded: 0,
+                tokensEst: 0,
+              }))
+        ),
+      });
 
       return;
     }
@@ -664,7 +926,10 @@ export const installVisualData = async (
 
       return;
     }
-    if (path.startsWith('analytics/dataInsights/system/charts/')) {
+    if (
+      path === 'analytics/dataInsights/system/charts/listChartData' ||
+      /^analytics\/dataInsights\/system\/charts\/name\/[^/]+\/data$/.test(path)
+    ) {
       const results = Array.from({ length: 7 }, (_, index) => ({
         day: 1767873600000 + index * 86400000,
         count: 12 + index * 3,
@@ -675,6 +940,19 @@ export const installVisualData = async (
       const names = [...url.searchParams.entries()]
         .filter(([key]) => /^chartNames(?:\[\d*\])?$/.test(key))
         .flatMap(([, value]) => value.split(','));
+      const requestedNames = path.endsWith('/listChartData')
+        ? names
+        : [parts[5]];
+      if (
+        requestedNames.some(
+          (name) =>
+            !Object.values(SystemChartType).includes(name as SystemChartType)
+        )
+      ) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
       await route.fulfill({
         json: path.endsWith('/listChartData')
           ? Object.fromEntries(names.map((name) => [name, { results }]))
@@ -729,7 +1007,14 @@ export const installVisualData = async (
     }
     if (
       state === 'error' &&
-      path.startsWith('dataQuality/testCases/testCaseIncidentStatus')
+      ([
+        'dataQuality/testCases/testCaseIncidentStatus',
+        'dataQuality/testCases/testCaseIncidentStatus/incidentGroups',
+        'dataQuality/testCases/testCaseIncidentStatus/search/list',
+      ].includes(path) ||
+        /^dataQuality\/testCases\/testCaseIncidentStatus\/stateId\/[^/]+$/.test(
+          path
+        ))
     ) {
       await route.fulfill({
         status: 503,
@@ -765,14 +1050,21 @@ export const installVisualData = async (
 
       return;
     }
-    if (path === 'dataQuality/testCases/testCaseIncidentStatus') {
+    if (
+      path === 'dataQuality/testCases/testCaseIncidentStatus' ||
+      path === 'dataQuality/testCases/testCaseIncidentStatus/search/list'
+    ) {
       await route.fulfill({
         json: pageOf(state === 'empty' ? [] : incidents.statuses),
       });
 
       return;
     }
-    if (path.includes('testCaseIncidentStatus/stateId/')) {
+    if (
+      /^dataQuality\/testCases\/testCaseIncidentStatus\/stateId\/[^/]+$/.test(
+        path
+      )
+    ) {
       await route.fulfill({
         json: pageOf(state === 'empty' ? [] : incidents.statuses),
       });
@@ -791,7 +1083,7 @@ export const installVisualData = async (
 
       return;
     }
-    if (path.startsWith('docStore/name/')) {
+    if (/^docStore\/name\/[^/]+$/.test(path)) {
       // Unsaved persona layouts use a 404 to select the product's defaults.
       const document = fixtureResources.documents.find(
         (item) =>
@@ -812,12 +1104,16 @@ export const installVisualData = async (
       return;
     }
     if (/^kpi\/[^/]+\/kpiResult$/.test(path)) {
+      const kpi = fixtureResources.kpis.find(
+        ({ fullyQualifiedName }) => fullyQualifiedName === parts[1]
+      );
+      const values = kpi && KPI_RESULT_VALUES[kpi.name];
+      if (!values) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
       const end = Date.parse('2026-01-15T10:00:00.000Z');
-      const values = path.includes('visual_owner_coverage')
-        ? [55, 56, 57, 58, 59, 60, 61]
-        : path.includes('visual_completed_target')
-        ? [60, 62, 64, 66, 68, 70, 72]
-        : [55, 59, 63, 67, 71, 75, 79];
       await route.fulfill({
         json: {
           results:
@@ -827,6 +1123,33 @@ export const installVisualData = async (
                   count,
                   day: end - (values.length - index - 1) * 86_400_000,
                 })),
+        },
+      });
+
+      return;
+    }
+    if (/^kpi\/[^/]+\/latestKpiResult$/.test(path)) {
+      const kpi = fixtureResources.kpis.find(
+        ({ fullyQualifiedName }) => fullyQualifiedName === parts[1]
+      );
+      const values = kpi && KPI_RESULT_VALUES[kpi.name];
+      if (!kpi || !values) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
+      const value = values[values.length - 1];
+      await route.fulfill({
+        json: {
+          kpiFqn: kpi.fullyQualifiedName,
+          timestamp: 1768471200000,
+          targetResult: [
+            {
+              name: 'coverage',
+              value: String(value),
+              targetMet: value >= Number(kpi.targetValue),
+            },
+          ],
         },
       });
 
@@ -855,7 +1178,9 @@ export const installVisualData = async (
     }
     if (
       path === 'activity' ||
-      /^activity\/(my-feed|following|mentions|entity|user)(\/|$)/.test(path)
+      /^activity\/(my-feed|following|mentions)$/.test(path) ||
+      /^activity\/entity\/[^/]+\/(?:name\/)?[^/]+$/.test(path) ||
+      /^activity\/user\/[^/]+$/.test(path)
     ) {
       await route.fulfill({ json: pageOf(state === 'empty' ? [] : activity) });
 
@@ -863,7 +1188,9 @@ export const installVisualData = async (
     }
     if (
       path === 'announcements' ||
-      (path.startsWith('activity/') && !path.startsWith('activity/entity/'))
+      path === 'activity/count' ||
+      path === 'activity/about' ||
+      /^activity\/[^/]+\/replies$/.test(path)
     ) {
       await route.fulfill({ json: path === 'activity/count' ? 0 : pageOf([]) });
 
@@ -879,12 +1206,69 @@ export const installVisualData = async (
 
       return;
     }
-    if (path.startsWith('changeSummary/')) {
-      await route.fulfill({ json: pageOf([]) });
+    if (/^changeSummary\/[^/]+\/(?:name\/)?[^/]+$/.test(path)) {
+      await route.fulfill({ json: { changeSummary: {}, totalEntries: 0 } });
 
       return;
     }
 
+    if (path === 'dataQuality/testSuites/executionSummary') {
+      const suiteId = url.searchParams.get('testSuiteId');
+      const cases =
+        state === 'empty'
+          ? []
+          : fixtureResources['dataQuality/testCases'].filter(
+              (item) =>
+                !suiteId || (item.testSuite as FixtureEntity).id === suiteId
+            );
+      const statuses = cases.map(
+        (item) =>
+          (item.testCaseResult as { testCaseStatus?: string })?.testCaseStatus
+      );
+      await route.fulfill({
+        json: {
+          total: cases.length,
+          success: statuses.filter((status) => status === 'Success').length,
+          failed: statuses.filter((status) => status === 'Failed').length,
+          aborted: statuses.filter((status) => status === 'Aborted').length,
+          queued: statuses.filter((status) => !status || status === 'Queued')
+            .length,
+          columnTestSummary: [],
+        },
+      });
+
+      return;
+    }
+    if (
+      [
+        'dataQuality/dimensions/testCaseCounts',
+        'dataQuality/dimensions/testDefinitionCounts',
+      ].includes(path)
+    ) {
+      const definitions = fixtureResources['dataQuality/testDefinitions'];
+      const countedDefinitions = path.endsWith('/testDefinitionCounts')
+        ? definitions
+        : fixtureResources['dataQuality/testCases'].map((item) =>
+            definitions.find(
+              ({ id }) => id === (item.testDefinition as FixtureEntity).id
+            )
+          );
+      await route.fulfill({
+        json: Object.fromEntries(
+          fixtureResources['dataQuality/dimensions'].map((dimension) => [
+            dimension.name,
+            state === 'empty'
+              ? 0
+              : countedDefinitions.filter(
+                  (definition) =>
+                    definition?.dataQualityDimension === dimension.name
+                ).length,
+          ])
+        ),
+      });
+
+      return;
+    }
     if (path === 'dataQuality/testSuites/dataQualityReport') {
       if (url.searchParams.get('index') === 'testCaseResolutionStatus') {
         await route.fulfill({
@@ -1091,7 +1475,7 @@ export const installVisualData = async (
       return;
     }
 
-    if (path === 'feed' || path.startsWith('activity/entity/')) {
+    if (path === 'feed') {
       await route.fulfill({ json: pageOf([]) });
 
       return;
@@ -1139,7 +1523,7 @@ export const installVisualData = async (
       return;
     }
 
-    if (path.startsWith('governance/workflowInstanceStates/')) {
+    if (/^governance\/workflowInstanceStates\/[^/]+\/[^/]+$/.test(path)) {
       const [, , workflowName, instanceId] = path.split('/');
       const definition = resources['governance/workflowDefinitions'].find(
         (workflow) => workflow.name === workflowName
@@ -1159,22 +1543,42 @@ export const installVisualData = async (
       return;
     }
 
-    if (
-      path.startsWith('metadata/types/') &&
-      path.endsWith('/customProperties')
-    ) {
+    if (/^metadata\/types\/(?:name\/)?[^/]+\/customProperties$/.test(path)) {
+      const key = parts[parts.length - 2];
+      const typeNames = [
+        ...Object.values(ResourceEntity),
+        ...customProperties.fieldTypes.map(({ name }) => name),
+      ];
+      const typeIds = VISUAL_ENTITIES.map(
+        (_, index) =>
+          `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`
+      );
+      if (
+        !typeNames.includes(key) &&
+        !typeIds.includes(key) &&
+        !customProperties.fieldTypes.some(({ id }) => id === key)
+      ) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
       await route.fulfill({ json: [] });
 
       return;
     }
-    if (
-      path.startsWith('types/name/') ||
-      path.startsWith('metadata/types/name/')
-    ) {
+    if (/^(?:metadata\/)?types\/name\/[^/]+$/.test(path)) {
       const name = parts[parts.length - 1];
       const field = customProperties.fieldTypes.find(
         (type) => type.name === name
       );
+      if (
+        !field &&
+        !Object.values(ResourceEntity).includes(name as ResourceEntity)
+      ) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
       await route.fulfill({
         json: field ?? {
           id: '00000000-0000-4000-8000-000000000001',
@@ -1217,19 +1621,67 @@ export const installVisualData = async (
       return;
     }
 
+    const tableProfileRead =
+      /^tables\/([^/]+)\/tableProfile(?:\/(latest))?$/.exec(path);
+    if (tableProfileRead) {
+      const table = fixtureResources.tables.find(
+        ({ fullyQualifiedName }) => fullyQualifiedName === tableProfileRead[1]
+      );
+      if (!table) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
+      // The profiler returns a Table DTO, including schema, before a profile
+      // has been collected; an empty paginated list is not that contract.
+      await route.fulfill({ json: tableProfileRead[2] ? table : pageOf([]) });
+
+      return;
+    }
+    const pipelineHistory =
+      /^(pipelines|services\/ingestionPipelines)\/([^/]+)\/(status|pipelineStatus)$/.exec(
+        path
+      );
+    if (
+      pipelineHistory &&
+      pipelineHistory[3] ===
+        (pipelineHistory[1] === 'pipelines' ? 'status' : 'pipelineStatus')
+    ) {
+      const pipeline = fixtureResources[pipelineHistory[1]].find(
+        ({ fullyQualifiedName }) => fullyQualifiedName === pipelineHistory[2]
+      );
+      if (!pipeline) {
+        await failMissingVisualRead(route);
+
+        return;
+      }
+      const runs =
+        pipelineHistory[1] === 'pipelines' && state !== 'empty'
+          ? [
+              {
+                timestamp: 1768467600000,
+                endTime: 1768467660000,
+                executionStatus: 'Successful',
+                taskStatus: (pipeline.tasks as { name: string }[]).map(
+                  ({ name }) => ({
+                    name,
+                    executionStatus: 'Successful',
+                    startTime: 1768467600000,
+                    endTime: 1768467660000,
+                  })
+                ),
+              },
+            ]
+          : [];
+      await route.fulfill({ json: pageOf(runs) });
+
+      return;
+    }
     const collection = collections.find(
       (key) => path === key || path.startsWith(`${key}/`)
     );
     if (!collection) {
-      await route.fulfill({
-        status: 503,
-        json: {
-          message:
-            request.method() === 'GET'
-              ? `Missing visual read fixture: ${path}`
-              : 'The visual fixture service is unavailable.',
-        },
-      });
+      await failMissingVisualRead(route);
 
       return;
     }
@@ -1263,12 +1715,41 @@ export const installVisualData = async (
         suffix.startsWith(`name/${fullyQualifiedName}/`) ||
         suffix === `name/${name}`
     );
-    // Authentication is outside the catalog fixture, including error scenarios.
-    if (collection === 'users' && suffix && !selected) {
-      await route.fulfill({
-        status: 404,
-        json: { code: 404, message: 'User not found in the visual catalog.' },
-      });
+    const childPath = selected
+      ? suffix.startsWith(`${selected.id}/`)
+        ? suffix.slice(selected.id.length + 1)
+        : suffix.startsWith(`name/${selected.fullyQualifiedName}/`)
+        ? suffix.slice(`name/${selected.fullyQualifiedName}/`.length)
+        : ''
+      : '';
+    const isListRead =
+      !suffix ||
+      (collection === 'teams' && suffix === 'hierarchy') ||
+      (collection.startsWith('dataQuality/') && suffix === 'search/list');
+    const isMetricHierarchy =
+      collection === 'metrics' && suffix === 'hierarchy';
+    // Validate the route before the deliberate failure state; otherwise an
+    // unmodeled child read can masquerade as the expected error feedback.
+    if (
+      (!selected && !isListRead && !isMetricHierarchy) ||
+      (childPath &&
+        !['columns', 'sampleData', 'versions'].includes(childPath) &&
+        !/^versions\/\d+(?:\.\d+)?$/.test(childPath) &&
+        !(collection === 'dataProducts' && childPath === 'portsView') &&
+        !(
+          collection === 'dataQuality/testSuites' && childPath === 'testCases'
+        ) &&
+        !(collection === 'metrics' && childPath === 'hierarchy') &&
+        !(collection === 'personas' && childPath === 'aiContext') &&
+        !(collection === 'apps' && childPath === 'status') &&
+        !(collection === 'tables' && childPath === 'tableProfilerConfig') &&
+        !(
+          collection === 'containers' &&
+          ['children', 'ancestors'].includes(childPath)
+        ) &&
+        !(collection === 'metrics' && childPath === 'assets'))
+    ) {
+      await failMissingVisualRead(route);
 
       return;
     }
@@ -1281,7 +1762,7 @@ export const installVisualData = async (
       return;
     }
 
-    if (collection === 'metrics' && suffix === 'hierarchy') {
+    if (isMetricHierarchy) {
       await route.fulfill({
         json: pageOf(
           state === 'empty'
@@ -1292,11 +1773,7 @@ export const installVisualData = async (
 
       return;
     }
-    if (
-      !suffix ||
-      suffix === 'hierarchy' ||
-      (collection.startsWith('dataQuality/') && suffix === 'search/list')
-    ) {
+    if (isListRead) {
       const alertType = url.searchParams.get('alertType');
       const rows =
         collection === 'events/subscriptions' && alertType
@@ -1308,11 +1785,39 @@ export const installVisualData = async (
     }
 
     if (selected) {
-      const childPath = suffix.startsWith(`${selected.id}/`)
-        ? suffix.slice(selected.id.length + 1)
-        : suffix.startsWith(`name/${selected.fullyQualifiedName}/`)
-        ? suffix.slice(`name/${selected.fullyQualifiedName}/`.length)
-        : '';
+      if (collection === 'containers' && childPath === 'ancestors') {
+        // The fixture is a root bucket, so it has no container breadcrumb ancestors.
+        await route.fulfill({ json: [] });
+
+        return;
+      }
+      if (collection === 'tables' && childPath === 'tableProfilerConfig') {
+        await route.fulfill({ json: selected });
+
+        return;
+      }
+      if (
+        (collection === 'containers' && childPath === 'children') ||
+        (collection === 'metrics' && childPath === 'assets')
+      ) {
+        // The bucket has no nested containers and the metric has no asset bindings.
+        await route.fulfill({ json: pageOf([]) });
+
+        return;
+      }
+      if (collection === 'apps' && childPath === 'status') {
+        // Installed applications have no execution history in this catalog.
+        await route.fulfill({ json: pageOf([]) });
+
+        return;
+      }
+      if (collection === 'personas' && childPath === 'aiContext') {
+        await route.fulfill({
+          json: { enabled: false, rules: [], cacheState: 'STALE' },
+        });
+
+        return;
+      }
       if (collection === 'dataProducts' && childPath === 'portsView') {
         await route.fulfill({
           json: { inputPorts: pageOf([]), outputPorts: pageOf([]) },
@@ -1358,7 +1863,7 @@ export const installVisualData = async (
 
         return;
       }
-      if (childPath.startsWith('versions/')) {
+      if (/^versions\/\d+(?:\.\d+)?$/.test(childPath)) {
         await route.fulfill({
           json: { ...selected, version: Number(childPath.split('/')[1]) },
         });
@@ -1373,27 +1878,13 @@ export const installVisualData = async (
           },
         });
       } else if (childPath) {
-        await route.fulfill({ json: pageOf([]) });
+        await failMissingVisualRead(route);
       } else {
         await route.fulfill({ json: selected });
       }
 
       return;
     }
-    // Missing fixture users must not leak into the live user directory.
-    if (collection === 'users') {
-      await route.fulfill({
-        status: 404,
-        json: { code: 404, message: 'User not found in the visual catalog.' },
-      });
-
-      return;
-    }
-    await route.fulfill({
-      status: suffix.startsWith('name/') ? 404 : 200,
-      json: suffix.startsWith('name/')
-        ? { message: 'Entity not found in the visual catalog.' }
-        : pageOf([]),
-    });
+    await failMissingVisualRead(route);
   });
 };
