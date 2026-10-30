@@ -61,7 +61,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
-import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
@@ -1032,7 +1031,8 @@ public class TaskWorkflowHandler {
   /**
    * Saves what an approved task changed on its entity and records it as the entity's own change
    * event, as a direct edit would. The write runs inside the task's request, so no response filter
-   * records it.
+   * records it. The description, tag, tier, owner, domain and suggestion writes all save through
+   * here (ADR:2026-10-30-an-approved-tasks-change-is-the-entitys-own-change-event).
    */
   private void saveChange(
       EntityInterface<?> entity,
@@ -1061,10 +1061,7 @@ public class TaskWorkflowHandler {
     }
     try {
       ChangeEvent changeEvent =
-          ChangeEvents.createChangeEventForEntity(user, changeType, entityInterface);
-      Object entityForEvent = changeEvent.getEntity();
-      changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
-      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));
+          ChangeEventHandler.entityChangeEvent(user, changeType, entityInterface);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     } catch (Exception e) {
       LOG.warn(
