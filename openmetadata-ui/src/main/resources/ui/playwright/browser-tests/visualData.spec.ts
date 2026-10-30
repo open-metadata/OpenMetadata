@@ -774,6 +774,11 @@ for (const state of ['populated', 'error'] as const) {
     'personas/a6fde953-d444-53db-a80c-e62a9b95e2b4/aiContext/unmodeledChild',
     'tables/name/visual_warehouse.finance.public.orders/unmodeledChild',
     'users/name/visual_steward/unmodeledChild',
+    'users/name/visual_steward/columns',
+    'metrics/a2db4c89-cc42-5fad-b381-2dfa9180e5c0/sampleData',
+    'documents/name/KnowledgePanel.ActivityFeed',
+    'kpis/name/visual_description_coverage',
+    'kpi/name/visual_description_coverage/versions',
     'system/settings/unmodeledSetting',
     'system/config/auth/unmodeledChild',
     'metadata/types/name/table/unmodeledChild',
@@ -1038,4 +1043,36 @@ test('profile and history endpoints preserve their document and paged-list shape
   expect(result.kpiHistory.results.at(-1).count).toBe(
     Number(result.latestKpi.targetResult[0].value)
   );
+});
+
+test('KPI detail uses its REST namespace rather than the seed-data alias', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const result = await page.evaluate(async () => {
+    const response = await fetch(
+      '/api/v1/kpi/name/visual_description_coverage'
+    );
+    return { status: response.status, body: await response.json() };
+  });
+  expect(result.status).toBe(200);
+  expect(result.body.fullyQualifiedName).toBe('visual_description_coverage');
+});
+
+test('dashboard data models retain their own paginated column endpoint', async ({
+  page,
+}) => {
+  await installVisualData(page);
+  const response = await page.evaluate(async () =>
+    (
+      await fetch(
+        '/api/v1/dashboard/datamodels/name/visual_looker.customer_model/columns'
+      )
+    ).json()
+  );
+  expect(response.data).toHaveLength(5);
+  expect(response.paging.total).toBe(5);
+  expect(
+    response.data.every((column: { name: string }) => Boolean(column.name))
+  ).toBe(true);
 });

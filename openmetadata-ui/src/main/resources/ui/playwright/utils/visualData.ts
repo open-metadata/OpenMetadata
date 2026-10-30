@@ -253,6 +253,7 @@ export const installVisualData = async (
     state === 'read-only' || state === 'custom-properties-read-only';
   const fixtureResources: Record<string, FixtureEntity[]> = {
     ...resources,
+    kpi: resources.kpis,
   };
   const visualEntities = VISUAL_ENTITIES.map((item) => ({
     ...item,
@@ -286,9 +287,11 @@ export const installVisualData = async (
     ];
   }
   // Nested collections (apps/marketplace, Drive assets) must win over their parent.
-  const collections = Object.keys(fixtureResources).sort(
-    (left, right) => right.length - left.length
-  );
+  // Seed-data keys are not additional REST namespaces. In particular, document
+  // layouts use docStore and KPI entities use kpi, not their internal aliases.
+  const collections = Object.keys(fixtureResources)
+    .filter((key) => !['documents', 'kpis'].includes(key))
+    .sort((left, right) => right.length - left.length);
   const permissionFor = (resource: string) => ({
     resource,
     permissions: Object.values(Operation).map((operation) => ({
@@ -1728,13 +1731,25 @@ export const installVisualData = async (
       (collection.startsWith('dataQuality/') && suffix === 'search/list');
     const isMetricHierarchy =
       collection === 'metrics' && suffix === 'hierarchy';
+    // Otherwise a typo such as user/columns looks like a valid empty table.
+    const isColumnRead =
+      childPath === 'columns' &&
+      ['tables', 'dashboard/datamodels'].includes(collection);
+    const isSampleRead =
+      childPath === 'sampleData' &&
+      ['tables', 'topics', 'searchIndexes', 'containers'].includes(collection);
+    const isVersionRead =
+      (childPath === 'versions' ||
+        /^versions\/\d+(?:\.\d+)?$/.test(childPath)) &&
+      Number.isFinite(selected?.version);
     // Validate the route before the deliberate failure state; otherwise an
     // unmodeled child read can masquerade as the expected error feedback.
     if (
       (!selected && !isListRead && !isMetricHierarchy) ||
       (childPath &&
-        !['columns', 'sampleData', 'versions'].includes(childPath) &&
-        !/^versions\/\d+(?:\.\d+)?$/.test(childPath) &&
+        !isColumnRead &&
+        !isSampleRead &&
+        !isVersionRead &&
         !(collection === 'dataProducts' && childPath === 'portsView') &&
         !(
           collection === 'dataQuality/testSuites' && childPath === 'testCases'
