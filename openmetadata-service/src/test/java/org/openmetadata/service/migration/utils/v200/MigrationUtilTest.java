@@ -302,6 +302,83 @@ class MigrationUtilTest {
     assertEquals("tags", payload.get("fieldPath").asText());
   }
 
+  @Test
+  void migrateNestedColumnDescriptionSuggestionEmitsBareNestedFieldPath() {
+    // The v2.0.0 suggestion→task migration never appends ".description": a legacy
+    // SuggestDescription suggestion on an unquoted nested column link
+    // "<#E::table::...::columns::profile.child>" produces the bare 3-segment fieldPath
+    // "columns.profile.child". FieldPathUtils.parseFieldPath must resolve that shape to the
+    // nested child rather than the parent (verified in FieldPathUtilsTest); this test pins the
+    // migration's output shape so the contract stays machine-checked against future regressions.
+    JsonNode payload =
+        migrateDescriptionSuggestionAndCapturePayload(
+            "dead-beef-0000-0006", "<#E::table::sample.shop.orders::columns::profile.child>");
+
+    assertEquals("Description", payload.get("suggestionType").asText());
+    assertEquals("columns.profile.child", payload.get("fieldPath").asText());
+    assertEquals("A nested column description", payload.get("suggestedValue").asText());
+  }
+
+  @Test
+  void migrateColumnDescriptionSuggestionEmitsThreeSegmentFieldPath() {
+    // A flat-column description suggestion whose link carried no "::description"
+    // ("columns::customer_id") migrates to the 2-segment "columns.customer_id"; the parser
+    // supplies the implied "description" property. Pin this so the bare-path handling stays
+    // consistent for flat columns too.
+    JsonNode payload =
+        migrateDescriptionSuggestionAndCapturePayload(
+            "dead-beef-0000-0007", "<#E::table::sample.shop.orders::columns::customer_id>");
+
+    assertEquals("Description", payload.get("suggestionType").asText());
+    assertEquals("columns.customer_id", payload.get("fieldPath").asText());
+  }
+
+  private JsonNode migrateDescriptionSuggestionAndCapturePayload(
+      String suggestionId, String entityLink) {
+    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
+        .thenReturn(List.of(Map.of("1", 1)));
+    String suggestionJson =
+        """
+        {
+          "id": "%s",
+          "type": "SuggestDescription",
+          "status": "Open",
+          "entityLink": "%s",
+          "description": "A nested column description",
+          "createdBy": { "id": "cccc-dddd-eeee-ffff", "type": "user" },
+          "createdAt": 1700000000000,
+          "updatedAt": 1700000000000,
+          "updatedBy": "system"
+        }
+        """
+            .formatted(suggestionId, entityLink);
+    when(handle
+            .createQuery("SELECT json FROM suggestions ORDER BY updatedAt ASC")
+            .mapToMap()
+            .list())
+        .thenReturn(List.of(Map.of("json", suggestionJson)));
+    when(handle
+            .createQuery("SELECT COUNT(*) FROM task_entity WHERE id = :id")
+            .bind("id", suggestionId)
+            .mapTo(Long.class)
+            .one())
+        .thenReturn(0L);
+    when(handle.createQuery(anyString()).mapTo(Long.class).findOne())
+        .thenReturn(java.util.Optional.of(0L));
+    when(handle.createQuery(contains("entity_relationship")).mapToMap().list())
+        .thenReturn(Collections.emptyList());
+
+    Update taskInsert = mock(Update.class);
+    when(taskInsert.bind(anyString(), anyString())).thenReturn(taskInsert);
+    when(handle.createUpdate(contains("INSERT INTO task_entity"))).thenReturn(taskInsert);
+
+    MigrationUtil.migrateSuggestionsToTaskEntity(handle, MYSQL);
+
+    ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+    verify(taskInsert).bind(eq("json"), jsonCaptor.capture());
+    return JsonUtilsHolder.readTree(jsonCaptor.getValue()).get("payload");
+  }
+
   private JsonNode migrateTagSuggestionAndCapturePayload(String suggestionId, String entityLink) {
     when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
         .thenReturn(List.of(Map.of("1", 1)));
