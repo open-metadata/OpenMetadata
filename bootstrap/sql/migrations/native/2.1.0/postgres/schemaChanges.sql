@@ -861,3 +861,15 @@ DELETE FROM entity_relationship WHERE
   (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'))));
 DELETE FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet' AND (json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration')));
 DELETE FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'));
+
+-- Native concept bindings move from one document per concept to one row per concept and asset
+-- (ADR:2026-10-19-native-concept-bindings-remain-operational-metadata, amendment v2).
+CREATE TABLE IF NOT EXISTS ontology_concept_binding (
+  conceptId VARCHAR(36) NOT NULL,
+  assetId VARCHAR(36) NOT NULL,
+  assetType VARCHAR(32) NOT NULL,
+  assetFqnHash VARCHAR(768) NOT NULL,
+  columnBindings JSONB NOT NULL,
+  PRIMARY KEY (conceptId, assetId)
+);
+CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
