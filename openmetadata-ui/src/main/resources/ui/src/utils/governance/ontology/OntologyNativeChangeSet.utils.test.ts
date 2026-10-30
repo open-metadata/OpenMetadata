@@ -110,6 +110,12 @@ it('builds one atomic class, own-property and named-axiom plan at the captured r
     ['DISJOINT_WITH', 'urn:Person'],
   ]);
   expect(plan.operations?.every((o) => o.state === 'ACTIVE')).toBe(true);
+  // UUID v5 of 'attempt:concept-operation' and
+  // 'attempt:SUBCLASS_OF:urn:Payment' in the URL namespace.
+  expect(plan.operations?.[0].id).toBe('5a9d38c4-9c98-5254-aa25-17fb7efbd5d7');
+  expect(plan.operations?.[4].axiom?.name).toBe(
+    '13f6c170-8b65-58f7-9602-1125a197d8ca'
+  );
 });
 
 it('does not create a stored parent for an implicit top-level class', () => {
