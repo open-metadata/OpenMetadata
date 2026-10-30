@@ -198,7 +198,7 @@ class PageContextProcessingEngineTest {
   private List<Page> capturedUpdates() {
     ArgumentCaptor<Page> captor = ArgumentCaptor.forClass(Page.class);
     verify(pageRepository, atLeastOnce())
-        .update(isNull(), any(), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+        .updateIfCurrent(isNull(), any(), captor.capture(), eq(Entity.ADMIN_USER_NAME));
     return captor.getAllValues();
   }
 }

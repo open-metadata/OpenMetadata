@@ -521,6 +521,7 @@ public class ContextFileProcessingService {
 
   private boolean updateFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
     for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
+      RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, null);
       ContextFile current = getFile(fileId);
       if (current == null) {
         return false;

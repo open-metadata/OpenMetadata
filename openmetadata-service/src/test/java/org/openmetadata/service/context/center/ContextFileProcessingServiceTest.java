@@ -38,17 +38,22 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.util.RequestEntityCache;
 
 @ExtendWith(MockitoExtension.class)
 class ContextFileProcessingServiceTest {
@@ -136,6 +141,52 @@ class ContextFileProcessingServiceTest {
     assertNull(contentUpdates.get(0).getProcessingError());
     assertEquals(ProcessingStatus.Processed, contentUpdates.get(1).getProcessingStatus());
     assertEquals("Quarterly results", contentUpdates.get(1).getExtractedText());
+  }
+
+  @Test
+  void processKeepsMetadataEditedDuringTextExtraction() throws Exception {
+    AtomicReference<ContextFile> stored = new AtomicReference<>(file);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(
+            ignored -> {
+              ContextFile cached =
+                  RequestEntityCache.getById(
+                      Entity.CONTEXT_FILE, fileId, null, null, false, ContextFile.class);
+              if (cached == null) {
+                cached = JsonUtils.deepCopy(stored.get(), ContextFile.class);
+                RequestEntityCache.putById(
+                    Entity.CONTEXT_FILE, fileId, null, null, false, cached, ContextFile.class);
+              }
+              return cached;
+            });
+    when(repository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              stored.set(invocation.getArgument(2));
+              RequestEntityCache.invalidate(Entity.CONTEXT_FILE, fileId, null);
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), any(ContextFile.class)))
+        .thenAnswer(
+            ignored -> {
+              stored.set(
+                  JsonUtils.deepCopy(stored.get(), ContextFile.class)
+                      .withDescription("Current description")
+                      .withShareConfig(
+                          new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
+              return ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3);
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals("Current description", stored.get().getDescription());
+    assertEquals(MemoryVisibility.PRIVATE, stored.get().getShareConfig().getVisibility());
+    assertEquals("Quarterly results", stored.get().getExtractedText());
+    assertEquals(ProcessingStatus.Processed, stored.get().getProcessingStatus());
   }
 
   @Test

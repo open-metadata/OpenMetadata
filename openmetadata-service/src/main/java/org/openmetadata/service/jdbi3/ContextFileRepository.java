@@ -31,6 +31,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.drive.ContextFileResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -167,6 +168,33 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   @Override
+  protected void storeEntityWithVersion(
+      ContextFile file, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    if (expectedUpdatedAt == null) {
+      storeEntityWithVersion(file, update, expectedVersion);
+    } else {
+      EntityReference folder = file.getFolder();
+      file.withFolder(null);
+      try {
+        int updatedRows =
+            contextFileDAO.updateWithVersionAndTimestamp(
+                file.getId().toString(),
+                file.getFullyQualifiedName(),
+                serializeForStorage(file),
+                expectedVersion.toString(),
+                expectedUpdatedAt);
+        if (updatedRows == 0) {
+          throw new PreconditionFailedException(
+              "The entity has been modified by another user. Please refresh and retry.");
+        }
+        invalidate(file);
+      } finally {
+        file.withFolder(folder);
+      }
+    }
+  }
+
+  @Override
   public void storeRelationships(ContextFile file) {
     if (file.getFolder() != null) {
       addRelationship(
@@ -264,6 +292,10 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public class ContextFileUpdater extends EntityUpdater {
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
+      // Consolidated edits still need distinct timestamps for conditional processing writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
     }
 
     @Override

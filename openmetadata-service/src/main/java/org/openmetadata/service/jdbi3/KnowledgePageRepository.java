@@ -48,6 +48,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
@@ -564,6 +565,36 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   @Override
+  protected void storeEntityWithVersion(
+      Page page, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    Page stored =
+        JsonUtils.deepCopy(page, Page.class)
+            .withRelatedEntities(null)
+            .withParent(null)
+            .withChildren(null);
+    if (stored.getPageType() == PageType.ARTICLE) {
+      stored.setPage(
+          JsonUtils.convertValue(stored.getPage(), Article.class).withRelatedArticles(null));
+    }
+    if (expectedUpdatedAt == null) {
+      store(stored, update, expectedVersion);
+    } else {
+      int updatedRows =
+          daoExtension.updateWithVersionAndTimestamp(
+              stored.getId().toString(),
+              stored.getFullyQualifiedName(),
+              serializeForStorage(stored),
+              expectedVersion.toString(),
+              expectedUpdatedAt);
+      if (updatedRows == 0) {
+        throw new PreconditionFailedException(
+            "The entity has been modified by another user. Please refresh and retry.");
+      }
+      invalidate(page);
+    }
+  }
+
+  @Override
   public void storeRelationships(Page knowledgePage) {
     // Add Parent for this entity
     if (knowledgePage.getParent() != null) {
@@ -687,6 +718,10 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public class KnowledgePageUpdater extends EntityUpdater {
     public KnowledgePageUpdater(Page original, Page updated, Operation operation) {
       super(original, updated, operation);
+      // Consolidated edits still need distinct timestamps for conditional processing writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
     }
 
     @Override

@@ -12,6 +12,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.resources.drive.ContextFileVisibility;
+import org.openmetadata.service.util.FreshReadScope;
 
 /**
  * {@link ContextProcessingEngine} for ContextFile sources. The source text is the current content
@@ -85,11 +86,13 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
 
   @Override
   protected void stampStats(UUID fileId, ExtractionStats stats) {
-    ContextFile current = getFile(fileId);
-    if (current != null) {
-      ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
-      updated.setExtractionStats(stats);
-      fileRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
+    try (var ignored = FreshReadScope.enter()) {
+      ContextFile current = getFile(fileId);
+      if (current != null) {
+        ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
+        updated.setExtractionStats(stats);
+        fileRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+      }
     }
   }
 
