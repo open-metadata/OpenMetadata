@@ -20,4 +20,4 @@ The server verifies and authorizes both complete release manifests on every call
 
 ## Consequences
 
-A historical validation read can return 404 after a newly deprecated current concept is deleted. The report does not turn that missing impact into an empty binding list. Cache hits still read and authorize the manifests, so the cache does not bypass access changes. Later binding pagination must drain all visible pages before setting `boundAssetCount`.
+A historical validation read can return 404 after a newly deprecated current concept is deleted. The report does not turn that missing impact into an empty binding list. Cache hits still read and authorize the manifests, so the cache does not bypass access changes. The impact reads every page of visible bindings, following each `after` cursor until it is null, before it sets `boundAssetCount`.

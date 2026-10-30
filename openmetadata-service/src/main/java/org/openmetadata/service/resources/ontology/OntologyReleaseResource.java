@@ -65,7 +65,8 @@ public final class OntologyReleaseResource
         new OntologyReleaseValidationService(
             repository,
             new OntologyConceptBindingService(
-                new OntologyConceptBindingStore(Entity.getCollectionDAO()),
+                new OntologyConceptBindingStore(
+                    Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables()),
                 authorizer,
                 Entity::getEntityRepository));
   }

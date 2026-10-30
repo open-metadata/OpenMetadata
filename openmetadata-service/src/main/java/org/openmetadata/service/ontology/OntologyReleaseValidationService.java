@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.NativeOntologyDeprecationImpact;
 import org.openmetadata.schema.type.NativeOntologyShaclReport;
+import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.schema.type.OntologyReleaseChangeType;
 import org.openmetadata.schema.type.OntologyReleaseLogicalCheck;
 import org.openmetadata.schema.type.OntologyReleaseMember;
@@ -143,10 +145,7 @@ public final class OntologyReleaseValidationService {
     final EntityReference definition = change.getEntity();
     final List<EntityReference> assets =
         change.getMemberKind() == OntologyReleaseMember.MemberKind.CONCEPT
-            ? bindings.get(access, definition.getId()).getAssets().stream()
-                .map(binding -> identity(binding.getAsset()))
-                .sorted(CapturedDependencies.REFERENCE_ORDER)
-                .toList()
+            ? boundAssets(definition.getId(), access)
             : List.of();
     final String iri = dependencies.iri(change);
     final boolean concept = change.getMemberKind() == OntologyReleaseMember.MemberKind.CONCEPT;
@@ -157,6 +156,21 @@ public final class OntologyReleaseValidationService {
         .withSubclasses(concept ? dependencies.subclasses(iri) : List.of())
         .withDomainProperties(concept ? dependencies.domainProperties(iri) : List.of())
         .withRangeProperties(concept ? dependencies.rangeProperties(iri) : List.of());
+  }
+
+  /** A page can end short with a cursor when hidden rows use up its scan budget. */
+  private List<EntityReference> boundAssets(
+      final UUID conceptId, final OntologyConceptBindingService.Access access) {
+    final List<EntityReference> assets = new ArrayList<>();
+    String after = null;
+    do {
+      final OntologyConceptBindingsResponse page =
+          bindings.get(access, conceptId, OntologyConceptBindingService.MAX_PAGE_SIZE, after);
+      page.getAssets().forEach(binding -> assets.add(identity(binding.getAsset())));
+      after = page.getAfter();
+    } while (after != null);
+    assets.sort(CapturedDependencies.REFERENCE_ORDER);
+    return assets;
   }
 
   private static EntityReference identity(final EntityReference source) {
