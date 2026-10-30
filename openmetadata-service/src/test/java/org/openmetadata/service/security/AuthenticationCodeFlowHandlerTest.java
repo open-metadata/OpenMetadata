@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,6 +20,12 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.PlainJWT;
+import com.nimbusds.oauth2.sdk.AuthorizationCode;
+import com.nimbusds.oauth2.sdk.id.State;
+import com.nimbusds.oauth2.sdk.token.BearerAccessToken;
+import com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +36,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +72,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
+import org.pac4j.oidc.credentials.OidcCredentials;
 import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 
 @ExtendWith(MockitoExtension.class)
@@ -964,6 +973,81 @@ class AuthenticationCodeFlowHandlerTest {
 
   private static List<String> roleNames(User user) {
     return user.getRoles().stream().map(EntityReference::getName).toList();
+  }
+
+  @Test
+  void handleCallback_codeFlowFrontChannelTokenWithoutCode_rejectedWithoutActivatingSession()
+      throws Exception {
+    assertCodelessCallbackRejectedWithoutActivatingSession("code");
+  }
+
+  @Test
+  void handleCallback_implicitResponseTypeWithoutCode_rejectedWithoutActivatingSession()
+      throws Exception {
+    assertCodelessCallbackRejectedWithoutActivatingSession("id_token");
+  }
+
+  @Test
+  void buildCredentials_keepsOnlyTheAuthorizationCode() {
+    AuthenticationSuccessResponse callback =
+        new AuthenticationSuccessResponse(
+            URI.create(TEST_SERVER_URL + "/callback"),
+            new AuthorizationCode("authorization-code-1"),
+            new PlainJWT(new JWTClaimsSet.Builder().subject("admin").build()),
+            new BearerAccessToken("front-channel-access-token"),
+            new State("state-abc"),
+            null,
+            null);
+
+    OidcCredentials credentials = AuthenticationCodeFlowHandler.buildCredentials(callback);
+
+    assertEquals("authorization-code-1", credentials.getCode());
+    assertNull(credentials.getIdToken());
+    assertNull(credentials.toAccessToken());
+  }
+
+  private void assertCodelessCallbackRejectedWithoutActivatingSession(String responseType)
+      throws Exception {
+    UserSession pendingSession =
+        UserSession.builder()
+            .id("pending-session")
+            .state("state-abc")
+            .redirectUri(TEST_SERVER_URL + "/auth/callback")
+            .build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    when(oidcConfiguration.isWithState()).thenReturn(false);
+    when(oidcConfiguration.getResponseType()).thenReturn(responseType);
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(metadata.supportsAuthorizationResponseIssuerParam()).thenReturn(false);
+    IOidcOpMetadataResolver metadataResolver = mock(IOidcOpMetadataResolver.class);
+    when(metadataResolver.load()).thenReturn(metadata);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(metadataResolver);
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+
+    // A syntactically valid but unsigned, claim-less token stands in for a front-channel token that
+    // never passed through the provider's token endpoint. The callback carries it with no code.
+    String frontChannelToken = new PlainJWT(new JWTClaimsSet.Builder().build()).serialize();
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "id_token", new String[] {frontChannelToken}));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+    setField(handler, "authenticationConfiguration", authConfig);
+
+    handler.handleCallback(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    assertTrue(captureOutputStream.getCapturedOutput().contains("Authorization code is required"));
+    verify(sessionService, never())
+        .activatePendingSession(any(), any(), any(), any(), any(), any());
   }
 
   private AuthenticationCodeFlowHandler createHandlerWithMockedInternals(
