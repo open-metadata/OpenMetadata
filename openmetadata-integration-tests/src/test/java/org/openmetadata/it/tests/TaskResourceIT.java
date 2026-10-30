@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -2514,36 +2516,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         SdkClients.adminClient().tables().getVersionList(updatedTable.getId()).getVersions().size(),
         "Version history must contain both 0.1 (baseline) and the post-TagUpdate bump");
 
-    JsonNode events;
-    try {
-      String eventsJson =
-          SdkClients.adminClient()
-              .getHttpClient()
-              .executeForString(
-                  HttpMethod.GET,
-                  "/v1/events",
-                  null,
-                  RequestOptions.builder()
-                      .queryParam("entityUpdated", "table")
-                      .queryParam("timestamp", Long.toString(resolveStartTs))
-                      .queryParam("limit", "1000")
-                      .build());
-      events = JsonUtils.readTree(eventsJson);
-    } catch (Exception e) {
-      throw new AssertionError("Failed to fetch /v1/events", e);
-    }
-    boolean entityUpdatedEmitted = false;
-    for (JsonNode event : events.path("data")) {
-      if (table.getFullyQualifiedName().equals(event.path("entityFullyQualifiedName").asText())
-          && "entityUpdated".equals(event.path("eventType").asText())) {
-        entityUpdatedEmitted = true;
-        break;
-      }
-    }
-    assertTrue(
-        entityUpdatedEmitted,
-        "Column-level TagUpdate must emit an entityUpdated change event for the parent table; got: "
-            + events.path("data"));
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolveStartTs);
 
     // Search by id (single UUID term) instead of fullyQualifiedName phrase — long dotted FQNs
     // can inflate the boolean-clause count under parallel test load and trip the shard-level
@@ -2615,6 +2588,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withNewValue(newDescription)
             .withComment("Approved - apply description");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -2626,6 +2600,8 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         newDescription,
         updatedTable.getDescription(),
         "Table description should be updated after task resolution");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
+    awaitAuditedUpdate("table", table.getFullyQualifiedName());
   }
 
   @Test
@@ -2661,6 +2637,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withNewValue(newDescription)
             .withComment("Approved - apply column description");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -2680,6 +2657,40 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         newDescription,
         updatedColumnDesc,
         "Column description should be updated after task resolution");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
+  }
+
+  @Test
+  void testResolveDescriptionUpdateTaskOnATopicRecordsTheTopicsChange(TestNamespace ns) {
+    Topic topic = TopicTestFactory.createSimple(ns);
+    String newDescription = "Topic description from task resolution - " + ns.shortPrefix();
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("topic-desc-update"))
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("topic", topic.getFullyQualifiedName()))
+            .withPayload(
+                new org.openmetadata.schema.type.DescriptionUpdatePayload()
+                    .withFieldPath("description")
+                    .withCurrentDescription(topic.getDescription())
+                    .withNewDescription(newDescription));
+    Task task = SdkClients.adminClient().tasks().create(request);
+
+    long resolvedAt = System.currentTimeMillis();
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withNewValue(newDescription));
+
+    assertEquals(
+        newDescription,
+        SdkClients.adminClient().topics().get(topic.getId().toString()).getDescription());
+    assertOneUpdateBy("admin", "topic", topic.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -2922,6 +2933,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withResolutionType(TaskResolutionType.Approved)
             .withComment("Approved - transfer ownership");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -2934,6 +2946,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertTrue(
         updatedTable.getOwners().stream().anyMatch(o -> o.getName().equals(shared.USER2.getName())),
         "Table should have USER2 as owner after ownership update");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -3113,6 +3126,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withResolutionType(TaskResolutionType.Approved)
             .withComment("Approved - assign to domain");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -3127,6 +3141,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         updatedTable.getDomains().stream()
             .anyMatch(d -> d.getFullyQualifiedName().equals(shared.DOMAIN.getFullyQualifiedName())),
         "Table domains should include the assigned domain");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -4173,6 +4188,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     "payload", rawSuggestionPayload),
                 Task.class);
 
+    long appliedAt = System.currentTimeMillis();
     Task appliedTask =
         SdkClients.adminClient()
             .getHttpClient()
@@ -4187,6 +4203,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     Table updatedTable =
         SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "description");
     assertEquals(suggestedDescription, updatedTable.getDescription());
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), appliedAt);
   }
 
   @Test
@@ -4679,6 +4696,55 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     admin.users().create(createUser);
 
     return SdkClients.createClient(userEmail, userEmail, new String[] {});
+  }
+
+  // An approved task's change is the changed entity's own change event, recorded once and by the
+  // user who approved it, as a direct edit by that user would be.
+  private static void assertOneUpdateBy(
+      String user, String entityType, String entityFqn, long since) {
+    String eventsJson =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/events",
+                null,
+                RequestOptions.builder()
+                    .queryParam("entityUpdated", entityType)
+                    .queryParam("timestamp", Long.toString(since))
+                    .queryParam("limit", "1000")
+                    .build());
+    List<JsonNode> updates = new ArrayList<>();
+    for (JsonNode event : JsonUtils.readTree(eventsJson).path("data")) {
+      if (user.equals(event.path("userName").asText())
+          && entityFqn.equals(event.path("entityFullyQualifiedName").asText())
+          && "entityUpdated".equals(event.path("eventType").asText())) {
+        updates.add(event);
+      }
+    }
+    assertEquals(1, updates.size(), "entityUpdated events of " + entityFqn + ": " + updates);
+  }
+
+  private static void awaitAuditedUpdate(String entityType, String entityFqn) {
+    RequestOptions query =
+        RequestOptions.builder()
+            .queryParam("entityType", entityType)
+            .queryParam("entityFQN", entityFqn)
+            .queryParam("eventType", "entityUpdated")
+            .queryParam("limit", "1")
+            .build();
+    Awaitility.await("audit log entry for the update of " + entityFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () ->
+                JsonUtils.readTree(
+                        SdkClients.adminClient()
+                            .getHttpClient()
+                            .executeForString(HttpMethod.GET, "/v1/audit/logs", null, query))
+                    .path("data")
+                    .size(),
+            size -> size == 1);
   }
 
   private void awaitTaskReadyForWorkflowResolution(UUID taskId) {
