@@ -161,7 +161,7 @@ const DataQualityPage = () => {
       if (tabKey !== activeTab) {
         const targetTab = tabKey as DataQualityPageTabs;
 
-        navigate({
+        void navigate({
           pathname:
             observabilityRouterClassBase.getDataQualityPagePath(targetTab),
           search: searchByTab.current[targetTab] ?? '',

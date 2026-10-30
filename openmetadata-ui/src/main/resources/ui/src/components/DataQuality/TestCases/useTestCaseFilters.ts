@@ -214,7 +214,7 @@ export const useTestCaseFilters = ({
   const filters = useMemo<FilterDescriptor[]>(() => {
     // Last Run leads the bar, in the slot the Summary tab gives its date range.
     const keys = sortBy(
-      entries(TEST_CASE_FILTERS)
+      Object.entries(TEST_CASE_FILTERS)
         .map(([, filter]) => filter)
         .filter((filter) => selectedFilter.includes(filter)),
       (filter) => filter !== TEST_CASE_FILTERS.lastRun
