@@ -28,6 +28,7 @@ import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 import software.amazon.awssdk.services.ssm.model.Tag;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
+  private static final int MAX_PARAMETER_NAME_LENGTH = 1011;
   private static AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
@@ -112,6 +113,11 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   @Override
   protected boolean isNotFoundException(Exception exception) {
     return exception instanceof ParameterNotFoundException;
+  }
+
+  @Override
+  protected int maxSecretIdLength() {
+    return MAX_PARAMETER_NAME_LENGTH;
   }
 
   public static AWSSSMSecretsManager getInstance(SecretsConfig secretsConfig) {

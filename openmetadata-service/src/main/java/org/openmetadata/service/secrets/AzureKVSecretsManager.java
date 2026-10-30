@@ -17,6 +17,7 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 
 public class AzureKVSecretsManager extends ExternalSecretsManager {
+  private static final int MAX_SECRET_NAME_LENGTH = 127;
 
   private static AzureKVSecretsManager instance = null;
   private SecretClient client;
@@ -119,6 +120,11 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   @Override
   protected boolean isNotFoundException(Exception exception) {
     return exception instanceof ResourceNotFoundException;
+  }
+
+  @Override
+  protected int maxSecretIdLength() {
+    return MAX_SECRET_NAME_LENGTH;
   }
 
   public static AzureKVSecretsManager getInstance(SecretsConfig secretsConfig) {

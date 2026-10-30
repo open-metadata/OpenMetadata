@@ -82,6 +82,11 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
     return sanitizeForK8s(secretId);
   }
 
+  @Override
+  protected int maxSecretIdLength() {
+    return K8S_SECRET_NAME_MAX_LENGTH;
+  }
+
   @VisibleForTesting
   static String sanitizeForK8s(String name) {
     String sanitized = name.replaceAll("-{2,}", "-");

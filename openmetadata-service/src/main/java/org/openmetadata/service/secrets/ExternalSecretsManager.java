@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -124,6 +125,26 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       result = value;
     }
     return result;
+  }
+
+  @Override
+  protected String storeOwnedValue(String fieldName, String secretId, String value) {
+    rejectReservedPlaceholder(fieldName, value);
+    upsertSecret(secretId, value);
+    return SECRET_FIELD_PREFIX + secretId;
+  }
+
+  @Override
+  protected Optional<String> findSecretValue(String reference) {
+    Optional<String> secretValue = Optional.empty();
+    try {
+      secretValue = Optional.ofNullable(getSecretValue(reference));
+    } catch (RuntimeException e) {
+      if (!isNotFoundInCauseChain(e)) {
+        throw readFailure(reference.substring(SECRET_FIELD_PREFIX.length()), e);
+      }
+    }
+    return secretValue;
   }
 
   /**

@@ -30,6 +30,7 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
 @Slf4j
 public class AWSSecretsManager extends AWSBasedSecretsManager {
+  private static final int MAX_SECRET_NAME_LENGTH = 512;
   private static AWSSecretsManager instance = null;
   private SecretsManagerClient secretsClient;
 
@@ -94,6 +95,11 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
   @Override
   protected boolean isNotFoundException(Exception exception) {
     return exception instanceof ResourceNotFoundException;
+  }
+
+  @Override
+  protected int maxSecretIdLength() {
+    return MAX_SECRET_NAME_LENGTH;
   }
 
   public static AWSSecretsManager getInstance(SecretsConfig secretsConfig) {
