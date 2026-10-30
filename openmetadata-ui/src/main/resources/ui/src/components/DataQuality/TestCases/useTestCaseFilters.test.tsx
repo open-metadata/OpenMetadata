@@ -69,6 +69,7 @@ const DEFAULT_SELECTED_FILTERS = [
   TEST_CASE_FILTERS.type,
   TEST_CASE_FILTERS.table,
   TEST_CASE_FILTERS.tags,
+  TEST_CASE_FILTERS.lastRun,
 ];
 
 describe('useTestCaseFilters', () => {
@@ -229,6 +230,7 @@ describe('useTestCaseFilters', () => {
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.status,
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.tags,
     ]);
 
@@ -296,24 +298,24 @@ describe('useTestCaseFilters', () => {
     ]);
   });
 
-  it('should surface the date control for lastRun and the multiselect control for platform when selected', () => {
+  it('should surface the lastRun date control by default with no value, and the multiselect control for platform when selected', () => {
     const { result } = renderFilters();
-
-    act(() => {
-      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.lastRun });
-    });
-    act(() => {
-      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.platform });
-    });
 
     const lastRunDescriptor = result.current.filters.find(
       (descriptor) => descriptor.key === TEST_CASE_FILTERS.lastRun
     );
+
+    expect(lastRunDescriptor?.controlType).toBe('date');
+    expect(lastRunDescriptor?.value).toBeUndefined();
+
+    act(() => {
+      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.platform });
+    });
+
     const platformDescriptor = result.current.filters.find(
       (descriptor) => descriptor.key === TEST_CASE_FILTERS.platform
     );
 
-    expect(lastRunDescriptor?.controlType).toBe('date');
     expect(platformDescriptor?.controlType).toBe('multiselect');
   });
 

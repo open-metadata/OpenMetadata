@@ -170,8 +170,12 @@ export const ClassicTestCaseFilter = ({
       {filter.controlType === 'date' ? (
         <DatePickerMenu
           showSelectedCustomRange
+          // Without a placeholder an unset filter falls back to the menu's
+          // built-in default range, which is never sent to the API — the chip
+          // would display a filter that the requests do not carry.
           defaultDateRange={dateValue}
           handleDateRangeChange={filter.onChange}
+          placeholder={t('label.all-time')}
           size="small"
         />
       ) : (

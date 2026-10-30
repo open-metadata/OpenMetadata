@@ -837,14 +837,10 @@ describe('TestCases component', () => {
       });
     });
 
-    it('should not show lastRun filter by default', async () => {
+    it('should show lastRun filter by default', async () => {
       render(<TestCases />);
 
-      await waitFor(() => {
-        expect(
-          screen.queryByTestId('date-picker-menu')
-        ).not.toBeInTheDocument();
-      });
+      expect(await screen.findByTestId('date-picker-menu')).toBeInTheDocument();
     });
   });
 

@@ -37,6 +37,8 @@ const DEFAULT_SELECTED_FILTERS = [
   TEST_CASE_FILTERS.type,
   TEST_CASE_FILTERS.table,
   TEST_CASE_FILTERS.tags,
+  // Shown by default so the Last Run range is reachable without the Advanced menu.
+  TEST_CASE_FILTERS.lastRun,
 ];
 
 // The dimension filter is deliberately absent: dimensions are entities, so its options are
