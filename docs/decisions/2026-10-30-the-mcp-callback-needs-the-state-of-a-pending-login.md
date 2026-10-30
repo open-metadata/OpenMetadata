@@ -12,7 +12,8 @@
 `?id_token=` with no `state`, or posted by a small page that read it from the URL fragment. It was
 added (#29228) for a login shortcut that returned the ID token straight to the client. That shortcut
 is gone: `AuthenticationCodeFlowHandler.handleLogin` now always sends the browser to the provider
-with a `state` and `response_mode=query`, so no login the server starts comes back without one.
+with a `state` and `response_mode=query`. A login comes back to `/mcp/callback` without one only
+when its pending request has expired (10 minutes), and that login has to be restarted.
 
 ## Decision
 
