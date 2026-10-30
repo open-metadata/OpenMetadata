@@ -403,7 +403,6 @@ export const createTaskAlert = async ({
     sourceDisplayName,
   });
 
-  // A task has no owners, so its recipients are the people it is assigned to or mentions.
   await page.click('[data-testid="add-destination-button"]');
   await addInternalDestination({
     page,
