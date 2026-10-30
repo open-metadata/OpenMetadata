@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
 import DailyActiveUsersChart from '../DailyActiveUsersChart';
+import { useDataInsightProvider } from '../DataInsightProvider/DataInsightProvider';
 import PageViewsByEntitiesChart from '../PageViewsByEntitiesChart';
 import TopActiveUsers from '../TopActiveUsers';
 import TopViewEntities from '../TopViewEntities';
