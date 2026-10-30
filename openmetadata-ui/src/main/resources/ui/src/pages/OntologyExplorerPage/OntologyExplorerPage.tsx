@@ -1303,17 +1303,20 @@ const OntologyExplorerPage: React.FC = () => {
   }
 
   function publicationPendingCount() {
+    if (studioScopes.isOntologyError) {
+      return t('label.unavailable');
+    }
     if (isAllOntologies) {
-      if (
-        studioScopes.isOntologyError ||
-        unpublishedCount.status === 'unavailable'
-      ) {
+      if (unpublishedCount.status === 'unavailable') {
         return t('label.unavailable');
       }
 
       return unpublishedCount.status === 'ready'
         ? String(unpublishedCount.count)
         : t('label.loading');
+    }
+    if (studioScopes.isOntologyLoading) {
+      return t('label.loading');
     }
 
     return publicationStatus?.unpublishedChanges === undefined
@@ -1465,7 +1468,7 @@ const OntologyExplorerPage: React.FC = () => {
     return (
       <OntologyStudioHeader
         actions={
-          <Box align="center" gap={2}>
+          <Box align="center" gap={2} wrap="wrap">
             {isAiMode ? null : renderLibraryTrigger()}
             {renderImportExport()}
             {isAiMode ? renderLibraryTrigger() : null}

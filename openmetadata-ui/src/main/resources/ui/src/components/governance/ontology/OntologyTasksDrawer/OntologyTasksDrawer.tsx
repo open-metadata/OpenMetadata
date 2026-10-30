@@ -78,6 +78,17 @@ type Detail = {
   release: OntologyRelease;
 };
 
+// ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
+const PAGE_SIZE = 25;
+const CURSOR_HISTORY_LIMIT = 40;
+
+// The trim keeps page 1 first, so Previous can still walk back to it.
+const pushCursor = (cursors: (string | undefined)[], after?: string) => {
+  const [first, ...rest] = [...cursors, after];
+
+  return [first, ...rest.slice(1 - CURSOR_HISTORY_LIMIT)];
+};
+
 const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -159,7 +170,11 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
     enabled: isOpen,
     queryFn: ({ signal }) =>
       getOntologyReleaseReviews(
-        { view, limit: 25, after: queueCursors[queueCursors.length - 1] },
+        {
+          view,
+          limit: PAGE_SIZE,
+          after: queueCursors[queueCursors.length - 1],
+        },
         signal
       ),
   });
@@ -266,7 +281,7 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
     queryFn: ({ signal }) =>
       getOntologyReleaseEvents(
         selected?.release.id ?? '',
-        { limit: 25, after: eventCursors[eventCursors.length - 1] },
+        { limit: PAGE_SIZE, after: eventCursors[eventCursors.length - 1] },
         signal
       ),
   });
@@ -518,7 +533,7 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
           onPress={() =>
             setHistory({
               key,
-              cursors: [...cursors, response.data?.paging?.after].slice(-40),
+              cursors: pushCursor(cursors, response.data?.paging?.after),
             })
           }>
           {t('label.next')}

@@ -504,6 +504,64 @@ it('replaces after-only queue pages and resets the cursor when changing tabs', a
   ]);
 });
 
+it('returns to page 1 with Previous after paging past the kept cursor history', async () => {
+  const read = get.getMockImplementation();
+  const label = (page: number) => 'PAGE-' + String(page).padStart(2, '0');
+  get.mockImplementation((url, config) => {
+    if (url === '/ontologies/reviews' && config.params.limit === 25) {
+      const page = config.params.after
+        ? Number(config.params.after.replace('cursor-', ''))
+        : 1;
+
+      return Promise.resolve({
+        data: {
+          data: [{ ...review, taskId: label(page) }],
+          paging: { total: 45 * 25, after: 'cursor-' + (page + 1) },
+        },
+      });
+    }
+
+    return read?.(url, config);
+  });
+  const pageButton = (name: string) =>
+    within(screen.getByRole('tabpanel')).getByRole<HTMLButtonElement>(
+      'button',
+      { name }
+    );
+  const isEnabled = (button: HTMLButtonElement) => !button.disabled;
+  renderWithQueryClient(<Harness />);
+  fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
+
+  expect(await screen.findByText(/PAGE-01/)).toBeInTheDocument();
+
+  for (let page = 2; page <= 45; page++) {
+    fireEvent.click(pageButton('label.next'));
+
+    expect(
+      await screen.findByText(new RegExp(label(page)))
+    ).toBeInTheDocument();
+  }
+
+  let presses = 0;
+  while (presses < 50 && isEnabled(pageButton('label.previous'))) {
+    fireEvent.click(pageButton('label.previous'));
+    presses++;
+    await waitFor(() => expect(pageButton('label.next')).toBeEnabled());
+  }
+
+  expect(pageButton('label.previous')).toBeDisabled();
+  expect(
+    get.mock.calls
+      .filter(
+        ([url, config]) =>
+          url === '/ontologies/reviews' && config.params.limit === 25
+      )
+      .slice(-2)
+      .map(([, config]) => config.params.after)
+  ).toEqual(['cursor-7', undefined]);
+  expect(screen.getByText(/PAGE-01/)).toBeInTheDocument();
+}, 20_000);
+
 it('does not invent a zero pending count when paging is unavailable', async () => {
   get.mockResolvedValue({ data: { data: [] } });
   renderWithQueryClient(<Harness />);

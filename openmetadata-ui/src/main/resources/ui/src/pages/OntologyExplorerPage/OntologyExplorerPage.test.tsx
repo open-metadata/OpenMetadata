@@ -121,7 +121,7 @@ jest.mock('../../rest/ontologyAPI', () => ({
   ...jest.requireActual('../../rest/ontologyAPI'),
   getOntologyConceptBindings: jest
     .fn()
-    .mockResolvedValue({ revision: 0, assets: [] }),
+    .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
   getOntology: jest.fn(),
   getOntologyReleaseReviews: jest
     .fn()
@@ -501,6 +501,7 @@ describe('OntologyExplorerPage', () => {
 
   const renderNativeStudio = (
     search: string,
+    ontology: Ontology = nativeOntology,
     permissions: Record<string, { Create: boolean }> = {
       ontologyConcept: { Create: true },
       ontologyChangeSet: { Create: true },
@@ -510,7 +511,7 @@ describe('OntologyExplorerPage', () => {
   ) => {
     (usePermissionProvider as jest.Mock).mockReturnValue({ permissions });
     mockUseRealRouter = true;
-    (getOntology as jest.Mock).mockResolvedValue(nativeOntology);
+    (getOntology as jest.Mock).mockResolvedValue(ontology);
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
       state: {
         ontologyId: nativeOntology.id,
@@ -522,7 +523,7 @@ describe('OntologyExplorerPage', () => {
       paging: { total: 0 },
     });
     (listOntologies as jest.Mock).mockResolvedValue({
-      data: [nativeOntology],
+      data: [ontology],
       paging: { total: 1 },
     });
     mockUseOntologyStudioScopes.mockReturnValue({
@@ -532,7 +533,7 @@ describe('OntologyExplorerPage', () => {
       isOntologyError: false,
       isOntologyLoading: false,
       refetchOntologies: jest.fn(),
-      ontologies: [nativeOntology],
+      ontologies: [ontology],
       refetch: jest.fn(),
     });
     (listOntologyConcepts as jest.Mock).mockResolvedValue({
@@ -731,6 +732,62 @@ describe('OntologyExplorerPage', () => {
     ).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('names the version chip by the version it shows', async () => {
+    renderNativeStudio('?ontology=native-sales', {
+      ...nativeOntology,
+      publicationStatus: {
+        unpublishedChanges: 0,
+        active: {
+          releaseId: 'release-2',
+          releaseRevision: 2,
+          semanticVersion: '1.2.0',
+        },
+      },
+    });
+
+    const chip = await screen.findByRole('button', { name: 'v1.2.0' });
+
+    expect(chip).toHaveAttribute(
+      'data-testid',
+      'ontology-release-history-trigger'
+    );
+
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => chip.focus());
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.release-history'
+    );
+
+    fireEvent.click(chip);
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it.each(['isOntologyLoading', 'isOntologyError'] as const)(
+    'disables the version chip while the ontology list reports %s',
+    async (flag) => {
+      renderNativeStudio('?ontology=native-sales');
+      mockUseOntologyStudioScopes.mockReturnValue({
+        glossaries: [],
+        isError: false,
+        isLoading: false,
+        isOntologyError: false,
+        isOntologyLoading: false,
+        refetchOntologies: jest.fn(),
+        ontologies: [nativeOntology],
+        refetch: jest.fn(),
+        [flag]: true,
+      });
+
+      expect(
+        await screen.findByTestId('ontology-release-history-trigger')
+      ).toBeDisabled();
+    }
+  );
+
   it('shows the feature placeholder for an empty catalog in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     mockSearchParams = new URLSearchParams();
@@ -781,6 +838,26 @@ describe('OntologyExplorerPage', () => {
 
     expect(listOntologies).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    [false, 'ontology-publication-trigger', 'label.publish (label.loading)'],
+    [true, 'ontology-publication-count', 'label.loading'],
+  ])(
+    'shows loading on the Publish count while the ontology list loads (AI mode %s)',
+    async (aiMode, testId, text) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(aiMode);
+      mockUseRealScopes = true;
+      (listOntologies as jest.Mock).mockReturnValueOnce(
+        new Promise(() => undefined)
+      );
+      renderNativeStudio('?ontology=native-sales');
+
+      expect(await screen.findByTestId(testId)).toHaveTextContent(text);
+      expect(
+        screen.getByTestId('ontology-publication-trigger')
+      ).not.toHaveTextContent('label.unavailable');
+    }
+  );
 
   it('opens a review task from the header Tasks action in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
@@ -1049,7 +1126,7 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('hides the sub-tab Add concept from a user who cannot create a change set', async () => {
-    renderNativeStudio('?ontology=native-sales', {
+    renderNativeStudio('?ontology=native-sales', nativeOntology, {
       ontologyConcept: { Create: true },
       ontologyChangeSet: { Create: false },
       ontologyProperty: { Create: true },

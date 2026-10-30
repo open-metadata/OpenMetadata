@@ -28,6 +28,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyProperty;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -279,7 +280,7 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
     Ontology ontology = createOntology(ns, "importedInverses");
     OpenMetadataClient client = SdkClients.adminClient();
     CreateOntologyChangeSet preview =
-        client.ontologies().previewImport(ontology.getId(), turtle(ONE_DIRECTION));
+        client.ontologies().previewImport(ontology.getId(), turtle(ONE_DIRECTION)).getChangeSet();
     OntologyChangeSet draft =
         ns.trackRoot(
             "ontologyChangeSet",
@@ -295,6 +296,7 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
         client
             .ontologies()
             .previewImport(ontology.getId(), turtle(BOTH_DIRECTIONS))
+            .getChangeSet()
             .getOperations()
             .isEmpty(),
         "a second import matches both properties by their exact IRIs");
@@ -302,6 +304,7 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
         client
             .ontologies()
             .previewImport(ontology.getId(), turtle(ONE_DIRECTION))
+            .getChangeSet()
             .getOperations()
             .isEmpty(),
         "the one-directional file still describes the linked pair");
@@ -368,7 +371,7 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
 
   private static PreviewNativeOntologyImport turtle(String data) {
     return new PreviewNativeOntologyImport()
-        .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+        .withFormat(NativeOntologyImportFormat.TURTLE)
         .withData(data);
   }
 
