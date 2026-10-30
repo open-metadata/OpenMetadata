@@ -4084,6 +4084,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/destination.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
