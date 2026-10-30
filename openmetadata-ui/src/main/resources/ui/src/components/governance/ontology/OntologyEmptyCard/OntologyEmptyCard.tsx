@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Card } from '@openmetadata/ui-core-components';
 import { Share07 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -25,26 +25,28 @@ const OntologyEmptyCard = ({ canAdd, onAdd }: OntologyEmptyCardProps) => {
 
   return (
     // The overlay lets pointer events through so the empty canvas still pans and zooms.
-    <div
-      className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-7"
-      data-testid="ontology-empty-card">
-      <NoDataPlaceholder
-        description={t('message.ontology-empty-card-description')}
-        footer={
-          canAdd ? (
-            <Button
-              className="tw:pointer-events-auto"
-              data-testid="ontology-empty-card-add-concept"
-              size="sm"
-              onPress={onAdd}>
-              {t('label.add-entity', { entity: t('label.concept') })}
-            </Button>
-          ) : undefined
-        }
-        icon={Share07}
-        title={t('label.ontology-has-no-concepts')}
-        width={340}
-      />
+    <div className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-7 tw:flex tw:items-center tw:justify-center">
+      <Card
+        className="tw:pointer-events-auto tw:w-85"
+        data-testid="ontology-empty-card"
+        variant="elevated">
+        <NoDataPlaceholder
+          className="tw:static tw:px-4 tw:py-6"
+          description={t('message.ontology-empty-card-description')}
+          footer={
+            canAdd ? (
+              <Button
+                data-testid="ontology-empty-card-add-concept"
+                size="sm"
+                onPress={onAdd}>
+                {t('label.add-entity', { entity: t('label.concept') })}
+              </Button>
+            ) : undefined
+          }
+          icon={Share07}
+          title={t('label.ontology-has-no-concepts')}
+        />
+      </Card>
     </div>
   );
 };

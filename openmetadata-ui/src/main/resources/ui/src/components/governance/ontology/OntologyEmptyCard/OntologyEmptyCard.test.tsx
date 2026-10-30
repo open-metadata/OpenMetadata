@@ -25,20 +25,38 @@ describe('OntologyEmptyCard', () => {
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 
-  it('renders through the shared no-data placeholder', () => {
+  it('frames the copy in a centred elevated card the canvas can pan around', () => {
     render(<OntologyEmptyCard canAdd onAdd={jest.fn()} />);
     const card = screen.getByTestId('ontology-empty-card');
 
-    expect(within(card).getByTestId('empty-placeholder')).toBeVisible();
+    expect(card).toHaveClass('tw:shadow-md', 'tw:bg-surface', 'tw:w-85');
+    expect(card).toHaveClass('tw:pointer-events-auto');
+    expect(card.parentElement).toHaveClass(
+      'tw:pointer-events-none',
+      'tw:items-center',
+      'tw:justify-center'
+    );
+  });
+
+  it('renders the shared empty placeholder with a brand icon inside the card', () => {
+    render(<OntologyEmptyCard canAdd onAdd={jest.fn()} />);
+    const card = screen.getByTestId('ontology-empty-card');
+    const placeholder = within(card).getByTestId('empty-placeholder');
+    const icon = card.querySelector('[data-icon]');
+
+    expect(placeholder).toBeVisible();
+    expect(placeholder).toHaveClass('tw:static');
     expect(
       within(card).getByText('message.ontology-empty-card-description')
     ).toBeVisible();
-    expect(card.querySelector('[data-icon]')?.parentElement).toHaveClass(
-      'tw:text-fg-brand-primary'
+    expect(icon?.parentElement).toHaveClass('tw:text-fg-brand-primary');
+    [icon?.parentElement?.className, icon?.getAttribute('class')].forEach(
+      (classes) => {
+        expect(classes ?? '').not.toMatch(
+          /gray|text-secondary|text-quaternary/
+        );
+      }
     );
-    expect(
-      card.querySelector('[data-icon]')?.parentElement?.className
-    ).not.toMatch(/gray|text-secondary|text-quaternary/);
   });
 
   it('hides Add concept from a user who cannot author the first class', () => {
