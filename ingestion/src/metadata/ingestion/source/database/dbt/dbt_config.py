@@ -373,8 +373,9 @@ def _get_dbt_cloud_merged_files(client, config: DbtCloudConfig, job_ids: list[st
     set per dbt Cloud environment. Environments stay apart: they build into different schemas.
     ADR:2026-10-29-dbt-cloud-multi-job-artifacts-merge-per-environment
 
-    Only a job that never completed a run is skipped. Any other failure stops the run, since
-    merging without that job's artifacts would blank the models only it compiled.
+    Only a job that never completed a run is skipped. Any other failure on a job leaves its
+    whole environment out, since merging without that job's artifacts would blank the models
+    only it compiled; the other environments are still ingested and the run is then failed.
     """
     runs_by_environment = defaultdict(list)
     for job_id in job_ids:
@@ -389,16 +390,32 @@ def _get_dbt_cloud_merged_files(client, config: DbtCloudConfig, job_ids: list[st
             f"No completed dbt runs found for any of the dbt Cloud jobs {job_ids}. "
             "Please verify these IDs exist and have completed runs."
         )
+    failed_environments = []
     # One environment's artifacts are held at a time: manifests of large projects are big
-    for runs in runs_by_environment.values():
-        # The newest run is merged first, so it wins wherever two runs compiled the same node
-        runs.sort(key=lambda run: run.get("finished_at") or "", reverse=True)
-        merged = _get_dbt_cloud_run_files(client, config, runs[0], strict=True)
-        for run in runs[1:]:
-            dbt_files = _get_dbt_cloud_run_files(client, config, run, strict=True)
-            _check_same_manifest_schema(merged, runs[0], dbt_files, run)
-            _merge_dbt_files(merged, dbt_files)
+    for environment_id, runs in runs_by_environment.items():
+        try:
+            merged = _get_dbt_cloud_environment_files(client, config, runs)
+        except DBTConfigException as exc:
+            logger.warning(f"Skipping dbt Cloud environment [{environment_id}]: {exc}")
+            failed_environments.append(f"[{environment_id}] {exc}")
+            continue
         yield merged
+    if failed_environments:
+        raise DBTConfigException(
+            f"dbt artifacts of {len(failed_environments)} dbt Cloud environment(s) were not ingested: "
+            + " | ".join(failed_environments)
+        )
+
+
+def _get_dbt_cloud_environment_files(client, config: DbtCloudConfig, runs: list[dict]) -> DbtFiles:
+    # The newest run is merged first, so it wins wherever two runs compiled the same node
+    runs.sort(key=lambda run: run.get("finished_at") or "", reverse=True)
+    merged = _get_dbt_cloud_run_files(client, config, runs[0], strict=True)
+    for run in runs[1:]:
+        dbt_files = _get_dbt_cloud_run_files(client, config, run, strict=True)
+        _check_same_manifest_schema(merged, runs[0], dbt_files, run)
+        _merge_dbt_files(merged, dbt_files)
+    return merged
 
 
 def _check_same_manifest_schema(merged: DbtFiles, merged_run: dict, dbt_files: DbtFiles, run: dict) -> None:

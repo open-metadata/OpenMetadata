@@ -435,6 +435,33 @@ class TestDbtCloudMultipleJobs:
             list(get_dbt_details(_cloud_config(job_ids="70,71")))
 
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_a_broken_job_skips_only_its_environment_then_fails_the_run(self, tracked_rest):
+        """An abandoned job whose latest run died before compiling must not block other environments."""
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={
+                "70": {"id": 1, "environment_id": 5, "job_definition_id": 70},
+                "71": {"id": 2, "environment_id": 6, "job_definition_id": 71},
+                "72": {"id": 3, "environment_id": 7},
+            },
+            artifacts_by_run={
+                1: {"manifest": {"nodes": {"model.p.a": _model("a")}}},
+                2: {"manifest": None},
+                3: {"manifest": {"nodes": {"model.p.c": _model("c")}}},
+            },
+        )
+        _serve(tracked_rest, get)
+        yielded = []
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            yielded.extend(
+                list(files.dbt_manifest["nodes"]) for files in get_dbt_details(_cloud_config(job_ids="70,71,72"))
+            )
+
+        assert yielded == [["model.p.a"], ["model.p.c"]]
+        assert "1 dbt Cloud environment(s) were not ingested: [6]" in str(exc_info.value)
+        assert "run [2] of job [71]" in str(exc_info.value)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_no_job_with_a_completed_run_fails(self, tracked_rest):
         get, _ = _dbt_cloud_jobs_api(runs_by_job={})
         _serve(tracked_rest, get)
