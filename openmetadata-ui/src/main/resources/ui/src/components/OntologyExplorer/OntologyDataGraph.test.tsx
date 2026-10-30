@@ -530,7 +530,7 @@ describe('native Data mode lineage', () => {
       relation[relation.length - 2],
       relation[relation.length - 1] + 14,
     ]);
-    expect(lineageChip - relationChip).toBeGreaterThanOrEqual(14);
+    expect(lineageChip - relationChip).toBeCloseTo(18);
   });
 
   it('marks both rows of a lineage edge inside one cluster, naming the other table', () => {
