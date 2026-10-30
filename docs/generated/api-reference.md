@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1988 endpoints** across 75 resource packages · 1978 carry a summary.
+**1989 endpoints** across 75 resource packages · 1979 carry a summary.
 
 ## (root)
 
@@ -1431,6 +1431,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyPacks` | List ontology library packs |
 | `GET` | `/v1/ontologyPacks/{packId}` | Get an ontology library pack |
 | `POST` | `/v1/ontologyPacks/{packId}/install` | Dry-run or install selected ontology pack modules |
+| `GET` | `/v1/ontologyPacks/{packId}/sample` | Preview selected library concepts |
 | `GET` | `/v1/ontologyProperties` | List ontology property definitions |
 | `POST` | `/v1/ontologyProperties` | Create an ontology property |
 | `PUT` | `/v1/ontologyProperties` | Create or update an ontology property |
