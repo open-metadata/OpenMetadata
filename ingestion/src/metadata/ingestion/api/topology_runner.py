@@ -16,11 +16,11 @@ generate the _run based on their topology.
 import math
 import time
 import traceback
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from contextlib import closing
 from functools import cached_property, singledispatchmethod
 from time import perf_counter
-from typing import Any, ClassVar, Generic, TypeVar, cast
+from typing import Any, ClassVar, Generic, TypeVar, cast, overload
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -58,6 +58,7 @@ from metadata.utils.source_hash import generate_source_hash
 logger = ingestion_logger()
 
 C = TypeVar("C", bound=BaseModel)
+T = TypeVar("T")
 
 
 class MissingExpectedEntityAckException(Exception):  # noqa: N818
@@ -65,6 +66,40 @@ class MissingExpectedEntityAckException(Exception):  # noqa: N818
     After running the ack to the sink, we got no
     Entity back
     """
+
+
+class PerSourceState(Generic[T]):
+    """State declared on a source class but owned by each source instance, created on first access.
+
+    A class attribute such as ``seen: set = set()`` is one object shared by every source of that type
+    in the process, so a second source or a second run inherits the first one's state. Worker threads
+    can be the first to touch the state, so it is created with ``vars(instance).setdefault`` rather than
+    ``cached_property``, which takes no lock on Python 3.12+ and can hand two threads different objects.
+    """
+
+    def __init__(self, factory: Callable[[], T]) -> None:
+        self._factory = factory
+        self._name = ""
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        self._name = name
+
+    @overload
+    def __get__(self, instance: None, owner: type | None = None) -> "PerSourceState[T]": ...
+
+    @overload
+    def __get__(self, instance: object, owner: type | None = None) -> T: ...
+
+    def __get__(self, instance: object | None, owner: type | None = None) -> "T | PerSourceState[T]":
+        if instance is None:
+            return self
+        instance_dict = vars(instance)
+        if self._name in instance_dict:
+            return instance_dict[self._name]
+        return instance_dict.setdefault(self._name, self._factory())
+
+    def __set__(self, instance: object, value: T) -> None:
+        vars(instance)[self._name] = value
 
 
 class TopologyRunnerMixin(Generic[C]):
@@ -76,7 +111,7 @@ class TopologyRunnerMixin(Generic[C]):
     topology: ServiceTopology
     metadata: OpenMetadata
 
-    queue = Queue()
+    queue = PerSourceState(Queue)
 
     progress_mode: ClassVar[ProgressMode] = ProgressMode.AUTO
     """AUTO (default): the topology runner counts processed entities.

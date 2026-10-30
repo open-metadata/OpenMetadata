@@ -41,7 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.topology import (
@@ -132,7 +132,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: SearchConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = SearchServiceTopology()
-    index_source_state: set = set()  # noqa: RUF012
+    index_source_state = PerSourceState(set)
 
     @retry_with_docker_host()
     def __init__(

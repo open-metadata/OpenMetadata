@@ -176,7 +176,7 @@ RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
 RUN pip install "datamodel-code-generator==0.83.0" "ruff==0.15.22" \
   && mkdir -p /ingestion/src/metadata/generated \
   && python /scripts/datamodel_generation.py \
-  && pip uninstall -y datamodel-code-generator ruff
+  && pip uninstall -y datamodel-code-generator black ruff
 RUN pip install ".[airflow]"
 RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
