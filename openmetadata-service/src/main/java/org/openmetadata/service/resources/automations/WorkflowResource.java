@@ -767,6 +767,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   /** A test against another endpoint may not borrow the stored secrets it would be sent. */
   private static void requireSecretsReenteredOnRetarget(Workflow workflow, Workflow original) {
+    // Nothing stored to retarget: there is no credential to borrow, and the unmask walk that
+    // follows rejects an encoded value the submission carries on its own.
+    if (original == null) {
+      return;
+    }
     Workflow converted =
         (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     if (converted.getRequest() instanceof TestServiceConnectionRequest request

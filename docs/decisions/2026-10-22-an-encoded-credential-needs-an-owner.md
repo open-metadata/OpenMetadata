@@ -1,15 +1,15 @@
 # An encoded credential is only accepted on a user path when the entity already holds it, or it points outside the managed namespace
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-22 (initial); v2 2026-10-23 (the PATCH pipeline's prepare pass is a
-  re-storage after the masker pass, and an HTTP request body is typed before its provenance is
-  checked); v3 2026-10-27 (an own-base reference must be the exact per-field id, and provider
-  identifier forms are canonicalized before classification); v4 2026-10-28 (padded provider names
-  are canonicalized, an own ARN's AWS-generated suffix is accepted, a TEST_CONNECTION run of a
-  named service requires EditAll on it at create and trigger alike, and the version-checked store
-  encrypts); v5 2026-10-28 (the pipeline's version-checked store encrypts too, the row version is
-  locked before an external vault write, the trigger re-validates a stored row, EditAll on the
-  named service applies while it exists, and the workflow secrets migration runs)
+- **Revisions:** v1 2026-10-22 (initial); v2 2026-10-23 (the PATCH prepare pass is a re-storage
+  after the masker pass; an HTTP body is typed before its provenance is checked); v3 2026-10-27
+  (an own-base reference must be the exact per-field id; provider identifiers are canonicalized
+  before classification); v4 2026-10-28 (an own ARN's AWS-generated suffix is accepted, a
+  TEST_CONNECTION run of a named service requires EditAll on it at create and trigger, and
+  the version-checked store encrypts); v5 2026-10-28 (the pipeline's version-checked store
+  encrypts too, the row version is locked before an external vault write, and the workflow
+  secrets migration runs); v6 2026-10-30 (the storage-side encryption moved into upstream's
+  prepareForStorage hook under the base store's row lock, history re-stores internally)
 - **Deciders:** reviewers of the foreign-credential-rejection PR
 - **Guard:** `DBSecretsManagerTest#testEncryptRejectsAForeignFernetToken`,
   `ExternalSecretsManagerTest#testEncryptRejectsAReferenceToAnotherEntitysSecret` and
@@ -18,10 +18,11 @@
   `AWSSecretsManagerTest#testEncryptRejectsAnArnReferenceToAnotherEntitysSecret`,
   `PasswordEntityMaskerForeignCredentialTest` (all fail if the guards are removed);
   `ExternalSecretsManagerTest#testStoredWorkflowTriggerRejectsAnotherServicesReference`,
-  `EntityRepositoryStoredVersionLockTest` and `IngestionPipelineStoredCredentialStoreTest`
-  (the version-checked store and its stale-version lock);
-  `SecretsManagerCredentialValidationIT` and `SecretsManagerNullSecretIT` (end-to-end over the
-  service API — the latter also pins the rename PATCH and the TEST_CONNECTION echo over HTTP)
+  `IngestionPipelineStoredCredentialStoreTest` and `EntityRepositorySecretStorageTest` (the
+  version-checked store, its stale-version row lock, and the external vault write a rejected
+  store must not make); `SecretsManagerCredentialValidationIT` and `SecretsManagerNullSecretIT`
+  (end-to-end over the service API — the latter also pins the rename PATCH and the
+  TEST_CONNECTION echo over HTTP)
 - **Related:** `SecretsManager#requireOwnCredential`, `PasswordEntityMasker#requireOwnStoredValue`
 
 ## Context
@@ -193,3 +194,24 @@ that is not there.
 
 Fifth, the workflow secrets migration now runs: `updateEntities` re-stores workflows on a
 provider switch through the fixed workflow DAO (previously unreachable).
+
+## Amendment — 2026-10-30 (v6): the storage guards move into the base repository's preparation hook
+
+Upstream independently landed the same storage-side guarantees as a base-repository mechanism
+(#36726): a `prepareForStorage` hook the single, conditional and bulk store paths all run, and a
+row lock (`EntityRepository#lockAndValidateVersion`) the version-checked store takes before
+preparation serializes. The per-repository overrides this decision added are rebuilt on top of it:
+
+- The hook gained an update flag (`prepareForStorage(entity, update)`): a create path prepares
+  under the entity's own-bases policy (an encoded value it does not own is rejected), an update
+  path under internal re-storage (its own encoded values pass through). The flag-less hook is the
+  create variant. `storeMany` prepares with the create policy, `updateMany` with re-storage.
+- The `storeEntityWithVersion` overrides and `lockAndAssertStoredVersion` are gone: the version
+  store's own row lock runs before the hook, so a stale If-Match caller is rejected before it
+  writes anything external — the v5 guarantee, now by construction of the base store.
+- Pipeline version-history serialization re-stores the snapshot under internal re-storage: the
+  values it holds are the pipeline's own, and a stored reference must pass through untouched
+  rather than be re-validated.
+- The retarget guard tolerates a workflow with nothing stored to retarget (no stored service): a
+  submission for a service that does not exist has no credential to borrow, and the unmask walk
+  alone rejects an encoded value it carries.
