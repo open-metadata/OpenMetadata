@@ -633,6 +633,14 @@ public abstract class SecretsManager {
     return Integer.MAX_VALUE;
   }
 
+  /**
+   * The name the provider resolves {@code secretName} to, so that two spellings of one secret
+   * compare equal.
+   */
+  protected String canonicalSecretName(String secretName) {
+    return secretName;
+  }
+
   Fernet fernet() {
     return fernet;
   }

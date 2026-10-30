@@ -11,6 +11,7 @@ import com.azure.security.keyvault.secrets.models.DeletedSecret;
 import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import com.azure.security.keyvault.secrets.models.SecretProperties;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.Locale;
 import java.util.regex.Pattern;
 import org.apache.logging.log4j.util.Strings;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -125,6 +126,12 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   @Override
   protected int maxSecretIdLength() {
     return MAX_SECRET_NAME_LENGTH;
+  }
+
+  /** Key Vault secret names are case-insensitive. */
+  @Override
+  protected String canonicalSecretName(String secretName) {
+    return secretName.toLowerCase(Locale.ROOT);
   }
 
   public static AzureKVSecretsManager getInstance(SecretsConfig secretsConfig) {

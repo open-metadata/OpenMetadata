@@ -124,11 +124,16 @@ public final class OwnedSecrets {
 
   /** Whether {@code reference} points into the namespace this deployment manages. */
   public boolean isManaged(String reference) {
-    return isReference(reference) && secretName(reference).startsWith(managedNamespace());
+    return isReference(reference) && canonicalName(reference).startsWith(managedNamespace());
   }
 
   public boolean isOwnedBy(String reference, SecretOwner owner) {
-    return isReference(reference) && secretName(reference).startsWith(namespace(owner));
+    return isReference(reference) && canonicalName(reference).startsWith(namespace(owner));
+  }
+
+  /** Compared the way the provider resolves it, so another spelling of a name is the same name. */
+  private String canonicalName(String reference) {
+    return secretsManager.canonicalSecretName(secretName(reference));
   }
 
   /** Whether the secret {@code reference} points at exists. Reads it, but never returns it. */

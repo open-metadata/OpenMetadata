@@ -25,6 +25,8 @@ import com.azure.core.exception.ResourceNotFoundException;
 import com.azure.security.keyvault.secrets.SecretClient;
 import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.secrets.Parameters;
@@ -69,5 +71,21 @@ class AzureKVSecretsManagerTest {
 
     verify(mockClient).setSecret(any(KeyVaultSecret.class));
     verify(mockClient, never()).getSecret(anyString());
+  }
+
+  @Test
+  void aSecretNameInAnyCaseBelongsToTheSameOwner() {
+    UUID pipelineId = UUID.randomUUID();
+    SecretOwner owner = SecretOwner.builder("pipeline").id(pipelineId).build();
+    String name =
+        secretsManager.buildSecretId(true)
+            + "-pipeline-"
+            + SecretKeyEncoding.encodeId(pipelineId)
+            + "-key";
+
+    assertTrue(
+        secretsManager
+            .ownedSecrets()
+            .isOwnedBy(SecretsManager.SECRET_FIELD_PREFIX + name.toUpperCase(Locale.ROOT), owner));
   }
 }

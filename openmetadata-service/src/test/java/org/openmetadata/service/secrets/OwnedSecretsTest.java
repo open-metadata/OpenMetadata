@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.SecretsManager.SECRET_FIELD_PREFIX;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -155,6 +156,29 @@ class OwnedSecretsTest {
 
     assertEquals(400, rejected.getResponse().getStatus());
     assertFalse(rejected.getMessage().contains(aliceReference));
+  }
+
+  @Test
+  void aReferenceIsComparedByTheNameTheProviderResolves() {
+    InMemorySecretsManager caseInsensitive =
+        new InMemorySecretsManager(CONFIG) {
+          @Override
+          protected String canonicalSecretName(String secretName) {
+            return secretName.toLowerCase(Locale.ROOT);
+          }
+        };
+    OwnedSecrets secrets = caseInsensitive.ownedSecrets();
+    String aliceReference =
+        reference(
+            ((SnowflakeConnection)
+                    secrets.encrypt(snowflake("alice-password"), ALICE, List.of(), Set.of()))
+                .getPassword());
+    String otherSpelling =
+        SECRET_FIELD_PREFIX + secretName(aliceReference).toUpperCase(Locale.ROOT);
+
+    assertThrows(
+        SecretsManagerException.class,
+        () -> secrets.encrypt(snowflake(otherSpelling), BOB, List.of(), Set.of()));
   }
 
   @Test
