@@ -152,7 +152,6 @@ public class EventResource {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    // Events carry the full before and after body of every changed entity, across all entities.
     authorizer.authorizeAdminOrBot(securityContext);
     List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
     List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);

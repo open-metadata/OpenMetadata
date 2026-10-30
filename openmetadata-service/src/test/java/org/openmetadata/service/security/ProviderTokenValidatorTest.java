@@ -44,7 +44,6 @@ class ProviderTokenValidatorTest {
         () -> validate(VALIDATOR, token(ISSUER).withAudience("another-client", CLIENT_ID)));
   }
 
-  /** Google and Entra ID sign every application's tokens with the same keys. */
   @Test
   void rejectsTokenIssuedToAnotherApplication() {
     AuthenticationException failure =
@@ -116,10 +115,7 @@ class ProviderTokenValidatorTest {
                     .withClaim("tid", "tenant-b")));
   }
 
-  /**
-   * A public client has no discovery document, but a multi-tenant application registration signs
-   * users in from every tenant. The tenant its authority names is the one tokens must come from.
-   */
+  /** A public client's tokens must come from the tenant its authority names. */
   @Test
   void publicEntraClientAcceptsOnlyTheConfiguredTenant() {
     String tenant = "11111111-2222-3333-4444-555555555555";

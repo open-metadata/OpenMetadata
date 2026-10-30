@@ -742,9 +742,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   /**
-   * Every response type this client can be configured with redirects back in query mode, where a
-   * provider returns an authorization code and never a token, so a callback without a code did not
-   * come from the provider.
+   * A callback carries an authorization code for every configured response type: the client asks to
+   * be redirected back in query mode, where providers return one.
    */
   private void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
     if (credentials.getCode() == null) {
@@ -804,9 +803,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   /**
-   * Keeps only the authorization code. Tokens in the redirect itself reach the server through the
-   * browser, unsigned or minted for another client as easily as genuine, so the ID token is always
-   * the one the token endpoint returns for this code.
+   * Keeps only the authorization code from the callback redirect; the ID token is the one the token
+   * endpoint returns for that code.
    */
   static OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
     OidcCredentials credentials = new OidcCredentials();

@@ -21,13 +21,10 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * Checks that a token signed by the identity provider's keys was issued to this deployment. A
- * valid signature does not say that on its own: Google and Microsoft Entra ID sign every
- * application's tokens with the same keys, so another application's ID token for the same person
- * verifies just as well. The audience must name one of our clients, and the issuer must be our
- * provider whenever its discovery document is known to the server. Without a discovery document,
- * as for a public client, an Entra ID token must still come from the tenant the deployment names:
- * a multi-tenant application registration accepts sign-ins from every tenant.
+ * Checks that a token signed by the identity provider's keys was issued to this deployment: its
+ * audience names one of our clients, its issuer is our provider whenever the server knows the
+ * provider's discovery document, and for a public client whose authority names an Entra ID tenant,
+ * it comes from that tenant.
  */
 final class ProviderTokenValidator {
   private static final String TENANT_ID_PLACEHOLDER = "{tenantid}";

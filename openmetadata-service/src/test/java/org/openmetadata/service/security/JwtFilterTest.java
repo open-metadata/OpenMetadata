@@ -738,7 +738,6 @@ class JwtFilterTest {
     return filter;
   }
 
-  /** Google and Entra ID sign other applications' tokens with the keys this filter trusts. */
   @Test
   void providerTokenIssuedToAnotherApplicationIsRejected() {
     String token = providerToken("another-application");

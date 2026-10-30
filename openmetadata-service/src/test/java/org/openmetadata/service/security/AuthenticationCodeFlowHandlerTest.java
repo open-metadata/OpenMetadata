@@ -1028,8 +1028,7 @@ class AuthenticationCodeFlowHandlerTest {
     AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
     when(authConfig.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
 
-    // A syntactically valid but unsigned, claim-less token stands in for a front-channel token that
-    // never passed through the provider's token endpoint. The callback carries it with no code.
+    // The callback carries a token but no authorization code.
     String frontChannelToken = new PlainJWT(new JWTClaimsSet.Builder().build()).serialize();
     when(request.getParameterMap())
         .thenReturn(
