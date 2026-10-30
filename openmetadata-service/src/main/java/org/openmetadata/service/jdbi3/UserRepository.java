@@ -1672,7 +1672,8 @@ public class UserRepository extends EntityRepository<User> {
 
   /**
    * Every delete path runs this, including the bulk soft delete that removes a deleted bot's user
-   * without calling {@link #postDelete}, so the credential change is announced here.
+   * without calling {@link #postDelete}, so the credential change is announced and the user's MCP
+   * grants end here.
    */
   @Override
   protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
@@ -1680,6 +1681,7 @@ public class UserRepository extends EntityRepository<User> {
     return () -> {
       try (parentLifecycle) {
         Credentials.changed(entity.getName());
+        daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(entity.getName());
       }
     };
   }
