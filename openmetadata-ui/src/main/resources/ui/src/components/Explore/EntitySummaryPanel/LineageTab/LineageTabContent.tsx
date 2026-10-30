@@ -189,7 +189,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
         onSelectionChange={(key) =>
           onFilterChange(key as LineageTabContentProps['filter'])
         }>
-        <Tabs.List size="sm" type="button-border">
+        <Tabs.List fullWidth size="sm" type="button-border">
           {(['upstream', 'downstream'] as const).map((direction) => (
             <Tabs.Item
               badge={direction === 'upstream' ? upstreamCount : downstreamCount}
@@ -238,7 +238,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   `${item.direction}-${item.path}`
                 }>
                 <div className="lineage-item-header">
-                  <div className="d-flex align-items-center gap-1">
+                  <div className="d-flex align-items-center gap-1 tw:min-w-0 tw:flex-1">
                     <div className="service-icon">
                       {getServiceLogo(
                         capitalize(item.entity.serviceType) ?? '',
@@ -249,7 +249,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                       {item.path && renderTruncatedPath(item.path)}
                     </div>
                   </div>
-                  <div className="lineage-item-direction">
+                  <div className="lineage-item-direction tw:shrink-0">
                     {item.direction === 'upstream' ? (
                       <Tooltip
                         placement="top"

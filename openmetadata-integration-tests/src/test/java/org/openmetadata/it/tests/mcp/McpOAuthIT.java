@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -370,7 +372,7 @@ public class McpOAuthIT extends McpTestBase {
     Assumptions.assumeTrue(
         registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
     long grantEnd = System.currentTimeMillis() + Duration.ofDays(5).toMillis();
-    String refreshToken = seedRefreshToken(grantEnd);
+    String refreshToken = seedRefreshToken(List.of(), grantEnd);
 
     HttpResponse<String> response = refresh(refreshToken);
 
@@ -380,15 +382,106 @@ public class McpOAuthIT extends McpTestBase {
         .isEqualTo(grantEnd);
   }
 
-  /** Stores a refresh token for admin ending at {@code expiresAt}, as a sign-in would. */
-  private static String seedRefreshToken(long expiresAt) {
+  @Test
+  @Order(15)
+  void testRefreshOfAGrantHoldingUnknownScopes_keepsOnlyTheKnownOnes() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    List<String> granted =
+        Stream.concat(
+                Stream.of("openid"), IntStream.range(0, 200).mapToObj(index -> "scope" + index))
+            .toList();
+    String refreshToken =
+        seedRefreshToken(granted, System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+
+    HttpResponse<String> response = refresh(refreshToken);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    String rotated = OBJECT_MAPPER.readTree(response.body()).get("refresh_token").asText();
+    assertThat(new OAuthTokenRepository().findRefreshToken(rotated).getScopes())
+        .containsExactly("openid");
+  }
+
+  /** A revoked access token is refused on the next call; clients often send no type hint. */
+  @Test
+  @Order(16)
+  void testRevokedAccessToken_isRefusedOnTheNextCall() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    String refreshToken =
+        seedRefreshToken(List.of(), System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+    HttpResponse<String> refreshed = refresh(refreshToken);
+    assertThat(refreshed.statusCode()).isEqualTo(200);
+    String accessToken = OBJECT_MAPPER.readTree(refreshed.body()).get("access_token").asText();
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(revoke(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+  }
+
+  /** Revoking a refresh token ends the access tokens of its grant too (RFC 7009 section 2.1). */
+  @Test
+  @Order(17)
+  void testRevokedRefreshToken_endsItsAccessTokens() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    String seeded =
+        seedRefreshToken(List.of(), System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+    JsonNode tokens = OBJECT_MAPPER.readTree(refresh(seeded).body());
+    String accessToken = tokens.get("access_token").asText();
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(revoke(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(200);
+
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+  }
+
+  private HttpResponse<String> revoke(String token) throws Exception {
+    String formBody =
+        "token="
+            + token
+            + "&client_id="
+            + registeredClientId
+            + "&client_secret="
+            + registeredClientSecret;
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl("/mcp/revoke")))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString(formBody))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> listTools(String accessToken) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl("/mcp")))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json, text/event-stream")
+            .header("Authorization", "Bearer " + accessToken)
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}"))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  /**
+   * Stores a refresh token for admin granting {@code scopes} and ending at {@code expiresAt}, as a
+   * sign-in would.
+   */
+  private static String seedRefreshToken(List<String> scopes, long expiresAt) {
     String value = UUID.randomUUID().toString();
     new OAuthTokenRepository()
         .storeRefreshToken(
-            new RefreshToken(value, registeredClientId, List.of(), expiresAt),
+            new RefreshToken(value, registeredClientId, scopes, expiresAt),
             registeredClientId,
             "admin",
-            List.of());
+            scopes);
     return value;
   }
 

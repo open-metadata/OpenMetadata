@@ -16,8 +16,14 @@ import {
   Format,
   OntologyPackManifest,
 } from '../../generated/api/data/ontologyPackManifest';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { installOntologyPack, listOntologyPacks } from '../../rest/ontologyAPI';
 import OntologyLibrary from './OntologyLibrary';
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 jest.mock('../../rest/ontologyAPI', () => ({
   installOntologyPack: jest.fn(),
@@ -275,5 +281,70 @@ describe('OntologyLibrary', () => {
       screen.queryByTestId('ontology-pack-install')
     ).not.toBeInTheDocument();
     expect(mockInstallPack).not.toHaveBeenCalled();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('filters the catalogue, shows the pack count and closes from Cancel', async () => {
+      const onClose = jest.fn();
+      render(<OntologyLibrary onClose={onClose} />);
+
+      expect(await screen.findByTestId('ontology-pack-fhir')).toBeVisible();
+      expect(screen.getByTestId('ontology-library-count')).toHaveTextContent(
+        '2 label.ontology-plural'
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-library-filter-isa-95'));
+
+      expect(screen.getByTestId('ontology-pack-isa-95')).toBeVisible();
+      expect(
+        screen.queryByTestId('ontology-pack-fhir')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-library-cancel'));
+      fireEvent.click(screen.getByTestId('ontology-library-close'));
+
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps module counts and the dry-run install path in the pack detail', async () => {
+      mockInstallPack.mockResolvedValueOnce(installResult(true));
+      render(<OntologyLibrary canInstall />);
+
+      fireEvent.click(await screen.findByTestId('ontology-pack-details-fhir'));
+      fireEvent.click(screen.getByTestId('ontology-module-clinical'));
+
+      expect(
+        screen.getByTestId('ontology-pack-concept-count')
+      ).toHaveTextContent('5');
+      expect(
+        screen.getByTestId('ontology-pack-relationship-count')
+      ).toHaveTextContent('3');
+      expect(
+        screen.queryByTestId('ontology-library-count')
+      ).not.toBeInTheDocument();
+
+      fireEvent.change(screen.getByTestId('ontology-pack-target-glossary'), {
+        target: { value: 'FHIR Reference' },
+      });
+      fireEvent.click(screen.getByTestId('ontology-pack-dry-run'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('ontology-pack-install')).toBeEnabled()
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-library-back'));
+
+      expect(
+        await screen.findByTestId('ontology-pack-catalogue')
+      ).toBeVisible();
+    });
   });
 });

@@ -1672,6 +1672,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             request.getSize(),
             request.getExplain(),
             request.getIncludeAggregations() != null ? request.getIncludeAggregations() : true);
+    if (Boolean.FALSE.equals(request.getIncludeHighlights())) {
+      requestBuilder.highlighter(null);
+    }
 
     requestBuilder.preference(SearchUtils.searchPreferenceFor(subjectContext));
 

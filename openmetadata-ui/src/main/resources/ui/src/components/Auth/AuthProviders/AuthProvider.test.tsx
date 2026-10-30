@@ -303,6 +303,7 @@ jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => {
   );
   const registerRenewer = jest.fn();
   const pause = jest.fn();
+  const resume = jest.fn();
   const syncFromStoredToken = jest.fn().mockResolvedValue(undefined);
 
   return {
@@ -311,9 +312,11 @@ jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => {
       on,
       registerRenewer,
       pause,
+      resume,
       syncFromStoredToken,
     },
     __mockPause: pause,
+    __mockResume: resume,
     __mockSyncFromStoredToken: syncFromStoredToken,
     __mockDisposeInterceptor: disposeInterceptor,
     __mockOffRefreshed: offRefreshed,
@@ -340,6 +343,7 @@ const {
   __mockAuthCoordinatorInstall: mockAuthCoordinatorInstall,
   __mockAuthCoordinatorOn: mockAuthCoordinatorOn,
   __mockPause: mockPause,
+  __mockResume: mockResume,
   __mockSyncFromStoredToken: mockSyncFromStoredToken,
 } = jest.requireMock('../../../utils/Auth/AuthCoordinator/AuthCoordinator');
 
@@ -1105,6 +1109,12 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     });
 
     expect(mockPause).toHaveBeenCalled();
+    // Refreshes stay held off for the whole logout, then are allowed again
+    // for the next sign-in.
+    expect(mockResume).toHaveBeenCalledTimes(1);
+    expect(mockPause.mock.invocationCallOrder[0]).toBeLessThan(
+      mockResume.mock.invocationCallOrder[0]
+    );
   });
 
   it('signs out with a toast when a stored bot or personal access token is rejected', async () => {
