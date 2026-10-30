@@ -17,6 +17,8 @@ for Prep flows and extract refreshes
 import heapq
 import json
 from collections.abc import Callable, Iterable, Iterator
+from types import TracebackType
+from typing import Any
 
 import requests
 from pydantic import ValidationError
@@ -31,7 +33,12 @@ from tableauserverclient import (
     TableauAuth,
 )
 from tableauserverclient.models import BackgroundJobItem, FlowItem, FlowRunItem, TaskItem
+from tableauserverclient.server.endpoint.endpoint import TABLEAU_AUTH_HEADER
 from tableauserverclient.server.endpoint.exceptions import ServerResponseError
+from typing_extensions import Self
+from urllib3.connectionpool import ConnectionPool
+from urllib3.exceptions import MaxRetryError, ReadTimeoutError
+from urllib3.response import BaseHTTPResponse
 from urllib3.util.retry import Retry
 
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
@@ -69,6 +76,10 @@ EXTRACT_REFRESH_JOB_TYPES = ["refresh_extracts", "increment_extracts"]
 MAX_EXTRACT_REFRESH_JOB_LOOKUPS = 1000
 # The version TSC keeps when it cannot read the server's; too old for flows.
 FALLBACK_API_VERSION = "2.4"
+# (connect, read) seconds for every Tableau call. ADR:2026-10-30-tableau-pipeline-http-timeout
+HTTP_TIMEOUT = (10, 60)
+# Longest Retry-After waited out. ADR:2026-10-30-tableau-pipeline-retry-after-cap
+MAX_RETRY_AFTER_SECONDS = 30
 
 
 class TableauSiteAdminRequiredError(Exception):
@@ -92,11 +103,44 @@ def _started_at(run: TableauRunItem | FlowRunItem) -> float:
     return run.started_at.timestamp() if run.started_at else 0.0
 
 
+class _TableauRetry(Retry):
+    """Tableau Cloud answers a used-up hourly quota with a Retry-After that runs
+    to the top of the hour. Waiting that out would stall the run without a word,
+    so a longer wait is not retried: the 429 reaches the caller at once. Nor is
+    a read timeout: the host took the request and went silent, and a retry would
+    only multiply the wait. A dropped connection is retried like any other error."""
+
+    def increment(
+        self,
+        method: str | None = None,
+        url: str | None = None,
+        response: BaseHTTPResponse | None = None,
+        error: Exception | None = None,
+        _pool: ConnectionPool | None = None,
+        _stacktrace: TracebackType | None = None,
+    ) -> Self:
+        if isinstance(error, ReadTimeoutError):
+            raise error
+        wait = self.get_retry_after(response) if response is not None else None
+        if response is not None and _pool is not None and wait is not None and wait > MAX_RETRY_AFTER_SECONDS:
+            logger.warning(
+                "Tableau answered HTTP %s with Retry-After %ss: not waiting longer than %ss.",
+                response.status,
+                int(wait),
+                MAX_RETRY_AFTER_SECONDS,
+            )
+            raise MaxRetryError(_pool, url)
+        retry = super().increment(method, url, response, error, _pool, _stacktrace)
+        if response is not None and wait is not None:
+            logger.warning("Tableau answered HTTP %s with Retry-After %ss: waiting.", response.status, int(wait))
+        return retry
+
+
 def _retrying_session() -> requests.Session:
     """Tableau throttles with 429 and answers 502-504 while it restarts, and TSC
     does not retry. Every call the connector makes is a read, so POSTs (sign-in,
     Metadata API) are safe to retry too."""
-    retry = Retry(
+    retry = _TableauRetry(
         total=3,
         backoff_factor=1,
         status_forcelist=(429, 502, 503, 504),
@@ -121,7 +165,7 @@ class TableauPipelineClient:
         verify_ssl: bool | str | None,
         ssl_manager: SSLManager | None = None,
     ) -> None:
-        http_options: dict = {"verify": verify_ssl}
+        http_options: dict = {"verify": verify_ssl, "timeout": HTTP_TIMEOUT}
         if ssl_manager and ssl_manager.cert_file_path and ssl_manager.key_file_path:
             http_options["cert"] = (ssl_manager.cert_file_path, ssl_manager.key_file_path)
         # The options go in the constructor: it is where use_server_version reads
@@ -141,6 +185,8 @@ class TableauPipelineClient:
                 config.hostPort,
                 FALLBACK_API_VERSION,
             )
+        self._auth = tableau_server_auth
+        self.tableau_server.session.hooks["response"].append(self._sign_in_again)
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
         self.ssl_manager = ssl_manager
@@ -151,6 +197,24 @@ class TableauPipelineClient:
         self._extract_targets: frozenset[str] = frozenset()
         # Holds at most MAX_EXTRACT_REFRESH_JOB_LOOKUPS runs, one per looked-up job.
         self._extract_runs: dict[str, list[TableauRunItem]] | None = None
+
+    def _sign_in_again(self, response: requests.Response, **kwargs: Any) -> requests.Response:
+        """Tableau keeps one session per personal access token: a sign-in with the
+        same token anywhere else ends this one, and every later call answers 401.
+        Sign in again once and resend the call."""
+        request = response.request
+        if response.status_code != 401 or "/auth/" in str(request.url):
+            return response
+        logger.warning(
+            "Tableau ended the session: it expired, or the same personal access token signed in elsewhere. "
+            "Signing in again."
+        )
+        self.tableau_server.auth.sign_in(self._auth)
+        resent = request.copy()
+        # Without this hook, a second 401 reaches the caller instead of another sign-in.
+        resent.hooks = {"response": []}
+        resent.headers[TABLEAU_AUTH_HEADER] = self.tableau_server.auth_token
+        return self.tableau_server.session.send(resent, **kwargs)
 
     def get_pipelines(
         self, keep: Callable[[TableauPipelineDetails], bool] = lambda _: True
