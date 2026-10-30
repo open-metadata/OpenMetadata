@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
@@ -20,6 +21,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.ai.Env;
 import org.openmetadata.schema.entity.ai.McpConnectionConfig;
@@ -27,6 +29,9 @@ import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.ai.McpTransportType;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -109,7 +114,7 @@ class McpServerRepositoryTest {
   }
 
   @Test
-  void testClearFieldsMasksStoredConnectionCredentials() {
+  void testClearFieldsPreservesConnectionConfigForInternalReads() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
       McpServer server =
@@ -121,7 +126,7 @@ class McpServerRepositoryTest {
 
       repo.clearFields(server, fields);
 
-      assertMaskedConnection(server.getConnectionConfig());
+      assertEquals(connectionWithCredentials(), server.getConnectionConfig());
     }
   }
 
@@ -139,16 +144,16 @@ class McpServerRepositoryTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
-  void testPrepareMasksConnectionCredentials(boolean update) {
+  void testPreparePreservesConnectionConfig(boolean update) {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       final McpServerRepository repo = createRepo(entityMock);
       final McpServer server =
           new McpServer().withName("credentials").withConnectionConfig(connectionWithCredentials());
 
       repo.prepare(server, update);
-      assertMaskedConnection(server.getConnectionConfig());
+      assertEquals(connectionWithCredentials(), server.getConnectionConfig());
       repo.prepare(server, update);
-      assertMaskedConnection(server.getConnectionConfig());
+      assertEquals(connectionWithCredentials(), server.getConnectionConfig());
     }
   }
 
@@ -250,7 +255,39 @@ class McpServerRepositoryTest {
   }
 
   @Test
-  void testGetUpdaterMasksBothLegacyConnectionsBeforeRecordingChanges() {
+  void testApprovedChangeEventMasksCopyOfStoredConnection() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      final McpServerRepository repo = createRepo(entityMock);
+      final CollectionDAO.ChangeEventDAO eventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+      when(Entity.getCollectionDAO().changeEventDAO()).thenReturn(eventDAO);
+      final McpServer original =
+          mcpServerForConsolidation().withConnectionConfig(connectionWithCredentials());
+      final McpServer updated = JsonUtils.deepCopy(original, McpServer.class);
+      final ChangeDescription changes =
+          new ChangeDescription()
+              .withFieldsUpdated(
+                  List.of(
+                      new FieldChange()
+                          .withName("connectionConfig")
+                          .withOldValue("old-secret")
+                          .withNewValue("new-secret")));
+      updated.setChangeDescription(changes);
+      final String before = JsonUtils.pojoToJson(updated);
+
+      repo.createAndInsertChangeEvent(original, updated, changes, EventType.ENTITY_UPDATED);
+
+      final ArgumentCaptor<String> eventJson = ArgumentCaptor.forClass(String.class);
+      verify(eventDAO).insert(eventJson.capture());
+      assertFalse(eventJson.getValue().contains("-secret"));
+      final ChangeEvent event = JsonUtils.readValue(eventJson.getValue(), ChangeEvent.class);
+      assertMaskedConnection(
+          JsonUtils.convertValue(event.getEntity(), McpServer.class).getConnectionConfig());
+      assertEquals(before, JsonUtils.pojoToJson(updated));
+    }
+  }
+
+  @Test
+  void testGetUpdaterPreservesConnectionsWhenRecordingChanges() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       final McpServerRepository repo = createRepo(entityMock);
       final McpServer original =
@@ -260,11 +297,11 @@ class McpServerRepositoryTest {
               .withConnectionConfig(connectionWithCredentials().withTimeout(4000));
       final EntityRepository<McpServer>.EntityUpdater updater =
           repo.getUpdater(original, updated, EntityRepository.Operation.SOFT_DELETE, null);
-      assertMaskedConnection(original.getConnectionConfig());
+      assertEquals(connectionWithCredentials(), original.getConnectionConfig());
       assertEquals(
           original.getConnectionConfig().getArgs(), updated.getConnectionConfig().getArgs());
       assertEquals(original.getConnectionConfig().getEnv(), updated.getConnectionConfig().getEnv());
-      assertEquals(PASSWORD_MASK, updated.getConnectionConfig().getUrl());
+      assertEquals(connectionWithCredentials().getUrl(), updated.getConnectionConfig().getUrl());
       assertEquals(4000, updated.getConnectionConfig().getTimeout());
 
       updater.changeDescription = new ChangeDescription();
@@ -272,7 +309,8 @@ class McpServerRepositoryTest {
 
       assertEquals(
           "connectionConfig", updater.changeDescription.getFieldsUpdated().getFirst().getName());
-      assertFalse(JsonUtils.pojoToJson(updater.changeDescription).contains("-secret"));
+      assertEquals(connectionWithCredentials(), original.getConnectionConfig());
+      assertEquals(connectionWithCredentials().withTimeout(4000), updated.getConnectionConfig());
     }
   }
 

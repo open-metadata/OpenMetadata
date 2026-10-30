@@ -14,13 +14,20 @@
 package org.openmetadata.service.secrets.masker;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.MCP_SERVER;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
+import java.util.List;
 import java.util.stream.Stream;
 import org.openmetadata.schema.entity.ai.McpConnectionConfig;
 import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequestPreview;
+import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public final class McpServerMasker {
   private static final String CONNECTION_CONFIG = "connectionConfig";
@@ -34,6 +41,54 @@ public final class McpServerMasker {
       maskChangeDescription(server.getIncrementalChangeDescription());
     }
     return server;
+  }
+
+  public static ChangeRequest maskChangeRequest(ChangeRequest request) {
+    if (MCP_SERVER.equals(request.getEntityType())) {
+      request = JsonUtils.deepCopy(request, ChangeRequest.class);
+      if (request.getActiveRevision() != null) {
+        maskOps(request.getActiveRevision().getOps());
+      }
+      listOrEmpty(request.getConflicts()).stream()
+          .filter(conflict -> isConnectionField(conflict.getField()))
+          .forEach(
+              conflict -> {
+                conflict.setBaseValue(maskJsonValue(conflict.getBaseValue()));
+                conflict.setCurrentValue(maskJsonValue(conflict.getCurrentValue()));
+                conflict.setProposedValue(maskJsonValue(conflict.getProposedValue()));
+              });
+    }
+    return request;
+  }
+
+  public static ChangeRequestPreview maskPreview(ChangeRequestPreview preview) {
+    if (MCP_SERVER.equals(preview.getEntityType())) {
+      preview = JsonUtils.deepCopy(preview, ChangeRequestPreview.class);
+      maskOps(preview.getOps());
+    }
+    return preview;
+  }
+
+  public static ChangeRevision maskRevision(String entityType, ChangeRevision revision) {
+    if (MCP_SERVER.equals(entityType)) {
+      revision = JsonUtils.deepCopy(revision, ChangeRevision.class);
+      maskOps(revision.getOps());
+    }
+    return revision;
+  }
+
+  private static void maskOps(List<MutationOp> ops) {
+    listOrEmpty(ops).stream()
+        .filter(op -> isConnectionField(op.getField()))
+        .forEach(
+            op -> {
+              op.setBaseValue(maskJsonValue(op.getBaseValue()));
+              op.setValue(maskJsonValue(op.getValue()));
+            });
+  }
+
+  private static String maskJsonValue(String value) {
+    return value == null ? null : JsonUtils.pojoToJson(PASSWORD_MASK);
   }
 
   private static void maskConnectionConfig(final McpConnectionConfig config) {
@@ -52,7 +107,7 @@ public final class McpServerMasker {
     }
   }
 
-  private static void maskChangeDescription(final ChangeDescription changeDescription) {
+  public static void maskChangeDescription(final ChangeDescription changeDescription) {
     if (changeDescription != null) {
       Stream.of(
               changeDescription.getFieldsAdded(),
@@ -64,9 +119,7 @@ public final class McpServerMasker {
   }
 
   private static void maskFieldChange(final FieldChange change) {
-    final String name = change.getName();
-    if (CONNECTION_CONFIG.equals(name)
-        || (name != null && name.startsWith(CONNECTION_CONFIG + "."))) {
+    if (isConnectionField(change.getName())) {
       if (change.getOldValue() != null) {
         change.setOldValue(PASSWORD_MASK);
       }
@@ -74,5 +127,10 @@ public final class McpServerMasker {
         change.setNewValue(PASSWORD_MASK);
       }
     }
+  }
+
+  private static boolean isConnectionField(String name) {
+    return CONNECTION_CONFIG.equals(name)
+        || (name != null && name.startsWith(CONNECTION_CONFIG + "."));
   }
 }

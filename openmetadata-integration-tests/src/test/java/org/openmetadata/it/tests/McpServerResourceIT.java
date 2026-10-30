@@ -31,6 +31,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -145,6 +146,7 @@ public class McpServerResourceIT {
     final McpServer created = MAPPER.readValue(response, McpServer.class);
     assertMaskedConnection(created.getConnectionConfig());
     assertConnectionReadsMasked(rolelessClient(ns), created);
+    assertStoredConnection(created, request.getConnectionConfig());
   }
 
   @Test
@@ -152,6 +154,7 @@ public class McpServerResourceIT {
     final CreateMcpServer request = serverWithCredentials(ns);
     final McpServer created = createMcpServer(request);
     request.withDescription("Updated connection metadata");
+    request.getConnectionConfig().withUrl("https://mcp-url-secret@updated.example.com/mcp");
     final String response =
         SdkClients.adminClient()
             .getHttpClient()
@@ -168,6 +171,7 @@ public class McpServerResourceIT {
             reader, "/v1/mcpServers/" + created.getId() + "/versions/" + created.getVersion());
     assertNoConnectionSecrets(version);
     assertMaskedConnection(MAPPER.readValue(version, McpServer.class).getConnectionConfig());
+    assertStoredConnection(created, request.getConnectionConfig());
   }
 
   @Test
@@ -189,6 +193,7 @@ public class McpServerResourceIT {
     assertNoConnectionSecrets(response);
     assertMaskedConnection(MAPPER.readValue(response, McpServer.class).getConnectionConfig());
     assertConnectionReadsMasked(rolelessClient(ns), created);
+    assertStoredConnection(created, connectionWithCredentials());
   }
 
   @Test
@@ -234,8 +239,8 @@ public class McpServerResourceIT {
         Entity.getCollectionDAO().mcpServerDAO().findEntityById(server.getId());
     assertEquals(
         0.2, stored.getVersion(), "The patch must consolidate the existing session version");
-    assertMaskedConnection(stored.getConnectionConfig());
-    assertNoConnectionSecrets(JsonUtils.pojoToJson(stored));
+    assertEquals(connectionWithCredentials(), stored.getConnectionConfig());
+    assertConnectionReadsMasked(rolelessClient(ns), server);
   }
 
   @ParameterizedTest
@@ -269,6 +274,56 @@ public class McpServerResourceIT {
     final McpServer eventEntity =
         MAPPER.treeToValue(MAPPER.readTree(response).get("entity"), McpServer.class);
     assertMaskedConnection(eventEntity.getConnectionConfig());
+    assertStoredConnection(server, connectionWithCredentials());
+  }
+
+  private static void assertStoredConnection(McpServer server, McpConnectionConfig expected) {
+    assertEquals(
+        expected,
+        Entity.getCollectionDAO()
+            .mcpServerDAO()
+            .findEntityById(server.getId())
+            .getConnectionConfig());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testMetadataPatchPreservesStoredConnection(boolean byName, TestNamespace ns)
+      throws Exception {
+    final McpServer server = createMcpServer(serverWithCredentials(ns));
+    final String path =
+        "/v1/mcpServers/" + (byName ? "name/" + server.getFullyQualifiedName() : server.getId());
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PATCH,
+                path,
+                MAPPER.valueToTree(
+                    List.of(Map.of("op", "add", "path", "/description", "value", "Metadata edit"))),
+                RequestOptions.builder().build());
+
+    assertNoConnectionSecrets(response);
+    assertStoredConnection(server, connectionWithCredentials());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"submitForReview", "approve", "reject"})
+  void testGovernanceMasksResponseAndPreservesStoredConnection(String action, TestNamespace ns)
+      throws Exception {
+    final McpServer server = createMcpServer(serverWithCredentials(ns));
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/aiGovernance/mcpServer/" + server.getId() + "/" + action,
+                Map.of(),
+                RequestOptions.builder().build());
+
+    assertNoConnectionSecrets(response);
+    assertMaskedConnection(MAPPER.readValue(response, McpServer.class).getConnectionConfig());
+    assertStoredConnection(server, connectionWithCredentials());
   }
 
   private static void seedLegacyCredentials(McpServer server) {

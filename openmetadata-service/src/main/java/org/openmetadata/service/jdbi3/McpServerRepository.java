@@ -19,9 +19,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.services.McpService;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.McpServerResource;
 import org.openmetadata.service.secrets.masker.McpServerMasker;
@@ -70,9 +73,7 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   }
 
   @Override
-  public void clearFields(McpServer mcpServer, Fields fields) {
-    McpServerMasker.mask(mcpServer);
-  }
+  public void clearFields(McpServer mcpServer, Fields fields) {}
 
   @Override
   public void restorePatchAttributes(McpServer original, McpServer updated) {
@@ -85,7 +86,6 @@ public class McpServerRepository extends EntityRepository<McpServer> {
     if (mcpServer.getService() != null) {
       populateService(mcpServer);
     }
-    McpServerMasker.mask(mcpServer);
     AIAssetStatusSync.sync(mcpServer);
   }
 
@@ -119,8 +119,21 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   @Override
   public EntityRepository<McpServer>.EntityUpdater getUpdater(
       McpServer original, McpServer updated, Operation operation, ChangeSource changeSource) {
-    return new McpServerUpdater(
-        McpServerMasker.mask(original), McpServerMasker.mask(updated), operation);
+    return new McpServerUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void createAndInsertChangeEvent(
+      McpServer original,
+      McpServer updated,
+      ChangeDescription changeDescription,
+      EventType eventType) {
+    final McpServer eventEntity = JsonUtils.deepCopy(updated, McpServer.class);
+    eventEntity.setChangeDescription(
+        JsonUtils.deepCopy(changeDescription, ChangeDescription.class));
+    McpServerMasker.mask(eventEntity);
+    super.createAndInsertChangeEvent(
+        original, eventEntity, eventEntity.getChangeDescription(), eventType);
   }
 
   @Override
@@ -155,9 +168,6 @@ public class McpServerRepository extends EntityRepository<McpServer> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      // Consolidation reloads historical entities after the updater has been created.
-      McpServerMasker.mask(original);
-      McpServerMasker.mask(updated);
       recordChange("serverType", original.getServerType(), updated.getServerType());
       recordChange("transportType", original.getTransportType(), updated.getTransportType());
       recordChange("protocolVersion", original.getProtocolVersion(), updated.getProtocolVersion());

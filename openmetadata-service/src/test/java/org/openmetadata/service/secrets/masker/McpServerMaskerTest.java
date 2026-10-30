@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,11 +26,75 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.ai.Env;
 import org.openmetadata.schema.entity.ai.McpConnectionConfig;
 import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.governance.changeRequest.ChangeConflict;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequestPreview;
+import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 class McpServerMaskerTest {
+  @Test
+  void masksApprovalResponseCopiesWithoutChangingTheRevisionToApply() {
+    final MutationOp connection =
+        new MutationOp()
+            .withField("connectionConfig")
+            .withBaseValue("old-secret")
+            .withValue("new-secret");
+    final MutationOp description = new MutationOp().withField("description").withValue("visible");
+    final ChangeRevision revision = new ChangeRevision().withOps(List.of(connection, description));
+    final ChangeRequest request =
+        new ChangeRequest()
+            .withEntityType(Entity.MCP_SERVER)
+            .withActiveRevision(revision)
+            .withConflicts(
+                List.of(
+                    new ChangeConflict()
+                        .withField("connectionConfig.url")
+                        .withBaseValue("old-secret")
+                        .withCurrentValue("current-secret")
+                        .withProposedValue("new-secret")));
+    final ChangeRequestPreview preview =
+        new ChangeRequestPreview().withEntityType(Entity.MCP_SERVER).withOps(revision.getOps());
+    final String original = JsonUtils.pojoToJson(request);
+
+    final ChangeRequest masked = McpServerMasker.maskChangeRequest(request);
+    final ChangeRevision maskedRevision = McpServerMasker.maskRevision(Entity.MCP_SERVER, revision);
+    final ChangeRequestPreview maskedPreview = McpServerMasker.maskPreview(preview);
+
+    assertFalse(JsonUtils.pojoToJson(masked).contains("-secret"));
+    assertFalse(JsonUtils.pojoToJson(maskedRevision).contains("-secret"));
+    assertFalse(JsonUtils.pojoToJson(maskedPreview).contains("-secret"));
+    assertEquals(JsonUtils.pojoToJson(PASSWORD_MASK), maskedPreview.getOps().getFirst().getValue());
+    assertEquals("visible", maskedRevision.getOps().getLast().getValue());
+    assertEquals(original, JsonUtils.pojoToJson(request));
+    assertEquals("new-secret", preview.getOps().getFirst().getValue());
+  }
+
+  @Test
+  void preservesUnrelatedApprovalValuesAndAbsentFields() {
+    final MutationOp removed = new MutationOp().withField("connectionConfig");
+    final MutationOp other =
+        new MutationOp().withField("connectionConfiguration").withValue("visible");
+    final ChangeRequest request = new ChangeRequest().withEntityType(Entity.TABLE);
+    final ChangeRevision revision = new ChangeRevision().withOps(List.of(removed, other));
+    final ChangeRequestPreview preview = new ChangeRequestPreview().withEntityType(Entity.TABLE);
+
+    assertSame(request, McpServerMasker.maskChangeRequest(request));
+    assertSame(revision, McpServerMasker.maskRevision(Entity.TABLE, revision));
+    assertSame(preview, McpServerMasker.maskPreview(preview));
+    assertNull(
+        McpServerMasker.maskChangeRequest(new ChangeRequest().withEntityType(Entity.MCP_SERVER))
+            .getActiveRevision());
+    final ChangeRevision masked = McpServerMasker.maskRevision(Entity.MCP_SERVER, revision);
+    assertNull(masked.getOps().getFirst().getBaseValue());
+    assertNull(masked.getOps().getFirst().getValue());
+    assertEquals("visible", masked.getOps().getLast().getValue());
+  }
+
   @Test
   void masksCredentialsWithoutGuessingEnvironmentNamesOrArgumentSyntax() {
     final McpConnectionConfig config =

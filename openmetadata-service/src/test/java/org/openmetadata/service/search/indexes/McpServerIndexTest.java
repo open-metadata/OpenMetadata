@@ -78,6 +78,7 @@ class McpServerIndexTest {
         .thenReturn(Collections.emptyList());
     entityStaticMock.when(Entity::getCollectionDAO).thenReturn(dao);
 
+    final McpServer original = JsonUtils.deepCopy(server, McpServer.class);
     McpServerIndex index = new McpServerIndex(server);
     Map<String, Object> result = index.buildSearchIndexDoc();
 
@@ -100,6 +101,7 @@ class McpServerIndexTest {
     assertEquals(
         PASSWORD_MASK, indexedConfig.getEnv().getAdditionalProperties().get("DATABASE_PASSWORD"));
     assertEquals(PASSWORD_MASK, indexedConfig.getUrl());
+    assertEquals(original, server, "Indexing must not modify the entity being stored");
   }
 
   @Test
