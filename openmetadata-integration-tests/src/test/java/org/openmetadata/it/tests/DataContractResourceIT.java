@@ -1551,6 +1551,96 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(result.getContractExecutionStatus());
   }
 
+  /**
+   * Regression for the authorization-bypass-on-write where {@code POST /v1/dataContracts/{id}/validate}
+   * reparented a validation run onto a different contract than the one authorized by {@code {id}}.
+   *
+   * <p>The handler authorized the caller against the requested contract, then discarded it and ran
+   * {@code validateContract(getEffectiveDataContract(entity))}. That entity-wide lookup is a
+   * {@code LIMIT 1} with no {@code ORDER BY} (the only unique index is on the contract FQN, which
+   * carries the contract name), so once an entity holds two active contracts — reachable through
+   * the supported soft-delete -> create-new -> restore sequence — the run was attributed to
+   * whichever row the scan happened to return, writing its time series and {@code latestResult}
+   * onto that other contract instead of the one the caller asked to validate.
+   *
+   * <p>State is produced purely through the REST API: create a first contract, soft-delete it,
+   * create a second (the create-time uniqueness guard ignores soft-deleted rows), then restore the
+   * first (the restore path re-checks nothing), leaving the entity with two active contracts. The
+   * fix keeps the requested contract as the write target and only borrows the effective contract's
+   * rules, so validating either contract must stage every result on that same contract.
+   */
+  @Test
+  void testValidateLandsOnRequestedContractWithDuplicateActiveContracts(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    DataContract first =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("misroute_first"))
+                .withEntity(table.getEntityReference())
+                .withDescription("Older contract on the same table"));
+    // Soft-delete the first so a second can be created for the same entity (the uniqueness guard
+    // ignores soft-deleted rows), then restore the first. Restore re-checks nothing, so the entity
+    // now holds two active contracts with distinct ids and FQNs.
+    deleteEntity(first.getId().toString());
+    DataContract second =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("misroute_second"))
+                .withEntity(table.getEntityReference())
+                .withDescription("Newer contract on the same table"));
+    restoreEntity(first.getId().toString());
+
+    // Neither contract has a result yet; validating one must not write onto the other.
+    assertNull(
+        SdkClients.adminClient().dataContracts().getLatestResult(first.getId()),
+        "first must start with no result");
+    assertNull(
+        SdkClients.adminClient().dataContracts().getLatestResult(second.getId()),
+        "second must start with no result");
+
+    // Validating each contract must attribute the run to that contract — the FQN in the response
+    // names the contract the caller authorized against, not the one an entity-wide lookup
+    // resolved. Before the fix one of these named the other contract.
+    DataContractResult firstResult =
+        SdkClients.adminClient().dataContracts().validate(first.getId());
+    assertEquals(
+        first.getFullyQualifiedName(),
+        firstResult.getDataContractFQN(),
+        "validate(first) must report first's FQN, not another contract's: "
+            + firstResult.getDataContractFQN());
+
+    DataContractResult secondResult =
+        SdkClients.adminClient().dataContracts().validate(second.getId());
+    assertEquals(
+        second.getFullyQualifiedName(),
+        secondResult.getDataContractFQN(),
+        "validate(second) must report second's FQN, not another contract's: "
+            + secondResult.getDataContractFQN());
+
+    // The result time series and latestResult must land on the contract the caller named, and must
+    // not be silently reparented by a later validate of the sibling contract.
+    DataContractResult firstLatest =
+        SdkClients.adminClient().dataContracts().getLatestResult(first.getId());
+    assertNotNull(firstLatest, "first must record the run validate(first) staged on it");
+    assertEquals(
+        firstResult.getId(),
+        firstLatest.getId(),
+        "first's latest result must be validate(first)'s run, not validate(second)'s");
+
+    DataContractResult secondLatest =
+        SdkClients.adminClient().dataContracts().getLatestResult(second.getId());
+    assertNotNull(secondLatest, "second must record the run validate(second) staged on it");
+    assertEquals(
+        secondResult.getId(),
+        secondLatest.getId(),
+        "second's latest result must be validate(second)'s run");
+    assertNotEquals(
+        firstLatest.getId(),
+        secondLatest.getId(),
+        "the two contracts must hold distinct runs, not one shared/overwritten result");
+  }
+
   @Test
   void testDataContractResultSuccessToFailure(TestNamespace ns) {
     Table table = createTestTable(ns);

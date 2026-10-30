@@ -1033,7 +1033,12 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    // Get the effective contract (with inherited properties from data products) for validation
+    // Resolve the rules to validate (the effective contract, including properties inherited from
+    // data products) but keep the requested contract as the write target for the result time
+    // series and latestResult. This mirrors POST /entity/validate, which keeps the rules-bearing
+    // contract separate from the contract results are stored on. Passing the effective contract to
+    // validateContract(...) instead reparented runs to whichever contract row the entity-wide
+    // LIMIT 1 lookup returned — a different contract than the one authorized by {id}.
     EntityInterface<?> entity =
         Entity.getEntity(
             dataContract.getEntity().getType(),
@@ -1042,9 +1047,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
             Include.NON_DELETED);
     DataContract effectiveContract = repository.getEffectiveDataContract(entity);
 
-    // Use the effective contract for validation to include inherited semantics
     RestUtil.PutResponse<DataContractResult> result =
-        repository.validateContract(effectiveContract != null ? effectiveContract : dataContract);
+        repository.validateContractWithEffective(
+            dataContract, effectiveContract != null ? effectiveContract : dataContract);
     return result.toResponse();
   }
 
