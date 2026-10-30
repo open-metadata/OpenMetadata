@@ -31,9 +31,14 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
   private static final String HEADER =
       "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
+  private static final int LABEL = 2;
   private static final int PROPERTY_KIND = 8;
   private static final int ENUM_VALUES = 11;
   private static final int PROPERTY_CHAIN = 16;
+  private static final String ONE_VALUE = "An enumeration needs at least two allowed values";
+  private static final String DUPLICATE = "Ontology property enum values must be unique";
+  private static final String SHORT_CHAIN =
+      "A property chain requires at least two object properties";
 
   @Test
   void previewAndApplyRefuseAOneValueEnumeration(TestNamespace ns) {
@@ -47,7 +52,8 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
         "tier",
         OntologyPropertyKind.DATA,
         List.of(new OntologyLiteral().withValue("Gold")),
-        null);
+        null,
+        ONE_VALUE);
   }
 
   @Test
@@ -59,7 +65,8 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
         ontology,
         property(iri(ns, "tier"), "DATA", ENUM_VALUES, "\"\"\"Gold\"\"\";\"\"\"Gold\"\"\""),
         "enumValues");
-    assertApplyRefused(ontology, "tier", OntologyPropertyKind.DATA, List.of(gold, gold), null);
+    assertApplyRefused(
+        ontology, "tier", OntologyPropertyKind.DATA, List.of(gold, gold), null, DUPLICATE);
   }
 
   @Test
@@ -70,7 +77,12 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
     assertPreviewRefused(
         ontology, property(iri(ns, "path"), "OBJECT", PROPERTY_CHAIN, only), "propertyChain");
     assertApplyRefused(
-        ontology, "path", OntologyPropertyKind.OBJECT, null, List.of(URI.create(only)));
+        ontology,
+        "path",
+        OntologyPropertyKind.OBJECT,
+        null,
+        List.of(URI.create(only)),
+        SHORT_CHAIN);
   }
 
   @Test
@@ -80,11 +92,13 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
     final var request =
         csv(
             property(iri(ns, "tier"), "DATA", ENUM_VALUES, "\"\"\"Gold\"\"\";\"\"\"Silver\"\"\""),
+            property(iri(ns, "a"), "OBJECT", LABEL, "a"),
+            property(iri(ns, "b"), "OBJECT", LABEL, "b"),
             property(iri(ns, "path"), "OBJECT", PROPERTY_CHAIN, iri(ns, "a") + ";" + iri(ns, "b")));
 
     final var preview = client.ontologies().previewImport(ontology.getId(), request);
 
-    assertEquals(2, preview.getSummary().getCounts().getNewProperties());
+    assertEquals(4, preview.getSummary().getCounts().getNewProperties());
     final var draft =
         ns.trackRoot(
             "ontologyChangeSet",
@@ -112,7 +126,8 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
       String name,
       OntologyPropertyKind kind,
       List<OntologyLiteral> enumValues,
-      List<URI> chain) {
+      List<URI> chain,
+      String rule) {
     final var request =
         new CreateOntologyProperty()
             .withOntology(ontology.getFullyQualifiedName())
@@ -120,12 +135,12 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
             .withKind(kind)
             .withEnumValues(enumValues)
             .withPropertyChain(chain);
-    assertEquals(
-        400,
+    final var thrown =
         assertThrows(
-                OpenMetadataException.class,
-                () -> SdkClients.adminClient().ontologyProperties().create(request))
-            .getStatusCode());
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().ontologyProperties().create(request));
+    assertEquals(400, thrown.getStatusCode());
+    assertEquals(rule, thrown.getMessage());
   }
 
   private static String iri(TestNamespace ns, String name) {

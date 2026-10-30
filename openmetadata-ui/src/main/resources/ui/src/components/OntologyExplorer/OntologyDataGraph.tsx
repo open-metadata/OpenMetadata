@@ -39,6 +39,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import Fqn from '../../utils/Fqn';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -110,11 +111,13 @@ interface RowMetrics {
   viewportHeight: number;
 }
 
-// A native card re-renders the graph only when the first row in view changes,
-// so its edges anchor as if the rows were scrolled to that row's top.
+// A native card re-renders the graph when the first row in view changes, and
+// once more when its scroll comes to rest. In between, its edges anchor as if
+// the rows were scrolled to the first row's top or the last resting position.
 interface RowWindow {
   firstRow: number;
   metrics?: RowMetrics;
+  restingScrollTop?: number;
 }
 
 interface DataEdgeLayout {
@@ -139,6 +142,7 @@ const COLLAPSED_ASSET_COUNT = 3;
 const NATIVE_COLLAPSED_ASSET_COUNT = 4;
 // The height of `tw:max-h-64`, the scroll area that holds a native card's rows.
 const NATIVE_ROWS_MAX_HEIGHT = 256;
+const ROW_SCROLL_SETTLE_MS = 100;
 const INFERRED_EDGE_COLOR = 'var(--tw-color-border-brand)';
 const LINEAGE_EDGE_COLOR = 'var(--tw-color-fg-secondary)';
 const HIERARCHY_RELATION_TYPES = new Set(['parentOf', 'childOf']);
@@ -602,22 +606,27 @@ function routesBetweenUnmovedCards(
   );
 }
 
-function buildDataEdgeLayout(
-  clusterEdges: KeyedClusterEdge[],
+function buildDataEdgeLayout<T extends KeyedClusterEdge>(
+  clusterEdges: T[],
   boxes: Map<string, CardBox>,
   routes: Map<string, Point[]>
-): DataEdgeLayout[] {
+): Array<T & DataEdgeLayout> {
   const geometry = buildClusterEdgeGeometry(
     clusterEdges.map(toClusterLink),
     boxes,
     routes
   );
 
-  return clusterEdges.flatMap(({ edge, renderKey }) => {
-    const route = geometry.get(renderKey);
+  return clusterEdges.flatMap((keyed) => {
+    const route = geometry.get(keyed.renderKey);
 
-    return route ? [{ edge, renderKey, ...route }] : [];
+    return route ? [{ ...keyed, ...route }] : [];
   });
+}
+
+interface AnchoredClusterEdge extends KeyedClusterEdge {
+  anchor?: EdgeAnchor;
+  labelText: string;
 }
 
 interface StyledDataEdge extends DataEdgeLayout {
@@ -628,78 +637,85 @@ interface StyledDataEdge extends DataEdgeLayout {
 }
 
 // A lineage edge joins its two rows while both are in view. Otherwise it joins
-// the cards, and its chip names the two tables the rows would have shown.
+// the cards, and all lineage between two cards shares one edge, so the chips
+// never stack and the absorbed edges take no slot on the card sides. Its chip
+// names the first pair of tables and counts the rest.
+function anchorNativeEdges(
+  clusterEdges: KeyedClusterEdge[],
+  rowsInView: Map<string, CardBox>,
+  t: TFunction
+): AnchoredClusterEdge[] {
+  const isCardBound = ({ edge }: KeyedClusterEdge) =>
+    edge.lineage !== undefined &&
+    !(
+      rowsInView.has(edge.lineage.from.nodeId) &&
+      rowsInView.has(edge.lineage.to.nodeId)
+    );
+  const pairKey = ({ edge }: KeyedClusterEdge) => `${edge.from}|${edge.to}`;
+  const byCardPair = new Map<string, KeyedClusterEdge[]>();
+  clusterEdges
+    .filter(isCardBound)
+    .forEach((keyed) =>
+      byCardPair.set(pairKey(keyed), [
+        ...(byCardPair.get(pairKey(keyed)) ?? []),
+        keyed,
+      ])
+    );
+
+  return clusterEdges.flatMap((keyed): AnchoredClusterEdge[] => {
+    const ends = keyed.edge.lineage;
+    if (!ends || !isCardBound(keyed)) {
+      return [
+        {
+          ...keyed,
+          anchor: ends ? 'rows' : undefined,
+          labelText: keyed.edge.label,
+        },
+      ];
+    }
+    const pairs = byCardPair.get(pairKey(keyed)) ?? [keyed];
+    if (pairs[0] !== keyed) {
+      return [];
+    }
+    const pairLabel = `${ends.from.label} → ${ends.to.label}`;
+
+    return [
+      {
+        ...keyed,
+        anchor: 'cards',
+        labelText:
+          pairs.length === 1
+            ? pairLabel
+            : t('message.text-and-count-more', {
+                count: pairs.length - 1,
+                text: pairLabel,
+              }),
+      },
+    ];
+  });
+}
+
 function styleNativeEdge(
-  layout: DataEdgeLayout,
+  layout: AnchoredClusterEdge & DataEdgeLayout,
   rowsInView: Map<string, CardBox>
 ): StyledDataEdge {
   const ends = layout.edge.lineage;
   if (!ends) {
-    return {
-      ...layout,
-      color: INFERRED_EDGE_COLOR,
-      isSolid: false,
-      labelText: layout.edge.label,
-    };
+    return { ...layout, color: INFERRED_EDGE_COLOR, isSolid: false };
   }
   const fromRow = rowsInView.get(ends.from.nodeId);
   const toRow = rowsInView.get(ends.to.nodeId);
-  const style = { color: LINEAGE_EDGE_COLOR, isSolid: true };
+  const rowGeometry =
+    layout.anchor === 'rows' && fromRow && toRow
+      ? buildRowLinkGeometry(fromRow, toRow)
+      : {};
 
-  return fromRow && toRow
-    ? {
-        ...layout,
-        ...buildRowLinkGeometry(fromRow, toRow),
-        ...style,
-        anchor: 'rows',
-        labelText: layout.edge.label,
-      }
-    : {
-        ...layout,
-        ...style,
-        anchor: 'cards',
-        labelText: `${ends.from.label} → ${ends.to.label}`,
-      };
-}
-
-// Lineage that falls back to the cards shares one edge per card pair, so the
-// chips never stack; the chip names the first pair and counts the rest.
-function mergeCardLineage(
-  edges: StyledDataEdge[],
-  t: TFunction
-): StyledDataEdge[] {
-  const pairKey = ({ edge }: StyledDataEdge) => `${edge.from}|${edge.to}`;
-  const byCardPair = new Map<string, StyledDataEdge[]>();
-  edges
-    .filter((edge) => edge.anchor === 'cards')
-    .forEach((edge) =>
-      byCardPair.set(pairKey(edge), [
-        ...(byCardPair.get(pairKey(edge)) ?? []),
-        edge,
-      ])
-    );
-
-  return edges.flatMap((edge) => {
-    if (edge.anchor !== 'cards') {
-      return [edge];
-    }
-    const pairs = byCardPair.get(pairKey(edge)) ?? [edge];
-    if (pairs[0] !== edge) {
-      return [];
-    }
-
-    return [
-      pairs.length === 1
-        ? edge
-        : {
-            ...edge,
-            labelText: t('message.text-and-count-more', {
-              count: pairs.length - 1,
-              text: edge.labelText,
-            }),
-          },
-    ];
-  });
+  return {
+    ...layout,
+    ...rowGeometry,
+    color: LINEAGE_EDGE_COLOR,
+    isSolid: true,
+  };
 }
 
 const OntologyDataGraph = ({
@@ -717,6 +733,7 @@ const OntologyDataGraph = ({
   onLoadMoreTerms,
 }: OntologyDataGraphProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const isNative = variant === 'native';
   const collapsedCount = isNative
     ? NATIVE_COLLAPSED_ASSET_COUNT
@@ -784,18 +801,14 @@ const OntologyDataGraph = ({
 
     return boxes;
   }, [cardHeightOf, cardPositions, clusterLayout, visibleTerms]);
-  const dataEdges = useMemo(
+  const edgeRoutes = useMemo(
     () =>
-      buildDataEdgeLayout(
+      routesBetweenUnmovedCards(
         clusterEdges,
-        cardBoxes,
-        routesBetweenUnmovedCards(
-          clusterEdges,
-          clusterLayout.routes,
-          cardPositions
-        )
+        clusterLayout.routes,
+        cardPositions
       ),
-    [cardBoxes, cardPositions, clusterEdges, clusterLayout]
+    [cardPositions, clusterEdges, clusterLayout]
   );
   const rowsInView = useMemo(() => {
     const rows = new Map<string, CardBox>();
@@ -807,8 +820,14 @@ const OntologyDataGraph = ({
       const isExpanded = expandedCardIds.has(term.id);
       const assets = assetsByTerm.get(term.id) ?? [];
       const shownAssets = isExpanded ? assets : assets.slice(0, collapsedCount);
-      const { firstRow = 0, metrics } = rowWindows[term.id] ?? {};
-      const scrollTop = isExpanded ? rowSlot(metrics, firstRow).top : 0;
+      const {
+        firstRow = 0,
+        metrics,
+        restingScrollTop,
+      } = rowWindows[term.id] ?? {};
+      const scrollTop = isExpanded
+        ? restingScrollTop ?? rowSlot(metrics, firstRow).top
+        : 0;
       const viewportHeight =
         metrics?.viewportHeight ??
         Math.min(NATIVE_ROWS_MAX_HEIGHT, shownAssets.length * ASSET_ROW_HEIGHT);
@@ -844,32 +863,45 @@ const OntologyDataGraph = ({
   );
   const renderedSemanticEdges = useMemo(() => {
     if (isNative) {
-      return mergeCardLineage(
-        dataEdges.map((layout) => styleNativeEdge(layout, rowsInView)),
-        t
-      );
+      return buildDataEdgeLayout(
+        anchorNativeEdges(clusterEdges, rowsInView, t),
+        cardBoxes,
+        edgeRoutes
+      ).map((layout) => styleNativeEdge(layout, rowsInView));
     }
 
-    return dataEdges.map((layout): StyledDataEdge => {
-      const relationshipType = relationshipTypeByName.get(
-        layout.edge.relationType
-      );
-      // DOM/SVG resolves theme variables after a theme switch; a stored palette
-      // hex would discard the built-in relation's active foreground.
-      const color =
-        getEffectiveRelationColor(layout.edge.relationType, relationshipType) ??
-        INFERRED_EDGE_COLOR;
-
-      return {
-        ...layout,
-        color,
-        isSolid: HIERARCHY_RELATION_TYPES.has(layout.edge.relationType),
-        labelText: formatRelationLabel(
+    return buildDataEdgeLayout(clusterEdges, cardBoxes, edgeRoutes).map(
+      (layout): StyledDataEdge => {
+        const relationshipType = relationshipTypeByName.get(
           layout.edge.relationType
-        ).toLocaleLowerCase(),
-      };
-    });
-  }, [dataEdges, isNative, relationshipTypeByName, rowsInView, t]);
+        );
+        // DOM/SVG resolves theme variables after a theme switch; a stored
+        // palette hex would discard the built-in relation's active foreground.
+        const color =
+          getEffectiveRelationColor(
+            layout.edge.relationType,
+            relationshipType
+          ) ?? INFERRED_EDGE_COLOR;
+
+        return {
+          ...layout,
+          color,
+          isSolid: HIERARCHY_RELATION_TYPES.has(layout.edge.relationType),
+          labelText: formatRelationLabel(
+            layout.edge.relationType
+          ).toLocaleLowerCase(),
+        };
+      }
+    );
+  }, [
+    cardBoxes,
+    clusterEdges,
+    edgeRoutes,
+    isNative,
+    relationshipTypeByName,
+    rowsInView,
+    t,
+  ]);
   const legendEntries = useMemo((): LegendEntry[] => {
     if (isNative) {
       return [
@@ -953,6 +985,9 @@ const OntologyDataGraph = ({
   const cardObserverRef = useRef<ResizeObserver | null>(null);
   const fittedLayoutKeyRef = useRef<string>();
   const wheelCleanupRef = useRef<(() => void) | null>(null);
+  const rowSettleTimersRef = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>()
+  );
   const [view, setView] = useState({ x: 0, y: 0, zoom: 1 });
   const panRef = useRef<{
     capturing: boolean;
@@ -1031,6 +1066,15 @@ const OntologyDataGraph = ({
   }, []);
 
   useEffect(() => {
+    const timers = rowSettleTimersRef.current;
+
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
+
+  useEffect(() => {
     const observer = cardObserverRef.current;
     canvasRef.current
       ?.querySelectorAll('[data-term-id]')
@@ -1041,28 +1085,48 @@ const OntologyDataGraph = ({
     if (!isNative) {
       return;
     }
-    const measured = new Map<string, RowMetrics | undefined>();
+    const measured = new Map<
+      string,
+      { metrics?: RowMetrics; scrollTop: number }
+    >();
     canvasRef.current
       ?.querySelectorAll<HTMLElement>('[data-rows-id]')
       .forEach((container) =>
-        measured.set(container.dataset.rowsId ?? '', measureRows(container))
+        measured.set(container.dataset.rowsId ?? '', {
+          metrics: measureRows(container),
+          scrollTop: container.scrollTop,
+        })
       );
     setRowWindows((current) => {
-      const changed = [...measured].filter(
-        ([id, metrics]) => !isSameMetrics(current[id]?.metrics, metrics)
+      // A remounted rows container starts at scrollTop 0 while its window
+      // may still hold the position from before the card left the graph.
+      const changed = [...measured].flatMap(
+        ([id, { metrics, scrollTop }]): [string, RowWindow][] => {
+          const { firstRow = 0, restingScrollTop } = current[id] ?? {};
+          if (
+            scrollTop !== (restingScrollTop ?? rowSlot(metrics, firstRow).top)
+          ) {
+            return [
+              [
+                id,
+                {
+                  firstRow: firstRowAt(scrollTop, metrics),
+                  metrics,
+                  restingScrollTop: scrollTop,
+                },
+              ],
+            ];
+          }
+
+          return isSameMetrics(current[id]?.metrics, metrics)
+            ? []
+            : [[id, { ...current[id], firstRow, metrics }]];
+        }
       );
 
       return changed.length === 0
         ? current
-        : {
-            ...current,
-            ...Object.fromEntries(
-              changed.map(([id, metrics]) => [
-                id,
-                { firstRow: current[id]?.firstRow ?? 0, metrics },
-              ])
-            ),
-          };
+        : { ...current, ...Object.fromEntries(changed) };
     });
   }, [assetsByTerm, expandedCardIds, isNative, measuredHeights]);
 
@@ -1455,17 +1519,39 @@ const OntologyDataGraph = ({
             data-testid={`ontology-data-cluster-rows-${term.id}`}
             data-wheel-scroll=""
             onScroll={(event) => {
+              const { scrollTop } = event.currentTarget;
               const rowWindow = rowWindows[term.id];
-              const firstRow = firstRowAt(
-                event.currentTarget.scrollTop,
-                rowWindow?.metrics
-              );
+              const firstRow = firstRowAt(scrollTop, rowWindow?.metrics);
               if (firstRow !== (rowWindow?.firstRow ?? 0)) {
                 setRowWindows((current) => ({
                   ...current,
-                  [term.id]: { ...current[term.id], firstRow },
+                  [term.id]: {
+                    ...current[term.id],
+                    firstRow,
+                    restingScrollTop: undefined,
+                  },
                 }));
               }
+              const timers = rowSettleTimersRef.current;
+              clearTimeout(timers.get(term.id));
+              timers.set(
+                term.id,
+                setTimeout(() => {
+                  timers.delete(term.id);
+                  setRowWindows((current) =>
+                    current[term.id]?.restingScrollTop === scrollTop
+                      ? current
+                      : {
+                          ...current,
+                          [term.id]: {
+                            ...current[term.id],
+                            firstRow: current[term.id]?.firstRow ?? firstRow,
+                            restingScrollTop: scrollTop,
+                          },
+                        }
+                  );
+                }, ROW_SCROLL_SETTLE_MS)
+              );
             }}>
             <AssetRows
               isNative
@@ -1489,6 +1575,46 @@ const OntologyDataGraph = ({
             )
           : renderGlossaryToggle(term, assetState)}
       </Card>
+    );
+  };
+
+  const renderControls = () => {
+    const isAiNative = isAiMode && isNative;
+    const controls = (
+      <OntologyControlButtons
+        isLoading={isLoadingMoreTerms}
+        onFitToScreen={fitToScreen}
+        onRefresh={resetView}
+        onZoomIn={() => zoomAtCenter(ZOOM_BUTTON_FACTOR)}
+        onZoomOut={() => zoomAtCenter(1 / ZOOM_BUTTON_FACTOR)}
+      />
+    );
+
+    return (
+      <Box
+        align="end"
+        className={
+          isAiNative
+            ? 'tw:absolute tw:bottom-3.5 tw:left-3.5 tw:z-6'
+            : 'tw:absolute tw:bottom-4 tw:left-4 tw:z-6'
+        }
+        gap={2}>
+        {isAiNative ? (
+          <div
+            className="tw:overflow-hidden tw:rounded-md tw:border tw:border-secondary tw:bg-surface tw:shadow-xs"
+            data-testid="ontology-data-graph-controls">
+            {controls}
+          </div>
+        ) : (
+          <Card
+            className="tw:flex tw:items-center"
+            data-testid="ontology-data-graph-controls"
+            variant="elevated">
+            {controls}
+          </Card>
+        )}
+        <DataEdgeLegend entries={legendEntries} />
+      </Box>
     );
   };
 
@@ -1592,24 +1718,7 @@ const OntologyDataGraph = ({
         isNative={isNative}
       />
 
-      <Box
-        align="end"
-        className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6"
-        gap={2}>
-        <Card
-          className="tw:flex tw:items-center"
-          data-testid="ontology-data-graph-controls"
-          variant="elevated">
-          <OntologyControlButtons
-            isLoading={isLoadingMoreTerms}
-            onFitToScreen={fitToScreen}
-            onRefresh={resetView}
-            onZoomIn={() => zoomAtCenter(ZOOM_BUTTON_FACTOR)}
-            onZoomOut={() => zoomAtCenter(1 / ZOOM_BUTTON_FACTOR)}
-          />
-        </Card>
-        <DataEdgeLegend entries={legendEntries} />
-      </Box>
+      {renderControls()}
     </div>
   );
 };

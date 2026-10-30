@@ -16,11 +16,11 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
@@ -46,6 +46,7 @@ import { ManageMenu, ManageMenuItem, toManageMenuItems } from './ManageMenu';
 const ManageButton: FC<ManageButtonProps> = ({
   allowSoftDelete,
   afterDeleteAction,
+  onDeleteFailure,
   buttonClassName,
   deleteMessage,
   softDeleteMessagePostFix,
@@ -204,7 +205,7 @@ const ManageButton: FC<ManageButtonProps> = ({
               label: (
                 <ManageButtonItemLabel
                   description={t('message.announcement-action-description')}
-                  icon={IconAnnouncementsBlack}
+                  icon={Announcement02}
                   id="announcement-button"
                   name={t('label.announcement-plural')}
                 />
@@ -343,6 +344,7 @@ const ManageButton: FC<ManageButtonProps> = ({
         successMessage={successMessage}
         visible={isDelete}
         onCancel={() => setIsDelete(false)}
+        onDeleteFailure={onDeleteFailure}
       />
     );
   }, [
@@ -364,6 +366,7 @@ const ManageButton: FC<ManageButtonProps> = ({
     prepareType,
     softDeleteMessagePostFix,
     successMessage,
+    onDeleteFailure,
   ]);
 
   return (

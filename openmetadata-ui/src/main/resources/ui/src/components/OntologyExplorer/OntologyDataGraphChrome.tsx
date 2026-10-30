@@ -19,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { DATA_MODE_MAX_RENDER_COUNT } from './OntologyExplorer.constants';
 
 export interface LegendEntry {
@@ -86,18 +87,22 @@ export const DataLayerHeading = ({
   isNative,
 }: DataLayerHeadingProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   // A native total counts bindings: a table bound to two concepts counts twice.
   const summary = isNative
     ? `${t('message.native-concept-count', {
         count: conceptCount,
       })} · ${t('message.native-binding-count', { count: assetCount })}`
     : t('message.data-layer-summary', { assetCount, termCount: conceptCount });
+  const nativeClassName = isAiMode
+    ? 'tw:top-3.5 tw:left-3.5 tw:z-6 tw:max-w-md tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-3 tw:shadow-xs'
+    : 'tw:left-4 tw:top-15 tw:max-w-md';
 
   return (
     <Box
       className={classNames(
         'tw:pointer-events-none tw:absolute',
-        isNative ? 'tw:left-4 tw:top-15 tw:max-w-md' : 'tw:left-6 tw:top-5'
+        isNative ? nativeClassName : 'tw:left-6 tw:top-5'
       )}
       data-testid="ontology-data-layer-heading"
       direction="col"

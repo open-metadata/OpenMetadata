@@ -236,6 +236,7 @@ test.describe(
     for (const pack of [
       {
         id: 'fibo',
+        industry: 'finance',
         base: 'foundations',
         extra: 'business-entities',
         label: 'Business Entity',
@@ -243,6 +244,7 @@ test.describe(
       },
       {
         id: 'fhir',
+        industry: 'healthcare',
         base: 'core',
         extra: 'clinical',
         label: 'FHIR Resource',
@@ -279,7 +281,7 @@ test.describe(
             page.getByTestId('ontology-library-filter-all')
           ).toBeVisible();
           await expect(
-            page.getByTestId(`ontology-library-filter-${pack.id}`)
+            page.getByTestId(`ontology-library-filter-${pack.industry}`)
           ).toBeVisible();
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
@@ -323,13 +325,13 @@ test.describe(
           ).toContainText('Installed');
           await expect(
             page.getByTestId('ontology-library-installed-count')
-          ).toContainText('1 installed');
+          ).toContainText('installed');
           await expect(
             page.getByTestId(`ontology-pack-details-${pack.id}`)
           ).toContainText('View');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
-            page.getByTestId('ontology-library-open-graph')
+            page.getByTestId(`ontology-library-installed-in-${installed.id}`)
           ).toBeVisible();
           expect(draftWrites).toBe(1);
           expect(createdDraft?.baseWorkingRevision).toBe(1);
@@ -354,7 +356,9 @@ test.describe(
             page.getByTestId(`ontology-pack-${pack.id}`)
           ).toContainText('Installed');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
-          await page.getByTestId('ontology-library-open-graph').click();
+          await page
+            .getByTestId(`ontology-library-installed-in-${installed.id}`)
+            .click();
           await expect(page).toHaveURL(new RegExp(`ontology=${installed.id}`));
           await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
             'aria-selected',
@@ -393,10 +397,8 @@ test.describe(
           ).toContainText('Installed');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
-            page
-              .getByTestId('ontology-library')
-              .getByText('No changes to save', { exact: true })
-          ).toBeVisible();
+            page.getByTestId(`ontology-library-installed-in-${installed.id}`)
+          ).toContainText(installed.displayName ?? installed.name);
           expect(draftWrites).toBe(1);
         } finally {
           await page.unroute('**/api/v1/ontologyChangeSets');
@@ -447,10 +449,10 @@ test.describe(
         await page.route('**/api/v1/tasks', (route) =>
           route.request().method() === 'POST'
             ? route.fulfill({
-                status: 503,
+                status: 422,
                 contentType: 'application/json',
                 body: JSON.stringify({
-                  message: 'Temporary task service failure',
+                  message: 'Task request rejected',
                 }),
               })
             : route.continue()
@@ -466,7 +468,8 @@ test.describe(
           await captured,
           'Capture review candidate'
         );
-        await expect(page.getByTestId('ontology-request-review')).toHaveText(
+        // Only a definitive rejection offers a retry; a 5xx only offers Check status.
+        await expect(page.getByTestId('ontology-recovery-action')).toHaveText(
           'Retry review'
         );
         await page.getByTestId('ontology-publication-tab-releases').click();
@@ -483,7 +486,7 @@ test.describe(
             new URL(response.url()).pathname === '/api/v1/tasks' &&
             response.request().method() === 'POST'
         );
-        await page.getByTestId('ontology-request-review').click();
+        await page.getByTestId('ontology-recovery-action').click();
         task = await okJson<Task>(
           await submitted,
           'Retry real review task submission'

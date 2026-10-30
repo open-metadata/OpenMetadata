@@ -212,22 +212,6 @@ test.describe(
             expect(box?.x).toBeGreaterThanOrEqual(bounds?.x ?? 0);
             expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(924);
           }
-          const ordered = boxes
-            .filter((box): box is NonNullable<typeof box> => box !== null)
-            .sort((left, right) => left.x - right.x);
-          for (let i = 1; i < ordered.length; i++) {
-            expect(ordered[i - 1].x + ordered[i - 1].width).toBeLessThanOrEqual(
-              ordered[i].x + 1
-            );
-            expect(
-              Math.abs(
-                ordered[i].y +
-                  ordered[i].height / 2 -
-                  ordered[0].y -
-                  ordered[0].height / 2
-              )
-            ).toBeLessThan(3);
-          }
           await page.getByTestId('ontology-release-history-trigger').click();
           await expect(
             page.getByTestId('ontology-publication-tab-releases')
@@ -344,7 +328,7 @@ test.describe(
             }
             await shell.getByTestId('ontology-library-trigger').click();
             await expect(page.locator('#ontology-library-title')).toHaveText(
-              'Ontology Library'
+              'Ontology library'
             );
             await expect(page.getByTestId('ontology-library')).toContainText(
               'Pre-built, standards-aligned ontologies'

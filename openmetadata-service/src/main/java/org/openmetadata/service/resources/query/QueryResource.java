@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.query;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,6 +34,8 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.VoteRequest;
@@ -41,8 +45,11 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -56,6 +63,7 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonPatchUtils;
 
 @Path("/v1/queries")
 @Tag(
@@ -69,6 +77,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   private final QueryMapper mapper = new QueryMapper();
   public static final String COLLECTION_PATH = "/v1/queries/";
   static final String FIELDS = "owners,followers,users,votes,tags,queryUsedIn";
+  private static final String QUERY_USED_IN = "queryUsedIn";
 
   public QueryResource(Authorizer authorizer, Limits limits) {
     super(Entity.QUERY, authorizer, limits);
@@ -551,9 +560,119 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizeQueryTargets(securityContext, entityIds);
     return repository
         .addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
         .toResponse();
+  }
+
+  /**
+   * Gives each stored query its full queryUsedIn, read for all of them at once. It replaces the list
+   * the query carried, since resolving domains leaves only the tables there.
+   */
+  @Override
+  protected void prepareCreateOrUpdateAuthorization(List<Query> stored) {
+    Map<UUID, List<EntityReference>> usage = repository.getQueryUsage(stored);
+    stored.forEach(query -> query.setQueryUsedIn(usage.getOrDefault(query.getId(), List.of())));
+  }
+
+  /** Covers create, PUT and every item of a bulk PUT. */
+  @Override
+  protected void authorizeCreateOrUpdate(
+      SecurityContext securityContext, Query query, Query stored) {
+    List<EntityReference> storedTargets = stored == null ? null : stored.getQueryUsedIn();
+    authorizeQueryTargets(
+        securityContext, changedQueryTargets(storedTargets, query.getQueryUsedIn()));
+  }
+
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    if (patchMayChangeQueryTargets(patch)) {
+      authorizePatchedQueryTargets(
+          securityContext,
+          repository.get(null, id, repository.getPatchFields(), Include.NON_DELETED, false),
+          patch);
+    }
+    return super.patchInternal(uriInfo, securityContext, id, patch, changeSource, ifMatchHeader);
+  }
+
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    if (patchMayChangeQueryTargets(patch)) {
+      authorizePatchedQueryTargets(
+          securityContext,
+          repository.getByName(null, fqn, repository.getPatchFields(), Include.NON_DELETED, false),
+          patch);
+    }
+    return super.patchInternal(uriInfo, securityContext, fqn, patch, changeSource, ifMatchHeader);
+  }
+
+  /**
+   * Whether a patch can attach or detach assets: it names {@code queryUsedIn}, or it writes the
+   * whole document, which a consolidated edit diffs field by field.
+   */
+  static boolean patchMayChangeQueryTargets(JsonPatch patch) {
+    return JsonPatchUtils.replacesWholeDocument(patch)
+        || JsonUtils.extractPatchedFields(patch).contains(QUERY_USED_IN);
+  }
+
+  /** Patches the query as the repository will, to see which assets the patch moves it onto or off. */
+  private void authorizePatchedQueryTargets(
+      SecurityContext securityContext, Query stored, JsonPatch patch) {
+    Query patched = JsonUtils.applyPatch(stored, patch, Query.class);
+    authorizeQueryTargets(
+        securityContext, changedQueryTargets(stored.getQueryUsedIn(), patched.getQueryUsedIn()));
+  }
+
+  /**
+   * The assets a write attaches the query to or detaches it from: those in only one of the stored
+   * and the written {@code queryUsedIn}, matched by id and type as the repository matches them.
+   */
+  static List<EntityReference> changedQueryTargets(
+      List<EntityReference> stored, List<EntityReference> written) {
+    List<EntityReference> changed = new ArrayList<>(onlyInFirst(written, stored));
+    changed.addAll(onlyInFirst(stored, written));
+    return changed;
+  }
+
+  private static List<EntityReference> onlyInFirst(
+      List<EntityReference> targets, List<EntityReference> others) {
+    return listOrEmpty(targets).stream()
+        .filter(target -> listOrEmpty(others).stream().noneMatch(other -> sameAsset(other, target)))
+        .toList();
+  }
+
+  private static boolean sameAsset(EntityReference one, EntityReference other) {
+    return Objects.equals(one.getId(), other.getId())
+        && Objects.equals(one.getType(), other.getType());
+  }
+
+  /**
+   * A query takes the domain of the assets it is used in, so attaching it to an asset the caller
+   * cannot curate queries on would move it into that asset's domain. Each target is authorized for
+   * EditQueries, the same operation the asset's own query writes require.
+   */
+  private void authorizeQueryTargets(
+      SecurityContext securityContext, List<EntityReference> entityIds) {
+    for (EntityReference entityId : listOrEmpty(entityIds)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityId.getType(), MetadataOperation.EDIT_QUERIES),
+          new ResourceContext<>(
+              entityId.getType(), entityId.getId(), entityId.getFullyQualifiedName()));
+    }
   }
 
   @PUT
@@ -638,6 +757,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizeQueryTargets(securityContext, entityIds);
     return repository
         .removeQueryUsedIn(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
         .toResponse();

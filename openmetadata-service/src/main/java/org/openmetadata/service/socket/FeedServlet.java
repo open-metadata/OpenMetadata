@@ -30,11 +30,11 @@ public class FeedServlet extends HttpServlet {
   @Override
   protected void service(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
+    // The query string is not logged: it may carry the handshake token.
     LOG.info(
-        "[FeedServlet] Received request: method={}, uri={}, queryString={}",
+        "[FeedServlet] Received request: method={}, uri={}",
         request.getMethod(),
-        request.getRequestURI(),
-        request.getQueryString());
+        request.getRequestURI());
     try {
       // EngineIO server expects javax servlet types, so we need to use wrappers
       HttpServletRequestWrapper wrappedRequest = new HttpServletRequestWrapper(request);

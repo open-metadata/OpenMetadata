@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,7 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
-import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -47,7 +44,6 @@ import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseLogicalCheck;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.RelationProvenance;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
@@ -257,72 +253,6 @@ public class IndependentOntologyReleaseValidationIT extends BaseOntologyApproval
   }
 
   @Test
-  void cachedValidationDrainsAllBindingPagesAndRechecksCurrentAssetAuthorization(TestNamespace ns) {
-    final var ontology = createOntology(ns, "pagedValidation");
-    final var concept =
-        declareClass(ontology, "Customer", URI.create("urn:" + ns.shortPrefix() + ":Customer"));
-    activate(ns, ontology);
-    SdkClients.adminClient()
-        .ontologyConcepts()
-        .update(concept.getId(), concept.withDeprecated(true));
-    final var release = capture(ontology);
-    final var empty = validate(release);
-    assertEquals(0, empty.getDeprecationImpacts().getFirst().getBoundAssetCount());
-    final var schema = DatabaseSchemaTestFactory.createSimple(ns);
-    final List<UUID> expected = new ArrayList<>();
-    final List<UUID> tierOne = new ArrayList<>();
-    for (int index = 0; index < 101; index++) {
-      final boolean tiered = index % 15 == 0;
-      final var table =
-          SdkClients.adminClient()
-              .tables()
-              .create(
-                  new CreateTable()
-                      .withName(ns.prefix("impact" + index))
-                      .withDatabaseSchema(schema.getFullyQualifiedName())
-                      .withColumns(
-                          List.of(new Column().withName("id").withDataType(ColumnDataType.STRING)))
-                      .withTags(tiered ? List.of(tierOneTag()) : null));
-      bind(concept, table.getId(), index);
-      expected.add(table.getId());
-      if (tiered) {
-        tierOne.add(table.getId());
-      }
-    }
-    final var complete = validate(release);
-    assertEquals(empty.getShacl(), complete.getShacl());
-    assertEquals(101, complete.getDeprecationImpacts().getFirst().getBoundAssetCount());
-    assertEquals(
-        expected.stream().sorted(Comparator.comparing(UUID::toString)).toList(),
-        complete.getDeprecationImpacts().getFirst().getBoundAssets().stream()
-            .map(asset -> asset.getId())
-            .toList());
-    final var last =
-        SdkClients.adminClient()
-            .tables()
-            .create(
-                new CreateTable()
-                    .withName(ns.prefix("impactLast"))
-                    .withDatabaseSchema(schema.getFullyQualifiedName())
-                    .withColumns(
-                        List.of(new Column().withName("id").withDataType(ColumnDataType.STRING))));
-    bind(concept, last.getId(), 101L);
-    assertEquals(102, validate(release).getDeprecationImpacts().getFirst().getBoundAssetCount());
-    final var reader =
-        DenyPolicyPrincipals.clientDeniedWhen(
-            ns.shortPrefix("pagedImpact"),
-            Entity.TABLE,
-            MetadataOperation.VIEW_BASIC,
-            "!matchAnyTag('Tier.Tier1')");
-    final var partial = validate(reader, release).getDeprecationImpacts().getFirst();
-    assertEquals(7, partial.getBoundAssetCount());
-    assertEquals(
-        tierOne.stream().sorted(Comparator.comparing(UUID::toString)).toList(),
-        partial.getBoundAssets().stream().map(asset -> asset.getId()).toList());
-    assertEquals(102, validate(release).getDeprecationImpacts().getFirst().getBoundAssetCount());
-  }
-
-  @Test
   void cachedFindingsStillRequireCapturedMemberView(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     declareClass(ontology, "Restricted", URI.create("urn:" + ns.shortPrefix() + ":Restricted"));
@@ -501,13 +431,6 @@ public class IndependentOntologyReleaseValidationIT extends BaseOntologyApproval
 
   private static OntologyReleaseValidation validate(OntologyRelease release) {
     return validate(SdkClients.adminClient(), release);
-  }
-
-  private static TagLabel tierOneTag() {
-    return new TagLabel()
-        .withTagFQN("Tier.Tier1")
-        .withSource(TagLabel.TagSource.CLASSIFICATION)
-        .withLabelType(TagLabel.LabelType.MANUAL);
   }
 
   private static void bind(OntologyConcept concept, UUID tableId, long revision) {

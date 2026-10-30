@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1990 endpoints** across 75 resource packages · 1980 carry a summary.
+**1991 endpoints** across 75 resource packages · 1981 carry a summary.
 
 ## (root)
 
@@ -1432,6 +1432,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyPacks` | List ontology library packs |
 | `GET` | `/v1/ontologyPacks/{packId}` | Get an ontology library pack |
 | `POST` | `/v1/ontologyPacks/{packId}/install` | Dry-run or install selected ontology pack modules |
+| `GET` | `/v1/ontologyPacks/{packId}/sample` | Preview selected library concepts |
 | `GET` | `/v1/ontologyProperties` | List ontology property definitions |
 | `POST` | `/v1/ontologyProperties` | Create an ontology property |
 | `PUT` | `/v1/ontologyProperties` | Create or update an ontology property |
@@ -2265,7 +2266,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/users/exportAsync` | Export users in a team in CSV format |
 | `POST` | `/v1/users/generatePasswordResetLink` | Generate Password Reset Link |
 | `GET` | `/v1/users/generateRandomPwd` | Generate a random password |
-| `POST` | `/v1/users/generateToken` | Generate JWT Token for a User |
+| `POST` | `/v1/users/generateToken` | Generate JWT Token for a Bot User |
 | `PUT` | `/v1/users/generateToken/{id}` | Generate JWT Token for a Bot User |
 | `PUT` | `/v1/users/import` | Import from CSV to create, and update teams. |
 | `PUT` | `/v1/users/importAsync` | Import from CSV to create, and update teams asynchronously. |

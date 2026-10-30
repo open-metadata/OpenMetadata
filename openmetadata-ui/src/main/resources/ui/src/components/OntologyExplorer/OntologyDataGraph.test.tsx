@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import i18next from 'i18next';
 import { Profiler } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -374,6 +374,90 @@ describe('native Data mode lineage', () => {
     expect(lineageChip()).toEqual(['table_1 → accounts']);
   });
 
+  describe('once the rows stop scrolling', () => {
+    beforeEach(() => jest.useFakeTimers());
+
+    afterEach(() => jest.useRealTimers());
+
+    const restAt = (top: number) => {
+      renderGraph({ data: graphData({ loaded: 8, total: 8 }) });
+      fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
+      const rows = screen.getByTestId('ontology-data-cluster-rows-transfer');
+      rows.scrollTop = top;
+      fireEvent.scroll(rows);
+      act(() => {
+        jest.advanceTimersByTime(100);
+      });
+    };
+
+    it('anchors the row where it rests inside a row', () => {
+      restAt(40);
+
+      expect(lineageEdge()).toHaveAttribute('data-anchor', 'rows');
+      expect(pathStart(lineageEdge())[1]).toBe(
+        cardTop('transfer') + 50 + 64 + 32 - 40
+      );
+    });
+
+    it.each([50, 63])(
+      'keeps the edge on table_1 when the card rests at %d, past half a row',
+      (top) => {
+        restAt(top);
+
+        expect(lineageEdge()).toHaveAttribute('data-anchor', 'rows');
+        expect(pathStart(lineageEdge())[1]).toBe(
+          cardTop('transfer') + 50 + 64 + 32 - top
+        );
+      }
+    );
+
+    it('anchors a card that leaves the graph and returns where its rows now sit, not at its old rest', () => {
+      const graph = (data: ReturnType<typeof graphData>) => (
+        <OntologyDataGraph
+          data={data}
+          glossaryColorMap={{}}
+          hasMoreTerms={false}
+          isLoadingMoreTerms={false}
+          relationTypes={[]}
+          variant="native"
+          onLoadMore={jest.fn()}
+          onLoadMoreTerms={jest.fn()}
+          onPaneClick={jest.fn()}
+          onSelectNode={jest.fn()}
+        />
+      );
+      const { rerender } = render(graph(graphData({ loaded: 8, total: 8 })));
+      fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
+      const rows = screen.getByTestId('ontology-data-cluster-rows-transfer');
+      rows.scrollTop = 40;
+      fireEvent.scroll(rows);
+      act(() => {
+        jest.advanceTimersByTime(100);
+      });
+      rows.scrollTop = 43;
+      fireEvent.scroll(rows);
+
+      rerender(
+        graph(
+          buildNativeDataGraph(
+            EMPTY_NATIVE_DATA_GRAPH,
+            new Set(),
+            'label.lineage'
+          )
+        )
+      );
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      rerender(graph(graphData({ loaded: 8, total: 8 })));
+
+      expect(lineageEdge()).toHaveAttribute('data-anchor', 'rows');
+      expect(pathStart(lineageEdge())[1]).toBe(
+        cardTop('transfer') + 50 + 64 + 32
+      );
+    });
+  });
+
   it('anchors the rows where the rendered rows sit, not where the default font puts them', () => {
     const rowIndex = (element: HTMLElement) =>
       [...(element.parentElement?.children ?? [])].indexOf(element);
@@ -417,6 +501,38 @@ describe('native Data mode lineage', () => {
     getters.forEach((getter) => getter.mockRestore());
   });
 
+  it('keeps the merged lineage edge of 25 pairs one slot apart from the relation edge', () => {
+    renderGraph({
+      data: graphData({
+        loaded: 30,
+        total: 30,
+        lineageEdges: Array.from({ length: 25 }, (_, index) => ({
+          from: `t${index + 5}`,
+          to: 'acc1',
+        })),
+      }),
+    });
+
+    const edges = screen.getAllByTestId('ontology-data-semantic-edge');
+    const [relation, lineage] = edges.map((edge) =>
+      (edge.getAttribute('d') ?? '').split(' ').map(Number)
+    );
+    const [relationChip, lineageChip] = screen
+      .getAllByTestId('ontology-data-semantic-edge-label')
+      .map((label) => parseFloat((label as HTMLElement).style.top));
+
+    expect(edges.map((edge) => edge.getAttribute('data-edge-kind'))).toEqual([
+      'semanticProjection',
+      'observedLineage',
+    ]);
+    expect(lineage.slice(1, 3)).toEqual([relation[1], relation[2] + 14]);
+    expect(lineage.slice(-2)).toEqual([
+      relation[relation.length - 2],
+      relation[relation.length - 1] + 14,
+    ]);
+    expect(lineageChip - relationChip).toBeCloseTo(18);
+  });
+
   it('marks both rows of a lineage edge inside one cluster, naming the other table', () => {
     renderGraph({
       data: graphData({ lineageEdges: [{ from: 't0', to: 't2' }] }),
@@ -442,7 +558,7 @@ describe('native Data mode lineage', () => {
 describe('scrolling the rows of a native cluster', () => {
   const renderCounted = () => {
     const commits = jest.fn();
-    render(
+    const view = render(
       <Profiler id="graph" onRender={commits}>
         <OntologyDataGraph
           data={graphData({ loaded: 8, total: 8 })}
@@ -461,7 +577,7 @@ describe('scrolling the rows of a native cluster', () => {
     fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
     commits.mockClear();
 
-    return commits;
+    return { commits, unmount: view.unmount };
   };
   const scrollTo = (top: number) => {
     const rows = screen.getByTestId('ontology-data-cluster-rows-transfer');
@@ -470,15 +586,60 @@ describe('scrolling the rows of a native cluster', () => {
   };
 
   it('renders nothing for a burst of scroll events inside one row', () => {
-    const commits = renderCounted();
+    const { commits } = renderCounted();
 
     [10, 25, 40, 63].forEach(scrollTo);
 
     expect(commits).not.toHaveBeenCalled();
   });
 
+  describe('once a burst of scroll events settles', () => {
+    let logo: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      logo = jest.spyOn(serviceUtilClassBase, 'getServiceTypeLogo');
+    });
+
+    afterEach(() => {
+      logo.mockRestore();
+      jest.useRealTimers();
+    });
+
+    it('renders once, 100 ms after the last event of a burst inside one row, and leaves no timer on unmount', () => {
+      const { commits, unmount } = renderCounted();
+      logo.mockClear();
+
+      [10, 25, 40, 63].forEach((top, index) => {
+        if (index > 0) {
+          act(() => {
+            jest.advanceTimersByTime(30);
+          });
+        }
+        scrollTo(top);
+      });
+      act(() => {
+        jest.advanceTimersByTime(99);
+      });
+
+      expect(commits).not.toHaveBeenCalled();
+
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+
+      expect(commits).toHaveBeenCalledTimes(1);
+      expect(logo).not.toHaveBeenCalled();
+
+      scrollTo(20);
+      unmount();
+
+      expect(jest.getTimerCount()).toBe(0);
+    });
+  });
+
   it('renders once when the first row in view changes, and renders no row again', () => {
-    const commits = renderCounted();
+    const { commits } = renderCounted();
     const logo = jest.spyOn(serviceUtilClassBase, 'getServiceTypeLogo');
 
     scrollTo(70);

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { RELEASE_STAGE_LABELS } from '../OntologyReleasePanel/OntologyReleasePanel.constants';
 import OntologyVersionChip from './OntologyVersionChip';
@@ -22,7 +23,8 @@ const active = {
   activatedAt: new Date(2026, 7, 14, 12).getTime(),
 };
 
-it('shows the active version and locale date and opens release history', () => {
+it('shows the active version and locale date and opens release history', async () => {
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
   const onPress = jest.fn();
   render(
     <OntologyVersionChip
@@ -32,6 +34,12 @@ it('shows the active version and locale date and opens release history', () => {
   );
 
   expect(screen.getByText('v1.3.2 · Aug 14')).toBeVisible();
+
+  await user.tab();
+
+  expect(await screen.findByRole('tooltip')).toHaveTextContent(
+    'label.release-history'
+  );
 
   fireEvent.click(screen.getByRole('button', { name: 'v1.3.2 · Aug 14' }));
 

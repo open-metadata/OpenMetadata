@@ -116,6 +116,38 @@ class ProviderTokenValidatorTest {
                     .withClaim("tid", "tenant-b")));
   }
 
+  /**
+   * A public client has no discovery document, but a multi-tenant application registration signs
+   * users in from every tenant. The tenant its authority names is the one tokens must come from.
+   */
+  @Test
+  void publicEntraClientAcceptsOnlyTheConfiguredTenant() {
+    String tenant = "11111111-2222-3333-4444-555555555555";
+    ProviderTokenValidator entraPublic =
+        new ProviderTokenValidator(Set.of(CLIENT_ID), Optional::empty, tenant);
+
+    assertDoesNotThrow(
+        () ->
+            validate(
+                entraPublic,
+                token("https://login.microsoftonline.com/" + tenant + "/v2.0")
+                    .withAudience(CLIENT_ID)
+                    .withClaim("tid", tenant.toUpperCase())));
+    AuthenticationException otherTenant =
+        assertThrows(
+            AuthenticationException.class,
+            () ->
+                validate(
+                    entraPublic,
+                    token("https://login.microsoftonline.com/other-tenant/v2.0")
+                        .withAudience(CLIENT_ID)
+                        .withClaim("tid", "99999999-8888-7777-6666-555555555555")));
+    assertTrue(otherTenant.getMessage().contains("99999999-8888-7777-6666-555555555555"));
+    assertThrows(
+        AuthenticationException.class,
+        () -> validate(entraPublic, token("https://any-issuer").withAudience(CLIENT_ID)));
+  }
+
   /** Google documents both forms as the issuer of its ID tokens. */
   @Test
   void acceptsGooglesSchemelessIssuer() {

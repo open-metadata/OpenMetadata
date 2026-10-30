@@ -34,7 +34,7 @@ import {
   startCase,
   toLower,
 } from 'lodash';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
 import {
@@ -50,7 +50,6 @@ import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
-import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
@@ -76,6 +75,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import PageHeader from '../PageHeader/PageHeader.component';
 import DataInsightProgressBar from './DataInsightProgressBar';
+import { useDataInsightProvider } from './DataInsightProvider/DataInsightProvider';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 interface DataInsightChartCardProps {
@@ -83,7 +83,27 @@ interface DataInsightChartCardProps {
   header: ReactNode;
   subHeader: ReactNode;
   listAssets?: boolean;
+  /**
+   * The `total_data_assets` series, fetched once by the parent tab and shared
+   * by the cards that read it. `undefined` while it is loading, `null` when
+   * the request failed.
+   */
+  totalAssets?: DataInsightCustomChartResult | null;
 }
+
+const EMPTY_CHART_RESULT: DataInsightCustomChartResult = { results: [] };
+
+const ABSOLUTE_VALUES_CHART: Partial<Record<SystemChartType, SystemChartType>> =
+  {
+    [SystemChartType.PercentageOfServiceWithDescription]:
+      SystemChartType.NumberOfDataAssetWithDescription,
+    [SystemChartType.PercentageOfDataAssetWithDescription]:
+      SystemChartType.NumberOfDataAssetWithDescription,
+    [SystemChartType.PercentageOfServiceWithOwner]:
+      SystemChartType.NumberOfDataAssetWithOwner,
+    [SystemChartType.PercentageOfDataAssetWithOwner]:
+      SystemChartType.NumberOfDataAssetWithOwner,
+  };
 
 interface AbsoluteValuesResult {
   results: Array<{ count: number; day: number }>;
@@ -251,6 +271,38 @@ const getChartLoadingState = (
   resultsLength: number
 ): boolean => isLoading || isKpiLoading || resultsLength === 0;
 
+/**
+ * The total-assets card draws the shared totals. Percentage cards derive their
+ * change from them, so they wait for the totals and fall back to the empty
+ * state if they failed, rather than showing a 0 change.
+ */
+const getCardDataState = ({
+  type,
+  totalAssets,
+  fetchedChartData,
+  isFetching,
+}: {
+  type: SystemChartType;
+  totalAssets: DataInsightChartCardProps['totalAssets'];
+  fetchedChartData: DataInsightCustomChartResult;
+  isFetching: boolean;
+}) => {
+  const isTotalAssetsChart = type === SystemChartType.TotalDataAssets;
+  const usesTotalAssets =
+    isTotalAssetsChart || ABSOLUTE_VALUES_CHART[type] !== undefined;
+  const totalAssetsFailed = usesTotalAssets && totalAssets === null;
+
+  return {
+    chartData:
+      isTotalAssetsChart || totalAssetsFailed
+        ? totalAssets ?? EMPTY_CHART_RESULT
+        : fetchedChartData,
+    isLoading:
+      (usesTotalAssets && totalAssets === undefined) ||
+      (!isTotalAssetsChart && isFetching),
+  };
+};
+
 const getProgressBarSuffix = (
   isPercentageGraph: boolean,
   type: SystemChartType
@@ -304,18 +356,22 @@ export const DataInsightChartCard = ({
   header,
   subHeader,
   listAssets,
+  totalAssets,
 }: DataInsightChartCardProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const [chartData, setChartData] = useState<DataInsightCustomChartResult>({
-    results: [],
-  });
-  const [totalAssets, setTotalAssets] = useState<DataInsightCustomChartResult>({
-    results: [],
-  });
+  const isTotalAssetsChart = type === SystemChartType.TotalDataAssets;
+  const [fetchedChartData, setFetchedChartData] =
+    useState<DataInsightCustomChartResult>(EMPTY_CHART_RESULT);
   const [absoluteValues, setAbsoluteValues] = useState<AbsoluteValuesResult>({
     results: [],
   });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isFetching, setIsFetching] = useState<boolean>(!isTotalAssetsChart);
+  const { chartData, isLoading } = getCardDataState({
+    type,
+    totalAssets,
+    fetchedChartData,
+    isFetching,
+  });
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
   const [searchEntityKeyWord, setSearchEntityKeyWord] = useState('');
@@ -376,7 +432,7 @@ export const DataInsightChartCard = ({
     } else {
       // Process TotalAssets and Absolute Values
       changeInValue = computeDefaultChange(
-        totalAssets.results,
+        totalAssets?.results ?? [],
         absoluteValues.results
       );
     }
@@ -390,7 +446,13 @@ export const DataInsightChartCard = ({
       graphData: finalData,
       changeInValue,
     };
-  }, [chartData.results, searchEntityKeyWord]);
+  }, [
+    type,
+    chartData.results,
+    totalAssets?.results,
+    absoluteValues.results,
+    searchEntityKeyWord,
+  ]);
 
   const targetValue = useMemo(() => {
     if (
@@ -446,74 +508,39 @@ export const DataInsightChartCard = ({
 
   const { t } = useTranslation();
 
-  const fetchData = async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async () => {
+    setIsFetching(true);
     try {
-      const filter = getQueryFilterForDataInsightChart(
-        chartFilter.team,
-        chartFilter.tier
-      );
-      if (
-        ![
-          SystemChartType.TotalDataAssets,
-          SystemChartType.TotalDataAssetsByTier,
-        ].includes(type)
-      ) {
-        const totalAssetsResponse = await getChartPreviewByName(
-          SystemChartType.TotalDataAssets,
-          {
-            start: chartFilter.startTs,
-            end: chartFilter.endTs,
-            filter,
-          }
-        );
-        setTotalAssets(totalAssetsResponse);
-      }
-
-      if (
-        [
-          SystemChartType.PercentageOfServiceWithDescription,
-          SystemChartType.PercentageOfDataAssetWithDescription,
-        ].includes(type)
-      ) {
-        const absoluteValuesResponse = await getChartPreviewByName(
-          SystemChartType.NumberOfDataAssetWithDescription,
-          {
-            start: chartFilter.startTs,
-            end: chartFilter.endTs,
-            filter,
-          }
-        );
-        setAbsoluteValues(absoluteValuesResponse);
-      } else if (
-        [
-          SystemChartType.PercentageOfServiceWithOwner,
-          SystemChartType.PercentageOfDataAssetWithOwner,
-        ].includes(type)
-      ) {
-        const absoluteValuesResponse = await getChartPreviewByName(
-          SystemChartType.NumberOfDataAssetWithOwner,
-          {
-            start: chartFilter.startTs,
-            end: chartFilter.endTs,
-            filter,
-          }
-        );
-        setAbsoluteValues(absoluteValuesResponse);
-      }
-
-      const response = await getChartPreviewByName(type, {
+      const params = {
         start: chartFilter.startTs,
         end: chartFilter.endTs,
-        filter,
-      });
-      setChartData(response);
+        filter: getQueryFilterForDataInsightChart(
+          chartFilter.team,
+          chartFilter.tier
+        ),
+      };
+      const absoluteValuesChart = ABSOLUTE_VALUES_CHART[type];
+      const [response, absoluteValuesResponse] = await Promise.all([
+        getChartPreviewByName(type, params),
+        absoluteValuesChart &&
+          getChartPreviewByName(absoluteValuesChart, params),
+      ]);
+      if (absoluteValuesResponse) {
+        setAbsoluteValues(absoluteValuesResponse);
+      }
+      setFetchedChartData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
     }
-  };
+  }, [
+    type,
+    chartFilter.startTs,
+    chartFilter.endTs,
+    chartFilter.team,
+    chartFilter.tier,
+  ]);
 
   const handleLegendClick = (entity: string) => {
     setActiveKeys((prevActiveKeys) =>
@@ -529,14 +556,10 @@ export const DataInsightChartCard = ({
   };
 
   useEffect(() => {
-    !kpi.isLoading && fetchData();
-  }, [
-    chartFilter.startTs,
-    chartFilter.endTs,
-    chartFilter.team,
-    chartFilter.tier,
-    kpi.isLoading,
-  ]);
+    if (!kpi.isLoading && !isTotalAssetsChart) {
+      void fetchData();
+    }
+  }, [fetchData, kpi.isLoading, isTotalAssetsChart]);
 
   const rightSidePanelLabel = useMemo(() => {
     const config = RIGHT_SIDE_PANEL_LABEL_CONFIG[type];
@@ -614,9 +637,7 @@ export const DataInsightChartCard = ({
           {isLoading ? (
             <SkeletonParagraph rows={4} />
           ) : (
-            <>
-              <EmptyGraphPlaceholder />
-            </>
+            <EmptyGraphPlaceholder />
           )}
         </Card.Content>
       </Card>

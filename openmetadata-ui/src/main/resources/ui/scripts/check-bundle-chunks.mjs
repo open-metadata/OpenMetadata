@@ -28,11 +28,8 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 // build sits at 1341 emitted / 1164 small (ui-core now ships one module per
 // file, so its lazy-only components split per route). Headroom of ~15 % lets a few new
 // lazy routes ship without a churn PR; a big regression still fails the gate.
-// Main has since grown to 1390. Removing `antd` empties the pinned `vendor-antd`
-// group, so the `@ant-design/icons` / `rc-*` / `@babel/runtime` modules it used
-// to absorb split into ~15 tiny shared chunks (1403). Pinning those packages
-// instead captures helpers the shell also uses and drags the group onto every
-// page, so the ceiling moves; lower it once `@ant-design/icons` is gone.
+// Main has since grown to 1390; removing the `antd` package and its
+// `vendor-antd` chunk brought it back to 1335 emitted / 1154 small.
 const MAX_EMITTED_JS_FILES = 1450;
 const MAX_SMALL_JS_FILES = 1250;
 // Bumped 8 → 9 because sharing `oidcTokenStorage` between `silentCallbackEntry.ts`

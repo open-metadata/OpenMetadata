@@ -14,13 +14,13 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
+  Customize,
   GridView,
   Key01,
   PermissionDebugger as AccessControlIcon,
   Persona as PersonaIcon,
   Policy as GovernanceTabIcon,
   Settings01,
-  Settings02,
   ShieldTick,
   SingleSignOn,
   Sliders02,
@@ -277,7 +277,7 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     group: 'workspace',
     label: 'label.custom-property-plural',
     description: 'message.custom-properties-settings-description',
-    icon: Settings02 as FC<{ className?: string }>,
+    icon: Customize as FC<{ className?: string }>,
     isVisible: (permissions) =>
       userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
     selfContainedLayout: true,
@@ -316,7 +316,7 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
   {
     id: 'notification',
     group: 'features',
-    label: 'label.notification',
+    label: 'label.alerts-and-notifications',
     description: 'message.alerts-description',
     icon: Bell01 as FC<{ className?: string }>,
     isVisible: (permissions) =>
