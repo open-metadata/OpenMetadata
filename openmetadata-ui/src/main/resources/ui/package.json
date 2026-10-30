@@ -316,6 +316,6 @@
     "socket.io-parser": "4.2.7",
     "undici": "^6.29.1",
     "qs": "6.16.2",
-    "follow-redirects": "1.16.1"
+    "follow-redirects": "^1.16.2"
   }
 }
