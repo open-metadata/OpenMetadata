@@ -36,6 +36,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -291,45 +292,91 @@ class EntityRepositorySecretStorageTest {
     assertEquals(0.2, stored.getVersion());
     assertEquals(
         "updated-secret",
-        JsonUtils.readTree(JsonUtils.pojoToJson(stored)).at(PIPELINE_SECRET).asText());
+        vault.getSecretValue(
+            JsonUtils.readTree(JsonUtils.pojoToJson(stored)).at(PIPELINE_SECRET).asText()));
   }
 
   @Test
   void botStorageEncryptsAuthenticationCredentials() {
-    User bot =
-        new User()
-            .withName("storage-bot")
-            .withIsBot(true)
-            .withAuthenticationMechanism(
-                new AuthenticationMechanism()
-                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
-                    .withConfig(new JWTAuthMechanism().withJWTToken(SECRET)));
-
     assertEncrypted(
-        new UserRepository().serializeForStorage(bot), "/authenticationMechanism/config/JWTToken");
+        new UserRepository().serializeForStorage(bot()),
+        "/authenticationMechanism/config/JWTToken");
   }
 
   @Test
   void workflowStorageEncryptsTheConvertedConnection() {
-    Workflow workflow =
-        new Workflow()
-            .withName("storage-workflow")
-            .withWorkflowType(WorkflowType.TEST_CONNECTION)
-            .withRequest(
-                new TestServiceConnectionRequest()
-                    .withServiceType(ServiceType.DATABASE)
-                    .withConnectionType("Mysql")
-                    .withConnection(
-                        new DatabaseConnection()
-                            .withConfig(
-                                new MysqlConnection()
-                                    .withHostPort("localhost:3306")
-                                    .withUsername("test")
-                                    .withAuthType(new basicAuth().withPassword(SECRET)))));
-
     assertEncrypted(
-        new WorkflowRepository().serializeForStorage(workflow),
+        new WorkflowRepository().serializeForStorage(workflow()),
         "/request/connection/config/authType/password");
+  }
+
+  @Test
+  void rejectedBotWriteDoesNotCreateExternalSecrets() {
+    CollectionDAO.UserDAO userDAO = mock(CollectionDAO.UserDAO.class);
+    when(Entity.getCollectionDAO().userDAO()).thenReturn(userDAO);
+    when(userDAO.getTableName()).thenReturn("user_entity");
+    when(userDAO.findVersionByIdForUpdate(anyString(), any(UUID.class))).thenReturn("0.2");
+
+    assertRejectedWritePreservesExternalSecrets(new UserRepository(), bot());
+  }
+
+  @Test
+  void rejectedWorkflowWriteDoesNotCreateExternalSecrets() {
+    CollectionDAO.WorkflowDAO workflowDAO = mock(CollectionDAO.WorkflowDAO.class);
+    when(Entity.getCollectionDAO().workflowDAO()).thenReturn(workflowDAO);
+    when(workflowDAO.getTableName()).thenReturn("workflow_entity");
+    when(workflowDAO.findVersionByIdForUpdate(anyString(), any(UUID.class))).thenReturn("0.2");
+
+    assertRejectedWritePreservesExternalSecrets(new WorkflowRepository(), workflow());
+  }
+
+  private <T extends EntityInterface<?>> void assertRejectedWritePreservesExternalSecrets(
+      EntityRepository<T> targetRepository, T entity) {
+    InMemorySecretsManager vault =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig("rejected-storage-test", "", List.of(), null)) {};
+    SecretsManagerFactory.setSecretsManager(vault);
+    String originalJson = JsonUtils.pojoToJson(entity);
+
+    assertThrows(
+        PreconditionFailedException.class,
+        () -> targetRepository.storeEntityWithVersion(entity, true, 0.1, 1L));
+
+    assertTrue(vault.getSecretsMap().isEmpty());
+    assertEquals(originalJson, JsonUtils.pojoToJson(entity));
+  }
+
+  private static User bot() {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName("storage-bot")
+        .withFullyQualifiedName("storage-bot")
+        .withVersion(0.2)
+        .withIsBot(true)
+        .withAuthenticationMechanism(
+            new AuthenticationMechanism()
+                .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                .withConfig(new JWTAuthMechanism().withJWTToken(SECRET)));
+  }
+
+  private static Workflow workflow() {
+    return new Workflow()
+        .withId(UUID.randomUUID())
+        .withName("storage-workflow")
+        .withFullyQualifiedName("storage-workflow")
+        .withVersion(0.2)
+        .withWorkflowType(WorkflowType.TEST_CONNECTION)
+        .withRequest(
+            new TestServiceConnectionRequest()
+                .withServiceType(ServiceType.DATABASE)
+                .withConnectionType("Mysql")
+                .withConnection(
+                    new DatabaseConnection()
+                        .withConfig(
+                            new MysqlConnection()
+                                .withHostPort("localhost:3306")
+                                .withUsername("test")
+                                .withAuthType(new basicAuth().withPassword(SECRET)))));
   }
 
   private static IngestionPipeline pipeline() {
