@@ -1,9 +1,9 @@
 # Data Quality tab switches restore each tab's own query string
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-29 (initial)
+- **Revisions:** v1 2026-10-29 (initial) · v2 2026-10-30 (the rule lives in one shared hook, `useTabSearchMemory`)
 - **Deciders:** TeddyCr
-- **Guard:** `openmetadata-ui/.../pages/DataQuality/DataQualityPage.test.tsx` and `openmetadata-ui/.../components/observability/DataQuality/DataQualityPage.test.tsx` — `should restore each tab query string when switching between tabs`, `should restore a tab latest URL even when the user left it via history back`, `should not capture another route search while app mode keeps the page mounted`
+- **Guard:** `openmetadata-ui/.../pages/DataQuality/DataQualityPage.test.tsx` and `openmetadata-ui/.../components/observability/DataQuality/DataQualityPage.test.tsx` — `should restore each tab query string when switching between tabs`, `should restore a tab latest URL even when the user left it via history back`, `should not capture another route search while app mode keeps the page mounted`; `openmetadata-ui/.../hooks/observability/data-quality/useTabSearchMemory.test.ts`
 - **Related:** #36481, #36595
 
 ## Context
@@ -31,3 +31,10 @@ the listing. The memory is per page instance and bounded by the fixed tab enum; 
 reload, where the URL itself is the state. A `:subTab` path segment is not restored, only the query
 string. Going back to bare path navigation, or sharing one search across tabs, reintroduces the
 count mismatch.
+
+## Amendment
+**v2 2026-10-30.** Both pages carried the same memory code, so it moved into one hook,
+`hooks/observability/data-quality/useTabSearchMemory.ts`, which both pages call. The hook owns the
+per-tab record, the effect that writes it, and the `''` default for an unvisited tab. The
+observability page passes its URL-ownership flag as `isRecording`. Behaviour is unchanged; a third
+page with unmounting tabs should call the same hook rather than repeat the logic.

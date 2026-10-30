@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -33,6 +33,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useTabSearchMemory } from '../../hooks/observability/data-quality/useTabSearchMemory';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
@@ -135,18 +136,7 @@ const DataQualityPage = () => {
     [activeTab, showModal]
   );
 
-  // The tab panels unmount on switch, so the URL query string is the only home
-  // for the per-tab filters. Track each tab's latest search so a switch back
-  // restores it; otherwise the provider refetches without the filters the user
-  // still sees selected and the summary counts diverge from the listing.
-  const searchByTab = useRef<Partial<Record<DataQualityPageTabs, string>>>({});
-
-  // The effect, not the tab handler, keeps entries current: browser
-  // back/forward and deep links also move the URL, and restoring a stale entry
-  // would re-apply filters the user has since moved away from.
-  useEffect(() => {
-    searchByTab.current[activeTab] = location.search;
-  }, [activeTab, location.search]);
+  const getTabSearch = useTabSearchMemory(activeTab, location.search);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -155,7 +145,7 @@ const DataQualityPage = () => {
       void navigate({
         pathname:
           observabilityRouterClassBase.getDataQualityPagePath(targetTab),
-        search: searchByTab.current[targetTab] ?? '',
+        search: getTabSearch(targetTab),
       });
     }
   };

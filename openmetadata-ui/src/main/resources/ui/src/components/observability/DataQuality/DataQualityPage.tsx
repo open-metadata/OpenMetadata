@@ -22,15 +22,7 @@ import {
   Plus,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
-import {
-  ComponentType,
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { ComponentType, lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ExportTypes } from '../../../constants/Export.constants';
@@ -38,6 +30,7 @@ import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { useTabSearchMemory } from '../../../hooks/observability/data-quality/useTabSearchMemory';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import DataQualityProvider, {
   useDataQualityProvider,
@@ -142,19 +135,7 @@ const DataQualityPage = () => {
     [activeTab]
   );
 
-  // Same rationale as the classic page: the query string is the only filter
-  // state, so each tab's latest search is remembered and restored on
-  // switch-back. The effect, not the tab handler, keeps entries current
-  // (browser back/forward and deep links also move the URL); and it saves only
-  // while this page owns the URL — app mode keeps visited routes mounted, and
-  // once another route owns the URL, its search is not ours.
-  const searchByTab = useRef<Partial<Record<DataQualityPageTabs, string>>>({});
-
-  useEffect(() => {
-    if (ownsTheUrl) {
-      searchByTab.current[activeTab] = search;
-    }
-  }, [activeTab, ownsTheUrl, search]);
+  const getTabSearch = useTabSearchMemory(activeTab, search, ownsTheUrl);
 
   const handleTabChange = useCallback(
     (tabKey: string) => {
@@ -164,11 +145,11 @@ const DataQualityPage = () => {
         void navigate({
           pathname:
             observabilityRouterClassBase.getDataQualityPagePath(targetTab),
-          search: searchByTab.current[targetTab] ?? '',
+          search: getTabSearch(targetTab),
         });
       }
     },
-    [navigate, activeTab]
+    [navigate, activeTab, getTabSearch]
   );
 
   const handleOpenTestCaseModal = useCallback(
