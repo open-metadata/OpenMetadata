@@ -6439,6 +6439,14 @@
                           "type": "string",
                           "default": "SNOWFLAKE.ACCOUNT_USAGE"
                         },
+                        "systemMetricsBatchSize": {
+                          "title": "System Metrics Batch Size",
+                          "description": "Number of tables whose DML history is read from QUERY_HISTORY with a single query when the profiler computes system metrics. Higher values issue fewer scans but hold more history in memory at once.",
+                          "type": "integer",
+                          "default": 50,
+                          "minimum": 1,
+                          "maximum": 500
+                        },
                         "privateKey": {
                           "title": "Private Key",
                           "description": "Connection to Snowflake instance via Private Key",
@@ -12536,6 +12544,11 @@
                           "description": "Fivetran API Limit For Pagination.",
                           "type": "integer",
                           "default": 1000
+                        },
+                        "logSchema": {
+                          "title": "Fivetran Platform Connector Schema",
+                          "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+                          "type": "string"
                         },
                         "pipelineFilterPattern": {
                           "description": "Regex exclude pipelines.",

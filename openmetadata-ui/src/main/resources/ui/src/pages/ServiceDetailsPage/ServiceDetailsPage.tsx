@@ -33,7 +33,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
@@ -42,6 +41,7 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import FilesTable from '../../components/DriveService/File/FilesTable/FilesTable';
 import SpreadsheetsTable from '../../components/DriveService/Spreadsheet/SpreadsheetsTable/SpreadsheetsTable';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -2124,7 +2124,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const visitedTabs = useVisitedTabs(renderedActiveTab);
 
   if (isLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (!flags.hasViewAccess) {

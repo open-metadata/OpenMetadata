@@ -31,6 +31,7 @@ import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignH
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill.backfillMlFeatureTags;
+import static org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration.copyConceptBindingsToRows;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
@@ -44,6 +45,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
@@ -64,6 +66,7 @@ public class Migration extends MigrationProcessImpl {
     alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, POSTGRES).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, POSTGRES);
+    copyConceptBindingsToRows(handle, POSTGRES);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the
     // packaged JSON default; existing installs only through this migration.
@@ -132,5 +135,14 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        GlossaryAutomationReviewMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
+        });
   }
 }

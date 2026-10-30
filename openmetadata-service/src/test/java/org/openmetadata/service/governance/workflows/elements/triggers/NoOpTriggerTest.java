@@ -54,6 +54,11 @@ class NoOpTriggerTest {
         callActivity.getInParameters().stream()
             .map(IOParameter::getTarget)
             .anyMatch("taskCategory"::equals));
+    assertTrue(
+        callActivity.getInParameters().stream()
+            .map(IOParameter::getTarget)
+            .anyMatch("approvalMode"::equals),
+        "the review's approval mode reaches CreateTask as a plain start variable");
   }
 
   @Test

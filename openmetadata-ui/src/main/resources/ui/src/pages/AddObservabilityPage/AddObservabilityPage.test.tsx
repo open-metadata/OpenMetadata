@@ -12,7 +12,12 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
+import ObservabilityFormTriggerItem from '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import { AlertType } from '../../generated/events/eventSubscription';
+import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import AddObservabilityPage from './AddObservabilityPage';
 
 const MOCK_DATA = [
@@ -47,6 +52,39 @@ const MOCK_DATA = [
   },
 ];
 const mockNavigate = jest.fn();
+const mockFqn = { fqn: '' };
+const mockGlobalPermissions = {
+  permissions: { eventsubscription: { Create: true } } as unknown,
+};
+const mockUseEntityPermissions = jest.fn();
+
+jest.mock('../../hooks/useFqn', () => ({
+  useFqn: () => mockFqn,
+}));
+
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    permissions: mockGlobalPermissions.permissions,
+    getResourcePermission: jest.fn().mockResolvedValue({}),
+  }),
+}));
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
+
+const mockEntityPermissions = (EditAll: boolean) =>
+  mockUseEntityPermissions.mockReturnValue({
+    permissions: { ...DEFAULT_ENTITY_PERMISSION, EditAll },
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(
+      { ...DEFAULT_ENTITY_PERMISSION, EditAll },
+      false
+    ),
+  });
 const mockHandleAlertSave = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
 
@@ -140,6 +178,124 @@ const mockProps = {
 };
 
 describe('Add ObservabilityPage Alerts Page Tests', () => {
+  beforeEach(() => {
+    mockFqn.fqn = '';
+    mockGetModifiedAlertDataForForm.mockReset();
+    mockGlobalPermissions.permissions = { eventsubscription: { Create: true } };
+    mockEntityPermissions(false);
+  });
+
+  it('should show the permission placeholder when the user cannot create alerts', async () => {
+    mockGlobalPermissions.permissions = {
+      eventsubscription: { Create: false },
+    };
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(screen.getByText(/label\.create-entity/)).toBeInTheDocument();
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
+  });
+
+  it('should show the permission placeholder when the user cannot edit the alert', async () => {
+    mockFqn.fqn = 'alert-test';
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(screen.getByText(/label\.edit-entity/)).toBeInTheDocument();
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
+  });
+
+  it('should show a retryable error instead of an endless loader when the alert to edit fails to load', async () => {
+    mockFqn.fqn = 'alert-test';
+    mockEntityPermissions(true);
+    (getObservabilityAlertByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { status: 500 } })
+    );
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+    });
+
+    expect(getObservabilityAlertByFQN).toHaveBeenCalledTimes(2);
+  });
+
+  it('should show a not-found state without retry when the alert to edit does not exist', async () => {
+    mockFqn.fqn = 'alert-test';
+    mockEntityPermissions(true);
+    (getObservabilityAlertByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { status: 404 } })
+    );
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('label.alert-not-found')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.alert-not-found-description')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.something-went-wrong')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('should offer a reload, not a permission denial, when the edit permission fails to load', async () => {
+    mockFqn.fqn = 'alert-test';
+    const refresh = jest.fn();
+    mockUseEntityPermissions.mockReturnValue({
+      permissions: DEFAULT_ENTITY_PERMISSION,
+      isLoading: false,
+      error: { response: { status: 500 } },
+      refresh,
+      ...getDerivedPermissionFlags(DEFAULT_ENTITY_PERMISSION, false),
+    });
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('permission-error-placeholder')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
   it('should render Add Observability Page', async () => {
     await act(async () => {
       render(<AddObservabilityPage {...mockProps} />, {
@@ -310,6 +466,34 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
     expect(await screen.findByTestId('extra-button')).toHaveTextContent(
       'typed-alert'
+    );
+  });
+
+  it('should keep rules stored without selections read-only when editing', async () => {
+    mockFqn.fqn = 'alert-test';
+    mockEntityPermissions(true);
+    mockGetModifiedAlertDataForForm.mockReturnValue({
+      ...MOCK_DATA[0],
+      filteringRules: { ...MOCK_DATA[0].filteringRules, resources: [] },
+      hasRulesWithoutSelections: true,
+    });
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('message.alert-rules-read-only')
+    ).toBeInTheDocument();
+    expect(ObservabilityFormFiltersItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
+    );
+    expect(ObservabilityFormTriggerItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
     );
   });
 

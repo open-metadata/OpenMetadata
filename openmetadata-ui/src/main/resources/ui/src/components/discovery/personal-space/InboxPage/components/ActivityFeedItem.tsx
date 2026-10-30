@@ -90,17 +90,12 @@ import {
 import { createThreadReply, useActivityReplies } from '../useActivityReplies';
 import { writeInboxReactions } from '../useInboxActivity';
 import ActivityChangePanel from './ActivityChangePanel';
+import {
+  ACTIVITY_CARD_CLASS,
+  ACTIVITY_CARD_MESSAGE_HOVER_CLASS,
+} from './ActivityFeedItem.constants';
 import ActivityThread from './ActivityThread';
 import AuthorPopover from './AuthorPopover';
-
-// The core Card's surface and hover. Its hover tint is translucent in dark,
-// so it is laid over the surface, not swapped in for it: swapped, the page
-// shows through and the card darkens instead of lifting.
-const CARD_CLASS = classNames(
-  'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs',
-  'tw:transition-colors tw:hover:border-primary',
-  'tw:hover:bg-[linear-gradient(var(--om-color-bg-primary-hover),var(--om-color-bg-primary-hover))]'
-);
 
 // Repliers shown on the collapsed thread toggle.
 const MAX_REPLY_FACES = 3;
@@ -113,6 +108,8 @@ export interface ActivityFeedItemProps {
   timeFormat?: string;
   // The item, or a reply under it, names the viewer or one of their teams.
   isMentioned?: boolean;
+  // Who the mention badge names when the feed is another user's; "you" if unset.
+  mentionedName?: string;
 }
 
 const getActorName = (
@@ -182,14 +179,17 @@ const getEntityPath = (entity: EntityReference | undefined) =>
     ? entityUtilClassBase.getEntityLink(entity.type, entity.fullyQualifiedName)
     : undefined;
 
-// "Hide replies" while open; otherwise how many there are, or "Reply" while
-// there are none.
+const isReplyCountKnown = (hasLoaded: boolean, feed?: Conversation) =>
+  hasLoaded || feed?.replyCount !== undefined;
+
+// "Reply" with no replies; else "Hide replies" while open, or the count.
 const getThreadButtonLabel = (
   isOpen: boolean,
   count: number,
+  isCountKnown: boolean,
   t: TFunction
 ): string => {
-  if (isOpen) {
+  if (isOpen && (count || !isCountKnown)) {
     return t('label.hide-reply-plural');
   }
   if (!count) {
@@ -266,6 +266,7 @@ const getThreadChevron = (isOpen: boolean) =>
 interface ThreadButtonProps {
   isOpen: boolean;
   count: number;
+  isCountKnown: boolean;
   // Loaded only once the thread has been opened; until then no faces show.
   replies: ConversationReply[];
   onToggle: () => void;
@@ -274,12 +275,12 @@ interface ThreadButtonProps {
 /**
  * The card's one button for its thread: "Reply" while the thread is closed and
  * has no replies, how many replied (and who, once they are loaded) when it has
- * some, and "Hide replies" while it is open — so it can close even once its
- * last reply is deleted.
+ * some, and "Hide replies" while it is open with replies.
  */
 const ThreadButton = ({
   isOpen,
   count,
+  isCountKnown,
   replies,
   onToggle,
 }: ThreadButtonProps) => {
@@ -319,7 +320,7 @@ const ThreadButton = ({
       iconTrailing={isReply ? undefined : getThreadChevron(isOpen)}
       size="sm"
       onPress={onToggle}>
-      {getThreadButtonLabel(isOpen, count, t)}
+      {getThreadButtonLabel(isOpen, count, isCountKnown, t)}
     </Button>
   );
 };
@@ -353,10 +354,12 @@ const UNDO_REACTION: Record<ReactionOperation, ReactionOperation> = {
 // The header's right side: whether it names the viewer, and when it happened.
 const CardMeta = ({
   isMentioned,
+  mentionedName,
   timeFormat,
   timestamp,
 }: {
   isMentioned: boolean;
+  mentionedName?: string;
   timeFormat: string;
   timestamp?: number;
 }) => {
@@ -371,7 +374,9 @@ const CardMeta = ({
           data-testid="activity-mentioned-you"
           size="sm"
           type="color">
-          {t('label.mentioned-you')}
+          {mentionedName
+            ? t('label.mentioned-name', { name: mentionedName })
+            : t('label.mentioned-you')}
         </Badge>
       )}
       <Tooltip
@@ -393,6 +398,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   feed,
   timeFormat = ACTIVITY_DATE_FORMAT,
   isMentioned = false,
+  mentionedName,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -511,7 +517,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   return (
     <Box
-      className={CARD_CLASS}
+      className={ACTIVITY_CARD_CLASS}
       data-testid="activity-feed-item"
       direction="col"
       gap={4}>
@@ -552,6 +558,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               </Typography>
               <CardMeta
                 isMentioned={isMentioned}
+                mentionedName={mentionedName}
                 timeFormat={cardTimeFormat}
                 timestamp={timestamp}
               />
@@ -600,7 +607,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               className={classNames(
                 INBOX_MESSAGE_CLASS,
                 INBOX_RECESSED_SURFACE_CLASS,
-                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm'
+                ACTIVITY_CARD_MESSAGE_HOVER_CLASS,
+                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm tw:transition-colors'
               )}
               markdown={message}
             />
@@ -632,6 +640,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           />
           <ThreadButton
             count={replyCount}
+            isCountKnown={isReplyCountKnown(hasLoaded, feed)}
             isOpen={isThreadOpen}
             replies={replies}
             // Nothing to read yet: open straight into the composer.

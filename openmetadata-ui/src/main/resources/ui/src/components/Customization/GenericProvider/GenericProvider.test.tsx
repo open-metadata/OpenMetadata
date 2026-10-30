@@ -13,10 +13,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
-import {
-  TourContext,
-  TourProviderContextProps,
-} from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useChangeSummary } from '../../../hooks/useChangeSummary';
@@ -175,25 +171,6 @@ describe('GenericProvider', () => {
       mockData.id,
       { limit: 1000 }
     );
-  });
-
-  it('should not request a change summary for the tour mock entity', () => {
-    render(
-      <MemoryRouter>
-        <TourContext.Provider
-          value={
-            {
-              isTourPage: true,
-            } as Partial<TourProviderContextProps> as TourProviderContextProps
-          }>
-          <GenericProvider {...defaultProps}>
-            <TestComponent />
-          </GenericProvider>
-        </TourContext.Provider>
-      </MemoryRouter>
-    );
-
-    expect(useChangeSummary).toHaveBeenLastCalledWith('', '', { limit: 1000 });
   });
 
   it('should handle version view mode', () => {

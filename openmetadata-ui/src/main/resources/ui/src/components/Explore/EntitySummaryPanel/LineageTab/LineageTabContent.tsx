@@ -21,7 +21,6 @@ import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -29,11 +28,14 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
+import {
+  getEntityName,
+  getEntityNameLabel,
+} from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PanelEmptyPlaceholder from '../../../common/EmptyPlaceholder/PanelEmptyPlaceholder';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
@@ -157,7 +159,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           </span>
         )}
         <Typography className="item-entity-type-text">
-          {capitalize(entityType)}
+          {getEntityNameLabel(entityType)}
         </Typography>
       </>
     );
@@ -187,7 +189,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
         onSelectionChange={(key) =>
           onFilterChange(key as LineageTabContentProps['filter'])
         }>
-        <Tabs.List size="sm" type="button-border">
+        <Tabs.List fullWidth size="sm" type="button-border">
           {(['upstream', 'downstream'] as const).map((direction) => (
             <Tabs.Item
               badge={direction === 'upstream' ? upstreamCount : downstreamCount}
@@ -236,7 +238,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   `${item.direction}-${item.path}`
                 }>
                 <div className="lineage-item-header">
-                  <div className="d-flex align-items-center gap-1">
+                  <div className="d-flex align-items-center gap-1 tw:min-w-0 tw:flex-1">
                     <div className="service-icon">
                       {getServiceLogo(
                         capitalize(item.entity.serviceType) ?? '',
@@ -247,7 +249,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                       {item.path && renderTruncatedPath(item.path)}
                     </div>
                   </div>
-                  <div className="lineage-item-direction">
+                  <div className="lineage-item-direction tw:shrink-0">
                     {item.direction === 'upstream' ? (
                       <Tooltip
                         placement="top"
@@ -281,15 +283,10 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             </Link>
           ))
         ) : (
-          <div>
-            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-              <NoDataPlaceholder
-                data-testid="no-data-placeholder"
-                icon={<AddPlaceHolderIcon height={100} width={100} />}
-                title={t('label.lineage-not-found')}
-              />
-            </div>
-          </div>
+          <PanelEmptyPlaceholder
+            searchText={searchText}
+            title={t('label.lineage-not-found')}
+          />
         )}
       </div>
     </div>

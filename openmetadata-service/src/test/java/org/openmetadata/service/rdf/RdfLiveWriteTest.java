@@ -23,15 +23,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.update.UpdateAction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +48,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -65,6 +71,7 @@ class RdfLiveWriteTest {
   private Table currentEntity;
   private LineageDetails currentLineageDetails;
   private boolean lineageEdgeExists = true;
+  private final Set<UUID> softDeleted = new HashSet<>();
   private final RdfRepository repository = repository();
 
   @AfterEach
@@ -159,6 +166,60 @@ class RdfLiveWriteTest {
     replay(addition);
 
     assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
+  }
+
+  @Test
+  void additionsReplayedAfterAnEndWasSoftDeletedLeaveTheEdgeOut() {
+    final UUID live = UUID.randomUUID();
+    final UUID deleted = UUID.randomUUID();
+    softDeleted.add(deleted);
+    final EntityRelationship contains =
+        new EntityRelationship()
+            .withFromId(live)
+            .withToId(deleted)
+            .withFromEntity(Entity.TABLE)
+            .withToEntity(Entity.TABLE)
+            .withRelationshipType(Relationship.CONTAINS);
+
+    replay(RdfLiveWrite.RelationshipChange.capture(contains, false));
+    replay(RdfLiveWrite.RelationshipChange.capture(lineage(deleted, live), false));
+    replay(new RdfLiveWrite.GlossaryRelationChange(live, deleted, "broader", false));
+
+    assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
+  }
+
+  @Test
+  void lineageRefreshedAfterAnEndWasSoftDeletedRemovesTheEdge() {
+    final UUID from = UUID.randomUUID();
+    final UUID to = UUID.randomUUID();
+    final RdfLiveWrite addition = RdfLiveWrite.RelationshipChange.capture(lineage(from, to), false);
+    replay(addition);
+    assertFalse(dataset.getNamedModel(GRAPH).isEmpty());
+
+    softDeleted.add(to);
+    replay(addition);
+
+    assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
+  }
+
+  @Test
+  void lineageDetailsLeaveOutASoftDeletedPipeline() {
+    final UUID pipeline = UUID.randomUUID();
+    currentLineageDetails =
+        new LineageDetails()
+            .withSqlQuery("insert into target select * from source")
+            .withPipeline(new EntityReference().withId(pipeline).withType(Entity.PIPELINE));
+    softDeleted.add(pipeline);
+
+    replay(
+        RdfLiveWrite.RelationshipChange.capture(
+            lineage(UUID.randomUUID(), UUID.randomUUID()), false));
+
+    final Model graph = dataset.getNamedModel(GRAPH);
+    final Resource pipelineResource = graph.createResource(BASE + "entity/pipeline/" + pipeline);
+    assertFalse(graph.isEmpty());
+    assertFalse(graph.contains(pipelineResource, null, (RDFNode) null));
+    assertFalse(graph.contains(null, null, pipelineResource));
   }
 
   @Test
@@ -260,7 +321,9 @@ class RdfLiveWriteTest {
                 lineageEdgeExists
                     ? Optional.of(new RdfProjectionLoaders.StoredLineageEdge(currentLineageDetails))
                     : Optional.empty(),
-            () -> new OntologyActiveGraph(Entity.getCollectionDAO())));
+            () -> new OntologyActiveGraph(Entity.getCollectionDAO()),
+            (type, ids) ->
+                ids.stream().filter(id -> !softDeleted.contains(id)).collect(Collectors.toSet())));
   }
 
   private static EntityRelationship lineage(final UUID fromId, final UUID toId) {

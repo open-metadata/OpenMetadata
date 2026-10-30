@@ -21,9 +21,12 @@ import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import { TaskDetailRow } from './taskDetail.types';
 import {
   deriveTaskAboutEntity,
+  getFieldPathLabel,
   getPlainDescription,
+  getProposingAgent,
   getTaskDetailDescriptor,
   getTaskTypeBadge,
+  getTaskTypeKey,
   resolveIncidentTestCaseFqn,
   withExistingValues,
 } from './taskDetail.utils';
@@ -763,5 +766,149 @@ describe('metadata completion tasks', () => {
         ['missingFields', 'conditions'].includes(row.key)
       )
     ).toEqual([]);
+  });
+
+  it('reads a revise and resubmit task as its own kind, with the reviewer comment', () => {
+    const revision = buildTask({
+      type: TaskType.MetadataCompletion,
+      payload: {
+        stage: 'In Review',
+        missingFields: [],
+        revision: { comment: 'Name a business owner', requestedBy: 'karan' },
+      },
+    });
+    const descriptor = getTaskDetailDescriptor(revision, t);
+
+    expect(getTaskTypeBadge(revision, t)).toEqual({
+      label: 'label.revise-and-resubmit',
+      color: 'warning',
+      icon: 'approval',
+    });
+    expect(getTaskTypeKey(revision)).not.toBe(getTaskTypeKey(task));
+    expect(descriptor.callout?.text).toBe(
+      'message.metadata-completion-revision'
+    );
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionComment')?.value
+    ).toEqual({ kind: 'text', text: 'Name a business owner' });
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionRequestedBy')?.value
+    ).toEqual({ kind: 'text', text: 'karan' });
+  });
+});
+
+describe('getProposingAgent', () => {
+  const approval = (payload: unknown) =>
+    buildTask({
+      type: TaskType.RequestApproval,
+      category: TaskCategory.Approval,
+      createdBy: { id: 'bot', name: 'aiautomationapplicationbot' },
+      payload,
+    } as Partial<Task>);
+
+  it('names the agent that proposed the term, in place of its bot', () => {
+    const task = approval({
+      proposal: { provider: 'automation', agent: 'Glossary Agent' },
+    });
+
+    expect(getProposingAgent(task, t)).toBe('Glossary Agent');
+    expect(
+      getTaskDetailDescriptor(task, t).rows.find(
+        (row) => row.key === 'createdBy'
+      )?.value
+    ).toEqual({ kind: 'agent', name: 'Glossary Agent' });
+  });
+
+  it('falls back to a generic agent when the proposal names none', () => {
+    expect(
+      getProposingAgent(approval({ proposal: { provider: 'automation' } }), t)
+    ).toBe('label.ai-agent');
+  });
+
+  it('keeps the person who opened any other task', () => {
+    const task = approval({ glossaryTerm: { id: 'g1', type: 'glossaryTerm' } });
+
+    expect(getProposingAgent(task, t)).toBeUndefined();
+    expect(
+      getTaskDetailDescriptor(task, t).rows.find(
+        (row) => row.key === 'createdBy'
+      )?.value
+    ).toEqual(expect.objectContaining({ kind: 'users' }));
+  });
+});
+
+describe('getFieldPathLabel', () => {
+  it.each([
+    [
+      'columns::status::description',
+      'label.column-plural › status › label.description',
+    ],
+    [
+      'columns::"order.id"::description',
+      'label.column-plural › order.id › label.description',
+    ],
+    [
+      'columns::status::tags',
+      'label.column-plural › status › label.tag-plural',
+    ],
+    ['columns::status', 'label.column-plural › status'],
+    ['description', 'label.description'],
+    [
+      'schemaFields::id::customField',
+      'label.schema-field-plural › id › customField',
+    ],
+    [
+      'columns.country.description',
+      'label.column-plural › country › label.description',
+    ],
+    [
+      'columns."order.total".description',
+      'label.column-plural › order.total › label.description',
+    ],
+    [
+      'columns.address.city.description',
+      'label.column-plural › address › city › label.description',
+    ],
+    [
+      'messageSchema.schemaFields.order_id.description',
+      'label.message-schema › schemaFields › order_id › label.description',
+    ],
+    ['extension.myProp', 'label.extension › myProp'],
+  ])('reads %s as %s', (fieldPath, label) => {
+    expect(getFieldPathLabel(fieldPath)).toBe(label);
+  });
+
+  it('has no label without a path', () => {
+    expect(getFieldPathLabel()).toBeUndefined();
+    expect(getFieldPathLabel('')).toBeUndefined();
+  });
+
+  it('labels the Field row of a suggestion', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.Suggestion,
+        payload: { fieldPath: 'columns.status.description' },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.find((row) => row.key === 'fieldPath')?.value).toEqual({
+      kind: 'text',
+      text: 'label.column-plural › status › label.description',
+    });
+  });
+
+  it('labels the Field row of a description request', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        payload: { fieldPath: 'columns::status::description' },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.find((row) => row.key === 'fieldPath')?.value).toEqual({
+      kind: 'text',
+      text: 'label.column-plural › status › label.description',
+    });
   });
 });

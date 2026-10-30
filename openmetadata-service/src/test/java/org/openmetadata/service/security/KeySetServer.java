@@ -15,21 +15,27 @@ import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
-/** A key set on a loopback port that counts its requests, or holds every one unanswered. */
+/** A key set on a loopback port that counts its requests, can fail them, or holds them all. */
 final class KeySetServer implements AutoCloseable {
   private static final String NO_KEYS = "{\"keys\":[]}";
+  private static final int OK = 200;
+  private static final int SERVER_ERROR = 500;
 
   private final HttpServer server;
   private final ExecutorService executor = Executors.newCachedThreadPool();
   private final AtomicReference<String> body;
   private final AtomicInteger requests = new AtomicInteger();
+  private final AtomicBoolean failing = new AtomicBoolean();
   private final CountDownLatch closed = new CountDownLatch(1);
 
   private KeySetServer(String body) throws IOException {
@@ -41,7 +47,21 @@ final class KeySetServer implements AutoCloseable {
   }
 
   static KeySetServer publishing(String keyId) throws IOException, GeneralSecurityException {
-    return new KeySetServer(keySetJson(keyId, newPublicKey()));
+    return publishing(keyId, newPublicKey());
+  }
+
+  static KeySetServer publishing(String keyId, RSAPublicKey key) throws IOException {
+    return publishing(List.of(keyId), key);
+  }
+
+  /** A set that publishes {@code key} under each of {@code keyIds}. */
+  static KeySetServer publishing(List<String> keyIds, RSAPublicKey key) throws IOException {
+    return new KeySetServer(keySetJson(keyIds, key));
+  }
+
+  /** A set that serves {@code document} as it is. */
+  static KeySetServer serving(String document) throws IOException {
+    return new KeySetServer(document);
   }
 
   static KeySetServer neverAnswering() throws IOException {
@@ -51,6 +71,16 @@ final class KeySetServer implements AutoCloseable {
   /** From now on the set carries only {@code keyId}, under a new key. */
   void publish(String keyId) throws GeneralSecurityException {
     body.set(keySetJson(keyId, newPublicKey()));
+  }
+
+  /** From now on the set publishes no keys at all. */
+  void publishNoKeys() {
+    body.set(NO_KEYS);
+  }
+
+  /** While failing, every request gets a 500, as a key set in an outage would answer. */
+  void setFailing(boolean isFailing) {
+    failing.set(isFailing);
   }
 
   URL url() throws IOException {
@@ -68,9 +98,21 @@ final class KeySetServer implements AutoCloseable {
   }
 
   static String keySetJson(String keyId, RSAPublicKey key) {
+    return keySetJson(List.of(keyId), key);
+  }
+
+  static String keySetJson(List<String> keyIds, RSAPublicKey key) {
+    return keySetOf(keyIds.stream().map(keyId -> keyJson(keyId, key)).toArray(String[]::new));
+  }
+
+  static String keySetOf(String... keys) {
+    return Arrays.stream(keys).collect(Collectors.joining(",", "{\"keys\":[", "]}"));
+  }
+
+  static String keyJson(String keyId, RSAPublicKey key) {
     return String.format(
-        "{\"keys\":[{\"kty\":\"RSA\",\"kid\":\"%s\",\"use\":\"sig\",\"alg\":\"RS256\","
-            + "\"n\":\"%s\",\"e\":\"%s\"}]}",
+        "{\"kty\":\"RSA\",\"kid\":\"%s\",\"use\":\"sig\",\"alg\":\"RS256\","
+            + "\"n\":\"%s\",\"e\":\"%s\"}",
         keyId, base64Url(key.getModulus()), base64Url(key.getPublicExponent()));
   }
 
@@ -86,8 +128,10 @@ final class KeySetServer implements AutoCloseable {
     if (published == null) {
       awaitClose();
     }
-    byte[] bytes = (published == null ? NO_KEYS : published).getBytes(StandardCharsets.UTF_8);
-    exchange.sendResponseHeaders(200, bytes.length);
+    boolean isFailing = failing.get();
+    String answer = isFailing || published == null ? NO_KEYS : published;
+    byte[] bytes = answer.getBytes(StandardCharsets.UTF_8);
+    exchange.sendResponseHeaders(isFailing ? SERVER_ERROR : OK, bytes.length);
     try (OutputStream out = exchange.getResponseBody()) {
       out.write(bytes);
     }

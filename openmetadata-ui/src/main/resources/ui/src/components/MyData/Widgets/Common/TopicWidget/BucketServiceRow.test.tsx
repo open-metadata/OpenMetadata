@@ -73,4 +73,21 @@ describe('BucketServiceRow', () => {
 
     expect(onOpen).toHaveBeenCalledWith(SERVICE);
   });
+
+  // Power BI's logo is dark artwork: drawn as-is it vanished on a dark card.
+  it('inverts dark connector artwork in dark mode only', () => {
+    render(
+      <ul>
+        <BucketServiceRow
+          bucket="notRun"
+          service={{ ...SERVICE, serviceType: 'PowerBI' }}
+          onOpen={jest.fn()}
+        />
+      </ul>
+    );
+
+    expect(
+      screen.getByTestId('bucket-service-svc-1').querySelector('img')
+    ).toHaveClass('tw:dark:invert');
+  });
 });

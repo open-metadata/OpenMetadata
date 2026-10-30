@@ -13,16 +13,16 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { get, isUndefined, omitBy, toString } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import SpreadsheetDetails from '../../components/DriveService/Spreadsheet/SpreadsheetDetails';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
@@ -163,7 +163,7 @@ const SpreadsheetDetailsPage = () => {
         USERId,
         EntityType.SPREADSHEET
       );
-      const { newValue } = get(res, 'changeDescription.fieldsAdded[0]', {});
+      const newValue = res.changeDescription?.fieldsAdded?.[0]?.newValue ?? [];
       setSpreadsheetDetails((prev) => ({
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
@@ -300,7 +300,7 @@ const SpreadsheetDetailsPage = () => {
   }, [canViewBasic, spreadsheetFQN]);
 
   if (isPermissionsLoading || (canViewBasic && isEntityLoading)) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
   if (isError) {
     return (

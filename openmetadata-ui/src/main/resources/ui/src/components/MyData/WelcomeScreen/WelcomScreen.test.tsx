@@ -12,6 +12,8 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import WelcomeScreen from './WelcomeScreen.component';
 
 const mockNavigate = jest.fn();
@@ -48,6 +50,53 @@ describe('WelcomeScreen', () => {
       addService: mockAddService,
       canAddService: true,
     });
+  });
+
+  it('should pin the mock colours on the welcome screen', () => {
+    renderScreen();
+
+    const root = screen.getByTestId('welcome-screen');
+
+    expect(
+      root.style.getPropertyValue('--tw-background-color-brand-solid')
+    ).toBe('var(--tw-color-purple-600)');
+    expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe('');
+  });
+
+  it('should ignore a custom theme colour', () => {
+    useApplicationStore.setState({
+      applicationConfig: { customTheme: { primaryColor: '#E11D48' } },
+    } as never);
+
+    renderScreen();
+
+    expect(
+      screen
+        .getByTestId('welcome-screen')
+        .style.getPropertyValue('--tw-background-color-brand-solid')
+    ).toBe('var(--tw-color-purple-600)');
+
+    useApplicationStore.setState({ applicationConfig: undefined } as never);
+  });
+
+  it('should keep the theme colours when the brand has no welcome theme', () => {
+    const getWelcomeTheme = jest
+      .spyOn(brandClassBase, 'getWelcomeTheme')
+      .mockReturnValue(undefined as never);
+
+    renderScreen();
+
+    expect(screen.getByTestId('welcome-screen')).not.toHaveAttribute('style');
+
+    getWelcomeTheme.mockRestore();
+  });
+
+  it('should render the heading without a highlighted word', () => {
+    renderScreen();
+
+    const heading = screen.getByRole('heading', { level: 1 });
+
+    expect(heading.querySelector('.tw\\:text-utility-brand-600')).toBeNull();
   });
 
   it('should render the illustration and message', () => {

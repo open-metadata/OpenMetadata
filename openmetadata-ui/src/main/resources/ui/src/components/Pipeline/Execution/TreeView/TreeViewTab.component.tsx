@@ -90,7 +90,7 @@ const TreeViewTab = ({
           style={{ ...getLayoutGutter(16) }}
           wrap="wrap">
           <Box className="layout-column tw:block">
-            <ArrowSvg className="cursor-pointer" />
+            <ArrowSvg className="cursor-pointer" height={11} width={7} />
           </Box>
           <Box className="layout-column tw:block">
             <Typography className="p-b-0 m-b-0 font-medium">
@@ -100,15 +100,19 @@ const TreeViewTab = ({
             </Typography>
           </Box>
           <Box className="layout-column tw:block">
-            <ArrowSvg className=" cursor-pointer transform-180" />
+            <ArrowSvg
+              className=" cursor-pointer transform-180"
+              height={11}
+              width={7}
+            />
           </Box>
         </Box>
 
         {isEmpty(viewData) ? (
           <Box className="tw:relative tw:my-4 tw:min-h-40">
             <NoDataPlaceholder
+              description={t('message.no-execution-runs-found')}
               icon={<ClockRewind />}
-              title={t('message.no-execution-runs-found')}
             />
           </Box>
         ) : (

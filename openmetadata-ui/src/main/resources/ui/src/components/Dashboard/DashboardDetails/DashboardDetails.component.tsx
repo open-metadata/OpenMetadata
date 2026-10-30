@@ -317,7 +317,7 @@ const DashboardDetails = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(dashboardDetails)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(dashboardDetails)}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader

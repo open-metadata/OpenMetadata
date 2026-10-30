@@ -53,7 +53,8 @@ import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { isKnowledgePageFullWidthTab } from '../../../constants/KnowledgeCenter.constant';
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -191,7 +192,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     }
     setIsDeleting(true);
     try {
-      await deleteKnowledgePage(knowledgePage.id);
+      await deleteKnowledgePage(knowledgePage.id, true, true);
       queryClient.invalidateQueries({
         queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
       });
@@ -651,7 +652,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           </Tabs.List>
         </Tabs>
 
-        {activeTab !== EntityTabs.ACTIVITY_FEED && (
+        {!isKnowledgePageFullWidthTab(activeTab) && (
           <Button
             className="tw:relative tw:bottom-2.5"
             color="tertiary"

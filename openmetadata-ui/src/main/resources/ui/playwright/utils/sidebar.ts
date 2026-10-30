@@ -16,8 +16,11 @@ import {
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
+import {
+  disableAiAppMode,
+  stubUserPreferencesAppMode,
+} from '../e2e/Utils/appMode';
 import { waitForAllLoadersToDisappear } from './entity';
-import { waitForAntOverlayToOpen } from './waitHelpers';
 
 export type SettingOptionsType =
   | keyof typeof SETTINGS_OPTIONS_PATH
@@ -36,12 +39,6 @@ export const clickSidebarLink = async (page: Page, testId: string) => {
     .getByTestId(testId)
     .filter({ visible: true });
   await expect(targetElement).toBeVisible();
-  const popup = page
-    .locator('.ant-menu-submenu-popup')
-    .filter({ has: page.getByTestId(testId) });
-  if (await popup.count()) {
-    await waitForAntOverlayToOpen(popup);
-  }
   await targetElement.focus();
   const href = await targetElement.getAttribute('href');
   await targetElement.click();
@@ -62,14 +59,19 @@ export const clickSidebarLink = async (page: Page, testId: string) => {
 };
 
 export const sidebarClick = async (page: Page, id: string) => {
-  // In the AI shell the profile menu's Settings opens the settings modal, not
-  // the legacy settings page these specs drive, so go to that route directly.
+  // The /settings pages are classic-only and the AI shell does not serve them
+  // (ADR:2026-10-21-settings-pages-are-classic-only). Callers of SETTINGS —
+  // `settingClick` and the specs that follow it — drive the classic settings
+  // menu test ids, so switch this page's session to classic and open /settings
+  // rather than the AI settings modal. Specs for the modal open its hash.
   if (
     id === SidebarItem.SETTINGS &&
     (await page.getByTestId('ask-sidebar').count()) > 0
   ) {
-    await page.goto('/settings');
-    await page.waitForURL('**/settings');
+    await disableAiAppMode(page);
+    await stubUserPreferencesAppMode(page, 'classic');
+    await page.goto('/settings', { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page);
 
     return;
   }

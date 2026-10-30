@@ -70,6 +70,14 @@ public final class ContextMemoryEvidenceAccess {
     redactUnviewableQueries(memories, callerAccess(authorizer, securityContext));
   }
 
+  /** A redacted copy, so the memory passed in, which others may hold, stays whole. */
+  public static ContextMemory redactedCopy(
+      ContextMemory memory, Authorizer authorizer, SecurityContext securityContext) {
+    ContextMemory copy = JsonUtils.deepCopy(memory, ContextMemory.class);
+    redactUnviewableQueries(List.of(copy), authorizer, securityContext);
+    return copy;
+  }
+
   /** Each version is the memory as it was written, its Query references included. */
   public static EntityHistory redactUnviewableQueries(
       EntityHistory history, Authorizer authorizer, SecurityContext securityContext) {

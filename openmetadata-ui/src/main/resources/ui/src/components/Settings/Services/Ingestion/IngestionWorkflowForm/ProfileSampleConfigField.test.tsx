@@ -549,6 +549,9 @@ describe('ProfileSampleConfigField', () => {
 
     it('raises a threshold profile sample below 1 to 1 on blur', () => {
       const threshold = dynamicFormData.config?.thresholds?.[0];
+      if (!threshold) {
+        throw new Error('Missing dynamic sampling threshold fixture');
+      }
       render(
         <ProfileSampleConfigField
           {...baseFieldProps}

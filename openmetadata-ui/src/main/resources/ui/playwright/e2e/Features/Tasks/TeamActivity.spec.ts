@@ -521,13 +521,6 @@ test.describe('Team Activity - Team Page Feed', () => {
     await page.goto(`/settings/members/teams/${team.responseData.name}`);
     await waitForPageLoaded(page);
 
-    // Team page should have activity feed section
-    const activityFeedSection = page.locator(
-      '[data-testid="activity-feed"], [data-testid="team-activity"]'
-    );
-
-    // Activity feed should be visible on team page
-    // (exact implementation depends on UI)
     await expect(page).not.toHaveURL('/404');
   });
 });
@@ -602,17 +595,6 @@ test.describe('Team Activity - Notifications', () => {
     const notificationBell = page.getByTestId('task-notifications');
 
     if (await notificationBell.isVisible()) {
-      // Check if notification badge shows count
-      const badge = notificationBell.locator('.ant-badge-count');
-
-      if (await badge.isVisible()) {
-        const count = await badge.textContent();
-        const notificationCount = parseInt(count || '0', 10);
-
-        // Should have at least one notification (team task)
-        expect(notificationCount).toBeGreaterThanOrEqual(0);
-      }
-
       // Click to open notifications
       await notificationBell.click();
 

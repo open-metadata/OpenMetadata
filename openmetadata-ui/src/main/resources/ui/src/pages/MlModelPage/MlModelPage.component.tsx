@@ -20,8 +20,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import MlModelDetailComponent from '../../components/MlModel/MlModelDetail/MlModelDetail.component';
 import { ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -377,7 +377,7 @@ const MlModelPage = () => {
   };
 
   if (permissionsLoading || mlModelLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (mlModelError) {
@@ -405,7 +405,7 @@ const MlModelPage = () => {
   }
 
   if (!mlModelDetail) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (

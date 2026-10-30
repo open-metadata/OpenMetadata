@@ -24,6 +24,7 @@ import {
   User,
 } from '../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import { searchPersonas } from '../../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
@@ -51,7 +52,7 @@ const mergeFetchedPersonas =
 
 interface PersonaRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   // Overrides the default admin-only rule (e.g. per-user EditAll permission).
   canEdit?: boolean;
   // Overrides the first-person description used on your own profile.
@@ -65,6 +66,7 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
   description,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   // Persona assignment is admin-managed (like teams/roles); users pick their
   // own default persona in DefaultPersonaRow, not the assignment here.
@@ -157,7 +159,8 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
     const selectedPersonas = draftPersonaIds
       .map((id) => resolvedById.get(id))
       .filter((p): p is EntityReference => Boolean(p));
-    await updateUserDetails({ personas: selectedPersonas }, 'personas');
+
+    return updateUserDetails({ personas: selectedPersonas }, 'personas');
   };
 
   const handleItemCleared = useCallback(
@@ -176,7 +179,13 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={description ?? t('message.persona-assigned-description')}
+      description={
+        description ??
+        copy(
+          'message.persona-assigned-description',
+          'message.persona-assigned-description-of-user'
+        )
+      }
       isSaveDisabled={isEmpty(xor(draftPersonaIds, initialPersonaIds))}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (

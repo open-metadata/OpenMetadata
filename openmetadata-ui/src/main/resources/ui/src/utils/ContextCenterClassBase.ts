@@ -58,10 +58,14 @@ class ContextCenterClassBase {
     return '';
   }
 
-  // Every Context Center page root paints the canvas; subclasses extend the
-  // root through getContainerClassName() without having to repeat it.
-  public getPageContainerClassName(): string {
-    return `tw:bg-canvas ${this.getContainerClassName()}`.trim();
+  // Classic pages paint the canvas themselves. In AI mode the page sits in the
+  // shell's content card, so it stays transparent and the card's surface shows,
+  // as on every other AI-mode page. Subclasses extend the root through
+  // getContainerClassName() without having to repeat this.
+  public getPageContainerClassName(isAiMode = false): string {
+    return `${
+      isAiMode ? '' : 'tw:bg-canvas'
+    } ${this.getContainerClassName()}`.trim();
   }
 
   public getHomePath(): string {

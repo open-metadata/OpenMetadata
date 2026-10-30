@@ -117,7 +117,7 @@ const FieldValueBoostTable = ({
   };
 
   return (
-    <TableCard.Root size="compact">
+    <TableCard.Root size="compact" variant="muted">
       <Box
         align="center"
         className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"

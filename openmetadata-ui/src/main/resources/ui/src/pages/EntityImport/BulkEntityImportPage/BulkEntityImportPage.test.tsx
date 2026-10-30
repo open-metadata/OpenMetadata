@@ -607,7 +607,7 @@ describe('BulkEntityImportPage', () => {
         expect.objectContaining({
           fields: '*',
           limit: 1000,
-          include: Include.All,
+          include: Include.NonDeleted,
         }),
         expect.objectContaining({
           signal: expect.any(AbortSignal),
@@ -618,7 +618,8 @@ describe('BulkEntityImportPage', () => {
         expect.any(Array),
         { user: true, team: true },
         true,
-        true
+        true,
+        expect.any(Function)
       );
 
       const bulkEditEntityMock = BulkEditEntity as jest.Mock;
@@ -652,7 +653,7 @@ describe('BulkEntityImportPage', () => {
           expect.objectContaining({
             fields: '*',
             limit: 1000,
-            include: Include.All,
+            include: Include.NonDeleted,
           }),
           expect.objectContaining({
             signal: expect.any(AbortSignal),
@@ -665,7 +666,8 @@ describe('BulkEntityImportPage', () => {
         expect.any(Array),
         { user: true, team: true },
         true,
-        true
+        true,
+        expect.any(Function)
       );
 
       const bulkEditEntityMock = BulkEditEntity as jest.Mock;

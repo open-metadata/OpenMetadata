@@ -36,6 +36,7 @@ import { EntityChildren } from '../../../../interface/lineage.interface';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { NODE_INSET_FILL_CLASS } from '../CustomNode.constants';
 import { NodeChildrenProps } from './NodeChildren.interface';
 import VirtualColumnList from './VirtualColumnList.component';
 
@@ -165,6 +166,7 @@ const NodeChildren = ({
       <div
         className={classNames(
           'column-container',
+          NODE_INSET_FILL_CLASS,
           selectedColumn && 'any-column-selected',
           isCreatingEdge && 'creating-edge'
         )}

@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 import { isAxiosError } from 'axios';
-import {
-  CreateOntology,
-  Layer,
-} from '../../../../generated/api/data/createOntology';
+import { CreateOntology } from '../../../../generated/api/data/createOntology';
 import { OntologyPackManifest } from '../../../../generated/api/data/ontologyPackManifest';
 import {
   createOntology,
@@ -34,7 +31,7 @@ export const nativeLibraryOntologyRequest = (
     displayName: pack.name,
     iri: `urn:openmetadata:ontology:${id}`,
     namespace: `urn:openmetadata:ontology:${id}:`,
-    layer: Layer.L1,
+    layer: pack.layer,
     owners: getOwnersOrCurrentUser([], userId),
   };
 };

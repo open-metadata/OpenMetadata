@@ -419,9 +419,9 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
@@ -459,7 +459,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
@@ -481,7 +481,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
@@ -528,7 +528,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     const followButton = await screen.findByRole('button', {
       name: 'Follow Container',
@@ -548,7 +548,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
       name: 'label.container-plural',
@@ -577,7 +577,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
       name: 'label.container-plural',

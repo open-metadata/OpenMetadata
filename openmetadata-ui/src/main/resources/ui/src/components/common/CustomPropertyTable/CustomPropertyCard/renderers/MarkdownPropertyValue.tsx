@@ -13,6 +13,7 @@
 import { Box } from '@openmetadata/ui-core-components';
 import { FormEvent, lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import RichTextEditorPreviewerV1 from '../../../RichTextEditor/RichTextEditorPreviewerV1';
 import {
@@ -29,10 +30,17 @@ const MarkdownPropertyView = ({ value }: PropertyViewProps) => (
   <RichTextEditorPreviewerV1 enableSeeMoreVariant markdown={String(value)} />
 );
 
-const MarkdownPropertyEdit = ({ value, onSave, formId }: PropertyEditProps) => {
+const MarkdownPropertyEdit = ({
+  value,
+  onSave,
+  formId,
+  onDirtyChange,
+}: PropertyEditProps) => {
   const { t } = useTranslation();
   const initialValue = typeof value === 'string' ? value : '';
   const [markdown, setMarkdown] = useState(initialValue);
+
+  useReportDirty(markdown.trim(), onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

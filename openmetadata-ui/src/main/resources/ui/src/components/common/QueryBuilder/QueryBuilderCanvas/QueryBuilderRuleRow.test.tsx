@@ -183,6 +183,18 @@ describe('QueryBuilderRuleRow', () => {
     expect(actions.setOperator).toHaveBeenCalledWith(['root', 'r1'], 'picked');
   });
 
+  it('should keep the operator column wide enough to read its label', () => {
+    renderRow({ properties: { field: 'name' } });
+
+    const operatorColumn = screen
+      .getByText('label.operator')
+      .closest('.tw\\:min-w-\\[140px\\]');
+
+    expect(operatorColumn).toContainElement(
+      screen.getByTestId('advanced-search-operator-select')
+    );
+  });
+
   it('should leave the value column empty until a field and operator are set', () => {
     renderRow({ properties: { field: 'name' } });
 
