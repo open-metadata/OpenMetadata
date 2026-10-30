@@ -83,6 +83,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -352,6 +353,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected User createNewEntity(User user) {
+    user.setProfile(ProfileWebhookSecrets.ofANewEntity(user.getProfile()));
+    return super.createNewEntity(user);
+  }
+
+  @Override
   public void storeEntity(User user, boolean update) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
@@ -384,8 +391,12 @@ public class UserRepository extends EntityRepository<User> {
             user.getName(), user.getAuthenticationMechanism());
       }
 
+      // A batch insert can be retried after a rollback, so the user keeps what was submitted and
+      // a copy carries the encrypted profile: a retry would read server ciphertext as submitted.
+      User stored = JsonUtils.deepCopy(user, User.class);
+      stored.setProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
       fqns.add(user.getFullyQualifiedName());
-      jsons.add(serializeForStorage(user));
+      jsons.add(serializeForStorage(stored));
     }
 
     dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
@@ -500,7 +511,14 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public EntityRepository<User>.EntityUpdater getUpdater(
       User original, User updated, Operation operation, ChangeSource changeSource) {
+    // Before the diff, so the change description and the stored row carry ciphertext only.
+    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
     return new UserUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void validatePatch(User original, User updated, JsonPatch patch) {
+    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override

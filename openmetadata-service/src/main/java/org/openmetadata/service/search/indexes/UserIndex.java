@@ -8,7 +8,8 @@ import org.openmetadata.service.Entity;
 
 public class UserIndex implements SearchIndex {
   final User user;
-  final Set<String> excludeFields = Set.of("owns", "follows", "authenticationMechanism");
+  final Set<String> excludeFields =
+      Set.of("owns", "follows", "authenticationMechanism", "profile.subscription");
 
   public UserIndex(User user) {
     this.user = user;

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MASKED_PASSWORD_VALUE } from '../../../../../../constants/Secrets.constants';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 
@@ -81,6 +82,38 @@ describe('MembersTeamInfoWidgets', () => {
 
     expect(screen.queryByTestId('team-type')).not.toBeInTheDocument();
     expect(screen.queryByTestId('team-persona')).not.toBeInTheDocument();
+  });
+
+  it('saves a masked endpoint unchanged for the webhook it is stored for', async () => {
+    const onPatch = jest.fn().mockResolvedValue(true);
+    render(
+      <MembersTeamInfoWidgets
+        canEdit
+        team={
+          {
+            ...groupTeam,
+            profile: {
+              subscription: { slack: { endpoint: MASKED_PASSWORD_VALUE } },
+            },
+          } as Team
+        }
+        onPatch={onPatch}
+      />
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-subscription'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-subscription'));
+    });
+
+    expect(onPatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: {
+          subscription: { slack: { endpoint: MASKED_PASSWORD_VALUE } },
+        },
+      })
+    );
   });
 
   it('hides the edit affordances when the user cannot edit', () => {

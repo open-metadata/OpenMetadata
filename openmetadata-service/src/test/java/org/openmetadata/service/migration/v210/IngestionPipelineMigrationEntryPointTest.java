@@ -51,6 +51,7 @@ import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
+import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
 class IngestionPipelineMigrationEntryPointTest {
 
@@ -91,6 +92,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(AuthenticationSecretsEncryptionMigration.class);
         MockedStatic<ConsumerIdMigration> consumerIdMigration =
             mockStatic(ConsumerIdMigration.class);
+        MockedStatic<WebhookSecretsMigration> webhookSecretsMigration =
+            mockStatic(WebhookSecretsMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
             mockStatic(DeltaLakeRetirementMigration.class);
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
@@ -119,6 +122,10 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
+      webhookSecretsMigration.verify(
+          () -> WebhookSecretsMigration.encryptProfileWebhookSecrets(handle, connectionType));
+      webhookSecretsMigration.verify(
+          () -> WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, connectionType));
       // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
       v206MigrationUtil.verify(
           () ->

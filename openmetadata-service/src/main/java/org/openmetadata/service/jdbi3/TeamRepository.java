@@ -44,6 +44,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.service.util.EntityUtil.*;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -92,8 +93,10 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.teams.TeamResource;
@@ -713,6 +716,12 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
+  protected Team createNewEntity(Team team) {
+    team.setProfile(ProfileWebhookSecrets.ofANewEntity(team.getProfile()));
+    return super.createNewEntity(team);
+  }
+
+  @Override
   public void storeEntity(Team team, boolean update) {
     store(team, update);
   }
@@ -725,7 +734,14 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeEntities(List<Team> entities) {
-    storeMany(entities);
+    // A batch insert can be retried after a rollback, so the teams keep what was submitted and
+    // copies carry the encrypted profile: a retry would read server ciphertext as submitted.
+    storeMany(entities.stream().map(TeamRepository::withNewProfileEncrypted).toList());
+  }
+
+  private static Team withNewProfileEncrypted(Team team) {
+    Team stored = JsonUtils.deepCopy(team, Team.class);
+    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
   }
 
   /**
@@ -788,7 +804,14 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public EntityRepository<Team>.EntityUpdater getUpdater(
       Team original, Team updated, Operation operation, ChangeSource changeSource) {
+    // Before the diff, so the change description and the stored row carry ciphertext only.
+    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
     return new TeamUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void validatePatch(Team original, Team updated, JsonPatch patch) {
+    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override
