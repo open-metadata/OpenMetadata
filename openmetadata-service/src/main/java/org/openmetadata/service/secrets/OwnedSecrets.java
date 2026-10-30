@@ -28,13 +28,12 @@ import org.openmetadata.service.fernet.Fernet;
 
 /**
  * Stores credentials under keys derived from their owner's identity: {@code
- * <managed namespace><owner segments>/<field key>}. A key never depends on a name, so no two owners
- * share one, and the namespace says who a stored secret belongs to.
+ * <managed namespace><owner segments>/<field key>}. The namespace says who a stored secret belongs
+ * to.
  *
- * <p>A reference into the managed namespace is accepted only from the owner's own namespace, or
- * when the owner already holds it. A caller therefore cannot point a field at another owner's
- * secret. References into a vault the caller manages themselves, outside the managed namespace,
- * are left alone. ADR:2026-10-30-owned-secret-keys-are-derived-from-owner-ids
+ * <p>A reference into the managed namespace is kept when it lies in the owner's own namespace or
+ * the owner already holds it. References into a vault the caller manages themselves, outside the
+ * managed namespace, are left alone. ADR:2026-10-30-owned-secret-keys-are-derived-from-owner-ids
  */
 @Slf4j
 public final class OwnedSecrets {
@@ -112,9 +111,9 @@ public final class OwnedSecrets {
   }
 
   /**
-   * Deletes the secrets of {@code references} that lie in the owner's namespace. Anything else is
-   * left alone, as it may be shared. A failed delete is logged and leaves an unused secret behind,
-   * so it never fails the caller's write.
+   * Deletes the secrets of {@code references} that lie in the owner's namespace; anything else is
+   * left alone. A failed delete is logged and leaves an unused secret behind, so it never fails the
+   * caller's write.
    */
   public void delete(Collection<String> references, SecretOwner owner) {
     references.stream()

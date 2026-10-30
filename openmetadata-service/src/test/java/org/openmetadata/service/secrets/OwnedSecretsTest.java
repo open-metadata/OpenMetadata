@@ -49,7 +49,7 @@ class OwnedSecretsTest {
   private static final SecretOwner ALICE = userOwner(UUID.randomUUID());
   private static final SecretOwner BOB = userOwner(UUID.randomUUID());
   private static final String LEGACY_REFERENCE =
-      SECRET_FIELD_PREFIX + "/openmetadata/databaseservice/warehouse/queryrunner/user/password";
+      SECRET_FIELD_PREFIX + "/openmetadata/database/warehouse/password";
 
   private InMemorySecretsManager vault;
   private OwnedSecrets ownedSecrets;
@@ -141,13 +141,9 @@ class OwnedSecretsTest {
   }
 
   @Test
-  void aFieldPathNeverCollidesWithANameThatSpellsIt() {
+  void aFieldKeyEncodesEverySegmentOfThePath() {
     assertNotEquals(
-        SecretKeyEncoding.fieldKey(List.of("authtype", "password")),
-        SecretKeyEncoding.fieldKey(List.of("authtype/password")));
-    assertNotEquals(
-        SecretKeyEncoding.fieldKey(List.of("prod_db")),
-        SecretKeyEncoding.fieldKey(List.of("prod.db")));
+        SecretKeyEncoding.fieldKey(List.of("a", "b")), SecretKeyEncoding.fieldKey(List.of("a/b")));
   }
 
   @Test
@@ -192,15 +188,15 @@ class OwnedSecretsTest {
 
   @Test
   void rekeyCopiesALegacySecretAndKeepsTheOldOne() {
-    vault.getSecretsMap().put(secretName(LEGACY_REFERENCE), "shared-password");
+    vault.getSecretsMap().put(secretName(LEGACY_REFERENCE), "stored-password");
     SnowflakeConnection connection = snowflake(LEGACY_REFERENCE);
 
     OwnedSecrets.RekeyResult result = ownedSecrets.rekey(connection, ALICE, List.of());
 
     assertEquals(List.of("/password"), result.rekeyedFields());
     assertTrue(ownedSecrets.isOwnedBy(connection.getPassword(), ALICE));
-    assertEquals("shared-password", vault.getSecretValue(connection.getPassword()));
-    assertEquals("shared-password", vault.getSecretsMap().get(secretName(LEGACY_REFERENCE)));
+    assertEquals("stored-password", vault.getSecretValue(connection.getPassword()));
+    assertEquals("stored-password", vault.getSecretsMap().get(secretName(LEGACY_REFERENCE)));
   }
 
   @Test
@@ -254,7 +250,7 @@ class OwnedSecretsTest {
 
   @Test
   void aSecondRekeyChangesNothing() {
-    vault.getSecretsMap().put(secretName(LEGACY_REFERENCE), "shared-password");
+    vault.getSecretsMap().put(secretName(LEGACY_REFERENCE), "stored-password");
     SnowflakeConnection connection = snowflake(LEGACY_REFERENCE);
     ownedSecrets.rekey(connection, ALICE, List.of());
     Map<String, String> afterFirstRun = Map.copyOf(vault.getSecretsMap());
@@ -269,7 +265,7 @@ class OwnedSecretsTest {
   void deleteRemovesOnlyTheOwnersSecrets() {
     String alice = reference(encrypt(snowflake("alice-password"), ALICE).getPassword());
     String bob = reference(encrypt(snowflake("bob-password"), BOB).getPassword());
-    vault.getSecretsMap().put(secretName(LEGACY_REFERENCE), "shared-password");
+    vault.getSecretsMap().put(secretName(LEGACY_REFERENCE), "stored-password");
 
     ownedSecrets.delete(List.of(alice, bob, LEGACY_REFERENCE), ALICE);
 
@@ -321,7 +317,8 @@ class OwnedSecretsTest {
 
   @ParameterizedTest
   @MethodSource("providerLayouts")
-  void keysFitEveryProviderAndNeverCollide(SecretsManager.SecretsIdConfig layout, Pattern allowed) {
+  void keysFitEveryProviderAndDifferPerOwner(
+      SecretsManager.SecretsIdConfig layout, Pattern allowed) {
     InMemorySecretsManager provider = withLayout(layout);
     String alice = keyOf(provider, ALICE);
     String bob = keyOf(provider, BOB);

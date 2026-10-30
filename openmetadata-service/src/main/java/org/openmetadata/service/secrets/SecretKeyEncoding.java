@@ -40,7 +40,7 @@ final class SecretKeyEncoding {
     return BASE32.encode(bytes.array());
   }
 
-  /** Fixed-length key for a field, so nested paths and user-named array elements cannot collide. */
+  /** Fixed-length key for a field, whatever its path holds. */
   static String fieldKey(List<String> fieldPath) {
     byte[] digest = sha256(pointer(fieldPath));
     return BASE32.encode(digest, 0, FIELD_KEY_BYTES);

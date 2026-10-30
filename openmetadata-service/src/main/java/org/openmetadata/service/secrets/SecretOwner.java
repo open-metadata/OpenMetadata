@@ -20,9 +20,8 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Who a stored credential belongs to. External secret keys are built from this, never from a name:
- * an id is never reused and never changes, so two owners cannot share a key and renaming an owner
- * leaves its secrets where they are.
+ * Who a stored credential belongs to. Keys built from it are made of code literals and the owner's
+ * ids, so they stay the same for the owner's whole life.
  *
  * <p>Each kind of owner keeps one fixed shape of literals and ids, and its first literal is not used
  * by any other kind, so distinct owners always render distinct segments.
