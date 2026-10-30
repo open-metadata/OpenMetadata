@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import OntologyEmptyCard from './OntologyEmptyCard';
 
 describe('OntologyEmptyCard', () => {
@@ -23,6 +23,22 @@ describe('OntologyEmptyCard', () => {
     fireEvent.click(screen.getByTestId('ontology-empty-card-add-concept'));
 
     expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders through the shared no-data placeholder', () => {
+    render(<OntologyEmptyCard canAdd onAdd={jest.fn()} />);
+    const card = screen.getByTestId('ontology-empty-card');
+
+    expect(within(card).getByTestId('empty-placeholder')).toBeVisible();
+    expect(
+      within(card).getByText('message.ontology-empty-card-description')
+    ).toBeVisible();
+    expect(card.querySelector('[data-icon]')?.parentElement).toHaveClass(
+      'tw:text-fg-brand-primary'
+    );
+    expect(
+      card.querySelector('[data-icon]')?.parentElement?.className
+    ).not.toMatch(/gray|text-secondary|text-quaternary/);
   });
 
   it('hides Add concept from a user who cannot author the first class', () => {
