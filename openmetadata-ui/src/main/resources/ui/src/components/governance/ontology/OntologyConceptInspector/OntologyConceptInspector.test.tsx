@@ -488,6 +488,7 @@ describe('OntologyConceptInspector view rail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetBindings.mockResolvedValue({
+      kind: 'complete',
       revision: 1,
       assets: Array.from({ length: 7 }, (_, i) => ({
         assetId: 'asset-' + i,
@@ -552,6 +553,7 @@ describe('OntologyConceptInspector view rail', () => {
 
   it('retains asset paging in Edit', async () => {
     mockGetBindings.mockResolvedValue({
+      kind: 'complete',
       revision: 1,
       assets: Array.from({ length: 12 }, (_, i) => ({
         assetId: 'asset-' + i,
@@ -590,7 +592,11 @@ describe('OntologyConceptInspector view rail', () => {
 });
 
 it('adds a relationship from the rail, changes its type and retries a refused save', async () => {
-  mockGetBindings.mockResolvedValue({ revision: 0, assets: [] });
+  mockGetBindings.mockResolvedValue({
+    kind: 'complete',
+    revision: 0,
+    assets: [],
+  });
   const target = {
     ...concept,
     id: 'party',
@@ -851,6 +857,7 @@ describe('OntologyConceptInspector in AI mode', () => {
 
   it('shows three assets with a Data handoff in the AI view rail', async () => {
     mockGetBindings.mockResolvedValue({
+      kind: 'complete',
       revision: 1,
       assets: Array.from({ length: 7 }, (_, i) => ({
         assetId: 'asset-' + i,

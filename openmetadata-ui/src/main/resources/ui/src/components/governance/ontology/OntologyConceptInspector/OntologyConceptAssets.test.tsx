@@ -20,6 +20,10 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import { UpdateOntologyConceptBinding } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import {
+  Access,
+  Operation,
+} from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import {
   AssetBinding,
   AssetType,
   OntologyConceptBindingsResponse,
@@ -65,7 +69,12 @@ const stored = (): OntologyConceptBindingsResponse => ({
 const renderAssets = (id = 'customer') =>
   renderWithQueryClient(
     <MemoryRouter>
-      <OntologyConceptAssets canEdit conceptId={id} key={id} />
+      <OntologyConceptAssets
+        canEdit
+        conceptId={id}
+        key={id}
+        presentation={{ kind: 'edit' }}
+      />
     </MemoryRouter>
   );
 const selectAll = async () => {
@@ -338,7 +347,12 @@ it('stops the unsent picker tail when the concept switches during a write', asyn
   await waitFor(() => expect(http.put).toHaveBeenCalledTimes(1));
   rerender(
     <MemoryRouter>
-      <OntologyConceptAssets canEdit conceptId="order" key="order" />
+      <OntologyConceptAssets
+        canEdit
+        conceptId="order"
+        key="order"
+        presentation={{ kind: 'edit' }}
+      />
     </MemoryRouter>
   );
   await act(async () => finish());
@@ -355,4 +369,160 @@ it('stops the unsent picker tail when the concept switches during a write', asyn
     screen.queryByTestId('ontology-data-asset-picker')
   ).not.toBeInTheDocument();
   expect(screen.queryByText('old-table')).not.toBeInTheDocument();
+});
+
+const serveBindings = (
+  state: OntologyConceptBindingsResponse,
+  permissions: { operation: Operation; access: Access }[] = []
+) =>
+  http.get.mockImplementation(async (url) => {
+    if (url.startsWith('/search/query?')) {
+      return searchResult(['new-one', 'new-two']);
+    }
+
+    return {
+      data: url.includes('/bindings')
+        ? state
+        : { resource: 'table', permissions },
+    };
+  });
+const linkOnPut = (state: OntologyConceptBindingsResponse) =>
+  http.put.mockImplementation(async (_url, data) => {
+    state.assets.push(
+      asset((data as UpdateOntologyConceptBinding).asset.assetId)
+    );
+    state.revision += 1;
+
+    return { data: { revision: 999, assets: [] } };
+  });
+
+it('adds selected assets serially at each re-read revision and removes a linked asset', async () => {
+  const state: OntologyConceptBindingsResponse = { revision: 0, assets: [] };
+  serveBindings(state, [
+    { operation: Operation.ViewSampleData, access: Access.Allow },
+  ]);
+  linkOnPut(state);
+  http.delete.mockImplementation(async (url) => {
+    state.assets = state.assets.filter(
+      (item) => !url.endsWith(`/${item.assetId}`)
+    );
+    state.revision += 1;
+
+    return { data: state };
+  });
+  renderAssets();
+  await selectAll();
+  await waitFor(() =>
+    expect(
+      screen.queryByTestId('ontology-data-asset-picker')
+    ).not.toBeInTheDocument()
+  );
+
+  expect(await screen.findByRole('link', { name: 'new-one' })).toBeVisible();
+  expect(screen.getByRole('link', { name: 'new-two' })).toBeVisible();
+  expect(
+    http.put.mock.calls.map(
+      ([, body]) => (body as UpdateOntologyConceptBinding).expectedRevision
+    )
+  ).toEqual([0, 1]);
+
+  await waitFor(() =>
+    expect(
+      screen.getAllByRole('link', { name: 'label.sample-data' })
+    ).toHaveLength(2)
+  );
+  const remove = screen.getByTestId('ontology-native-asset-remove-new-one');
+  await waitFor(() => expect(remove).toBeEnabled());
+  fireEvent.click(remove);
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('link', { name: 'new-one' })
+    ).not.toBeInTheDocument()
+  );
+
+  expect(http.delete).toHaveBeenCalledWith(
+    '/ontologyConcepts/customer/bindings/table/new-one',
+    { params: { expectedRevision: 2 } }
+  );
+  expect(screen.getByRole('link', { name: 'new-two' })).toBeVisible();
+});
+
+it('keeps a refused selection available for retry and closes the picker without dropping successful links', async () => {
+  const state: OntologyConceptBindingsResponse = { revision: 0, assets: [] };
+  serveBindings(state);
+  http.put.mockImplementationOnce(async (_url, data) => {
+    state.assets.push(
+      asset((data as UpdateOntologyConceptBinding).asset.assetId)
+    );
+    state.revision += 1;
+
+    return { data: state };
+  });
+  http.put.mockRejectedValueOnce(new Error('Denied'));
+  renderAssets();
+  const picker = await selectAll();
+
+  expect(
+    await within(picker).findByTestId('ontology-native-batch-status')
+  ).toHaveTextContent('message.ontology-binding-unconfirmed');
+  expect(
+    within(picker).getByRole('checkbox', { name: 'new-two' })
+  ).toBeChecked();
+  expect(screen.getByRole('link', { name: 'new-one' })).toBeVisible();
+
+  fireEvent.click(
+    within(picker).getByTestId('ontology-data-asset-picker-close')
+  );
+
+  expect(
+    screen.queryByTestId('ontology-data-asset-picker')
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'new-one' })).toBeVisible();
+});
+
+it('retries failed binding reads before offering editing', async () => {
+  let failRead = true;
+  http.get.mockImplementation(async (url) => {
+    if (!url.includes('/bindings')) {
+      return { data: { resource: 'table', permissions: [] } };
+    }
+    if (failRead) {
+      throw new Error('Offline');
+    }
+
+    return { data: { revision: 0, assets: [] } };
+  });
+  renderAssets();
+  const retry = await screen.findByRole('button', { name: 'label.retry' });
+
+  expect(screen.getByTestId('ontology-native-link-assets')).toBeDisabled();
+
+  failRead = false;
+  fireEvent.click(retry);
+  await waitFor(() =>
+    expect(screen.getByTestId('ontology-native-link-assets')).toBeEnabled()
+  );
+
+  expect(screen.getByText('message.no-data-available')).toBeVisible();
+});
+
+it('does not repeat a link that the re-read reports as already present', async () => {
+  const state: OntologyConceptBindingsResponse = { revision: 0, assets: [] };
+  serveBindings(state);
+  http.put.mockImplementation(async () => {
+    state.assets.push(asset('new-one'), asset('new-two'));
+    state.revision += 1;
+
+    return { data: state };
+  });
+  renderAssets();
+  await selectAll();
+  await waitFor(() =>
+    expect(
+      screen.queryByTestId('ontology-data-asset-picker')
+    ).not.toBeInTheDocument()
+  );
+
+  expect(screen.getByRole('link', { name: 'new-two' })).toBeVisible();
+  expect(http.put).toHaveBeenCalledTimes(1);
 });
