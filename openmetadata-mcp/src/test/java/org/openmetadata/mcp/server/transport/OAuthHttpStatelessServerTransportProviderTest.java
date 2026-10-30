@@ -315,8 +315,9 @@ class OAuthHttpStatelessServerTransportProviderTest {
         .contains("Mcp-Name")
         .contains("Mcp-Client-Name")
         .contains("X-OpenMetadata-Persona");
-    // Without this the browser hides the 401's challenge and the client cannot start OAuth.
-    verify(response).setHeader("Access-Control-Expose-Headers", "WWW-Authenticate");
+    // Without these the browser hides the 401's challenge, which the client needs to start OAuth,
+    // and the 503's retry hint.
+    verify(response).setHeader("Access-Control-Expose-Headers", "WWW-Authenticate, Retry-After");
     verify(response).setHeader("Vary", "Origin");
   }
 
@@ -359,7 +360,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
     JwtFilter jwtFilter = spy(new JwtFilter(authConfig, mock(AuthorizerConfiguration.class)));
     Claim emailClaim = mock(Claim.class);
     when(emailClaim.asString()).thenReturn("mcp.user@company.com");
-    doReturn(Map.of("email", emailClaim)).when(jwtFilter).validateJwtAndGetClaims("token");
+    doReturn(Map.of("email", emailClaim)).when(jwtFilter).verifySignatureOnly("token");
     doNothing().when(jwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
     OAuthHttpStatelessServerTransportProvider transport =
         transportWith(mock(UserSSOOAuthProvider.class));
@@ -530,6 +531,25 @@ class OAuthHttpStatelessServerTransportProviderTest {
       assertThat(failure.statusCode()).isEqualTo(HttpServletResponse.SC_UNAUTHORIZED);
       assertThat(failure.jsonRpcCode()).isEqualTo(JsonRpcErrorBody.UNAUTHORIZED);
     }
+  }
+
+  // ── 503 for a token that cannot be confirmed ─────────────────────────────
+
+  @Test
+  void writeUnavailable_answers503WithTheRetryHintAndNoChallenge() throws Exception {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter body = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+
+    OAuthHttpStatelessServerTransportProvider.writeUnavailable(response, 2);
+
+    verify(response).setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+    verify(response).setHeader("Retry-After", "2");
+    verify(response, never()).setHeader(eq("WWW-Authenticate"), anyString());
+    assertThat(body.toString())
+        .isEqualTo(
+            "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32003,"
+                + "\"message\":\"Credential verification is temporarily unavailable\"}}");
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────

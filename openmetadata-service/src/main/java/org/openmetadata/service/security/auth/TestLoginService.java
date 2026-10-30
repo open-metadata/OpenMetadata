@@ -105,12 +105,14 @@ public final class TestLoginService {
       // Constructing it triggers a JWKS fetch from the candidate IdP; this endpoint
       // is admin-only and low-frequency, and a slow/unreachable candidate authority
       // will fail this single request rather than affect live authentication.
+      // A dry run grants no access, and resolving the identity must not touch the database
+      // (resolveJwtClaims), so only the signature, expiry and issuer are checked here.
       JwtFilter transientFilter = new JwtFilter(ctx.authConfig(), ctx.authzConfig());
-      claims = Optional.of(transientFilter.validateJwtAndGetClaims(idToken));
+      claims = Optional.of(transientFilter.verifySignatureOnly(idToken));
       ctx.recorder().pass(TestLoginStage.TOKEN_VALIDATED);
     } catch (Exception e) {
-      // JwtFilter's constructor and validateJwtAndGetClaims are @SneakyThrows, so a JWKS fetch
-      // failure arrives as a checked exception; every failure must become a typed result rather
+      // JwtFilter's constructor and verifySignatureOnly can throw a JWKS fetch failure as a
+      // checked exception they do not declare; every failure must become a typed result rather
       // than a 500.
       LOG.debug("Test login token validation failed", e);
       ctx.recorder()

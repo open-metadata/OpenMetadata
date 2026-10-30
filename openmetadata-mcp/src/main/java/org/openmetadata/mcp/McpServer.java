@@ -5,6 +5,7 @@ import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
+import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
 import java.util.Set;
@@ -14,6 +15,7 @@ import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
+import org.openmetadata.mcp.server.transport.JsonRpcErrorBody;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
@@ -32,6 +34,7 @@ import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 
 @Slf4j
@@ -329,7 +332,7 @@ public class McpServer implements McpServerProvider {
 
   protected McpStatelessServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpStatelessServerFeatures.SyncToolSpecification(
-        tool, (context, req) -> runInCleanRequestContext(() -> executeTool(tool, context, req)));
+        tool, (context, req) -> runCallback(() -> executeTool(tool, context, req)));
   }
 
   private McpSchema.CallToolResult executeTool(
@@ -363,7 +366,7 @@ public class McpServer implements McpServerProvider {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
         (context, arguments) ->
-            runInCleanRequestContext(
+            runCallback(
                 () ->
                     promptsContext.callPrompt(
                         securityContextFrom(context), prompt.name(), arguments)));
@@ -383,11 +386,20 @@ public class McpServer implements McpServerProvider {
    * The SDK runs each callback on a Reactor bounded-elastic worker that outlives the call, so the
    * entity cache and impersonation state a call leaves on its thread would otherwise answer the
    * next call that lands there. A servlet filter cannot clear them: it runs on a different thread.
+   *
+   * <p>The SDK answers an exception that is not an {@link McpError} with -32603 and the
+   * exception's own message. A token the server could not confirm becomes an {@link McpError} that
+   * reads as temporarily unavailable, without that message, which names the principal.
    */
-  private static <T> T runInCleanRequestContext(Supplier<T> callback) {
+  private static <T> T runCallback(Supplier<T> callback) {
     PerRequestContextCleaner.clear();
     try {
       return callback.get();
+    } catch (CredentialUnavailableException e) {
+      LOG.debug("MCP callback token could not be confirmed", e);
+      throw McpError.builder(JsonRpcErrorBody.UNAVAILABLE)
+          .message(CredentialUnavailableException.CLIENT_MESSAGE)
+          .build();
     } finally {
       PerRequestContextCleaner.clear();
     }
