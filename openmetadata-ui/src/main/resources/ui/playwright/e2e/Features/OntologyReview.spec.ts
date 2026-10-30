@@ -23,6 +23,7 @@ import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { TeamClass } from '../../support/team/TeamClass';
+import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { fillCodeEditor } from '../../utils/codeEditor';
 import {
@@ -348,9 +349,10 @@ test.describe(
     test('manages reviewers with reload persistence and locks settings during an open review', async ({
       isolatedUserPage: author,
       isolatedUser,
-      freshUserPage: { user: reviewer },
     }) => {
       const api = await getWorkerAdminAPIContext();
+      // Only needs to exist as a pickable user, so skip a browser sign-in.
+      const reviewer = new UserClass();
       const teamName = `pw_review_team_${uuid()}`;
       const team = new TeamClass({
         name: teamName,
@@ -364,6 +366,7 @@ test.describe(
       const tasks: string[] = [];
       let ontology: Ontology | undefined;
       try {
+        await reviewer.create(api);
         await team.create(api);
         await waitForSearchIndexed(
           api,
@@ -606,6 +609,7 @@ test.describe(
           );
         }
         await team.delete(api);
+        await reviewer.delete(api);
       }
     });
 
