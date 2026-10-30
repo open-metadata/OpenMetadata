@@ -36,7 +36,11 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import {
+  getDataProductInputPorts,
+  getDataProductOutputPorts,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
 import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -389,6 +393,7 @@ export const InputOutputPortsTab = forwardRef<
     const { t } = useTranslation();
     const [isAddingInputPort, setIsAddingInputPort] = useState(false);
     const [isAddingOutputPort, setIsAddingOutputPort] = useState(false);
+    const [oppositePortIds, setOppositePortIds] = useState<string[]>([]);
     const [isLineageFullScreen, setIsLineageFullScreen] = useState(false);
     const [isLineageExpanded, setIsLineageExpanded] = useState(false);
     const [isInputPortsExpanded, setIsInputPortsExpanded] = useState(true);
@@ -410,11 +415,24 @@ export const InputOutputPortsTab = forwardRef<
     const [inputPortsCount, setInputPortsCount] = useState(0);
     const [outputPortsCount, setOutputPortsCount] = useState(0);
 
-    // Compute query filter for port selection drawer
-    // Only show assets that belong to the DataProduct
-    const portQueryFilter = useMemo(() => {
-      return getQueryFilterForDataProductPorts(dataProductFqn);
-    }, [dataProductFqn]);
+    // Output ports must be assets of the data product, and an asset cannot be
+    // both an input and an output port, so each picker hides the other kind.
+    const outputPortQueryFilter = useMemo(
+      () => getQueryFilterForDataProductPorts(dataProductFqn, oppositePortIds),
+      [dataProductFqn, oppositePortIds]
+    );
+
+    const inputPortQueryFilter = useMemo(
+      () =>
+        oppositePortIds.length > 0
+          ? {
+              query: {
+                bool: { must_not: [{ ids: { values: oppositePortIds } }] },
+              },
+            }
+          : undefined,
+      [oppositePortIds]
+    );
 
     // Consumer via prop (Task 8 rule 2): `permissions` is the raw OperationPermission
     // fed straight through from DataProductUtils.tsx's `dataProductPermission`
@@ -496,13 +514,30 @@ export const InputOutputPortsTab = forwardRef<
       refreshPorts,
     }));
 
-    const handleAddInputPort = useCallback(() => {
-      setIsAddingInputPort(true);
-    }, []);
+    // ponytail: first 1000 ports (the API max); a product past that can still
+    // list an opposite port, which the save then rejects inline.
+    const loadOppositePortIds = useCallback(
+      async (getPorts: typeof getDataProductInputPorts) => {
+        try {
+          const { data } = await getPorts(dataProductFqn, { limit: 1000 });
+          setOppositePortIds(data.map(({ id }) => id));
+        } catch (error) {
+          setOppositePortIds([]);
+          showErrorToast(error as AxiosError);
+        }
+      },
+      [dataProductFqn]
+    );
 
-    const handleAddOutputPort = useCallback(() => {
+    const handleAddInputPort = useCallback(async () => {
+      await loadOppositePortIds(getDataProductOutputPorts);
+      setIsAddingInputPort(true);
+    }, [loadOppositePortIds]);
+
+    const handleAddOutputPort = useCallback(async () => {
+      await loadOppositePortIds(getDataProductInputPorts);
       setIsAddingOutputPort(true);
-    }, []);
+    }, [loadOppositePortIds]);
 
     const handleInputPortSave = useCallback(async () => {
       setIsAddingInputPort(false);
@@ -607,6 +642,7 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
+          queryFilter={inputPortQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', { entity: t('label.input') }),
           })}
@@ -619,7 +655,7 @@ export const InputOutputPortsTab = forwardRef<
           entityFqn={dataProductFqn}
           infoBannerText={t('message.output-ports-from-data-product-assets')}
           open={isAddingOutputPort}
-          queryFilter={portQueryFilter}
+          queryFilter={outputPortQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', {
               entity: t('label.output'),

@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import {
+  getDataProductInputPorts,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { InputOutputPortsTab } from './InputOutputPortsTab.component';
 import { InputOutputPortsTabProps } from './InputOutputPortsTab.types';
 
@@ -26,6 +30,8 @@ import { InputOutputPortsTabProps } from './InputOutputPortsTab.types';
 
 jest.mock('../../../rest/dataProductAPI', () => ({
   getDataProductPortsView: jest.fn(),
+  getDataProductInputPorts: jest.fn(),
+  getDataProductOutputPorts: jest.fn(),
 }));
 
 jest.mock('./PortsLineageView/PortsLineageView.component', () => ({
@@ -38,8 +44,14 @@ jest.mock('./PortsListView/PortsListView.component', () => ({
   default: () => <div data-testid="ports-list-view" />,
 }));
 
+const mockAssetSelectionDrawer = jest.fn();
+
 jest.mock('../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer', () => ({
-  AssetSelectionDrawer: () => null,
+  AssetSelectionDrawer: (props: unknown) => {
+    mockAssetSelectionDrawer(props);
+
+    return null;
+  },
 }));
 
 const mockDataProduct: DataProduct = {
@@ -157,5 +169,52 @@ describe('InputOutputPortsTab — permissions', () => {
     expect(
       screen.queryByTestId('add-output-port-button')
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('InputOutputPortsTab — port pickers', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('hides the input ports from the output port picker', async () => {
+    setPortCounts(1, 0);
+    (getDataProductInputPorts as jest.Mock).mockResolvedValue({
+      data: [{ id: 'input-port-id' }],
+      paging: { total: 1 },
+    });
+    render(
+      <InputOutputPortsTab
+        {...defaultProps}
+        permissions={
+          { ...basePermissions, EditAll: true } as OperationPermission
+        }
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('add-output-port-button'));
+
+    await waitFor(() => {
+      expect(mockAssetSelectionDrawer).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          type: AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT,
+          open: true,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  {
+                    term: {
+                      'dataProducts.fullyQualifiedName': 'test.dataproduct',
+                    },
+                  },
+                ],
+                must_not: [{ ids: { values: ['input-port-id'] } }],
+              },
+            },
+          },
+        })
+      );
+    });
   });
 });

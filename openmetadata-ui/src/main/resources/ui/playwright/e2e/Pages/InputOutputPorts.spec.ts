@@ -354,6 +354,67 @@ test.describe('Input Output Ports', () => {
       });
     });
 
+    test('Output port picker hides assets that are already input ports', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+      const inputPortTable = tables[3];
+      const outputCandidate = tables[4];
+
+      await test.step('Setup', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(inputPortTable, 'table'),
+          createAssetRef(outputCandidate, 'table'),
+        ]);
+        await dataProduct.addInputPorts(apiContext, [
+          { id: inputPortTable.entityResponseData.id, type: 'table' },
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open output port picker', async () => {
+        const inputPortsRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/inputPorts?') &&
+            res.request().method() === 'GET'
+        );
+        const searchRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/search/query') &&
+            res.request().method() === 'GET'
+        );
+        await page.getByTestId('add-output-port-button').click();
+        await inputPortsRes;
+        await searchRes;
+        await page.getByTestId('asset-selection-modal').waitFor({
+          state: 'visible',
+        });
+      });
+
+      await test.step('Only the non-input-port asset is offered', async () => {
+        const modal = page.getByTestId('asset-selection-modal');
+
+        await expect(
+          modal.getByTestId(
+            `table-data-card_${outputCandidate.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+        await expect(
+          modal.getByTestId(
+            `table-data-card_${inputPortTable.entityResponseData.fullyQualifiedName}`
+          )
+        ).toHaveCount(0);
+      });
+    });
+
     test('Add multiple input ports at once', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 

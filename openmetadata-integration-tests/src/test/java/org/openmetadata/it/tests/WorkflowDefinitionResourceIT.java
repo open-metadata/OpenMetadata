@@ -7792,7 +7792,9 @@ public class WorkflowDefinitionResourceIT {
 
     OpenMetadataException refused =
         assertThrows(OpenMetadataException.class, () -> approveAs(SdkClients.user1Client(), task));
-    assertTrue(refused.getMessage().contains("is already part of"), refused.getMessage());
+    assertTrue(
+        refused.getMessage().contains("cannot be both an input and an output port"),
+        refused.getMessage());
     assertEquals("Pending", changeRequest(request.get("id").asText()).get("status").asText());
     assertTrue(inputPortIds(admin, product).isEmpty(), "No input port is added");
     assertTrue(

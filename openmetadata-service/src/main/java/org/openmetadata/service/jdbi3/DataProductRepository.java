@@ -542,8 +542,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final String opposite =
           oppositePort(relationship) == Relationship.INPUT_PORT ? "input" : "output";
       return oppositePorts.contains(ref.getId())
-          ? "Asset '%s' is already part of %s ports and cannot be added to %s"
-              .formatted(ref.getFullyQualifiedName(), opposite, portField(relationship))
+          ? "Asset '%s' is already an %s port of this data product; an asset cannot be both an input and an output port"
+              .formatted(ref.getFullyQualifiedName(), opposite)
           : null;
     }
 
