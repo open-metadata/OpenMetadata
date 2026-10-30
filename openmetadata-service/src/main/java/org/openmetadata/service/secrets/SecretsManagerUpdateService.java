@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -80,6 +81,28 @@ public class SecretsManagerUpdateService {
     updateServices();
     updateBotUsers();
     updateIngestionPipelines();
+    runExtensions(ServiceLoader.load(SecretsManagerUpdateExtension.class));
+  }
+
+  /**
+   * Runs every extension, even after one fails, and then fails the update if any did, so the
+   * command reports the failure instead of finishing as if every credential was updated.
+   */
+  static void runExtensions(Iterable<SecretsManagerUpdateExtension> extensions) {
+    List<String> failed = new ArrayList<>();
+    for (SecretsManagerUpdateExtension extension : extensions) {
+      try {
+        LOG.info("Updating the secrets of extension [{}]", extension.name());
+        extension.updateSecrets();
+      } catch (RuntimeException e) {
+        LOG.error("Failed to update the secrets of extension [{}]", extension.name(), e);
+        failed.add(extension.name());
+      }
+    }
+    if (!failed.isEmpty()) {
+      throw new SecretsManagerUpdateException(
+          String.format("Failed to update the secrets of extensions %s", failed));
+    }
   }
 
   private void updateServices() {
