@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-30 (initial)
 - **Deciders:** Vishnu Jain
-- **Guard:** `BasicAuthLoginServletTest` (`doPost_afterSwitchToLdap_passwordIsCheckedByTheDirectory`,
+- **Guard:** `OpenMetadataApplicationAuthReloadTest`, `BasicAuthLoginServletTest` (`doPost_afterSwitchToLdap_passwordIsCheckedByTheDirectory`,
   `doPost_ldapLogin_isDecidedByTheDirectoryBindAlone`, `doPost_providerWithoutPasswords_refusesLogin`)
 
 ## Context
@@ -21,6 +21,8 @@ registered for the new provider. MCP kept the one from startup.
   in its bind), not by reading the provider setting.
 - When the provider does not sign in with passwords (every provider except basic and LDAP
   registers `NoopAuthenticator`), the form answers 403 `Password login is not enabled`.
+- A security reload registers the new authenticator only after it is initialized, so a login during
+  the reload uses the previous one or the ready new one (`OpenMetadataApplication.initializeThenPublish`).
 
 ## Consequences
 
