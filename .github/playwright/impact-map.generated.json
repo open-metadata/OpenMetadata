@@ -147,6 +147,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/FailureThreshold.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
@@ -1751,6 +1752,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/FailureThreshold.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
@@ -2468,6 +2470,7 @@
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
@@ -3385,6 +3388,7 @@
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCaseExportFilters.spec.ts",
@@ -3593,6 +3597,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/FailureThreshold.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
@@ -7366,6 +7371,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/Task/TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts"
       ]
     },
@@ -12864,6 +12870,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/FailureThreshold.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
@@ -13526,10 +13533,19 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/tests/resolved.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/tests/testCaseResolutionStatus.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
+        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts"
       ]
     },
     {

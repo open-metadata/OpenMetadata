@@ -1934,8 +1934,24 @@ public interface TimeSeriesDAOs {
     @SqlQuery(
         value =
             "SELECT json FROM test_case_resolution_status_time_series "
-                + "WHERE stateId = :stateId ORDER BY timestamp DESC")
+                + "WHERE stateId = :stateId ORDER BY timestamp DESC, id DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlQuery(
+        "SELECT json FROM test_case_resolution_status_time_series "
+            + "WHERE stateId = :stateId "
+            + "AND (:afterTs IS NULL OR timestamp < :afterTs "
+            + "OR (timestamp = :afterTs AND id < :afterId)) "
+            + "ORDER BY timestamp DESC, id DESC LIMIT :limit")
+    List<String> listTestCaseResolutionStatusesForStateId(
+        @Bind("stateId") String stateId,
+        @Bind("afterTs") Long afterTs,
+        @Bind("afterId") String afterId,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM test_case_resolution_status_time_series WHERE stateId = :stateId")
+    int countTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
 
     @RegisterRowMapper(LatestRecordWithFQNHashMapper.class)
     @SqlQuery(

@@ -98,6 +98,8 @@ export interface ActivityFeedProviderContextType {
     reactionOperation: ReactionOperation
   ) => Promise<void>;
   testCaseResolutionStatus: TestCaseResolutionStatus[];
+  incidentAfter?: string;
+  loadMoreIncidentHistory: () => Promise<void>;
   updateTestCaseIncidentStatus: (status: TestCaseResolutionStatus[]) => void;
   // Activity events methods
   fetchActivityEvents: (params?: ListActivityParams) => Promise<void>;
