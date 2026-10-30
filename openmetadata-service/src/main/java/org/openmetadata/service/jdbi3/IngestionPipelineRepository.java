@@ -57,6 +57,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -84,6 +85,7 @@ import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressStat
 import org.openmetadata.service.monitoring.ServiceProgressStreamer;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
+import org.openmetadata.service.secrets.DBSecretsManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
@@ -704,14 +706,20 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
+  protected IngestionPipeline prepareForStorage(
+      IngestionPipeline ingestionPipeline, boolean update) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
       // A create stores user-submitted values, so the encrypt pass rejects credentials the
       // pipeline does not own. An update stores values the masker already validated (PATCH and
-      // PUT) or a stored copy (restore, a Data Contract deployment), where encoded values are the
-      // pipeline's own.
+      // PUT) or a stored copy (restore, a Data Contract deployment), where encoded values are
+      // the pipeline's own.
       if (update) {
         secretsManager.encryptIngestionPipeline(
             ingestionPipeline, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
@@ -719,47 +727,32 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         secretsManager.encryptIngestionPipeline(ingestionPipeline);
       }
     }
-    store(ingestionPipeline, update);
+    return ingestionPipeline;
   }
 
-  /**
-   * A version-checked store (an If-Match PATCH) never runs {@link #storeEntity}: it calls {@link
-   * EntityRepository#store} directly to compare versions. Without this override the encryption
-   * that pass relies on never runs, and the plaintext the patch's unmask restored from a stored
-   * echo or mask is serialized into the pipeline's sourceConfig JSON as-is.
-   */
   @Override
-  protected void storeEntityWithVersion(
-      IngestionPipeline ingestionPipeline, boolean update, Double expectedVersion) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected String serializeForVersionHistory(IngestionPipeline ingestionPipeline) {
+    final IngestionPipeline snapshot =
+        JsonUtils.deepCopy(ingestionPipeline, IngestionPipeline.class);
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null) {
-      // The re-encryption stores secrets outside the database; on a losing pair of overlapping
-      // If-Match changes that write must never land, so the saved version is asserted under a
-      // row lock first.
-      lockAndAssertStoredVersion(ingestionPipeline, expectedVersion);
-      secretsManager.encryptIngestionPipeline(
-          ingestionPipeline, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+      // Recording history must not overwrite credentials in an external vault. The snapshot
+      // re-stores values the server already holds for this pipeline, so its own encoded values
+      // are accepted as-is.
+      DBSecretsManager.getInstance(SecretsManagerProvider.DB, secretsManager.getSecretsConfig())
+          .encryptIngestionPipeline(snapshot, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
     }
-    super.storeEntityWithVersion(ingestionPipeline, update, expectedVersion);
+    return super.serializeForVersionHistory(snapshot);
+  }
+
+  @Override
+  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
+    store(ingestionPipeline, update);
   }
 
   @Override
   public void storeEntities(List<IngestionPipeline> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-
-    for (IngestionPipeline ingestionPipeline : entities) {
-      if (secretsManager != null) {
-        // The batch store is a user create path: encoded values it does not own are rejected.
-        secretsManager.encryptIngestionPipeline(ingestionPipeline);
-      }
-
-      fqns.add(ingestionPipeline.getFullyQualifiedName());
-      jsons.add(serializeForStorage(ingestionPipeline));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override
@@ -1310,6 +1303,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     public IngestionPipelineUpdater(
         IngestionPipeline original, IngestionPipeline updated, Operation operation) {
       super(buildIngestionPipelineDecrypted(original), updated, operation);
+    }
+
+    @Override
+    protected IngestionPipeline getPreviousVersion(IngestionPipeline original) {
+      final IngestionPipeline previous = super.getPreviousVersion(original);
+      return previous == null ? null : buildIngestionPipelineDecrypted(previous);
     }
 
     @Transaction

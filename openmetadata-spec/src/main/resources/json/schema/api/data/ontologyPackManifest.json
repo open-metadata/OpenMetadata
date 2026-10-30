@@ -25,6 +25,22 @@
       "minLength": 1,
       "maxLength": 256
     },
+    "industry": {
+      "description": "Industry the pack models. The library catalogue filters packs by it.",
+      "type": "string",
+      "enum": [
+        "finance",
+        "healthcare",
+        "manufacturing",
+        "human-resources",
+        "retail",
+        "supply-chain"
+      ]
+    },
+    "layer": {
+      "description": "Governance layer of a new ontology created to hold this pack.",
+      "$ref": "../../type/ontologyConfiguration.json#/definitions/layer"
+    },
     "version": {
       "type": "string",
       "minLength": 1,
@@ -64,6 +80,8 @@
     "name",
     "abbreviation",
     "standard",
+    "industry",
+    "layer",
     "version",
     "description",
     "license",

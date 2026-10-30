@@ -64,10 +64,16 @@ public class OntologyPropertyResourceIT
     assertEquals(values, stored.getEnumValues());
     assertEquals("kg", stored.getUnit());
     assertEquals(true, stored.getIsIdentifier());
-    stored.setEnumValues(List.of(values.getLast()));
+    final List<OntologyLiteral> revised =
+        List.of(
+            values.getLast(),
+            new OntologyLiteral()
+                .withValue("3")
+                .withDatatypeIri(URI.create("http://www.w3.org/2001/XMLSchema#integer")));
+    stored.setEnumValues(revised);
     stored.setUnit("g");
     final OntologyProperty updated = entityService().update(stored.getId().toString(), stored);
-    assertEquals(List.of(values.getLast()), updated.getEnumValues());
+    assertEquals(revised, updated.getEnumValues());
     assertEquals("g", updated.getUnit());
     assertTrue(updated.getVersion() > created.getVersion());
   }
@@ -92,6 +98,9 @@ public class OntologyPropertyResourceIT
         List.of(
             new OntologyLiteral()
                 .withValue("one")
+                .withDatatypeIri(URI.create("http://www.w3.org/2001/XMLSchema#integer")),
+            new OntologyLiteral()
+                .withValue("2")
                 .withDatatypeIri(URI.create("http://www.w3.org/2001/XMLSchema#integer"))));
     assertPropertyFieldRejected(created, "enumValues", created.getEnumValues());
     created.setEnumValues(

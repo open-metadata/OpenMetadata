@@ -30,6 +30,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.feed.Conversation;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
@@ -123,6 +125,9 @@ public class ChangeEvents {
 
   public static ChangeEvent createChangeEventForEntity(
       String updateBy, EventType eventType, EntityInterface<?> entityInterface) {
+    if (entityInterface instanceof McpServer server) {
+      entityInterface = McpServerMasker.mask(JsonUtils.deepCopy(server, McpServer.class));
+    }
     return getChangeEvent(
             updateBy, eventType, entityInterface.getEntityReference().getType(), entityInterface)
         .withPreviousVersion(

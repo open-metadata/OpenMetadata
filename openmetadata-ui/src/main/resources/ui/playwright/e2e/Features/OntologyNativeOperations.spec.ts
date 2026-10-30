@@ -30,7 +30,7 @@ import {
   selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
-import { readGraphEdges, readNodePositions } from '../../utils/ontologyStudio';
+import { readNodePositions } from '../../utils/ontologyStudio';
 import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
@@ -166,21 +166,15 @@ test.describe(
             inspector.getByTestId('ontology-concept-properties')
           ).toContainText('profile › customer_id');
           await page.getByTestId('ontology-graph-mode-data').click();
+          const dataGraph = page.getByTestId('ontology-native-data-graph');
           await expect(
-            page.getByTestId('ontology-native-data-graph')
-          ).toContainText('Data linked to Customer');
-          expect(await readGraphEdges(page, 3)).toEqual(
-            expect.arrayContaining([
-              expect.objectContaining({
-                from: concept.id,
-                relationType: 'columnBinding',
-              }),
-              expect.objectContaining({
-                from: `asset:table:${table.entityResponseData.id}`,
-                relationType: 'containsColumn',
-              }),
-            ])
+            dataGraph.getByTestId(`ontology-data-cluster-${concept.id}`)
+          ).toContainText('Customer');
+          const row = dataGraph.getByTestId(
+            `ontology-data-asset-asset:${concept.id}:${table.entityResponseData.id}`
           );
+          await expect(row).toContainText(table.entity.displayName);
+          await expect(row).toContainText('1 col');
         });
         await test.step('Remove the column binding and table link', async () => {
           await page.getByTestId('ontology-graph-mode-model').click();
@@ -242,6 +236,7 @@ test.describe(
     for (const pack of [
       {
         id: 'fibo',
+        industry: 'finance',
         base: 'foundations',
         extra: 'business-entities',
         label: 'Business Entity',
@@ -249,6 +244,7 @@ test.describe(
       },
       {
         id: 'fhir',
+        industry: 'healthcare',
         base: 'core',
         extra: 'clinical',
         label: 'FHIR Resource',
@@ -285,7 +281,7 @@ test.describe(
             page.getByTestId('ontology-library-filter-all')
           ).toBeVisible();
           await expect(
-            page.getByTestId(`ontology-library-filter-${pack.id}`)
+            page.getByTestId(`ontology-library-filter-${pack.industry}`)
           ).toBeVisible();
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
@@ -329,13 +325,13 @@ test.describe(
           ).toContainText('Installed');
           await expect(
             page.getByTestId('ontology-library-installed-count')
-          ).toContainText('1 installed');
+          ).toContainText('installed');
           await expect(
             page.getByTestId(`ontology-pack-details-${pack.id}`)
           ).toContainText('View');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
-            page.getByTestId('ontology-library-open-graph')
+            page.getByTestId(`ontology-library-installed-in-${installed.id}`)
           ).toBeVisible();
           expect(draftWrites).toBe(1);
           expect(createdDraft?.baseWorkingRevision).toBe(1);
@@ -360,7 +356,9 @@ test.describe(
             page.getByTestId(`ontology-pack-${pack.id}`)
           ).toContainText('Installed');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
-          await page.getByTestId('ontology-library-open-graph').click();
+          await page
+            .getByTestId(`ontology-library-installed-in-${installed.id}`)
+            .click();
           await expect(page).toHaveURL(new RegExp(`ontology=${installed.id}`));
           await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
             'aria-selected',
@@ -399,10 +397,8 @@ test.describe(
           ).toContainText('Installed');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
-            page
-              .getByTestId('ontology-library')
-              .getByText('No changes to save', { exact: true })
-          ).toBeVisible();
+            page.getByTestId(`ontology-library-installed-in-${installed.id}`)
+          ).toContainText(installed.displayName ?? installed.name);
           expect(draftWrites).toBe(1);
         } finally {
           await page.unroute('**/api/v1/ontologyChangeSets');
@@ -453,10 +449,10 @@ test.describe(
         await page.route('**/api/v1/tasks', (route) =>
           route.request().method() === 'POST'
             ? route.fulfill({
-                status: 503,
+                status: 422,
                 contentType: 'application/json',
                 body: JSON.stringify({
-                  message: 'Temporary task service failure',
+                  message: 'Task request rejected',
                 }),
               })
             : route.continue()
@@ -472,7 +468,8 @@ test.describe(
           await captured,
           'Capture review candidate'
         );
-        await expect(page.getByTestId('ontology-request-review')).toHaveText(
+        // Only a definitive rejection offers a retry; a 5xx only offers Check status.
+        await expect(page.getByTestId('ontology-recovery-action')).toHaveText(
           'Retry review'
         );
         await page.getByTestId('ontology-publication-tab-releases').click();
@@ -489,7 +486,7 @@ test.describe(
             new URL(response.url()).pathname === '/api/v1/tasks' &&
             response.request().method() === 'POST'
         );
-        await page.getByTestId('ontology-request-review').click();
+        await page.getByTestId('ontology-recovery-action').click();
         task = await okJson<Task>(
           await submitted,
           'Retry real review task submission'

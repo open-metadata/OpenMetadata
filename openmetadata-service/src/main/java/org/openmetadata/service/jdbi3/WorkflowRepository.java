@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.WORKFLOW;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -65,60 +64,37 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public void storeEntity(Workflow entity, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
+  protected Workflow prepareForStorage(Workflow entity, boolean update) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
       // A create stores user-submitted values, so the encrypt pass rejects credentials the
       // workflow does not own. An update stores values the masker already validated (PATCH and
       // PUT) or a stored copy (restore), where encoded values are the entity's own.
-      entity =
-          update
-              ? secretsManager.encryptWorkflow(
-                  entity, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE)
-              : secretsManager.encryptWorkflow(entity);
+      if (update) {
+        entity =
+            secretsManager.encryptWorkflow(
+                entity, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+      } else {
+        entity = secretsManager.encryptWorkflow(entity);
+      }
     }
+    return entity;
+  }
 
+  @Override
+  public void storeEntity(Workflow entity, boolean update) {
     store(entity, update);
   }
 
-  /**
-   * A version-checked store (an If-Match PATCH or PUT) never runs {@link #storeEntity}: it calls
-   * {@link EntityRepository#store} directly to compare versions. Without this override the
-   * encryption that pass relies on never runs, and the plaintext the patch's unmask restored from
-   * a stored echo or mask would be serialized into the entity JSON as-is.
-   */
   @Override
-  protected void storeEntityWithVersion(Workflow entity, boolean update, Double expectedVersion) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (secretsManager != null) {
-      // The re-encryption stores secrets outside the database; on a losing pair of overlapping
-      // If-Match changes that write must never land, so the saved version is asserted under a
-      // row lock first.
-      lockAndAssertStoredVersion(entity, expectedVersion);
-      entity =
-          secretsManager.encryptWorkflow(
-              entity, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
-    }
-    super.storeEntityWithVersion(entity, update, expectedVersion);
-  }
-
   public void storeEntities(List<Workflow> workflows) {
-    List<String> fqns = new ArrayList<>(workflows.size());
-    List<String> jsons = new ArrayList<>(workflows.size());
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-
-    for (Workflow workflow : workflows) {
-      if (secretsManager != null) {
-        // The batch store is a user create path: encoded values it does not own are rejected.
-        workflow = secretsManager.encryptWorkflow(workflow);
-      }
-
-      fqns.add(workflow.getFullyQualifiedName());
-      jsons.add(serializeForStorage(workflow));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(workflows);
   }
 
   /** Remove the secrets from the secret manager */

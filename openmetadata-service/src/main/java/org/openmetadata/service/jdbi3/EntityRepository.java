@@ -945,35 +945,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     storeEntityWithVersion(entity, update, expectedVersion);
   }
 
-  /**
-   * Locks the entity's row and asserts the stored version is still the expected one, for a
-   * version-checked store that applies side effects beyond the database before it runs. The
-   * compare-and-swap in {@link #store(T, boolean, Double)} is the only place a concurrent update
-   * is detected, and it runs after those side effects landed: two overlapping If-Match PATCHes of
-   * one bot user, say, both pass the initial read and write the shared vault secret, and only the
-   * winner's own version check rejects the loser - too late for the credential the winner keeps.
-   * Serialized here on the row lock, a stale caller is rejected before writing anything external.
-   */
-  protected void lockAndAssertStoredVersion(T entity, Double expectedVersion) {
-    if (expectedVersion != null) {
-      assertLockedStoredVersion(entityDAOForWrite(), entity.getId(), expectedVersion);
-    }
-  }
-
-  /** Visible for the stored-version assertion's own test; callers hold the transaction open. */
-  static void assertLockedStoredVersion(EntityDAO<?> dao, UUID entityId, Double expectedVersion) {
-    String savedJson = dao.findByIdForUpdate(dao.getTableName(), entityId, "");
-    if (savedJson == null) {
-      // A missing row is rejected by the version-checked store that follows.
-      return;
-    }
-    JsonNode savedVersion = JsonUtils.readTree(savedJson).path("version");
-    if (!expectedVersion.equals(savedVersion.asDouble())) {
-      throw new PreconditionFailedException(
-          "The entity has been modified by another user. Please refresh and retry.");
-    }
-  }
-
   protected void storeEntities(List<T> entities) {
     // Default: store entities directly. Override if fields need nullification before storage.
     storeMany(entities);
@@ -6588,8 +6559,33 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return node;
   }
 
+  /** Applies entity-specific preparation to ordinary, conditional, and bulk storage writes. */
+  protected T prepareForStorage(T entity) {
+    return entity;
+  }
+
+  /**
+   * The preparation variant the storage paths actually call: {@code update} tells it whether the
+   * row is being created from a user submission (encoded values it does not own are rejected) or
+   * re-stored from a copy the server already holds (its own encoded values pass through). A
+   * repository whose preparation encrypts credentials overrides this, not the flag-less variant -
+   * the policies are not interchangeable (see SecretsManager.CredentialPolicy).
+   */
+  protected T prepareForStorage(T entity, boolean update) {
+    return prepareForStorage(entity);
+  }
+
+  protected boolean isStoragePreparationSideEffecting() {
+    return false;
+  }
+
   protected String serializeForStorage(T entity) {
-    return JsonStorageUtils.sanitizeNulCharacters(storageJsonNode(entity).toString());
+    return serializeForStorage(entity, false);
+  }
+
+  protected String serializeForStorage(T entity, boolean update) {
+    return JsonStorageUtils.sanitizeNulCharacters(
+        storageJsonNode(prepareForStorage(entity, update)).toString());
   }
 
   protected String serializeForVersionHistory(T entity) {
@@ -6606,8 +6602,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected void store(T entity, boolean update, Double expectedVersion) {
-    String json = serializeForStorage(entity);
     EntityDAO<T> writeDAO = entityDAOForWrite();
+    if (update && expectedVersion != null && isStoragePreparationSideEffecting()) {
+      lockAndValidateVersion(writeDAO, entity, expectedVersion);
+    }
+    String json = serializeForStorage(entity, update);
 
     if (update) {
       if (expectedVersion != null) {
@@ -6646,12 +6645,24 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  private void lockAndValidateVersion(EntityDAO<T> writeDAO, T entity, Double expectedVersion) {
+    // Secret preparation can mutate an external vault before the conditional SQL update.
+    String currentVersion =
+        writeDAO.findVersionByIdForUpdate(writeDAO.getTableName(), entity.getId());
+    if (!expectedVersion.toString().equals(currentVersion)) {
+      throw new PreconditionFailedException(
+          "The entity has been modified by another user. Please refresh and retry.");
+    }
+  }
+
   protected void storeMany(List<T> entities) {
     List<String> fqns = new ArrayList<>(entities.size());
     List<String> jsons = new ArrayList<>(entities.size());
     for (T entity : entities) {
       fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
+      // A batch insert is a user create path: encoded values the entity does not own are
+      // rejected, so the rows are prepared with the create policy.
+      jsons.add(serializeForStorage(entity, false));
     }
     EntityDAO<T> writeDAO = entityDAOForWrite();
     writeDAO.insertMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, jsons);
@@ -6664,7 +6675,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (T entity : entities) {
       fqns.add(entity.getFullyQualifiedName());
       ids.add(entity.getId());
-      jsons.add(serializeForStorage(entity));
+      // A batch update re-stores rows the server already holds: their encoded values are the
+      // entity's own, so the rows are prepared with the re-storage policy.
+      jsons.add(serializeForStorage(entity, true));
     }
     EntityDAO<T> writeDAO = entityDAOForWrite();
     writeDAO.updateMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, ids, jsons);
@@ -12663,7 +12676,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           .orElse(null);
     }
 
-    private T getPreviousVersion(T original) {
+    protected T getPreviousVersion(T original) {
       String extensionName =
           EntityUtil.getVersionExtension(
               entityType, original.getChangeDescription().getPreviousVersion());

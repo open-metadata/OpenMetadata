@@ -38,10 +38,11 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 /**
  * An If-Match PATCH never runs {@link IngestionPipelineRepository#storeEntity}: its store is
- * version-checked, so the credentials staged in {@code sourceConfig} must be encrypted before that
- * store runs - on a pipeline whose patch's masker pass restored a stored token into plaintext,
- * anything short of an encryption in {@code storeEntityWithVersion} serializes the plaintext
- * into the new version.
+ * version-checked, so the credentials staged in {@code sourceConfig} must be encrypted on that
+ * path too - on a pipeline whose patch's masker pass restored a stored token into plaintext,
+ * anything short of an encryption in the version-checked store serializes the plaintext into the
+ * new version. The encryption runs in {@code prepareForStorage}, under the row lock the base
+ * store takes first because the pipeline's storage preparation is side-effecting.
  */
 @Execution(ExecutionMode.SAME_THREAD)
 class IngestionPipelineStoredCredentialStoreTest {
@@ -92,9 +93,11 @@ class IngestionPipelineStoredCredentialStoreTest {
   @Test
   void aVersionCheckedStoreEncryptsTheCredentialsPlaintextMaskerUnmaskRestored() {
     IngestionPipeline pipeline = dbtPipeline();
+    // The version-checked store row-locks and asserts the stored version before it serializes
+    // (the storage preparation is side-effecting), so the mock stands in for the stored row.
     lenient()
-        .when(pipelineDao.findByIdForUpdate(any(), eq(pipeline.getId()), any()))
-        .thenReturn("{\"id\":\"" + pipeline.getId() + "\",\"version\":1.0}");
+        .when(pipelineDao.findVersionByIdForUpdate(any(), eq(pipeline.getId())))
+        .thenReturn("1.0");
 
     repository.storeEntityWithVersion(pipeline, true, 1.0);
 
@@ -111,8 +114,7 @@ class IngestionPipelineStoredCredentialStoreTest {
   @Test
   void aStaleVersionIsRejectedBeforeAnyCredentialIsReEncrypted() {
     IngestionPipeline pipeline = dbtPipeline();
-    when(pipelineDao.findByIdForUpdate(any(), eq(pipeline.getId()), any()))
-        .thenReturn("{\"id\":\"" + pipeline.getId() + "\",\"version\":1.1}");
+    when(pipelineDao.findVersionByIdForUpdate(any(), eq(pipeline.getId()))).thenReturn("1.1");
 
     assertThrows(
         PreconditionFailedException.class,
