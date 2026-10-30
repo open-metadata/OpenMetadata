@@ -414,7 +414,9 @@ test.describe(
         const card = author.getByTestId('ontology-release-reviewers');
         const picker = card.getByRole('combobox', { name: 'Add reviewer' });
         // The picker searches only once focused, and React Aria opens its list
-        // only on a text change while options are already loaded.
+        // only on a text change while options are already loaded. Typing before
+        // that first search returns leaves the list closed; that is current
+        // product behaviour, kept as-is here, so load the options first.
         const loadReviewerOptions = async (combobox: Locator) => {
           const loaded = author.waitForResponse((response) => {
             const url = new URL(response.url());
