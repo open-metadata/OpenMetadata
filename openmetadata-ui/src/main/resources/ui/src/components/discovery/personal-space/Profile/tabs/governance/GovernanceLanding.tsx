@@ -75,7 +75,7 @@ const GovernanceLanding: FC<GovernanceLandingProps> = ({ onNavigate }) => {
                 onNavigate(card.view);
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box
                 align="start"
                 data-testid={`governance-card-${card.id}`}

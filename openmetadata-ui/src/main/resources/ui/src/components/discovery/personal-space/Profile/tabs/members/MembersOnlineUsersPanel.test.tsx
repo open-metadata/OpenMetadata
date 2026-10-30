@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -31,10 +31,12 @@ jest.mock('../../../../../../rest/userAPI', () => ({
   getOnlineUsers: (...args: unknown[]) => mockGetOnlineUsers(...args),
 }));
 
+const mockSearchQuery = jest.fn().mockResolvedValue({
+  hits: { hits: [], total: { value: 0 } },
+});
+
 jest.mock('../../../../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn().mockResolvedValue({
-    hits: { hits: [], total: { value: 0 } },
-  }),
+  searchQuery: (...args: unknown[]) => mockSearchQuery(...args),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
@@ -59,10 +61,22 @@ jest.mock('../../../../../common/Table/TableV2', () =>
     ({
       'data-testid': testId,
       extraTableFilters,
+      searchProps,
     }: {
       'data-testid'?: string;
       extraTableFilters?: React.ReactNode;
-    }) => <div data-testid={testId ?? 'table'}>{extraTableFilters}</div>
+      searchProps?: { onSearch?: (value: string) => void };
+    }) => (
+      <div data-testid={testId ?? 'table'}>
+        {extraTableFilters}
+        <button
+          aria-label="search"
+          data-testid="mock-search"
+          type="button"
+          onClick={() => searchProps?.onSearch?.('ali')}
+        />
+      </div>
+    )
   )
 );
 
@@ -86,6 +100,18 @@ describe('MembersOnlineUsersPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('time-window-select')).toBeInTheDocument();
     });
+  });
+
+  it('searches users by partial name with wildcards', async () => {
+    renderPanel();
+
+    fireEvent.click(await screen.findByTestId('mock-search'));
+
+    await waitFor(() =>
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ query: '*ali*', searchIndex: 'user' })
+      )
+    );
   });
 
   it('calls getOnlineUsers on mount', async () => {

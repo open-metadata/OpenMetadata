@@ -11,22 +11,18 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  PaginationCardWithControls,
-  Select,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Select, Typography } from '@openmetadata/ui-core-components';
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
-import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import type { User } from '../../../../../../generated/entity/teams/user';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
@@ -41,6 +37,8 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
+import type { PagingHandlerParams } from '../../../../../common/NextPrevious/NextPrevious.interface';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
@@ -98,17 +96,14 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     [timeWindow, pageSize, handlePagingChange]
   );
 
-  const handlePageNavigation = (newPage: number) => {
-    if (newPage === currentPage || searchText) {
-      return;
-    }
+  const handlePageNavigation = ({
+    currentPage: newPage,
+    cursorType,
+  }: PagingHandlerParams) => {
+    const cursor = cursorType && paging[cursorType];
 
-    // ponytail: cursor paging only supports ±1 steps; numbered/jump beyond adjacent no-ops.
-    const cursorType =
-      newPage > currentPage ? CursorType.AFTER : CursorType.BEFORE;
-    const cursor = paging[cursorType];
-
-    if (Math.abs(newPage - currentPage) !== 1 || !cursor) {
+    // Search results are filtered client-side into a single page.
+    if (searchText || !cursorType || !cursor) {
       return;
     }
 
@@ -131,7 +126,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
 
       try {
         const response = await searchQuery({
-          query,
+          query: `${WILD_CARD_CHAR}${query}${WILD_CARD_CHAR}`,
           searchIndex: SearchIndex.USER,
           pageSize,
           pageNumber: INITIAL_PAGING_VALUE,
@@ -267,8 +262,6 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     [t, goTo]
   );
 
-  const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
-
   return (
     <Box
       className="tw:px-8 tw:pb-8 tw:pt-1"
@@ -307,6 +300,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
               className="tw:min-h-32 tw:relative"
               justify="center">
               <NoDataPlaceholder
+                icon={<User01 />}
                 title={t('label.no-entity-found', {
                   entity: t('label.online-user-plural'),
                 })}
@@ -330,14 +324,15 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
       />
 
       {showPagination && (
-        <PaginationCardWithControls
-          minimal
-          page={currentPage}
+        <NextPrevious
+          currentPage={currentPage}
+          isLoading={loading}
+          isNumberBased={Boolean(searchText)}
           pageSize={pageSize}
           pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
-          total={totalPages}
-          onPageChange={handlePageNavigation}
-          onPageSizeChange={handlePageSizeChange}
+          paging={paging}
+          pagingHandler={handlePageNavigation}
+          onShowSizeChange={handlePageSizeChange}
         />
       )}
     </Box>

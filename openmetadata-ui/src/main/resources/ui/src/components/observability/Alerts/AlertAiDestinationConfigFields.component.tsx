@@ -22,6 +22,7 @@ import {
   Input,
   Label,
   PasswordInput,
+  Popover,
   RadioButton,
   RadioGroup,
   Select,
@@ -186,9 +187,8 @@ const TeamUserSelectInput = ({
   value: selectedOptions,
 }: TeamUserSelectInputProps) => {
   const { t } = useTranslation();
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -233,30 +233,37 @@ const TeamUserSelectInput = ({
     debouncedSearch(searchText);
   }, [searchText, debouncedSearch]);
 
-  // Move focus to the search field when the dropdown opens (replaces autoFocus).
-  useEffect(() => {
-    if (isDropdownOpen) {
-      searchInputRef.current?.focus();
-    }
-  }, [isDropdownOpen]);
+  const focusDropdown = useCallback((element: HTMLDivElement | null) => {
+    dropdownRef.current = element;
+    // The portal can mount after the open-state change; focusing without scrolling keeps
+    // an ancestor scroll from dismissing the non-modal popover.
+    element?.querySelector('input')?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      const clickedOutsideDropdown = !dropdownRef.current?.contains(
-        e.target as Node
-      );
-      const clickedInsideTrigger = triggerRef.current?.contains(
-        e.target as Node
-      );
-      if (clickedOutsideDropdown && !clickedInsideTrigger) {
+    if (!isDropdownOpen) {
+      return undefined;
+    }
+    // Capture phase: a parent stopping propagation must not keep the picker open.
+    const handleOutsidePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (
+        !dropdownRef.current?.contains(target) &&
+        !triggerRef.current?.contains(target)
+      ) {
         setIsDropdownOpen(false);
         setSearchText('');
       }
     };
-    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('pointerdown', handleOutsidePointerDown, true);
 
-    return () => document.removeEventListener('click', handleOutsideClick);
-  }, []);
+    return () =>
+      document.removeEventListener(
+        'pointerdown',
+        handleOutsidePointerDown,
+        true
+      );
+  }, [isDropdownOpen]);
 
   const optionsContent = isEmpty(options) ? (
     <Typography
@@ -333,15 +340,27 @@ const TeamUserSelectInput = ({
         )}
       </div>
 
-      {isDropdownOpen && (
+      {/* Portalled so the modal's scroll area cannot clip the options. */}
+      <Popover
+        isNonModal
+        className="tw:w-(--trigger-width)"
+        containerClassName="tw:p-2"
+        data-react-aria-top-layer="true"
+        isOpen={isDropdownOpen}
+        placement="bottom left"
+        triggerRef={triggerRef}
+        onOpenChange={(isOpen) => {
+          setIsDropdownOpen(isOpen);
+          if (!isOpen) {
+            setSearchText('');
+          }
+        }}>
         <div
-          className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectDropdown}
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
-          ref={dropdownRef}>
+          ref={focusDropdown}>
           <Input
             data-testid={`team-user-search-input-${destinationNumber}`}
             placeholder={t('label.search-by-type', { type: entityType })}
-            ref={searchInputRef}
             size="sm"
             value={searchText}
             onChange={(val) => setSearchText(val)}
@@ -361,7 +380,7 @@ const TeamUserSelectInput = ({
             )}
           </div>
         </div>
-      )}
+      </Popover>
       {hint && (
         <Typography
           as="p"

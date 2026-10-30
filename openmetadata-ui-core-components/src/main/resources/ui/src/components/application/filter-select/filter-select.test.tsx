@@ -574,6 +574,24 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('keeps the chip trigger chevron neutral when a value is selected', () => {
+    render(
+      <FilterSelect
+        data-testid="chip-trigger"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={['snowflake']}
+        onChange={() => undefined}
+      />
+    );
+    const chevron = screen.getByTestId('chip-trigger').querySelector('svg');
+
+    expect(chevron?.getAttribute('class')).toContain('tw:text-fg-quaternary');
+    expect(chevron?.getAttribute('class')).not.toContain(
+      'text-fg-brand-primary'
+    );
+  });
+
   it('sizes the input trigger on the Select scale', () => {
     const renderInput = (size?: 'sm' | 'md') => (
       <FilterSelect

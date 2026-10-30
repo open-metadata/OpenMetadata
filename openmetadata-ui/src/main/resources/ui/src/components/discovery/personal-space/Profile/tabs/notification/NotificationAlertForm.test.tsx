@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
 import NotificationAlertForm from './NotificationAlertForm';
 
@@ -202,11 +208,25 @@ describe('NotificationAlertForm', () => {
       render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
     });
 
-    await waitFor(async () => {
-      const cancelBtn = screen.getByTestId('cancel-btn');
-      cancelBtn.click();
+    fireEvent.click(await screen.findByTestId('cancel-btn'));
 
-      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('returns to the alert detail when cancel is clicked in edit mode', async () => {
+    await act(async () => {
+      render(
+        <NotificationAlertForm fqn="test-alert" onNavigate={mockOnNavigate} />
+      );
     });
+
+    fireEvent.click(await screen.findByTestId('cancel-btn'));
+
+    expect(mockOnNavigate).toHaveBeenCalledWith({
+      type: 'detail',
+      fqn: 'test-alert',
+      name: 'Test Alert',
+    });
+    expect(mockOnNavigate).not.toHaveBeenCalledWith({ type: 'list' });
   });
 });

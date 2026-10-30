@@ -14,15 +14,11 @@
 import {
   Box,
   Button,
-  Dialog,
-  FeaturedIcon,
-  Modal,
-  ModalOverlay,
+  ConfirmPopover,
   Toggle,
-  Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@openmetadata/ui-core-components/icons';
-import { FC } from 'react';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
+import { FC, useRef } from 'react';
 import { DropZone } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -52,6 +48,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
   onMoveConfirm,
 }) => {
   const { t } = useTranslation();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   return (
     <>
@@ -63,6 +60,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
         getDropOperation={(types) =>
           types.has(TEAM_DRAG_TYPE) ? 'move' : 'cancel'
         }
+        ref={tableRef}
         onDrop={() => {
           if (draggedTeamRef.current) {
             onSetMovedTeam({
@@ -113,7 +111,10 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
                 align="center"
                 className="tw:min-h-32 tw:relative"
                 justify="center">
-                <NoDataPlaceholder title={t('label.no-data-found')} />
+                <NoDataPlaceholder
+                  icon={<Users01 />}
+                  title={t('label.no-data-found')}
+                />
               </Box>
             ),
           }}
@@ -133,77 +134,35 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
         />
       </DropZone>
 
-      {movedTeam && (
-        <ModalOverlay
-          isDismissable
-          isOpen
-          data-testid="move-team-modal"
-          style={{ zIndex: 999 }}
-          onOpenChange={(isOpen) => !isOpen && onSetMovedTeam(undefined)}>
-          <Modal>
-            <Dialog width={400} onClose={() => onSetMovedTeam(undefined)}>
-              <Dialog.Header className="tw:flex-col">
-                <FeaturedIcon
-                  color="brand"
-                  icon={ArrowRight}
-                  size="lg"
-                  theme="light"
-                />
-                <Box
-                  className="tw:gap-0.5 tw:mt-4 tw:min-w-0 tw:w-full"
-                  data-testid="modal-header"
-                  direction="col">
-                  <Typography size="text-md" weight="semibold">
-                    {t('label.move-the-entity', {
-                      entity: t('label.team'),
-                    })}
-                  </Typography>
-                  <Typography
-                    as="p"
-                    className="tw:text-tertiary tw:break-words">
-                    {movedTeam.to ? (
-                      <Transi18next
-                        i18nKey="message.entity-transfer-message"
-                        renderElement={<strong />}
-                        values={{
-                          from: getEntityName(movedTeam.from),
-                          to: getEntityName(movedTeam.to),
-                          entity: t('label.team-lowercase'),
-                        }}
-                      />
-                    ) : (
-                      t('message.move-entity-to-root', {
-                        entity: getEntityName(movedTeam.from),
-                      })
-                    )}
-                  </Typography>
-                </Box>
-              </Dialog.Header>
-              <Box
-                className="tw:p-4 tw:pt-6 tw:sm:px-6 tw:sm:pt-8 tw:sm:pb-6"
-                direction="row"
-                gap={3}>
-                <Button
-                  className="tw:w-full"
-                  color="secondary"
-                  data-testid="cancel-button"
-                  size="lg"
-                  onPress={() => onSetMovedTeam(undefined)}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  className="tw:w-full"
-                  color="primary"
-                  data-testid="confirm-button"
-                  size="lg"
-                  onPress={onMoveConfirm}>
-                  {t('label.confirm')}
-                </Button>
-              </Box>
-            </Dialog>
-          </Modal>
-        </ModalOverlay>
-      )}
+      <ConfirmPopover
+        confirmText={t('label.confirm')}
+        data-testid="move-team-popover"
+        description={
+          movedTeam &&
+          (movedTeam.to ? (
+            <Transi18next
+              i18nKey="message.entity-transfer-message"
+              renderElement={<strong />}
+              values={{
+                from: getEntityName(movedTeam.from),
+                to: getEntityName(movedTeam.to),
+                entity: t('label.team-lowercase'),
+              }}
+            />
+          ) : (
+            t('message.move-entity-to-root', {
+              entity: getEntityName(movedTeam.from),
+            })
+          ))
+        }
+        isOpen={Boolean(movedTeam)}
+        placement="top"
+        title={t('label.move-the-entity', { entity: t('label.team') })}
+        triggerRef={tableRef}
+        variant="primary"
+        onConfirm={onMoveConfirm}
+        onOpenChange={(isOpen) => !isOpen && onSetMovedTeam(undefined)}
+      />
     </>
   );
 };

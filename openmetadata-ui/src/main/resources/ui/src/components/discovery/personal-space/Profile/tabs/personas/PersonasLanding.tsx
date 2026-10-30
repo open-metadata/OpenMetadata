@@ -67,7 +67,10 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   const navigationRef = useRef(0);
 
   const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
+    () =>
+      Boolean(paging.before || paging.after) ||
+      paging.total > pageSize ||
+      pageSize !== PAGE_SIZE_BASE,
     [paging, pageSize]
   );
 
@@ -253,7 +256,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
                       });
                     }
                   }}>
-                  <Card.Content>
+                  <Card.Content className="tw:px-3">
                     <Box className="tw:min-w-0" direction="col" gap={2}>
                       <Box
                         align="center"

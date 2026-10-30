@@ -163,3 +163,26 @@ export const searchAlertAiArgumentOptions = async ({
     return [];
   }
 };
+
+/** Resolves saved argument values to display-name options, since they may be outside the first page. */
+export const resolveAlertAiArgumentLabels = async (
+  argument: string,
+  values: string[]
+): Promise<SelectItemType[]> => {
+  const config = ALERT_AI_ARGUMENT_CONFIGS[argument];
+  if (!config || config.showDisplayNameAsLabel === false || !values.length) {
+    return [];
+  }
+
+  try {
+    return await searchIndexedOptions(
+      {
+        searchIndex: config.searchIndex,
+        queryFilter: getTermQuery({ fullyQualifiedName: values }, 'should', 1),
+      },
+      ''
+    );
+  } catch {
+    return [];
+  }
+};

@@ -18,11 +18,9 @@ import {
   Button,
   ButtonUtility,
   Card,
+  ConfirmPopover,
   DateRangePicker,
-  Dialog,
   Input,
-  Modal,
-  ModalOverlay,
   PaginationCardWithControls,
   ProgressBarBase,
   Typography,
@@ -131,6 +129,11 @@ function resolvePageSize(hash: number | undefined): number {
   return hash || PAGE_SIZE_MEDIUM;
 }
 
+// A non-default page size keeps the control visible so the user can switch back.
+function shouldShowPagination(total: number | undefined, pageSize: number) {
+  return (total ?? 0) > pageSize || pageSize !== PAGE_SIZE_MEDIUM;
+}
+
 interface AccessControlAuditLogsPanelProps {
   /** Callback to inject action buttons into the page header. */
   onSetHeaderActions?: (actions: React.ReactNode) => void;
@@ -171,6 +174,7 @@ const AccessControlAuditLogsPanel: React.FC<
   const filterParamsRef = useRef<Partial<AuditLogListParams>>({});
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const exportButtonRef = useRef<HTMLButtonElement>(null);
   const [exportDateRange, setExportDateRange] = useState<{
     start: DateValue;
     end: DateValue;
@@ -178,6 +182,9 @@ const AccessControlAuditLogsPanel: React.FC<
   const [isExporting, setIsExporting] = useState(false);
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const exportJobRef = useRef<ExportJob | null>(null);
+  // Settles the popover's confirm once the export job ends; the job cannot be cancelled, so until
+  // then ConfirmPopover keeps the spinner on Export and Cancel/Escape disabled.
+  const settleExportRef = useRef<(keepOpen: boolean) => void>();
 
   const fetchAuditLogs = useCallback(
     async (
@@ -567,6 +574,7 @@ const AccessControlAuditLogsPanel: React.FC<
         color="primary"
         data-testid="export-audit-logs-button"
         iconLeading={<ExportIcon height={16} width={16} />}
+        ref={exportButtonRef}
         onPress={() => setIsExportModalOpen(true)}>
         {t('label.export')}
       </Button>
@@ -577,9 +585,16 @@ const AccessControlAuditLogsPanel: React.FC<
     };
   }, [onSetHeaderActions, t]);
 
+  useEffect(() => {
+    if (!isExporting) {
+      settleExportRef.current?.(false);
+      settleExportRef.current = undefined;
+    }
+  }, [isExporting]);
+
   const handleExport = useCallback(async () => {
     if (!exportDateRange) {
-      return;
+      return false;
     }
 
     setIsExporting(true);
@@ -605,6 +620,8 @@ const AccessControlAuditLogsPanel: React.FC<
       showErrorToast(error as AxiosError);
       setIsExporting(false);
     }
+
+    return true;
   }, [exportDateRange, searchTerm, filterParams]);
 
   const handleExportModalClose = useCallback(() => {
@@ -736,7 +753,9 @@ const AccessControlAuditLogsPanel: React.FC<
         </Box>
 
         {/* Log list inside card */}
-        <Box className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:relative">
+        <Box
+          className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:relative"
+          direction="col">
           <AuditLogList
             hasActiveFilters={hasActiveFiltersOnly}
             hasActiveSearch={hasActiveSearch}
@@ -747,7 +766,7 @@ const AccessControlAuditLogsPanel: React.FC<
         </Box>
 
         {/* Pagination inside card */}
-        {(paging.total ?? 0) > pageSize && (
+        {shouldShowPagination(paging.total, pageSize) && (
           <Box className="tw:shrink-0 tw:border-t tw:border-secondary">
             <PaginationCardWithControls
               page={currentPage}
@@ -765,80 +784,70 @@ const AccessControlAuditLogsPanel: React.FC<
         )}
       </Card>
 
-      {/* Export modal */}
-      <ModalOverlay
-        isDismissable={!isExporting}
-        isOpen={isExportModalOpen}
-        onOpenChange={(open) => !open && handleExportModalClose()}>
-        <Modal>
-          <Dialog
-            data-testid="export-audit-logs-modal"
-            showCloseButton={!isExporting}
-            title={t('label.export-entity', {
-              entity: t('label.audit-log-plural'),
-            })}
-            onClose={handleExportModalClose}>
-            <Dialog.Content>
-              <Typography as="p" size="text-md">
-                {t('message.export-audit-logs-description')}
+      {/* Anchored to the header's Export button; the popover stays open while the export runs. */}
+      <ConfirmPopover
+        asForm
+        confirmText={t('label.export')}
+        content={
+          <>
+            <Box direction="col" gap={2}>
+              <Typography as="p" className="tw:text-tertiary" size="text-md">
+                {`${t('label.date-range')} *`}
               </Typography>
-              <Box direction="col" gap={2}>
-                <Typography as="p" className="tw:text-tertiary" size="text-md">
-                  {`${t('label.date-range')} *`}
-                </Typography>
-                {/*
-                 * @internationalized/date is externalized in ui-core-components but resolves to a
-                 * different patch version (3.12.0) than the one openmetadata-ui locks to (3.12.1).
-                 * TypeScript therefore treats CalendarDate / DateValue from each copy as distinct
-                 * nominal types even though they are structurally identical. Cast until both
-                 * packages resolve the same version.
-                 */}
-                <DateRangePicker
-                  data-testid="export-date-range-picker"
-                  isDisabled={isExporting}
-                  maxValue={
-                    today(getLocalTimeZone()) as unknown as Parameters<
-                      typeof DateRangePicker
-                    >[0]['maxValue']
-                  }
-                  value={
-                    exportDateRange as unknown as Parameters<
-                      typeof DateRangePicker
-                    >[0]['value']
-                  }
-                  onChange={(range) =>
-                    setExportDateRange(
-                      range
-                        ? {
-                            start: range.start as unknown as DateValue,
-                            end: range.end as unknown as DateValue,
-                          }
-                        : null
-                    )
-                  }
-                />
-              </Box>
-              {renderExportProgress()}
-              {renderExportResult()}
-            </Dialog.Content>
-            <Dialog.Footer>
-              <Button
-                color="tertiary"
+              {/*
+               * @internationalized/date is externalized in ui-core-components but resolves to a
+               * different patch version (3.12.0) than the one openmetadata-ui locks to (3.12.1).
+               * TypeScript therefore treats CalendarDate / DateValue from each copy as distinct
+               * nominal types even though they are structurally identical. Cast until both
+               * packages resolve the same version.
+               */}
+              <DateRangePicker
+                data-testid="export-date-range-picker"
                 isDisabled={isExporting}
-                onPress={handleExportModalClose}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isDisabled={isExporting || !exportDateRange}
-                isLoading={isExporting}
-                onPress={handleExport}>
-                {t('label.export')}
-              </Button>
-            </Dialog.Footer>
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
+                maxValue={
+                  today(getLocalTimeZone()) as unknown as Parameters<
+                    typeof DateRangePicker
+                  >[0]['maxValue']
+                }
+                value={
+                  exportDateRange as unknown as Parameters<
+                    typeof DateRangePicker
+                  >[0]['value']
+                }
+                onChange={(range) =>
+                  setExportDateRange(
+                    range
+                      ? {
+                          start: range.start as unknown as DateValue,
+                          end: range.end as unknown as DateValue,
+                        }
+                      : null
+                  )
+                }
+              />
+            </Box>
+            {renderExportProgress()}
+            {renderExportResult()}
+          </>
+        }
+        data-testid="export-audit-logs-popover"
+        description={t('message.export-audit-logs-description')}
+        isConfirmDisabled={!exportDateRange}
+        isOpen={isExportModalOpen}
+        title={t('label.export-entity', {
+          entity: t('label.audit-log-plural'),
+        })}
+        triggerRef={exportButtonRef}
+        variant="primary"
+        // A completed export closes the popover through isOpen; a failed one stays open on its error.
+        onConfirm={() =>
+          new Promise<boolean>((resolve) => {
+            settleExportRef.current = resolve;
+            handleExport().then((started) => !started && resolve(false));
+          })
+        }
+        onOpenChange={(open) => !open && handleExportModalClose()}
+      />
     </Box>
   );
 };

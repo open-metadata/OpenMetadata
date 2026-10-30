@@ -107,7 +107,9 @@ const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
           items={forms}
           renderEmptyState={() =>
             loading ? (
-              <Loader data-testid="intake-forms-loading" size="small" />
+              <div className="tw:flex tw:min-h-40 tw:items-center tw:justify-center">
+                <Loader data-testid="intake-forms-loading" size="small" />
+              </div>
             ) : null
           }>
           {(record: IntakeForm) => (

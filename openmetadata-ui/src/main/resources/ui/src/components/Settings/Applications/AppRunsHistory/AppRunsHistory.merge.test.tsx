@@ -240,7 +240,7 @@ const mockProps = {
   appData: mockApplicationData,
   maxRecords: 10,
   showPagination: true,
-  jsonSchema: {},
+  jsonSchema: { properties: { batchSize: { type: 'number' as const } } },
 };
 
 const getSocketCallback = (eventName: string) =>

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { Team } from '../../../../../../generated/entity/teams/team';
 import MembersTeamsTab from './MembersTeamsTab';
@@ -86,7 +86,27 @@ describe('MembersTeamsTab', () => {
     expect(onShowDeletedTeamChange).toHaveBeenCalledWith(true);
   });
 
-  it('confirms and cancels a pending team move from the modal', () => {
+  it('confirms a pending team move from a popover', async () => {
+    const onMoveConfirm = jest.fn().mockResolvedValue(undefined);
+    const onSetMovedTeam = jest.fn();
+    render(
+      <MembersTeamsTab
+        {...baseProps}
+        movedTeam={{ from: team, to: undefined }}
+        onMoveConfirm={onMoveConfirm}
+        onSetMovedTeam={onSetMovedTeam}
+      />
+    );
+
+    expect(await screen.findByTestId('move-team-popover')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('move-team-popover-confirm'));
+
+    await waitFor(() => expect(onMoveConfirm).toHaveBeenCalled());
+    await waitFor(() => expect(onSetMovedTeam).toHaveBeenCalledWith(undefined));
+  });
+
+  it('cancels a pending team move without moving it', async () => {
     const onMoveConfirm = jest.fn();
     const onSetMovedTeam = jest.fn();
     render(
@@ -98,12 +118,15 @@ describe('MembersTeamsTab', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('confirm-button'));
-
-    expect(onMoveConfirm).toHaveBeenCalled();
-
-    fireEvent.click(screen.getByTestId('cancel-button'));
+    fireEvent.click(await screen.findByTestId('move-team-popover-cancel'));
 
     expect(onSetMovedTeam).toHaveBeenCalledWith(undefined);
+    expect(onMoveConfirm).not.toHaveBeenCalled();
+  });
+
+  it('shows no move popover when nothing is being moved', () => {
+    render(<MembersTeamsTab {...baseProps} />);
+
+    expect(screen.queryByTestId('move-team-popover')).not.toBeInTheDocument();
   });
 });

@@ -23,17 +23,25 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
-import { useMemo } from 'react';
+import { ArrowLeft, Lightbulb05 } from '@openmetadata/ui-core-components/icons';
+import {
+  RegistryFieldsType,
+  RegistryWidgetsType,
+  WidgetProps,
+} from '@rjsf/utils';
+import { useEffect, useMemo, useRef } from 'react';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../../../../constants/Services.constant';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
 import type { SecurityConfiguration } from '../../../../../../rest/securityConfigAPI';
+import LdapRoleMappingWidget from '../../../../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { SecurityManagedPaths } from '../../../../../SettingsSso/SSOConfigurationForm/SSOConfigurationForm.interface';
+import SsoRolesSelectField from '../../../../../SettingsSso/SSOConfigurationForm/SsoRolesSelectField';
 import { PROVIDER_FILE_MAP } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
-import SsoTestLoginModal from '../../../../../SettingsSso/SsoTestLogin/SsoTestLoginModal';
+import { SsoTestLoginContent } from '../../../../../SettingsSso/SsoTestLogin/SsoTestLoginModal';
 import { useSsoConfiguration } from '../../../../../SettingsSso/useSsoConfiguration';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
 import { useFormFieldDocs } from '../platform-settings/useFormFieldDocs';
@@ -43,6 +51,38 @@ const FORM_BODY_TEST_ID = 'sso-configure-form-body';
 
 // Actions live in the sticky footer; RJSF's own submit button is never shown.
 const SUBMIT_BUTTON_OPTIONS = { norender: true, submitText: '' };
+
+// The mapping editor has no label of its own; the classic page's field template drew it.
+// It is a set of inputs rather than one control, so the label names the group.
+const SsoLdapRoleMappingWidget = (props: WidgetProps) => {
+  const labelId = `${props.id}-label`;
+
+  return (
+    <Box aria-labelledby={labelId} direction="col" gap={2} role="group">
+      <Typography
+        className="tw:text-secondary"
+        id={labelId}
+        size="text-sm"
+        weight="medium">
+        {props.label}
+      </Typography>
+      <LdapRoleMappingWidget {...props} />
+    </Box>
+  );
+};
+
+// The LDAP renderers the classic SSO uiSchema names.
+const SSO_WIDGETS: RegistryWidgetsType = {
+  LdapRoleMappingWidget: SsoLdapRoleMappingWidget,
+};
+const SSO_FIELDS: RegistryFieldsType = {
+  RolesSelectField: SsoRolesSelectField,
+};
+
+export interface SsoSubPage {
+  label: string;
+  onBack: () => void;
+}
 
 export interface SsoConfigureFormProps {
   /** Saved configuration to edit; omit when setting up `selectedProvider`. */
@@ -55,6 +95,8 @@ export interface SsoConfigureFormProps {
   isReadOnly?: boolean;
   /** Leaves a new setup (cancel/discard) — back to the provider grid. */
   onChangeProvider: () => void;
+  /** Test Login opens as a page of its own; the panel shows it in the breadcrumb. */
+  onSubPageChange?: (subPage?: SsoSubPage) => void;
 }
 
 interface UnsavedChangesDialogProps {
@@ -170,6 +212,7 @@ const SsoSaveAlerts = ({
 
 interface SsoConfigureFooterProps {
   canTestLogin: boolean;
+  isHidden: boolean;
   isReadOnly: boolean;
   isSaveGated: boolean;
   isSaving: boolean;
@@ -182,6 +225,7 @@ interface SsoConfigureFooterProps {
 /** Sticky footer actions; a configuration the deployment owns offers only Cancel. */
 const SsoConfigureFooter = ({
   canTestLogin,
+  isHidden,
   isReadOnly,
   isSaveGated,
   isSaving,
@@ -194,7 +238,10 @@ const SsoConfigureFooter = ({
 
   return (
     <Box
-      className="tw:sticky tw:bottom-0 tw:z-10 tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4"
+      className={classNames(
+        'tw:sticky tw:bottom-0 tw:z-10 tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4',
+        { 'tw:hidden': isHidden }
+      )}
       data-testid="sso-configure-footer"
       direction="row"
       gap={3}
@@ -253,6 +300,7 @@ const SsoConfigureForm = ({
   managedPaths,
   isReadOnly = false,
   onChangeProvider,
+  onSubPageChange,
 }: SsoConfigureFormProps) => {
   const { t } = useTranslation();
   const {
@@ -303,6 +351,25 @@ const SsoConfigureForm = ({
     scrollContainer: '[data-testid="sso-panel"]',
     errorSelector: `[data-testid="${FORM_BODY_TEST_ID}"] [aria-invalid="true"]`,
   });
+
+  const closeTestLoginRef = useRef(handleTestLoginModalClose);
+  closeTestLoginRef.current = handleTestLoginModalClose;
+
+  useEffect(() => {
+    if (!onSubPageChange) {
+      return;
+    }
+    onSubPageChange(
+      showTestLoginModal
+        ? {
+            label: t('label.test-login'),
+            onBack: () => closeTestLoginRef.current(),
+          }
+        : undefined
+    );
+
+    return () => onSubPageChange(undefined);
+  }, [onSubPageChange, showTestLoginModal, t]);
 
   const docsBySection = useFormFieldDocs(
     PROVIDER_FILE_MAP[currentProvider ?? ''] ?? PROVIDER_FILE_MAP.general,
@@ -379,8 +446,36 @@ const SsoConfigureForm = ({
 
   return (
     <Box className="tw:flex-1" data-testid="sso-configure-form" direction="col">
+      {showTestLoginModal && (
+        <Box
+          className="tw:mx-auto tw:w-full tw:max-w-[50%] tw:flex-1 tw:px-8 tw:pb-6"
+          data-testid="sso-test-login-page"
+          direction="col"
+          gap={4}>
+          <Button
+            className="tw:self-start"
+            color="link-gray"
+            data-testid="sso-test-login-back"
+            iconLeading={ArrowLeft}
+            size="sm"
+            onPress={handleTestLoginModalClose}>
+            {t('label.back')}
+          </Button>
+          <SsoTestLoginContent
+            configurationCheck={testLoginConfigurationCheck}
+            error={testLoginError}
+            isAwaitingCredentials={isAwaitingTestLoginCredentials}
+            isTesting={isTestingLogin}
+            result={testLoginResult}
+            onSubmitCredentials={submitTestLoginCredentials}
+          />
+        </Box>
+      )}
+      {/* Hidden rather than unmounted, so unsaved values and field errors survive the test. */}
       <div
-        className="tw:flex-1 tw:px-8 tw:pb-6"
+        className={classNames('tw:flex-1 tw:px-8 tw:pb-6', {
+          'tw:hidden': showTestLoginModal,
+        })}
         data-testid={FORM_BODY_TEST_ID}>
         <Box
           className="tw:w-full tw:max-w-[50%] tw:mx-auto"
@@ -396,6 +491,7 @@ const SsoConfigureForm = ({
               customValidate={customValidate}
               disabled={isReadOnly}
               fieldDocs={fieldDocs}
+              fields={SSO_FIELDS}
               formContext={formContext}
               formData={internalData}
               liveValidate={
@@ -404,6 +500,7 @@ const SsoConfigureForm = ({
               }
               schema={schema}
               uiSchema={formUiSchema}
+              widgets={SSO_WIDGETS}
               onChange={handleOnChange}
             />
             {showHint && (
@@ -437,6 +534,7 @@ const SsoConfigureForm = ({
 
       <SsoConfigureFooter
         canTestLogin={canTestLogin}
+        isHidden={showTestLoginModal}
         isReadOnly={isReadOnly}
         isSaveGated={isSaveGatedOnTestLogin}
         isSaving={isLoading}
@@ -446,16 +544,6 @@ const SsoConfigureForm = ({
         onTestLogin={handleTestLogin}
       />
 
-      <SsoTestLoginModal
-        configurationCheck={testLoginConfigurationCheck}
-        error={testLoginError}
-        isAwaitingCredentials={isAwaitingTestLoginCredentials}
-        isTesting={isTestingLogin}
-        open={showTestLoginModal}
-        result={testLoginResult}
-        onClose={handleTestLoginModalClose}
-        onSubmitCredentials={submitTestLoginCredentials}
-      />
       <UnsavedChangesDialog
         isOpen={showCancelModal}
         isSaving={modalSaveLoading}

@@ -88,6 +88,34 @@ interface ResourceHeaderProps {
   onClose?: () => void;
 }
 
+const ResourceDateDuration: FC<{ resource: LearningResource }> = ({
+  resource,
+}) => {
+  const { t } = useTranslation();
+  const formattedDate = getFormattedDate(resource);
+  const formattedDuration = getFormattedDuration(resource, t);
+
+  return (
+    <>
+      {formattedDate && (
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          {formattedDate}
+        </Typography>
+      )}
+      {formattedDate && formattedDuration && (
+        <Typography as="span" className="tw:text-quaternary" size="text-xs">
+          |
+        </Typography>
+      )}
+      {formattedDuration && (
+        <Typography as="span" className="tw:text-quaternary" size="text-xs">
+          {formattedDuration}
+        </Typography>
+      )}
+    </>
+  );
+};
+
 const ResourceHeaderTitleRow: FC<ResourceHeaderProps> = ({
   resource,
   isFullScreen,
@@ -100,38 +128,36 @@ const ResourceHeaderTitleRow: FC<ResourceHeaderProps> = ({
   return (
     <Box align="start" className="tw:justify-between" gap={2}>
       <Box className="tw:flex-1 tw:min-w-0" direction="col">
-        <Typography
-          className="tw:text-primary tw:break-words"
-          size="text-md"
-          weight="semibold">
-          {resource.displayName || resource.name}
-        </Typography>
+        <Box align="center" className="tw:flex-wrap tw:gap-1.5">
+          <Typography
+            className="tw:text-primary tw:break-words"
+            size="text-md"
+            weight="semibold">
+            {resource.displayName || resource.name}
+          </Typography>
+          {categoryTags.map((category) => (
+            <Badge
+              color={getCategoryColor(category)}
+              key={category}
+              size="sm"
+              type="color">
+              {getCategoryLabel(category)}
+            </Badge>
+          ))}
+        </Box>
 
         {resource.description && (
           <Typography
             aria-label={resource.description}
-            className="tw:pt-6 tw:text-[13px] tw:text-tertiary"
+            className="tw:pt-1 tw:text-[13px] tw:text-tertiary"
             size="text-sm">
             {resource.description}
           </Typography>
         )}
-
-        {categoryTags.length > 0 && (
-          <Box className="tw:flex-wrap tw:gap-1.5 tw:pt-3">
-            {categoryTags.map((category) => (
-              <Badge
-                color={getCategoryColor(category)}
-                key={category}
-                size="sm"
-                type="color">
-                {getCategoryLabel(category)}
-              </Badge>
-            ))}
-          </Box>
-        )}
       </Box>
 
       <Box align="center" className="tw:shrink-0" gap={1}>
+        <ResourceDateDuration resource={resource} />
         <ButtonUtility
           aria-label={
             isFullScreen ? t('label.exit-full-screen') : t('label.fullscreen')
@@ -163,45 +189,19 @@ const ResourceHeaderTitleRow: FC<ResourceHeaderProps> = ({
 const ResourceHeaderMetaRow: FC<{ resource: LearningResource }> = ({
   resource,
 }) => {
-  const { t } = useTranslation();
   const contextItems = resource.contexts ?? [];
-  const formattedDate = getFormattedDate(resource);
-  const formattedDuration = getFormattedDuration(resource, t);
+
+  if (contextItems.length === 0) {
+    return null;
+  }
 
   return (
-    <Box
-      align="center"
-      className="tw:flex-wrap tw:justify-between tw:gap-1.5 tw:pt-3">
-      <Box className="tw:flex-1 tw:min-w-0">
-        {contextItems.length > 0 && (
-          <Box className="tw:flex-wrap tw:gap-2">
-            {contextItems.map((ctx) => (
-              <Badge color="gray" key={ctx.pageId} size="sm" type="color">
-                {getContextLabel(ctx.pageId)}
-              </Badge>
-            ))}
-          </Box>
-        )}
-      </Box>
-      {(formattedDate || formattedDuration) && (
-        <Box align="center" className="tw:shrink-0 tw:gap-1">
-          {formattedDate && (
-            <Typography as="span" className="tw:text-tertiary" size="text-xs">
-              {formattedDate}
-            </Typography>
-          )}
-          {formattedDate && formattedDuration && (
-            <Typography as="span" className="tw:text-quaternary" size="text-xs">
-              |
-            </Typography>
-          )}
-          {formattedDuration && (
-            <Typography as="span" className="tw:text-quaternary" size="text-xs">
-              {formattedDuration}
-            </Typography>
-          )}
-        </Box>
-      )}
+    <Box className="tw:flex-wrap tw:gap-2 tw:pt-3">
+      {contextItems.map((ctx) => (
+        <Badge color="gray" key={ctx.pageId} size="sm" type="color">
+          {getContextLabel(ctx.pageId)}
+        </Badge>
+      ))}
     </Box>
   );
 };

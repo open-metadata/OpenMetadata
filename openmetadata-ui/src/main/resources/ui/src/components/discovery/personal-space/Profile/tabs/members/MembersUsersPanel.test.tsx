@@ -178,6 +178,43 @@ describe('MembersUsersPanel', () => {
     expect(screen.getByTestId('restore-user-popover')).toBeInTheDocument();
   });
 
+  it('pages forward with the next cursor from the Next button', async () => {
+    const page = (paging: Record<string, unknown>) => ({
+      data: [
+        {
+          id: '1',
+          name: 'user1',
+          displayName: 'User One',
+          fullyQualifiedName: 'user1',
+          teams: [],
+          roles: [],
+        },
+      ],
+      paging,
+    });
+    mockGetUsers
+      .mockResolvedValueOnce(page({ after: 'cursor-2', total: 100 }))
+      .mockResolvedValueOnce(page({ before: 'cursor-1', total: 100 }));
+    renderComponent(true);
+
+    const next = await screen.findByTestId('next');
+
+    await waitFor(() => expect(next).toBeEnabled());
+
+    fireEvent.click(next);
+
+    await waitFor(() =>
+      expect(mockGetUsers).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'cursor-2', isAdmin: true })
+      )
+    );
+
+    expect(await screen.findByTestId('page-indicator')).toHaveTextContent(
+      'label.page 2'
+    );
+    expect(screen.getByTestId('previous')).toBeEnabled();
+  });
+
   it('renders the users list container', async () => {
     renderComponent();
 

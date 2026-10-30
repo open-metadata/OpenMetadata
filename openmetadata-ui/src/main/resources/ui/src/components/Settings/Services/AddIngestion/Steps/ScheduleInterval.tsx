@@ -478,9 +478,10 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
 
     return (
       <Card
-        className="tw:flex tw:items-center tw:gap-3 tw:bg-secondary tw:px-4 tw:py-3"
-        size="sm">
-        <Clock className="tw:size-5 tw:shrink-0 tw:text-utility-gray-600" />
+        className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3"
+        size="sm"
+        variant="muted">
+        <Clock className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
         <Typography size="text-sm">{cronStringValue}</Typography>
       </Card>
     );

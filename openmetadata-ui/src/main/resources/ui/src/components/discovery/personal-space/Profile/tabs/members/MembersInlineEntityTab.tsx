@@ -84,14 +84,14 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
               )}
             </Autocomplete>
             <Box direction="row" gap={3} justify="end">
-              <Button color="tertiary" size="sm" onPress={onCancelAdd}>
+              <Button color="tertiary" size="xs" onPress={onCancelAdd}>
                 {t('label.cancel')}
               </Button>
               <Button
                 color="primary"
                 isDisabled={selectedNew.length === 0}
                 isLoading={isSavingInline}
-                size="sm"
+                size="xs"
                 onPress={onConfirmAdd}>
                 {t('label.save')}
               </Button>
@@ -145,7 +145,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
               <Button
                 color="primary"
                 data-testid={addButtonTestId}
-                size="sm"
+                size="xs"
                 onPress={onStartAdd}>
                 {t('label.add-entity', { entity: entityLabel })}
               </Button>

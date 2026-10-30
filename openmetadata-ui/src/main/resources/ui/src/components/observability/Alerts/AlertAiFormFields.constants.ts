@@ -68,8 +68,6 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   sectionRequiredMarker: 'tw:ml-0.5 tw:text-error-primary',
   sectionRoot: 'tw:w-full tw:items-stretch tw:gap-1.5',
   teamUserHint: 'tw:mt-1 tw:text-sm tw:text-fg-error-secondary',
-  teamUserSelectDropdown:
-    'tw:absolute tw:z-50 tw:mt-1 tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:p-2 tw:shadow-lg',
   teamUserSelectEmptyText: 'tw:p-2 tw:text-center tw:text-tertiary',
   teamUserSelectOptionButton:
     'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-start tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:text-left tw:hover:bg-secondary',

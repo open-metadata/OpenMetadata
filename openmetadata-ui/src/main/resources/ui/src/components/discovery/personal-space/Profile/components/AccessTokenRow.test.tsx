@@ -86,6 +86,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+    ConfirmPopover: ({
+      children,
+      onConfirm,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      onConfirm: () => void;
+      'data-testid'?: string;
+    }) => (
+      <div data-testid={testId}>
+        {children}
+        <button
+          aria-label="confirm"
+          data-testid={`${testId}-confirm`}
+          onClick={onConfirm}
+        />
+      </div>
+    ),
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
     ),
@@ -184,7 +202,7 @@ describe('AccessTokenRow', () => {
     });
   });
 
-  it('revokes the managed token by id (no removeAll)', async () => {
+  it('revokes the managed token by id (no removeAll) only after confirmation', async () => {
     mockGetUserAccessToken.mockResolvedValue([
       { tokenName: 'ai-profile-token', token: 'tid', jwtToken: 'jwt' },
     ]);
@@ -198,8 +216,12 @@ describe('AccessTokenRow', () => {
       expect(screen.getByText('label.revoke')).toBeInTheDocument()
     );
 
+    fireEvent.click(screen.getByText('label.revoke'));
+
+    expect(mockPut).not.toHaveBeenCalled();
+
     await act(async () => {
-      fireEvent.click(screen.getByText('label.revoke'));
+      fireEvent.click(screen.getByTestId('revoke-token-popover-confirm'));
     });
 
     expect(mockPut).toHaveBeenCalledWith('/users/security/token/revoke', {

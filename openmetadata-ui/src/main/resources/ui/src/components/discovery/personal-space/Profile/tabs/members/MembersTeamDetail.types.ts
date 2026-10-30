@@ -65,7 +65,7 @@ export interface MembersTeamsTabProps {
   onSearchTermChange: (value: string) => void;
   onNavigate: (view: MembersView) => void;
   onSetMovedTeam: (value: MovedTeam | undefined) => void;
-  onMoveConfirm: () => void;
+  onMoveConfirm: () => Promise<void>;
 }
 
 export interface MembersUsersTabProps {

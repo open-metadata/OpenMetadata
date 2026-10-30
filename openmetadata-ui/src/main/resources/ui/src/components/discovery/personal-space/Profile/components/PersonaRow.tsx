@@ -131,8 +131,18 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
     return map;
   }, [fetchedById, userData]);
 
-  // Only the current search page (+ the user's assigned personas), never the
-  // accumulated pool — otherwise stale results from earlier queries linger.
+  const selectedItems = useMemo(
+    () =>
+      draftPersonaIds
+        .map((id) => resolvedById.get(id))
+        .filter((p): p is EntityReference => Boolean(p))
+        .map((p) => ({ id: p.id, label: getEntityName(p) })),
+    [draftPersonaIds, resolvedById]
+  );
+
+  // Only the current search page (+ assigned and draft-selected personas), never the
+  // accumulated pool — otherwise stale results from earlier queries linger. Draft
+  // selections must stay listed so the "+N" overflow list can show them.
   const options = useMemo(() => {
     const fetched = personaResults.map((p) => ({
       id: p.id,
@@ -143,17 +153,8 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
       label: getEntityName(p),
     }));
 
-    return uniqBy([...existing, ...fetched], 'id');
-  }, [personaResults, userData.personas]);
-
-  const selectedItems = useMemo(
-    () =>
-      draftPersonaIds
-        .map((id) => resolvedById.get(id))
-        .filter((p): p is EntityReference => Boolean(p))
-        .map((p) => ({ id: p.id, label: getEntityName(p) })),
-    [draftPersonaIds, resolvedById]
-  );
+    return uniqBy([...selectedItems, ...existing, ...fetched], 'id');
+  }, [personaResults, selectedItems, userData.personas]);
 
   const handleSave = async () => {
     const selectedPersonas = draftPersonaIds
@@ -195,6 +196,7 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
           data-testid="persona-multiselect"
           filterOption={() => true}
           items={options}
+          maxVisibleItems={3}
           placeholder={t('label.select-entity', {
             entity: t('label.persona-plural'),
           })}

@@ -97,7 +97,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   const fetchRequestIdRef = useRef(0);
 
   const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
+    () =>
+      Boolean(paging.before || paging.after) ||
+      paging.total > pageSize ||
+      pageSize !== PAGE_SIZE_BASE,
     [paging, pageSize]
   );
 

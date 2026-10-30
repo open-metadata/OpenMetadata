@@ -23,6 +23,7 @@ import {
 import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { SettingType } from '../../../../../../generated/settings/settings';
@@ -137,6 +138,19 @@ const ProfilerConfigForm = ({
           items: metricItems,
           isDisabled: Boolean(current?.disabled),
           maxVisibleItems: 5,
+          // "All" already means every metric, so it never sits alongside one.
+          onItemInserted: (key: Key) => {
+            const name = `metricConfiguration.${index}.metrics` as const;
+            const keepAll = String(key) === ALL_METRICS;
+
+            form.setValue(
+              name,
+              form
+                .getValues(name)
+                .filter((metric) => (metric.id === ALL_METRICS) === keepAll),
+              { shouldDirty: true }
+            );
+          },
         },
       },
       {
