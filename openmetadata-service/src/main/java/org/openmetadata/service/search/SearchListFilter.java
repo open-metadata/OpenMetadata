@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.Filter;
@@ -162,21 +163,26 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return getNavbarDomainCondition();
   }
 
-  // The navbar pick matches the domain and its sub-domains, and optionally items with no domain.
+  // The navbar scope (a JSON array of domain FQNs) matches each domain and its sub-domains, and
+  // optionally items with no domain.
   private String getNavbarDomainCondition() {
-    String navDomain = getQueryParam(NAV_DOMAIN_PARAM);
-    if (nullOrEmpty(navDomain)) {
+    String navDomains = getQueryParam(NAV_DOMAIN_PARAM);
+    if (nullOrEmpty(navDomains)) {
       return "";
     }
-    String fqn = escapeJsonString(navDomain);
-    String unassigned =
-        Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM))
-            ? String.format(
-                ",{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"%s\"}}}}", FIELD_DOMAINS_FQN)
-            : "";
+    List<String> clauses = new ArrayList<>();
+    for (String domain : JsonUtils.readObjects(navDomains, String.class)) {
+      String fqn = escapeJsonString(domain);
+      clauses.add(String.format("{\"term\":{\"%s\":\"%s\"}}", FIELD_DOMAINS_FQN, fqn));
+      clauses.add(String.format("{\"prefix\":{\"%s\":\"%s.\"}}", FIELD_DOMAINS_FQN, fqn));
+    }
+    if (Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM))) {
+      clauses.add(
+          String.format(
+              "{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"%s\"}}}}", FIELD_DOMAINS_FQN));
+    }
     return String.format(
-        "{\"bool\":{\"should\":[{\"term\":{\"%s\":\"%s\"}},{\"prefix\":{\"%s\":\"%s.\"}}%s],\"minimum_should_match\":1}}",
-        FIELD_DOMAINS_FQN, fqn, FIELD_DOMAINS_FQN, fqn, unassigned);
+        "{\"bool\":{\"should\":[%s],\"minimum_should_match\":1}}", String.join(",", clauses));
   }
 
   private String getIncludeCondition(String entityType) {

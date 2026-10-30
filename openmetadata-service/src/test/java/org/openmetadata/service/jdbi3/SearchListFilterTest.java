@@ -179,7 +179,7 @@ public class SearchListFilterTest {
   @Test
   void testNavbarDomainMatchesTheDomainAndItsSubDomains() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "Sales");
+    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "[\"Sales\"]");
     searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM, "false");
 
     String actual = searchListFilter.getCondition(Entity.PAGE);
@@ -190,9 +190,21 @@ public class SearchListFilterTest {
   }
 
   @Test
+  void testNavbarScopeMatchesEachOfSeveralDomains() {
+    // e.g. a domain-only user's "All Domains" covers all of their domains.
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "[\"Sales\",\"Finance\"]");
+
+    String actual = searchListFilter.getCondition(Entity.PAGE);
+
+    assertTrue(actual.contains("{\"term\":{\"domains.fullyQualifiedName\":\"Sales\"}}"));
+    assertTrue(actual.contains("{\"prefix\":{\"domains.fullyQualifiedName\":\"Finance.\"}}"));
+  }
+
+  @Test
   void testNavbarDomainCanKeepItemsWithNoDomain() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "Sales");
+    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "[\"Sales\"]");
     searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM, "true");
 
     String actual = searchListFilter.getCondition(Entity.PAGE);
@@ -206,7 +218,7 @@ public class SearchListFilterTest {
   void testExplicitDomainTakesPrecedenceOverNavbarDomain() {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("domains", "Finance");
-    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "Sales");
+    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "[\"Sales\"]");
 
     String actual = searchListFilter.getCondition(Entity.PAGE);
 

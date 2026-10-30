@@ -1016,6 +1016,87 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals(1, chartCount(getAs(user, chart)));
   }
 
+  @Test
+  void test_domainOnlyUserWithNoPickSeesOnlyTheirDomains(TestNamespace ns) {
+    // "All Domains" for a domain-only user means all of their domains: lists that otherwise follow
+    // only the pick must still leave out other domains' items.
+    Domain first = createAggregateDomain(ns.prefix("roleFirst"));
+    Domain second = createAggregateDomain(ns.prefix("roleSecond"));
+    Domain other = createAggregateDomain(ns.prefix("roleOther"));
+    String column = "rolecol_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    Table firstTable = createTableInDomain(ns, "roleFirstTable", column, first);
+    Table secondTable = createTableInDomain(ns, "roleSecondTable", column, second);
+    Table otherTable = createTableInDomain(ns, "roleOtherTable", column, other);
+    Metric firstMetric = createMetric(ns.prefix("roleFirstMetric"), first);
+    Metric otherMetric = createMetric(ns.prefix("roleOtherMetric"), other);
+    Page firstPage = createArticle(ns.prefix("roleFirstArticle"), first);
+    Page otherPage = createArticle(ns.prefix("roleOtherArticle"), other);
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("roleGlossary"))
+                    .withDescription("terms in several domains"));
+    GlossaryTerm firstTerm = createTermInDomain(glossary, "roleFirstTerm", first);
+    GlossaryTerm otherTerm = createTermInDomain(glossary, "roleOtherTerm", other);
+    Role domainOnlyRole = SdkClients.adminClient().roles().getByName("DomainOnlyAccessRole");
+    User user =
+        createEntity(
+            selfLoginUserRequest()
+                .withDomains(List.of(first.getFullyQualifiedName(), second.getFullyQualifiedName()))
+                .withRoles(List.of(domainOnlyRole.getId())));
+    assertNull(user.getDefaultDomain());
+
+    String hierarchy = getAs(user, "/v1/metrics/hierarchy?limit=1000&q=" + ns.prefix(""));
+    assertTrue(hierarchy.contains(firstMetric.getId().toString()));
+    assertFalse(hierarchy.contains(otherMetric.getId().toString()), "metrics hierarchy");
+
+    String articles = getAs(user, "/v1/contextCenter/pages?sortBy=updatedAt&limit=10000");
+    assertTrue(articles.contains(firstPage.getId().toString()));
+    assertFalse(articles.contains(otherPage.getId().toString()), "search-backed list");
+
+    String terms = getAs(user, "/v1/glossaryTerms?limit=1000&glossary=" + glossary.getId());
+    assertTrue(terms.contains(firstTerm.getId().toString()));
+    assertFalse(terms.contains(otherTerm.getId().toString()), "glossary terms");
+
+    String grid = "/v1/columns/grid?entityTypes=table&columnNamePattern=" + column;
+    Awaitility.await("all tables indexed")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> getAsAdmin(grid).contains(otherTable.getFullyQualifiedName()));
+    String scopedGrid = getAs(user, grid);
+    assertTrue(scopedGrid.contains(secondTable.getFullyQualifiedName()));
+    assertFalse(scopedGrid.contains(otherTable.getFullyQualifiedName()), "column grid");
+
+    String onlyTheseTables =
+        String.format(
+            "{\"query\":{\"ids\":{\"values\":[\"%s\",\"%s\",\"%s\"]}}}",
+            firstTable.getId(), secondTable.getId(), otherTable.getId());
+    long end = System.currentTimeMillis();
+    String chart =
+        "/v1/analytics/dataInsights/system/charts/listChartData?chartNames=total_data_assets_live"
+            + "&live=true&start="
+            + (end - Duration.ofDays(1).toMillis())
+            + "&end="
+            + end
+            + "&filter="
+            + URLEncoder.encode(onlyTheseTables, StandardCharsets.UTF_8);
+    assertEquals(3, chartCount(getAsAdmin(chart)));
+    assertEquals(2, chartCount(getAs(user, chart)), "data insights");
+  }
+
+  private static GlossaryTerm createTermInDomain(Glossary glossary, String name, Domain domain) {
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .create(
+            new CreateGlossaryTerm()
+                .withName(name)
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("term in a domain")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+  }
+
   private static long chartCount(String response) {
     long count = 0;
     for (JsonNode result :
