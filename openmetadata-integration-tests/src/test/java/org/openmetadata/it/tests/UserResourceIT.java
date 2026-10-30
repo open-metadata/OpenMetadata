@@ -26,6 +26,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -54,6 +56,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
@@ -90,6 +93,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   private static final Profile PROFILE =
       new Profile().withImages(new ImageList().withImage(URI.create("https://image.com")));
+  private static final String AUDIT_LOGS_PATH = "/v1/audit/logs";
+  private static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
+  private static final String BCRYPT_HASH_PREFIX = "$2a$";
 
   private Team lastCreatedTeam;
 
@@ -3135,5 +3141,157 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   @Override
   protected User getVersion(UUID id, Double version) {
     return Users.getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // CREDENTIALS IN RESPONSES, SNAPSHOTS AND CHANGE EVENTS
+  // ===================================================================
+
+  @Test
+  void test_writeResponsesNeverCarryAPersonsPasswordHash(TestNamespace ns) {
+    User created = createPasswordUser(ns.shortPrefix("nohash"));
+    assertNull(created.getAuthenticationMechanism());
+
+    User fetched = getEntity(created.getId().toString());
+    fetched.setDescription("Edited after creation");
+    assertNull(patchEntity(fetched.getId().toString(), fetched).getAuthenticationMechanism());
+
+    User putResponse =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/users",
+                new CreateUser()
+                    .withName(created.getName())
+                    .withEmail(created.getEmail())
+                    .withDisplayName("Renamed by PUT")
+                    .withIsBot(false),
+                User.class);
+    assertNull(putResponse.getAuthenticationMechanism());
+  }
+
+  /** Versions and history return stored snapshots, which anyone who can view a user reads. */
+  @Test
+  void test_versionsAndHistoryNeverShowAPersonsPasswordHash(TestNamespace ns) {
+    long startTs = System.currentTimeMillis() - 1000;
+    User user = createPasswordUser(ns.shortPrefix("versionpwd"));
+    User fetched = getEntity(user.getId().toString());
+    fetched.setDescription("Edited after creation");
+    patchEntity(fetched.getId().toString(), fetched);
+    String userPath = "/v1/users/" + user.getId();
+
+    String versions = readAsNonAdmin(userPath + "/versions");
+    String firstVersion = readAsNonAdmin(userPath + "/versions/0.1");
+    String history =
+        readAsNonAdmin(
+            "/v1/users/history?limit=100&startTs="
+                + startTs
+                + "&endTs="
+                + (System.currentTimeMillis() + 60_000));
+
+    assertTrue(versions.contains(user.getName()), versions);
+    assertFalse(versions.contains(BCRYPT_HASH_PREFIX), versions);
+    assertFalse(firstVersion.contains(BCRYPT_HASH_PREFIX), firstVersion);
+    assertFalse(history.contains(BCRYPT_HASH_PREFIX), history);
+    JsonUtils.readTree(versions)
+        .path("versions")
+        .forEach(UserResourceIT::assertCarriesNoAuthenticationMechanism);
+    assertCarriesNoAuthenticationMechanism(JsonUtils.readTree(firstVersion));
+    // History spans every user changed meanwhile; their change descriptions may name the field.
+    JsonUtils.readTree(history)
+        .path("data")
+        .forEach(UserResourceIT::assertCarriesNoAuthenticationMechanism);
+  }
+
+  private static void assertCarriesNoAuthenticationMechanism(JsonNode snapshot) {
+    JsonNode user = snapshot.isTextual() ? JsonUtils.readTree(snapshot.asText()) : snapshot;
+    assertFalse(user.has(AUTH_MECHANISM_FIELD), user.toString());
+  }
+
+  /** Change events carry every changed entity's full body, across all entities. */
+  @Test
+  void test_changeEventListIsForAdminsAndBots() {
+    String events = "/v1/events?entityCreated=user&timestamp=0";
+
+    OpenMetadataException denied =
+        assertThrows(OpenMetadataException.class, () -> readAsNonAdmin(events));
+
+    assertEquals(403, denied.getStatusCode(), denied.getMessage());
+    assertNotNull(
+        SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, events, null));
+  }
+
+  /** The entity-scoped audit log needs only view access on the user, so it must hold no hash. */
+  @Test
+  void test_auditLogNeverShowsAPersonsPasswordHash(TestNamespace ns) {
+    User user = createPasswordUser(ns.shortPrefix("auditpwd"));
+    User fetched = getEntity(user.getId().toString());
+    fetched.setDescription("Edited after creation");
+    patchEntity(fetched.getId().toString(), fetched);
+
+    String auditLog = awaitAuditLogOf(user.getFullyQualifiedName(), 2);
+
+    assertFalse(auditLog.contains(AUTH_MECHANISM_FIELD), auditLog);
+    assertFalse(auditLog.contains(BCRYPT_HASH_PREFIX), auditLog);
+  }
+
+  @Test
+  void test_auditLogNeverShowsABotsToken(TestNamespace ns) {
+    String name = ns.prefix("auditbot");
+    User bot =
+        createEntity(
+            new CreateUser()
+                .withName(name)
+                .withEmail(toValidEmail(name))
+                .withIsBot(true)
+                .withAuthenticationMechanism(
+                    new AuthenticationMechanism()
+                        .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                        .withConfig(
+                            new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited))));
+
+    String auditLog = awaitAuditLogOf(bot.getFullyQualifiedName(), 1);
+
+    assertFalse(auditLog.contains(AUTH_MECHANISM_FIELD), auditLog);
+    assertFalse(auditLog.contains("JWTToken"), auditLog);
+  }
+
+  /** The server seeds its admins at startup and records that as a change event too. */
+  @Test
+  void test_auditLogNeverShowsTheSeededAdminsPasswordHash() {
+    String auditLog = awaitAuditLogOf("admin", 1);
+
+    assertFalse(auditLog.contains(AUTH_MECHANISM_FIELD), auditLog);
+    assertFalse(auditLog.contains(BCRYPT_HASH_PREFIX), auditLog);
+  }
+
+  private User createPasswordUser(String userName) {
+    String password = "Audit!Passw0rd" + userName.length();
+    return createEntity(
+        new CreateUser()
+            .withName(userName)
+            .withEmail(userName + "@example.com")
+            .withPassword(password)
+            .withConfirmPassword(password)
+            .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+            .withIsBot(false));
+  }
+
+  private static String awaitAuditLogOf(String userFqn, int minimumEntries) {
+    return Awaitility.await()
+        .atMost(Duration.ofSeconds(90))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () ->
+                readAsNonAdmin(
+                    AUDIT_LOGS_PATH
+                        + "?entityType=user&limit=50&entityFQN="
+                        + URLEncoder.encode(userFqn, StandardCharsets.UTF_8)),
+            auditLog -> JsonUtils.readTree(auditLog).path("data").size() >= minimumEntries);
+  }
+
+  private static String readAsNonAdmin(String path) {
+    return SdkClients.testUserClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
   }
 }
