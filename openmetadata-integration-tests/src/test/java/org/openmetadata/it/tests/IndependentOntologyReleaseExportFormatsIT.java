@@ -93,8 +93,8 @@ public class IndependentOntologyReleaseExportFormatsIT extends OntologyReleaseEx
     declareClass(ontology, "Customer", CUSTOMER);
     declareClass(ontology, "Party", PARTY);
     client.ontologyAxioms().create(axiom(ontology));
-    client.ontologyProperties().create(property(ontology).withInverse(KNOWN_BY));
     client.ontologyProperties().create(inverseProperty(ontology));
+    client.ontologyProperties().create(property(ontology).withInverse(KNOWN_BY));
     OntologyRelease release = capture(ontology);
 
     var withInverses = NativeOntologyCsvCodec.read(export(client, release.getId(), "csv"));
@@ -124,8 +124,8 @@ public class IndependentOntologyReleaseExportFormatsIT extends OntologyReleaseEx
     Ontology ontology = createOntology(ns, "inverses");
     declareClass(ontology, "Customer", CUSTOMER);
     declareClass(ontology, "Party", PARTY);
-    client.ontologyProperties().create(property(ontology).withInverse(KNOWN_BY));
     client.ontologyProperties().create(inverseProperty(ontology));
+    client.ontologyProperties().create(property(ontology).withInverse(KNOWN_BY));
     OntologyRelease release = capture(ontology);
 
     Model with = parseTurtle(export(client, release.getId(), "turtle"));

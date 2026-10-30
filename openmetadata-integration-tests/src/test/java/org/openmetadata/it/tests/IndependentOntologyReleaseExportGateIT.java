@@ -33,15 +33,18 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 @ExtendWith(TestNamespaceExtension.class)
 public class IndependentOntologyReleaseExportGateIT extends OntologyReleaseExportSupport {
   @Test
-  void shaclGateExportsAValidReleaseUnchanged(TestNamespace ns) {
+  void shaclGateExportsAValidReleaseUnchanged(TestNamespace ns) throws Exception {
     var client = SdkClients.adminClient();
     Ontology ontology = createOntology(ns, "gate");
     declareClass(ontology, "Customer", CUSTOMER);
     OntologyRelease release = capture(ontology);
 
-    assertEquals(
-        export(client, release.getId(), "turtle"),
-        export(client, release.getId(), "turtle", "&shaclGate=true"));
+    String ungated = export(client, release.getId(), "turtle");
+    HttpResponse<String> gated = rawExport(release.getId(), "&shaclGate=true", "text/turtle");
+    assertEquals(200, gated.statusCode());
+    assertTrue(gated.headers().firstValue("Content-Type").orElse("").startsWith("text/turtle"));
+    assertFalse(gated.body().isBlank());
+    assertTrue(parseTurtle(ungated).isIsomorphicWith(parseTurtle(gated.body())));
     assertTrue(
         client
             .getHttpClient()

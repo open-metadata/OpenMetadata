@@ -45,7 +45,6 @@ abstract class OntologyReleaseExportSupport extends BaseOntologyApprovalIT {
         .withKind(OntologyPropertyKind.OBJECT)
         .withDomain(List.of(PARTY))
         .withRange(List.of(CUSTOMER))
-        .withInverse(KNOWS)
         .withOntology(ontology.getFullyQualifiedName());
   }
 
