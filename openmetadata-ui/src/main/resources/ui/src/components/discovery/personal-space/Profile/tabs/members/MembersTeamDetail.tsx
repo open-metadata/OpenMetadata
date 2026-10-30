@@ -86,6 +86,10 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../../../../utils/StringUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
@@ -332,8 +336,14 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
   }, []);
 
+  // The page number is set with its rows, never ahead of them: a second Next
+  // before the first page lands then repeats the same request instead of
+  // stepping from cursors that belong to the page before.
   const fetchChildTeams = useCallback(
-    async (cursor?: { after?: string; before?: string }) => {
+    async (
+      cursor?: { after?: string; before?: string },
+      page: number = INITIAL_PAGING_VALUE
+    ) => {
       if (!team?.fullyQualifiedName) {
         return;
       }
@@ -357,6 +367,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         }
         setChildTeams(withTeamChildrenPlaceholder(data));
         setTeamsPaging(paging);
+        setTeamsPage(page);
       } catch (error) {
         if (fetchId === latestChildTeamsFetchIdRef.current) {
           showErrorToast(error as AxiosError);
@@ -389,7 +400,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       setIsChildTeamsLoading(true);
       try {
         const response = await searchQuery({
-          query: `${WILD_CARD_CHAR}${query}${WILD_CARD_CHAR}`,
+          // Escaped and encoded: searchQuery puts the term into the URL as is,
+          // so a raw `&` or `#` would cut it short.
+          query: `${WILD_CARD_CHAR}${getEncodedFqn(
+            escapeESReservedCharacters(query)
+          )}${WILD_CARD_CHAR}`,
           pageNumber: page,
           pageSize: teamsPageSize,
           searchIndex: SearchIndex.TEAM,
@@ -407,6 +422,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           )
         );
         setTeamsSearchTotal(response.hits.total.value);
+        setTeamsPage(page);
       } catch (error) {
         if (fetchId === latestChildTeamsFetchIdRef.current) {
           showErrorToast(error as AxiosError);
@@ -606,7 +622,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const refetchChildTeams = useRef<() => void>(() => undefined);
   refetchChildTeams.current = () => {
     if (team) {
-      setTeamsPage(INITIAL_PAGING_VALUE);
       if (searchTerm) {
         void searchChildTeams(searchTerm);
       } else {
@@ -635,7 +650,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const handleTeamsSearch = useCallback(
     (term: string) => {
       setSearchTerm(term);
-      setTeamsPage(INITIAL_PAGING_VALUE);
       if (term) {
         void searchChildTeams(term);
       } else {
@@ -652,7 +666,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
     // A search pages by number, so any page can be jumped to.
     if (searchTerm) {
-      setTeamsPage(newPage);
       void searchChildTeams(searchTerm, newPage);
 
       return;
@@ -668,8 +681,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       return;
     }
 
-    setTeamsPage(newPage);
-    void fetchChildTeams({ [cursorType]: cursor });
+    void fetchChildTeams({ [cursorType]: cursor }, newPage);
   };
 
   useEffect(() => {

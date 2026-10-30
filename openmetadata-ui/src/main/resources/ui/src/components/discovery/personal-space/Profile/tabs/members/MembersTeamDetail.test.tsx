@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import React, { ReactElement, ReactNode, useCallback, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
@@ -30,6 +36,21 @@ import Table from '../../../../../common/Table/TableV2';
 
 const renderWithRouter = (ui: ReactElement) =>
   renderWithQueryClient(<MemoryRouter>{ui}</MemoryRouter>);
+
+// react-aria buttons act on pointer events, not a bare click.
+const press = (element: HTMLElement) => {
+  fireEvent.pointerDown(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.pointerUp(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.click(element);
+};
 
 const mockGetTeamByName = jest.fn().mockResolvedValue({
   id: '1',
@@ -502,8 +523,8 @@ describe('MembersTeamDetail', () => {
 
     const detail = await screen.findByTestId('team-detail');
 
-    // A scroller inside the detail bounded the tab card to the space under
-    // the header, showing a page of sub-teams a few rows at a time.
+    // A scroller inside the detail would bound the tab card to the space under
+    // the header and show a page of sub-teams a few rows at a time.
     expect(detail).toHaveClass('tw:overflow-y-auto');
     expect(detail.querySelector('.tw\\:overflow-y-auto')).toBeNull();
   });
@@ -690,6 +711,115 @@ describe('MembersTeamDetail', () => {
       await waitFor(() => expect(latestSubTeamRows()).toHaveLength(0));
 
       expect(showErrorToast).toHaveBeenCalled();
+    });
+
+    const secondPage = {
+      data: subTeams(10, 'page2'),
+      paging: { before: 'cursor-1', after: 'cursor-3', total: 25 },
+    };
+
+    it('keeps the page number with its rows when Next is pressed twice', async () => {
+      (getTeams as jest.Mock)
+        .mockResolvedValueOnce(firstPage)
+        .mockReturnValueOnce(new Promise(() => undefined))
+        .mockResolvedValueOnce(secondPage)
+        .mockResolvedValue(firstPage);
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+      const next = await screen.findByTestId('next');
+
+      fireEvent.click(next);
+      fireEvent.click(next);
+      await waitFor(() =>
+        expect(latestSubTeamRows().map(({ name }) => name)).toContain(
+          'page2-0'
+        )
+      );
+
+      // Both presses were made from page one, so both asked for page two.
+      expect(
+        (getTeams as jest.Mock).mock.calls
+          .slice(1, 3)
+          .map(([params]) => params.after)
+      ).toEqual(['cursor-2', 'cursor-2']);
+
+      fireEvent.click(screen.getByTestId('next'));
+
+      await waitFor(() =>
+        expect(getTeams).toHaveBeenLastCalledWith(
+          expect.objectContaining({ after: 'cursor-3' })
+        )
+      );
+    });
+
+    it('opens the previous page with the before cursor', async () => {
+      (getTeams as jest.Mock)
+        .mockResolvedValueOnce(firstPage)
+        .mockResolvedValueOnce(secondPage)
+        .mockResolvedValue(firstPage);
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      fireEvent.click(await screen.findByTestId('next'));
+      await waitFor(() =>
+        expect(latestSubTeamRows().map(({ name }) => name)).toContain(
+          'page2-0'
+        )
+      );
+      fireEvent.click(screen.getByTestId('previous'));
+
+      await waitFor(() =>
+        expect(getTeams).toHaveBeenLastCalledWith(
+          expect.objectContaining({ before: 'cursor-1', limit: 10 })
+        )
+      );
+    });
+
+    it('reloads the first page with a new page size', async () => {
+      (getTeams as jest.Mock).mockResolvedValue(firstPage);
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+      await screen.findByTestId('next');
+
+      await act(async () => {
+        press(
+          within(screen.getByTestId('rows-per-page-dropdown')).getByRole(
+            'button'
+          )
+        );
+      });
+      await act(async () => {
+        press(screen.getByTestId('rows-per-page-option-25'));
+      });
+
+      await waitFor(() =>
+        expect(getTeams).toHaveBeenLastCalledWith(
+          expect.objectContaining({ limit: 25 })
+        )
+      );
+
+      expect((getTeams as jest.Mock).mock.calls.at(-1)[0].after).toBeUndefined();
+    });
+
+    it('escapes and encodes the search term for the URL', async () => {
+      (getTeams as jest.Mock).mockResolvedValue(firstPage);
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      fireEvent.change(await screen.findByTestId('sub-teams-table-search'), {
+        target: { value: 'R&D' },
+      });
+
+      // `&` is escaped for the query parser, then URL-encoded with the escape.
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenLastCalledWith(
+          expect.objectContaining({ query: '*R%5C%26D*' })
+        )
+      );
     });
   });
 
