@@ -13,3 +13,8 @@ ALTER TABLE domain_entity ALTER COLUMN fqnhash TYPE character varying(768);
 -- the same column for servers that skip this release.
 ALTER TABLE rdf_projection_health
   ADD COLUMN IF NOT EXISTS lastCompactedAt BIGINT NOT NULL DEFAULT 0;
+
+-- Transfer RDF delivery to pause-aware consumers before producing pipelineExecution payloads.
+-- Deleting first waits for an old in-flight delivery; old producers still use the enqueue guard.
+DELETE FROM rdf_live_write_guard WHERE id = 'drain';
+INSERT INTO rdf_live_write_guard (id) VALUES ('drain-v2') ON CONFLICT (id) DO NOTHING;

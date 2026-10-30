@@ -59,6 +59,22 @@ public final class RdfLiveWriteStore {
     this.compactionDeadline = compactionDeadline;
   }
 
+  /** New payloads must never reach the queue while legacy consumers can still drain it. */
+  public void requireCurrentWriter() {
+    final boolean ready =
+        jdbi.withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2'")
+                    .mapTo(String.class)
+                    .findOne()
+                    .isPresent());
+    if (!ready) {
+      throw new IllegalStateException(
+          "RDF live-write protocol migration is missing; run database migrations before enabling RDF");
+    }
+  }
+
   public void enqueue(final String payload) {
     jdbi.useTransaction(
         TransactionIsolationLevel.READ_COMMITTED,
@@ -83,7 +99,7 @@ public final class RdfLiveWriteStore {
           final boolean ownsWriter =
               handle
                   .createQuery(
-                      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE SKIP LOCKED")
+                      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2' FOR UPDATE SKIP LOCKED")
                   .mapTo(String.class)
                   .findOne()
                   .isPresent();

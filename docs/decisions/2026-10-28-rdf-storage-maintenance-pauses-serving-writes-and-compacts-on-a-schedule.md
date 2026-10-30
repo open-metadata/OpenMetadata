@@ -1,10 +1,10 @@
 # RDF storage maintenance pauses serving writes and compacts the serving dataset on a schedule
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-28 (initial)
+- **Revisions:** v1 2026-10-28 (initial), v2 2026-10-30 (task recovery and queue protocol fence)
 - **Deciders:** Platform
 - **Guard:** `RdfStorageMaintenanceIT`, `RdfStorageMaintenanceServiceTest`, `FusekiCompactionTest`,
-  `CompactionBlockedWriteTest`, `RdfIndexAppTest`, `RdfLiveWriteTest`
+  `CompactionBlockedWriteTest`, `RdfIndexAppTest`, `RdfLiveWriteTest`, `RdfMaintenanceRecoveryIT`
 - **Related:** #36437
 
 ## Context
@@ -51,17 +51,28 @@ dead-lettered, marking the projection degraded until a full rebuild.
   held back at once and its failures stay the queue's; every other handle waits and marks the
   projection degraded on failure; the maintenance job writes through its own pause with the
   handle the pause hands it, checked against the lease's job id.
-- The pause ends only on Fuseki's answer: a status poll that fails counts as still running. A write
+- The pause ends only on Fuseki's answer: a status poll that fails, including an unreadable JSON
+  response, counts as still running. The serving compaction keeps polling the same task after its
+  maintenance budget and logs the overrun; it never submits another compaction to wait for the first.
+  If the start response is lost or unreadable, it waits until a readable task list confirms no
+  compaction is running. Losing contact is not evidence that Fuseki stopped copying. A write
   that times out while Fuseki reports a running compaction, whoever started it, is held back like a
   paused write instead of counting as failed.
 - Pipeline run triples go through the live-write queue, so a maintenance window does not lose them.
+  The release migration first deletes the legacy `drain` guard, waiting for any old consumer already
+  holding it, then creates `drain-v2`. Upgraded consumers use this new fence; old consumers find no
+  legacy fence and stop before reading an unknown payload or consuming its delivery attempts. The
+  `enqueue` guard is unchanged, so old servers can still produce their supported commands during a
+  rolling upgrade. An upgraded RDF updater refuses to start without the new consumer fence.
 - After a blue/green promotion, the run empties and compacts the dataset it retired, which
   nothing reads again, so between runs only the serving dataset holds a full copy. A build that
   fails or is stopped is kept for inspection, and the next build clears it.
 - Compaction and the clear that starts an in-place rebuild run under
   `storageMaintenance.maxDurationMinutes` (240), not the per-request timeout, and do not consult or
-  feed the circuit breaker. A `CLEAR` cannot be cancelled in Fuseki, so a shorter budget only
-  abandons a clear that still completes.
+  feed the circuit breaker. For a serving compaction this is a warning threshold: the copy cannot
+  be cancelled, and writes stay paused while its task is still running or cannot be read. Build and
+  retired datasets retain the bounded wait. A `CLEAR` cannot be cancelled in Fuseki, so a shorter
+  budget only abandons a clear that still completes.
 - An in-place rebuild clears, then always compacts, then reloads the ontologies. A clear that fails
   is still followed by the compaction, and then fails the run.
 - A compaction counts as succeeded only when Fuseki's task reports `success: true`. A task Fuseki no
@@ -73,4 +84,8 @@ dead-lettered, marking the projection degraded until a full rebuild.
 - Maintenance delays live writes by the compaction's duration; it no longer loses them.
 - Any new code path that writes the serving dataset must go through `writeActive`, or it bypasses
   the pause and may block on Fuseki during a compaction.
+- After the protocol migration, keep an upgraded RDF server available to drain the queue. An
+  old-only rollback leaves queued writes pending. Restore the legacy consumer fence only after the
+  new payloads have been delivered by an upgraded server, or after an explicit reconciliation from
+  authoritative metadata. Never enable both consumer fences together.
 - Revisit the interval if a deployment grows faster than its volume allows within one interval.
