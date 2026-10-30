@@ -283,13 +283,13 @@ public final class OntologyConceptSqlGenerator {
   /** The one key that contains the bound column orients and joins on all of its columns. */
   private static List<ColumnPair> containingKeyPairs(
       final Step step, final BoundTable from, final BoundTable to, final UUID property) {
-    final Optional<BoundKeys> found = BoundKeys.of(from, to, property);
-    if (found.isEmpty() || found.get().bound().size() != 1) {
+    final BoundKeys found = BoundKeys.of(from, to, property).orElse(null);
+    if (found == null || found.bound().size() != 1) {
       return List.of();
     }
-    final String column = found.get().bound().getFirst();
+    final String column = found.bound().getFirst();
     final List<TableConstraint> containing =
-        found.get().keys().stream().filter(key -> key.getColumns().contains(column)).toList();
+        found.keys().stream().filter(key -> key.getColumns().contains(column)).toList();
     if (containing.size() > 1) {
       throw step.failure(
           ": %s is in several foreign keys between %s and %s",
@@ -297,10 +297,7 @@ public final class OntologyConceptSqlGenerator {
           step.previous().fullyQualifiedName(),
           (from == step.previous() ? to : from).fullyQualifiedName());
     }
-    return containing.stream()
-        .findFirst()
-        .map(key -> pairs(key, found.get().reversed()))
-        .orElse(List.of());
+    return containing.isEmpty() ? List.of() : pairs(containing.getFirst(), found.reversed());
   }
 
   private static BadRequestException severalKeys(final Step step, final BoundTable candidate) {
