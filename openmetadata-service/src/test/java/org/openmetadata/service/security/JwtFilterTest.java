@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +35,8 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -50,17 +53,25 @@ import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.jwt.JWKSKey;
+import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -725,5 +736,209 @@ class JwtFilterTest {
     field.setAccessible(true);
     field.setBoolean(filter, useRolesFromProvider);
     return filter;
+  }
+
+  /** Google and Entra ID sign other applications' tokens with the keys this filter trusts. */
+  @Test
+  void providerTokenIssuedToAnotherApplicationIsRejected() {
+    String token = providerToken("another-application");
+
+    assertThrows(
+        AuthenticationException.class,
+        () ->
+            filterExpectingClient("openmetadata-client")
+                .filter(createRequestContextWithJwt(token)));
+  }
+
+  @Test
+  void providerTokenIssuedToThisDeploymentIsAccepted() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(providerToken("openmetadata-client"));
+
+    filterExpectingClient("openmetadata-client").filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContext =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContext.capture());
+    assertEquals("sam", securityContext.getValue().getUserPrincipal().getName());
+  }
+
+  /**
+   * Bot tokens and personal access tokens carry no audience. They are signed with our own key, even
+   * when the issuer has since been reconfigured, and skip the provider checks.
+   */
+  @Test
+  void tokenSignedWithOpenMetadataKeySkipsProviderChecks() throws Exception {
+    Jwk jwk = mock(Jwk.class);
+    when(jwk.getPublicKey()).thenReturn(publicKey);
+    JwkProvider keyIdAwareProvider = mock(JwkProvider.class);
+    when(keyIdAwareProvider.get(OM_KEY_ID)).thenReturn(jwk);
+    JwtFilter filter =
+        new JwtFilter(
+            keyIdAwareProvider,
+            List.of("sub", "email"),
+            "openmetadata.org",
+            new ProviderTokenValidator(Set.of("openmetadata-client"), Optional::empty));
+    String botToken =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer("an-earlier-issuer")
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(botToken);
+    JWTTokenGenerator openMetadataKey = mock(JWTTokenGenerator.class);
+    when(openMetadataKey.getKid()).thenReturn(OM_KEY_ID);
+
+    try (MockedStatic<JWTTokenGenerator> generator =
+        mockStatic(JWTTokenGenerator.class, Mockito.CALLS_REAL_METHODS)) {
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(openMetadataKey);
+      filter.filter(context);
+    }
+
+    ArgumentCaptor<SecurityContext> securityContext =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContext.capture());
+    assertEquals("sam", securityContext.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void clientIdsComeFromTheBrowserAndServerSideClients() {
+    AuthenticationConfiguration configuration =
+        new AuthenticationConfiguration()
+            .withClientId("browser-client")
+            .withOidcConfiguration(new OidcClientConfig().withId("server-client"));
+
+    assertEquals(Set.of("browser-client", "server-client"), JwtFilter.clientIdsOf(configuration));
+    assertEquals(
+        Set.of(), JwtFilter.clientIdsOf(new AuthenticationConfiguration().withClientId(" ")));
+  }
+
+  @Test
+  void aPublicEntraClientIsRestrictedToTheTenantItsAuthorityNames() {
+    String tenant = "11111111-2222-3333-4444-555555555555";
+
+    assertEquals(
+        tenant,
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/" + tenant)));
+    assertEquals(
+        tenant,
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(
+                ClientType.PUBLIC, "https://login.microsoftonline.com/" + tenant + "/v2.0/")));
+  }
+
+  @Test
+  void onlyAPublicEntraClientNamingATenantIdIsRestricted() {
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/common")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/contoso.com")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(
+                ClientType.CONFIDENTIAL,
+                "https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            new AuthenticationConfiguration()
+                .withProvider(AuthProvider.GOOGLE)
+                .withClientType(ClientType.PUBLIC)
+                .withAuthority("https://accounts.google.com")));
+  }
+
+  /** The issuer comes from the server-side sign-in handler, and only for its own client. */
+  @Test
+  void providerIssuerComesFromTheHandlerServingTheSameClient(@TempDir Path directory)
+      throws Exception {
+    Path discoveryDocument =
+        Files.writeString(
+            directory.resolve("openid-configuration"),
+            """
+            {"issuer": "https://idp.test", "authorization_endpoint": "https://idp.test/authorize",
+             "token_endpoint": "https://idp.test/token", "jwks_uri": "https://idp.test/keys",
+             "response_types_supported": ["code"], "subject_types_supported": ["public"],
+             "id_token_signing_alg_values_supported": ["RS256"],
+             "token_endpoint_auth_methods_supported": ["client_secret_post"]}
+            """);
+    OidcClientConfig serverSideClient =
+        new OidcClientConfig()
+            .withId("om-client")
+            .withSecret("om-secret")
+            .withDiscoveryUri("file:" + discoveryDocument.toAbsolutePath())
+            .withServerUrl("http://localhost:8585")
+            .withCallbackUrl("http://localhost:8585/callback");
+    AuthorizerConfiguration authorizer =
+        new AuthorizerConfiguration()
+            .withUseRolesFromProvider(false)
+            .withEnforcePrincipalDomain(false);
+    AuthServeletHandlerRegistry.setHandler(
+        new AuthenticationCodeFlowHandler(
+            signInConfiguration(ClientType.CONFIDENTIAL, serverSideClient),
+            authorizer,
+            mock(SessionService.class)));
+    JWTTokenGenerator localGenerator = generatorWithLocalKey();
+    try (MockedStatic<JWTTokenGenerator> generator =
+        mockStatic(JWTTokenGenerator.class, Mockito.CALLS_REAL_METHODS)) {
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(localGenerator);
+      JwtFilter confidential =
+          new JwtFilter(signInConfiguration(ClientType.CONFIDENTIAL, serverSideClient), authorizer);
+      JwtFilter publicClient =
+          new JwtFilter(signInConfiguration(ClientType.PUBLIC, serverSideClient), authorizer);
+
+      assertEquals(Optional.of("https://idp.test"), confidential.providerIssuer());
+      assertEquals(Optional.empty(), publicClient.providerIssuer());
+    } finally {
+      AuthServeletHandlerRegistry.setHandler(null);
+    }
+  }
+
+  private static JwtFilter filterExpectingClient(String clientId) {
+    return new JwtFilter(
+        jwkProvider,
+        List.of("sub", "email"),
+        "openmetadata.org",
+        new ProviderTokenValidator(Set.of(clientId), Optional::empty));
+  }
+
+  private static String providerToken(String audience) {
+    return JWT.create()
+        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+        .withClaim("sub", "sam")
+        .withAudience(audience)
+        .sign(algorithm);
+  }
+
+  private static JWTTokenGenerator generatorWithLocalKey() {
+    JWKSKey localKey = mock(JWKSKey.class);
+    when(localKey.getKid()).thenReturn(OM_KEY_ID);
+    when(localKey.getKty()).thenReturn("RSA");
+    when(localKey.getN()).thenReturn("test-n");
+    when(localKey.getE()).thenReturn("AQAB");
+    JWKSResponse localKeySet = mock(JWKSResponse.class);
+    when(localKeySet.getJwsKeys()).thenReturn(List.of(localKey));
+    JWTTokenGenerator localGenerator = mock(JWTTokenGenerator.class);
+    when(localGenerator.getJWKSResponse()).thenReturn(localKeySet);
+    return localGenerator;
+  }
+
+  private static AuthenticationConfiguration entraSignIn(ClientType clientType, String authority) {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.AZURE)
+        .withClientType(clientType)
+        .withAuthority(authority);
+  }
+
+  private static AuthenticationConfiguration signInConfiguration(
+      ClientType clientType, OidcClientConfig serverSideClient) {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.CUSTOM_OIDC)
+        .withClientType(clientType)
+        .withClientId("om-client")
+        .withPublicKeyUrls(List.of())
+        .withOidcConfiguration(serverSideClient);
   }
 }

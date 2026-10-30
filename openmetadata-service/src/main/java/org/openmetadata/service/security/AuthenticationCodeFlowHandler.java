@@ -35,6 +35,7 @@ import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.http.HTTPRequest;
 import com.nimbusds.oauth2.sdk.http.HTTPResponse;
 import com.nimbusds.oauth2.sdk.id.ClientID;
+import com.nimbusds.oauth2.sdk.id.Issuer;
 import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
@@ -71,6 +72,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
@@ -79,6 +81,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -230,6 +233,24 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   public OidcClient getClient() {
     return client;
+  }
+
+  /**
+   * The issuer the provider's discovery document names, which its tokens must carry. Read on demand
+   * from pac4j's cached metadata, so the server can start while the provider is unreachable.
+   */
+  public String getProviderIssuer() {
+    Issuer issuer = resolveProviderMetadata(client.getConfiguration()).getIssuer();
+    return issuer == null ? null : issuer.getValue();
+  }
+
+  /** Whether this handler signs users in through {@code oidcClient}, as the token filter expects. */
+  public boolean servesClient(OidcClientConfig oidcClient) {
+    OidcClientConfig current = authenticationConfiguration.getOidcConfiguration();
+    return oidcClient != null
+        && Objects.equals(current.getId(), oidcClient.getId())
+        && StringUtils.trimToEmpty(current.getDiscoveryUri())
+            .equals(StringUtils.trimToEmpty(oidcClient.getDiscoveryUri()));
   }
 
   public synchronized void updateConfiguration(
