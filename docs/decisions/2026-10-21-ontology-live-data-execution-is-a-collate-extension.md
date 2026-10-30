@@ -38,7 +38,24 @@ commented with the relation label, and the service, service type and dialect.
   the previous table and a candidate, in either direction, trying candidates in asset-id order.
   Several foreign keys between the two tables, in either direction, are a 400 that names both
   tables and asks for the property to be bound to one column. A table's foreign key to itself
-  counts once, so a self-relation over one such key joins on it.
+  counts once. It gives two joins, along the key (a row's manager) and against it (a row's
+  reports), and the binding chooses between them. PR4 keeps `inverse` reciprocal, so `managed by`
+  and `manages` each name the other and the declaration alone cannot say which way the key runs.
+  A column bound to `managed by` holds the manager, so `managed by` reads along the key and
+  `manages` against it.
+  - A hop whose property no table binds, but whose declared inverse the previous table or a
+    candidate binds, takes the converse of the join a hop over the inverse would take from the
+    candidate back to the previous table, so the candidate's binding of the inverse wins. This
+    holds between two different tables too, where it replaces the several-keys 400. The declared
+    inverse is the live object property of the same ontology that `inverse` names, whether or not
+    the reader may view it, so the join does not depend on the reader. The SQL comment and errors
+    name only properties the reader may view.
+  - A hop whose property and declared inverse are both unbound, over one key from a table to
+    itself, is a 400 that names the hop and the key's columns and asks for one of the two
+    properties to be bound to that column. Rows read in a guessed direction would be wrong for one
+    of the two properties.
+  - A hop whose property declares no inverse, or is its own inverse, reads one key from a table to
+    itself along the key.
 - A hop followed from its relation's range back to its domain is labelled with the relation's
   declared inverse when that inverse is a live object property the reader may view, the same label
   as the rail's hop chip. The server knows only the declared domain and range, so a relation that
