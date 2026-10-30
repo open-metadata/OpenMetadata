@@ -213,9 +213,6 @@ const OntologyReleaseReviewers = ({
   const renderReviewerSearch = () => (
     <>
       <Select.ComboBox
-        // Search starts on focus, so results can land after the text is set;
-        // React Aria only opens on a text change with options already present.
-        allowsEmptyCollection={searchText.length > 0}
         disabledKeys={
           searchUnavailable ? options.map((option) => option.id) : []
         }

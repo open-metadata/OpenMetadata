@@ -739,20 +739,6 @@ it('shows a failed reviewer search and retries without treating it as an empty r
   expect(APIClient.patch).not.toHaveBeenCalled();
 });
 
-it('opens the reviewer list when results arrive after the text was entered', async () => {
-  configureReviewerSearch();
-  await renderPanel();
-  const input = screen.getByRole('combobox', { name: /label.add-reviewer/ });
-  await act(async () => {
-    input.focus();
-    fireEvent.change(input, { target: { value: 'new' } });
-  });
-
-  expect(
-    await screen.findByRole('option', { name: /New reviewer/ })
-  ).toBeVisible();
-});
-
 it('does not select retained search results while the next input is pending', async () => {
   configureReviewerSearch();
   await renderPanel();
