@@ -123,6 +123,7 @@ import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.ActiveProviderValidator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -682,6 +683,7 @@ public class SystemResource {
 
   @POST
   @Path("/settings/source/{configType}/adopt")
+  @IdentityEndpoint
   @Operation(
       operationId = "adoptDeploymentConfig",
       summary = "Use the deployment configuration for stored settings",
@@ -1128,6 +1130,7 @@ public class SystemResource {
 
   @PUT
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "updateSecurityConfig",
       summary = "Update complete security configuration",
@@ -1197,6 +1200,7 @@ public class SystemResource {
 
   @PATCH
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "patchSecurityConfig",
       summary = "Patch security configuration",
