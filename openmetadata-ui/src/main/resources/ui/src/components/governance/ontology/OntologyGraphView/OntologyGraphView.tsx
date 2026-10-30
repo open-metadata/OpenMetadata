@@ -95,6 +95,7 @@ import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/Relationship
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
+import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
 import OntologyConceptDataGraph from '../OntologyGraphView/OntologyConceptDataGraph';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
@@ -984,8 +985,36 @@ const OntologyGraphView = ({
       />
     ) : null;
 
+  const isEmptyModel = model.concepts.length === 0;
+  const canAddFirstConcept = [
+    Boolean(onRequestCreateConcept),
+    canEditOntology,
+    !ontology.deleted,
+    ...[
+      ResourceEntity.ONTOLOGY_CONCEPT,
+      ResourceEntity.ONTOLOGY_CHANGE_SET,
+    ].map((resource) => flagsOf(resource).canCreate),
+  ].every(Boolean);
+
+  const renderEmptyCard = () =>
+    [isEmptyModel, surface === 'graph', graphMode === 'model'].every(
+      Boolean
+    ) ? (
+      <OntologyEmptyCard
+        canAdd={canAddFirstConcept}
+        onAdd={() => {
+          if (!isEditing) {
+            onRequestEdit?.();
+          }
+          onRequestCreateConcept?.();
+        }}
+      />
+    ) : null;
+
   const renderAddConcept = () =>
-    [canCreateNewClass, Boolean(onRequestCreateConcept)].every(Boolean) ? (
+    [canCreateNewClass, Boolean(onRequestCreateConcept), !isEmptyModel].every(
+      Boolean
+    ) ? (
       <Button
         className="tw:absolute tw:bottom-4 tw:right-4 tw:z-6"
         data-testid="ontology-canvas-add-concept"
@@ -1039,6 +1068,7 @@ const OntologyGraphView = ({
         {renderAddConcept()}
         {renderGraphMode()}
         {renderSurface()}
+        {renderEmptyCard()}
       </div>
       {renderSidebar()}
       {renderTypeDialog()}

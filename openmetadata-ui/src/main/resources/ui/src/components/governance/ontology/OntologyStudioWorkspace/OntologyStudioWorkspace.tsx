@@ -15,7 +15,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -28,8 +27,7 @@ import OntologyGraphView, {
 } from '../OntologyGraphView/OntologyGraphView';
 
 interface OntologyStudioWorkspaceProps {
-  ontology?: Ontology;
-  canCreate: boolean;
+  ontology: Ontology;
   createConceptRequestKey?: number;
   onRequestCreateConcept?: () => void;
   onAuthoringLockChange?: (locked: boolean) => void;
@@ -60,7 +58,6 @@ const getWorkspaceClassName = (
 
 const OntologyStudioWorkspace = ({
   ontology,
-  canCreate,
   createConceptRequestKey,
   onRequestCreateConcept,
   onAuthoringLockChange,
@@ -76,26 +73,13 @@ const OntologyStudioWorkspace = ({
   onWorkingChange,
 }: OntologyStudioWorkspaceProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const isAiMode = useIsAiMode();
   const [revision, setRevision] = useState(0);
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
-    { id: ontology?.id ?? '' },
-    { enabled: Boolean(ontology), deleted: ontology?.deleted }
+    { id: ontology.id },
+    { deleted: ontology.deleted }
   );
-
-  if (!ontology) {
-    return (
-      <Box className="tw:overflow-auto tw:p-6" direction="col">
-        <OntologyCreateForm
-          canCreate={canCreate}
-          currentUserId={currentUser?.id}
-          onSaved={onSaved}
-        />
-      </Box>
-    );
-  }
 
   const renderContent = () => {
     switch (mode) {
@@ -150,7 +134,7 @@ const OntologyStudioWorkspace = ({
             </Tabs.Panel>
             <Tabs.Panel id="settings">
               <OntologyCreateForm
-                canCreate={canEditAll}
+                canEdit={canEditAll}
                 ontology={ontology}
                 onSaved={(saved) => {
                   onSaved(saved);
