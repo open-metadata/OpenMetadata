@@ -15,7 +15,8 @@
 /**
  * Deprecation guard for the Less → Tailwind and raw-SVG → core-icons migrations.
  *
- * Enforces "no NEW debt": fail if a change adds a raw `.svg` under
+ * Enforces "no NEW debt": fail on added --om-* stylesheet declarations or
+ * increased references, or if a change adds a raw `.svg` under
  * `assets/svg` or a new import of one. New `.less` files are reported but do
  * NOT fail the guard while the app-mode migration still ships `.less` for the
  * AI shell. Existing usage is untouched and migrates over time. Test files may
@@ -88,7 +89,7 @@ function parseSvgImports(content) {
 
 function newSvgImports() {
   const hits = [];
-  for (const { before, after } of changedTsFiles()) {
+  for (const { before, after } of changedFiles(['*.ts', '*.tsx'])) {
     if (/\.(?:test|spec)\.tsx?$/.test(after)) {
       continue;
     }
@@ -106,10 +107,21 @@ function newSvgImports() {
   return hits;
 }
 
-// List of changed .ts/.tsx files, as { before, after } repo-relative paths
+// Changed files as { before, after } repo-relative paths
 // (they differ only for detected renames).
-function changedTsFiles() {
-  const out = sh(`git diff ${diffArgs} --diff-filter=ACMRT --name-status -- '*.ts' '*.tsx'`);
+function changedFiles(patterns) {
+  const out = execFileSync(
+    'git',
+    [
+      'diff',
+      ...(base ? [diffArgs] : ['--cached']),
+      '--diff-filter=ACMRT',
+      '--name-status',
+      '--',
+      ...patterns,
+    ],
+    { encoding: 'utf8' }
+  );
   const files = [];
   for (const line of out.split('\n')) {
     if (!line.trim()) {
@@ -158,13 +170,41 @@ function getAfterContent(path) {
   return gitShow(base ? `HEAD:${path}` : `:${path}`);
 }
 
+function omTokenUses(content) {
+  const text = content.replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/g, '$1');
+  const uses = new Map();
+  for (const [, token] of text.matchAll(/(--om-[\w-]+)\s*:/g)) {
+    // Light and dark declarations of an existing alias are one compatibility token.
+    uses.set(`declaration ${token}`, 1);
+  }
+  for (const [, token] of text.matchAll(
+    /var\(\s*(--om-[\w-]+)\s*(?=[),\s])/g
+  )) {
+    const key = `reference ${token}`;
+    uses.set(key, (uses.get(key) || 0) + 1);
+  }
+
+  return uses;
+}
+
+function newOmTokenUses() {
+  return changedFiles(['*.less', '*.css']).flatMap(({ before, after }) => {
+    const previous = omTokenUses(getBeforeContent(before));
+
+    return [...omTokenUses(getAfterContent(after))]
+      .filter(([key, count]) => count > (previous.get(key) || 0))
+      .map(([key]) => `${after}: ${key}`);
+  });
+}
+
 function main() {
   const less = newLessFiles();
   const svgFiles = newSvgFiles();
   const svgImports = newSvgImports();
+  const omTokens = newOmTokenUses();
   // New `.less` files are reported but do NOT fail the guard — the app-mode
-  // migration still lands `.less` for the AI shell. New svg debt blocks.
-  const problems = svgFiles.length + svgImports.length;
+  // migration still lands `.less` for the AI shell. New SVG and token debt blocks.
+  const problems = svgFiles.length + svgImports.length + omTokens.length;
 
   if (less.length) {
     process.stderr.write(C.gray(`\nⓘ New .less file(s) detected (allowed for now — prefer Tailwind (tw:) + UntitledUI):\n`));
@@ -178,14 +218,22 @@ function main() {
     process.stderr.write(C.red(`\n✖ New import(s) of raw .svg from assets/svg are not allowed — use @openmetadata/ui-core-components/icons:\n`));
     svgImports.forEach((h) => process.stderr.write(`    ${h.file}:  ${h.path}\n`));
   }
+  if (omTokens.length) {
+    process.stderr.write(
+      C.red(
+        '\n✖ New --om-* declarations or references are not allowed; use --tw-* theme variables:\n'
+      )
+    );
+    omTokens.forEach((hit) => process.stderr.write(`    ${hit}\n`));
+  }
 
   if (problems) {
     process.stderr.write(
-      C.gray(`\nLess and raw SVG icons are deprecated. See specs/ and CLAUDE.md. Existing usage is fine; do not add more.\n`)
+      C.gray(`\nLegacy --om-* tokens and raw SVG icons are deprecated. See specs/ and AGENTS.md. Preserve existing consumers; do not add new usage.\n`)
     );
     process.exit(1);
   }
-  process.stdout.write(C.green('✔ No new raw-SVG imports.\n'));
+  process.stdout.write(C.green('✔ No new raw-SVG imports or --om-* token usage.\n'));
 }
 
 if (require.main === module) {
