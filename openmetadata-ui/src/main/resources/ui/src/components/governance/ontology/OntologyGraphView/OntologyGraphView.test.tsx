@@ -46,6 +46,7 @@ import {
   createOntologyAxiom,
   createOntologyProperty,
   createRelationshipType,
+  getOntologyConceptBindings,
   getRelationshipTypeByName,
   listRelationshipTypes,
   patchOntologyProperty,
@@ -117,7 +118,7 @@ jest.mock(
 jest.mock('../../../../rest/ontologyAPI', () => ({
   getOntologyConceptBindings: jest
     .fn()
-    .mockResolvedValue({ revision: 0, assets: [] }),
+    .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
   createOntologyAxiom: jest.fn(),
   createOntologyProperty: jest.fn(),
   createRelationshipType: jest.fn(),
@@ -1926,6 +1927,39 @@ describe('OntologyGraphView', () => {
       ).toBeInTheDocument();
       expect(
         screen.queryByTestId('ontology-data-empty-state')
+      ).not.toBeInTheDocument();
+    });
+
+    it('reports a failed bindings refresh and retries it in the AI data graph', async () => {
+      renderAiGraph();
+
+      await screen.findByTestId('native-ontology-graph');
+      fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+      fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+      const dataGraph = await screen.findByTestId('ontology-native-data-graph');
+      await within(dataGraph).findByText('message.no-data-available');
+      (getOntologyConceptBindings as jest.Mock).mockRejectedValueOnce(
+        new Error('read failed')
+      );
+      fireEvent.click(within(dataGraph).getByTestId('refresh'));
+
+      expect(
+        await within(dataGraph).findByText(
+          'message.ontology-binding-read-unavailable'
+        )
+      ).toBeVisible();
+
+      fireEvent.click(
+        within(dataGraph).getByRole('button', { name: 'label.retry' })
+      );
+
+      expect(
+        await within(dataGraph).findByText('message.no-data-available')
+      ).toBeVisible();
+      expect(
+        within(dataGraph).queryByText(
+          'message.ontology-binding-read-unavailable'
+        )
       ).not.toBeInTheDocument();
     });
   });

@@ -197,7 +197,7 @@ describe('Ontology Studio mode-switch integration', () => {
       getOntologyConceptBindings as jest.MockedFunction<
         typeof getOntologyConceptBindings
       >
-    ).mockResolvedValue({ revision: 0, assets: [] });
+    ).mockResolvedValue({ kind: 'complete', revision: 0, assets: [] });
     mockListOntologies.mockResolvedValue({ data: [], paging: { total: 0 } });
     mockListOntologyConcepts.mockResolvedValue({
       data: [],
