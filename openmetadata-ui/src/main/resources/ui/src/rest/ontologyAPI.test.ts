@@ -31,6 +31,7 @@ import {
   getOntologyConceptBindings,
   getOntologyRelease,
   getOntologyReleaseReview,
+  getOntologyReleaseReviews,
   getOntologyReleaseValidation,
   getRdfEntityDiff,
   installOntologyPack,
@@ -648,5 +649,22 @@ describe('ontologyAPI', () => {
       request
     );
     expect(result).toEqual(response.data);
+  });
+});
+
+it('reads a bounded review page with the server total and after cursor', async () => {
+  const response = { data: [], paging: { total: 42, after: 'next' } };
+  (APIClient.get as jest.Mock).mockResolvedValueOnce({ data: response });
+  const signal = new AbortController().signal;
+
+  await expect(
+    getOntologyReleaseReviews(
+      { view: 'pending', limit: 1, after: 'current' },
+      signal
+    )
+  ).resolves.toEqual(response);
+  expect(APIClient.get).toHaveBeenLastCalledWith('/ontologies/reviews', {
+    params: { view: 'pending', limit: 1, after: 'current' },
+    signal,
   });
 });

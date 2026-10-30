@@ -431,6 +431,34 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByText('name')).not.toBeInTheDocument();
   });
 
+  it('shows "Deleted" instead of the lifecycle status on a soft-deleted metric', () => {
+    const metric = {
+      id: 'metric-id',
+      name: 'revenue',
+      fullyQualifiedName: 'revenue',
+      entityStatus: 'Approved',
+    };
+    const { rerender } = render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={metric as unknown as Container}
+        entityType={EntityType.METRIC}
+      />
+    );
+
+    expect(screen.getByText('Approved')).toBeInTheDocument();
+
+    rerender(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{ ...metric, deleted: true } as unknown as Container}
+        entityType={EntityType.METRIC}
+      />
+    );
+
+    expect(screen.queryByText('Approved')).not.toBeInTheDocument();
+  });
+
   it('should call getContainerAncestors API on Page load for container assets', () => {
     const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
     render(<DataAssetsHeader {...mockProps} />);
