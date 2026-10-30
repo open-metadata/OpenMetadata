@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.McpServerResource;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -70,7 +71,7 @@ public class McpServerRepository extends EntityRepository<McpServer> {
 
   @Override
   public void clearFields(McpServer mcpServer, Fields fields) {
-    // No additional fields to clear
+    McpServerMasker.mask(mcpServer);
   }
 
   @Override
@@ -84,6 +85,7 @@ public class McpServerRepository extends EntityRepository<McpServer> {
     if (mcpServer.getService() != null) {
       populateService(mcpServer);
     }
+    McpServerMasker.mask(mcpServer);
     AIAssetStatusSync.sync(mcpServer);
   }
 
@@ -117,7 +119,8 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   @Override
   public EntityRepository<McpServer>.EntityUpdater getUpdater(
       McpServer original, McpServer updated, Operation operation, ChangeSource changeSource) {
-    return new McpServerUpdater(original, updated, operation);
+    return new McpServerUpdater(
+        McpServerMasker.mask(original), McpServerMasker.mask(updated), operation);
   }
 
   @Override
@@ -152,6 +155,9 @@ public class McpServerRepository extends EntityRepository<McpServer> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      // Consolidation reloads historical entities after the updater has been created.
+      McpServerMasker.mask(original);
+      McpServerMasker.mask(updated);
       recordChange("serverType", original.getServerType(), updated.getServerType());
       recordChange("transportType", original.getTransportType(), updated.getTransportType());
       recordChange("protocolVersion", original.getProtocolVersion(), updated.getProtocolVersion());

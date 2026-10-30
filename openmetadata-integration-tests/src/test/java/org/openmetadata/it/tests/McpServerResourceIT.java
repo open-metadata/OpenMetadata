@@ -14,23 +14,31 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.ai.CreateMcpServer;
 import org.openmetadata.schema.api.services.CreateMcpService;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.ai.Env;
+import org.openmetadata.schema.entity.ai.McpConnectionConfig;
 import org.openmetadata.schema.entity.ai.McpDevelopmentStage;
 import org.openmetadata.schema.entity.ai.McpExecution;
 import org.openmetadata.schema.entity.ai.McpExecutionStatus;
@@ -47,9 +55,17 @@ import org.openmetadata.schema.entity.ai.McpTool;
 import org.openmetadata.schema.entity.ai.McpToolCategory;
 import org.openmetadata.schema.entity.ai.McpTransportType;
 import org.openmetadata.schema.entity.ai.McpUsageMetrics;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Integration tests for MCP Server entity using direct REST API calls.
@@ -112,6 +128,263 @@ public class McpServerResourceIT {
     assertEquals(McpTransportType.Stdio, created.getTransportType());
     assertEquals("Test MCP Server for integration testing", created.getDescription());
     assertNotNull(created.getFullyQualifiedName());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"POST", "PUT"})
+  void testConnectionCredentialsMaskedOnCreateAndRead(HttpMethod method, TestNamespace ns)
+      throws Exception {
+    final CreateMcpServer request = serverWithCredentials(ns);
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(method, "/v1/mcpServers", request, RequestOptions.builder().build());
+    assertNoConnectionSecrets(response);
+    final McpServer created = MAPPER.readValue(response, McpServer.class);
+    assertMaskedConnection(created.getConnectionConfig());
+    assertConnectionReadsMasked(rolelessClient(ns), created);
+  }
+
+  @Test
+  void testConnectionCredentialsMaskedOnUpdateAndInHistory(TestNamespace ns) throws Exception {
+    final CreateMcpServer request = serverWithCredentials(ns);
+    final McpServer created = createMcpServer(request);
+    request.withDescription("Updated connection metadata");
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT, "/v1/mcpServers", request, RequestOptions.builder().build());
+    assertNoConnectionSecrets(response);
+    assertMaskedConnection(MAPPER.readValue(response, McpServer.class).getConnectionConfig());
+    final OpenMetadataClient reader = rolelessClient(ns);
+    assertConnectionReadsMasked(reader, created);
+    assertNoConnectionSecrets(
+        readMcpResponse(reader, "/v1/mcpServers/" + created.getId() + "/versions"));
+    final String version =
+        readMcpResponse(
+            reader, "/v1/mcpServers/" + created.getId() + "/versions/" + created.getVersion());
+    assertNoConnectionSecrets(version);
+    assertMaskedConnection(MAPPER.readValue(version, McpServer.class).getConnectionConfig());
+  }
+
+  @Test
+  void testConnectionCredentialsMaskedOnPatch(TestNamespace ns) throws Exception {
+    final McpServer created = createMcpServer(serverWithCredentials(ns));
+    final List<Map<String, Object>> patch =
+        List.of(
+            Map.of(
+                "op", "replace", "path", "/connectionConfig", "value", connectionWithCredentials()),
+            Map.of("op", "add", "path", "/description", "value", "Patched connection metadata"));
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PATCH,
+                "/v1/mcpServers/" + created.getId(),
+                MAPPER.valueToTree(patch),
+                RequestOptions.builder().build());
+    assertNoConnectionSecrets(response);
+    assertMaskedConnection(MAPPER.readValue(response, McpServer.class).getConnectionConfig());
+    assertConnectionReadsMasked(rolelessClient(ns), created);
+  }
+
+  @Test
+  void testLegacyConnectionCredentialsMaskedOnReadAndInHistory(TestNamespace ns) throws Exception {
+    final McpServer server = createMcpServer(serverWithCredentials(ns));
+    seedLegacyCredentials(server);
+    final OpenMetadataClient reader = rolelessClient(ns);
+
+    assertConnectionReadsMasked(reader, server);
+    final String history =
+        readMcpResponse(reader, "/v1/mcpServers/" + server.getId() + "/versions");
+    assertEquals(2, MAPPER.readTree(history).path("versions").size());
+    assertNoConnectionSecrets(history);
+    final String version =
+        readMcpResponse(reader, "/v1/mcpServers/" + server.getId() + "/versions/0.1");
+    assertNoConnectionSecrets(version);
+    assertMaskedConnection(MAPPER.readValue(version, McpServer.class).getConnectionConfig());
+  }
+
+  @Test
+  void testLegacyConnectionCredentialsMaskedDuringPatchConsolidation(TestNamespace ns)
+      throws Exception {
+    final McpServer server = createMcpServer(serverWithCredentials(ns));
+    seedLegacyCredentials(server);
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PATCH,
+                "/v1/mcpServers/" + server.getId(),
+                MAPPER.valueToTree(
+                    List.of(
+                        Map.of(
+                            "op",
+                            "add",
+                            "path",
+                            "/description",
+                            "value",
+                            "Consolidated metadata"))),
+                RequestOptions.builder().build());
+    assertNoConnectionSecrets(response);
+    final McpServer stored =
+        Entity.getCollectionDAO().mcpServerDAO().findEntityById(server.getId());
+    assertEquals(
+        0.2, stored.getVersion(), "The patch must consolidate the existing session version");
+    assertMaskedConnection(stored.getConnectionConfig());
+    assertNoConnectionSecrets(JsonUtils.pojoToJson(stored));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"PUT", "DELETE"})
+  void testLegacyConnectionConfigOnFollowerUpdates(HttpMethod method, TestNamespace ns)
+      throws Exception {
+    final McpServer server = createMcpServer(serverWithCredentials(ns));
+    seedLegacyCredentials(server);
+    final OpenMetadataClient reader = rolelessClient(ns);
+    final User user =
+        reader.getHttpClient().execute(HttpMethod.GET, "/v1/users/loggedInUser", null, User.class);
+    final String path = "/v1/mcpServers/" + server.getId() + "/followers";
+    if (method == HttpMethod.DELETE) {
+      reader
+          .getHttpClient()
+          .executeForString(HttpMethod.PUT, path, user.getId(), RequestOptions.builder().build());
+    }
+
+    final String response =
+        reader
+            .getHttpClient()
+            .executeForString(
+                method,
+                method == HttpMethod.PUT ? path : path + "/" + user.getId(),
+                method == HttpMethod.PUT ? user.getId() : null,
+                RequestOptions.builder().build());
+
+    assertNoConnectionSecrets(response);
+    final McpServer eventEntity =
+        MAPPER.treeToValue(MAPPER.readTree(response).get("entity"), McpServer.class);
+    assertMaskedConnection(eventEntity.getConnectionConfig());
+  }
+
+  private static void seedLegacyCredentials(McpServer server) {
+    server.setConnectionConfig(connectionWithCredentials());
+    final ChangeDescription changes =
+        new ChangeDescription()
+            .withPreviousVersion(0.1)
+            .withFieldsUpdated(
+                List.of(
+                    new FieldChange()
+                        .withName("connectionConfig")
+                        .withOldValue(JsonUtils.pojoToJson(connectionWithCredentials()))
+                        .withNewValue(JsonUtils.pojoToJson(connectionWithCredentials()))));
+    server.withChangeDescription(changes).withIncrementalChangeDescription(changes);
+    Entity.getCollectionDAO()
+        .entityExtensionDAO()
+        .insert(
+            server.getId(),
+            EntityUtil.getVersionExtension(Entity.MCP_SERVER, server.getVersion()),
+            Entity.MCP_SERVER,
+            JsonUtils.pojoToJson(server));
+    Entity.getCollectionDAO().mcpServerDAO().update(server.withVersion(0.2));
+    EntityRepository.invalidateCacheForEntity(
+        Entity.MCP_SERVER, server.getId(), server.getFullyQualifiedName());
+  }
+
+  private static CreateMcpServer serverWithCredentials(TestNamespace ns) {
+    return new CreateMcpServer()
+        .withName("mcp-credentials-" + ns.uniqueShortId())
+        .withService(MCP_SERVICE_NAME)
+        .withServerType(McpServerType.Database)
+        .withTransportType(McpTransportType.Stdio)
+        .withConnectionConfig(connectionWithCredentials());
+  }
+
+  private static McpConnectionConfig connectionWithCredentials() {
+    return new McpConnectionConfig()
+        .withCommand("npx")
+        .withArgs(
+            List.of(
+                "--token=mcp-argument-secret",
+                "postgresql://user:mcp-database-secret@localhost/db"))
+        .withEnv(
+            new Env()
+                .withAdditionalProperty("DATABASE_PASSWORD", "mcp-environment-secret")
+                .withAdditionalProperty("CUSTOM_SETTING", "mcp-custom-secret"))
+        .withUrl("https://user:mcp-url-secret@example.com/mcp?api_key=mcp-query-secret")
+        .withWorkingDirectory("/opt/mcp")
+        .withTimeout(3000)
+        .withRetryAttempts(2);
+  }
+
+  private static OpenMetadataClient rolelessClient(TestNamespace ns) {
+    final String name = "mcp-reader-" + ns.uniqueShortId();
+    final String email = name + "@test.openmetadata.org";
+    SdkClients.adminClient()
+        .users()
+        .create(
+            new CreateUser()
+                .withName(name)
+                .withEmail(email)
+                .withIsAdmin(false)
+                .withRoles(List.of()));
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private static void assertConnectionReadsMasked(OpenMetadataClient reader, McpServer server)
+      throws Exception {
+    for (String path :
+        List.of(
+            "/v1/mcpServers/" + server.getId(),
+            "/v1/mcpServers/name/" + server.getFullyQualifiedName())) {
+      final String response = readMcpResponse(reader, path);
+      assertNoConnectionSecrets(response);
+      assertMaskedConnection(MAPPER.readValue(response, McpServer.class).getConnectionConfig());
+    }
+    final String response = readMcpResponse(reader, "/v1/mcpServers?limit=1000000");
+    assertNoConnectionSecrets(response);
+    final McpServer listed =
+        MAPPER.readValue(response, McpServerList.class).getData().stream()
+            .filter(candidate -> server.getId().equals(candidate.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertMaskedConnection(listed.getConnectionConfig());
+  }
+
+  private static String readMcpResponse(OpenMetadataClient reader, String path) throws Exception {
+    return reader
+        .getHttpClient()
+        .executeForString(HttpMethod.GET, path, null, RequestOptions.builder().build());
+  }
+
+  private static void assertNoConnectionSecrets(String response) {
+    for (String secret :
+        List.of(
+            "mcp-argument-secret",
+            "mcp-database-secret",
+            "mcp-environment-secret",
+            "mcp-custom-secret",
+            "mcp-url-secret",
+            "mcp-query-secret")) {
+      assertFalse(response.contains(secret), "Response exposes a connection credential");
+    }
+  }
+
+  private static void assertMaskedConnection(McpConnectionConfig config) {
+    assertNotNull(config);
+    assertEquals(List.of(PASSWORD_MASK, PASSWORD_MASK), config.getArgs());
+    assertEquals(
+        Map.of("DATABASE_PASSWORD", PASSWORD_MASK, "CUSTOM_SETTING", PASSWORD_MASK),
+        config.getEnv().getAdditionalProperties());
+    assertEquals(PASSWORD_MASK, config.getUrl());
+    assertEquals("npx", config.getCommand());
+    assertEquals("/opt/mcp", config.getWorkingDirectory());
+    assertEquals(3000, config.getTimeout());
+    assertEquals(2, config.getRetryAttempts());
   }
 
   @Test

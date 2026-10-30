@@ -3,12 +3,13 @@ package org.openmetadata.service.search.indexes;
 import java.util.Map;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 
 public class McpServerIndex implements TaggableIndex, LineageIndex {
   final McpServer mcpServer;
 
   public McpServerIndex(McpServer mcpServer) {
-    this.mcpServer = mcpServer;
+    this.mcpServer = McpServerMasker.mask(mcpServer);
   }
 
   @Override
