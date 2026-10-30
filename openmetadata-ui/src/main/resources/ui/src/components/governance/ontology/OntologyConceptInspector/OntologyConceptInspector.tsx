@@ -62,6 +62,7 @@ import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePi
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
+import OntologyConceptLiveData from './OntologyConceptLiveData';
 import {
   ConceptEmptyState,
   ConceptFormCard,
@@ -1089,6 +1090,12 @@ const OntologyConceptInspector = ({
           presentation={
             isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
           }
+        />
+        <OntologyConceptLiveData
+          concept={concept}
+          key={`live-data:${concept.id}`}
+          model={model}
+          relations={relations}
         />
       </Box>
     </aside>

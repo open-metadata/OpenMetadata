@@ -43,6 +43,10 @@ import { OntologyBulkResultArtifact } from '../generated/api/data/ontologyBulkRe
 import { OntologyBulkSubmission } from '../generated/api/data/ontologyBulkSubmission';
 import { OntologyBulkTemplate } from '../generated/api/data/ontologyBulkTemplate';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import type {
+  Hop,
+  OntologyConceptQuery,
+} from '../generated/api/data/ontologyConceptQuery';
 import { OntologyDeleteResult } from '../generated/api/data/ontologyDeleteResult';
 import { OntologyDomainDraftRequest } from '../generated/api/data/ontologyDomainDraftRequest';
 import {
@@ -148,6 +152,20 @@ export const getOntologyConceptBindings = async (
   );
 
   return collectOntologyConceptBindings(id, response.data, signal);
+};
+
+export const generateOntologyConceptQuery = async (
+  id: string,
+  hops: Hop[],
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.post<OntologyConceptQuery>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/query`,
+    { hops },
+    { signal }
+  );
+
+  return response.data;
 };
 
 export const getNativeOntologyDataGraphPage = async (
