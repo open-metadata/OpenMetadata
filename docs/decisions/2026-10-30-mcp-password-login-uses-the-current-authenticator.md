@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-10-30 (initial)
 - **Deciders:** Vishnu Jain
 - **Guard:** `BasicAuthLoginServletTest` (`doPost_afterSwitchToLdap_passwordIsCheckedByTheDirectory`,
-  `doPost_providerWithoutPasswords_refusesLogin`)
+  `doPost_ldapLogin_isDecidedByTheDirectoryBindAlone`, `doPost_providerWithoutPasswords_refusesLogin`)
 
 ## Context
 
@@ -16,11 +16,11 @@ registered for the new provider. MCP kept the one from startup.
 ## Decision
 
 - `POST /mcp/login` takes the authenticator registered with `SecurityConfigurationManager` on every
-  login, the same one `/api/v1/auth/login` uses.
+  login, the same one `POST /api/v1/users/login` uses.
 - Whether a separate password check runs is decided by that authenticator (LDAP checks the password
   in its bind), not by reading the provider setting.
-- When the provider does not sign in with passwords (OIDC and SAML register `NoopAuthenticator`),
-  the form answers 403 `Password login is not enabled`.
+- When the provider does not sign in with passwords (every provider except basic and LDAP
+  registers `NoopAuthenticator`), the form answers 403 `Password login is not enabled`.
 
 ## Consequences
 

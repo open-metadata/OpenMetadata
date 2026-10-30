@@ -371,6 +371,28 @@ class BasicAuthLoginServletTest {
   }
 
   @Test
+  void doPost_ldapLogin_isDecidedByTheDirectoryBindAlone() throws Exception {
+    // LDAP checks the password in its bind; a second check would treat the email as a DN.
+    LdapAuthenticator ldap = mock(LdapAuthenticator.class);
+    User user = mock(User.class);
+    when(user.getName()).thenReturn("user");
+    when(ldap.lookUserInProvider(EMAIL, PASSWORD)).thenReturn(user);
+    when(authProvider.createAuthorizationCode(eq("user"), any(), any(), any(), any()))
+        .thenReturn("code-for-user");
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(ldap);
+
+    try (MockedStatic<LoginAttemptCache> attempts = mockStatic(LoginAttemptCache.class)) {
+      attempts.when(LoginAttemptCache::getInstance).thenReturn(mock(LoginAttemptCache.class));
+      servlet.doPost(request, response);
+    }
+
+    ArgumentCaptor<String> redirect = ArgumentCaptor.forClass(String.class);
+    verify(response).sendRedirect(redirect.capture());
+    assertThat(redirect.getValue()).contains("code=code-for-user");
+    verify(ldap, never()).validatePassword(anyString(), anyString(), any(User.class));
+  }
+
+  @Test
   void doPost_providerWithoutPasswords_refusesLogin() throws Exception {
     // SAML and OIDC register a NoopAuthenticator: a password kept from before the move to SSO
     // must not sign anyone in.
