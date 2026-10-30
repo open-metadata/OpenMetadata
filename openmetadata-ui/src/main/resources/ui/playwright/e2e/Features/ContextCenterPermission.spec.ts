@@ -1007,7 +1007,7 @@ test.describe('Context Center Permissions', () => {
         await deleteAllPage.getByTestId('delete-btn').click();
 
         const deleteResPromise = deleteAllPage.waitForResponse(
-          /\/api\/v1\/contextCenter\/pages\/[^?]+\?recursive=true&hardDelete=false/
+          /\/api\/v1\/contextCenter\/pages\/[^?]+\?recursive=true&hardDelete=true/
         );
         await deleteAllPage.getByTestId('confirm-button').click();
         const deleteRes = await deleteResPromise;

@@ -30,8 +30,10 @@ import { ReactNode, useMemo, useState } from 'react';
 import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useIsAiMode } from '../../hooks/useAppMode';
+import NativeOntologyTreeView from './NativeOntologyTreeView';
 import { OntologyNode } from './OntologyExplorer.interface';
 import {
+  NativeTreeIndex,
   nestTreeRows,
   OntologyTreeGroup,
   OntologyTreeItem,
@@ -263,7 +265,7 @@ const ConceptTreeItem = ({
   );
 };
 
-const OntologyTreeView = ({
+const GlossaryTreeView = ({
   density = 'default',
   emptyMessage,
   selectedNodeId,
@@ -452,5 +454,21 @@ const OntologyTreeView = ({
     </Box>
   );
 };
+
+const OntologyTreeView = ({
+  source,
+  metrics = [],
+  ...props
+}: Omit<OntologyTreeViewProps, 'groups' | 'metrics'> & {
+  readonly source:
+    | { kind: 'native'; index: NativeTreeIndex }
+    | { kind: 'glossary'; groups: OntologyTreeGroup[] };
+  readonly metrics?: OntologyTreeMetric[];
+}) =>
+  source.kind === 'native' ? (
+    <NativeOntologyTreeView {...props} index={source.index} />
+  ) : (
+    <GlossaryTreeView {...props} groups={source.groups} metrics={metrics} />
+  );
 
 export default OntologyTreeView;

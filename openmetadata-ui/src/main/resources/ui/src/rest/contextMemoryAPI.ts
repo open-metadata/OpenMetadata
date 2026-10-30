@@ -63,8 +63,8 @@ export const updateContextMemory = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteContextMemory = async (id: string) => {
-  await APIClient.delete(`${BASE_URL}/${id}`);
+export const deleteContextMemory = async (id: string, hardDelete = false) => {
+  await APIClient.delete(`${BASE_URL}/${id}`, { params: { hardDelete } });
 };
 
 export const pinContextMemory = async (id: string) => {

@@ -14,6 +14,7 @@ import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
 import { CreateMetric } from '../generated/api/data/createMetric';
 import { MetricHierarchyContext } from '../generated/api/data/metricHierarchyContext';
 import { MetricHierarchyItem } from '../generated/api/data/metricHierarchyItem';
@@ -28,9 +29,12 @@ import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
+import type { AsyncDeleteJob } from '../interface/entity/asyncDelete.interface';
 import type { QueryVote as VoteType } from '../interface/entity/vote.interface';
+import { getTermQuery } from '../utils/SearchPureUtils';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
+import { searchQuery } from './searchAPI';
 
 /**
  * `parent` selects a slice of the hierarchy: omit it for every metric, pass the literal string
@@ -203,8 +207,13 @@ export const exportMetricDetailsInCSVSync = async (fqn: string) => {
   return response.data;
 };
 
-export const deleteMetricAsync = async (id: string) => {
-  const response = await APIClient.delete(`/metrics/async/${id}`);
+export const deleteMetricAsync = async (id: string, recursive = false) => {
+  const response = await APIClient.delete<AsyncDeleteJob>(
+    `/metrics/async/${id}`,
+    {
+      params: { recursive },
+    }
+  );
 
   return response.data;
 };
@@ -269,4 +278,73 @@ export const getMetricObservability = async (id: string) => {
   );
 
   return response.data;
+};
+
+// ADR:2026-10-28-metric-hierarchy-search-filters-children-only-on-complete-paths
+const METRIC_SEARCH_PATH_PAGE_SIZE = 100;
+const METRIC_SEARCH_PATH_MAX_DEPTH = 6;
+
+type MetricSearchDoc = { id: string; parent?: { id?: string } };
+
+const searchMetricDocs = async (
+  query: string,
+  queryFilter?: Record<string, unknown>
+) => {
+  const response = await searchQuery({
+    query,
+    pageNumber: 1,
+    pageSize: METRIC_SEARCH_PATH_PAGE_SIZE,
+    searchIndex: SearchIndex.METRIC,
+    trackTotalHits: true,
+    queryFilter,
+  });
+
+  return {
+    docs: response.hits.hits.map(
+      ({ _source }) => _source as unknown as MetricSearchDoc
+    ),
+    total: response.hits.total.value,
+  };
+};
+
+/**
+ * The hierarchy search keeps a root when any descendant matches, but listing a parent's children
+ * has no search. These ids let the tree show only the branches that lead to a match: the matches
+ * themselves, and every metric on their parent chains (walked a bounded number of levels).
+ * `complete` is false when a cap was hit or nothing matched; the caller must then show children
+ * unfiltered, or a match the server found could become unreachable.
+ */
+export const getMetricSearchPaths = async (query: string) => {
+  const { docs: matches, total } = await searchMetricDocs(query);
+  const matchIds = new Set(matches.map(({ id }) => id));
+  const ancestorIds = new Set<string>();
+  let level = matches;
+  let depth = 0;
+
+  while (level.length && depth < METRIC_SEARCH_PATH_MAX_DEPTH) {
+    const parentIds = [
+      ...new Set(
+        level.flatMap(({ parent }) => (parent?.id ? [parent.id] : []))
+      ),
+    ].filter((id) => !ancestorIds.has(id));
+    parentIds.forEach((id) => ancestorIds.add(id));
+    level = parentIds.length
+      ? (
+          await searchMetricDocs(
+            '',
+            getTermQuery({ 'id.keyword': parentIds }, 'should', 1)
+          )
+        ).docs
+      : [];
+    depth += 1;
+  }
+
+  return {
+    matchIds,
+    ancestorIds,
+    complete:
+      matches.length > 0 &&
+      total <= METRIC_SEARCH_PATH_PAGE_SIZE &&
+      level.length === 0,
+  };
 };
