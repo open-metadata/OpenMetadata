@@ -44,9 +44,12 @@ The guard reads `.ts`, `.tsx`, `.js` and `.jsx` files for `import ... from`, sid
 style files it does not check a specifier without a leading `./` or `../`, which Less resolves
 through `less.paths`, `image-set('...')` without `url(`, a comment between an at-rule and its path,
 an upper-case at-rule or function name, `@source not`, a `data-uri()` whose first argument is not a
-quoted string, or a path built with a Less escape or variable. It also matches specifiers inside
-comments and strings. No production file used any of those forms to leave `src/` when the guard
-was added. A reviewer checks them.
+quoted string, a path built with a Less escape or variable, Less's `image-size()`, `image-width()`
+and `image-height()`, Tailwind's `source(...)` option, or any other function or option that takes a
+path. In any file it accepts a path that climbs above the UI folder and comes back into `src/`,
+such as `../../../ui/src/constants/constants`, which resolves in OpenMetadata and to nothing in
+Collate. It also matches specifiers inside comments and strings. No production file used any of
+those forms to leave `src/` when the guard was added. A reviewer checks them.
 
 This would be revisited if Collate copied the whole UI folder or consumed OpenMetadata's UI as a
 built package.
