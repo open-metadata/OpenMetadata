@@ -2,6 +2,7 @@ package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -27,6 +28,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -248,6 +250,35 @@ class JWTTokenGeneratorTest {
   }
 
   @Test
+  void tokensMintedForOneUserWithOneExpiryDifferInJtiAndBytes() {
+    Date expires = new Date(System.currentTimeMillis() + 3_600_000L);
+    String first = mintWithExpiry(expires);
+    String second = mintWithExpiry(expires);
+
+    assertNotEquals(first, second);
+    String firstJti = JWT.decode(first).getId();
+    String secondJti = JWT.decode(second).getId();
+    assertDoesNotThrow(() -> UUID.fromString(firstJti));
+    assertDoesNotThrow(() -> UUID.fromString(secondJti));
+    assertNotEquals(firstJti, secondJti);
+  }
+
+  private String mintWithExpiry(Date expires) {
+    return jwtTokenGenerator
+        .getJwtAuthMechanism(
+            "mohit",
+            Set.of(),
+            false,
+            "mohit@getcollate.io",
+            false,
+            ServiceTokenType.PERSONAL_ACCESS,
+            expires,
+            JWTTokenExpiry.OneHour,
+            List.of())
+        .getJWTToken();
+  }
+
+  @Test
   void testGenerateJWTToken() {
     User user =
         new User()
@@ -270,6 +301,46 @@ class JWTTokenGeneratorTest {
     jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
     assertNull(jwt.getExpiresAt());
     assertNull(jwtAuthMechanism.getJWTTokenExpiresAt());
+  }
+
+  /** Only an MCP access token names its client; JwtFilter looks those up in the token store. */
+  @Test
+  void mcpAccessTokenNamesItsClient() {
+    JWTAuthMechanism mcpToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of(),
+            "mcp-client");
+    JWTAuthMechanism sameSecondToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of(),
+            "mcp-client");
+    JWTAuthMechanism sessionToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam", Set.of(), false, "sam@example.com", 600, false, ServiceTokenType.OM_USER);
+
+    assertEquals(
+        "mcp-client",
+        decodedJWT(mcpToken.getJWTToken()).getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM).asString());
+    assertTrue(
+        decodedJWT(sessionToken.getJWTToken())
+            .getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM)
+            .isMissing());
+    // Minted in the same second for the same user and client, yet distinct: the store keys by hash.
+    assertNotEquals(mcpToken.getJWTToken(), sameSecondToken.getJWTToken());
   }
 
   @Test

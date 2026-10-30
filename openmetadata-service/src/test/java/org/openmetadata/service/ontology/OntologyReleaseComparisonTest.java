@@ -8,13 +8,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.OntologyDefinition;
+import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.OntologyConceptChange;
 import org.openmetadata.schema.type.OntologyConceptType;
+import org.openmetadata.schema.type.OntologyExpression;
+import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseChangeType;
 import org.openmetadata.schema.type.OntologyReleaseMember;
@@ -26,6 +34,49 @@ class OntologyReleaseComparisonTest {
   private static final UUID ONTOLOGY_ID = UUID.randomUUID();
   private static final UUID BASE_ID = UUID.randomUUID();
   private static final UUID RELEASE_ID = UUID.randomUUID();
+
+  @Test
+  void summaryPartitionsDeprecationsAndOtherChangesWithoutDoubleCounting() {
+    final OntologyConcept deprecated = concept();
+    final OntologyProperty property = property("owner", "Customer", "Customer");
+    final OntologyConcept editedDeprecated = concept().withDeprecated(true);
+    final OntologyConcept restored = concept().withDeprecated(true);
+    final OntologyConcept changed = concept();
+    final OntologyConcept removed = concept().withDeprecated(true);
+    final List<OntologyReleaseMember> before =
+        Stream.of(deprecated, property, editedDeprecated, restored, changed, removed)
+            .map(entity -> member(BASE_ID, entity))
+            .toList();
+    final List<OntologyReleaseMember> after =
+        Stream.of(
+                JsonUtils.deepCopy(deprecated, OntologyConcept.class)
+                    .withDeprecated(true)
+                    .withDescription("Deprecated and edited"),
+                JsonUtils.deepCopy(property, OntologyProperty.class).withDeprecated(true),
+                JsonUtils.deepCopy(editedDeprecated, OntologyConcept.class).withDescription("Edit"),
+                JsonUtils.deepCopy(restored, OntologyConcept.class).withDeprecated(false),
+                JsonUtils.deepCopy(changed, OntologyConcept.class).withDescription("Edit"),
+                concept().withDeprecated(true))
+            .map(entity -> member(RELEASE_ID, entity))
+            .toList();
+
+    final var summary = OntologyReleaseComparison.summarize(before, after);
+
+    assertEquals(1, summary.getAdded());
+    assertEquals(3, summary.getChanged());
+    assertEquals(1, summary.getRemoved());
+    assertEquals(2, summary.getDeprecated());
+    assertEquals(
+        OntologyReleaseComparison.compareMembers(before, after).size(),
+        summary.getAdded() + summary.getChanged() + summary.getRemoved() + summary.getDeprecated());
+  }
+
+  @Test
+  void unchangedAndNewClosuresHaveAnExplicitZeroDeprecationCount() {
+    final var members = List.of(member(RELEASE_ID, concept()));
+    assertEquals(0, OntologyReleaseComparison.summarize(members, members).getDeprecated());
+    assertEquals(0, OntologyReleaseComparison.summarize(List.of(), members).getDeprecated());
+  }
 
   @Test
   void operationalChangesAndReferenceDisplayFieldsDoNotChangeGovernedContent() {
@@ -142,6 +193,163 @@ class OntologyReleaseComparisonTest {
                 List.of(), Collections.nCopies(10_001, member)));
   }
 
+  @Test
+  void turningDeprecationOnIsReportedAsDeprecated() {
+    final var concept = concept();
+    final var property = property("code");
+    assertEquals(
+        List.of(OntologyReleaseChangeType.DEPRECATED, OntologyReleaseChangeType.DEPRECATED),
+        changeTypes(
+            List.of(concept, property),
+            List.of(
+                JsonUtils.deepCopy(concept, OntologyConcept.class).withDeprecated(true),
+                JsonUtils.deepCopy(property, OntologyProperty.class).withDeprecated(true))));
+  }
+
+  @Test
+  void editingOrRestoringADeprecatedDefinitionIsAChange() {
+    final var deprecated = concept().withDeprecated(true);
+    assertEquals(
+        List.of(OntologyReleaseChangeType.CHANGED),
+        changeTypes(
+            List.of(deprecated),
+            List.of(
+                JsonUtils.deepCopy(deprecated, OntologyConcept.class).withDescription("Revised"))));
+    assertEquals(
+        List.of(OntologyReleaseChangeType.CHANGED),
+        changeTypes(
+            List.of(deprecated),
+            List.of(JsonUtils.deepCopy(deprecated, OntologyConcept.class).withDeprecated(false))));
+  }
+
+  @Test
+  void conceptRowsGatherTheirAxiomsAndPropertiesUnderLabelledParents() {
+    final var party = concept("Party").withDisplayName("Business party");
+    final var customer = concept("Customer");
+    final var customerIsParty = subclass("Customer", "Party");
+    final var code = property("code", "Customer");
+    assertEquals(
+        List.of(
+            "Account ADDED [] 1 [CONCEPT:Account:ADDED, PROPERTY:number:ADDED]",
+            "Customer DEPRECATED [Business party] 2 [CONCEPT:Customer:DEPRECATED, PROPERTY:code:CHANGED]",
+            "null ADDED [] 0 [AXIOM:External-Party:ADDED]"),
+        grouped(
+            List.of(party, customer, customerIsParty, code),
+            List.of(
+                party,
+                JsonUtils.deepCopy(customer, OntologyConcept.class).withDeprecated(true),
+                customerIsParty,
+                JsonUtils.deepCopy(code, OntologyProperty.class).withDescription("Revised"),
+                concept("Account"),
+                property("number", "Account", "Customer"),
+                subclass("External", "Party"))));
+  }
+
+  @Test
+  void aRemovedConceptKeepsItsLastLabelAndAnAxiomOnlyEditIsAChange() {
+    final var party = concept("Party");
+    final var legacy = concept("Legacy");
+    final var customer = concept("Customer");
+    assertEquals(
+        List.of(
+            "Customer CHANGED [Party] 0 [AXIOM:Customer-Party:ADDED]",
+            "Legacy REMOVED [Party] 0 [AXIOM:Legacy-Party:REMOVED, CONCEPT:Legacy:REMOVED]"),
+        grouped(
+            List.of(party, legacy, subclass("Legacy", "Party"), customer),
+            List.of(party, customer, subclass("Customer", "Party"))));
+  }
+
+  private static List<OntologyReleaseChangeType> changeTypes(
+      final List<OntologyDefinition> before, final List<OntologyDefinition> after) {
+    return OntologyReleaseComparison.compareMembers(
+            before.stream().map(entity -> member(BASE_ID, entity)).toList(),
+            after.stream().map(entity -> member(RELEASE_ID, entity)).toList())
+        .stream()
+        .map(change -> change.getChangeType())
+        .toList();
+  }
+
+  private static List<String> grouped(
+      final List<OntologyDefinition> before, final List<OntologyDefinition> after) {
+    return OntologyConceptChanges.group(
+            index(before),
+            index(after),
+            OntologyReleaseComparison.compareMembers(
+                before.stream().map(entity -> member(BASE_ID, entity)).toList(),
+                after.stream().map(entity -> member(RELEASE_ID, entity)).toList()))
+        .stream()
+        .map(OntologyReleaseComparisonTest::describe)
+        .toList();
+  }
+
+  private static Map<String, OntologyDefinition> index(final List<OntologyDefinition> definitions) {
+    return definitions.stream()
+        .collect(
+            Collectors.toMap(
+                entity -> OntologyReleaseComparison.key(kind(entity), entity.getId()),
+                entity -> entity));
+  }
+
+  private static String describe(final OntologyConceptChange row) {
+    return String.join(
+        " ",
+        String.valueOf(row.getConcept()),
+        row.getChangeType().toString(),
+        row.getParents().toString(),
+        row.getPropertyCount().toString(),
+        row.getChanges().stream()
+            .map(
+                change ->
+                    change.getMemberKind()
+                        + ":"
+                        + change.getEntity().getName()
+                        + ":"
+                        + change.getChangeType())
+            .toList()
+            .toString());
+  }
+
+  private static OntologyConcept concept(final String name) {
+    return concept()
+        .withName(name)
+        .withFullyQualifiedName("Sales." + name)
+        .withIri(URI.create("urn:" + name));
+  }
+
+  private static OntologyProperty property(final String name, final String... domain) {
+    return new OntologyProperty()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("Sales." + name)
+        .withIri(URI.create("urn:" + name))
+        .withOntology(new EntityReference().withId(ONTOLOGY_ID).withType("ontology"))
+        .withKind(OntologyPropertyKind.OBJECT)
+        .withDomain(Stream.of(domain).map(iri -> URI.create("urn:" + iri)).toList());
+  }
+
+  private static OntologyAxiom subclass(final String child, final String parent) {
+    return new OntologyAxiom()
+        .withId(UUID.randomUUID())
+        .withName(child + "-" + parent)
+        .withFullyQualifiedName("Sales." + child + "-" + parent)
+        .withOntology(new EntityReference().withId(ONTOLOGY_ID).withType("ontology"))
+        .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
+        .withSubjectIri(URI.create("urn:" + child))
+        .withExpressions(
+            List.of(
+                new OntologyExpression()
+                    .withKind(OntologyExpressionKind.NAMED_CLASS)
+                    .withClassIri(URI.create("urn:" + parent))));
+  }
+
+  private static MemberKind kind(final OntologyDefinition entity) {
+    return switch (entity) {
+      case OntologyProperty ignored -> MemberKind.PROPERTY;
+      case OntologyAxiom ignored -> MemberKind.AXIOM;
+      default -> MemberKind.CONCEPT;
+    };
+  }
+
   private static OntologyConcept concept() {
     return new OntologyConcept()
         .withId(UUID.randomUUID())
@@ -157,9 +365,6 @@ class OntologyReleaseComparisonTest {
 
   private static OntologyReleaseMember member(UUID releaseId, OntologyDefinition entity) {
     return OntologyReleaseManifest.member(
-        releaseId,
-        entity instanceof OntologyProperty ? MemberKind.PROPERTY : MemberKind.CONCEPT,
-        entity.getId(),
-        JsonUtils.getObjectMapper().valueToTree(entity));
+        releaseId, kind(entity), entity.getId(), JsonUtils.getObjectMapper().valueToTree(entity));
   }
 }

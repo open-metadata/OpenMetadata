@@ -3104,6 +3104,10 @@ om:inheritedRoles a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "inheritedRoles" .
 
+om:installedPacks a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "installedPacks" .
+
 om:inputPort a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "inputPort" .
@@ -3665,6 +3669,10 @@ om:ontologyReview a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "ontologyReview" .
 
+om:approvalRule a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "approvalRule" .
+
 om:reviewers a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "reviewers" .
@@ -3776,6 +3784,10 @@ om:sourceHumanMessage a rdf:Property ;
 om:sourceId a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sourceId" .
+
+om:sourcePack a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourcePack" .
 
 om:sourcePythonClass a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -4078,6 +4090,18 @@ om:subClasses a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "subClasses" .
 
+om:publicationStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "publicationStatus" .
+
+om:changeSummary a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "changeSummary" .
+
+om:lifecycleStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lifecycleStatus" .
+
 om:encodingVersion a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "encodingVersion" .
@@ -4141,6 +4165,14 @@ om:unit a rdf:Property ;
 om:isIdentifier a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "isIdentifier" .
+
+om:abstract a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "abstract" .
+
+om:definitionSource a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "definitionSource" .
 
 om:unitAnnotation a owl:AnnotationProperty ;
     rdfs:label "unit annotation" ;

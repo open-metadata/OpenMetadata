@@ -65,6 +65,22 @@ describe('ApplicationCard', () => {
     expect(onClick).toHaveBeenCalled();
   });
 
+  it('labels a runtime-unavailable app "Unavailable", not "Disabled"', () => {
+    render(
+      <ApplicationCard
+        isDisabled
+        appName="App"
+        title="App"
+        unavailableReason="cache not configured"
+        onClick={onClick}
+      />
+    );
+
+    expect(screen.getByTestId('disabled-badge')).toHaveTextContent(
+      'label.unavailable'
+    );
+  });
+
   it('is not clickable when unavailable', () => {
     render(
       <ApplicationCard
