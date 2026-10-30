@@ -196,6 +196,8 @@ import org.openmetadata.service.util.email.TemplateConstants;
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "/v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
+  static final String USERS_EXPORT_NEEDS_EMAIL_ACCESS =
+      "Exporting users requires access to their emails, which only admins and bots have";
   static final String BOT_TOKENS_ONLY =
       "This endpoint can only generate tokens for bot users. "
           + "Use PUT /users/security/token to create a personal access token.";
@@ -265,13 +267,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
   /**
    * A users CSV names the team it covers, not a user, so the check is on users as a whole. Checked
    * against a user who happens to share the team's name, it would let that user, who owns only
-   * their own account, import into the team.
+   * their own account, import into the team. An export also carries each member's email in the
+   * clear, which reads of a user mask for anyone but an admin or a bot, so only they may export one:
+   * masking the file instead would let a re-import write the mask over the emails.
+   * ADR:2026-10-30-a-users-csv-export-needs-access-to-the-emails-it-carries
    */
   @Override
   protected void authorizeCsv(
       SecurityContext securityContext, String team, MetadataOperation operation) {
     authorizer.authorize(
         securityContext, new OperationContext(entityType, operation), getResourceContext());
+    if (operation == MetadataOperation.VIEW_ALL
+        && !authorizer.authorizePII(securityContext, null)) {
+      throw new AuthorizationException(USERS_EXPORT_NEEDS_EMAIL_ACCESS);
+    }
   }
 
   @Override

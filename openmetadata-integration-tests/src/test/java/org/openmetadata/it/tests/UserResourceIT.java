@@ -2866,6 +2866,42 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(Boolean.TRUE.equals(Users.get(teamAdmin.getId().toString()).getIsAdmin()));
   }
 
+  /**
+   * A users CSV carries every member's email in the clear, which a user read masks for anyone but
+   * an admin or a bot. ViewAll on users, which the default policies give every user, is not enough
+   * to export one, on either route.
+   */
+  @Test
+  void test_usersExportNeedsAccessToEmails(TestNamespace ns) {
+    String teamName = "csvexport" + ns.shortPrefix();
+    Team team = createGroupTeam(teamName);
+    String memberName = "csvmember" + ns.shortPrefix();
+    User member =
+        createEntity(
+            new CreateUser()
+                .withName(memberName)
+                .withEmail(memberName + "@test.com")
+                .withTeams(List.of(team.getId())));
+    String readerName = "csvreader" + ns.shortPrefix();
+    User reader =
+        createEntity(new CreateUser().withName(readerName).withEmail(readerName + "@test.com"));
+    OpenMetadataClient asReader = clientFor(reader);
+
+    for (String path :
+        List.of("/v1/users/export?team=" + teamName, "/v1/users/exportAsync?team=" + teamName)) {
+      OpenMetadataException denied =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> asReader.getHttpClient().executeForString(HttpMethod.GET, path, null));
+      assertEquals(403, denied.getStatusCode(), path + ": " + denied.getMessage());
+    }
+    assertTrue(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/export?team=" + teamName, null)
+            .contains(member.getEmail()));
+  }
+
   private static Team createGroupTeam(String name) {
     CreateTeam createTeam = new CreateTeam();
     createTeam.setName(name);
