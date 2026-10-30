@@ -43,14 +43,20 @@ import {
 } from '../../../../generated/entity/data/relationshipType';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
+  acquireOntologyEditLock,
+  applyOntologyChangeSet,
   createOntologyAxiom,
+  createOntologyChangeSet,
   createOntologyProperty,
   createRelationshipType,
+  getOntologyChangeSet,
   getOntologyConceptBindings,
+  getOntologyState,
   getRelationshipTypeByName,
   listRelationshipTypes,
   patchOntologyProperty,
   patchRelationshipType,
+  releaseOntologyEditLock,
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import {
@@ -66,6 +72,7 @@ import OntologyGraphView from './OntologyGraphView';
 
 const mockGraphProps = jest.fn();
 const mockGraphControls = {
+  getNodePositions: jest.fn(),
   fitView: jest.fn(),
   zoomIn: jest.fn(),
   zoomOut: jest.fn(),
@@ -76,6 +83,7 @@ const mockPermissions = {
   ontologyConcept: { Create: true },
   ontologyProperty: { Create: true },
   ontologyAxiom: { Create: true },
+  ontologyChangeSet: { Create: true },
   relationshipType: { Create: true, EditAll: true },
 };
 let mockCanEditConcept = true;
@@ -122,6 +130,15 @@ jest.mock(
 );
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
+  acquireOntologyEditLock: jest.fn(),
+  applyOntologyChangeSet: jest.fn(),
+  createOntologyChangeSet: jest.fn(),
+  getOntologyChangeSet: jest.fn(),
+  getOntologyEditLock: jest.fn(),
+  getOntologyState: jest.fn(),
+  listOntologyChangeSets: jest.fn(),
+  releaseOntologyEditLock: jest.fn(),
+  renewOntologyEditLock: jest.fn(),
   getOntologyConceptBindings: jest
     .fn()
     .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
@@ -419,6 +436,7 @@ describe('OntologyGraphView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPermissions.ontologyConcept.Create = true;
+    mockPermissions.ontologyChangeSet.Create = true;
     mockPermissions.ontologyProperty.Create = true;
     mockPermissions.ontologyAxiom.Create = true;
     mockPermissions.relationshipType.Create = true;
@@ -745,6 +763,7 @@ describe('OntologyGraphView', () => {
       expect.objectContaining({
         canCreateRelationType: true,
         isEditMode: true,
+        keepCanvasOnAdd: true,
       })
     );
     expect(graphProps.relationTypeGroups).toEqual([
@@ -869,7 +888,7 @@ describe('OntologyGraphView', () => {
       />
     );
 
-    expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
   it('links a reused pair the ontology left unlinked before writing the restriction', async () => {
@@ -1828,7 +1847,7 @@ describe('OntologyGraphView', () => {
       />
     );
 
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue('');
+    expect(screen.getByTestId('new-class-label')).toHaveValue('');
 
     rerender(
       <OntologyGraphView
@@ -1889,6 +1908,46 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-concept-inspector')).toHaveTextContent(
       'Customer'
     );
+  });
+
+  describe('canvas Add concept', () => {
+    const renderEditing = () =>
+      render(
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestCreateConcept={jest.fn()}
+          onRequestGraphSurface={jest.fn()}
+        />
+      );
+
+    it('shows for a user who holds all three class-creation rights', async () => {
+      renderEditing();
+      await screen.findByTestId('native-ontology-graph');
+
+      expect(screen.getByTestId('ontology-canvas-add-concept')).toBeVisible();
+    });
+
+    it('hides without edit rights on the ontology', async () => {
+      mockCanEditConcept = false;
+      renderEditing();
+      await screen.findByTestId('native-ontology-graph');
+
+      expect(
+        screen.queryByTestId('ontology-canvas-add-concept')
+      ).not.toBeInTheDocument();
+    });
+
+    it('hides without Create on the change set', async () => {
+      mockPermissions.ontologyChangeSet.Create = false;
+      renderEditing();
+      await screen.findByTestId('native-ontology-graph');
+
+      expect(
+        screen.queryByTestId('ontology-canvas-add-concept')
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('offers a user who cannot create properties only the relations an axiom completes', async () => {
@@ -2028,6 +2087,30 @@ describe('OntologyGraphView', () => {
   });
 
   it('does not replay an old add-concept request after the graph remounts', async () => {
+    const view = (createConceptRequestKey: number) => (
+      <OntologyGraphView
+        isEditing
+        createConceptRequestKey={createConceptRequestKey}
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    const first = render(view(0));
+    first.rerender(view(4));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+
+    first.unmount();
+    render(view(4));
+    await screen.findByTestId('native-ontology-graph');
+
+    expect(
+      screen.queryByTestId('ontology-new-class-panel')
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not open the New class panel for an old add-concept request at first mount', async () => {
     render(
       <OntologyGraphView
         isEditing
@@ -2041,8 +2124,69 @@ describe('OntologyGraphView', () => {
     await screen.findByTestId('native-ontology-graph');
 
     expect(
-      screen.queryByTestId('ontology-concept-editor')
+      screen.queryByTestId('ontology-new-class-panel')
     ).not.toBeInTheDocument();
+  });
+
+  it('closes the New class panel and releases the page after an applied class the canvas cannot place', async () => {
+    const created = concept('FundsTransfer');
+    const refreshed = { ...model, concepts: [...model.concepts, created] };
+    const refetch = jest.fn().mockResolvedValue({ data: refreshed });
+    mockUseOntologyStudioModel.mockReturnValue({ ...modelResult, refetch });
+    mockGraphControls.getNodePositions.mockReturnValue({});
+    (getOntologyState as jest.Mock).mockResolvedValue({ workingRevision: 3 });
+    (acquireOntologyEditLock as jest.Mock).mockResolvedValue({
+      sessionId: 'lease',
+      version: 1,
+    });
+    (releaseOntologyEditLock as jest.Mock).mockResolvedValue(undefined);
+    let draft: Record<string, unknown> = {};
+    (createOntologyChangeSet as jest.Mock).mockImplementation(
+      async (plan: Record<string, unknown>) => {
+        draft = {
+          ...plan,
+          id: 'draft',
+          ontology: { fullyQualifiedName: plan.ontology },
+          undoCursor: (plan.operations as unknown[]).length,
+        };
+
+        return { ...draft, state: 'DRAFT' };
+      }
+    );
+    (getOntologyChangeSet as jest.Mock).mockImplementation(async () => ({
+      ...draft,
+      state: 'DRAFT',
+    }));
+    (applyOntologyChangeSet as jest.Mock).mockImplementation(async () => ({
+      ...draft,
+      state: 'APPLIED',
+    }));
+    const onAuthoringLockChange = jest.fn();
+    const props = {
+      isEditing: true,
+      ontology,
+      onAuthoringLockChange,
+      onRequestGraphSurface: jest.fn(),
+      surface: 'graph' as const,
+    };
+    const { rerender } = render(<OntologyGraphView {...props} />);
+    await screen.findByTestId('native-ontology-graph');
+    rerender(<OntologyGraphView {...props} createConceptRequestKey={1} />);
+    fireEvent.change(await screen.findByTestId('new-class-label'), {
+      target: { value: 'Funds Transfer' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-new-class-panel')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(onAuthoringLockChange).toHaveBeenLastCalledWith(false);
+    expect(latestGraphProps().focusNodeId).toBe(created.id);
   });
 
   it('shows a retryable error instead of a partial model', () => {

@@ -501,15 +501,15 @@ describe('OntologyExplorerPage', () => {
 
   const renderNativeStudio = (
     search: string,
-    ontology: Ontology = nativeOntology
+    ontology: Ontology = nativeOntology,
+    permissions: Record<string, { Create: boolean }> = {
+      ontologyConcept: { Create: true },
+      ontologyChangeSet: { Create: true },
+      ontologyProperty: { Create: true },
+      ontologyAxiom: { Create: true },
+    }
   ) => {
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      permissions: {
-        ontologyConcept: { Create: true },
-        ontologyProperty: { Create: true },
-        ontologyAxiom: { Create: true },
-      },
-    });
+    (usePermissionProvider as jest.Mock).mockReturnValue({ permissions });
     mockUseRealRouter = true;
     (getOntology as jest.Mock).mockResolvedValue(ontology);
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
@@ -1101,7 +1101,44 @@ describe('OntologyExplorerPage', () => {
 
     fireEvent.click(screen.getByTestId('ontology-add-concept'));
 
-    expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+  });
+
+  it('offers the sub-tab Add concept to a user who holds all three class-creation rights', async () => {
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(screen.getByTestId('ontology-add-concept')).toBeVisible();
+  });
+
+  it('hides the sub-tab Add concept from a user who cannot edit the ontology', async () => {
+    (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: false });
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides the sub-tab Add concept from a user who cannot create a change set', async () => {
+    renderNativeStudio('?ontology=native-sales', nativeOntology, {
+      ontologyConcept: { Create: true },
+      ontologyChangeSet: { Create: false },
+      ontologyProperty: { Create: true },
+      ontologyAxiom: { Create: true },
+    });
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
   });
 
   it('starts a new query in the selected native ontology', async () => {
