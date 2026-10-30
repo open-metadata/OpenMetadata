@@ -97,6 +97,7 @@ import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 import { submitTestCaseForm } from '../../utils/testCases';
+import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 // Define entities that support Data Contracts
@@ -1535,7 +1536,13 @@ test.describe('Data Contracts', () => {
       state: 'visible',
     });
 
-    await page.getByTestId('contract-run-now-button').click();
+    // The run stores a Running result before its outcome; reloading before the validate call
+    // returns can show Running for good.
+    await clickAndWaitFor(
+      page,
+      page.getByTestId('contract-run-now-button'),
+      '/api/v1/dataContracts/*/validate'
+    );
 
     await reloadContractPage(page);
 
