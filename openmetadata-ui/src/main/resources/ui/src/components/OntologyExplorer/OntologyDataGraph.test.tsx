@@ -410,6 +410,52 @@ describe('native Data mode lineage', () => {
         );
       }
     );
+
+    it('anchors a card that leaves the graph and returns where its rows now sit, not at its old rest', () => {
+      const graph = (data: ReturnType<typeof graphData>) => (
+        <OntologyDataGraph
+          data={data}
+          glossaryColorMap={{}}
+          hasMoreTerms={false}
+          isLoadingMoreTerms={false}
+          relationTypes={[]}
+          variant="native"
+          onLoadMore={jest.fn()}
+          onLoadMoreTerms={jest.fn()}
+          onPaneClick={jest.fn()}
+          onSelectNode={jest.fn()}
+        />
+      );
+      const { rerender } = render(graph(graphData({ loaded: 8, total: 8 })));
+      fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
+      const rows = screen.getByTestId('ontology-data-cluster-rows-transfer');
+      rows.scrollTop = 40;
+      fireEvent.scroll(rows);
+      act(() => {
+        jest.advanceTimersByTime(100);
+      });
+      rows.scrollTop = 43;
+      fireEvent.scroll(rows);
+
+      rerender(
+        graph(
+          buildNativeDataGraph(
+            EMPTY_NATIVE_DATA_GRAPH,
+            new Set(),
+            'label.lineage'
+          )
+        )
+      );
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      rerender(graph(graphData({ loaded: 8, total: 8 })));
+
+      expect(lineageEdge()).toHaveAttribute('data-anchor', 'rows');
+      expect(pathStart(lineageEdge())[1]).toBe(
+        cardTop('transfer') + 50 + 64 + 32
+      );
+    });
   });
 
   it('anchors the rows where the rendered rows sit, not where the default font puts them', () => {
