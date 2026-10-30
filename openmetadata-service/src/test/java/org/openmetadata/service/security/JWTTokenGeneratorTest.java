@@ -17,6 +17,8 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.github.benmanes.caffeine.cache.Ticker;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.security.KeyPair;
@@ -39,6 +41,8 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
+import org.openmetadata.service.security.credentials.CredentialVerifierFixture;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Slf4j
@@ -68,6 +72,7 @@ class JWTTokenGeneratorTest {
   public void setup() {
     jwtTokenConfiguration = new JWTTokenConfiguration();
     jwtTokenConfiguration.setJwtissuer("open-metadata.org");
+    jwtTokenConfiguration.setKeyId("minted-token-test-key");
     jwtTokenConfiguration.setRsaprivateKeyFilePath(rsaPrivateKeyPath);
     jwtTokenConfiguration.setRsapublicKeyFilePath(rsaPublicKeyPath);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
@@ -101,14 +106,13 @@ class JWTTokenGeneratorTest {
   void preferredUsernameOrderPreservesStoredUsername() {
     List<String> order = List.of("preferred_username", "email", "upn", "sub");
     initGenerator(order, List.of());
-    Map<String, Claim> claims = mint("admin_ab12", "admin@attacker.example").getClaims();
+    DecodedJWT token = mint("admin_ab12", "admin@attacker.example");
+    Map<String, Claim> claims = token.getClaims();
 
     assertEquals("admin_ab12", claims.get("preferred_username").asString());
     assertEquals("admin@attacker.example", claims.get("email").asString());
     assertEquals("admin_ab12", findUserNameFromClaims(Map.of(), order, claims));
-    assertEquals(
-        "admin_ab12@openmetadata.org",
-        findEmailFromClaims(Map.of(), order, claims, "openmetadata.org"));
+    assertMintedIdentity(order, token, "admin_ab12", "admin@attacker.example");
   }
 
   @Test
@@ -132,12 +136,11 @@ class JWTTokenGeneratorTest {
   void mintedTokenCarriesFirstConfiguredClaimWhenNotMapped() {
     List<String> order = List.of("unique_name", "sub");
     initGenerator(order, List.of());
-    Map<String, Claim> claims = mint("mohit", "mohit@getcollate.io").getClaims();
+    DecodedJWT token = mint("mohit", "mohit@getcollate.io");
+    Map<String, Claim> claims = token.getClaims();
 
     assertEquals("mohit", claims.get("unique_name").asString());
-    assertEquals(
-        "mohit@openmetadata.org",
-        findEmailFromClaims(Map.of(), order, claims, "openmetadata.org"));
+    assertMintedIdentity(order, token, "mohit", "mohit@getcollate.io");
   }
 
   /** No email to mirror: the bare name stands in, and the token still resolves to that user. */
@@ -167,15 +170,36 @@ class JWTTokenGeneratorTest {
   void firstConfiguredClaimPreservesStoredUsername() {
     List<String> order = List.of("sub", "email");
     initGenerator(order, List.of());
-    Map<String, Claim> claims = mint("admin_ab12", "admin@attacker.example").getClaims();
+    DecodedJWT token = mint("admin_ab12", "admin@attacker.example");
+    Map<String, Claim> claims = token.getClaims();
 
     assertEquals("admin_ab12", claims.get("sub").asString());
     assertEquals("admin_ab12", claims.get("username").asString());
     assertEquals("admin@attacker.example", claims.get("email").asString());
     assertEquals("admin_ab12", findUserNameFromClaims(Map.of(), order, claims));
-    assertEquals(
-        "admin_ab12@openmetadata.org",
-        findEmailFromClaims(Map.of(), order, claims, "openmetadata.org"));
+    assertMintedIdentity(order, token, "admin_ab12", "admin@attacker.example");
+  }
+
+  private static void assertMintedIdentity(
+      List<String> order, DecodedJWT token, String userName, String email) {
+    try (CredentialVerifierFixture credentials =
+        new CredentialVerifierFixture(
+            new SimpleMeterRegistry(),
+            Ticker.systemTicker(),
+            CredentialVerificationConfig.defaults())) {
+      credentials.withPats(Map.of(userName, List.of(token.getToken())));
+      JwtFilter filter =
+          new JwtFilter(
+              new MultiUrlJwkProvider(List.of()),
+              order,
+              "openmetadata.org",
+              false,
+              credentials::verifier);
+      CatalogPrincipal principal =
+          (CatalogPrincipal) filter.getCatalogSecurityContext(token.getToken()).getUserPrincipal();
+      assertEquals(userName, principal.getName());
+      assertEquals(email, principal.getEmail());
+    }
   }
 
   /**
