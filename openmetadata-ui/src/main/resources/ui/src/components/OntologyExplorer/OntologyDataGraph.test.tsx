@@ -169,6 +169,22 @@ describe('native Data mode clusters', () => {
     logo.mockRestore();
   });
 
+  it('sets the logo on the surface colour, which stays visible on a dark card', () => {
+    const logo = jest
+      .spyOn(serviceUtilClassBase, 'getServiceTypeLogo')
+      .mockReturnValue('/logos/Snowflake.svg');
+    renderGraph();
+
+    const tile = within(
+      screen.getByTestId('ontology-data-asset-asset:transfer:t0')
+    ).getByRole('img', { hidden: true }).parentElement;
+
+    expect(tile?.className.split(' ')).toContain('tw:bg-surface');
+    expect(tile?.className.split(' ')).not.toContain('tw:bg-primary');
+
+    logo.mockRestore();
+  });
+
   it('loads more through the callback, reveals every loaded row inside the scroll area, and shows less again', () => {
     const { onLoadMore } = renderGraph();
 

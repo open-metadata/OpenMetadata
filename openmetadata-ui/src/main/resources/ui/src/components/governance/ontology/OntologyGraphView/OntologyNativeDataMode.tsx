@@ -120,7 +120,7 @@ const OntologyNativeDataMode = ({
           className={
             hasClusters
               ? 'tw:pointer-events-none tw:absolute tw:top-3.5 tw:left-1/2 tw:z-10 tw:-translate-x-1/2'
-              : 'tw:relative tw:p-4'
+              : 'tw:relative tw:m-4'
           }
           role="status">
           {t('label.loading')}

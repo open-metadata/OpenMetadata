@@ -271,15 +271,13 @@ function AssetLogo({
       });
 
   return (
-    <Box
-      align="center"
+    <span
       className={classNames(
-        'tw:size-8 tw:shrink-0 tw:rounded-lg tw:border',
+        'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border',
         isMetric
           ? 'tw:border-utility-purple-200 tw:bg-utility-purple-50 tw:text-utility-purple-600'
-          : 'tw:border-secondary tw:bg-primary'
-      )}
-      justify="center">
+          : 'tw:border-secondary tw:bg-surface'
+      )}>
       {isMetric ? (
         <BarChart01 aria-hidden="true" className="tw:size-4" />
       ) : null}
@@ -292,7 +290,7 @@ function AssetLogo({
           width={16}
         />
       ) : null}
-    </Box>
+    </span>
   );
 }
 
@@ -349,7 +347,7 @@ function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
                 weight="medium">
                 {asset.originalLabel ?? asset.label}
               </Typography>
-              <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+              <Typography ellipsis color="secondary" size="text-xs">
                 {isNative
                   ? getNativeAssetSummary(asset, lineageNotes, t)
                   : getAssetPath(asset)}
@@ -1498,14 +1496,16 @@ const OntologyDataGraph = ({
           </Typography>
           {isNative ? (
             <Typography
-              className="tw:shrink-0 tw:text-tertiary"
+              className="tw:shrink-0"
+              color="secondary"
               data-testid="ontology-data-cluster-count"
               size="text-sm">
               {`· ${assetState.totalAssetCount}`}
             </Typography>
           ) : (
             <Typography
-              className="tw:ml-auto tw:shrink-0 tw:text-tertiary"
+              className="tw:ml-auto tw:shrink-0"
+              color="secondary"
               size="text-xs">
               {assetState.totalAssetCount} {t('label.asset-plural-lowercase')}
             </Typography>

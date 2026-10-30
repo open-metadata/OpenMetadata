@@ -107,7 +107,7 @@ const ConceptPickerEmptyState = ({
         <Typography as="h3" size="text-lg" weight="semibold">
           {t('label.select-entity', { entity: t('label.concept') })}
         </Typography>
-        <Typography className="tw:text-tertiary" size="text-sm">
+        <Typography color="secondary" size="text-sm">
           {t('message.ontology-data-graph-scope')}
         </Typography>
         {onSelectConcept ? (
@@ -247,7 +247,7 @@ const AllOntologiesGraphView = ({
           onSelectConcept={onSelectedConceptChange}
         />
       ) : (
-        <Typography className="tw:relative tw:p-4" size="text-sm">
+        <Typography className="tw:relative tw:m-4" size="text-sm">
           {t('label.select-entity', { entity: t('label.concept') })}
         </Typography>
       );
