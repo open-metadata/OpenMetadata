@@ -3,6 +3,9 @@ package org.openmetadata.service.ontology;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.schema.api.data.OntologyConceptQueryDirection.INCOMING;
+import static org.openmetadata.schema.api.data.OntologyConceptQueryDirection.OUTGOING;
 
 import java.net.URI;
 import java.util.List;
@@ -12,11 +15,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.ontology.OntologyConceptSqlGenerator.BoundConcept;
 import org.openmetadata.service.ontology.OntologyConceptSqlGenerator.BoundTable;
@@ -89,8 +92,6 @@ class OntologyConceptQueryServiceTest {
             .withName("hasPart")
             .withKind(OntologyPropertyKind.OBJECT)
             .withIri(hasPartIri);
-    final OntologyConcept transfer = new OntologyConcept().withIri(transferIri);
-    final OntologyConcept customer = new OntologyConcept().withIri(customerIri);
     final BoundTable customers =
         new BoundTable(
             "finance.warehouse.payments.customers",
@@ -113,8 +114,8 @@ class OntologyConceptQueryServiceTest {
                     .withReferredColumns(
                         List.of("finance.warehouse.payments.customers.customer_id"))));
 
-    assertEquals("part of", OntologyConceptQueryService.hopLabel(partOf, transfer, hasPart));
-    assertEquals("part of", OntologyConceptQueryService.hopLabel(partOf, customer, null));
+    assertEquals("part of", OntologyConceptQueryService.hopLabel(OUTGOING, partOf, hasPart));
+    assertEquals("part of", OntologyConceptQueryService.hopLabel(INCOMING, partOf, null));
     assertEquals(
         "SELECT t1.transfer_id\nFROM payments.customers t0\n"
             + "JOIN payments.transfers t1 ON t0.customer_id = t1.customer_id -- has part\nLIMIT 50",
@@ -124,7 +125,7 @@ class OntologyConceptQueryServiceTest {
                     new Hop(
                         UUID.randomUUID(),
                         null,
-                        OntologyConceptQueryService.hopLabel(partOf, customer, hasPart),
+                        OntologyConceptQueryService.hopLabel(INCOMING, partOf, hasPart),
                         new BoundConcept("Funds Transfer", List.of(transfers)))))
             .sql());
   }
@@ -172,7 +173,7 @@ class OntologyConceptQueryServiceTest {
     final Hop hop =
         OntologyConceptQueryService.hop(
             manages,
-            new OntologyConcept().withIri(employeeIri),
+            OUTGOING,
             OntologyConceptQueryService.Inverses.of(List.of(managedBy), property -> false),
             employees);
 
@@ -190,8 +191,6 @@ class OntologyConceptQueryServiceTest {
     final OntologyProperty managedBy = managedBy(manages);
     final OntologyConceptQueryService.Inverses inverses =
         OntologyConceptQueryService.Inverses.of(List.of(manages, managedBy), property -> true);
-    final OntologyConcept employee = new OntologyConcept().withIri(EMPLOYEE_IRI);
-    final OntologyConcept manager = new OntologyConcept().withIri(MANAGER_IRI);
     final BoundConcept employees = managerBoundEmployees("Employee", managedBy);
     final BoundConcept managers = managerBoundEmployees("Manager", managedBy);
 
@@ -201,28 +200,28 @@ class OntologyConceptQueryServiceTest {
                 employeesJoinedOn("t0.manager_id = t1.employee_id -- managed by"),
                 sql(
                     employees,
-                    OntologyConceptQueryService.hop(managedBy, employee, inverses, managers)),
+                    OntologyConceptQueryService.hop(managedBy, OUTGOING, inverses, managers)),
                 "Employee to Manager over managed by"),
         () ->
             assertEquals(
                 employeesJoinedOn("t0.manager_id = t1.employee_id -- managed by"),
                 sql(
                     employees,
-                    OntologyConceptQueryService.hop(manages, employee, inverses, managers)),
+                    OntologyConceptQueryService.hop(manages, INCOMING, inverses, managers)),
                 "Employee to Manager over manages, followed from its range"),
         () ->
             assertEquals(
                 employeesJoinedOn("t0.employee_id = t1.manager_id -- manages"),
                 sql(
                     managers,
-                    OntologyConceptQueryService.hop(manages, manager, inverses, employees)),
+                    OntologyConceptQueryService.hop(manages, OUTGOING, inverses, employees)),
                 "Manager to Employee over manages"),
         () ->
             assertEquals(
                 employeesJoinedOn("t0.employee_id = t1.manager_id -- manages"),
                 sql(
                     managers,
-                    OntologyConceptQueryService.hop(managedBy, manager, inverses, employees)),
+                    OntologyConceptQueryService.hop(managedBy, INCOMING, inverses, employees)),
                 "Manager to Employee over managed by, followed from its range"));
   }
 
@@ -235,7 +234,7 @@ class OntologyConceptQueryServiceTest {
     final Hop hop =
         OntologyConceptQueryService.hop(
             manages,
-            new OntologyConcept().withIri(EMPLOYEE_IRI),
+            INCOMING,
             OntologyConceptQueryService.Inverses.of(
                 List.of(manages, managedBy), property -> property == manages),
             managerBoundEmployees("Manager", managedBy));
@@ -243,6 +242,68 @@ class OntologyConceptQueryServiceTest {
     assertEquals("manages", hop.label());
     assertEquals(
         employeesJoinedOn("t0.manager_id = t1.employee_id -- manages"), sql(employees, hop));
+  }
+
+  @Test
+  void anOutgoingChipFromAConceptOnlyInTheRangeFollowsItsOwnProperty() {
+    final OntologyProperty manages = manages();
+    final OntologyProperty managedBy = managedBy(manages);
+    final BoundConcept managers = managerBoundEmployees("Manager", managedBy);
+
+    final Hop hop =
+        OntologyConceptQueryService.hop(
+            managedBy,
+            OUTGOING,
+            OntologyConceptQueryService.Inverses.of(List.of(manages, managedBy), property -> true),
+            managers);
+
+    assertEquals("managed by", hop.label());
+    assertEquals(
+        employeesJoinedOn("t0.manager_id = t1.employee_id -- managed by"), sql(managers, hop));
+  }
+
+  @Test
+  void anIncomingChipToAConceptOutsideTheDomainRunsOverTheInverse() {
+    final OntologyProperty manages = manages();
+    final OntologyProperty managedBy = managedBy(manages);
+
+    final Hop hop =
+        OntologyConceptQueryService.hop(
+            managedBy,
+            INCOMING,
+            OntologyConceptQueryService.Inverses.of(List.of(manages, managedBy), property -> true),
+            managerBoundEmployees("Director", managedBy));
+
+    assertEquals("manages", hop.label());
+    assertEquals(
+        employeesJoinedOn("t0.employee_id = t1.manager_id -- manages"),
+        sql(managerBoundEmployees("Manager", managedBy), hop));
+  }
+
+  @Test
+  void aHiddenInverseBoundInSeveralCompositeKeysNamesTheBoundColumn() {
+    final OntologyProperty manages = manages();
+    final OntologyProperty managedBy = managedBy(manages);
+    final List<TableConstraint> keys =
+        List.of(
+            compositeSelfKey("manager_id", "tenant_id", "employee_id", "tenant_id"),
+            compositeSelfKey("manager_id", "region", "employee_id", "region"));
+
+    final Hop hop =
+        OntologyConceptQueryService.hop(
+            manages,
+            INCOMING,
+            OntologyConceptQueryService.Inverses.of(
+                List.of(manages, managedBy), property -> property == manages),
+            managerBoundEmployees("Manager", managedBy, keys));
+
+    assertEquals(
+        "Hop 1 (manages): manager_id is in several foreign keys between "
+            + "finance.warehouse.payments.employees and finance.warehouse.payments.employees",
+        assertThrows(
+                BadRequestException.class,
+                () -> sql(managerBoundEmployees("Employee", managedBy, keys), hop))
+            .getMessage());
   }
 
   @Test
@@ -258,7 +319,7 @@ class OntologyConceptQueryServiceTest {
     final Hop hop =
         OntologyConceptQueryService.hop(
             reportsTo,
-            new OntologyConcept().withIri(EMPLOYEE_IRI),
+            INCOMING,
             OntologyConceptQueryService.Inverses.NONE,
             new BoundConcept("Manager", List.of()));
 
@@ -291,6 +352,18 @@ class OntologyConceptQueryServiceTest {
 
   private static BoundConcept managerBoundEmployees(
       final String label, final OntologyProperty managedBy) {
+    return managerBoundEmployees(
+        label,
+        managedBy,
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("manager_id"))
+                .withReferredColumns(List.of("finance.warehouse.payments.employees.employee_id"))));
+  }
+
+  private static BoundConcept managerBoundEmployees(
+      final String label, final OntologyProperty managedBy, final List<TableConstraint> keys) {
     return new BoundConcept(
         label,
         List.of(
@@ -300,12 +373,18 @@ class OntologyConceptQueryServiceTest {
                 List.of(List.of("employee_id"), List.of("manager_id")),
                 Map.of(managedBy.getId(), List.of("manager_id")),
                 List.of(),
-                List.of(
-                    new TableConstraint()
-                        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
-                        .withColumns(List.of("manager_id"))
-                        .withReferredColumns(
-                            List.of("finance.warehouse.payments.employees.employee_id"))))));
+                keys)));
+  }
+
+  private static TableConstraint compositeSelfKey(
+      final String column, final String other, final String referred, final String otherReferred) {
+    return new TableConstraint()
+        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+        .withColumns(List.of(column, other))
+        .withReferredColumns(
+            List.of(
+                "finance.warehouse.payments.employees." + referred,
+                "finance.warehouse.payments.employees." + otherReferred));
   }
 
   private static String employeesJoinedOn(final String on) {

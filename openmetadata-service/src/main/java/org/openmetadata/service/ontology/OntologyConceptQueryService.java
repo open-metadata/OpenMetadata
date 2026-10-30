@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.OntologyConceptQuery;
+import org.openmetadata.schema.api.data.OntologyConceptQueryDirection;
 import org.openmetadata.schema.api.data.OntologyConceptQueryHop;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -105,17 +106,20 @@ public final class OntologyConceptQueryService {
       final Map<UUID, BoundConcept> bound = bind(access, concepts.values());
       final List<Hop> steps = new ArrayList<>();
       final List<OntologyConceptQueryHop> labeled = new ArrayList<>();
-      OntologyConcept from = root;
       for (final OntologyConceptQueryHop hop : hops) {
         final Hop step =
-            hop(relations.get(hop.getProperty()), from, inverses, bound.get(hop.getTarget()));
+            hop(
+                relations.get(hop.getProperty()),
+                hop.getDirection(),
+                inverses,
+                bound.get(hop.getTarget()));
         steps.add(step);
         labeled.add(
             new OntologyConceptQueryHop()
                 .withProperty(hop.getProperty())
                 .withTarget(hop.getTarget())
+                .withDirection(hop.getDirection())
                 .withLabel(step.label()));
-        from = concepts.get(hop.getTarget());
       }
       return response(OntologyConceptSqlGenerator.generate(bound.get(conceptId), steps), labeled);
     }
@@ -145,19 +149,19 @@ public final class OntologyConceptQueryService {
   }
 
   /**
-   * A hop followed from its property's range runs over the declared inverse, so its join reads the
-   * direction its label names, whether or not the reader may view that inverse.
+   * An incoming hop runs over the declared inverse, so its join reads the direction its label
+   * names, whether or not the reader may view that inverse.
    */
   static Hop hop(
       final OntologyProperty relation,
-      final OntologyConcept from,
+      final OntologyConceptQueryDirection direction,
       final Inverses inverses,
       final BoundConcept target) {
-    final boolean incoming = followedFromRange(relation, from);
+    final boolean incoming = direction == OntologyConceptQueryDirection.INCOMING;
     final Optional<OntologyProperty> inverse = inverses.of(relation);
     final String label =
         hopLabel(
-            incoming,
+            direction,
             relation,
             inverse.filter(shown -> inverses.viewable().contains(shown.getId())).orElse(null));
     return incoming && inverse.isPresent()
@@ -167,23 +171,17 @@ public final class OntologyConceptQueryService {
   }
 
   /**
-   * Labels a hop the way the Studio's hop chip does: a relation followed from its range back to
-   * its domain reads as its declared inverse, when that inverse is a live object property.
+   * Labels a hop the way the Studio's hop chip does: an incoming relation reads as its declared
+   * inverse, when that inverse is a live object property.
    */
   static String hopLabel(
-      final OntologyProperty relation, final OntologyConcept from, final OntologyProperty inverse) {
-    return hopLabel(followedFromRange(relation, from), relation, inverse);
-  }
-
-  private static String hopLabel(
-      final boolean incoming, final OntologyProperty relation, final OntologyProperty inverse) {
-    return label(incoming && inverse != null ? inverse : relation);
-  }
-
-  private static boolean followedFromRange(
-      final OntologyProperty relation, final OntologyConcept from) {
-    return !listOrEmpty(relation.getDomain()).contains(from.getIri())
-        && listOrEmpty(relation.getRange()).contains(from.getIri());
+      final OntologyConceptQueryDirection direction,
+      final OntologyProperty relation,
+      final OntologyProperty inverse) {
+    return label(
+        direction == OntologyConceptQueryDirection.INCOMING && inverse != null
+            ? inverse
+            : relation);
   }
 
   /**

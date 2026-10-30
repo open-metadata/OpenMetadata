@@ -10,6 +10,8 @@ import static org.openmetadata.it.tests.OntologyBindingFixtures.bindings;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.client;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.ownerReader;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.readerReference;
+import static org.openmetadata.schema.api.data.OntologyConceptQueryDirection.INCOMING;
+import static org.openmetadata.schema.api.data.OntologyConceptQueryDirection.OUTGOING;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -31,6 +33,7 @@ import org.openmetadata.schema.api.data.CreateOntologyProperty;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.OntologyConceptQuery;
 import org.openmetadata.schema.api.data.OntologyConceptQueryDialect;
+import org.openmetadata.schema.api.data.OntologyConceptQueryDirection;
 import org.openmetadata.schema.api.data.OntologyConceptQueryHop;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -95,8 +98,8 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
         query(
             admin(),
             payments.transfer(),
-            hop(payments.partOf(), payments.customer()),
-            hop(payments.holds(), payments.account()));
+            hop(payments.partOf(), OUTGOING, payments.customer()),
+            hop(payments.holds(), OUTGOING, payments.account()));
 
     final String schema = payments.schema().getName();
     assertEquals(
@@ -138,7 +141,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
     bind(payments.customer(), customers, List.of(column(customerId, "customer_id")), 0L);
 
     final OntologyConceptQuery joined =
-        query(admin(), payments.transfer(), hop(payments.partOf(), payments.customer()));
+        query(admin(), payments.transfer(), hop(payments.partOf(), OUTGOING, payments.customer()));
 
     assertEquals(
         "SELECT t1.customer_id\nFROM "
@@ -180,18 +183,36 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
     assertBadRequest(
         "Hop 1 (part of) reaches concept Customer, which has no bound table you can view"
             + " among its first 100 table bindings",
-        () -> query(admin(), payments.transfer(), hop(payments.partOf(), payments.customer())));
+        () ->
+            query(
+                admin(),
+                payments.transfer(),
+                hop(payments.partOf(), OUTGOING, payments.customer())));
     bindData(payments.customer(), customers, payments.ontology(), "customer_id");
     assertBadRequest(
         "Hop 1 (part of): no foreign key or object-property binding joins "
             + transfers.getFullyQualifiedName()
             + " to a table bound to Customer",
-        () -> query(admin(), payments.transfer(), hop(payments.partOf(), payments.customer())));
+        () ->
+            query(
+                admin(),
+                payments.transfer(),
+                hop(payments.partOf(), OUTGOING, payments.customer())));
     final OntologyProperty dataProperty =
         dataProperty(payments.ontology(), "reference", payments.transfer(), false);
     assertBadRequest(
+        "query param direction must not be null",
+        () ->
+            query(
+                admin(),
+                payments.transfer(),
+                new OntologyConceptQueryHop()
+                    .withProperty(payments.partOf().getId())
+                    .withTarget(payments.customer().getId())));
+    assertBadRequest(
         "Search-around property reference is not an object property of this ontology",
-        () -> query(admin(), payments.transfer(), hop(dataProperty, payments.customer())));
+        () ->
+            query(admin(), payments.transfer(), hop(dataProperty, OUTGOING, payments.customer())));
   }
 
   @Test
@@ -278,7 +299,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
           objectProperty(payments.ontology(), "keeps", CUSTOMER, ACCOUNT, keptBy, owners);
 
       final OntologyConceptQuery fromRange =
-          query(reader, payments.account(), hop(keeps, payments.customer()));
+          query(reader, payments.account(), hop(keeps, INCOMING, payments.customer()));
 
       assertEquals(
           "SELECT t1.name\nFROM "
@@ -292,8 +313,54 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
 
   @Test
   void aBoundInverseOrientsAKeyFromATableToItself(final TestNamespace ns) {
-    final Payments payments =
-        payments(ns, "selfKeyPayments", DatabaseServiceTestFactory.createPostgres(ns));
+    final SelfKey fixture = selfKeyEmployees(ns, "selfKeyPayments");
+    final OntologyConcept employee = fixture.employee();
+
+    assertEquals(
+        fixture.manages().getIri(),
+        admin().ontologyProperties().get(fixture.managedBy().getId().toString()).getInverse());
+    assertEquals(
+        fixture.managedBy().getIri(),
+        admin().ontologyProperties().get(fixture.manages().getId().toString()).getInverse());
+    assertEquals(
+        fixture.joinedOn("t0.employee_id = t1.manager_id -- manages"),
+        query(admin(), employee, hop(fixture.manages(), OUTGOING, employee)).getSql());
+    assertEquals(
+        fixture.joinedOn("t0.manager_id = t1.employee_id -- managed by"),
+        query(admin(), employee, hop(fixture.managedBy(), OUTGOING, employee)).getSql());
+  }
+
+  @Test
+  void twoHopsThatDifferOnlyInDirectionJoinTheWayEachChipReads(final TestNamespace ns) {
+    final SelfKey fixture = selfKeyEmployees(ns, "directionPayments");
+    final OntologyConcept employee = fixture.employee();
+
+    assertEquals(
+        fixture.joinedOn("t0.manager_id = t1.employee_id -- managed by"),
+        query(admin(), employee, hop(fixture.managedBy(), OUTGOING, employee)).getSql());
+    assertEquals(
+        fixture.joinedOn("t0.employee_id = t1.manager_id -- manages"),
+        query(admin(), employee, hop(fixture.managedBy(), INCOMING, employee)).getSql());
+  }
+
+  private record SelfKey(
+      OntologyConcept employee,
+      OntologyProperty managedBy,
+      OntologyProperty manages,
+      String schema) {
+    String joinedOn(final String on) {
+      return "SELECT t1.employee_id, t1.manager_id\nFROM "
+          + schema
+          + ".employees t0\nJOIN "
+          + schema
+          + ".employees t1 ON "
+          + on
+          + "\nLIMIT 50";
+    }
+  }
+
+  private SelfKey selfKeyEmployees(final TestNamespace ns, final String name) {
+    final Payments payments = payments(ns, name, DatabaseServiceTestFactory.createPostgres(ns));
     final OntologyConcept employee = declareClass(payments.ontology(), "Employee", EMPLOYEE);
     final Table created = table(payments, "employees", List.of("employee_id", "manager_id"));
     final Table employees =
@@ -318,28 +385,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
         employees,
         List.of(column(employeeId, "employee_id"), column(managedBy, "manager_id")),
         0L);
-
-    final String schema = payments.schema().getName();
-    assertEquals(
-        manages.getIri(),
-        admin().ontologyProperties().get(managedBy.getId().toString()).getInverse());
-    assertEquals(
-        managedBy.getIri(),
-        admin().ontologyProperties().get(manages.getId().toString()).getInverse());
-    assertEquals(
-        "SELECT t1.employee_id, t1.manager_id\nFROM "
-            + schema
-            + ".employees t0\nJOIN "
-            + schema
-            + ".employees t1 ON t0.employee_id = t1.manager_id -- manages\nLIMIT 50",
-        query(admin(), employee, hop(manages, employee)).getSql());
-    assertEquals(
-        "SELECT t1.employee_id, t1.manager_id\nFROM "
-            + schema
-            + ".employees t0\nJOIN "
-            + schema
-            + ".employees t1 ON t0.manager_id = t1.employee_id -- managed by\nLIMIT 50",
-        query(admin(), employee, hop(managedBy, employee)).getSql());
+    return new SelfKey(employee, managedBy, manages, payments.schema().getName());
   }
 
   private static OpenMetadataClient ownerOnlyPropertyReader(final RdfAccessFixtures fixtures) {
@@ -371,7 +417,7 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
     final List<Object> before = observedState(payments, transfers);
 
     for (int call = 0; call < 10; call++) {
-      query(admin(), payments.transfer(), hop(payments.partOf(), payments.customer()));
+      query(admin(), payments.transfer(), hop(payments.partOf(), OUTGOING, payments.customer()));
     }
 
     assertEquals(before, observedState(payments, transfers));
@@ -524,8 +570,13 @@ class OntologyConceptQueryIT extends BaseOntologyApprovalIT {
   }
 
   private static OntologyConceptQueryHop hop(
-      final OntologyProperty property, final OntologyConcept target) {
-    return new OntologyConceptQueryHop().withProperty(property.getId()).withTarget(target.getId());
+      final OntologyProperty property,
+      final OntologyConceptQueryDirection direction,
+      final OntologyConcept target) {
+    return new OntologyConceptQueryHop()
+        .withProperty(property.getId())
+        .withTarget(target.getId())
+        .withDirection(direction);
   }
 
   private static OntologyConceptQuery query(

@@ -33,8 +33,10 @@ commented with the relation label, and the service, service type and dialect.
   table's binding wins over the candidate's. The hop joins through a `FOREIGN_KEY` constraint on
   the binding table whose columns equal the bound column and that refers to the other table, else
   through the one such key whose columns contain the bound column, on all of that key's columns.
-  Several keys that contain it are the several-keys 400 below. Without a key it joins the bound column to the other concept's identifier column (a bound DATA
-  property with `isIdentifier`). A foreign key on any other column never counts, even when it is
+  Every candidate's equal key is tried before any candidate's containing key. Several keys that
+  contain the bound column are a 400 that names the hop, the column and the two tables. Without a
+  key it joins the bound column to the other concept's identifier column (a bound DATA property
+  with `isIdentifier`). A foreign key on any other column never counts, even when it is
   the only one. A hop whose property no candidate binds joins through the one foreign key between
   the previous table and a candidate, in either direction, trying candidates in asset-id order.
   Several foreign keys between the two tables, in either direction, are a 400 that names both
@@ -43,9 +45,10 @@ commented with the relation label, and the service, service type and dialect.
   reports), and the binding chooses between them. PR4 keeps `inverse` reciprocal, so `managed by`
   and `manages` each name the other and the declaration alone cannot say which way the key runs.
   A column bound to `managed by` holds the manager, so `managed by` reads along the key and
-  `manages` against it. A hop followed back from its property's range reads as a hop over the
-  declared inverse, so its join and its label name the same direction. A binding of one column of
-  a composite key orients the whole key, and the hop joins on all of its columns.
+  `manages` against it. Each hop in the request carries the direction of the chip the Studio drew.
+  An `incoming` hop, followed back from its property's object to its subject, reads as a hop over
+  the declared inverse, so its join and its label name the same direction. A binding of one column
+  of a composite key orients the whole key, and the hop joins on all of its columns.
   - A hop whose property no table binds, but whose declared inverse the previous table or a
     candidate binds, takes the converse of the join a hop over the inverse would take from the
     candidate back to the previous table, so the candidate's binding of the inverse wins. This
@@ -55,18 +58,17 @@ commented with the relation label, and the service, service type and dialect.
     name only properties the reader may view.
   - A hop whose property and declared inverse are both unbound, over one key from a table to
     itself, is a 400 that names the hop and the key's columns and asks for one of the two
-    properties to be bound to one of that key's columns. Rows read in a guessed direction would be wrong for one
-    of the two properties.
+    properties to be bound to one of that key's columns. Rows read in a guessed direction would be
+    wrong for one of the two properties.
   - A hop whose property declares no inverse, or is its own inverse, reads one key from a table to
     itself along the key.
-- A hop followed from its relation's range back to its domain is labelled with the relation's
-  declared inverse when that inverse is a live object property the reader may view, the same label
-  as the rail's hop chip. The server knows only the declared domain and range, so a relation that
-  comes only from a restriction or an assertion, or whose property has the start concept in both
-  its domain and its range, can give the SQL comment and the chip different labels in either
-  direction. The comment can read the forward label while the chip reads the inverse, or the
-  inverse while the chip reads the forward label. The joins are the same either way, and the
-  mismatch lasts until the request carries the direction the rail chose.
+- The server labels and joins each hop by the direction the request carries, `outgoing` or
+  `incoming`, and never infers it from the property's declared domain and range. An `incoming` hop
+  is labelled with the relation's declared inverse when that inverse is a live object property the
+  reader may view, the same label as the rail's hop chip. A relation the rail draws from a
+  restriction or an assertion, or one whose property has the start concept in both its domain and
+  its range, therefore gets the same label and the same rows as its chip, so the SQL comment and
+  the chip always name the same relation. A hop without a direction is a 400.
 - The endpoint authorizes like the binding read: `VIEW_BASIC` on the concepts and hop properties.
   A bound table the caller may not view is treated as unbound, so its columns never appear in the
   SQL or an error. A concept or hop without a viewable bound table, or a hop with no join, is a
