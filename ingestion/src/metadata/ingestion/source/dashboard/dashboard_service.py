@@ -58,7 +58,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.delete import SourceListing, delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
@@ -336,6 +336,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
+        # Per instance, unlike the class-level seen-sets, so each run starts unconfirmed.
+        self.dashboard_listing = SourceListing()
+        self.datamodel_listing = SourceListing()
         self._connection = create_connection(self.service_connection)
         self.client = self._connection.client if self._connection else get_connection(self.service_connection)
         self.connection_obj = self.client
@@ -606,6 +609,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_source_state=self.dashboard_source_state,
                 recursive=self.source_config.markDeletedDashboards,
                 params={"service": self.context.get().dashboard_service},
+                source_listing=self.dashboard_listing,
             )
 
     def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
@@ -620,6 +624,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_source_state=self.datamodel_source_state,
                 recursive=self.source_config.markDeletedDataModels,
                 params={"service": self.context.get().dashboard_service},
+                # A run that skips data models has not confirmed that none exist.
+                source_listing=self.datamodel_listing if self.source_config.includeDataModels else None,
             )
 
     def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:

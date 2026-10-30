@@ -15358,18 +15358,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * hard-delete the stale entities.
    *
    * <p>FQNs are compared by hash so quoting or case differences between the connector-supplied and
-   * stored values never cause spurious deletes. An empty scope yields zero deletions - it is never
-   * interpreted as "everything is stale". Each delete runs in its own transaction so a single
-   * failure does not roll back the rest of the batch.
+   * stored values never cause spurious deletes. An empty {@code seenFqns} yields zero deletions
+   * unless the connector sets {@code allowEmptySeenFqns}, confirming its listing was complete
+   * (ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing).
+   * Each delete runs in its own transaction so a single failure does not roll back the rest of the
+   * batch.
    */
   public BulkOperationResult bulkDeleteStaleEntities(
       BulkDeleteStaleRequest request, String deletedBy) {
     validateScopeRequest(request.getScopeEntityType(), request.getScopeFqn());
-    if (nullOrEmpty(request.getSeenFqns())) {
-      // An empty seen-set cannot be distinguished from a connector run that crashed or discovered
-      // nothing, so it must never be interpreted as "every entity under the scope is stale" - that
-      // would silently delete the whole service/database. Treat it as zero deletions, mirroring the
-      // scope-not-found path.
+    if (isAmbiguousEmptySeenSet(request)) {
+      // An unconfirmed empty seen-set cannot be distinguished from a connector run that crashed or
+      // discovered nothing, so it must never be interpreted as "every entity under the scope is
+      // stale" - that would silently delete the whole service/database. Treat it as zero
+      // deletions, mirroring the scope-not-found path.
       LOG.warn(
           "deleteStale for scope {} '{}' received an empty seenFqns; treating as zero deletions "
               + "rather than marking the entire scope stale",
@@ -15416,12 +15418,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return buildStaleDeletionResult(dryRun, successRequests, failedRequests);
   }
 
+  private static boolean isAmbiguousEmptySeenSet(BulkDeleteStaleRequest request) {
+    return nullOrEmpty(request.getSeenFqns())
+        && !Boolean.TRUE.equals(request.getAllowEmptySeenFqns());
+  }
+
   /**
    * Rejects a malformed request before any work runs: {@code scopeFqn} and {@code scopeEntityType}
    * must be present and {@code scopeEntityType} must resolve to a registered entity type. These are
-   * caller mistakes (typos, swapped fields) and fail with 400. An empty {@code seenFqns} is handled
-   * separately in {@link #bulkDeleteStaleEntities} as a safe zero-deletion no-op rather than a 400,
-   * since it is a well-formed request whose intent is genuinely ambiguous.
+   * caller mistakes (typos, swapped fields) and fail with 400. An empty {@code seenFqns} without
+   * {@code allowEmptySeenFqns} is handled separately in {@link #bulkDeleteStaleEntities} as a safe
+   * zero-deletion no-op rather than a 400, since it is a well-formed request whose intent is
+   * genuinely ambiguous.
    */
   private void validateScopeRequest(String scopeEntityType, String scopeFqn) {
     if (nullOrEmpty(scopeFqn)) {
