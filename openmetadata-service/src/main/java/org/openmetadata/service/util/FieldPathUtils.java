@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,9 +21,6 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.EntityRepository;
 
 /**
  * Utility for resolving and updating fields in entities using field paths.
@@ -41,67 +37,6 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 public class FieldPathUtils {
 
   private FieldPathUtils() {}
-
-  /**
-   * Update a field's description in the entity and apply the change via patch.
-   *
-   * @param entity The entity to update
-   * @param repository The entity repository
-   * @param user The user making the change
-   * @param fieldPath The field path (e.g., "columns::customer_id::description")
-   * @param newDescription The new description value
-   * @return true if update was successful
-   */
-  public static boolean updateFieldDescription(
-      EntityInterface<?> entity,
-      EntityRepository<?> repository,
-      String user,
-      String fieldPath,
-      String newDescription) {
-    return updateFieldDescription(entity, repository, user, fieldPath, newDescription, null);
-  }
-
-  /**
-   * Update a field's description, recording where the new text came from.
-   *
-   * <p>The source rides the patch, so one versioned write carries the provenance into the change
-   * summary and, through the normal lifecycle, the search document's {@code descriptionSource}.
-   *
-   * @param changeSource provenance of the new text, or null to leave it defaulted
-   */
-  public static boolean updateFieldDescription(
-      EntityInterface<?> entity,
-      EntityRepository<?> repository,
-      String user,
-      String fieldPath,
-      String newDescription,
-      ChangeSource changeSource) {
-
-    // Take snapshot before modification
-    String originalJson = JsonUtils.pojoToJson(entity);
-
-    // Parse field path and update in memory
-    boolean updated = setFieldDescription(entity, fieldPath, newDescription);
-    if (!updated) {
-      LOG.warn("[FieldPathUtils] Could not update field at path: {}", fieldPath);
-      return false;
-    }
-
-    // Generate patch from diff
-    String updatedJson = JsonUtils.pojoToJson(entity);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-
-    if (patch == null || patch.toJsonArray().isEmpty()) {
-      LOG.debug("[FieldPathUtils] No changes detected for field path: {}", fieldPath);
-      return true; // No changes needed
-    }
-
-    // Apply patch
-    repository.patch(null, entity.getId(), user, patch, changeSource, null);
-    LOG.info(
-        "[FieldPathUtils] Updated description at '{}' in entity '{}'", fieldPath, entity.getName());
-    return true;
-  }
 
   /**
    * Locate the nested field POJO addressed by {@code fieldPath} (e.g. a Column or SchemaField).
@@ -141,10 +76,12 @@ public class FieldPathUtils {
   }
 
   /**
-   * Set description on a field identified by field path.
-   * Modifies the entity in memory.
+   * Set description on a field identified by field path. Modifies the entity in memory; saving it
+   * is the caller's job.
+   *
+   * @return false when the field path cannot be resolved
    */
-  private static boolean setFieldDescription(
+  public static boolean setFieldDescription(
       EntityInterface<?> entity, String fieldPath, String description) {
 
     // Handle entity-level description
