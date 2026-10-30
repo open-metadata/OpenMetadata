@@ -1158,3 +1158,8 @@ DELETE FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id')
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+-- Transfer RDF delivery to pause-aware consumers before producing pipelineExecution payloads.
+-- Deleting first waits for an old in-flight delivery; old producers still use the enqueue guard.
+DELETE FROM rdf_live_write_guard WHERE id = 'drain';
+INSERT IGNORE INTO rdf_live_write_guard (id) VALUES ('drain-v2');

@@ -36,7 +36,7 @@ public final class RdfLiveWriteStore {
   // (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only).
   private static final int MAX_WRITES_PER_ENQUEUE = 500;
   private static final String WRITER_LOCK =
-      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE";
+      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2' FOR UPDATE";
   private static final String RECORD_ENQUEUED =
       "UPDATE rdf_projection_health SET enqueuedWatermark = GREATEST(enqueuedWatermark, ?) "
           + "WHERE id = 'active'";
@@ -66,6 +66,22 @@ public final class RdfLiveWriteStore {
     this.jdbi = jdbi;
     this.clock = clock;
     this.compactionDeadline = compactionDeadline;
+  }
+
+  /** New payloads must never reach the queue while legacy consumers can still drain it. */
+  public void requireCurrentWriter() {
+    final boolean ready =
+        jdbi.withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2'")
+                    .mapTo(String.class)
+                    .findOne()
+                    .isPresent());
+    if (!ready) {
+      throw new IllegalStateException(
+          "RDF live-write protocol migration is missing; run database migrations before enabling RDF");
+    }
   }
 
   public void enqueue(final String payload) {

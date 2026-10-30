@@ -68,6 +68,7 @@ public final class RdfUpdater {
       final RdfLiveWriteStore store =
           new RdfLiveWriteStore(
               Entity.getJdbi(), Clock.systemUTC(), compactionDeadline(maintenanceConfig));
+      store.requireCurrentWriter();
       RdfProjectionHealth.initialize(store);
       RdfRepository.initialize(config);
       // The queue writes through its own view: a paused write is held back at once and retried,
