@@ -614,6 +614,45 @@ it('persists user addition and keyboard removal with the current ontology versio
   ).not.toBeInTheDocument();
 });
 
+it('keeps the reviewer list closed after a pick while the addition saves', async () => {
+  configureReviewerSearch();
+  let finishPatch: () => void = () => undefined;
+  (
+    APIClient.patch as jest.MockedFunction<typeof APIClient.patch>
+  ).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishPatch = () => resolve({ data: ontology });
+      })
+  );
+  await renderPanel();
+  const input = await openReviewerSearch();
+  fireEvent.change(input, { target: { value: 'new' } });
+  const option = await screen.findByRole('option', { name: /New reviewer/ });
+  await waitFor(() =>
+    expect(option).not.toHaveAttribute('aria-disabled', 'true')
+  );
+  await act(async () => {
+    fireEvent.click(option);
+  });
+
+  // Disabling the focused input blurs it, and focus restored after the save
+  // reopened the list over the dialog.
+  expect(input).toHaveValue('');
+  expect(input).toHaveFocus();
+  expect(input).not.toBeDisabled();
+  expect(input).toHaveAttribute('readonly');
+  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+  await act(async () => {
+    finishPatch();
+  });
+
+  expect(input).toHaveFocus();
+  expect(input).not.toHaveAttribute('readonly');
+  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+});
+
 it('allows one group team with All and disables adding another entry', async () => {
   ontology.reviewers = [];
   configureReviewerSearch();
@@ -1044,7 +1083,7 @@ it('does not transfer an old settings failure or pending search to a new user', 
 
   expect(
     screen.getByRole('combobox', { name: /label.add-reviewer/ })
-  ).toBeDisabled();
+  ).toHaveAttribute('readonly');
 
   await act(async () => {
     useApplicationStore.setState({
@@ -1054,8 +1093,13 @@ it('does not transfer an old settings failure or pending search to a new user', 
   await waitFor(() =>
     expect(
       screen.getByRole('combobox', { name: /label.add-reviewer/ })
-    ).toBeEnabled()
+    ).not.toHaveAttribute('readonly')
   );
+
+  expect(
+    screen.getByRole('combobox', { name: /label.add-reviewer/ })
+  ).toBeEnabled();
+
   await act(async () => {
     rejectPatch?.({ isAxiosError: true, response: { status: 403 } });
   });
