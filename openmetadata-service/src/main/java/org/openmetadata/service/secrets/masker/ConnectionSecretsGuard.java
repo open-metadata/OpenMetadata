@@ -146,7 +146,7 @@ public final class ConnectionSecretsGuard {
     if (masked) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(copy);
     } else {
-      IngestionPipelineBuilder.addDefinedConfig(copy);
+      IngestionPipelineBuilder.addDefinedConfigForRead(copy);
     }
     return JsonUtils.valueToTree(copy.getSourceConfig().getConfig());
   }

@@ -1619,6 +1619,48 @@ public class IngestionPipelineResourceIT
   }
 
   /**
+   * A manifest source that matches none of the source schemas cannot be typed, so neither the masker
+   * nor the secrets manager would reach the credentials in it: it is refused instead of stored.
+   */
+  @Test
+  void test_storageManifestMatchingNoSourceSchemaIsRefused(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Map<String, Object> source =
+        Map.of(
+            "securityConfig",
+            Map.of(
+                "awsAccessKeyId",
+                "manifest-key",
+                "awsSecretAccessKey",
+                "manifest-secret-" + ns.uniqueShortId(),
+                "awsRegion",
+                "us-east-1"),
+            "prefixConfig",
+            Map.of("containerName", "manifests", "objectPrefix", "openmetadata"),
+            "notInAnySourceSchema",
+            "x");
+    CreateIngestionPipeline create =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("storage_malformed"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        Map.of("type", "StorageMetadata", "storageMetadataConfigSource", source)))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.POST, getResourcePath(), create, IngestionPipeline.class));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+  }
+
+  /**
    * An owner who sees the dbt Cloud token masked may change the pipeline's other settings, but
    * pointing the source at another host means entering the token again: restoring the stored one
    * would send it there.
