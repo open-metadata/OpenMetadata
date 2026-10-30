@@ -65,6 +65,12 @@ import { OntologyGraphSearchSlotContext } from './OntologyGraphSearchSlot.contex
 import OntologyGraphView from './OntologyGraphView';
 
 const mockGraphProps = jest.fn();
+const mockGraphControls = {
+  fitView: jest.fn(),
+  zoomIn: jest.fn(),
+  zoomOut: jest.fn(),
+};
+
 const mockUseOntologyStudioModel = jest.fn();
 const mockPermissions = {
   ontologyConcept: { Create: true },
@@ -151,11 +157,7 @@ jest.mock('../../../OntologyExplorer/OntologyGraphG6', () => {
         ref
       ) => {
         mockGraphProps(props);
-        React.useImperativeHandle(ref, () => ({
-          fitView: jest.fn(),
-          zoomIn: jest.fn(),
-          zoomOut: jest.fn(),
-        }));
+        React.useImperativeHandle(ref, () => mockGraphControls);
 
         return (
           <div data-testid="native-ontology-graph">
@@ -456,7 +458,14 @@ describe('OntologyGraphView', () => {
         data: registryTypes.slice(1),
         paging: { total: registryTypes.length },
       });
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
@@ -475,7 +484,14 @@ describe('OntologyGraphView', () => {
       data: registryTypes,
       paging: { after: 'same', total: registryTypes.length },
     });
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitFor(() =>
       expect(showErrorToast).toHaveBeenCalledWith('server.unexpected-error')
@@ -492,7 +508,14 @@ describe('OntologyGraphView', () => {
   it('submits a registry relation through the inspector and resets the form after saving', async () => {
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
@@ -536,7 +559,12 @@ describe('OntologyGraphView', () => {
     'rejects a stale relation selection $targetId $relationType',
     async ({ targetId, relationType }) => {
       render(
-        <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
       );
       await screen.findByTestId('native-ontology-graph');
       await waitForRegistry();
@@ -558,7 +586,12 @@ describe('OntologyGraphView', () => {
         response: { status },
       });
       render(
-        <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
       );
       await screen.findByTestId('native-ontology-graph');
       await waitForRegistry();
@@ -596,6 +629,7 @@ describe('OntologyGraphView', () => {
       <OntologyGraphView
         ontology={ontology}
         surface="graph"
+        onRequestGraphSurface={jest.fn()}
         onStatsChange={onStatsChange}
       />
     );
@@ -653,7 +687,13 @@ describe('OntologyGraphView', () => {
   });
 
   it('uses the same inspector from the hierarchy tree', () => {
-    render(<OntologyGraphView ontology={ontology} surface="tree" />);
+    render(
+      <OntologyGraphView
+        ontology={ontology}
+        surface="tree"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
 
     fireEvent.click(screen.getByTestId('ontology-tree-term-concept-customer'));
 
@@ -692,6 +732,7 @@ describe('OntologyGraphView', () => {
         createConceptRequestKey={0}
         ontology={ontology}
         surface="graph"
+        onRequestGraphSurface={jest.fn()}
         onWorkingChange={onWorkingChange}
       />
     );
@@ -824,6 +865,7 @@ describe('OntologyGraphView', () => {
         createConceptRequestKey={1}
         ontology={ontology}
         surface="graph"
+        onRequestGraphSurface={jest.fn()}
       />
     );
 
@@ -846,7 +888,14 @@ describe('OntologyGraphView', () => {
     });
     (patchOntologyProperty as jest.Mock).mockResolvedValue(partOfProperty);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -870,7 +919,14 @@ describe('OntologyGraphView', () => {
   it('creates a custom registry type with its inverse from the picker, then instantiates it', async () => {
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -993,7 +1049,14 @@ describe('OntologyGraphView', () => {
     (getRelationshipTypeByName as jest.Mock).mockResolvedValue(approvedBy);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1069,7 +1132,14 @@ describe('OntologyGraphView', () => {
     (getRelationshipTypeByName as jest.Mock).mockResolvedValue(governs);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1134,7 +1204,14 @@ describe('OntologyGraphView', () => {
       .mockRejectedValueOnce(failure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1173,7 +1250,14 @@ describe('OntologyGraphView', () => {
     (patchRelationshipType as jest.Mock).mockRejectedValueOnce(failure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1215,7 +1299,14 @@ describe('OntologyGraphView', () => {
     (patchRelationshipType as jest.Mock).mockRejectedValueOnce(failure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1249,7 +1340,14 @@ describe('OntologyGraphView', () => {
       .mockRejectedValueOnce(repairFailure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1284,7 +1382,14 @@ describe('OntologyGraphView', () => {
     (patchRelationshipType as jest.Mock).mockRejectedValueOnce(failure);
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1342,7 +1447,14 @@ describe('OntologyGraphView', () => {
       .mockResolvedValue({ data: fresh, paging: { total: fresh.length } });
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1369,7 +1481,14 @@ describe('OntologyGraphView', () => {
     });
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1392,7 +1511,14 @@ describe('OntologyGraphView', () => {
   it('reuses a registry type whose label matches the requested new type', async () => {
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1426,7 +1552,14 @@ describe('OntologyGraphView', () => {
 
   it('offers no registry type creation without the relationshipType permission', async () => {
     mockPermissions.relationshipType.Create = false;
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1451,7 +1584,14 @@ describe('OntologyGraphView', () => {
     mockPermissions.relationshipType.EditAll = false;
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1517,7 +1657,14 @@ describe('OntologyGraphView', () => {
     mockPermissions.relationshipType.EditAll = false;
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (createOntologyProperty as jest.Mock).mockResolvedValue({});
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1569,7 +1716,14 @@ describe('OntologyGraphView', () => {
   });
 
   it('writes nothing when the new type dialog is cancelled', async () => {
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
 
@@ -1603,7 +1757,12 @@ describe('OntologyGraphView', () => {
     const refetch = jest.fn().mockResolvedValue({});
     mockUseOntologyStudioModel.mockReturnValue({ ...modelResult, refetch });
     const { rerender } = render(
-      <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
     );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
@@ -1625,7 +1784,12 @@ describe('OntologyGraphView', () => {
       refetch,
     });
     rerender(
-      <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
     );
     await act(() =>
       latestGraphProps().onCreateRelation(customer.id, orphan.id, PART_OF)
@@ -1638,7 +1802,12 @@ describe('OntologyGraphView', () => {
 
   it('starts a blank concept after editing an existing concept and hides the editor in View', async () => {
     const { rerender } = render(
-      <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
     );
     fireEvent.click(
       await screen.findByTestId('native-graph-node-concept-customer')
@@ -1655,6 +1824,7 @@ describe('OntologyGraphView', () => {
         createConceptRequestKey={1}
         ontology={ontology}
         surface="graph"
+        onRequestGraphSurface={jest.fn()}
       />
     );
 
@@ -1665,6 +1835,7 @@ describe('OntologyGraphView', () => {
         createConceptRequestKey={1}
         ontology={ontology}
         surface="graph"
+        onRequestGraphSurface={jest.fn()}
       />
     );
 
@@ -1674,7 +1845,13 @@ describe('OntologyGraphView', () => {
   });
 
   it('shows incoming relationships in subject-predicate order', async () => {
-    render(<OntologyGraphView ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     fireEvent.click(
       await screen.findByTestId('native-graph-node-concept-party')
     );
@@ -1688,7 +1865,14 @@ describe('OntologyGraphView', () => {
     mockPermissions.ontologyProperty.Create = false;
     mockPermissions.ontologyAxiom.Create = false;
     mockCanEditConcept = false;
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     fireEvent.click(
       await screen.findByTestId('native-graph-node-concept-customer')
     );
@@ -1717,7 +1901,14 @@ describe('OntologyGraphView', () => {
         properties: [...model.properties, hasPartProperty, partOfProperty],
       },
     });
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
@@ -1767,7 +1958,14 @@ describe('OntologyGraphView', () => {
         ],
       },
     });
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry(HAS_PART);
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
@@ -1806,7 +2004,14 @@ describe('OntologyGraphView', () => {
     (createOntologyProperty as jest.Mock).mockRejectedValue(
       new Error('write failed')
     );
-    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
 
     fireEvent.click(
       await screen.findByTestId('native-graph-node-concept-customer')
@@ -1829,6 +2034,7 @@ describe('OntologyGraphView', () => {
         createConceptRequestKey={4}
         ontology={ontology}
         surface="graph"
+        onRequestGraphSurface={jest.fn()}
       />
     );
 
@@ -1849,7 +2055,13 @@ describe('OntologyGraphView', () => {
       refetch,
       relations: [],
     });
-    render(<OntologyGraphView ontology={ontology} surface="graph" />);
+    render(
+      <OntologyGraphView
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
 
@@ -1857,6 +2069,43 @@ describe('OntologyGraphView', () => {
     expect(
       screen.queryByTestId('native-ontology-graph')
     ).not.toBeInTheDocument();
+  });
+
+  it('controls the model viewport and switches to Data without losing the concept', async () => {
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('fit-view'));
+    fireEvent.click(screen.getByTestId('zoom-in'));
+    fireEvent.click(screen.getByTestId('zoom-out'));
+    fireEvent.click(screen.getByTestId('refresh'));
+
+    expect(mockGraphControls.fitView).toHaveBeenCalled();
+    expect(mockGraphControls.zoomIn).toHaveBeenCalled();
+    expect(mockGraphControls.zoomOut).toHaveBeenCalled();
+    expect(modelResult.refetch).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(screen.getByTestId('ontology-native-data-graph')).toBeVisible();
+    expect(screen.getByTestId('ontology-concept-inspector')).toHaveTextContent(
+      'Customer'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
+
+    expect(screen.getByTestId('ontology-graph-mode-model')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
   });
 
   describe('in AI mode', () => {
@@ -1877,7 +2126,11 @@ describe('OntologyGraphView', () => {
       render(
         <MemoryRouter>
           <OntologyGraphSearchSlotContext.Provider value={slot}>
-            <OntologyGraphView ontology={ontology} surface="graph" />
+            <OntologyGraphView
+              ontology={ontology}
+              surface="graph"
+              onRequestGraphSurface={jest.fn()}
+            />
           </OntologyGraphSearchSlotContext.Provider>
         </MemoryRouter>
       );
