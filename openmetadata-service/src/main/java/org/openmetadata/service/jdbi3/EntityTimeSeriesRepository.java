@@ -698,7 +698,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   static SearchListFilter groupScopeFilter(
       SearchListFilter contentFilter, Set<String> invariantParams) {
-    SearchListFilter scope = new SearchListFilter();
+    // Whether a record's parent is deleted is shared by every record of a group, so the scope
+    // carries the caller's include rather than defaulting to non-deleted.
+    SearchListFilter scope = new SearchListFilter(contentFilter.getInclude());
     for (String param : invariantParams) {
       String value = contentFilter.getQueryParam(param);
       if (value != null) {

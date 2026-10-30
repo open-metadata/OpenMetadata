@@ -591,6 +591,44 @@ public class IncidentGroupsIT {
         "the pager counts the open incidents the page lists, not the resolved one's New record");
   }
 
+  // A task-first incident starts its own chain without closing an older one, so a test case can
+  // hold two open incidents. The group counts both; its drill-down must list both.
+  @Test
+  void testDrillDownListsEveryOpenIncidentOfATestCase() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_two_open_" + ts);
+    TestDefinition definition =
+        createTestDefinition("incident_groups_two_open_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase("incident_groups_two_open_case", tableLink(table), definition, List.of());
+    UUID olderIncident = UUID.randomUUID();
+    UUID newerIncident = UUID.randomUUID();
+    insertStatusRecords(
+        testCase,
+        List.of(
+            seededRecord(
+                olderIncident.toString(), ts - 180_000, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(
+                olderIncident.toString(), ts - 120_000, TestCaseResolutionStatusTypes.Ack, null),
+            seededRecord(
+                newerIncident.toString(), ts - 60_000, TestCaseResolutionStatusTypes.New, null)));
+
+    Map<String, String> groupParams = groupParams(GROUP_BY_TABLE);
+    groupParams.put("testCaseFQN", testCase.getFullyQualifiedName());
+    TestCaseIncidentGroup group =
+        findGroup(fetchGroups(groupParams), table.getFullyQualifiedName());
+    ListParams drillDown =
+        latestOpenParams().addFilter("testCaseFQN", testCase.getFullyQualifiedName());
+
+    assertEquals(2, group.getIncidentCount());
+    assertEquals(
+        Set.of(olderIncident, newerIncident),
+        listStatuses(drillDown).stream()
+            .map(TestCaseResolutionStatus::getStateId)
+            .collect(Collectors.toSet()));
+    assertEquals(2, client.testCaseResolutionStatuses().list(drillDown).getPaging().getTotal());
+  }
+
   @Test
   void testSortTypeOrdersByIncidentCount() throws Exception {
     Map<String, String> ascParams = groupParams(GROUP_BY_TABLE);
@@ -1861,6 +1899,28 @@ public class IncidentGroupsIT {
       statement.executeBatch();
       syncIncidentSummary(connection, postgres);
     }
+    linkToTestCase(testCase, records);
+  }
+
+  // The flat list reads each record's test case through this relationship, as the write path
+  // stores it; without it the seeded records cannot be listed.
+  private void linkToTestCase(TestCase testCase, List<TestCaseResolutionStatus> records) {
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle -> {
+              for (TestCaseResolutionStatus record : records) {
+                handle
+                    .createUpdate(
+                        "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                            + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
+                    .bind("fromId", testCase.getId().toString())
+                    .bind("toId", record.getId().toString())
+                    .bind("fromEntity", Entity.TEST_CASE)
+                    .bind("toEntity", Entity.TEST_CASE_RESOLUTION_STATUS)
+                    .bind("relation", Relationship.PARENT_OF.ordinal())
+                    .execute();
+              }
+            });
   }
 
   // Direct SQL seeding bypasses the repository's write path, so the summary projection the

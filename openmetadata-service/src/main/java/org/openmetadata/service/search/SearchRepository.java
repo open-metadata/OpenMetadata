@@ -4327,19 +4327,36 @@ public class SearchRepository {
     // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
     SoftDeleteScript script = new SoftDeleteScript(delete);
     List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
-    if (targets.isEmpty()) {
-      return;
-    }
     String entityType = entityReference.getType();
     // Service entities propagate child deletions through a shared service.id field; everything
     // else uses the entity-type-specific <type>.id. Reuses the canonical SERVICE_ENTITY_SET that
     // updateChildrenForSearchPropagation also relies on, so the contract stays in one place.
     String parentIdField =
         SERVICE_ENTITY_SET.contains(entityType) ? "service.id" : entityType + ".id";
-    searchClient.softDeleteOrRestoreChildren(
-        targets,
-        script.painless(),
-        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
+    Pair<String, String> parentMatch =
+        new ImmutablePair<>(parentIdField, entityReference.getId().toString());
+    if (!targets.isEmpty()) {
+      searchClient.softDeleteOrRestoreChildren(targets, script.painless(), List.of(parentMatch));
+    }
+    if (childAliasesOf(indexMapping).contains(Entity.TEST_CASE_RESOLUTION_STATUS)) {
+      softDeleteOrRestoreIncidentTestCases(parentMatch, delete);
+    }
+  }
+
+  /**
+   * Incident documents have no {@code deleted} field, so the soft delete above skips them; they
+   * embed their test case instead, and the incident listing scopes on {@code testCase.deleted}. A
+   * cascade soft-deletes the descendant test cases without search writes of their own, so the flag
+   * is set here for every incident under the parent, as the soft delete above is.
+   */
+  private void softDeleteOrRestoreIncidentTestCases(
+      Pair<String, String> parentMatch, boolean delete) throws IOException {
+    searchClient.updateChildren(
+        withClusterAlias(List.of(Entity.TEST_CASE_RESOLUTION_STATUS)),
+        parentMatch,
+        new ImmutablePair<>(
+            "if (ctx._source.testCase != null) { ctx._source.testCase.deleted = params.deleted; }",
+            Map.of("deleted", delete)));
   }
 
   public String getScriptWithParams(

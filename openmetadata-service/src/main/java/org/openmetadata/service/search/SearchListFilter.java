@@ -116,6 +116,19 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return condition.toString();
   }
 
+  // An incident document has no deleted flag of its own, so the include scoping applies to the
+  // test case it embeds; SearchRepository keeps that flag current on a soft delete or restore.
+  // Documents indexed without the flag count as not deleted.
+  private String getTestCaseDeletedCondition() {
+    String condition = "";
+    if (include == Include.DELETED) {
+      condition = "{\"term\": {\"testCase.deleted\": true}}";
+    } else if (include != Include.ALL) {
+      condition = "{\"bool\":{\"must_not\":[{\"term\":{\"testCase.deleted\":true}}]}}";
+    }
+    return condition;
+  }
+
   private String getTimestampFilter(String conditionAlias, Long value) {
     return getTimestampFilter("timestamp", conditionAlias, value);
   }
@@ -523,6 +536,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (originEntityFQN != null) {
       conditions.add(getTestCaseForEntityCondition(originEntityFQN, "testCase.entityFQN.keyword"));
     }
+
+    conditions.add(getTestCaseDeletedCondition());
 
     return addCondition(conditions);
   }
