@@ -1867,13 +1867,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    */
   @Override
   public CompactionResult compact(final Duration maxWait) {
+    return compact(maxWait, false);
+  }
+
+  @Override
+  public CompactionResult compactAndAwait(final Duration warningAfter) {
+    return compact(warningAfter, true);
+  }
+
+  private CompactionResult compact(final Duration maxWait, final boolean awaitCompletion) {
     final DatasetEndpoint info = requireServerInfo("compact");
+    final UnaryOperator<HttpRequest.Builder> authenticate =
+        builder -> authenticated(builder, info.userInfo());
     final CompactionResult result =
-        compaction.compact(
-            info.serverBaseUrl(),
-            info.datasetName(),
-            maxWait,
-            builder -> authenticated(builder, info.userInfo()));
+        awaitCompletion
+            ? compaction.compactAndAwait(
+                info.serverBaseUrl(), info.datasetName(), maxWait, authenticate)
+            : compaction.compact(info.serverBaseUrl(), info.datasetName(), maxWait, authenticate);
     if (result.outcome() != CompactionResult.Outcome.UNSUPPORTED) {
       OntologyMetrics.recordCompaction(result.succeeded(), result.elapsed());
       logCompaction(info.datasetName(), result);

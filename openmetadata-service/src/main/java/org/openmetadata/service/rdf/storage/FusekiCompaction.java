@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
@@ -59,12 +60,28 @@ public final class FusekiCompaction {
       final String dataset,
       final Duration maxWait,
       final UnaryOperator<HttpRequest.Builder> authenticate) {
+    return compact(serverBaseUrl, dataset, maxWait, authenticate, false);
+  }
+
+  /** Keeps observing the same task after the budget, so its caller can keep serving writes paused. */
+  public CompactionResult compactAndAwait(
+      final String serverBaseUrl,
+      final String dataset,
+      final Duration warningAfter,
+      final UnaryOperator<HttpRequest.Builder> authenticate) {
+    return compact(serverBaseUrl, dataset, warningAfter, authenticate, true);
+  }
+
+  private CompactionResult compact(
+      final String serverBaseUrl,
+      final String dataset,
+      final Duration maxWait,
+      final UnaryOperator<HttpRequest.Builder> authenticate,
+      final boolean awaitCompletion) {
     final Instant requestedAt = clock.instant();
     try {
-      return new Run(serverBaseUrl, authenticate).awaitStarted(dataset, maxWait, requestedAt);
-    } catch (IOException exception) {
-      return CompactionResult.of(
-          CompactionResult.Outcome.UNKNOWN, null, describe(exception), requestedAt, clock);
+      return new Run(serverBaseUrl, authenticate, awaitCompletion)
+          .awaitStarted(dataset, maxWait, requestedAt);
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
       return CompactionResult.of(
@@ -84,7 +101,7 @@ public final class FusekiCompaction {
       final String serverBaseUrl, final UnaryOperator<HttpRequest.Builder> authenticate) {
     boolean compacting = false;
     try {
-      compacting = new Run(serverBaseUrl, authenticate).isCompacting();
+      compacting = new Run(serverBaseUrl, authenticate, false).isCompacting();
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
     }
@@ -92,7 +109,7 @@ public final class FusekiCompaction {
   }
 
   static boolean anyRunningCompaction(final String body) {
-    final JsonNode tasks = body == null || body.isBlank() ? null : JsonUtils.readTree(body);
+    final JsonNode tasks = parse(body);
     boolean running = false;
     if (tasks != null && tasks.isArray()) {
       for (final JsonNode task : tasks) {
@@ -103,39 +120,67 @@ public final class FusekiCompaction {
   }
 
   private static CompactionResult.Outcome startFailure(final int status) {
-    return status == 404 || status == 405
-        ? CompactionResult.Outcome.UNSUPPORTED
-        : CompactionResult.Outcome.FAILED;
+    return switch (status) {
+      case 404, 405 -> CompactionResult.Outcome.UNSUPPORTED;
+      default -> status == 200 || status == 408 || status >= 500
+          ? CompactionResult.Outcome.UNKNOWN
+          : CompactionResult.Outcome.FAILED;
+    };
   }
 
   /** One compaction against one server, with the credentials of the endpoint that asked. */
   private final class Run {
     private final String serverBaseUrl;
     private final UnaryOperator<HttpRequest.Builder> authenticate;
+    private final boolean awaitCompletion;
 
-    Run(final String serverBaseUrl, final UnaryOperator<HttpRequest.Builder> authenticate) {
+    Run(
+        final String serverBaseUrl,
+        final UnaryOperator<HttpRequest.Builder> authenticate,
+        final boolean awaitCompletion) {
       this.serverBaseUrl = serverBaseUrl;
       this.authenticate = authenticate;
+      this.awaitCompletion = awaitCompletion;
     }
 
     CompactionResult awaitStarted(
         final String dataset, final Duration maxWait, final Instant requestedAt)
-        throws IOException, InterruptedException {
-      final HttpResponse<String> started = start(dataset);
+        throws InterruptedException {
+      try {
+        return track(start(dataset), maxWait, requestedAt);
+      } catch (IOException exception) {
+        return untracked(CompactionResult.Outcome.UNKNOWN, describe(exception), requestedAt);
+      }
+    }
+
+    private CompactionResult track(
+        final HttpResponse<String> started, final Duration maxWait, final Instant requestedAt)
+        throws InterruptedException {
       final String taskId = started.statusCode() == 200 ? field(started.body(), "taskId") : null;
       if (taskId == null) {
-        return CompactionResult.of(
+        return untracked(
             startFailure(started.statusCode()),
-            null,
-            "Fuseki did not start a compaction: HTTP "
+            "Fuseki did not return a compaction task: HTTP "
                 + started.statusCode()
                 + " "
                 + started.body(),
-            requestedAt,
-            clock);
+            requestedAt);
       }
-      LOG.info("Started compaction of Fuseki dataset '{}' (task {})", dataset, taskId);
+      LOG.info("Started Fuseki compaction task {}", taskId);
       return poll(taskId, requestedAt, requestedAt.plus(maxWait));
+    }
+
+    private CompactionResult untracked(
+        final CompactionResult.Outcome outcome, final String detail, final Instant requestedAt)
+        throws InterruptedException {
+      if (awaitCompletion && outcome == CompactionResult.Outcome.UNKNOWN) {
+        LOG.warn(
+            "{}; keeping serving writes paused until Fuseki reports no running compaction", detail);
+        while (!Boolean.FALSE.equals(runningCompaction())) {
+          sleeper.sleep(POLL_INTERVAL);
+        }
+      }
+      return CompactionResult.of(outcome, null, detail, requestedAt, clock);
     }
 
     private HttpResponse<String> start(final String dataset)
@@ -152,7 +197,14 @@ public final class FusekiCompaction {
         final String taskId, final Instant requestedAt, final Instant deadline)
         throws InterruptedException {
       TaskState state = taskState(taskId);
-      while (state.outcome() == null && clock.instant().isBefore(deadline)) {
+      boolean warned = false;
+      while (state.outcome() == null && (awaitCompletion || clock.instant().isBefore(deadline))) {
+        if (awaitCompletion && !warned && !clock.instant().isBefore(deadline)) {
+          LOG.error(
+              "Fuseki compaction task {} exceeded its budget; keeping serving writes paused until it ends",
+              taskId);
+          warned = true;
+        }
         sleeper.sleep(POLL_INTERVAL);
         state = taskState(taskId);
       }
@@ -185,12 +237,17 @@ public final class FusekiCompaction {
 
     /** Whether Fuseki reports a compaction that has not finished; false when it cannot tell. */
     boolean isCompacting() throws InterruptedException {
+      return Boolean.TRUE.equals(runningCompaction());
+    }
+
+    private Boolean runningCompaction() throws InterruptedException {
       try {
         final HttpResponse<String> response =
             send(serverBaseUrl + "/$/tasks", HttpRequest.Builder::GET);
-        return response.statusCode() == 200 && anyRunningCompaction(response.body());
+        final JsonNode tasks = response.statusCode() == 200 ? parse(response.body()) : null;
+        return tasks != null && tasks.isArray() ? anyRunningCompaction(response.body()) : null;
       } catch (IOException exception) {
-        return false;
+        return null;
       }
     }
 
@@ -209,12 +266,23 @@ public final class FusekiCompaction {
   }
 
   static String field(final String body, final String name) {
-    final JsonNode value =
-        body == null || body.isBlank() ? null : JsonUtils.readTree(body).get(name);
+    return field(parse(body), name);
+  }
+
+  private static String field(final JsonNode body, final String name) {
+    final JsonNode value = body == null ? null : body.get(name);
     return value == null || value.isNull() || value.asText().isBlank() ? null : value.asText();
   }
 
-  private static String describe(final IOException exception) {
+  private static JsonNode parse(final String body) {
+    try {
+      return body == null || body.isBlank() ? null : JsonUtils.readTree(body);
+    } catch (JsonParsingException exception) {
+      return null;
+    }
+  }
+
+  private static String describe(final Exception exception) {
     return "Lost contact with Fuseki while compacting; the task may still be running: "
         + exception.getMessage();
   }
@@ -226,8 +294,12 @@ public final class FusekiCompaction {
    */
   record TaskState(CompactionResult.Outcome outcome, String detail) {
     static TaskState parse(final String body) {
-      final boolean ours = COMPACT_TASK.equals(field(body, "task"));
-      final String success = field(body, "finished") == null ? null : field(body, "success");
+      final JsonNode task = FusekiCompaction.parse(body);
+      if (task == null || !task.isObject() || field(task, "task") == null) {
+        return new TaskState(null, "Unreadable Fuseki task response: " + body);
+      }
+      final boolean ours = COMPACT_TASK.equals(field(task, "task"));
+      final String success = field(task, "finished") == null ? null : field(task, "success");
       return new TaskState(ours ? outcome(success) : CompactionResult.Outcome.UNKNOWN, body);
     }
 

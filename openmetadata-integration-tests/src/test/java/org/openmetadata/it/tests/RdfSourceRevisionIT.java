@@ -162,7 +162,7 @@ public class RdfSourceRevisionIT {
       drainGuard.begin();
       try {
         drainGuard
-            .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE")
+            .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2' FOR UPDATE")
             .mapTo(String.class)
             .one();
         final RdfLiveWriteStore liveWrites =
