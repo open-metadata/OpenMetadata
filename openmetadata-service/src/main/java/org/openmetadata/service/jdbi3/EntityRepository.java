@@ -6520,8 +6520,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return node;
   }
 
+  /** Applies entity-specific preparation to ordinary, conditional, and bulk storage writes. */
+  protected T prepareForStorage(T entity) {
+    return entity;
+  }
+
+  protected boolean isStoragePreparationSideEffecting() {
+    return false;
+  }
+
   protected String serializeForStorage(T entity) {
-    return JsonStorageUtils.sanitizeNulCharacters(storageJsonNode(entity).toString());
+    return JsonStorageUtils.sanitizeNulCharacters(
+        storageJsonNode(prepareForStorage(entity)).toString());
   }
 
   protected String serializeForVersionHistory(T entity) {
@@ -6538,8 +6548,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected void store(T entity, boolean update, Double expectedVersion) {
-    String json = serializeForStorage(entity);
     EntityDAO<T> writeDAO = entityDAOForWrite();
+    if (update && expectedVersion != null && isStoragePreparationSideEffecting()) {
+      lockAndValidateVersion(writeDAO, entity, expectedVersion);
+    }
+    String json = serializeForStorage(entity);
 
     if (update) {
       if (expectedVersion != null) {
@@ -6575,6 +6588,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           entity.getFullyQualifiedName(),
           json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+    }
+  }
+
+  private void lockAndValidateVersion(EntityDAO<T> writeDAO, T entity, Double expectedVersion) {
+    // Secret preparation can mutate an external vault before the conditional SQL update.
+    String currentVersion =
+        writeDAO.findVersionByIdForUpdate(writeDAO.getTableName(), entity.getId());
+    if (!expectedVersion.toString().equals(currentVersion)) {
+      throw new PreconditionFailedException(
+          "The entity has been modified by another user. Please refresh and retry.");
     }
   }
 
@@ -7816,8 +7839,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
     T restoredEntity = find(id, ALL);
-    return executeEntityWrite(
-        List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity));
+    return RdfUpdater.restoring(
+        () ->
+            executeEntityWrite(
+                List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity)));
   }
 
   private PutResponse<T> restoreLoadedEntity(String updatedBy, UUID id, T restoredEntity) {
@@ -7846,6 +7871,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
       updater.update();
+      RdfUpdater.recordRestored(List.of(updated));
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
@@ -7961,6 +7987,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       List<EntityUpdater> changed = filterChanged(updaters);
       if (!changed.isEmpty()) {
         persistBulkUpdaters(changed, "bulkRestore");
+        RdfUpdater.recordRestored(changed.stream().map(EntityUpdater::getUpdated).toList());
         ListCountCache.invalidate(entityType);
       }
     }
@@ -8624,7 +8651,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * charts attached to dashboards) and entity types without a {@code parent.id} field in
    * their ES mapping would otherwise drift — DB shows restored / soft-deleted, but ES still
    * reflects the previous state. {@code SearchIndexHandler.onEntitiesUpdated} batches the
-   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side.
+   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side. The RDF graph
+   * gets the same descendants for the same reason: no cascade hook reaches it otherwise.
    */
   private void persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
     writeBulkVersionHistory(changed, phasePrefix);
@@ -8639,6 +8667,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       hydrateForSearchIndex(changedEntities);
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
+    RdfUpdater.updateEntities(changedEntities);
     // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
@@ -12589,7 +12618,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           .orElse(null);
     }
 
-    private T getPreviousVersion(T original) {
+    protected T getPreviousVersion(T original) {
       String extensionName =
           EntityUtil.getVersionExtension(
               entityType, original.getChangeDescription().getPreviousVersion());

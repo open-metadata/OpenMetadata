@@ -267,7 +267,7 @@ const GlossaryTermRelationSettingsPage = () => {
     async (selectedRelationshipType: RelationshipType) => {
       setIsSaving(true);
       try {
-        await deleteRelationshipType(selectedRelationshipType.id);
+        await deleteRelationshipType(selectedRelationshipType.id, true);
         const updatedRelationshipTypes = relationshipTypes.filter(
           (relationshipType) =>
             relationshipType.id !== selectedRelationshipType.id

@@ -112,6 +112,31 @@ test.describe(
       await expect(page.getByTestId('ontology-tasks-trigger')).toBeVisible();
     });
 
+    test('keeps the headline reachable and scrolls to Create from scratch in a short viewport', async ({
+      isolatedUserPage: page,
+    }) => {
+      await page.setViewportSize({ width: 720, height: 450 });
+      await openEmptyStudio(page);
+
+      const host = page.getByTestId('ontology-empty-state');
+      const heading = page.getByRole('heading', { name: 'No ontologies yet' });
+      await host.evaluate((element) => {
+        element.scrollTop = 0;
+      });
+
+      const hostBox = await host.boundingBox();
+      const headingBox = await heading.boundingBox();
+      expect(hostBox).not.toBeNull();
+      expect(headingBox).not.toBeNull();
+      expect(headingBox?.y).toBeGreaterThanOrEqual(hostBox?.y ?? 0);
+
+      const createFromScratch = page.getByRole('button', {
+        name: 'Create from scratch',
+      });
+      await createFromScratch.scrollIntoViewIfNeeded();
+      await expect(createFromScratch).toBeInViewport();
+    });
+
     test('leaves the empty state after installing from the library', async ({
       isolatedUserPage: page,
     }) => {

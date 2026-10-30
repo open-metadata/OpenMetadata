@@ -1,9 +1,11 @@
 # The native query console hides only unchanged bundled templates
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-30 (compare against the UI's own copy of the seeds)
+  · v3 2026-10-30 (both Collate copy steps)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** `OntologyStudioQueryConsole.test.tsx`
+- **Guard:** `OntologyStudioQueryConsole.test.tsx`, `OntologyStudio.constants.test.ts` (the UI copy
+  equals `sparqlQuerySettings.json`)
 - **Related:** ADR:2026-10-19-ontology-studio-opens-native-models-by-default, PR #36190
 
 ## Context
@@ -21,7 +23,30 @@ query glossary terms that a native ontology's endpoint does not hold. A template
 in any field, including `id`, `name` or `savedAt`, or authored by a user, stays visible. Saving
 preserves the hidden seeds.
 
+The console compares against the UI's own copy of the seeds in `OntologyStudio.constants.ts`,
+because production UI code cannot import files outside `openmetadata-ui/src/main/resources/ui/src/`.
+Collate's `copy-om-to-collate` step copies only that folder into its own UI, and a separate
+`copy-om-playwright-to-collate` step copies the end-to-end tests in `playwright/**`. A Jest test
+pins the copy to `sparqlQuerySettings.json`.
+
 ## Consequences
 
 The template filter couples the display to the exact shape of the bundled seeds: if the server
 stores a seed with an added or defaulted field, it shows again in native scopes.
+
+A PR that changes only `sparqlQuerySettings.json` does not trigger the UI Jest job, because its
+paths filter covers only the UI, so the nightly run catches drift after merge.
+
+## Amendment 2026-10-30: the UI's own copy of the seeds
+
+v1 imported `sparqlQuerySettings.json` from `openmetadata-service` into production UI code. Collate
+copies only the UI's `src/` folder, so that relative path resolves to nothing there and its release
+build failed. The console now compares against a UI copy, per
+ADR:2026-10-30-production-ui-code-imports-only-from-the-ui-src-folder, and
+`OntologyStudio.constants.test.ts` fails when the copy and the server seeds differ.
+
+## Amendment 2026-10-30: both Collate copy steps
+
+v2 said Collate copies only the UI's `src/` folder. Its `copy-om-to-collate` step copies `src/**`,
+and `copy-om-playwright-to-collate` copies `playwright/**`. The boundary is unchanged, because
+`playwright/` is not part of the build.

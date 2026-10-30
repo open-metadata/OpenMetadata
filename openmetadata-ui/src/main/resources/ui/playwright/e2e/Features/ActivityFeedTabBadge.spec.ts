@@ -18,10 +18,7 @@ import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createConversationThread } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  dismissHoverPopovers,
-  waitForAntdPopupToSettle,
-} from '../../utils/common';
+import { dismissHoverPopovers } from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 import { waitForTaskListResponse } from '../../utils/task';
 
@@ -78,7 +75,6 @@ async function switchTaskFilter(
   await filter.click();
   const option = page.getByTestId(optionTestId);
   await expect(option).toBeVisible();
-  await waitForAntdPopupToSettle(page);
   const tasksListResponse = waitForTaskListResponse(page);
   await option.click();
   await tasksListResponse;

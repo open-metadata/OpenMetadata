@@ -13,25 +13,25 @@
 
 // Colors
 
-@primary-color: ~'var(--ant-primary-color)';
-@success-color: ~'var(--ant-success-color)';
-@warning-color: ~'var(--ant-warning-color)';
-@error-color: ~'var(--ant-error-color)';
-@info-color: ~'var(--ant-info-color)';
-@link-color: ~'var(--ant-primary-color)';
-@radio-button-checked-bg: ~'var(--ant-primary-1)';
+@primary-color: ~'var(--theme-primary-color)';
+@success-color: ~'var(--theme-success-color)';
+@warning-color: ~'var(--theme-warning-color)';
+@error-color: ~'var(--theme-error-color)';
+@info-color: ~'var(--theme-info-color)';
+@link-color: ~'var(--theme-primary-color)';
+@radio-button-checked-bg: ~'var(--theme-primary-1)';
 @highlight-color: #f41111;
-@primary-25: ~'var(--ant-primary-25)'; // #f5faff
-@primary-50: ~'var(--ant-primary-50)'; // #eff8ff
-@primary-1: ~'var(--ant-primary-1)'; // #d1e9ff
-@primary-2: ~'var(--ant-primary-2)'; // #b2ddff
-@primary-3: ~'var(--ant-primary-3)'; // #84caff
-@primary-4: ~'var(--ant-primary-4)'; // #53b1fd
-@primary-5: ~'var(--ant-primary-5)'; // #2e90fa
-@primary-6: ~'var(--ant-primary-6)'; // #1570ef
-@primary-7: ~'var(--ant-primary-7)'; // #175cd3
-@primary-8: ~'var(--ant-primary-8)'; // #1849a9
-@primary-9: ~'var(--ant-primary-9)'; // #194185
+@primary-25: ~'var(--theme-primary-25)'; // #f5faff
+@primary-50: ~'var(--theme-primary-50)'; // #eff8ff
+@primary-1: ~'var(--theme-primary-1)'; // #d1e9ff
+@primary-2: ~'var(--theme-primary-2)'; // #b2ddff
+@primary-3: ~'var(--theme-primary-3)'; // #84caff
+@primary-4: ~'var(--theme-primary-4)'; // #53b1fd
+@primary-5: ~'var(--theme-primary-5)'; // #2e90fa
+@primary-6: ~'var(--theme-primary-6)'; // #1570ef
+@primary-7: ~'var(--theme-primary-7)'; // #175cd3
+@primary-8: ~'var(--theme-primary-8)'; // #1849a9
+@primary-9: ~'var(--theme-primary-9)'; // #194185
 @green-1: #28a744;
 @green-2: #ebf9f4;
 @green-3: #48ca9e;
@@ -40,10 +40,13 @@
 @green-6: #effffb;
 @green-7: #00b871;
 @green-8: #48ca9e08;
+// Compatibility for remaining stylesheet consumers; never add new --om-* usage.
 // DARK-MODE BRIDGE: palette vars written as `var(--om-*, #hex)` below (e.g.
 // @green-9/10/12/100, @red-9/10/22, @yellow-10, @blue-13/22/29/30/500,
 // @grey-1/2/5/6/7/9/15/25/26/38/50, @green-500, @warning-100/400, @alert-*) resolve
-// through an --om-* custom property so they adapt in dark. LESS color functions
+// through an --om-* custom property so they adapt in dark. Both the light and
+// dark value of each --om-* live in tokens.css; the fallback here must equal
+// the light one (ADR:2026-10-13-om-tokens-have-one-source-file). LESS color functions
 // (darken/lighten/fade/mix/tint/shade/…) CANNOT evaluate a var() — passing a
 // bridged var to one fails the build at compile time (this broke Collate's
 // `darken(@grey-9)` in code-widget). Never wrap a bridged var in a LESS color
@@ -186,7 +189,6 @@
 @grey-22: #d9d9d9;
 @grey-23: #f7f7f7;
 @grey-24: #979797;
-@grey-25: var(--om-grey-25, #dbe0e7);
 @grey-26: var(--om-grey-26, #fcfcfd);
 @grey-27: #0a0d120d;
 @grey-28: #00000040;
@@ -283,7 +285,7 @@
 @trigger-btn-hover-bg: #efefef;
 @text-highlighter: #ffc34e40;
 @team-avatar-bg: #0950c51a;
-@om-navbar-height: ~'var(--ant-navbar-height)';
+@om-navbar-height: ~'var(--navbar-height)';
 @sidebar-width: 84px;
 @alert-text-color: @text-color-tertiary;
 @alert-info-bg: @blue-14;
@@ -490,7 +492,7 @@
 @body-background: var(--tw-color-utility-gray-blue-50);
 // antd defaults compile to static near-black text / light-gray edges. Bridged
 // like the palette vars above: the fallback is antd's exact light value, and
-// .dark-mode (app.less) re-points the --om-* var. @heading-color feeds
+// tokens.css re-points the --om-* var in dark. @heading-color feeds
 // @label-color, @modal-heading-color, @card-head-color, @table-header-color and
 // every antd title; @border-color-base feeds input/select/picker/button/radio
 // borders. antd runs no colour functions on either, so a var() is safe.

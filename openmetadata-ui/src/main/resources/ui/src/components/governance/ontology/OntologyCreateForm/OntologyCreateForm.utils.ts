@@ -86,6 +86,7 @@ export const derivePrefix = (name: string): string =>
 export const isValidPrefix = (prefix: string): boolean =>
   PREFIX_PATTERN.test(prefix);
 
+// ADR:2026-10-30-studio-created-ontologies-take-onto-iris
 export const ontologyIris = (baseUri: string, prefix: string) => {
   const iri = `${baseUri.replace(
     /\/+$/,

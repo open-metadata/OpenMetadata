@@ -8,7 +8,7 @@ Machine- and human-readable specifications for the OpenMetadata design system.
 | | Stack | Style with | Tokens | Audit |
 | --- | --- | --- | --- | --- |
 | **Go-forward** ✅ | UntitledUI + Tailwind | `tw:` utility classes | `globals.css` `@theme` → [tokens/tailwind-utility-reference.md](tokens/tailwind-utility-reference.md) | `yarn tw-audit` |
-| **Legacy** ⚠️ (deprecated) | Ant Design + Less | Existing `.less`: `--tw-*` colours, `--om-*` non-colour tokens | [foundations/color.md](foundations/color.md), [tokens/token-reference.md](tokens/token-reference.md) | `yarn token-audit` |
+| **Legacy** ⚠️ (deprecated) | Remaining stylesheet consumers | Existing `--om-*` aliases are compatibility only; migrate to `--tw-*` | [foundations/color.md](foundations/color.md), [tokens/token-reference.md](tokens/token-reference.md) | `yarn token-audit` |
 
 **New work uses UntitledUI + Tailwind. Do not add new Antd components, new
 `.less` files, or new `assets/svg/` raw-SVG files/imports** — `yarn tw-guard` blocks new debt. Never hardcode a value in
@@ -19,8 +19,8 @@ bridge vars the utilities compile to (`var(--tw-background-color-surface)`, `--t
 and non-colour values from the Tailwind theme vars (`calc(var(--tw-spacing) * N)`, `--tw-radius-*`,
 `--tw-shadow-*`, `--tw-text-*`). Raw `--color-*` / `--background-color-*` /
 `--text-color-*` / `--border-color-*` variables are invalid in light (transparent). The `--om-*`
-layer below documents the **deprecated** Antd/Less side (still maintained during the migration);
-never add `--om-color-*` tokens or references.
+layer below documents compatibility for existing consumers after the Ant Design migration;
+never add `--om-*` tokens or references. Preserve existing values until their consumers migrate.
 
 ## How the (legacy) LESS system is layered
 
@@ -33,12 +33,13 @@ Layer 2  --om-*       Project aliases in tokens.css. Reference the matching
                       values hold the raw value directly). Existing LESS uses these.
 Components (.less/.css)  Colours: --tw-background-color-*, --tw-text-color-*,
                       --tw-border-color-*, --tw-color-fg-*, --tw-color-utility-*.
-                      Other values: var(--om-*). Never raw hex / px.
+                      Other values: --tw-spacing, --tw-radius-*, --tw-shadow-*, --tw-text-*.
+                      Existing --om-* references remain compatible; never add more.
 ```
 
 The legacy LESS bridge — [`src/styles/variables.less`](../src/styles/variables.less)
-— is also a token-definition file. Existing `@variable` usage stays for Antd theming;
-new component styles use the colour bridge vars and the Tailwind theme vars for non-colour values
+— retains existing `@variable` consumers; it is not a pattern for new styling.
+New component styles use the colour bridge vars and the Tailwind theme vars for non-colour values
 (ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars). `--om-*` examples in the
 foundation and component specs below are legacy; translate them to the theme vars.
 
@@ -66,7 +67,9 @@ foundation and component specs below are legacy; translate them to the theme var
 | --- | --- |
 | `yarn tw-audit` | **(go-forward)** Lint `.tsx`/`.ts` for hardcoded values. Explicit `tw:dark:*` and `--ai-*` usage are review warnings; resolvable arbitrary values remain errors. |
 | `yarn tw-audit:report` | Full inventory + which token each raw hex matches + Antd/Less debt count. |
-| `yarn tw-guard` | Fails on NEW `antd` imports / NEW `assets/svg/` raw-SVG files or imports / NEW `.less` files (deprecation). |
+| `yarn tw-guard` | Fails on new `--om-*` stylesheet declarations/references or raw-SVG files/imports; reports new `.less` files. |
+| ESLint `deprecated-om-tokens` / `no-new-om-tokens` | Existing JS/TS references warn; increased references per file fail. Prune the suppression baseline after migration; never increase it. |
+| `yarn token-drift` | Rejects removing statically referenced tokens, including JS/TS, Tailwind shorthand, and CSSOM consumers. |
 | `yarn token-audit` | _(legacy)_ Lint CSS/LESS for hardcoded values. **Exit 1 on any error.** CI-ready. |
 | `yarn token-audit:report` | Full grouped inventory + legacy token suggestions; convert colour suggestions to semantic `--tw-*` bridge vars. |
 | `yarn token-migrate` | Legacy codemod to `var(--om-*)`; replace colour aliases with semantic `--tw-*` bridge vars before accepting the edits. |

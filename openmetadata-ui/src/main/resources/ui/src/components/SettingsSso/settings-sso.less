@@ -16,9 +16,6 @@
   padding: @size-mlg @size-md;
   border-radius: @size-sm;
   border: 1px solid @grey-15;
-  .ant-input-affix-wrapper {
-    border-radius: @size-xs;
-  }
   .card-title {
     color: @grey-700;
     font-style: normal;
@@ -160,7 +157,7 @@
   border-radius: @size-sm;
   padding: @size-lg;
   height: calc(
-    100vh - var(--ant-navbar-height, 80px) - @size-2xl -
+    100vh - var(--navbar-height, 80px) - @size-2xl -
       var(--page-alert-offset, 0px)
   );
   margin-top: @size-xs;
@@ -249,13 +246,5 @@
         }
       }
     }
-  }
-}
-.sso-settings-page,
-.sso-configuration-form-card,
-.sso-field-group,
-.settings-sso {
-  .ant-select-dropdown {
-    border-radius: @border-rad-xs;
   }
 }

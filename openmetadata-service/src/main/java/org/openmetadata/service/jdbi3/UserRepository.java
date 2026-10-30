@@ -100,10 +100,9 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
-import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver;
@@ -189,7 +188,16 @@ public class UserRepository extends EntityRepository<User> {
   // however usernames , emails cannot be case-sensitive
   @Override
   public void setFullyQualifiedName(User user) {
-    user.setFullyQualifiedName(quoteName(user.getName().toLowerCase()));
+    user.setFullyQualifiedName(quoteName(canonicalUserName(user.getName())));
+  }
+
+  /**
+   * The one place a user name becomes the form stored in the FQN and its {@code nameHash}. It keeps
+   * the default-locale {@code toLowerCase()} the stored hashes were computed with, so changing it
+   * would orphan existing rows.
+   */
+  public static String canonicalUserName(String userName) {
+    return userName.toLowerCase();
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
@@ -344,33 +352,38 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void storeEntity(User user, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
+  protected User prepareForStorage(User user) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
       secretsManager.encryptAuthenticationMechanism(
           user.getName(), user.getAuthenticationMechanism());
     }
+    return user;
+  }
 
+  @Override
+  public void storeEntity(User user, boolean update) {
     store(user, update);
+    // A new user has no other stored credential, so only a JWT mechanism is worth a hint;
+    // storeEntities (bulk import) skips it because one hint per row would publish one Redis
+    // message per row.
+    if (!update && carriesJwt(user.getAuthenticationMechanism())) {
+      Credentials.changed(user.getName());
+    }
+  }
+
+  private static boolean carriesJwt(AuthenticationMechanism mechanism) {
+    return mechanism != null && mechanism.getAuthType() == AuthenticationMechanism.AuthType.JWT;
   }
 
   @Override
   public void storeEntities(List<User> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (User user : entities) {
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
-        secretsManager.encryptAuthenticationMechanism(
-            user.getName(), user.getAuthenticationMechanism());
-      }
-
-      fqns.add(user.getFullyQualifiedName());
-      jsons.add(serializeForStorage(user));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -396,7 +409,7 @@ public class UserRepository extends EntityRepository<User> {
     // Updates only the lastActivityTime field in the JSON using JSON_SET
     // This method is used for immediate updates (e.g., in tests)
     // For production use, UserActivityTracker should be used for batch updates
-    String fqn = quoteName(userName.toLowerCase());
+    String fqn = quoteName(canonicalUserName(userName));
 
     LOG.debug(
         "Updating lastActivityTime for user: {} (fqn: {}) to: {}", userName, fqn, lastActivityTime);
@@ -422,7 +435,7 @@ public class UserRepository extends EntityRepository<User> {
 
     for (Map.Entry<String, Long> entry : userActivityMap.entrySet()) {
       // User FQNs are stored with quoteName applied, so we must match that format
-      String fqn = quoteName(entry.getKey().toLowerCase());
+      String fqn = quoteName(canonicalUserName(entry.getKey()));
       String fqnHash = FullyQualifiedName.buildHash(fqn);
 
       nameHashes.add(fqnHash);
@@ -601,6 +614,10 @@ public class UserRepository extends EntityRepository<User> {
 
   protected void entitySpecificCleanup(User entityInterface) {
     TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), USER);
+    CollectionDAO transactionDAO = RepositoryTransactionContext.currentDAO();
+    (transactionDAO == null ? daoCollection : transactionDAO)
+        .getTokenDAO()
+        .deleteAllForUser(entityInterface.getId());
   }
 
   /* Validate if the user is already part of the given team */
@@ -1652,27 +1669,18 @@ public class UserRepository extends EntityRepository<User> {
     testCaseResolutionStatusRepository.cleanUpAssignees(user.getFullyQualifiedName());
   }
 
+  /**
+   * Every delete path runs this, including the bulk soft delete that removes a deleted bot's user
+   * without calling {@link #postDelete}, so the credential change is announced here.
+   */
   @Override
   protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
     DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(entity, deletedBy);
-    try {
-      Runnable finishCredentialDelete =
-          Boolean.TRUE.equals(entity.getIsBot())
-              ? BotTokenCache.denyToken(entity.getName())
-              : UserTokenCache.denyToken(entity.getName());
-      return () -> {
-        try (parentLifecycle) {
-          finishCredentialDelete.run();
-        }
-      };
-    } catch (RuntimeException | Error failure) {
-      try {
-        parentLifecycle.close();
-      } catch (RuntimeException | Error closeFailure) {
-        failure.addSuppressed(closeFailure);
+    return () -> {
+      try (parentLifecycle) {
+        Credentials.changed(entity.getName());
       }
-      throw failure;
-    }
+    };
   }
 
   @Override
@@ -1705,16 +1713,7 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   protected void postRestore(User entity) {
     super.postRestore(entity);
-    String userName = entity.getName();
-    boolean isBot = Boolean.TRUE.equals(entity.getIsBot());
-    PostCommitActionQueue.runOrDefer(
-        () -> {
-          if (isBot) {
-            BotTokenCache.reloadToken(userName);
-          } else {
-            UserTokenCache.reloadToken(userName);
-          }
-        });
+    Credentials.changed(entity.getName());
   }
 
   /**
@@ -2178,6 +2177,14 @@ public class UserRepository extends EntityRepository<User> {
           true);
     }
 
+    private static boolean storedMechanismChanged(
+        AuthenticationMechanism original, AuthenticationMechanism updated) {
+      if (original == null || updated == null) {
+        return original != null || updated != null;
+      }
+      return !JsonUtils.areEquals(original, updated);
+    }
+
     private void updateAuthenticationMechanism(User original, User updated) {
       AuthenticationMechanism origAuthMechanism = original.getAuthenticationMechanism();
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
@@ -2195,6 +2202,9 @@ public class UserRepository extends EntityRepository<User> {
           && updatedAuthMechanism != null
           && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
         recordChange(AUTH_MECHANISM_FIELD, "old-encrypted-value", "new-encrypted-value");
+      }
+      if (storedMechanismChanged(origAuthMechanism, updatedAuthMechanism)) {
+        Credentials.changed(updated.getName());
       }
     }
   }

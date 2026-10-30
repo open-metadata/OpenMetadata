@@ -684,7 +684,7 @@
   },
   "playwright/utils/entity.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 14
+      "count": 12
     }
   },
   "playwright/utils/entityPanel.ts": {
@@ -776,6 +776,226 @@
   "playwright/utils/userDetails.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
+    }
+  },
+  "src/components/ActivityFeed/ActivityFeedDrawer/ActivityFeedDrawer.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/Alerts/AlertDetails/AlertDiagnosticInfo/AlertDiagnosticInfoTab.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 5
+    }
+  },
+  "src/components/Alerts/ClassicAlertRuleSection.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 2
+    }
+  },
+  "src/components/AuditLog/AuditLogFilters.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 2
+    }
+  },
+  "src/components/BlockEditor/BarMenu/BarMenu.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 6
+    }
+  },
+  "src/components/BlockEditor/LinkModal/LinkModal.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/DataContract/ContractQualityCard/ContractQualityCard.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/AddDataQualityTest/components/AddTestSuitePipeline.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/SqlQueryTab/SqlQueryTab.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestCases/TestCases.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/TestSuites.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget.test.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 2
+    }
+  },
+  "src/components/Database/RetentionPeriod/RetentionPeriod.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/Database/TableQueries/TableQueryRightPanel/TableQueryRightPanel.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 2
+    }
+  },
+  "src/components/DomainListing/DomainListPage.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/ExploreV1/ExploreV1.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/Glossary/GlossaryTerms/GlossaryTermReferencesModal.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/KnowledgeCenter/TitleComponent/TitleComponent.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/EntityNameModal/EntityNameModal.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/Pipeline/PipelineTaskTab/PipelineTaskTab.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Team/TeamDetails/TeamDetailsV1.constants.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 2
+    }
+  },
+  "src/components/common/CommentComposer/CommentComposer.constants.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/common/FormCardSection/FormCardSection.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/common/QueryViewer/QueryViewer.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 3
+    }
+  },
+  "src/components/common/Table/TableV2.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/components/common/Table/TableV2Utils.test.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 2
+    }
+  },
+  "src/components/observability/IncidentManager/IncidentGroups/IncidentGroups.constants.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 4
+    }
+  },
+  "src/constants/Color.constants.test.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/constants/Color.constants.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 68
+    }
+  },
+  "src/constants/SegmentToggle.constants.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 2
+    }
+  },
+  "src/hooks/insights/useDataInsightChartColors.test.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 4
+    }
+  },
+  "src/hooks/insights/useDataInsightChartColors.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/hooks/useWorkflowEdgeManagement.test.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/interface/discovery/knowledge-graph-relations.interface.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 14
+    }
+  },
+  "src/pages/AddObservabilityPage/components/ObservabilityAlertForm.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 2
+    }
+  },
+  "src/pages/ExplorePage/ExplorePageV1.component.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/pages/TableDetailsPageV1/TableConstraints/TableConstraints.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/utils/TableUtils.tsx": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/utils/WorkflowEdgeTheme.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 1
+    }
+  },
+  "src/utils/WorkflowSerializer.test.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 3
+    }
+  },
+  "src/utils/common/layout.utils.test.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 5
+    }
+  },
+  "src/utils/common/layout.utils.ts": {
+    "openmetadata-ui-patterns/no-new-om-tokens": {
+      "count": 3
     }
   }
 }

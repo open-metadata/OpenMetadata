@@ -116,7 +116,7 @@ const PersonalSpaceModal: React.FC = () => {
           <PersonalSpaceGate>
             {activePanel === 'profile' && <ProfilePage />}
             {/* Both panels draw their own header, so the dialog has no title. */}
-            {activePanel === 'my-data' && <MyData />}
+            {activePanel === 'my-data' && <MyData cardVariant="muted" />}
           </PersonalSpaceGate>
         </Dialog>
       </Modal>
