@@ -260,6 +260,103 @@ class ContextFileProcessingServiceTest {
   }
 
   @Test
+  void processStopsWhenTheHeadChangesBeforeTheFileUpdate() {
+    AtomicReference<ContextFile> stored = new AtomicReference<>(file);
+    UUID replacement = UUID.randomUUID();
+    AtomicBoolean firstRead = new AtomicBoolean(true);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(
+            ignored -> {
+              ContextFile snapshot = readCachedFile(stored);
+              if (firstRead.getAndSet(false)) {
+                stored.set(
+                    JsonUtils.deepCopy(snapshot, ContextFile.class)
+                        .withHeadContentId(replacement.toString()));
+              }
+              return snapshot;
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(replacement.toString(), stored.get().getHeadContentId());
+    assertEquals(ProcessingStatus.Uploaded, stored.get().getProcessingStatus());
+    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
+    verify(assetService, never()).read(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void processStopsWhenTheSourceChangesBeforeTheContentUpdate(boolean contentRemoved)
+      throws Exception {
+    AtomicReference<ContextFile> storedFile = new AtomicReference<>(file);
+    AtomicReference<ContextFileContent> storedContent = new AtomicReference<>(content);
+    UUID replacement = UUID.randomUUID();
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(ignored -> readCachedFile(storedFile));
+    when(repository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              ContextFile updated = invocation.getArgument(2);
+              RequestEntityCache.invalidate(Entity.CONTEXT_FILE, fileId, null);
+              RequestEntityCache.putById(
+                  Entity.CONTEXT_FILE, fileId, null, null, false, updated, ContextFile.class);
+              if (contentRemoved) {
+                storedFile.set(updated);
+                storedContent.set(null);
+              } else {
+                storedFile.set(
+                    JsonUtils.deepCopy(updated, ContextFile.class)
+                        .withHeadContentId(replacement.toString())
+                        .withProcessingStatus(ProcessingStatus.Uploaded));
+              }
+              return null;
+            });
+    when(contentRepository.getById(contentId)).thenAnswer(ignored -> storedContent.get());
+    lenient()
+        .when(contentRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              storedContent.set(invocation.getArgument(2));
+              return null;
+            });
+    lenient()
+        .when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    lenient()
+        .when(textExtractor.extract(any(InputStream.class), any(ContextFile.class)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(
+        contentRemoved ? contentId.toString() : replacement.toString(),
+        storedFile.get().getHeadContentId());
+    assertEquals(
+        contentRemoved ? ProcessingStatus.Analyzing : ProcessingStatus.Uploaded,
+        storedFile.get().getProcessingStatus());
+    if (contentRemoved) {
+      assertNull(storedContent.get());
+    } else {
+      assertEquals(ProcessingStatus.Uploaded, storedContent.get().getProcessingStatus());
+    }
+    verify(assetService, never()).read(any());
+  }
+
+  private ContextFile readCachedFile(AtomicReference<ContextFile> stored) {
+    ContextFile cached =
+        RequestEntityCache.getById(
+            Entity.CONTEXT_FILE, fileId, null, null, false, ContextFile.class);
+    if (cached == null) {
+      cached = JsonUtils.deepCopy(stored.get(), ContextFile.class);
+      RequestEntityCache.putById(
+          Entity.CONTEXT_FILE, fileId, null, null, false, cached, ContextFile.class);
+    }
+    return cached;
+  }
+
+  @Test
   void processWithLlmEnabledRunsExtractionThenProcessed() throws Exception {
     when(assetService.read(asset))
         .thenReturn(
