@@ -89,6 +89,13 @@ Every finding carries three parts: the **trigger** (an input or state that occur
   and CSV writes, and merged revisions. It evaluates the same **inherited** fields that `get()` and
   `setFieldsInBulk` resolve, and it does not depend on a statement order documented only in a
   comment. Strip DERIVED tag labels on both sides of an `EntityUpdater` comparison.
+- **Stored expressions are rewritten through their parser.** Code that edits a stored SpEL
+  condition (or any expression a user can influence through an entity name) works on the parsed
+  AST, never on a regex over the text: names may contain `)`, `,` and `'`. Removing a reference
+  must leave the expression evaluating to what it evaluates to now that the referenced entity is
+  gone, never to something broader; a call left with no arguments becomes `false`, not nothing.
+  Every evaluator of the expression, including search RBAC, must read the rewritten form the same
+  way (ADR:2026-10-30-deleted-policy-condition-references-become-false).
 - **Secrets.**
   - Mask secrets on REST, MCP and change-event paths alike.
   - Re-encrypt only when the plaintext changed. Fernet output is random, so a resubmitted secret
