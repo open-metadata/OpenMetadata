@@ -2601,7 +2601,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         updatedTable.getDescription(),
         "Table description should be updated after task resolution");
     assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
-    awaitAuditedUpdate("table", table.getFullyQualifiedName());
+    awaitOneAuditedUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -4725,26 +4725,32 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals(1, updates.size(), "entityUpdated events of " + entityFqn + ": " + updates);
   }
 
-  private static void awaitAuditedUpdate(String entityType, String entityFqn) {
+  // The audit log is written from the change events in the background, so wait for the approver's
+  // entry, then check it is the only one.
+  private static void awaitOneAuditedUpdateBy(
+      String user, String entityType, String entityFqn, long since) {
     RequestOptions query =
         RequestOptions.builder()
+            .queryParam("userName", user)
             .queryParam("entityType", entityType)
             .queryParam("entityFQN", entityFqn)
             .queryParam("eventType", "entityUpdated")
-            .queryParam("limit", "1")
+            .queryParam("startTs", Long.toString(since))
+            .queryParam("limit", "10")
             .build();
-    Awaitility.await("audit log entry for the update of " + entityFqn)
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(1))
-        .until(
-            () ->
-                JsonUtils.readTree(
-                        SdkClients.adminClient()
-                            .getHttpClient()
-                            .executeForString(HttpMethod.GET, "/v1/audit/logs", null, query))
-                    .path("data")
-                    .size(),
-            size -> size == 1);
+    JsonNode entries =
+        Awaitility.await("audit log entry for the update of " + entityFqn)
+            .atMost(Duration.ofSeconds(60))
+            .pollInterval(Duration.ofSeconds(1))
+            .until(
+                () ->
+                    JsonUtils.readTree(
+                            SdkClients.adminClient()
+                                .getHttpClient()
+                                .executeForString(HttpMethod.GET, "/v1/audit/logs", null, query))
+                        .path("data"),
+                data -> data.size() > 0);
+    assertEquals(1, entries.size(), "audit log entries of " + entityFqn + ": " + entries);
   }
 
   private void awaitTaskReadyForWorkflowResolution(UUID taskId) {
