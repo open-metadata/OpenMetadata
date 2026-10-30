@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.util.Locale;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
@@ -64,7 +65,8 @@ class FirstTimeUserMigrationIT {
   }
 
   private UUID createUser(TestNamespace ns, String prefix) {
-    String name = ns.prefix(prefix).toLowerCase().replaceAll("[^a-z0-9]", "");
+    String name =
+        (prefix + ns.uniqueShortId()).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     User user =
         SdkClients.adminClient()
             .users()
