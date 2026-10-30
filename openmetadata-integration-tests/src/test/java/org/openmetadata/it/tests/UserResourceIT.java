@@ -2820,6 +2820,11 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         .getHttpClient()
         .executeForString(HttpMethod.PUT, "/v1/users", createRequest.withDescription("put again"));
     assertLoginAndActivityTimes(userId, loginTime, activityTime);
+
+    // A soft-deleted user is not readable by default, so check after the restore.
+    deleteEntity(userId);
+    restoreEntity(userId);
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
   }
 
   private void patchUserAsAdmin(String userId, ArrayNode patch) {
