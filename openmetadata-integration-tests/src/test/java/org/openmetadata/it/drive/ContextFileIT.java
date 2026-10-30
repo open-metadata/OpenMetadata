@@ -102,7 +102,7 @@ class ContextFileIT {
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
-  void testMetadataRequestsRejectAssetId(TestNamespace ns, boolean createOrUpdate) {
+  void testMetadataRequestsRejectAssetId(boolean createOrUpdate, TestNamespace ns) {
     RestClient rest = RestClient.admin();
     CreateContextFile request =
         new CreateContextFile().withName(ns.prefix("metadata-file")).withAssetId("stored-asset");
