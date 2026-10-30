@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -44,6 +45,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
@@ -238,6 +240,25 @@ class SocketAddressFilterTest {
     verify(chain, never()).doFilter(any(), any());
   }
 
+  @Test
+  void secureSocketAsksToRetryWhenTheTokenCannotBeConfirmed() throws Exception {
+    mockRequest("userId=" + UUID.randomUUID(), "Bearer token");
+    when(jwtFilter.verifySignatureOnly("token")).thenReturn(Map.of("sub", mock(Claim.class)));
+    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+    doThrow(new CredentialUnavailableException("No read slot for sam", 2, null))
+        .when(jwtFilter)
+        .checkValidationsForToken(any(), eq("token"), eq("sam"), isNull());
+
+    filter.doFilter(request, response, chain);
+
+    verify(response).setHeader("Retry-After", "2");
+    verify(response)
+        .sendError(
+            HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+            "Credential verification is temporarily unavailable");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
   /**
    * Regression test: a handshake carrying neither a token nor a session cookie used to be accepted
    * under the default socket configuration, and the caller-supplied {@code userId} query param was
@@ -320,7 +341,7 @@ class SocketAddressFilterTest {
     lenient()
         .when(request.getCookies())
         .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, validSessionId('s'))});
-    when(jwtFilter.validateJwtAndGetClaims("bad-token"))
+    when(jwtFilter.verifySignatureOnly("bad-token"))
         .thenThrow(new AuthenticationException("invalid token"));
 
     defaultFilter.doFilter(request, response, chain);
@@ -355,7 +376,7 @@ class SocketAddressFilterTest {
     verify(response)
         .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
     verify(chain, never()).doFilter(any(), any());
-    verify(jwtFilter, never()).validateJwtAndGetClaims(any());
+    verify(jwtFilter, never()).verifySignatureOnly(any());
   }
 
   /**
@@ -366,7 +387,7 @@ class SocketAddressFilterTest {
   void clientSessionIdHeaderIsDroppedWhenTokenCarriesNoSession() throws Exception {
     UUID tokenUserId = UUID.randomUUID();
     mockRequest("userId=" + tokenUserId, "Bearer token");
-    when(jwtFilter.validateJwtAndGetClaims("token")).thenReturn(Map.of("sub", mock(Claim.class)));
+    when(jwtFilter.verifySignatureOnly("token")).thenReturn(Map.of("sub", mock(Claim.class)));
     when(jwtFilter.resolveUserName(any())).thenReturn("sam");
     // Lenient: with the fix the wrapper never consults the client's SessionId at all.
     lenient().when(request.getHeader("SessionId")).thenReturn("attacker-session");
@@ -447,7 +468,7 @@ class SocketAddressFilterTest {
     injectJwtFilter(defaultFilter);
     UUID tokenUserId = UUID.randomUUID();
     mockRequest("userId=" + tokenUserId, "Bearer token");
-    when(jwtFilter.validateJwtAndGetClaims("token")).thenReturn(Map.of("sub", mock(Claim.class)));
+    when(jwtFilter.verifySignatureOnly("token")).thenReturn(Map.of("sub", mock(Claim.class)));
     when(jwtFilter.resolveUserName(any())).thenReturn("sam");
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
@@ -473,9 +494,7 @@ class SocketAddressFilterTest {
     JwtFilter emailFirstJwtFilter = spy(new JwtFilter(authConfig, authorizerConfig));
     Claim emailClaim = mock(Claim.class);
     when(emailClaim.asString()).thenReturn("socket.user@company.com");
-    doReturn(Map.of("email", emailClaim))
-        .when(emailFirstJwtFilter)
-        .validateJwtAndGetClaims("token");
+    doReturn(Map.of("email", emailClaim)).when(emailFirstJwtFilter).verifySignatureOnly("token");
     doNothing().when(emailFirstJwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
     SocketAddressFilter emailFirstFilter = defaultConfigFilter();
     Field jwtFilterField = SocketAddressFilter.class.getDeclaredField("jwtFilter");
@@ -600,7 +619,7 @@ class SocketAddressFilterTest {
   private void mockTokenClaims(String username, String sessionId) {
     Claim sessionClaim = mock(Claim.class);
     when(sessionClaim.asString()).thenReturn(sessionId);
-    when(jwtFilter.validateJwtAndGetClaims("token"))
+    when(jwtFilter.verifySignatureOnly("token"))
         .thenReturn(Map.of(JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
     when(jwtFilter.resolveUserName(any())).thenReturn(username);
   }
