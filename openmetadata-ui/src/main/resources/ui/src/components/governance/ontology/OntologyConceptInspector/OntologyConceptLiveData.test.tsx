@@ -113,6 +113,31 @@ describe('OntologyConceptLiveData', () => {
     expect(screen.queryByTestId('live-data-extension')).not.toBeInTheDocument();
   });
 
+  it('titles the section with an h3 heading', async () => {
+    renderLiveData();
+    await screen.findByTestId('ontology-live-data-sql');
+
+    const heading = screen.getByRole('heading', {
+      level: 3,
+      name: 'label.live-data',
+    });
+
+    expect(heading.tagName).toBe('H3');
+  });
+
+  it('draws the search-around picker as a card panel, not a styled layout box', async () => {
+    renderLiveData();
+    await screen.findByTestId('ontology-live-data-sql');
+
+    fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
+    const panel = screen.getByTestId(
+      'ontology-live-data-search-around-options'
+    );
+
+    expect(panel).not.toHaveClass('tw:bg-surface');
+    expect(panel).not.toHaveClass('tw:p-2');
+  });
+
   it('gets no live-data extension from the OSS class base', () => {
     expect(ontologyExplorerClassBase.getConceptLiveDataExtension()).toBeNull();
   });

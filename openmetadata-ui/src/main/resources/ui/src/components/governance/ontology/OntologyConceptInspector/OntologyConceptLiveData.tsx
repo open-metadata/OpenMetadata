@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -192,45 +193,54 @@ const OntologyConceptLiveData = ({
     }
 
     return (
-      <Box
-        className="tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-2"
+      <Card
         data-testid="ontology-live-data-search-around-options"
-        direction="col"
-        gap={1}>
-        {steps.length > 0 ? (
-          steps.map((step) => (
+        size="sm"
+        variant="muted">
+        <Card.Content>
+          <Box direction="col" gap={1}>
+            {steps.length > 0 ? (
+              steps.map((step) => (
+                <Button
+                  noTextPadding
+                  className="tw:justify-start"
+                  color="tertiary"
+                  data-testid={`ontology-live-data-hop-option-${step.key}`}
+                  key={step.key}
+                  size="xs"
+                  onPress={() => addHop(step)}>
+                  {step.label} · {conceptName(step.target)}
+                </Button>
+              ))
+            ) : (
+              <Typography color="secondary" size="text-xs">
+                {t('message.ontology-search-around-unavailable', {
+                  concept: conceptName(lastConcept),
+                })}
+              </Typography>
+            )}
             <Button
-              noTextPadding
-              className="tw:justify-start"
-              color="tertiary"
-              data-testid={`ontology-live-data-hop-option-${step.key}`}
-              key={step.key}
+              color="link-gray"
               size="xs"
-              onPress={() => addHop(step)}>
-              {step.label} · {conceptName(step.target)}
+              onPress={() => setIsPicking(false)}>
+              {t('label.cancel')}
             </Button>
-          ))
-        ) : (
-          <Typography color="secondary" size="text-xs">
-            {t('message.ontology-search-around-unavailable', {
-              concept: conceptName(lastConcept),
-            })}
-          </Typography>
-        )}
-        <Button color="link-gray" size="xs" onPress={() => setIsPicking(false)}>
-          {t('label.cancel')}
-        </Button>
-      </Box>
+          </Box>
+        </Card.Content>
+      </Card>
     );
   };
 
   return (
     <InspectorSection testId="ontology-concept-live-data">
       <Box align="center" className="tw:min-h-8" gap={2}>
+        {/* not-prose: Typography wraps a heading in .prose, whose h3 style
+            (20px, margins) would otherwise outrank the size classes. That
+            also drops the prose heading colour, and core has no primary
+            Typography color, so the class restores it. */}
         <Typography
-          aria-level={3}
-          className="tw:text-primary"
-          role="heading"
+          as="h3"
+          className="not-prose tw:m-0 tw:text-primary"
           size="text-sm"
           weight="semibold">
           {t('label.live-data')}
