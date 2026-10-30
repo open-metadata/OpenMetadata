@@ -31,8 +31,9 @@ commented with the relation label, and the service, service type and dialect.
 - A hop follows its property's object-property binding whenever the previous table or a candidate
   table binds it; `OntologyBindingRules` accepts OBJECT properties for that reason. The previous
   table's binding wins over the candidate's. The hop joins through a `FOREIGN_KEY` constraint on
-  the binding table whose columns equal the bound column and that refers to the other table, and
-  without one it joins the bound column to the other concept's identifier column (a bound DATA
+  the binding table whose columns equal the bound column and that refers to the other table, else
+  through the one such key whose columns contain the bound column, on all of that key's columns.
+  Several keys that contain it are the several-keys 400 below. Without a key it joins the bound column to the other concept's identifier column (a bound DATA
   property with `isIdentifier`). A foreign key on any other column never counts, even when it is
   the only one. A hop whose property no candidate binds joins through the one foreign key between
   the previous table and a candidate, in either direction, trying candidates in asset-id order.
@@ -42,7 +43,9 @@ commented with the relation label, and the service, service type and dialect.
   reports), and the binding chooses between them. PR4 keeps `inverse` reciprocal, so `managed by`
   and `manages` each name the other and the declaration alone cannot say which way the key runs.
   A column bound to `managed by` holds the manager, so `managed by` reads along the key and
-  `manages` against it.
+  `manages` against it. A hop followed back from its property's range reads as a hop over the
+  declared inverse, so its join and its label name the same direction. A binding of one column of
+  a composite key orients the whole key, and the hop joins on all of its columns.
   - A hop whose property no table binds, but whose declared inverse the previous table or a
     candidate binds, takes the converse of the join a hop over the inverse would take from the
     candidate back to the previous table, so the candidate's binding of the inverse wins. This
@@ -52,7 +55,7 @@ commented with the relation label, and the service, service type and dialect.
     name only properties the reader may view.
   - A hop whose property and declared inverse are both unbound, over one key from a table to
     itself, is a 400 that names the hop and the key's columns and asks for one of the two
-    properties to be bound to that column. Rows read in a guessed direction would be wrong for one
+    properties to be bound to one of that key's columns. Rows read in a guessed direction would be wrong for one
     of the two properties.
   - A hop whose property declares no inverse, or is its own inverse, reads one key from a table to
     itself along the key.
