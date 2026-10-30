@@ -15,6 +15,7 @@ import {
   Box,
   Input,
   PaginationCardWithControls,
+  TableCard,
   Toggle,
 } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
@@ -193,16 +194,20 @@ const SearchPreviewPanel = ({
         {renderResults()}
       </Box>
       {total > pageSize && (
-        <PaginationCardWithControls
-          page={page}
-          pageSize={pageSize}
-          total={Math.ceil(total / pageSize)}
-          onPageChange={setPage}
-          onPageSizeChange={(next) => {
-            setPageSize(next);
-            setPage(1);
-          }}
-        />
+        // The pager is a card footer with no top edge; with no table above it,
+        // the card frame supplies the full outline.
+        <TableCard.Root variant="muted">
+          <PaginationCardWithControls
+            page={page}
+            pageSize={pageSize}
+            total={Math.ceil(total / pageSize)}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next);
+              setPage(1);
+            }}
+          />
+        </TableCard.Root>
       )}
     </Box>
   );
