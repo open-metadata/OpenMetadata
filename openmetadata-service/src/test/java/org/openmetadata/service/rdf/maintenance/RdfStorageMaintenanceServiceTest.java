@@ -33,6 +33,8 @@ import ch.qos.logback.core.read.ListAppender;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -221,6 +223,42 @@ class RdfStorageMaintenanceServiceTest {
               .count();
       assertEquals(2, overdueErrors, "the server that skipped reports it too");
     } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void scheduledChecksReportOverdueEvenWhileTheFirstCompactionStillWaits() throws Exception {
+    final CountDownLatch entered = new CountDownLatch(1);
+    final CountDownLatch release = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              entered.countDown();
+              assertTrue(release.await(20, TimeUnit.SECONDS));
+              return SUCCEEDED;
+            })
+        .when(repository)
+        .compact(any());
+    final Logger logger = (Logger) LoggerFactory.getLogger(RdfStorageMaintenanceService.class);
+    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      serverA.check();
+      assertTrue(entered.await(10, TimeUnit.SECONDS));
+      when(compactions.lastCompaction()).thenReturn(Instant.now().minus(Duration.ofHours(49)));
+
+      serverA.check();
+
+      assertTrue(
+          appender.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getLevel() == Level.ERROR
+                          && event.getFormattedMessage().contains("has not compacted")));
+    } finally {
+      release.countDown();
       logger.detachAppender(appender);
       appender.stop();
     }
