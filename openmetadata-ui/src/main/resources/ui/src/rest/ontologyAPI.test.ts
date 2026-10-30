@@ -30,6 +30,8 @@ import {
   getOntologyChangeSet,
   getOntologyConceptBindings,
   getOntologyRelease,
+  getOntologyReleaseReview,
+  getOntologyReleaseValidation,
   getRdfEntityDiff,
   installOntologyPack,
   listInferenceRules,
@@ -65,6 +67,30 @@ describe('ontologyAPI', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
+
+  it.each([
+    ['review', getOntologyReleaseReview],
+    ['validation', getOntologyReleaseValidation],
+  ] as const)(
+    'reads the selected captured %s with cancellation and encoded identity',
+    async (endpoint, read) => {
+      const response = { releaseId: 'release/id', marker: endpoint };
+      mockedApiClient.get.mockResolvedValue({ data: response });
+      const controller = new AbortController();
+
+      expect(await read('release/id', controller.signal)).toEqual(response);
+      expect(mockedApiClient.get.mock.calls.map(([url]) => url)).toEqual([
+        '/ontologyReleases/release%2Fid/' + endpoint,
+      ]);
+      expect(mockedApiClient.get.mock.calls[0][1]?.signal).toBe(
+        controller.signal
+      );
+
+      mockedApiClient.get.mockRejectedValue(new Error('Read denied'));
+
+      await expect(read('release/id')).rejects.toThrow('Read denied');
+    }
+  );
 
   const boundTable = {
     assetId: 'late-table',
