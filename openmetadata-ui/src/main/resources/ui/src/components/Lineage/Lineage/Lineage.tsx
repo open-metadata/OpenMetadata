@@ -2169,6 +2169,7 @@ export const Lineage = ({
     lineageConfig,
     queryFilter,
     entityType,
+    entityFqn,
     isLineageSettingsLoaded,
     lineageMode,
     timeFilter.startTime,
