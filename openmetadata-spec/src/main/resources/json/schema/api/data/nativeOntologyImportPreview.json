@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/nativeOntologyImportPreview.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NativeOntologyImportPreview",
+  "description": "Dry run of a native ontology import into one target. Nothing is persisted until the change set is created and applied.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportPreview",
+  "properties": {
+    "summary": {
+      "$ref": "nativeOntologyImportSummary.json"
+    },
+    "changeSet": {
+      "description": "Draft operations that bring the target to the parsed definitions.",
+      "$ref": "createOntologyChangeSet.json"
+    }
+  },
+  "required": ["summary", "changeSet"],
+  "additionalProperties": false
+}
