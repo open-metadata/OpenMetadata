@@ -93,6 +93,7 @@ import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
+import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
@@ -310,7 +311,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
             new PreviewNativeOntologyImport()
                 .withFormat(NativeOntologyImportFormat.fromValue(selected.format()))
                 .withData(selected.body()))
-        .getChangeSet();
+        .getChangeSet()
+        .withSourcePack(OntologyPackInstallations.sourcePack(selected));
   }
 
   @POST
