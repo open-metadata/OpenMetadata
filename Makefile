@@ -303,12 +303,13 @@ build-ingestion-slim-local:  ## Builds the SLIM ingestion DEV docker operator wi
 #Upgrade release automation scripts below
 .PHONY: update_all
 update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2
-	@echo "The release version is: $(RELEASE_VERSION)" ; \
+	@set -e ; \
+	echo "The release version is: $(RELEASE_VERSION)" ; \
 	$(MAKE) update_maven ; \
 	$(MAKE) update_openapi_version ; \
 	$(MAKE) update_pyproject_version ; \
 	$(MAKE) update_dockerfile_version ; \
-	$(MAKE) update_dockerfile_ri_version ; \
+	$(MAKE) update_dockerfile_ri_version
 #remove comment and use the below section when want to use this sub module "update_all" independently to update github actions
 #make update_all RELEASE_VERSION=2.2.2
 
@@ -327,6 +328,7 @@ update_openapi_version:  ## To update the OpenAPI version in OpenMetadataApplica
 
 .PHONY: update_pyproject_version
 update_pyproject_version:  ## To update the pyproject.toml files
+	set -e ; \
 	file_paths="ingestion/pyproject.toml \
 				openmetadata-airflow-apis/pyproject.toml"; \
 	echo "Updating pyproject.toml versions to $(RELEASE_VERSION)... "; \
@@ -338,7 +340,8 @@ update_pyproject_version:  ## To update the pyproject.toml files
 
 .PHONY: update_dockerfile_version
 update_dockerfile_version:  ## To update the dockerfiles version
-	@file_paths="docker/docker-compose-ingestion/docker-compose-ingestion.yml \
+	@set -e ; \
+	file_paths="docker/docker-compose-ingestion/docker-compose-ingestion.yml \
 		     docker/docker-compose-openmetadata/docker-compose-openmetadata.yml \
 		     docker/docker-compose-quickstart/docker-compose-postgres.yml \
 		     docker/docker-compose-quickstart/docker-compose.yml"; \
@@ -351,7 +354,8 @@ update_dockerfile_version:  ## To update the dockerfiles version
 
 .PHONY: update_dockerfile_ri_version
 update_dockerfile_ri_version:  ## To update the dockerfile RI_VERSION argument
-	@file_paths="ingestion/Dockerfile \
+	@set -e ; \
+	file_paths="ingestion/Dockerfile \
 	             ingestion/operators/docker/Dockerfile"; \
 	echo "Updating ingestion dockerfile release version to $(PY_RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
