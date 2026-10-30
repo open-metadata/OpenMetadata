@@ -46,7 +46,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -64,6 +66,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
@@ -116,6 +119,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         "profile,owns,defaultRoles,defaultPersona,parents,children,policies,userCount,childrenCount",
         MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
+  }
+
+  /** A team's profile webhooks carry their secrets encrypted, which no response shows. */
+  @Override
+  protected Optional<UnaryOperator<Team>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(ProfileWebhookSecrets::mask);
   }
 
   @Override
@@ -239,8 +248,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     if (ownsEntityType != null) {
       filter.addQueryParam("ownsEntityType", ownsEntityType);
     }
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<Team> teams =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    teams.getData().forEach(ProfileWebhookSecrets::mask);
+    return teams;
   }
 
   @GET
@@ -308,7 +320,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
           @QueryParam("includeRelations")
           String includeRelations) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
+    return ProfileWebhookSecrets.mask(
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
   }
 
   @GET
@@ -345,7 +358,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return ProfileWebhookSecrets.mask(
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
   @GET
@@ -397,7 +411,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
     Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, team);
+    return withRedactedEntity(create(uriInfo, securityContext, team), ProfileWebhookSecrets::mask);
   }
 
   @PUT
@@ -418,7 +432,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
     Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, team);
+    return withRedactedEntity(
+        createOrUpdate(uriInfo, securityContext, team), ProfileWebhookSecrets::mask);
   }
 
   @PUT
@@ -602,7 +617,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return withRedactedEntity(
+        patchInternal(uriInfo, securityContext, id, patch), ProfileWebhookSecrets::mask);
   }
 
   @PATCH
@@ -631,7 +647,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return withRedactedEntity(
+        patchInternal(uriInfo, securityContext, fqn, patch), ProfileWebhookSecrets::mask);
   }
 
   @DELETE
@@ -657,7 +674,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return withRedactedEntity(
+        delete(uriInfo, securityContext, id, recursive, hardDelete), ProfileWebhookSecrets::mask);
   }
 
   @DELETE
@@ -706,7 +724,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Parameter(description = "Name of the team", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return withRedactedEntity(
+        deleteByName(uriInfo, securityContext, name, false, hardDelete),
+        ProfileWebhookSecrets::mask);
   }
 
   @PUT
@@ -728,7 +748,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return withRedactedEntity(
+        restoreEntity(uriInfo, securityContext, restore.getId()), ProfileWebhookSecrets::mask);
   }
 
   @GET
@@ -837,9 +858,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_USERS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
-    return repository
-        .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
-        .toResponse();
+    return withRedactedEntity(
+        repository
+            .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
+            .toResponse(),
+        ProfileWebhookSecrets::mask);
   }
 
   @DELETE
@@ -870,10 +893,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_USERS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
-    return repository
-        .deleteTeamUser(
-            securityContext.getUserPrincipal().getName(), teamId, UUID.fromString(userId))
-        .toResponse();
+    return withRedactedEntity(
+        repository
+            .deleteTeamUser(
+                securityContext.getUserPrincipal().getName(), teamId, UUID.fromString(userId))
+            .toResponse(),
+        ProfileWebhookSecrets::mask);
   }
 
   @PUT

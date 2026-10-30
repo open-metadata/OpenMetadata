@@ -1,7 +1,5 @@
 package org.openmetadata.mcp.tools;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -15,6 +13,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -22,10 +21,11 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
+import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.secrets.masker.EntityMasker;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
-import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 
 public final class McpResponseUtils {
@@ -46,8 +46,6 @@ public final class McpResponseUtils {
   private static final String UPDATED = "updated";
   private static final String OPERATION_KEY = "_operation";
   private static final String DELETED_KEY = "deleted";
-  private static final List<String> WEBHOOK_SECRET_KEYS =
-      List.of("secretKey", "clientId", "clientSecret");
 
   private McpResponseUtils() {}
 
@@ -72,7 +70,9 @@ public final class McpResponseUtils {
     return switch (entity) {
       case WorkflowDefinition definition -> WorkflowDefinitionMasker.mask(definition);
       case IngestionPipeline pipeline -> maskedCopy(pipeline, masker::maskIngestionPipeline);
-      case User user -> maskedCopy(user, copy -> copy.setAuthenticationMechanism(null));
+      case User user -> maskedCopy(
+          user, copy -> ProfileWebhookSecrets.mask(copy.withAuthenticationMechanism(null)));
+      case Team team -> maskedCopy(team, ProfileWebhookSecrets::mask);
       case Workflow workflow -> masker.maskWorkflow(JsonUtils.deepCopy(workflow, Workflow.class));
       case EventSubscription subscription -> maskWebhookSecrets(subscription);
       case ServiceEntityInterface service -> maskConnection(service, masker);
@@ -103,20 +103,8 @@ public final class McpResponseUtils {
     return masked;
   }
 
-  /** The webhook bearer and OAuth2 credentials SecretWebhookConfigRules stores encrypted. */
   private static EventSubscription maskWebhookSecrets(EventSubscription subscription) {
-    JsonNode masked = JsonUtils.valueToTree(subscription);
-    masked
-        .path("destinations")
-        .forEach(
-            destination -> {
-              if (destination.path("config").path("authType") instanceof ObjectNode auth) {
-                WEBHOOK_SECRET_KEYS.stream()
-                    .filter(auth::hasNonNull)
-                    .forEach(key -> auth.put(key, PasswordEntityMasker.PASSWORD_MASK));
-              }
-            });
-    return JsonUtils.treeToValue(masked, EventSubscription.class);
+    return DestinationSecrets.mask(subscription);
   }
 
   @SuppressWarnings("unchecked")
