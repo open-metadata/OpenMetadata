@@ -9528,7 +9528,9 @@
                               "^db_.*",
                               "^guest$",
                               "^information_schema$",
-                              "^sys$"
+                              "^sys$",
+                              "^queryinsights$",
+                              "^_rsc$"
                             ]
                           }
                         },

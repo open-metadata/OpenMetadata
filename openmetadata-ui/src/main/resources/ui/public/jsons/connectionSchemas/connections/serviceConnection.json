@@ -22292,7 +22292,9 @@
                           "^db_.*",
                           "^guest$",
                           "^information_schema$",
-                          "^sys$"
+                          "^sys$",
+                          "^queryinsights$",
+                          "^_rsc$"
                         ]
                       },
                       "type": "object",
@@ -60002,7 +60004,9 @@
                           "^db_.*",
                           "^guest$",
                           "^information_schema$",
-                          "^sys$"
+                          "^sys$",
+                          "^queryinsights$",
+                          "^_rsc$"
                         ]
                       },
                       "type": "object",
