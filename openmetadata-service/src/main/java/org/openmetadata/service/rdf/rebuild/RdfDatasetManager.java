@@ -144,11 +144,20 @@ public final class RdfDatasetManager implements AutoCloseable {
   /** Runs maintenance on the serving dataset; only the holder of the write pause may. */
   void maintainServing(
       final RdfWriteDelivery delivery, final Consumer<RdfStorageInterface> maintenance) {
+    requirePauseHolder(delivery);
+    maintenance.accept(servingStorage());
+  }
+
+  CompactionResult compactServing(final RdfWriteDelivery delivery, final Duration warningAfter) {
+    requirePauseHolder(delivery);
+    return servingStorage().compactAndAwait(warningAfter);
+  }
+
+  private void requirePauseHolder(final RdfWriteDelivery delivery) {
     if (!store.isPauseHolder(delivery)) {
       throw new IllegalStateException(
           "Maintenance of the RDF serving dataset requires the live write pause");
     }
-    maintenance.accept(servingStorage());
   }
 
   private void capture(

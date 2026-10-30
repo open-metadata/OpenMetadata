@@ -33,6 +33,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Pins how a Fuseki compaction is reported against a stub admin API: only a compaction task that
@@ -113,6 +115,45 @@ class FusekiCompactionTest {
     assertEquals(CompactionResult.Outcome.SUCCEEDED, compact(Duration.ofMinutes(10)).outcome());
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"<html>Bad Gateway</html>", "{\"taskId\":", "", "null", "[]", "{}"})
+  void anUnreadableStartReplyIsUnknown(final String body) {
+    compactReply.set(new Reply(200, body));
+
+    assertEquals(CompactionResult.Outcome.UNKNOWN, compact(Duration.ofMinutes(1)).outcome());
+    assertEquals(1, requests.size(), "an ambiguous start must not submit another compaction");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"<html>Bad Gateway</html>", "{\"task\":", "", "null", "[]", "{}"})
+  void anUnreadablePollKeepsWaitingForTheSameTask(final String body) {
+    taskReplies.add(new Reply(200, body));
+    taskReplies.add(new Reply(200, finished(true)));
+
+    final CompactionResult result = compact(Duration.ofMinutes(1));
+
+    assertEquals(CompactionResult.Outcome.SUCCEEDED, result.outcome());
+    assertEquals("7", result.taskId());
+    assertEquals(3, requests.size());
+  }
+
+  @Test
+  void anUnreadablePollAtTheDeadlineRetainsTheTaskId() {
+    taskReplies.add(new Reply(200, "<html>Bad Gateway</html>"));
+
+    final CompactionResult result = compact(Duration.ofSeconds(3));
+
+    assertEquals(CompactionResult.Outcome.TIMED_OUT, result.outcome());
+    assertEquals("7", result.taskId());
+  }
+
+  @Test
+  void anUnreadableTaskListDoesNotReplaceAWriteFailureWithAParsingException() {
+    taskReplies.add(new Reply(200, "<html>Bad Gateway</html>"));
+
+    assertFalse(isCompacting());
+  }
+
   @Test
   void reportsWhetherACompactionIsStillRunning() {
     taskReplies.add(new Reply(200, "[" + RUNNING + "," + finished(true) + "]"));
@@ -143,6 +184,54 @@ class FusekiCompactionTest {
 
     assertEquals(CompactionResult.Outcome.TIMED_OUT, result.outcome());
     assertEquals(Duration.ofSeconds(6), result.elapsed());
+  }
+
+  @Test
+  void servingCompactionKeepsObservingTheSameTaskBeyondItsBudget() {
+    taskReplies.add(new Reply(200, RUNNING));
+    taskReplies.add(new Reply(503, "Service Unavailable"));
+    taskReplies.add(new Reply(200, "<html>Bad Gateway</html>"));
+    taskReplies.add(new Reply(200, finished(true)));
+
+    final CompactionResult result = compactAndAwait(Duration.ofSeconds(1));
+
+    assertEquals(CompactionResult.Outcome.SUCCEEDED, result.outcome());
+    assertEquals(Duration.ofSeconds(6), result.elapsed());
+    assertEquals(1, requests.stream().filter(request -> request.startsWith("POST")).count());
+  }
+
+  @Test
+  void anUntrackedStartWaitsForAnExplicitlyIdleTaskList() {
+    compactReply.set(new Reply(200, "<html>Bad Gateway</html>"));
+    taskReplies.add(new Reply(200, "[" + RUNNING + "]"));
+    taskReplies.add(new Reply(503, "Service Unavailable"));
+    taskReplies.add(new Reply(200, "not JSON"));
+    taskReplies.add(new Reply(200, "[]"));
+
+    final CompactionResult result = compactAndAwait(Duration.ZERO);
+
+    assertEquals(CompactionResult.Outcome.UNKNOWN, result.outcome());
+    assertEquals(Duration.ofSeconds(6), result.elapsed());
+    assertEquals(1, requests.stream().filter(request -> request.startsWith("POST")).count());
+  }
+
+  @Test
+  void aProxyErrorOnStartMayStillHaveStartedACompaction() {
+    compactReply.set(new Reply(502, "Bad Gateway"));
+    taskReplies.add(new Reply(200, "[" + RUNNING + "]"));
+    taskReplies.add(new Reply(200, "[]"));
+
+    assertEquals(CompactionResult.Outcome.UNKNOWN, compactAndAwait(Duration.ZERO).outcome());
+    assertEquals(3, requests.size());
+  }
+
+  private CompactionResult compactAndAwait(final Duration warningAfter) {
+    return compaction()
+        .compactAndAwait(
+            "http://localhost:" + server.getAddress().getPort(),
+            "collate",
+            warningAfter,
+            builder -> builder);
   }
 
   @Test

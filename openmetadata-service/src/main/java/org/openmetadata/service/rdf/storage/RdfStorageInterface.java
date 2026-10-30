@@ -224,6 +224,14 @@ public interface RdfStorageInterface extends AutoCloseable {
   }
 
   /**
+   * Compacts a paused serving dataset and waits until it no longer blocks writers. Exceeding
+   * {@code warningAfter} reports a warning rather than abandoning a task the store cannot cancel.
+   */
+  default CompactionResult compactAndAwait(Duration warningAfter) {
+    return compact(warningAfter);
+  }
+
+  /**
    * Runs a SPARQL update as storage maintenance: within {@code timeout} rather than the
    * per-request budget, and without counting towards request-path failure handling. A timeout
    * throws {@link RdfWriteOutcomeUnknownException}, because the store may still apply it.
