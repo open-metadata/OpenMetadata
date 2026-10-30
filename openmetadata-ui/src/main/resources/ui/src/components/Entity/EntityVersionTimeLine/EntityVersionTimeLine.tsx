@@ -13,7 +13,6 @@
 import {
   Box,
   Button,
-  Divider,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -115,7 +114,6 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
           </Typography>
           <CloseIcon handleCancel={onBack} />
         </Box>
-        <Divider className="m-0" />
       </div>
       <div className="versions-list-body">{versions}</div>
     </aside>

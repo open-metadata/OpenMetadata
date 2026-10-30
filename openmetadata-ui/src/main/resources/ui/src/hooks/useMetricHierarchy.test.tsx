@@ -15,7 +15,11 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Kind } from '../generated/api/data/metricHierarchyItem';
 import { getMetricGroupMetrics } from '../rest/metricGroupsAPI';
-import { getMetricHierarchy, getMetrics } from '../rest/metricsAPI';
+import {
+  getMetricHierarchy,
+  getMetrics,
+  getMetricSearchPaths,
+} from '../rest/metricsAPI';
 import type { MetricTreeNode } from '../utils/MetricEntityUtils/MetricHierarchyUtils';
 import {
   isGroupRow,
@@ -30,6 +34,7 @@ jest.mock('../rest/metricGroupsAPI', () => ({
 jest.mock('../rest/metricsAPI', () => ({
   getMetricHierarchy: jest.fn(),
   getMetrics: jest.fn(),
+  getMetricSearchPaths: jest.fn(),
 }));
 
 jest.mock('../utils/ToastUtils', () => ({
@@ -454,6 +459,207 @@ describe('useMetricHierarchy', () => {
 
       expect(ids).toEqual(['root-id', 'child-id', 'grandchild-id']);
       expect(new Set(ids).size).toBe(3);
+    });
+  });
+
+  it('opens the branch that leads to a search match and hides siblings off that path', async () => {
+    (getMetricHierarchy as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          kind: Kind.Metric,
+          metric: {
+            id: 'root-id',
+            name: 'revenue',
+            fullyQualifiedName: 'revenue',
+            childrenCount: 2,
+          },
+        },
+      ],
+      paging: { offset: 0, limit: 20, total: 1 },
+    });
+    (getMetricSearchPaths as jest.Mock).mockResolvedValue({
+      matchIds: new Set(['canada-id']),
+      ancestorIds: new Set(['root-id']),
+      complete: true,
+    });
+    (getMetrics as jest.Mock).mockResolvedValue({
+      data: [
+        { id: 'canada-id', name: 'canada' },
+        { id: 'usa-id', name: 'usa' },
+      ],
+      paging: { total: 2 },
+    });
+
+    const { result } = renderHook(
+      () =>
+        useMetricHierarchy({
+          enabled: true,
+          page: 1,
+          pageSize: 20,
+          query: 'canada',
+        }),
+      { wrapper }
+    );
+
+    await waitFor(() =>
+      expect(result.current.expandedRowKeys).toContain('root-id')
+    );
+    await waitFor(() =>
+      expect(
+        result.current.buildRows(result.current.topLevelNodes)[0]
+      ).toMatchObject({
+        children: [expect.objectContaining({ id: 'canada-id' })],
+      })
+    );
+
+    const [root] = result.current.buildRows(result.current.topLevelNodes);
+
+    expect((root as { children?: unknown[] }).children).toHaveLength(1);
+  });
+
+  describe('search paths', () => {
+    const rootNode = {
+      kind: Kind.Metric,
+      metric: {
+        id: 'root-id',
+        name: 'revenue',
+        fullyQualifiedName: 'revenue',
+        childrenCount: 2,
+      },
+    };
+
+    const renderSearch = (query: string) =>
+      renderHook(
+        ({ q }: { q: string }) =>
+          useMetricHierarchy({
+            enabled: true,
+            page: 1,
+            pageSize: 20,
+            query: q,
+          }),
+        { wrapper, initialProps: { q: query } }
+      );
+
+    beforeEach(() => {
+      (getMetricHierarchy as jest.Mock).mockResolvedValue({
+        data: [rootNode],
+        paging: { offset: 0, limit: 20, total: 1 },
+      });
+    });
+
+    it('shows children unfiltered when the path set is incomplete', async () => {
+      (getMetricSearchPaths as jest.Mock).mockResolvedValue({
+        matchIds: new Set(['canada-id']),
+        ancestorIds: new Set(['root-id']),
+        complete: false,
+      });
+      (getMetrics as jest.Mock).mockResolvedValue({
+        data: [
+          { id: 'canada-id', name: 'canada' },
+          { id: 'usa-id', name: 'usa' },
+        ],
+        paging: { total: 2 },
+      });
+      const { result } = renderSearch('canada');
+
+      await waitFor(() => {
+        const [root] = result.current.buildRows(result.current.topLevelNodes);
+
+        expect((root as MetricTreeNode).children).toHaveLength(2);
+      });
+    });
+
+    it('falls back to all children when the index has none of them yet', async () => {
+      (getMetricSearchPaths as jest.Mock).mockResolvedValue({
+        matchIds: new Set(['renamed-elsewhere']),
+        ancestorIds: new Set(['root-id']),
+        complete: true,
+      });
+      (getMetrics as jest.Mock).mockResolvedValue({
+        data: [
+          { id: 'canada-id', name: 'canada' },
+          { id: 'usa-id', name: 'usa' },
+        ],
+        paging: { total: 2 },
+      });
+      const { result } = renderSearch('canada');
+
+      await waitFor(() => {
+        const [root] = result.current.buildRows(result.current.topLevelNodes);
+
+        expect((root as MetricTreeNode).children).toHaveLength(2);
+      });
+    });
+
+    it('shows every child of a metric that is itself a match', async () => {
+      (getMetricSearchPaths as jest.Mock).mockResolvedValue({
+        matchIds: new Set(['root-id']),
+        ancestorIds: new Set(),
+        complete: true,
+      });
+      (getMetrics as jest.Mock).mockResolvedValue({
+        data: [
+          { id: 'canada-id', name: 'canada' },
+          { id: 'usa-id', name: 'usa' },
+        ],
+        paging: { total: 2 },
+      });
+      const { result } = renderSearch('revenue');
+
+      await waitFor(() => expect(result.current.topLevelNodes).toHaveLength(1));
+      act(() => {
+        result.current.toggleExpand(
+          true,
+          result.current.topLevelNodes[0].row as never
+        );
+      });
+
+      await waitFor(() => {
+        const [root] = result.current.buildRows(result.current.topLevelNodes);
+
+        expect((root as MetricTreeNode).children).toHaveLength(2);
+      });
+    });
+
+    it('keeps a matched metric collapsed even when a child also matches', async () => {
+      (getMetricSearchPaths as jest.Mock).mockResolvedValue({
+        matchIds: new Set(['root-id', 'canada-id']),
+        ancestorIds: new Set(['root-id']),
+        complete: true,
+      });
+      const { result } = renderSearch('revenue');
+
+      await waitFor(() => expect(getMetricSearchPaths).toHaveBeenCalled());
+      await waitFor(() => expect(result.current.topLevelNodes).toHaveLength(1));
+
+      expect(result.current.expandedRowKeys).toEqual([]);
+      expect(getMetrics).not.toHaveBeenCalled();
+    });
+
+    it('re-fetches auto-expanded branches when returning to a cached query', async () => {
+      (getMetricSearchPaths as jest.Mock).mockResolvedValue({
+        matchIds: new Set(['canada-id']),
+        ancestorIds: new Set(['root-id']),
+        complete: true,
+      });
+      (getMetrics as jest.Mock).mockResolvedValue({
+        data: [{ id: 'canada-id', name: 'canada' }],
+        paging: { total: 1 },
+      });
+      const { result, rerender } = renderSearch('canada');
+
+      await waitFor(() => expect(getMetrics).toHaveBeenCalledTimes(1));
+
+      rerender({ q: 'canad' });
+      await waitFor(() => expect(getMetrics).toHaveBeenCalledTimes(2));
+      rerender({ q: 'canada' });
+
+      await waitFor(() => expect(getMetrics).toHaveBeenCalledTimes(3));
+      await waitFor(() => {
+        const [root] = result.current.buildRows(result.current.topLevelNodes);
+
+        expect((root as MetricTreeNode).children).toHaveLength(1);
+      });
     });
   });
 });

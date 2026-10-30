@@ -349,7 +349,7 @@ export const getOntologyState = async (
 
 export const getOntologyWorkingDiff = async (
   ontologyId: string,
-  params: Pick<ListParams, 'limit' | 'after'> = {},
+  params: Pick<ListParams, 'limit' | 'after'> & { groupBy?: 'concept' } = {},
   signal?: AbortSignal
 ) => {
   const response = await APIClient.get<OntologyWorkingDiff>(
@@ -603,8 +603,13 @@ export const patchRelationshipType = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteRelationshipType = async (id: string) => {
-  await APIClient.delete(`${RELATIONSHIP_TYPES_PATH}/${id}`);
+export const deleteRelationshipType = async (
+  id: string,
+  hardDelete = false
+) => {
+  await APIClient.delete(`${RELATIONSHIP_TYPES_PATH}/${id}`, {
+    params: { hardDelete },
+  });
 };
 
 export const listOntologyAxioms = async (
