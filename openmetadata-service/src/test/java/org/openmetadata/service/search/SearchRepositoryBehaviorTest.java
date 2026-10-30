@@ -3507,6 +3507,48 @@ class SearchRepositoryBehaviorTest {
         .softDeleteOrRestoreChildren(any(List.class), any(String.class), any(List.class));
   }
 
+  // The incident listing scopes on the embedded test case's flag, which no `deleted` script sets.
+  @Test
+  void softDeleteOrRestoredChildrenFlagsTheIncidentsOfASoftDeletedTestCase() throws IOException {
+    EntityReference testCase =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
+
+    repository.softDeleteOrRestoredChildren(testCase, TEST_CASE_MAPPING, true);
+
+    assertIncidentTestCasesFlagged("testCase.id", testCase.getId(), true);
+  }
+
+  // A cascade soft-deletes the test cases under a service without search writes of their own.
+  @Test
+  void softDeleteOrRestoredChildrenFlagsTheIncidentsUnderARestoredService() throws IOException {
+    EntityReference service =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    IndexMapping serviceMapping =
+        IndexMapping.builder()
+            .indexName("database_service_search_index")
+            .alias("databaseService")
+            .childAliases(List.of(Entity.DATABASE, Entity.TEST_CASE_RESOLUTION_STATUS))
+            .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
+            .build();
+
+    repository.softDeleteOrRestoredChildren(service, serviceMapping, false);
+
+    assertIncidentTestCasesFlagged("service.id", service.getId(), false);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertIncidentTestCasesFlagged(String parentField, UUID parentId, boolean deleted)
+      throws IOException {
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updates = ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS)),
+            eq(new ImmutablePair<>(parentField, parentId.toString())),
+            updates.capture());
+    assertTrue(updates.getValue().getKey().contains("ctx._source.testCase.deleted"));
+    assertEquals(Map.of("deleted", deleted), updates.getValue().getValue());
+  }
+
   @Test
   void getScriptWithParamsBuildsExtensionAndDescriptionUpdates() {
     EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
