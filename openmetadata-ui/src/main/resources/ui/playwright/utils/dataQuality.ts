@@ -14,7 +14,7 @@ import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
-import { redirectToHomePage, uuid } from './common';
+import { chooseSelectOption, redirectToHomePage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { expectScheduleFrequencySelected } from './scheduleInterval';
 import { sidebarClick } from './sidebar';
@@ -37,12 +37,20 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
  * picking the option — relying on the option being present in the full
  * (scrollable, height-capped) list is brittle and regresses whenever the
  * field's rendering changes. `label` is the test type's display name, which is
- * also what the option is matched by.
+ * also what the option is matched by. The test definitions are refetched as
+ * the level and column settle, so an option click can land as the list is
+ * replaced and pick nothing; retry until the picked chip shows.
  */
 export const selectTestType = async (page: Page, label: string) => {
-  await page.click('[id="root\\/testType"]');
+  const testType = page.getByTestId('test-type');
   await page.fill('[id="root\\/testType"]', label);
-  await page.getByRole('option').filter({ hasText: label }).first().click();
+  await chooseSelectOption(
+    testType,
+    page.getByRole('option').filter({ hasText: label }).first(),
+    testType
+      .getByTestId('autocomplete-selected-item')
+      .filter({ hasText: label })
+  );
 };
 
 /**
