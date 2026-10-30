@@ -32,6 +32,8 @@ import { CreateOntologyProperty } from '../generated/api/data/createOntologyProp
 import { CreateRelationshipType } from '../generated/api/data/createRelationshipType';
 import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyResource';
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
+import type { NativeOntologyDataGraphPage } from '../generated/api/data/nativeOntologyDataGraphPage';
+import type { NativeOntologyDataGraphPageRequest } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
 import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
 import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
@@ -150,6 +152,20 @@ export const getOntologyConceptBindings = async (
   );
 
   return collectOntologyConceptBindings(id, response.data, signal);
+};
+
+export const getNativeOntologyDataGraphPage = async (
+  ontologyId: string,
+  request: NativeOntologyDataGraphPageRequest,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.post<NativeOntologyDataGraphPage>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/dataGraph/pages`,
+    request,
+    { signal }
+  );
+
+  return response.data;
 };
 
 export const putOntologyConceptBinding = async (

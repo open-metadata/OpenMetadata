@@ -49,16 +49,18 @@ import {
   createOntologyChangeSet,
   createOntologyProperty,
   createRelationshipType,
+  getNativeOntologyDataGraphPage,
   getOntologyChangeSet,
-  getOntologyConceptBindings,
   getOntologyState,
   getRelationshipTypeByName,
   listRelationshipTypes,
+  patchOntologyConcept,
   patchOntologyProperty,
   patchRelationshipType,
   releaseOntologyEditLock,
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
+import { pageFixture } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import {
   buildOntologyStudioGraph,
   getModelRelations,
@@ -142,11 +144,13 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   getOntologyConceptBindings: jest
     .fn()
     .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
+  getNativeOntologyDataGraphPage: jest.fn(),
   createOntologyAxiom: jest.fn(),
   createOntologyProperty: jest.fn(),
   createRelationshipType: jest.fn(),
   getRelationshipTypeByName: jest.fn(),
   listRelationshipTypes: jest.fn(),
+  patchOntologyConcept: jest.fn(),
   patchOntologyProperty: jest.fn(),
   patchRelationshipType: jest.fn(),
 }));
@@ -847,7 +851,7 @@ describe('OntologyGraphView', () => {
       })
     );
     expect(refetch).toHaveBeenCalledTimes(3);
-    expect(onWorkingChange).toHaveBeenCalledTimes(5);
+    expect(onWorkingChange).toHaveBeenCalledTimes(3);
 
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-property'));
@@ -871,7 +875,7 @@ describe('OntologyGraphView', () => {
       )
     );
 
-    expect(onWorkingChange).toHaveBeenCalledTimes(6);
+    expect(onWorkingChange).toHaveBeenCalledTimes(4);
 
     fireEvent.click(screen.getByTestId('ontology-concept-edit'));
 
@@ -2216,6 +2220,22 @@ describe('OntologyGraphView', () => {
   });
 
   it('controls the model viewport and switches to Data without losing the concept', async () => {
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({
+        clusters: [
+          {
+            id: 'concept-customer',
+            name: 'Customer',
+            count: 6,
+            after: 'cursor',
+            assets: [1, 2, 3, 4].map((n) => ({
+              id: `t${n}`,
+              name: `table_${n}`,
+            })),
+          },
+        ],
+      })
+    );
     render(
       <MemoryRouter>
         <OntologyGraphView
@@ -2243,6 +2263,9 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-concept-inspector')).toHaveTextContent(
       'Customer'
     );
+    expect(
+      await screen.findByTestId('ontology-data-cluster-concept-customer')
+    ).toBeVisible();
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
 
@@ -2250,6 +2273,253 @@ describe('OntologyGraphView', () => {
       'aria-pressed',
       'true'
     );
+    expect(screen.getByTestId('native-ontology-graph')).toBeVisible();
+    expect(screen.getByTestId('ontology-native-data-graph')).not.toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(screen.getByTestId('ontology-native-data-graph')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-data-cluster-concept-customer')
+    ).toBeVisible();
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a relation drawn in Model as a dashed edge once Data shows again, with one reload', async () => {
+    const editableModel = {
+      ...model,
+      properties: [...model.properties, objectProperty],
+    };
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: editableModel,
+      refetch: jest.fn().mockResolvedValue({ data: editableModel }),
+      relations: getModelRelations(editableModel),
+    });
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    const clusters = [
+      {
+        id: customer.id,
+        name: 'Customer',
+        count: 1,
+        assets: [{ id: 't1', name: 'customers' }],
+      },
+      {
+        id: orphan.id,
+        name: 'Orphan',
+        count: 1,
+        assets: [{ id: 't2', name: 'orphans' }],
+      },
+    ];
+    (getNativeOntologyDataGraphPage as jest.Mock)
+      .mockResolvedValueOnce(pageFixture({ clusters }))
+      .mockResolvedValueOnce(
+        pageFixture({
+          clusters,
+          conceptEdges: [
+            { from: customer.id, to: orphan.id, label: 'served by' },
+          ],
+        })
+      );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+          onWorkingChange={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+    await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
+
+    expect(screen.queryAllByTestId('ontology-data-semantic-edge')).toHaveLength(
+      0
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
+    await act(() =>
+      latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        objectProperty.iri
+      )
+    );
+
+    expect(createOntologyAxiom).toHaveBeenCalledTimes(1);
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+    const edge = await screen.findByTestId('ontology-data-semantic-edge');
+
+    expect(edge).toHaveAttribute('data-edge-kind', 'semanticProjection');
+    expect(edge).toHaveAttribute('stroke-dasharray', '4 3');
+    expect(
+      screen.getByTestId('ontology-data-semantic-edge-label')
+    ).toHaveTextContent('served by');
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2);
+  });
+
+  it('reloads Data once for a relation that writes three steps while Data shows', async () => {
+    const answers: (() => void)[] = [];
+    const answerLater = <T,>(value: T) =>
+      new Promise<T>((resolve) => answers.push(() => resolve(value)));
+    (createOntologyProperty as jest.Mock).mockImplementation(() =>
+      answerLater({})
+    );
+    (createOntologyAxiom as jest.Mock).mockImplementation(() =>
+      answerLater(customerIsParty)
+    );
+    const clusters = [
+      {
+        id: customer.id,
+        name: 'Customer',
+        count: 1,
+        assets: [{ id: 't1', name: 'customers' }],
+      },
+    ];
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({ clusters })
+    );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+          onWorkingChange={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+    await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
+
+    let created!: Promise<boolean>;
+    act(() => {
+      created = latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        PART_OF
+      );
+    });
+    for (const step of [1, 2, 3]) {
+      await waitFor(() => expect(answers).toHaveLength(step));
+      await act(async () => answers[step - 1]());
+    }
+    await act(() => created);
+    await waitFor(() =>
+      expect(screen.queryByText('label.loading')).not.toBeInTheDocument()
+    );
+
+    expect(createOntologyProperty).toHaveBeenCalledTimes(2);
+    expect(createOntologyAxiom).toHaveBeenCalledTimes(1);
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows a concept renamed in the editor while Data shows', async () => {
+    (patchOntologyConcept as jest.Mock).mockResolvedValue({
+      ...customer,
+      displayName: 'Client',
+    });
+    const cluster = (name: string) =>
+      pageFixture({
+        clusters: [
+          {
+            id: customer.id,
+            name,
+            count: 1,
+            assets: [{ id: 't1', name: 'customers' }],
+          },
+        ],
+      });
+    (getNativeOntologyDataGraphPage as jest.Mock)
+      .mockResolvedValueOnce(cluster('Customer'))
+      .mockResolvedValueOnce(cluster('Client'));
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+          onWorkingChange={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+    await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
+    fireEvent.click(screen.getByTestId('ontology-concept-edit'));
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'label.display-name' }),
+      { target: { value: 'Client' } }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    expect(
+      await within(
+        screen.getByTestId(`ontology-data-cluster-${customer.id}`)
+      ).findByText('Client')
+    ).toBeVisible();
+    expect(patchOntologyConcept).toHaveBeenCalledTimes(1);
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2);
+    expect(
+      (getNativeOntologyDataGraphPage as jest.Mock).mock.calls[1][1].page
+    ).toEqual({ kind: 'clusters', limit: 12, offset: 0 });
+  });
+
+  it('reloads Data after a data property is added while Data shows', async () => {
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({
+        clusters: [
+          {
+            id: customer.id,
+            name: 'Customer',
+            count: 1,
+            assets: [{ id: 't1', name: 'customers' }],
+          },
+        ],
+      })
+    );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+    await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+    fireEvent.change(screen.getByTestId('ontology-property-name'), {
+      target: { value: 'customerNumber' },
+    });
+    fireEvent.click(screen.getByTestId('ontology-property-type-integer'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-property-submit'));
+    });
+
+    await waitFor(() =>
+      expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2)
+    );
+
+    expect(createOntologyProperty).toHaveBeenCalledTimes(1);
   });
 
   describe('in AI mode', () => {
@@ -2305,59 +2575,90 @@ describe('OntologyGraphView', () => {
       expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
     });
 
-    it('switches to Data mode and shows the concept picker until a concept is chosen', async () => {
+    it('switches to Data mode and shows every bound concept, keeping the chosen one selected', async () => {
+      (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+        pageFixture({
+          clusters: [
+            {
+              id: customer.id,
+              name: 'Customer',
+              count: 1,
+              assets: [{ id: 't1', name: 'customers' }],
+            },
+            {
+              id: orphan.id,
+              name: 'Orphan',
+              count: 1,
+              assets: [{ id: 't2', name: 'orphans' }],
+            },
+          ],
+        })
+      );
       renderAiGraph();
 
       await screen.findByTestId('native-ontology-graph');
       fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 
       expect(
-        await screen.findByTestId('ontology-data-empty-state')
+        await screen.findByTestId(`ontology-data-cluster-${customer.id}`)
+      ).toBeVisible();
+      expect(
+        screen.getByTestId(`ontology-data-cluster-${orphan.id}`)
       ).toBeVisible();
 
       fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
       fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
       fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 
+      expect(screen.getByTestId('ontology-native-data-graph')).toBeVisible();
       expect(
-        await screen.findByTestId('ontology-native-data-graph')
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('ontology-data-empty-state')
-      ).not.toBeInTheDocument();
+        screen.getByTestId(`ontology-data-cluster-${customer.id}`).className
+      ).toMatch(/border-brand/);
+      expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
     });
 
-    it('reports a failed bindings refresh and retries it in the AI data graph', async () => {
+    it('reports a failed data graph read and retries it in the AI data graph', async () => {
+      (getNativeOntologyDataGraphPage as jest.Mock)
+        .mockRejectedValueOnce(new Error('read failed'))
+        .mockResolvedValueOnce(
+          pageFixture({
+            clusters: [
+              {
+                id: customer.id,
+                name: 'Customer',
+                count: 1,
+                assets: [{ id: 't1', name: 'customers' }],
+              },
+            ],
+          })
+        );
       renderAiGraph();
 
       await screen.findByTestId('native-ontology-graph');
       fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
       fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
       const dataGraph = await screen.findByTestId('ontology-native-data-graph');
-      await within(dataGraph).findByText('message.no-data-available');
-      (getOntologyConceptBindings as jest.Mock).mockRejectedValueOnce(
-        new Error('read failed')
+      const alert = await within(dataGraph).findByTestId(
+        'ontology-native-data-error'
       );
-      fireEvent.click(within(dataGraph).getByTestId('refresh'));
 
-      expect(
-        await within(dataGraph).findByText(
-          'message.ontology-binding-read-unavailable'
-        )
-      ).toBeVisible();
+      expect(alert).toHaveTextContent(
+        'message.ontology-data-graph-unavailable'
+      );
 
       fireEvent.click(
-        within(dataGraph).getByRole('button', { name: 'label.retry' })
+        within(alert).getByRole('button', { name: 'label.retry' })
       );
 
       expect(
-        await within(dataGraph).findByText('message.no-data-available')
+        await within(dataGraph).findByTestId(
+          `ontology-data-cluster-${customer.id}`
+        )
       ).toBeVisible();
       expect(
-        within(dataGraph).queryByText(
-          'message.ontology-binding-read-unavailable'
-        )
+        within(dataGraph).queryByTestId('ontology-native-data-error')
       ).not.toBeInTheDocument();
+      expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2);
     });
   });
 });
