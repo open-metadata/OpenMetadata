@@ -35,9 +35,10 @@ model's data model written by a full one, with no SQL and no catalog columns.
   manifest versions) leaves that job's whole environment un-ingested, since merging without the
   job's artifacts would overwrite the models only it compiled with no SQL; the other environments
   are still ingested, and the run is then failed naming the skipped environments. An abandoned
-  job whose last run died before compiling is common, and must not block the rest of the account. When merging, the catalog and `run_results`
-  are fetched with `get_raw`, so only a 404 reads as "absent"; `get` returns `None` for a request
-  that ran out of retries too. 429 is retried, since an all-jobs scan makes one runs call per job.
+  job whose last run died before compiling is common, and must not block the rest of the account.
+  When merging, the catalog and `run_results` are fetched with `get_raw`, so only a 404 reads as
+  "absent"; `get` returns `None` for a request that ran out of retries too. 429 is retried, since
+  an all-jobs scan makes one runs call per job.
 - The latest runs are listed first, then one environment's artifacts are downloaded, merged and
   yielded at a time, so memory holds one merged manifest rather than one per environment.
 
