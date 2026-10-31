@@ -502,8 +502,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // Without this check, non-OM users who authenticate via SSO see the success page
     // but then fail silently at token exchange with a confusing "invalid_grant" error.
     // getEntityByName throws EntityNotFoundException (never returns null).
+    final User user;
     try {
-      Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
+      user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
     } catch (EntityNotFoundException e) {
       LOG.warn("SSO-authenticated user not found in OpenMetadata. Denying access.");
       LOG.debug("Denied user details: {}", userName);
@@ -570,10 +571,11 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           e);
     }
 
-    // Generate MCP authorization code
+    // The grant is kept under the account's own name, not the provider's spelling of it, so
+    // revoking the user's grants finds it.
     String authCode =
         generateAuthorizationCode(
-            userName,
+            user.getName(),
             pendingRequest.clientId(),
             pendingRequest.codeChallenge(),
             requestedRedirectUri,
