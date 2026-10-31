@@ -95,9 +95,15 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       if (outcome.skipped()) {
         stampStatus(pageId, PageProcessingStatus.Processed, null);
       }
+    } catch (ConditionalUpdateExhaustedException e) {
+      schedule(pageId);
     } catch (RuntimeException e) {
       LOG.error("Knowledge pill extraction failed for page {}", pageId, e);
-      stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+      try {
+        stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+      } catch (ConditionalUpdateExhaustedException exhausted) {
+        schedule(pageId);
+      }
       throw e;
     }
   }
@@ -121,13 +127,17 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
    * so an unchanged-content skip does not churn the row.
    */
   private void stampStatus(UUID pageId, PageProcessingStatus status, String error) {
-    Page current = getPage(pageId);
-    if (current != null && current.getProcessingStatus() != status) {
-      Page updated = JsonUtils.deepCopy(current, Page.class);
-      updated.setProcessingStatus(status);
-      updated.setProcessingError(error);
-      pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
-    }
+    updateSource(
+        pageId,
+        () -> {
+          Page current = getPage(pageId);
+          if (current != null && current.getProcessingStatus() != status) {
+            Page updated = JsonUtils.deepCopy(current, Page.class);
+            updated.setProcessingStatus(status);
+            updated.setProcessingError(error);
+            pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+          }
+        });
   }
 
   /**
@@ -162,14 +172,18 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
 
   @Override
   protected void stampStats(UUID pageId, ExtractionStats stats) {
-    Page current = getPage(pageId);
-    if (current != null) {
-      Page updated = JsonUtils.deepCopy(current, Page.class);
-      updated.setExtractionStats(stats);
-      updated.setProcessingStatus(PageProcessingStatus.Processed);
-      updated.setProcessingError(null);
-      pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
-    }
+    updateSource(
+        pageId,
+        () -> {
+          Page current = getPage(pageId);
+          if (current != null) {
+            Page updated = JsonUtils.deepCopy(current, Page.class);
+            updated.setExtractionStats(stats);
+            updated.setProcessingStatus(PageProcessingStatus.Processed);
+            updated.setProcessingError(null);
+            pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+          }
+        });
   }
 
   @Override

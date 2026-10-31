@@ -33,22 +33,29 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.util.RequestEntityCache;
 
 @ExtendWith(MockitoExtension.class)
 class ContextFileProcessingServiceTest {
@@ -136,6 +143,217 @@ class ContextFileProcessingServiceTest {
     assertNull(contentUpdates.get(0).getProcessingError());
     assertEquals(ProcessingStatus.Processed, contentUpdates.get(1).getProcessingStatus());
     assertEquals("Quarterly results", contentUpdates.get(1).getExtractedText());
+  }
+
+  @Test
+  void processKeepsMetadataEditedDuringTextExtraction() throws Exception {
+    AtomicReference<ContextFile> stored = new AtomicReference<>(file);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(
+            ignored -> {
+              ContextFile cached =
+                  RequestEntityCache.getById(
+                      Entity.CONTEXT_FILE, fileId, null, null, false, ContextFile.class);
+              if (cached == null) {
+                cached = JsonUtils.deepCopy(stored.get(), ContextFile.class);
+                RequestEntityCache.putById(
+                    Entity.CONTEXT_FILE, fileId, null, null, false, cached, ContextFile.class);
+              }
+              return cached;
+            });
+    when(repository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              stored.set(invocation.getArgument(2));
+              RequestEntityCache.invalidate(Entity.CONTEXT_FILE, fileId, null);
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), any(ContextFile.class)))
+        .thenAnswer(
+            ignored -> {
+              stored.set(
+                  JsonUtils.deepCopy(stored.get(), ContextFile.class)
+                      .withDescription("Current description")
+                      .withShareConfig(
+                          new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
+              return ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3);
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals("Current description", stored.get().getDescription());
+    assertEquals(MemoryVisibility.PRIVATE, stored.get().getShareConfig().getVisibility());
+    assertEquals("Quarterly results", stored.get().getExtractedText());
+    assertEquals(ProcessingStatus.Processed, stored.get().getProcessingStatus());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void processKeepsContentMetadataEditedDuringTextExtraction(boolean conflictOnResult)
+      throws Exception {
+    AtomicReference<ContextFileContent> stored = new AtomicReference<>(content);
+    AtomicInteger resultWrites = new AtomicInteger();
+    when(contentRepository.getById(contentId))
+        .thenAnswer(
+            ignored -> {
+              ContextFileContent cached =
+                  RequestEntityCache.getById(
+                      Entity.CONTEXT_FILE_CONTENT,
+                      contentId,
+                      null,
+                      null,
+                      false,
+                      ContextFileContent.class);
+              if (cached == null) {
+                cached = JsonUtils.deepCopy(stored.get(), ContextFileContent.class);
+                RequestEntityCache.putById(
+                    Entity.CONTEXT_FILE_CONTENT,
+                    contentId,
+                    null,
+                    null,
+                    false,
+                    cached,
+                    ContextFileContent.class);
+              }
+              return cached;
+            });
+    when(contentRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              ContextFileContent updated = invocation.getArgument(2);
+              if (conflictOnResult
+                  && updated.getProcessingStatus() == ProcessingStatus.Processed
+                  && resultWrites.getAndIncrement() == 0) {
+                stored.set(
+                    JsonUtils.deepCopy(stored.get(), ContextFileContent.class)
+                        .withDescription("Latest description"));
+                throw new PreconditionFailedException("Concurrent content update");
+              }
+              stored.set(invocation.getArgument(2));
+              RequestEntityCache.invalidate(Entity.CONTEXT_FILE_CONTENT, contentId, null);
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenAnswer(
+            ignored -> {
+              stored.set(
+                  JsonUtils.deepCopy(stored.get(), ContextFileContent.class)
+                      .withDescription("Current description"));
+              return ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3);
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(
+        conflictOnResult ? "Latest description" : "Current description",
+        stored.get().getDescription());
+    assertEquals("Quarterly results", stored.get().getExtractedText());
+    assertEquals(ProcessingStatus.Processed, stored.get().getProcessingStatus());
+  }
+
+  @Test
+  void processStopsWhenTheHeadChangesBeforeTheFileUpdate() {
+    AtomicReference<ContextFile> stored = new AtomicReference<>(file);
+    UUID replacement = UUID.randomUUID();
+    AtomicBoolean firstRead = new AtomicBoolean(true);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(
+            ignored -> {
+              ContextFile snapshot = readCachedFile(stored);
+              if (firstRead.getAndSet(false)) {
+                stored.set(
+                    JsonUtils.deepCopy(snapshot, ContextFile.class)
+                        .withHeadContentId(replacement.toString()));
+              }
+              return snapshot;
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(replacement.toString(), stored.get().getHeadContentId());
+    assertEquals(ProcessingStatus.Uploaded, stored.get().getProcessingStatus());
+    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
+    verify(assetService, never()).read(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void processStopsWhenTheSourceChangesBeforeTheContentUpdate(boolean contentRemoved)
+      throws Exception {
+    AtomicReference<ContextFile> storedFile = new AtomicReference<>(file);
+    AtomicReference<ContextFileContent> storedContent = new AtomicReference<>(content);
+    UUID replacement = UUID.randomUUID();
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(ignored -> readCachedFile(storedFile));
+    when(repository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              ContextFile updated = invocation.getArgument(2);
+              RequestEntityCache.invalidate(Entity.CONTEXT_FILE, fileId, null);
+              RequestEntityCache.putById(
+                  Entity.CONTEXT_FILE, fileId, null, null, false, updated, ContextFile.class);
+              if (contentRemoved) {
+                storedFile.set(updated);
+                storedContent.set(null);
+              } else {
+                storedFile.set(
+                    JsonUtils.deepCopy(updated, ContextFile.class)
+                        .withHeadContentId(replacement.toString())
+                        .withProcessingStatus(ProcessingStatus.Uploaded));
+              }
+              return null;
+            });
+    when(contentRepository.getById(contentId)).thenAnswer(ignored -> storedContent.get());
+    lenient()
+        .when(contentRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              storedContent.set(invocation.getArgument(2));
+              return null;
+            });
+    lenient()
+        .when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    lenient()
+        .when(textExtractor.extract(any(InputStream.class), any(ContextFile.class)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(
+        contentRemoved ? contentId.toString() : replacement.toString(),
+        storedFile.get().getHeadContentId());
+    assertEquals(
+        contentRemoved ? ProcessingStatus.Analyzing : ProcessingStatus.Uploaded,
+        storedFile.get().getProcessingStatus());
+    if (contentRemoved) {
+      assertNull(storedContent.get());
+    } else {
+      assertEquals(ProcessingStatus.Uploaded, storedContent.get().getProcessingStatus());
+    }
+    verify(assetService, never()).read(any());
+  }
+
+  private ContextFile readCachedFile(AtomicReference<ContextFile> stored) {
+    ContextFile cached =
+        RequestEntityCache.getById(
+            Entity.CONTEXT_FILE, fileId, null, null, false, ContextFile.class);
+    if (cached == null) {
+      cached = JsonUtils.deepCopy(stored.get(), ContextFile.class);
+      RequestEntityCache.putById(
+          Entity.CONTEXT_FILE, fileId, null, null, false, cached, ContextFile.class);
+    }
+    return cached;
   }
 
   @Test
@@ -269,6 +487,21 @@ class ContextFileProcessingServiceTest {
     verify(jobDao)
         .enqueueFileMemoryJob(
             eq(fileId.toString()), anyString(), anyString(), anyString(), eq(false));
+  }
+
+  @Test
+  void memoryStatsContentionQueuesRetryDespiteRunningJob() {
+    when(fileEngine.runExtraction(fileId))
+        .thenThrow(
+            new ContextProcessingEngine.ConditionalUpdateExhaustedException(
+                Entity.CONTEXT_FILE, fileId));
+
+    service(Runnable::run, () -> assetService, true).runMemoryExtraction(fileId, contentId);
+
+    verify(jobDao)
+        .enqueueFileMemoryJob(
+            eq(fileId.toString()), anyString(), anyString(), anyString(), eq(false));
+    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
   }
 
   private ContextFile transientFile(ProcessingStatus status) {
