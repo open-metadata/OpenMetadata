@@ -1081,6 +1081,7 @@ test(
         page.getByTestId(`ontology-memory-draft-${draft.id}`)
       ).toBeHidden();
       await selectOntology(page, ontology);
+      await page.getByTestId('fit-view').click();
       const positions = await readNodePositions(page);
       await page.mouse.click(positions[conceptId].x, positions[conceptId].y);
       await expect(

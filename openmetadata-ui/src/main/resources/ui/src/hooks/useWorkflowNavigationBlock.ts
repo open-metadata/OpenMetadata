@@ -44,12 +44,14 @@ const preventUnload = (e: BeforeUnloadEvent) => {
 
 export interface UseWorkflowNavigationBlockOptions {
   enabled: boolean;
+  blockProgrammaticNavigation?: boolean;
   isBlocked?: () => boolean;
   onSaveWorkflow: () => Promise<boolean>;
 }
 
 export const useWorkflowNavigationBlock = ({
   enabled,
+  blockProgrammaticNavigation = false,
   isBlocked,
   onSaveWorkflow,
 }: UseWorkflowNavigationBlockOptions) => {
@@ -98,7 +100,7 @@ export const useWorkflowNavigationBlock = ({
   }, [navigate, runWithoutBlocking]);
 
   useEffect(() => {
-    if (!enabled || !navigator) {
+    if (!enabled || !blockProgrammaticNavigation || !navigator) {
       return;
     }
     const { push, replace } = navigator;
@@ -122,7 +124,7 @@ export const useWorkflowNavigationBlock = ({
       navigator.push = push;
       navigator.replace = replace;
     };
-  }, [enabled, navigator]);
+  }, [enabled, blockProgrammaticNavigation, navigator]);
 
   const handlePopState = useCallback(
     (event: PopStateEvent) => {

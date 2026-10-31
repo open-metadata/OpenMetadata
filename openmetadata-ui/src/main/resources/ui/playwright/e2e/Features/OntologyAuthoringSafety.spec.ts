@@ -106,7 +106,10 @@ test.describe(
               'Unsaved class'
             );
             if (mode === 'ai') {
-              await page.getByTestId('ask-logo-btn').click();
+              await page
+                .getByTestId('ask-rail')
+                .getByTestId('ask-logo-btn')
+                .click();
               await expect(confirmation).toBeVisible();
               await confirmation
                 .getByRole('button', { name: 'Cancel', exact: true })

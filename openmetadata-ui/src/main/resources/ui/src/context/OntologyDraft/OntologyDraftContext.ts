@@ -16,4 +16,5 @@ export const OntologyDraftContext = createContext({
   setDirty: (_id: string, _dirty: boolean): void => undefined,
   setLocked: (_id: string, _locked: boolean): void => undefined,
   guard: (action: () => void) => action(),
+  runConfirmed: (action: () => void) => action(),
 });

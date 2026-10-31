@@ -53,13 +53,19 @@ const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   const routing = useWorkflowNavigationBlock({
     enabled: dirty || locked,
+    blockProgrammaticNavigation: true,
     isBlocked: () =>
       Boolean(dirtyForms.current.size || lockedForms.current.size),
     onSaveWorkflow: async () => false,
   });
   const value = useMemo(
-    () => ({ setDirty, setLocked, guard }),
-    [setDirty, setLocked, guard]
+    () => ({
+      setDirty,
+      setLocked,
+      guard,
+      runConfirmed: routing.runWithoutBlocking,
+    }),
+    [setDirty, setLocked, guard, routing.runWithoutBlocking]
   );
   const cancel = () => {
     setPending(undefined);

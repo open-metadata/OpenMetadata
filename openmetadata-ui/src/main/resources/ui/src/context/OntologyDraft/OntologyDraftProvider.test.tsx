@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import {
   BrowserRouter,
   MemoryRouter,
@@ -32,6 +32,7 @@ import {
   useOntologyDraftGuard,
   useOntologyDraftLock,
 } from '../../hooks/governance/ontology/useOntologyDraftGuard';
+import { OntologyDraftContext } from './OntologyDraftContext';
 import OntologyDraftProvider from './OntologyDraftProvider';
 
 const Editor = ({ locked = false }: { locked?: boolean }) => {
@@ -259,6 +260,43 @@ it('allows navigation immediately after a successful save clears the dirty regis
 
   expect(screen.getByTestId('route')).toHaveTextContent('/explore');
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+it('commits an acknowledged selection while retaining the attempt lock for unrelated navigation', () => {
+  const CompletedAttempt = () => {
+    const { runConfirmed } = useContext(OntologyDraftContext);
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    return (
+      <>
+        <Editor locked />
+        <Button
+          onPress={() =>
+            runConfirmed(() => navigate('?concept=created', { replace: true }))
+          }>
+          Select created class
+        </Button>
+        <output>{location.search}</output>
+      </>
+    );
+  };
+  render(
+    <MemoryRouter>
+      <SidebarNavigation replace={false} />
+      <OntologyDraftProvider>
+        <CompletedAttempt />
+      </OntologyDraftProvider>
+    </MemoryRouter>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Select created class' }));
+
+  expect(screen.getByText('?concept=created')).toBeVisible();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Explore' }));
+
+  expect(screen.getByRole('button', { name: 'label.discard' })).toBeDisabled();
 });
 
 const NestedEditor = () => {

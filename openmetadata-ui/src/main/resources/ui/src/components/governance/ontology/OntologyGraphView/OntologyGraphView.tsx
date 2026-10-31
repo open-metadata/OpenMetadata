@@ -31,6 +31,7 @@ import {
   lazy,
   Suspense,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -38,6 +39,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { OntologyDraftContext } from '../../../../context/OntologyDraft/OntologyDraftContext';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -378,6 +380,7 @@ const OntologyGraphView = ({
     : localSelectedId;
   const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
   const guard = useOntologyDraftGuard();
+  const { runConfirmed } = useContext(OntologyDraftContext);
   const setSelectedId = useCallback(
     (id?: string) =>
       guard(() => {
@@ -701,7 +704,9 @@ const OntologyGraphView = ({
       handledCreateConceptRequest.current !== createConceptRequestKey
     ) {
       handledCreateConceptRequest.current = createConceptRequestKey;
-      (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
+      runConfirmed(() =>
+        (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
+      );
       setConceptEditor({});
       setGraphMode('model');
       onRequestGraphSurface();
@@ -711,6 +716,7 @@ const OntologyGraphView = ({
     isEditing,
     onRequestGraphSurface,
     onSelectedConceptChange,
+    runConfirmed,
   ]);
 
   if ([isError, !model].every(Boolean)) {
@@ -771,7 +777,9 @@ const OntologyGraphView = ({
               created.id
             );
             setNodePositions(positions);
-            (onSelectedConceptChange ?? setLocalSelectedId)(created.id);
+            runConfirmed(() =>
+              (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
+            );
             setConceptEditor(undefined);
             noteWorkingChange();
 
