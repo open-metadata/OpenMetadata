@@ -733,7 +733,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       T createdEntity =
           addHref(
               uriInfo,
-              repository.create(
+              repository.createPrepared(
                   uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
@@ -771,7 +771,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       T createdEntity =
           addHref(
               uriInfo,
-              repository.create(
+              repository.createPrepared(
                   uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }

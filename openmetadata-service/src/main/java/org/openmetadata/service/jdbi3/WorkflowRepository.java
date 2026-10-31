@@ -10,6 +10,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.automations.WorkflowResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -51,15 +53,38 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     return List.of("openMetadataServerConnection");
   }
 
+  /**
+   * A PATCH may set a password field to an encoded value that the stored workflow already holds, so
+   * the unmask validates it against that stored copy before the encrypt pass stores it (see
+   * {@link PasswordEntityMasker#unmaskWorkflow}).
+   */
+  @Override
+  protected Workflow restorePatchSecrets(Workflow original, Workflow updated) {
+    return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(updated, original);
+  }
+
   @Override
   protected boolean isStoragePreparationSideEffecting() {
     return true;
   }
 
   @Override
-  protected Workflow prepareForStorage(Workflow entity) {
+  protected Workflow prepareForStorage(Workflow entity, boolean update) {
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    return secretsManager == null ? entity : secretsManager.encryptWorkflow(entity);
+
+    if (secretsManager != null) {
+      // A create stores user-submitted values, so the encrypt pass rejects credentials the
+      // workflow does not own. An update stores values the masker already validated (PATCH and
+      // PUT) or a stored copy (restore), where encoded values are the entity's own.
+      if (update) {
+        entity =
+            secretsManager.encryptWorkflow(
+                entity, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+      } else {
+        entity = secretsManager.encryptWorkflow(entity);
+      }
+    }
+    return entity;
   }
 
   @Override

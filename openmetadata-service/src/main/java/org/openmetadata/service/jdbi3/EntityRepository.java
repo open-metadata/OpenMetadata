@@ -3471,11 +3471,29 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return entity;
   }
 
+  /**
+   * Create an entity a previous {@link #prepareInternal(Object, boolean)} pass in the same request
+   * already handled — the PUT create-or-update path, whose resource boundary prepares with {@code
+   * update == true} before deciding whether the request creates. The create pipeline still runs its
+   * own prepare pass, but with {@code reStore == true}: {@link #prepare(Object, boolean, boolean)}
+   * then treats the second pass as a re-storage of what the first pass stored, instead of
+   * re-validating it against a strict credential policy.
+   */
+  public final T createPrepared(
+      UriInfo uriInfo, T entity, String updatedBy, String impersonatedBy) {
+    entity = withHref(uriInfo, createInternal(entity, updatedBy, impersonatedBy, true));
+    return entity;
+  }
+
   public final T createInternal(T entity) {
     return createInternal(entity, null, null);
   }
 
   private T createInternal(T entity, String updatedBy, String impersonatedBy) {
+    return createInternal(entity, updatedBy, impersonatedBy, false);
+  }
+
+  private T createInternal(T entity, String updatedBy, String impersonatedBy, boolean reStore) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -3487,7 +3505,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     try (var ignored = phase("createPrepareInternal")) {
-      prepareInternal(entity, false);
+      prepareInternal(entity, false, reStore);
     }
 
     // Set updatedBy and impersonatedBy after prepare but before storing
@@ -3501,8 +3519,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   public final void prepareInternal(T entity, boolean update) {
+    prepareInternal(entity, update, false);
+  }
+
+  public final void prepareInternal(T entity, boolean update, boolean reStore) {
     validateTags(entity);
-    prepare(entity, update);
+    prepare(entity, update, reStore);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
     if (!update) {
@@ -3512,6 +3534,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       prepareCertification(entity);
     }
     // Domain is already validated
+  }
+
+  /**
+   * Prepare an entity whose encoded values an earlier step in this request already accepted — a
+   * previous {@link #prepareInternal(Object, boolean, boolean)} pass in the same request (the PUT
+   * create-or-update path), or the masker's provenance check on the PATCH pipeline. The default
+   * delegates to {@link #prepare(Object, boolean)}: most repositories have no reason to distinguish
+   * the passes. A repository whose prepare encrypts password fields must override this, because
+   * re-running a strict credential policy on an already-encoded value cannot tell that value from
+   * a foreign credential — see ServiceEntityRepository.
+   */
+  protected void prepare(T entity, boolean update, boolean reStore) {
+    prepare(entity, update);
   }
 
   /**
@@ -5167,8 +5202,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // before prepare, so validation sees who makes this change rather than who made the last one.
     updated.setImpersonatedBy(impersonatedBy);
 
+    // The masker pass above already proved every encoded value the patch carries is one the
+    // entity holds, so this prepare stores what it accepted instead of re-validating it against a
+    // strict credential policy - which would otherwise reject the entity's own stored references
+    // on an edit that never touched them, such as a rename.
     try (var ignored = phase("patchPrepareInternal")) {
-      prepareInternal(updated, true);
+      prepareInternal(updated, true, true);
     }
     try (var ignored = phase("patchRuleEvaluation")) {
       RuleEngine.getInstance().evaluateUpdate(original, updated);
@@ -6525,13 +6564,28 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return entity;
   }
 
+  /**
+   * The preparation variant the storage paths actually call: {@code update} tells it whether the
+   * row is being created from a user submission (encoded values it does not own are rejected) or
+   * re-stored from a copy the server already holds (its own encoded values pass through). A
+   * repository whose preparation encrypts credentials overrides this, not the flag-less variant -
+   * the policies are not interchangeable (see SecretsManager.CredentialPolicy).
+   */
+  protected T prepareForStorage(T entity, boolean update) {
+    return prepareForStorage(entity);
+  }
+
   protected boolean isStoragePreparationSideEffecting() {
     return false;
   }
 
   protected String serializeForStorage(T entity) {
+    return serializeForStorage(entity, false);
+  }
+
+  protected String serializeForStorage(T entity, boolean update) {
     return JsonStorageUtils.sanitizeNulCharacters(
-        storageJsonNode(prepareForStorage(entity)).toString());
+        storageJsonNode(prepareForStorage(entity, update)).toString());
   }
 
   protected String serializeForVersionHistory(T entity) {
@@ -6552,7 +6606,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (update && expectedVersion != null && isStoragePreparationSideEffecting()) {
       lockAndValidateVersion(writeDAO, entity, expectedVersion);
     }
-    String json = serializeForStorage(entity);
+    String json = serializeForStorage(entity, update);
 
     if (update) {
       if (expectedVersion != null) {
@@ -6606,7 +6660,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     List<String> jsons = new ArrayList<>(entities.size());
     for (T entity : entities) {
       fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
+      // A batch insert is a user create path: encoded values the entity does not own are
+      // rejected, so the rows are prepared with the create policy.
+      jsons.add(serializeForStorage(entity, false));
     }
     EntityDAO<T> writeDAO = entityDAOForWrite();
     writeDAO.insertMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, jsons);
@@ -6619,7 +6675,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (T entity : entities) {
       fqns.add(entity.getFullyQualifiedName());
       ids.add(entity.getId());
-      jsons.add(serializeForStorage(entity));
+      // A batch update re-stores rows the server already holds: their encoded values are the
+      // entity's own, so the rows are prepared with the re-storage policy.
+      jsons.add(serializeForStorage(entity, true));
     }
     EntityDAO<T> writeDAO = entityDAOForWrite();
     writeDAO.updateMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, ids, jsons);

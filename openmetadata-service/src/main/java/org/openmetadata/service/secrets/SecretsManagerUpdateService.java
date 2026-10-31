@@ -80,6 +80,27 @@ public class SecretsManagerUpdateService {
     updateServices();
     updateBotUsers();
     updateIngestionPipelines();
+    updateWorkflows();
+  }
+
+  private void updateWorkflows() {
+    LOG.info(
+        "Updating workflows in case of an update on the JSON schema: [{}]",
+        secretManager.getSecretsManagerProvider().value());
+    retrieveWorkflows()
+        .forEach(
+            workflow -> {
+              try {
+                updateWorkflow(workflow);
+              } catch (Exception e) {
+                LOG.error(
+                    "Failed to update workflow [{}] with id [{}]: {}",
+                    workflow.getName(),
+                    workflow.getId(),
+                    e.getMessage());
+                // Continue processing other workflows instead of failing the entire migration
+              }
+            });
   }
 
   private void updateServices() {
@@ -163,7 +184,11 @@ public class SecretsManagerUpdateService {
                   service.getConnection().getConfig(),
                   service.getServiceType().value(),
                   service.getName(),
-                  repository.getServiceType()));
+                  repository.getServiceType(),
+                  // Values decrypted by the old manager: plaintext or references the new manager
+                  // must keep as-is (a cluster rename preserves old-path references that still
+                  // resolve in the same backend).
+                  SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE));
       repository.getDao().update(service);
     } catch (EntityNotFoundException e) {
       LOG.warn(
@@ -259,7 +284,10 @@ public class SecretsManagerUpdateService {
       oldSecretManager.decryptAuthenticationMechanism(
           botUser.getName(), user.getAuthenticationMechanism());
       secretManager.encryptAuthenticationMechanism(
-          botUser.getName(), user.getAuthenticationMechanism());
+          botUser.getName(),
+          user.getAuthenticationMechanism(),
+          // Values decrypted by the old manager, re-stored by the new one.
+          SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
       userRepository.getDao().update(user);
     } catch (EntityNotFoundException e) {
       LOG.warn("Bot user {} not found during secrets migration. Skipping.", botUser.getId());
@@ -375,7 +403,8 @@ public class SecretsManagerUpdateService {
           ingestionPipelineRepository.getDao().findEntityById(ingestionPipeline.getId());
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       oldSecretManager.decryptIngestionPipeline(ingestion);
-      secretManager.encryptIngestionPipeline(ingestion);
+      secretManager.encryptIngestionPipeline(
+          ingestion, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
       ingestionPipelineRepository.getDao().update(ingestion);
     } catch (EntityNotFoundException e) {
       LOG.warn(
@@ -391,8 +420,13 @@ public class SecretsManagerUpdateService {
       Workflow workflowObject = workflowRepository.getDao().findEntityById(workflow.getId());
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       workflowObject = oldSecretManager.decryptWorkflow(workflowObject);
-      workflowObject = secretManager.encryptWorkflow(workflowObject);
-      ingestionPipelineRepository.getDao().update(workflowObject);
+      workflowObject =
+          secretManager.encryptWorkflow(
+              workflowObject, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+      // EntityDAO.update writes to the DAO's own table, keyed on the entity's id and FQN: writing
+      // the workflow through the ingestion-pipeline DAO would run the UPDATE against
+      // ingestion_pipeline_entity and silently drop it.
+      workflowRepository.getDao().update(workflowObject);
     } catch (EntityNotFoundException e) {
       LOG.warn("Workflow {} not found during secrets migration. Skipping.", workflow.getId());
     } catch (Exception e) {

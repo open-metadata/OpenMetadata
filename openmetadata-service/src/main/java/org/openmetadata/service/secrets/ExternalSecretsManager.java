@@ -112,8 +112,10 @@ public abstract class ExternalSecretsManager extends SecretsManager {
         deleteSecret(fieldSecretId);
       }
       result = null;
-      // A plain value: store it and hand back a reference. Anything already prefixed with
-      // SECRET_FIELD_PREFIX is a reference to an existing secret and falls through untouched.
+      // A plain value: store it and hand back a reference. A value already prefixed with
+      // SECRET_FIELD_PREFIX is a reference to an existing secret and falls through untouched;
+      // the encrypt pass has already validated that it is a reference this entity owns (see
+      // SecretsManager#requireOwnCredential).
     } else if (Boolean.FALSE.equals(isSecret(value))) {
       rejectReservedPlaceholder(fieldName, value);
       if (store) {

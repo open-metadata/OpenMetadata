@@ -28,6 +28,7 @@ import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 import software.amazon.awssdk.services.ssm.model.Tag;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
+  private static final String SSM_ARN_PARAMETER_SEGMENT = ":parameter/";
   private static AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
@@ -100,6 +101,19 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
     GetParameterRequest parameterRequest =
         GetParameterRequest.builder().name(secretName).withDecryption(true).build();
     return ssmClient.getParameter(parameterRequest).parameter().value();
+  }
+
+  /**
+   * SSM's ARN carries the parameter's fully-qualified name (absolute, with its leading path
+   * separator) after a {@code parameter/} segment, and {@link #getSecret} resolves it as-is. The
+   * name cannot contain a colon, so finding the segment recovers the name exactly.
+   */
+  @Override
+  protected String toNativeSecretName(String secretName) {
+    int resourceSegment = secretName.indexOf(SSM_ARN_PARAMETER_SEGMENT);
+    return resourceSegment >= 0
+        ? "/" + secretName.substring(resourceSegment + SSM_ARN_PARAMETER_SEGMENT.length())
+        : secretName;
   }
 
   @Override

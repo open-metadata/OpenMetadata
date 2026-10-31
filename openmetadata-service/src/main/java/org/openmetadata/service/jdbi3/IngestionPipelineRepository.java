@@ -711,11 +711,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  protected IngestionPipeline prepareForStorage(IngestionPipeline ingestionPipeline) {
+  protected IngestionPipeline prepareForStorage(
+      IngestionPipeline ingestionPipeline, boolean update) {
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
-      secretsManager.encryptIngestionPipeline(ingestionPipeline);
+      // A create stores user-submitted values, so the encrypt pass rejects credentials the
+      // pipeline does not own. An update stores values the masker already validated (PATCH and
+      // PUT) or a stored copy (restore, a Data Contract deployment), where encoded values are
+      // the pipeline's own.
+      if (update) {
+        secretsManager.encryptIngestionPipeline(
+            ingestionPipeline, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+      } else {
+        secretsManager.encryptIngestionPipeline(ingestionPipeline);
+      }
     }
     return ingestionPipeline;
   }
@@ -726,9 +736,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         JsonUtils.deepCopy(ingestionPipeline, IngestionPipeline.class);
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null) {
-      // Recording history must not overwrite credentials in an external vault.
+      // Recording history must not overwrite credentials in an external vault. The snapshot
+      // re-stores values the server already holds for this pipeline, so its own encoded values
+      // are accepted as-is.
       DBSecretsManager.getInstance(SecretsManagerProvider.DB, secretsManager.getSecretsConfig())
-          .encryptIngestionPipeline(snapshot);
+          .encryptIngestionPipeline(snapshot, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
     }
     return super.serializeForVersionHistory(snapshot);
   }

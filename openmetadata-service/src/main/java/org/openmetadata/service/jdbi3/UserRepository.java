@@ -96,6 +96,8 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
@@ -295,6 +297,23 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /**
+   * A PATCH may set a bot's authentication mechanism to an encoded value that the stored bot
+   * already holds, so the unmask validates it against the stored copy before the encrypt pass
+   * stores it (see {@link PasswordEntityMasker#unmaskAuthenticationMechanism}).
+   */
+  @Override
+  protected User restorePatchSecrets(User original, User updated) {
+    if (Boolean.TRUE.equals(updated.getIsBot())) {
+      EntityMaskerFactory.getEntityMasker()
+          .unmaskAuthenticationMechanism(
+              updated.getName(),
+              updated.getAuthenticationMechanism(),
+              original.getAuthenticationMechanism());
+    }
+    return updated;
+  }
+
+  /**
    * Names of users whose navbar selection ({@code defaultDomain}) is one of {@code domainIds}. The
    * selection is a {@code DEFAULTS_TO} relationship, so deleting the domain removes it; callers use
    * this only to evict those users' cached context.
@@ -358,11 +377,10 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  protected User prepareForStorage(User user) {
+  protected User prepareForStorage(User user, boolean update) {
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
-      secretsManager.encryptAuthenticationMechanism(
-          user.getName(), user.getAuthenticationMechanism());
+      encryptBotMechanism(secretsManager, user, update);
     }
     return user;
   }
@@ -380,6 +398,23 @@ public class UserRepository extends EntityRepository<User> {
 
   private static boolean carriesJwt(AuthenticationMechanism mechanism) {
     return mechanism != null && mechanism.getAuthType() == AuthenticationMechanism.AuthType.JWT;
+  }
+
+  /**
+   * A create stores a user-submitted authentication mechanism, so the encrypt pass rejects
+   * credentials the bot does not own. An update stores values the masker already validated (PATCH
+   * and PUT) or a stored copy (restore), where encoded values are the bot's own.
+   */
+  private void encryptBotMechanism(SecretsManager secretsManager, User user, boolean update) {
+    if (update) {
+      secretsManager.encryptAuthenticationMechanism(
+          user.getName(),
+          user.getAuthenticationMechanism(),
+          SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+    } else {
+      secretsManager.encryptAuthenticationMechanism(
+          user.getName(), user.getAuthenticationMechanism());
+    }
   }
 
   @Override

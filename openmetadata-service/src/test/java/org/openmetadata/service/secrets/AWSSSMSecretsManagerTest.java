@@ -12,7 +12,9 @@
  */
 package org.openmetadata.service.secrets;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -21,6 +23,7 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
 
 import java.util.HashMap;
 import java.util.List;
@@ -30,8 +33,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.SecretsManagerException;
 import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterResponse;
@@ -151,5 +159,56 @@ public class AWSSSMSecretsManagerTest extends AWSBasedSecretsManagerTest {
     assertFalse(
         secretsManager.isNotFoundException(new RuntimeException("throttled / access denied")),
         "Other read failures must not be mistaken for a missing parameter");
+  }
+
+  /**
+   * SSM's GetParameter resolves a parameter's ARN wherever it resolves the name, so a reference
+   * written in ARN form points at the same secret as the name form: one whose canonical name falls
+   * inside the deployment's managed namespace under another entity's base must be rejected, not
+   * waved through as a self-managed external reference.
+   */
+  @Test
+  void testEncryptRejectsAnArnReferenceToAnotherEntitysSecret() {
+    String victimArnReference =
+        SecretsManager.SECRET_FIELD_PREFIX
+            + "arn:aws:ssm:us-east-1:123456789012:parameter/prefix/openmetadata/database/"
+            + "other-service/authtype/password";
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(victimArnReference));
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () ->
+                secretsManager.encryptServiceConnectionConfig(
+                    connection, Mysql.value(), "test", ServiceType.DATABASE));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertFalse(
+        rejected.getMessage().contains(victimArnReference), "the reference must not be echoed");
+  }
+
+  @Test
+  void testEncryptAcceptsAnArnReferenceIntoASubmitterManagedVault() {
+    String ownVaultArnReference =
+        SecretsManager.SECRET_FIELD_PREFIX
+            + "arn:aws:ssm:us-east-1:123456789012:parameter/own-vault/database/password";
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(ownVaultArnReference));
+
+    MysqlConnection actualConnection =
+        (MysqlConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                connection, Mysql.value(), "test", ServiceType.DATABASE);
+
+    MysqlConnection decryptedConnection =
+        (MysqlConnection)
+            secretsManager.decryptServiceConnectionConfig(
+                actualConnection, Mysql.value(), ServiceType.DATABASE);
+    assertEquals(
+        ownVaultArnReference,
+        JsonUtils.convertValue(decryptedConnection.getAuthType(), basicAuth.class).getPassword(),
+        "an ARN reference into a vault the submitter manages themselves must be kept, "
+            + "not re-stored as this deployment's own");
   }
 }
