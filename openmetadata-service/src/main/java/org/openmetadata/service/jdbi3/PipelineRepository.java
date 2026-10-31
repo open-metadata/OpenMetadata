@@ -303,10 +303,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     applyStatusChange(pipeline, pipelineStatus, statusChange.previous());
 
-    // Store PROV-O execution details in RDF
-    if (RdfUpdater.isEnabled()) {
-      storePipelineExecutionInRdf(pipeline, pipelineStatus);
-    }
+    // PROV-O execution details reach RDF through the durable live-write queue.
+    RdfUpdater.recordPipelineExecution(pipeline.getId(), pipelineStatus.getTimestamp());
 
     // Index pipeline execution in Elasticsearch for analytics
     try {
@@ -363,9 +361,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     if (!written.isEmpty()) {
       bulkUpsertPipelineStatuses(pipeline.getFullyQualifiedName(), written);
       searchRepository.bulkIndexPipelineExecutions(pipeline, written);
-      if (RdfUpdater.isEnabled()) {
-        written.forEach(status -> storePipelineExecutionInRdf(pipeline, status));
-      }
+      written.forEach(
+          status -> RdfUpdater.recordPipelineExecution(pipeline.getId(), status.getTimestamp()));
     }
 
     if (latestChanged) {
@@ -1195,185 +1192,190 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                     CatalogExceptionMessage.invalidFieldName("task", taskName)));
   }
 
-  private void storePipelineExecutionInRdf(Pipeline pipeline, PipelineStatus pipelineStatus) {
-    try {
-      RdfRepository rdfRepository = RdfRepository.getInstance();
+  /**
+   * Writes the PROV-O triples of one pipeline run. Only the durable live-write queue calls it: the
+   * queue retries a failure, so nothing is caught here, and a run deleted meanwhile has nothing to
+   * write.
+   */
+  public void writePipelineExecutionToRdf(
+      final RdfRepository rdfRepository, final UUID pipelineId, final long timestamp) {
+    final Pipeline pipeline = Entity.getEntityOrNull(Entity.PIPELINE, pipelineId, "", Include.ALL);
+    final String stored =
+        pipeline == null
+            ? null
+            : getExtensionAtTimestamp(
+                pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, timestamp);
+    if (stored != null) {
+      rdfRepository.executeSparqlUpdate(
+          executionSparql(pipeline, JsonUtils.readValue(stored, PipelineStatus.class)));
+    }
+  }
 
-      // Create unique execution URI
-      String executionUri =
-          String.format(
-              "https://open-metadata.org/execution/%s/%d",
-              pipeline.getId(), pipelineStatus.getTimestamp());
-      String pipelineUri = "https://open-metadata.org/entity/pipeline/" + pipeline.getId();
+  private String executionSparql(final Pipeline pipeline, final PipelineStatus pipelineStatus) {
+    // Create unique execution URI
+    String executionUri =
+        String.format(
+            "https://open-metadata.org/execution/%s/%d",
+            pipeline.getId(), pipelineStatus.getTimestamp());
+    String pipelineUri = "https://open-metadata.org/entity/pipeline/" + pipeline.getId();
 
-      StringBuilder sparql = new StringBuilder();
-      sparql.append("PREFIX prov: <http://www.w3.org/ns/prov#>\n");
-      sparql.append("PREFIX om: <https://open-metadata.org/ontology/>\n");
-      sparql.append("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n");
-      sparql.append("INSERT DATA {\n");
+    StringBuilder sparql = new StringBuilder();
+    sparql.append("PREFIX prov: <http://www.w3.org/ns/prov#>\n");
+    sparql.append("PREFIX om: <https://open-metadata.org/ontology/>\n");
+    sparql.append("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n");
+    sparql.append("INSERT DATA {\n");
 
-      // Basic execution info
+    // Basic execution info
+    sparql.append(String.format("  <%s> a om:PipelineExecution, prov:Activity ;\n", executionUri));
+    sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", pipelineUri));
+    sparql.append(
+        String.format(
+            "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
+            formatTimestamp(pipelineStatus.getTimestamp())));
+
+    // Add end time if available
+    if (pipelineStatus.getEndTime() != null) {
       sparql.append(
-          String.format("  <%s> a om:PipelineExecution, prov:Activity ;\n", executionUri));
-      sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", pipelineUri));
-      sparql.append(
           String.format(
-              "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
-              formatTimestamp(pipelineStatus.getTimestamp())));
+              "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
+              formatTimestamp(pipelineStatus.getEndTime())));
+    }
 
-      // Add end time if available
-      if (pipelineStatus.getEndTime() != null) {
+    sparql.append(
+        String.format("    om:executionStatus \"%s\" ;\n", pipelineStatus.getExecutionStatus()));
+
+    // Add execution ID if available
+    if (pipelineStatus.getExecutionId() != null) {
+      sparql.append(
+          String.format("    om:executionId \"%s\" ;\n", pipelineStatus.getExecutionId()));
+    }
+
+    // Add executed by if available
+    if (pipelineStatus.getExecutedBy() != null) {
+      String agentUri =
+          "https://open-metadata.org/entity/"
+              + pipelineStatus.getExecutedBy().getType()
+              + "/"
+              + pipelineStatus.getExecutedBy().getId();
+      sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", agentUri));
+    }
+
+    // Add inputs (prov:used)
+    if (pipelineStatus.getInputs() != null) {
+      for (var input : pipelineStatus.getInputs()) {
+        if (input.getDatasetFQN() != null) {
+          try {
+            EntityReference dataset =
+                Entity.getEntityReferenceByName(
+                    Entity.TABLE, input.getDatasetFQN(), Include.NON_DELETED);
+            String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
+            sparql.append(String.format("    prov:used <%s> ;\n", datasetUri));
+
+            if (input.getRowCount() != null) {
+              sparql.append(
+                  String.format(
+                      "    om:inputRowCount_%s %d ;\n", dataset.getId(), input.getRowCount()));
+            }
+          } catch (Exception e) {
+            // Dataset not found, skip
+          }
+        }
+      }
+    }
+
+    // Add outputs (prov:generated)
+    if (pipelineStatus.getOutputs() != null) {
+      for (var output : pipelineStatus.getOutputs()) {
+        if (output.getDatasetFQN() != null) {
+          try {
+            EntityReference dataset =
+                Entity.getEntityReferenceByName(
+                    Entity.TABLE, output.getDatasetFQN(), Include.NON_DELETED);
+            String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
+            sparql.append(String.format("    prov:generated <%s> ;\n", datasetUri));
+
+            if (output.getRowCount() != null) {
+              sparql.append(
+                  String.format(
+                      "    om:outputRowCount_%s %d ;\n", dataset.getId(), output.getRowCount()));
+            }
+          } catch (Exception e) {
+            // Dataset not found, skip
+          }
+        }
+      }
+    }
+
+    // Add metrics
+    if (pipelineStatus.getMetrics() != null) {
+      if (pipelineStatus.getMetrics().getTotalRowsProcessed() != null) {
         sparql.append(
             String.format(
-                "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
-                formatTimestamp(pipelineStatus.getEndTime())));
+                "    om:rowsProcessed %d ;\n",
+                pipelineStatus.getMetrics().getTotalRowsProcessed()));
       }
-
-      sparql.append(
-          String.format("    om:executionStatus \"%s\" ;\n", pipelineStatus.getExecutionStatus()));
-
-      // Add execution ID if available
-      if (pipelineStatus.getExecutionId() != null) {
+      if (pipelineStatus.getMetrics().getTotalBytesProcessed() != null) {
         sparql.append(
-            String.format("    om:executionId \"%s\" ;\n", pipelineStatus.getExecutionId()));
+            String.format(
+                "    om:bytesProcessed %d ;\n",
+                pipelineStatus.getMetrics().getTotalBytesProcessed()));
       }
-
-      // Add executed by if available
-      if (pipelineStatus.getExecutedBy() != null) {
-        String agentUri =
-            "https://open-metadata.org/entity/"
-                + pipelineStatus.getExecutedBy().getType()
-                + "/"
-                + pipelineStatus.getExecutedBy().getId();
-        sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", agentUri));
-      }
-
-      // Add inputs (prov:used)
-      if (pipelineStatus.getInputs() != null) {
-        for (var input : pipelineStatus.getInputs()) {
-          if (input.getDatasetFQN() != null) {
-            try {
-              EntityReference dataset =
-                  Entity.getEntityReferenceByName(
-                      Entity.TABLE, input.getDatasetFQN(), Include.NON_DELETED);
-              String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
-              sparql.append(String.format("    prov:used <%s> ;\n", datasetUri));
-
-              if (input.getRowCount() != null) {
-                sparql.append(
-                    String.format(
-                        "    om:inputRowCount_%s %d ;\n", dataset.getId(), input.getRowCount()));
-              }
-            } catch (Exception e) {
-              // Dataset not found, skip
-            }
-          }
-        }
-      }
-
-      // Add outputs (prov:generated)
-      if (pipelineStatus.getOutputs() != null) {
-        for (var output : pipelineStatus.getOutputs()) {
-          if (output.getDatasetFQN() != null) {
-            try {
-              EntityReference dataset =
-                  Entity.getEntityReferenceByName(
-                      Entity.TABLE, output.getDatasetFQN(), Include.NON_DELETED);
-              String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
-              sparql.append(String.format("    prov:generated <%s> ;\n", datasetUri));
-
-              if (output.getRowCount() != null) {
-                sparql.append(
-                    String.format(
-                        "    om:outputRowCount_%s %d ;\n", dataset.getId(), output.getRowCount()));
-              }
-            } catch (Exception e) {
-              // Dataset not found, skip
-            }
-          }
-        }
-      }
-
-      // Add metrics
-      if (pipelineStatus.getMetrics() != null) {
-        if (pipelineStatus.getMetrics().getTotalRowsProcessed() != null) {
-          sparql.append(
-              String.format(
-                  "    om:rowsProcessed %d ;\n",
-                  pipelineStatus.getMetrics().getTotalRowsProcessed()));
-        }
-        if (pipelineStatus.getMetrics().getTotalBytesProcessed() != null) {
-          sparql.append(
-              String.format(
-                  "    om:bytesProcessed %d ;\n",
-                  pipelineStatus.getMetrics().getTotalBytesProcessed()));
-        }
-      }
-
-      // Add parameters as JSON
-      if (pipelineStatus.getParameters() != null) {
-        String paramsJson =
-            JsonUtils.pojoToJson(pipelineStatus.getParameters()).replace("\"", "\\\"");
-        sparql.append(String.format("    om:parameters \"%s\" ;\n", paramsJson));
-      }
-
-      // Close the execution entity
-      sparql.setLength(sparql.length() - 2); // Remove last semicolon and newline
-      sparql.append(" .\n");
-
-      // Add task executions
-      if (pipelineStatus.getTaskStatus() != null) {
-        for (Status taskStatus : pipelineStatus.getTaskStatus()) {
-          String taskUri =
-              executionUri + "/task/" + taskStatus.getName().replaceAll("[^a-zA-Z0-9]", "_");
-          sparql.append(String.format("\n  <%s> a om:Transformation, prov:Activity ;\n", taskUri));
-          sparql.append(String.format("    prov:wasInformedBy <%s> ;\n", executionUri));
-          sparql.append(String.format("    om:taskName \"%s\" ;\n", taskStatus.getName()));
-          sparql.append(
-              String.format("    om:executionStatus \"%s\" ;\n", taskStatus.getExecutionStatus()));
-
-          if (taskStatus.getStartTime() != null) {
-            sparql.append(
-                String.format(
-                    "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
-                    formatTimestamp(taskStatus.getStartTime())));
-          }
-
-          if (taskStatus.getEndTime() != null) {
-            sparql.append(
-                String.format(
-                    "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
-                    formatTimestamp(taskStatus.getEndTime())));
-          }
-
-          if (taskStatus.getTransformationType() != null) {
-            sparql.append(
-                String.format(
-                    "    om:transformationType \"%s\" ;\n", taskStatus.getTransformationType()));
-          }
-
-          if (taskStatus.getTransformationLogic() != null) {
-            String logic = taskStatus.getTransformationLogic().replace("\"", "\\\"");
-            sparql.append(String.format("    om:transformationLogic \"%s\" ;\n", logic));
-          }
-
-          sparql.setLength(sparql.length() - 2);
-          sparql.append(" .\n");
-        }
-      }
-
-      sparql.append("}");
-
-      try {
-        rdfRepository.executeSparqlUpdate(sparql.toString());
-      } finally {
-        // A failure can arrive after Fuseki applied the update, such as a timeout on the response.
-        RdfUpdater.recordUntrackedWrite();
-      }
-
-    } catch (Exception e) {
-      LOG.error("Failed to store pipeline execution in RDF", e);
     }
+
+    // Add parameters as JSON
+    if (pipelineStatus.getParameters() != null) {
+      String paramsJson =
+          JsonUtils.pojoToJson(pipelineStatus.getParameters()).replace("\"", "\\\"");
+      sparql.append(String.format("    om:parameters \"%s\" ;\n", paramsJson));
+    }
+
+    // Close the execution entity
+    sparql.setLength(sparql.length() - 2); // Remove last semicolon and newline
+    sparql.append(" .\n");
+
+    // Add task executions
+    if (pipelineStatus.getTaskStatus() != null) {
+      for (Status taskStatus : pipelineStatus.getTaskStatus()) {
+        String taskUri =
+            executionUri + "/task/" + taskStatus.getName().replaceAll("[^a-zA-Z0-9]", "_");
+        sparql.append(String.format("\n  <%s> a om:Transformation, prov:Activity ;\n", taskUri));
+        sparql.append(String.format("    prov:wasInformedBy <%s> ;\n", executionUri));
+        sparql.append(String.format("    om:taskName \"%s\" ;\n", taskStatus.getName()));
+        sparql.append(
+            String.format("    om:executionStatus \"%s\" ;\n", taskStatus.getExecutionStatus()));
+
+        if (taskStatus.getStartTime() != null) {
+          sparql.append(
+              String.format(
+                  "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
+                  formatTimestamp(taskStatus.getStartTime())));
+        }
+
+        if (taskStatus.getEndTime() != null) {
+          sparql.append(
+              String.format(
+                  "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
+                  formatTimestamp(taskStatus.getEndTime())));
+        }
+
+        if (taskStatus.getTransformationType() != null) {
+          sparql.append(
+              String.format(
+                  "    om:transformationType \"%s\" ;\n", taskStatus.getTransformationType()));
+        }
+
+        if (taskStatus.getTransformationLogic() != null) {
+          String logic = taskStatus.getTransformationLogic().replace("\"", "\\\"");
+          sparql.append(String.format("    om:transformationLogic \"%s\" ;\n", logic));
+        }
+
+        sparql.setLength(sparql.length() - 2);
+        sparql.append(" .\n");
+      }
+    }
+
+    sparql.append("}");
+    return sparql.toString();
   }
 
   /**
