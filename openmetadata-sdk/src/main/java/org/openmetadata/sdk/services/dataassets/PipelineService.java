@@ -1,5 +1,8 @@
 package org.openmetadata.sdk.services.dataassets;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -12,6 +15,9 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class PipelineService extends EntityServiceBase<Pipeline> {
+  private static final ObjectMapper STATUS_OBJECT_MAPPER =
+      new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
   public PipelineService(HttpClient httpClient) {
     super(httpClient, "/v1/pipelines");
   }
@@ -47,14 +53,15 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
       encodedFqn = fqn;
     }
     String path = basePath + "/" + encodedFqn + "/status?startTs=" + startTs + "&endTs=" + endTs;
-    ResultList<PipelineStatus> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
-    return new ListResponse<>(result);
-  }
-
-  @SuppressWarnings("unchecked")
-  private Class<ResultList<PipelineStatus>> getResultListType() {
-    return (Class<ResultList<PipelineStatus>>) (Class<?>) ResultList.class;
+    String json = httpClient.executeForString(HttpMethod.GET, path, null);
+    try {
+      ResultList<PipelineStatus> result =
+          STATUS_OBJECT_MAPPER.readValue(json, new TypeReference<ResultList<PipelineStatus>>() {});
+      return new ListResponse<>(result);
+    } catch (Exception e) {
+      throw new OpenMetadataException(
+          "Failed to deserialize pipeline status list response: " + e.getMessage(), e);
+    }
   }
 
   public Pipeline addBulkPipelineStatus(String fqn, List<PipelineStatus> statuses)

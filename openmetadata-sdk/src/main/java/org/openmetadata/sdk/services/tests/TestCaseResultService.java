@@ -1,6 +1,9 @@
 package org.openmetadata.sdk.services.tests;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -19,6 +22,8 @@ import org.openmetadata.sdk.network.HttpMethod;
 public class TestCaseResultService {
 
   private static final String BASE_PATH = "/v1/dataQuality/testCases/testCaseResults";
+  private static final ObjectMapper OBJECT_MAPPER =
+      new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   private final HttpClient httpClient;
 
   public TestCaseResultService(HttpClient httpClient) {
@@ -72,9 +77,7 @@ public class TestCaseResultService {
         path += "?" + buildQueryString(queryParams);
       }
     }
-    ResultList<TestCaseResult> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
-    return new ListResponse<>(result);
+    return fetchResultList(path);
   }
 
   /**
@@ -91,9 +94,7 @@ public class TestCaseResultService {
         path += "?" + buildQueryString(queryParams);
       }
     }
-    ResultList<TestCaseResult> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
-    return new ListResponse<>(result);
+    return fetchResultList(path);
   }
 
   /**
@@ -110,9 +111,7 @@ public class TestCaseResultService {
         path += "?" + buildQueryString(queryParams);
       }
     }
-    ResultList<TestCaseResult> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
-    return new ListResponse<>(result);
+    return fetchResultList(path);
   }
 
   // ===================================================================
@@ -166,9 +165,22 @@ public class TestCaseResultService {
     return sb.toString();
   }
 
-  @SuppressWarnings("unchecked")
-  private Class<ResultList<TestCaseResult>> getResultListType() {
-    return (Class<ResultList<TestCaseResult>>) (Class<?>) ResultList.class;
+  /**
+   * Fetch a list-shaped response from {@code path} and deserialize it preserving the
+   * {@code TestCaseResult} element type. Using {@link TypeReference} (rather than passing a raw
+   * {@code ResultList.class} token to {@code httpClient.execute}) keeps Jackson from erasing the
+   * generic and binding every {@code data} element to {@code LinkedHashMap}.
+   */
+  private ListResponse<TestCaseResult> fetchResultList(String path) throws OpenMetadataException {
+    String json = httpClient.executeForString(HttpMethod.GET, path, null);
+    try {
+      ResultList<TestCaseResult> result =
+          OBJECT_MAPPER.readValue(json, new TypeReference<ResultList<TestCaseResult>>() {});
+      return new ListResponse<>(result);
+    } catch (Exception e) {
+      throw new OpenMetadataException(
+          "Failed to deserialize test case result list response: " + e.getMessage(), e);
+    }
   }
 
   // ===================================================================
