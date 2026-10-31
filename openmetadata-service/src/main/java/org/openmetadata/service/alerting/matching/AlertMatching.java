@@ -172,7 +172,18 @@ public final class AlertMatching {
     }
 
     // Every source of the alert counts, never only the first.
-    return config.getResources().contains(event.getEntityType());
+    return config.getResources().stream()
+        .anyMatch(resource -> entityTypeOfSource(resource).equals(event.getEntityType()));
+  }
+
+  // Alert sources named before their entity type was renamed. Alerts saved with these names keep
+  // their source, so it is resolved to the entity type the change events carry.
+  private static final Map<String, String> ENTITY_TYPE_OF_RENAMED_SOURCE =
+      Map.of("tagCategory", Entity.CLASSIFICATION);
+
+  /** The entity type whose change events an alert source receives. */
+  public static String entityTypeOfSource(String resource) {
+    return ENTITY_TYPE_OF_RENAMED_SOURCE.getOrDefault(resource, resource);
   }
 
   private static boolean anySourceAdmitsTheDiscussion(ChangeEvent event, FilteringRules config) {
@@ -194,7 +205,7 @@ public final class AlertMatching {
       return true;
     }
     return conversation.getEntityRef() != null
-        && resource.equalsIgnoreCase(conversation.getEntityRef().getType());
+        && entityTypeOfSource(resource).equalsIgnoreCase(conversation.getEntityRef().getType());
   }
 
   // Announcement (#25894) and task (#30559) are their own entities; conversation is the last one.
@@ -209,7 +220,7 @@ public final class AlertMatching {
       return resource.equalsIgnoreCase(thread.getType().value());
     }
     return thread.getEntityRef() != null
-        && resource.equalsIgnoreCase(thread.getEntityRef().getType());
+        && entityTypeOfSource(resource).equalsIgnoreCase(thread.getEntityRef().getType());
   }
 
   public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(

@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 
 /**
@@ -46,10 +47,6 @@ class AlertCatalogTest {
   private static final String SHIPPED_ENTRIES = "alert-catalog-shipped-entries.json";
   private static final String TWICE =
       "{\"name\":\"filterByOwner\",\"condition\":\"matchAnyOwnerName(${ownerNameList})\"}";
-  // The entity behind tag categories has been called classification for years, so an alert on
-  // this source cannot fire. It is listed so that the test stops the next one, not this one.
-  private static final List<String> OFFERED_BEFORE_THIS_TEST_EXISTED_WITH_NO_ENTITY_TYPE =
-      List.of("tagCategory");
 
   // The condition of a definition is what every saved alert that uses it was compiled from, and
   // what a rolled-back server evaluates. Changing one is a decision, so it is made in two places.
@@ -203,11 +200,11 @@ class AlertCatalogTest {
           .filter(source -> source.getKind() == AlertSourceKind.ENTITY)
           .filter(source -> !Boolean.TRUE.equals(source.getRemoved()))
           .map(AlertCatalogSource::getName)
-          .filter(name -> !entityTypes.contains(name))
+          .filter(name -> !entityTypes.contains(AlertMatching.entityTypeOfSource(name)))
           .forEach(withoutOne::add);
     }
 
-    assertEquals(OFFERED_BEFORE_THIS_TEST_EXISTED_WITH_NO_ENTITY_TYPE, withoutOne);
+    assertEquals(List.of(), withoutOne);
   }
 
   @Test
