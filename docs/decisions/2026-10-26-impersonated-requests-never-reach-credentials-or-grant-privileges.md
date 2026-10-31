@@ -1,11 +1,13 @@
 # Impersonated requests never reach a credential endpoint or grant a privilege
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-29 (user creation and restore, and
+  security configuration writes)
 - **Deciders:** Adrià Manero
 - **Guard:** `ImpersonationRestrictionFilterTest` (pins the `@IdentityEndpoint` methods of
-  `UserResource`); `BotImpersonationIT`; reviewer for new endpoints
-- **Related:** PR #36231; ADR:2026-10-21-only-admins-change-a-users-domains
+  `UserResource`, `SystemResource` and `ScimResource`); `BotImpersonationIT`; reviewer for new
+  endpoints
+- **Related:** PR #36231; PR #36591; ADR:2026-10-21-only-admins-change-a-users-domains
 
 ## Context
 
@@ -41,3 +43,16 @@ spellings of a blocked URL reached the handler without matching the list.
   impersonation is for. It cannot keep that access after the request.
 - Revisit this if impersonation ever needs to manage credentials on a user's behalf; that would
   need its own, narrower grant.
+
+## Amendment: user creation and restore, and security configuration writes (v2)
+
+- **An impersonated request does not create or restore a user, through any endpoint.**
+  `POST /v1/users`, `PUT /v1/users/import`, `PUT /v1/users/importAsync`, `PUT /v1/users/restore`
+  and `POST /v1/scim/Users` carry `@IdentityEndpoint`, and `PUT /v1/users` refuses an impersonated
+  request when the user does not exist or is soft-deleted. Updating an active user is not
+  affected.
+- **Writing the security configuration is an identity endpoint.** `PUT` and
+  `PATCH /v1/system/security/config` and `POST /v1/system/settings/source/{configType}/adopt`
+  carry `@IdentityEndpoint`. Reading and validating it are not affected.
+- `ImpersonationRestrictionFilterTest` pins the annotated methods of `SystemResource` and
+  `ScimResource` as it does for `UserResource`.
