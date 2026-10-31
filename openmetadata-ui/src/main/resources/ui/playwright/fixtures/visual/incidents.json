@@ -1,0 +1,86 @@
+{
+  "statuses": [
+    {
+      "id": "00000000-0000-4000-8500-000000000002",
+      "stateId": "00000000-0000-4000-8500-000000000001",
+      "timestamp": 1768471200000,
+      "testCaseResolutionStatusType": "New",
+      "updatedBy": {
+        "id": "00000000-0000-4000-8000-000000000999",
+        "name": "admin",
+        "fullyQualifiedName": "admin",
+        "type": "user",
+        "displayName": "Administrator"
+      },
+      "updatedAt": 1768471200000,
+      "testCaseReference": {
+        "id": "fa7bd4cf-e1f6-55d0-82ef-d987676023a5",
+        "name": "orders_id_not_null",
+        "displayName": "Order ID not null",
+        "fullyQualifiedName": "visual_warehouse.finance.public.orders.orders_id_not_null",
+        "type": "testCase"
+      },
+      "severity": "Severity2",
+      "failureSummary": "Two orders have a missing identifier.",
+      "metrics": [
+        {
+          "name": "failedRows",
+          "value": 2
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "3f4619c5-1428-5f44-aedb-51a71f08293d",
+      "name": "orders",
+      "displayName": "Orders",
+      "fullyQualifiedName": "visual_warehouse.finance.public.orders",
+      "groupBy": "table",
+      "incidentCount": 1,
+      "severity": "Severity2",
+      "status": "New",
+      "statusCounts": [
+        {
+          "status": "New",
+          "count": 1
+        }
+      ],
+      "assignees": ["admin"],
+      "assigneeReferences": [
+        {
+          "id": "00000000-0000-4000-8000-000000000999",
+          "name": "admin",
+          "fullyQualifiedName": "admin",
+          "type": "user",
+          "displayName": "Administrator"
+        }
+      ],
+      "assigneeCount": 1,
+      "firstSeen": 1768467600000,
+      "lastSeen": 1768471200000,
+      "trend": [0, 0, 0, 0, 0, 0, 0, 1],
+      "trendDirection": "Rising",
+      "tableCount": 1,
+      "tables": [
+        {
+          "id": "3f4619c5-1428-5f44-aedb-51a71f08293d",
+          "name": "orders",
+          "displayName": "Orders",
+          "fullyQualifiedName": "visual_warehouse.finance.public.orders",
+          "type": "table"
+        }
+      ],
+      "testDefinitionCount": 1,
+      "testDefinitions": [
+        {
+          "id": "cd65e093-83fc-5ae7-9782-c2d4c4a867e2",
+          "name": "columnValuesToBeNotNull",
+          "displayName": "Column Values To Be Not Null",
+          "fullyQualifiedName": "columnValuesToBeNotNull",
+          "type": "testDefinition"
+        }
+      ]
+    }
+  ]
+}

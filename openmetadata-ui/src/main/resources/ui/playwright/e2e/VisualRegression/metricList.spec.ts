@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, Route, test } from '@playwright/test';
+import { expect, Locator, Page, Route, test } from '@playwright/test';
+import { installVisualData } from '../../utils/visualData';
+import { expectVisualMenuScreenshots } from '../../utils/visualMenus';
 import {
+  expectVisualScreenshot,
   FIXED_DATE,
   gotoForScreenshot,
-  SCREENSHOT_OPTS,
+  prepareVisualTheme,
+  VisualTheme,
+  VISUAL_THEMES,
+  withFullVisualTarget,
 } from '../../utils/visualRegression';
 
 const METRIC_ID = '11111111-1111-4111-8111-111111111111';
@@ -437,6 +443,8 @@ const setupMetricRoutes = async (page: Page) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
+    // Read fixtures must not turn edit requests into successful no-ops.
+    if (request.method() !== 'GET') return route.fallback();
 
     if (path === '/api/v1/permissions/metric') {
       return fulfillJson(route, permissions);
@@ -535,7 +543,7 @@ const setupMetricRoutes = async (page: Page) => {
         paging: { limit: 10, offset: 0, total: 1 },
       });
     }
-    if (path.endsWith('/observability') && path.includes('/api/v1/metrics/')) {
+    if (/^\/api\/v1\/metrics\/[^/]+\/observability$/.test(path)) {
       return fulfillJson(route, observability);
     }
     if (path === `/api/v1/tables/name/${table.fullyQualifiedName}`) {
@@ -609,33 +617,21 @@ const setupMetricRoutes = async (page: Page) => {
       });
     }
 
-    return route.continue();
+    return route.fallback();
   });
 };
-
-const maskVolatileChrome = (page: Page) => [
-  page.locator('.Toastify__toast-container'),
-  page.locator('[data-testid="global-search-suggestions"]'),
-];
 
 const expectMetricScreenshot = async (
   page: Page,
   name: string,
-  viewport: 'desktop' | 'narrow'
-) => {
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-  });
-  await expect(page).toHaveScreenshot(`metric-${name}-${viewport}.png`, {
-    ...SCREENSHOT_OPTS,
-    mask: maskVolatileChrome(page),
-  });
-};
+  viewport: 'desktop' | 'narrow',
+  theme: VisualTheme
+) => expectVisualScreenshot(page, `metric-${name}-${viewport}`, theme);
+
 const captureMetricList = async (
   page: Page,
-  viewport: 'desktop' | 'narrow'
+  viewport: 'desktop' | 'narrow',
+  theme: VisualTheme
 ) => {
   // Each card's health pill lazy-loads behind an IntersectionObserver and renders a Skeleton
   // until its slot intersects. gotoForScreenshot's skeleton guard runs while the sidebar is
@@ -646,13 +642,21 @@ const captureMetricList = async (
   await page.addInitScript(() => {
     Reflect.deleteProperty(window, 'IntersectionObserver');
   });
+  await installVisualData(page);
   await setupMetricRoutes(page);
 
   await gotoForScreenshot(page, '/metrics');
   await expect(page.getByTestId('metric-list-page')).toBeVisible();
   if (viewport === 'narrow') {
-    await page.getByTestId('sidebar-toggle').click();
-    await expect(page.getByTestId('left-sidebar')).toHaveCSS('width', '72px');
+    // The AI shell collapses its main rail at this width, while the route's
+    // secondary panel still needs closing to leave room for the metric cards.
+    const sidebar = page.getByRole('complementary');
+    await sidebar
+      .getByRole('button', { name: 'Collapse', exact: true })
+      .click();
+    await expect(
+      sidebar.getByRole('button', { name: 'Collapse', exact: true })
+    ).toHaveCount(0);
   }
   await page.getByRole('radio', { name: 'Card' }).click();
   const metricCardView = page.getByTestId('metric-card-view');
@@ -661,15 +665,407 @@ const captureMetricList = async (
   await expect(
     metricCardView.getByText('Gross Margin', { exact: true })
   ).toBeVisible();
-  await expectMetricScreenshot(page, 'list', viewport);
+  await expectMetricScreenshot(page, 'list', viewport, theme);
 };
 
-test('Metric list matches desktop baseline', async ({ page }) => {
-  await page.setViewportSize({ height: 900, width: 1440 });
-  await captureMetricList(page, 'desktop');
-});
+for (const theme of VISUAL_THEMES) {
+  for (const viewport of ['desktop', 'narrow'] as const) {
+    test(`Metric list ${viewport} ${theme}`, async ({ page }) => {
+      await page.setViewportSize({
+        height: 900,
+        width: viewport === 'narrow' ? 390 : 1440,
+      });
+      await prepareVisualTheme(page, theme);
+      await captureMetricList(page, viewport, theme);
+    });
+  }
+}
 
-test('Metric list matches narrow baseline', async ({ page }) => {
-  await page.setViewportSize({ height: 900, width: 390 });
-  await captureMetricList(page, 'narrow');
-});
+const METRIC_LIST_SCENES = [
+  'table',
+  'collapsed-group',
+  'status-menu',
+  'actions-menu',
+  'columns-menu',
+  'selected',
+  'delete-confirmation',
+  'empty',
+  'no-results',
+  'load-error',
+] as const;
+const METRIC_CREATE_MENUS: Record<string, string> = {
+  'create-type-menu': 'metric-type-select',
+  'create-granularity-menu': 'granularity-select',
+  'create-unit-menu': 'unit-of-measurement-select',
+  'create-language-menu': 'language-select',
+};
+const METRIC_CREATE_PICKERS: Record<string, string> = {
+  'create-parent-picker': 'Parent Metric',
+  'create-owner-picker': 'Owners',
+  'create-reviewer-picker': 'Reviewers',
+  'create-domain-picker': 'Domains',
+  'create-related-picker': 'Related Metrics',
+};
+const METRIC_DEFINITION_MENUS: Record<string, string> = {
+  'definition-type-menu': 'metric-definition-type-select',
+  'definition-granularity-menu': 'metric-definition-granularity-select',
+  'definition-unit-menu': 'metric-definition-unit-select',
+  'definition-language-menu': 'metric-definition-language-select',
+};
+
+for (const scene of [
+  ...METRIC_LIST_SCENES,
+  ...Object.keys(METRIC_CREATE_MENUS),
+  ...Object.keys(METRIC_CREATE_PICKERS),
+  'create-custom-unit',
+  'create-validation',
+  'detail',
+  'assets',
+  'asset-picker',
+  'hierarchy',
+  'definition',
+  'definition-edit',
+  ...Object.keys(METRIC_DEFINITION_MENUS),
+  'definition-custom-unit',
+  'definition-validation',
+  'definition-save-error',
+  'related-metrics-edit',
+  'child-metric',
+]) {
+  for (const theme of VISUAL_THEMES) {
+    test(`Metric interaction ${scene} ${theme}`, async ({ page }) => {
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      await prepareVisualTheme(page, theme);
+      await installVisualData(page);
+      await setupMetricRoutes(page);
+      // Leaf overrides must leave unmodeled child endpoints to the strict router.
+      await page.route(
+        (url) => url.pathname === '/api/v1/search/query',
+        (route) => {
+          if (!route.request().url().includes(TABLE_ID))
+            return route.fallback();
+          return route.fulfill({
+            json: {
+              hits: {
+                hits: [
+                  {
+                    _id: TABLE_ID,
+                    _index: 'table_search_index',
+                    _source: { ...table, entityType: 'table' },
+                  },
+                ],
+                total: { value: 1, relation: 'eq' },
+              },
+              aggregations: {},
+              took: 1,
+            },
+          });
+        }
+      );
+      const isList = (METRIC_LIST_SCENES as readonly string[]).includes(scene);
+      const isCreate = scene.startsWith('create-');
+      const detail = !isList && !isCreate;
+      const id = `metric-state-${scene}`;
+      const failure = 'Unable to load metrics in the visual catalog.';
+      if (['empty', 'no-results', 'load-error'].includes(scene)) {
+        await page.route(
+          (url) => url.pathname === '/api/v1/metrics/hierarchy',
+          (route) => {
+            if (
+              scene === 'no-results' &&
+              !new URL(route.request().url()).searchParams.get('q')
+            )
+              return route.fallback();
+            return route.fulfill(
+              scene === 'load-error'
+                ? { status: 503, json: { message: failure } }
+                : {
+                    json: {
+                      data: [],
+                      paging: { limit: 20, offset: 0, total: 0 },
+                    },
+                  }
+            );
+          }
+        );
+      }
+      await gotoForScreenshot(
+        page,
+        detail ? `/metric/${METRIC_FQN}` : '/metrics',
+        {
+          readyTestId: detail
+            ? 'entity-header-display-name'
+            : 'metric-list-page',
+        }
+      );
+      let target: Locator | undefined;
+      let captureFrame = false;
+      let captured = false;
+      let allowErrorFeedback = false;
+      const captureMenu = async () => {
+        const menu = page.getByRole('listbox');
+        const popup = page.locator('[data-placement]').filter({ has: menu });
+        await expectVisualMenuScreenshots(page, id, theme, menu, popup);
+        captured = true;
+      };
+
+      if (isList) {
+        if (scene === 'load-error') {
+          await expect(page.getByTestId('metric-list-error')).toContainText(
+            failure
+          );
+          await expect(page.getByRole('alertdialog')).toContainText(failure);
+          allowErrorFeedback = true;
+        } else if (scene === 'empty') {
+          await expect(
+            page.getByRole('button', { name: 'New Metric', exact: true })
+          ).toBeVisible();
+        } else {
+          await page.getByTestId('metric-table-view-button').click();
+          const table = page.getByTestId('metric-list-table');
+          await expect(
+            table.getByRole('rowheader', { name: /Gross Margin/ })
+          ).toBeVisible();
+          if (scene === 'no-results') {
+            await page
+              .getByRole('textbox', { name: 'Search Metrics', exact: true })
+              .fill('zz_no_such_metric');
+            await expect(
+              page
+                .getByTestId('metric-list-page')
+                .locator('[aria-live="polite"]')
+            ).toHaveText('0 Results');
+            await expect(
+              table.getByRole('rowheader', { name: /Gross Margin/ })
+            ).toHaveCount(0);
+            await expect(
+              table.getByText('No matching results', { exact: true })
+            ).toBeVisible();
+          }
+          if (scene === 'collapsed-group') {
+            const group = page.getByTestId('metric-group-profitability');
+            await group.click();
+            await expect(group).toHaveAttribute('aria-expanded', 'false');
+            await expect(
+              table.getByRole('rowheader', { name: /Gross Margin/ })
+            ).toHaveCount(0);
+          }
+          if (scene === 'status-menu') {
+            await page
+              .getByRole('button', { name: 'Status', exact: true })
+              .click();
+            await expect(page.getByRole('menu')).toBeVisible();
+          }
+          if (scene === 'actions-menu') {
+            await page.getByTestId('metric-actions').click();
+            await expect(page.getByRole('menu')).toBeVisible();
+          }
+          if (scene === 'columns-menu') {
+            const trigger = page.getByRole('button', {
+              name: 'Customize',
+              exact: true,
+            });
+            await trigger.click();
+            await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+          }
+          if (['selected', 'delete-confirmation'].includes(scene)) {
+            // Selection belongs to the grid row's keyboard handler.
+            const row = table.getByRole('row').filter({
+              has: page.getByRole('rowheader', { name: /Gross Margin/ }),
+            });
+            await row.press('Space');
+            await expect(row.getByRole('checkbox')).toBeChecked();
+            await expect(
+              page.getByTestId('clear-metric-selection')
+            ).toBeVisible();
+            if (scene === 'delete-confirmation') {
+              await page.getByTestId('bulk-delete-metric').click();
+              await expect(
+                page.getByRole('dialog', { name: 'Delete Metrics' })
+              ).toBeVisible();
+            }
+          }
+        }
+      } else if (isCreate || scene === 'child-metric') {
+        await page
+          .getByTestId(isCreate ? 'create-metric' : 'add-child-metric')
+          .click();
+        const form = page.getByTestId('add-metric-container');
+        await expect(form.getByTestId('metric-code')).toBeVisible();
+        target = form;
+        captureFrame = true;
+        if (scene === 'child-metric')
+          await expect(
+            page.getByTestId('parent-metric-inherited')
+          ).toContainText(METRIC_FQN);
+        await withFullVisualTarget(page, form, async () => {
+          if (METRIC_CREATE_MENUS[scene]) {
+            await form
+              .getByTestId(METRIC_CREATE_MENUS[scene])
+              .getByRole('button')
+              .click();
+            await captureMenu();
+          }
+          if (METRIC_CREATE_PICKERS[scene]) {
+            await form
+              .getByRole('combobox', {
+                name: METRIC_CREATE_PICKERS[scene],
+                exact: true,
+              })
+              .click();
+            await captureMenu();
+          }
+          if (scene === 'create-custom-unit') {
+            await form
+              .getByTestId('unit-of-measurement-select')
+              .getByRole('button')
+              .click();
+            await page
+              .getByRole('option', { name: 'Other', exact: true })
+              .click();
+            await expect(form.getByTestId('custom-unit')).toBeVisible();
+          }
+          if (scene === 'create-validation') {
+            await page.getByTestId('create-button').click();
+            await expect(form).toContainText('Name is required');
+            await expect(form).toContainText('Code is required');
+          }
+        });
+      } else {
+        await expect(
+          page.getByTestId('entity-header-display-name')
+        ).toContainText('Gross Margin');
+        await expect(page.getByTestId('metric-expression-panel')).toContainText(
+          metric.metricExpression.code
+        );
+        if (scene === 'assets') {
+          await page.getByRole('tab', { name: /^Assets\b/ }).click();
+          await expect(
+            page
+              .getByTestId('warehouse-fact_orders')
+              .getByRole('link', { name: 'Finance Orders', exact: true })
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('entity-summary-panel-container')
+          ).toContainText(table.description);
+        }
+        if (scene === 'asset-picker') {
+          await page.getByTestId('metric-add-assets-button').click();
+          await expect(page.getByRole('dialog')).toBeVisible();
+        }
+        if (scene === 'hierarchy') {
+          target = page.getByTestId('metric-hierarchy-card');
+          await expect(
+            target.getByTestId('metric-tree-child-child-americas')
+          ).toBeVisible();
+          await expect(
+            target.getByTestId('metric-tree-child-child-emea')
+          ).toBeVisible();
+        }
+        if (scene === 'definition')
+          target = page.getByTestId('metric-definition-card');
+        if (scene === 'related-metrics-edit') {
+          await page
+            .getByRole('button', { name: 'Edit Related Metrics', exact: true })
+            .click();
+          const search = page.getByRole('textbox', {
+            name: 'Search Related Metrics',
+            exact: true,
+          });
+          const selected = page.getByRole('checkbox', {
+            name: 'Net Revenue',
+            exact: true,
+          });
+          // React Aria hides the native checkbox; its label is the painted control.
+          const label = page.getByText('Net Revenue', { exact: true });
+          await label.scrollIntoViewIfNeeded();
+          await expect(selected).toBeChecked();
+          await expect(label).toBeInViewport({ ratio: 1 });
+          await expect(search).toBeInViewport({ ratio: 1 });
+        }
+        if (scene.startsWith('definition-')) {
+          await page.getByTestId('metric-definition-edit').click();
+          const dialog = page.getByTestId('metric-definition-edit-dialog');
+          await expect(
+            dialog.getByRole('textbox', { name: /^Code\b/ })
+          ).toHaveValue(metric.metricExpression.code);
+          // The content pane caps its height independently of the outer dialog.
+          target = dialog.locator('[class*="max-h-[70vh]"]');
+          captureFrame = true;
+          await withFullVisualTarget(page, target, async () => {
+            if (METRIC_DEFINITION_MENUS[scene]) {
+              await dialog
+                .getByTestId(METRIC_DEFINITION_MENUS[scene])
+                .getByRole('button')
+                .click();
+              await captureMenu();
+            }
+            if (
+              ['definition-custom-unit', 'definition-validation'].includes(
+                scene
+              )
+            ) {
+              await dialog
+                .getByTestId('metric-definition-unit-select')
+                .getByRole('button')
+                .click();
+              await page
+                .getByRole('option', { name: 'Other', exact: true })
+                .click();
+              await expect(
+                dialog.getByTestId('metric-definition-custom-unit')
+              ).toBeVisible();
+            }
+            if (scene === 'definition-validation') {
+              await dialog.getByRole('textbox', { name: /^Code\b/ }).fill('');
+              await dialog.getByTestId('metric-definition-save').click();
+              await expect(dialog).toContainText('Code is required');
+              await expect(dialog).toContainText(
+                'Measurement Unit is required'
+              );
+            }
+            if (scene === 'definition-save-error') {
+              await dialog
+                .getByRole('textbox', { name: /^Code\b/ })
+                .fill('SUM(revenue)');
+              await dialog.getByTestId('metric-definition-save').click();
+              await expect(page.getByRole('alertdialog')).toContainText(
+                'The visual fixture service is unavailable.'
+              );
+              // The detail updater reports rejection through its global notification.
+              allowErrorFeedback = true;
+              await expectVisualScreenshot(page, id, theme, {
+                target: page.getByRole('alertdialog'),
+                allowErrorFeedback,
+                maxDiffPixelRatio: 0,
+              });
+              await expectVisualScreenshot(page, `${id}-frame`, theme, {
+                allowErrorFeedback,
+              });
+              captured = true;
+            }
+          });
+        }
+      }
+      if (!captured) {
+        const capture = () =>
+          expectVisualScreenshot(page, id, theme, {
+            target,
+            allowErrorFeedback,
+            ...(target ? { maxDiffPixelRatio: 0 } : {}),
+          });
+        if (target) await withFullVisualTarget(page, target, capture);
+        else await capture();
+        if (captureFrame)
+          await expectVisualScreenshot(page, `${id}-frame`, theme, {
+            allowErrorFeedback,
+          });
+      }
+      expect(
+        errors,
+        'Metric interactions must render without runtime errors'
+      ).toEqual([]);
+    });
+  }
+}

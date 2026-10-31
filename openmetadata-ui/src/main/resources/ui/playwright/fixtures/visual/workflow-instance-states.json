@@ -1,0 +1,61 @@
+[
+  {
+    "id": "f6157024-f932-5ac6-aedb-e5c7d533674f",
+    "workflowInstanceId": "5f912706-74fc-592f-9be3-62b7d6682b43",
+    "workflowInstanceExecutionId": "a87cc97a-d7f8-53ba-9564-d7ee0eac55ed",
+    "workflowDefinitionId": "4cf1f92c-2d00-5c68-9a8c-5b2f10e64670",
+    "timestamp": 1768467600000,
+    "stage": {
+      "name": "GlossaryTermCreated",
+      "displayName": "Glossary Term Created or Updated",
+      "startedAt": 1768467600000,
+      "tasks": [],
+      "endedAt": 1768467615000
+    },
+    "status": "FINISHED"
+  },
+  {
+    "id": "0f2534d0-4cd4-5d06-a6e4-a43030817cdb",
+    "workflowInstanceId": "5f912706-74fc-592f-9be3-62b7d6682b43",
+    "workflowInstanceExecutionId": "a87cc97a-d7f8-53ba-9564-d7ee0eac55ed",
+    "workflowDefinitionId": "4cf1f92c-2d00-5c68-9a8c-5b2f10e64670",
+    "timestamp": 1768467620000,
+    "stage": {
+      "name": "ApproveGlossaryTerm",
+      "displayName": "Review",
+      "startedAt": 1768467620000,
+      "tasks": [],
+      "endedAt": 1768467635000
+    },
+    "status": "FINISHED"
+  },
+  {
+    "id": "4d7d7d18-3ec3-5843-836c-67194e3366a1",
+    "workflowInstanceId": "bb9a5eb9-a160-5938-bc32-843b8d66c928",
+    "workflowInstanceExecutionId": "51c8ead0-c10b-5d6c-89d2-323ff8aacc98",
+    "workflowDefinitionId": "4cf1f92c-2d00-5c68-9a8c-5b2f10e64670",
+    "timestamp": 1768467720000,
+    "stage": {
+      "name": "GlossaryTermCreated",
+      "displayName": "Glossary Term Created or Updated",
+      "startedAt": 1768467720000,
+      "tasks": [],
+      "endedAt": 1768467735000
+    },
+    "status": "FINISHED"
+  },
+  {
+    "id": "a64b78b9-3f3b-582d-9775-af30b0272ffa",
+    "workflowInstanceId": "bb9a5eb9-a160-5938-bc32-843b8d66c928",
+    "workflowInstanceExecutionId": "51c8ead0-c10b-5d6c-89d2-323ff8aacc98",
+    "workflowDefinitionId": "4cf1f92c-2d00-5c68-9a8c-5b2f10e64670",
+    "timestamp": 1768467740000,
+    "stage": {
+      "name": "ApproveGlossaryTerm",
+      "displayName": "Review",
+      "startedAt": 1768467740000,
+      "tasks": []
+    },
+    "status": "RUNNING"
+  }
+]

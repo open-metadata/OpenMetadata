@@ -252,6 +252,7 @@
     "@types/use-analytics": "^0.0.3",
     "@typescript-eslint/eslint-plugin": "^8.71.1",
     "@typescript-eslint/parser": "^8.71.1",
+    "@untitledui/file-icons": "^0.0.9",
     "@vitejs/plugin-react-swc": "^4.1.0",
     "babel-eslint": "^10.1.0",
     "babel-jest": "^29.7.0",

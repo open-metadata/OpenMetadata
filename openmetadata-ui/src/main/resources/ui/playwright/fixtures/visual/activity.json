@@ -1,0 +1,27 @@
+[
+  {
+    "id": "00000000-0000-4000-8400-000000000001",
+    "eventType": "DescriptionUpdated",
+    "entity": {
+      "id": "3f4619c5-1428-5f44-aedb-51a71f08293d",
+      "name": "orders",
+      "displayName": "Orders",
+      "fullyQualifiedName": "visual_warehouse.finance.public.orders",
+      "type": "table"
+    },
+    "about": "<#E::table::visual_warehouse.finance.public.orders::description>",
+    "actor": {
+      "id": "00000000-0000-4000-8000-000000000999",
+      "name": "admin",
+      "fullyQualifiedName": "admin",
+      "type": "user",
+      "displayName": "Administrator"
+    },
+    "timestamp": 1768471200000,
+    "summary": "Updated the orders description",
+    "fieldName": "description",
+    "oldValue": "Orders from the finance warehouse.",
+    "newValue": "Completed orders used for certified finance reporting.",
+    "reactions": []
+  }
+]
