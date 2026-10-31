@@ -13,10 +13,12 @@
 
 package org.openmetadata.service.migration.postgres.v208;
 
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
@@ -27,6 +29,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ConnectionSecretsEncryptionMigration.STEP_NAME,
+        () -> ConnectionSecretsEncryptionMigration.encryptConnectionSecrets(handle, POSTGRES));
     runOnce(
         migrationDAO,
         getVersion(),
