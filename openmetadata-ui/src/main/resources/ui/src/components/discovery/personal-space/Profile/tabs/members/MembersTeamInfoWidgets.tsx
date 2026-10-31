@@ -575,7 +575,7 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
 
   return (
     <Box
-      className="tw:flex-wrap tw:px-8 tw:pb-6"
+      className="tw:flex-wrap tw:px-8"
       data-testid="team-info-widgets"
       direction="row"
       gap={4}>
