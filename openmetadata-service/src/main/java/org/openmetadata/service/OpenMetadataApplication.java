@@ -16,6 +16,7 @@ package org.openmetadata.service;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -912,10 +913,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               config.getJwtTokenConfiguration());
 
       // Re-register authenticator with new config
-      registerAuthenticator(SecurityConfigurationManager.getInstance());
+      AuthenticatorHandler reloadedAuthenticator = authenticatorForCurrentProvider();
       reRegisterAuthorizer(config, environment);
       config.setAuthenticationConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
-      authenticatorHandler.init(config);
+      initializeThenPublish(reloadedAuthenticator, config);
+      authenticatorHandler = reloadedAuthenticator;
 
       // Reinitialize SAML settings if SAML is enabled
       if (SecurityConfigurationManager.getCurrentAuthConfig() != null
@@ -933,6 +935,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Rollback is handled internally by SecurityConfigurationManager
       throw new RuntimeException("Authentication system reinitialization failed", e);
     }
+  }
+
+  /**
+   * Registers an authenticator a reload built only once it is initialized, since logins read the
+   * registered one on every request. One that fails to start is never registered, so logins keep
+   * the previous authenticator while the reload rolls back.
+   */
+  @VisibleForTesting
+  static void initializeThenPublish(
+      AuthenticatorHandler authenticator, OpenMetadataApplicationConfig config) {
+    authenticator.init(config);
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticator);
   }
 
   /**
@@ -1054,16 +1068,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {
-    AuthenticationConfiguration authenticationConfiguration =
-        SecurityConfigurationManager.getCurrentAuthConfig();
-    switch (authenticationConfiguration.getProvider()) {
-      case BASIC -> authenticatorHandler = new BasicAuthenticator();
-      case LDAP -> authenticatorHandler = new LdapAuthenticator();
-      default ->
-      // For all other types, google, okta etc. auth is handled externally
-      authenticatorHandler = new NoopAuthenticator();
-    }
+    authenticatorHandler = authenticatorForCurrentProvider();
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticatorHandler);
+  }
+
+  private static AuthenticatorHandler authenticatorForCurrentProvider() {
+    return switch (SecurityConfigurationManager.getCurrentAuthConfig().getProvider()) {
+      case BASIC -> new BasicAuthenticator();
+      case LDAP -> new LdapAuthenticator();
+        // For all other types, google, okta etc. auth is handled externally
+      default -> new NoopAuthenticator();
+    };
   }
 
   private void registerLimits(OpenMetadataApplicationConfig serverConfig)
