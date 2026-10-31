@@ -264,6 +264,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public class ContextFileUpdater extends EntityUpdater {
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
+      keepStoredContent(original, updated);
+    }
+
+    private static void keepStoredContent(ContextFile original, ContextFile updated) {
+      updated.setAssetId(original.getAssetId());
+      updated.setHeadContentId(original.getHeadContentId());
     }
 
     @Override

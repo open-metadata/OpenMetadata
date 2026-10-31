@@ -53,11 +53,15 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
@@ -82,6 +86,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 class DriveFileUploadIT {
 
   private static final String S3_BUCKET = "test-bucket";
+  private static final String FILE_PATH = "v1/contextCenter/drive/files";
   private static final Duration EXTRACTION_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration SEARCH_VISIBLE_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
@@ -909,6 +914,105 @@ class DriveFileUploadIT {
         InputStream downloaded = downloadResponse.readEntity(InputStream.class)) {
       assertEquals(200, downloadResponse.getStatus());
       assertArrayEquals(content, downloaded.readAllBytes());
+    }
+  }
+
+  @Test
+  void testMetadataUpdatesPreserveUploadedContent(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    byte[] content = readFixture("/drive/sample-notes.txt");
+    ContextFile uploaded;
+    try (Response response = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Metadata edits")) {
+      uploaded = readCreatedContextFile(response, "Upload failed");
+    }
+    assertNotNull(uploaded.getAssetId());
+    assertNotNull(uploaded.getHeadContentId());
+
+    ContextFile updated =
+        rest.update(
+            FILE_PATH,
+            new CreateContextFile()
+                .withName(uploaded.getName())
+                .withDescription("Updated metadata"),
+            ContextFile.class);
+    assertContentReferences(uploaded, updated);
+    assertContentReferences(uploaded, fetchFile(uploaded.getId()));
+
+    String original = JsonUtils.pojoToJson(updated);
+    updated.withAssetId(null).withHeadContentId(null).withDescription("Cleared metadata fields");
+    updated = rest.patch(FILE_PATH, updated.getId(), original, updated, ContextFile.class);
+    assertContentReferences(uploaded, updated);
+    assertContentReferences(uploaded, fetchFile(uploaded.getId()));
+    assertArrayEquals(content, downloadContent(rest, uploaded.getId()));
+  }
+
+  @Test
+  void testMetadataOnlyFileKeepsIndependentContent(TestNamespace ns) throws Exception {
+    RestClient admin = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "metadata-owner");
+    RestClient ownerRest = RestClient.forUser(owner.getEmail(), new String[] {});
+    byte[] content = readFixture("/drive/sample-notes.txt");
+    ContextFile uploaded;
+    try (Response response = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Stored content")) {
+      uploaded = readCreatedContextFile(response, "Upload failed");
+    }
+    String original = JsonUtils.pojoToJson(uploaded);
+    uploaded.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    uploaded = admin.patch(FILE_PATH, uploaded.getId(), original, uploaded, ContextFile.class);
+    try (Response response = ownerRest.rawGet(FILE_PATH + "/" + uploaded.getId() + "/download")) {
+      assertEquals(403, response.getStatus());
+    }
+    try (Response response =
+        ownerRest.rawDelete(FILE_PATH + "/" + uploaded.getId() + "?hardDelete=true")) {
+      assertEquals(403, response.getStatus());
+    }
+
+    ContextFile metadata =
+        admin.create(
+            FILE_PATH,
+            new CreateContextFile()
+                .withName(ns.prefix("metadata-only"))
+                .withOwners(List.of(owner.getEntityReference())),
+            ContextFile.class);
+    original = JsonUtils.pojoToJson(metadata);
+    metadata.withAssetId(uploaded.getAssetId()).withDescription("First metadata edit");
+    metadata = ownerRest.patch(FILE_PATH, metadata.getId(), original, metadata, ContextFile.class);
+    assertNull(metadata.getAssetId());
+    assertNull(fetchFile(metadata.getId()).getAssetId());
+
+    original = JsonUtils.pojoToJson(metadata);
+    metadata.withHeadContentId(uploaded.getHeadContentId()).withDescription("Second metadata edit");
+    metadata = ownerRest.patch(FILE_PATH, metadata.getId(), original, metadata, ContextFile.class);
+    assertNull(metadata.getHeadContentId());
+    assertNull(fetchFile(metadata.getId()).getHeadContentId());
+    try (Response response = ownerRest.rawGet(FILE_PATH + "/" + metadata.getId() + "/download")) {
+      assertEquals(404, response.getStatus());
+    }
+
+    UUID metadataId = metadata.getId();
+    ownerRest.hardDelete(FILE_PATH, metadataId);
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              try (Response response =
+                  admin.rawGet(FILE_PATH + "/" + metadataId + "?include=all")) {
+                assertEquals(404, response.getStatus());
+              }
+            });
+    assertArrayEquals(content, downloadContent(admin, uploaded.getId()));
+    assertStoredInS3(uploaded.getAssetId(), content);
+  }
+
+  private void assertContentReferences(ContextFile expected, ContextFile actual) {
+    assertEquals(expected.getAssetId(), actual.getAssetId());
+    assertEquals(expected.getHeadContentId(), actual.getHeadContentId());
+  }
+
+  private byte[] downloadContent(RestClient rest, UUID id) {
+    try (Response response = rest.rawGet(FILE_PATH + "/" + id + "/download?redirect=false")) {
+      assertEquals(200, response.getStatus());
+      return response.readEntity(byte[].class);
     }
   }
 
