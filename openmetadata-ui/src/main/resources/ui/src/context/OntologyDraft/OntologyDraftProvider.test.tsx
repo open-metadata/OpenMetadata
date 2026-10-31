@@ -1,0 +1,189 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Button, Input } from '@openmetadata/ui-core-components';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useState } from 'react';
+import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom';
+import {
+  useOntologyDirtyForm,
+  useOntologyDraftGuard,
+} from '../../hooks/governance/ontology/useOntologyDraftGuard';
+import OntologyDraftProvider from './OntologyDraftProvider';
+
+const Editor = () => {
+  const [draft, setDraft] = useState('');
+  const [selected, setSelected] = useState('Customer');
+  const guard = useOntologyDraftGuard();
+  const markSaved = useOntologyDirtyForm(Boolean(draft));
+
+  return (
+    <>
+      <Input aria-label="Description" value={draft} onChange={setDraft} />
+      <Button
+        onPress={() =>
+          guard(() => {
+            setSelected('Person');
+            setDraft('');
+          })
+        }>
+        Select person
+      </Button>
+      <Button
+        onPress={() => {
+          markSaved();
+          setDraft('');
+        }}>
+        Save
+      </Button>
+      <output>{selected}</output>
+    </>
+  );
+};
+
+it('keeps edits on cancel and changes selection only after discard', () => {
+  render(
+    <MemoryRouter>
+      <OntologyDraftProvider>
+        <Editor />
+      </OntologyDraftProvider>
+    </MemoryRouter>
+  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), {
+    target: { value: 'Unsaved description' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Select person' }));
+
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+  expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue(
+    'Unsaved description'
+  );
+  expect(screen.getByText('Customer')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Select person' }));
+  fireEvent.click(screen.getByRole('button', { name: 'label.discard' }));
+
+  expect(screen.getByText('Person')).toBeInTheDocument();
+});
+
+it('does not ask to discard after a successful save', () => {
+  render(
+    <MemoryRouter>
+      <OntologyDraftProvider>
+        <Editor />
+      </OntologyDraftProvider>
+    </MemoryRouter>
+  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), {
+    target: { value: 'Saved description' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Select person' }));
+
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.getByText('Person')).toBeInTheDocument();
+});
+
+const RouteEditor = () => {
+  const location = useLocation();
+
+  return (
+    <>
+      <Editor />
+      <output data-testid="route">{location.pathname + location.search}</output>
+    </>
+  );
+};
+
+const NestedEditor = () => {
+  const [open, setOpen] = useState(true);
+  const guard = useOntologyDraftGuard();
+
+  return (
+    <>
+      <Editor />
+      {open && (
+        <Button onPress={() => guard(() => setOpen(false))}>
+          Close nested editor
+        </Button>
+      )}
+    </>
+  );
+};
+
+it('keeps guarding an editor that remains mounted after another surface closes', () => {
+  render(
+    <MemoryRouter>
+      <OntologyDraftProvider>
+        <NestedEditor />
+      </OntologyDraftProvider>
+    </MemoryRouter>
+  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), {
+    target: { value: 'Still unsaved' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Close nested editor' }));
+  fireEvent.click(screen.getByRole('button', { name: 'label.discard' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Select person' }));
+
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('Still unsaved')).toBeInTheDocument();
+});
+
+it('preserves edits and history when browser Back changes ontology query parameters', async () => {
+  window.history.replaceState(
+    { idx: 0 },
+    '',
+    '/governance/ontology?ontology=first'
+  );
+  window.history.pushState(
+    { idx: 1 },
+    '',
+    '/governance/ontology?ontology=second'
+  );
+  const view = render(
+    <BrowserRouter>
+      <OntologyDraftProvider>
+        <RouteEditor />
+      </OntologyDraftProvider>
+    </BrowserRouter>
+  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), {
+    target: { value: 'Keep this draft' },
+  });
+  act(() => window.history.back());
+  await screen.findByRole('dialog');
+  fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+  await waitFor(() => expect(window.location.search).toBe('?ontology=second'));
+
+  expect(screen.getByTestId('route')).toHaveTextContent('?ontology=second');
+  expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue(
+    'Keep this draft'
+  );
+
+  act(() => window.history.back());
+  await screen.findByRole('dialog');
+  fireEvent.click(screen.getByRole('button', { name: 'label.discard' }));
+  await waitFor(() =>
+    expect(screen.getByTestId('route')).toHaveTextContent('?ontology=first')
+  );
+  view.unmount();
+});

@@ -193,6 +193,11 @@ it('retains a completed atomic plan and only retries model reconciliation after 
     post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
 
   expect(creates()).toHaveLength(1);
+
+  const owners = [{ id: 'u', type: 'user', name: 'editor' }];
+
+  expect(creates()[0][1].owners).toEqual(owners);
+  expect(creates()[0][1].operations[0].concept.owners).toEqual(owners);
   expect(creates()[0][1]).toMatchObject({
     baseWorkingRevision: 7,
     operations: [

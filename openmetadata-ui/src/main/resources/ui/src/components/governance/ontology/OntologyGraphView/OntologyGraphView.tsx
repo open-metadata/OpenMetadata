@@ -42,6 +42,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
+import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
@@ -375,8 +376,16 @@ const OntologyGraphView = ({
   const selectedId = onSelectedConceptChange
     ? selectedConceptId
     : localSelectedId;
-  const setSelectedId = onSelectedConceptChange ?? setLocalSelectedId;
   const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
+  const guard = useOntologyDraftGuard();
+  const setSelectedId = useCallback(
+    (id?: string) =>
+      guard(() => {
+        setConceptEditor(undefined);
+        (onSelectedConceptChange ?? setLocalSelectedId)(id);
+      }),
+    [guard, onSelectedConceptChange]
+  );
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology);
   const treeIndex = useMemo(
@@ -741,7 +750,7 @@ const OntologyGraphView = ({
             creationPositions.current =
               graphRef.current?.getNodePositions() ?? {};
           }}
-          onClose={() => setConceptEditor(undefined)}
+          onClose={() => guard(() => setConceptEditor(undefined))}
           onCreated={async (iri) => {
             const refreshed = await refetch();
             if (refreshed.error || !refreshed.data) {
@@ -792,7 +801,7 @@ const OntologyGraphView = ({
             icon={XClose}
             size="sm"
             tooltip={t('label.close')}
-            onClick={() => setConceptEditor(undefined)}
+            onClick={() => guard(() => setConceptEditor(undefined))}
           />
         </Box>
         <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-5">

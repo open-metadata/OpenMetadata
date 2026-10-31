@@ -26,6 +26,10 @@ import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import {
+  useOntologyDirtyForm,
+  useOntologyDraftGuard,
+} from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { createOntology } from '../../../../rest/ontologyAPI';
 import { fetchRdfConfig } from '../../../../rest/rdfAPI';
@@ -56,6 +60,10 @@ const OntologyCreateDialog = ({
   const [prefixOverride, setPrefixOverride] = useState('');
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const guard = useOntologyDraftGuard();
+  const markSaved = useOntologyDirtyForm(
+    [name, prefixOverride, description].some(Boolean)
+  );
   const status = useQuery({
     queryKey: [RDF_STATUS_QUERY_KEY],
     queryFn: fetchRdfConfig,
@@ -94,7 +102,7 @@ const OntologyCreateDialog = ({
 
   const handleClose = () => {
     if (!isSaving) {
-      onClose();
+      guard(onClose);
     }
   };
 
@@ -104,14 +112,14 @@ const OntologyCreateDialog = ({
     }
     setIsSaving(true);
     try {
-      onCreated(
-        await createOntology(
-          newOntologyRequest(
-            { name: name.trim(), description, baseUri, prefix },
-            currentUserId
-          )
+      const saved = await createOntology(
+        newOntologyRequest(
+          { name: name.trim(), description, baseUri, prefix },
+          currentUserId
         )
       );
+      markSaved();
+      onCreated(saved);
     } catch (error) {
       showErrorToast(
         isAxiosError(error) ? error : t('server.unexpected-error')

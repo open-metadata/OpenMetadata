@@ -19,7 +19,10 @@ const NO_PENDING_PATH = null;
 const isInternalLink = (
   href: string | null,
   currentPath: string
-): href is string => Boolean(href?.startsWith('/') && href !== currentPath);
+): href is string =>
+  Boolean(
+    href?.startsWith('/') && !href.startsWith('//') && href !== currentPath
+  );
 
 const blockAndShowModal = (
   pendingPath: string,
@@ -30,19 +33,9 @@ const blockAndShowModal = (
   setShowModal(true);
 };
 
-const proceedToPendingPath = (
-  pendingRef: React.MutableRefObject<string | null>,
-  navigate: (path: string) => void
-) => {
-  const path = pendingRef.current;
-  pendingRef.current = NO_PENDING_PATH;
-  if (path) {
-    navigate(path);
-  }
-};
-
 const preventUnload = (e: BeforeUnloadEvent) => {
   e.preventDefault();
+  e.returnValue = '';
 };
 
 export interface UseWorkflowNavigationBlockOptions {
@@ -60,26 +53,83 @@ export const useWorkflowNavigationBlock = ({
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const pendingPathRef = useRef<string | null>(NO_PENDING_PATH);
 
-  const handlePopState = useCallback(() => {
-    const nextPath = globalThis.location.pathname;
-    if (nextPath === location.pathname) {
-      return;
-    }
+  const currentEntry = useRef(globalThis.history.state);
+  const pendingDelta = useRef<number>();
+  const restoring = useRef(false);
+  const allowPop = useRef(false);
+  const currentPath = `${location.pathname}${location.search}${location.hash}`;
 
-    globalThis.history.replaceState(
-      null,
-      '',
-      `${location.pathname}${location.search}${location.hash}`
-    );
-    blockAndShowModal(nextPath, pendingPathRef, setShowModal);
-  }, [location]);
+  const proceed = useCallback(() => {
+    const path = pendingPathRef.current;
+    const delta = pendingDelta.current;
+    pendingPathRef.current = NO_PENDING_PATH;
+    pendingDelta.current = undefined;
+    if (delta !== undefined) {
+      allowPop.current = true;
+      globalThis.history.go(delta);
+    } else if (path) {
+      navigate(path);
+    }
+  }, [navigate]);
+
+  const handlePopState = useCallback(
+    (event: PopStateEvent) => {
+      if (allowPop.current) {
+        allowPop.current = false;
+
+        return;
+      }
+      if (restoring.current) {
+        event.stopImmediatePropagation();
+        restoring.current = false;
+        setShowModal(true);
+
+        return;
+      }
+      const nextPath =
+        globalThis.location.pathname +
+        globalThis.location.search +
+        globalThis.location.hash;
+      if (nextPath === currentPath) {
+        return;
+      }
+      // Restore the existing entry before React Router can unmount the dirty editor.
+      event.stopImmediatePropagation();
+      pendingPathRef.current = nextPath;
+      const previousIndex = currentEntry.current?.idx;
+      const nextIndex = event.state?.idx;
+      if (
+        typeof previousIndex === 'number' &&
+        typeof nextIndex === 'number' &&
+        previousIndex !== nextIndex
+      ) {
+        pendingDelta.current = nextIndex - previousIndex;
+        restoring.current = true;
+        globalThis.history.go(-pendingDelta.current);
+      } else {
+        globalThis.history.replaceState(currentEntry.current, '', currentPath);
+        setShowModal(true);
+      }
+    },
+    [currentPath]
+  );
 
   const handleLinkClick = useCallback(
     (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest('a');
       const href = anchor?.getAttribute('href') ?? null;
 
-      if (!isInternalLink(href, location.pathname)) {
+      const opensElsewhere = [
+        e.defaultPrevented,
+        e.button !== 0,
+        e.ctrlKey,
+        e.metaKey,
+        e.shiftKey,
+        e.altKey,
+        anchor?.hasAttribute('download'),
+        anchor?.target && anchor.target !== '_self',
+      ].some(Boolean);
+      if (opensElsewhere || !isInternalLink(href, currentPath)) {
         return;
       }
 
@@ -87,7 +137,7 @@ export const useWorkflowNavigationBlock = ({
       e.stopPropagation();
       blockAndShowModal(href, pendingPathRef, setShowModal);
     },
-    [location.pathname]
+    [currentPath]
   );
 
   useEffect(() => {
@@ -95,13 +145,14 @@ export const useWorkflowNavigationBlock = ({
       return;
     }
 
+    currentEntry.current = globalThis.history.state;
     globalThis.addEventListener('beforeunload', preventUnload);
-    globalThis.addEventListener('popstate', handlePopState);
+    globalThis.addEventListener('popstate', handlePopState, true);
     document.addEventListener('click', handleLinkClick, true);
 
     return () => {
       globalThis.removeEventListener('beforeunload', preventUnload);
-      globalThis.removeEventListener('popstate', handlePopState);
+      globalThis.removeEventListener('popstate', handlePopState, true);
       document.removeEventListener('click', handleLinkClick, true);
     };
   }, [enabled, handlePopState, handleLinkClick]);
@@ -109,6 +160,7 @@ export const useWorkflowNavigationBlock = ({
   const closeModal = useCallback(() => {
     setShowModal(false);
     pendingPathRef.current = NO_PENDING_PATH;
+    pendingDelta.current = undefined;
   }, []);
 
   const onSave = useCallback(async () => {
@@ -122,16 +174,17 @@ export const useWorkflowNavigationBlock = ({
 
     setShowModal(false);
     if (saved) {
-      proceedToPendingPath(pendingPathRef, navigate);
+      proceed();
     } else {
       pendingPathRef.current = NO_PENDING_PATH;
+      pendingDelta.current = undefined;
     }
-  }, [onSaveWorkflow, navigate]);
+  }, [onSaveWorkflow, proceed]);
 
   const onDiscard = useCallback(() => {
     setShowModal(false);
-    proceedToPendingPath(pendingPathRef, navigate);
-  }, [navigate]);
+    proceed();
+  }, [proceed]);
 
   return {
     showModal,

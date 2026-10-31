@@ -31,6 +31,36 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useOntologyEditLease } from './useOntologyEditLease';
 
 const CHANGE_SET_FIELDS = 'operations,applicationResult';
+const OPERATION_DEFAULTS: Record<string, unknown> = {
+  abstract: false,
+  deleted: false,
+  deprecated: false,
+  isIdentifier: false,
+  provider: 'user',
+  provenance: 'Manual',
+  state: 'ACTIVE',
+  version: 0.1,
+};
+
+// Java adds defaults and empty lists; compare JSON intent without ignoring changed fields or array order.
+const comparableOperations = (
+  operations: CreateOntologyChangeSet['operations']
+): unknown =>
+  JSON.parse(
+    JSON.stringify(operations ?? [], (key, value: unknown) => {
+      if (key && Array.isArray(value) && value.length === 0) {
+        return undefined;
+      }
+      if (
+        Object.hasOwn(OPERATION_DEFAULTS, key) &&
+        isEqual(value, OPERATION_DEFAULTS[key])
+      ) {
+        return undefined;
+      }
+
+      return value;
+    })
+  );
 
 // A 4xx is the server's definite refusal. With no response, or a 5xx, the
 // apply may still commit, so its outcome stays unknown.
@@ -51,8 +81,10 @@ const validateDraft = (
     draft.baseWorkingRevision === plan.baseWorkingRevision &&
     isEqual(draft.sourcePack, plan.sourcePack);
   const matchesOperations =
-    isEqual(draft.operations, plan.operations) &&
-    draft.undoCursor === (plan.undoCursor ?? plan.operations?.length ?? 0);
+    isEqual(
+      comparableOperations(draft.operations),
+      comparableOperations(plan.operations)
+    ) && draft.undoCursor === (plan.undoCursor ?? plan.operations?.length ?? 0);
   if (!matchesIdentity || !matchesOperations) {
     throw new Error('The retained change set does not match this import.');
   }

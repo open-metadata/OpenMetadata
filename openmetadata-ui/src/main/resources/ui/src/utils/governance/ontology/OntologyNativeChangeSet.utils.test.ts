@@ -103,12 +103,17 @@ it('builds one atomic class, own-property and named-axiom plan at the captured r
   expect(
     plan.operations
       ?.slice(4)
-      .map((o) => [o.axiom?.axiomType, o.axiom?.targetIri])
+      .map((o) => [o.axiom?.axiomType, o.axiom?.expressions])
   ).toEqual([
-    ['SUBCLASS_OF', 'urn:Payment'],
-    ['SUBCLASS_OF', 'urn:Transaction'],
-    ['DISJOINT_WITH', 'urn:Person'],
+    ['SUBCLASS_OF', [{ kind: 'NAMED_CLASS', classIri: 'urn:Payment' }]],
+    ['SUBCLASS_OF', [{ kind: 'NAMED_CLASS', classIri: 'urn:Transaction' }]],
+    ['DISJOINT_WITH', [{ kind: 'NAMED_CLASS', classIri: 'urn:Person' }]],
   ]);
+
+  plan.operations?.slice(4).forEach(({ axiom }) => {
+    expect(axiom).not.toHaveProperty('targetIri');
+  });
+
   expect(plan.operations?.every((o) => o.state === 'ACTIVE')).toBe(true);
   // UUID v5 of 'attempt:concept-operation' and
   // 'attempt:SUBCLASS_OF:urn:Payment' in the URL namespace.

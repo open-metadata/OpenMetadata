@@ -70,6 +70,7 @@ import { getOntologyHealthSummary } from '../../components/OntologyExplorer/Onto
 import OntologyStudioQueryConsole from '../../components/OntologyExplorer/OntologyStudioQueryConsole';
 import OntologyVisualQueryBuilder from '../../components/OntologyExplorer/OntologyVisualQueryBuilder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import OntologyDraftProvider from '../../context/OntologyDraft/OntologyDraftProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -79,6 +80,7 @@ import { Ontology } from '../../generated/entity/data/ontology';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAuth } from '../../hooks/authHooks';
+import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
   OntologyEditLeaseState,
   useOntologyEditLease,
@@ -585,7 +587,8 @@ function aggregateEnabled(
 
 const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
 
-const OntologyExplorerPage: React.FC = () => {
+const OntologyExplorerContent: React.FC = () => {
+  const guard = useOntologyDraftGuard();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const { isAdminUser } = useAuth();
@@ -1264,7 +1267,7 @@ const OntologyExplorerPage: React.FC = () => {
             ? studioScopes.refetch()
             : studioScopes.refetchOntologies())
         }
-        onScopeChange={handleScopeChange}
+        onScopeChange={(scope) => guard(() => handleScopeChange(scope))}
       />
     );
   }
@@ -1301,7 +1304,7 @@ const OntologyExplorerPage: React.FC = () => {
           iconLeading={Plus}
           isDisabled={!isNativeOntology && Boolean(conceptDraft)}
           size={headerActionSize}
-          onPress={handleAddConcept}>
+          onPress={() => guard(handleAddConcept)}>
           {t('label.add-entity', { entity: t('label.concept') })}
         </Button>
       );
@@ -1515,7 +1518,7 @@ const OntologyExplorerPage: React.FC = () => {
         mode={mode}
         modes={isCatalogEmpty || isFirstListLoading ? [] : modeTabs}
         scopeMenu={renderScopeMenu()}
-        onModeChange={handleModeChange}
+        onModeChange={(mode) => guard(() => handleModeChange(mode))}
       />
     );
   }
@@ -1585,7 +1588,9 @@ const OntologyExplorerPage: React.FC = () => {
             </Typography>
           </Box>
         }
-        onSurfaceChange={handleSubModeChange}>
+        onSurfaceChange={(surface) =>
+          guard(() => handleSubModeChange(surface))
+        }>
         {renderPrimaryAction()}
         {renderVersionChip()}
         {renderSearchSlot()}
@@ -1713,7 +1718,7 @@ const OntologyExplorerPage: React.FC = () => {
         selectedConceptId={selectedConceptId}
         viewSurface={explorerSurface}
         onAuthoringLockChange={setNativeAuthoringLocked}
-        onRequestCreateConcept={handleAddConcept}
+        onRequestCreateConcept={() => guard(handleAddConcept)}
         onRequestEdit={() => {
           setEditSurface('graph');
           handleModeChange('edit');
@@ -2114,5 +2119,11 @@ const OntologyExplorerPage: React.FC = () => {
     </PageLayoutV1>
   );
 };
+
+const OntologyExplorerPage: React.FC = () => (
+  <OntologyDraftProvider>
+    <OntologyExplorerContent />
+  </OntologyDraftProvider>
+);
 
 export default OntologyExplorerPage;

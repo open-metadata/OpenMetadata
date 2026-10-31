@@ -932,6 +932,12 @@ describe('OntologyConceptInspector in AI mode', () => {
     fireEvent.click(
       within(assets).getByTestId('ontology-native-asset-remove-table')
     );
+
+    expect(deleteOntologyConceptBinding).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.remove' })
+    );
     await waitFor(() =>
       expect(showSuccessToast).toHaveBeenCalledWith('label.saved')
     );
