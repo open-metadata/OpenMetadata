@@ -332,11 +332,13 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                                 .source(ss -> ss.scriptString(scriptTxt))
                                                 .lang(ScriptLanguage.Painless)
                                                 .params(convertToJsonDataMap(params)))))
+                    .conflicts(Conflicts.Proceed)
                     .refresh(true));
 
     LOG.info(
-        "DeleteByQuery by script response from ES - Deleted: {}, Failures: {}",
+        "DeleteByQuery by script response from ES - Deleted: {}, Version conflicts: {}, Failures: {}",
         response.deleted(),
+        response.versionConflicts(),
         response.failures().size());
 
     if (!response.failures().isEmpty()) {

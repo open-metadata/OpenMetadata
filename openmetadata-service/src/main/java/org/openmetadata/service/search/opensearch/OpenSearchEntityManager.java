@@ -330,32 +330,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     DeleteByQueryResponse response =
-        client.deleteByQuery(
-            d ->
-                d.index(indexName)
-                    .query(
-                        q ->
-                            q.script(
-                                s ->
-                                    s.script(
-                                        script ->
-                                            script.inline(
-                                                inline ->
-                                                    inline
-                                                        .lang(
-                                                            l ->
-                                                                l.builtin(
-                                                                    os.org.opensearch.client
-                                                                        .opensearch._types
-                                                                        .BuiltinScriptLanguage
-                                                                        .Painless))
-                                                        .source(scriptTxt)
-                                                        .params(convertToJsonDataMap(params))))))
-                    .refresh(Refresh.True));
+        client.deleteByQuery(buildDeleteByScriptRequest(indexName, scriptTxt, params));
 
     LOG.info(
-        "DeleteByQuery by script response from OS - Deleted: {}, Failures: {}",
+        "DeleteByQuery by script response from OS - Deleted: {}, Version conflicts: {}, Failures: {}",
         response.deleted(),
+        response.versionConflicts(),
         response.failures().size());
 
     if (!response.failures().isEmpty()) {
@@ -365,6 +345,36 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               .collect(Collectors.joining("; "));
       LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
     }
+  }
+
+  /**
+   * Conflicts proceed: a matched doc removed concurrently (e.g. by a reindex writing the same
+   * index) is already gone, so it must not abort deletion of the remaining matches with a 409.
+   */
+  os.org.opensearch.client.opensearch.core.DeleteByQueryRequest buildDeleteByScriptRequest(
+      String indexName, String scriptTxt, Map<String, Object> params) {
+    return os.org.opensearch.client.opensearch.core.DeleteByQueryRequest.of(
+        d ->
+            d.index(indexName)
+                .query(
+                    q ->
+                        q.script(
+                            s ->
+                                s.script(
+                                    script ->
+                                        script.inline(
+                                            inline ->
+                                                inline
+                                                    .lang(
+                                                        l ->
+                                                            l.builtin(
+                                                                os.org.opensearch.client.opensearch
+                                                                    ._types.BuiltinScriptLanguage
+                                                                    .Painless))
+                                                    .source(scriptTxt)
+                                                    .params(convertToJsonDataMap(params))))))
+                .conflicts(Conflicts.Proceed)
+                .refresh(Refresh.True));
   }
 
   @Override
