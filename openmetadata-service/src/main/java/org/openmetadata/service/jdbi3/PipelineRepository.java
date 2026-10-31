@@ -2044,7 +2044,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Long endTs) {
     try {
       String serviceFilter = buildServiceFilter(service);
-      String serviceTypeFilter = buildServiceTypeFilter(serviceType);
+      String mysqlServiceTypeFilter = buildMysqlServiceTypeFilter(serviceType);
+      String postgresServiceTypeFilter = buildPostgresServiceTypeFilter(serviceType);
       String mysqlStatusFilter = buildMysqlStatusFilter(status);
       String postgresStatusFilter = buildPostgresStatusFilter(status);
       String domainFilter = buildDomainFilter(domain);
@@ -2057,7 +2058,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getPipelineMetricsData(
-                  serviceTypeFilter,
+                  mysqlServiceTypeFilter,
+                  postgresServiceTypeFilter,
                   serviceFilter,
                   mysqlStatusFilter,
                   postgresStatusFilter,
@@ -2074,7 +2076,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getServiceBreakdown(
-                  serviceTypeFilter,
+                  mysqlServiceTypeFilter,
+                  postgresServiceTypeFilter,
                   serviceFilter,
                   mysqlStatusFilter,
                   postgresStatusFilter,
@@ -2186,7 +2189,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     try {
       String pipelineFqnFilter = buildPipelineFqnFilter(pipelineFqn);
       String serviceFilter = buildServiceFilter(service);
-      String serviceTypeFilter = buildServiceTypeFilter(serviceType);
+      String mysqlServiceTypeFilter = buildMysqlServiceTypeFilter(serviceType);
+      String postgresServiceTypeFilter = buildPostgresServiceTypeFilter(serviceType);
       String mysqlStatusFilter = buildMysqlStatusFilter(status);
       String postgresStatusFilter = buildPostgresStatusFilter(status);
       String domainFilter = buildDomainFilter(domain);
@@ -2200,7 +2204,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   startTs,
                   endTs,
                   pipelineFqnFilter,
-                  serviceTypeFilter,
+                  mysqlServiceTypeFilter,
+                  postgresServiceTypeFilter,
                   serviceFilter,
                   mysqlStatusFilter,
                   postgresStatusFilter,
@@ -2358,7 +2363,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     try {
       String pipelineFqnFilter = buildPipelineFqnFilter(pipelineFqn);
       String serviceFilter = buildServiceFilter(service);
-      String serviceTypeFilter = buildServiceTypeFilter(serviceType);
+      String mysqlServiceTypeFilter = buildMysqlServiceTypeFilter(serviceType);
+      String postgresServiceTypeFilter = buildPostgresServiceTypeFilter(serviceType);
       String mysqlStatusFilter = buildMysqlStatusFilter(status);
       String postgresStatusFilter = buildPostgresStatusFilter(status);
       String domainFilter = buildDomainFilter(domain);
@@ -2372,7 +2378,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   startTs,
                   endTs,
                   pipelineFqnFilter,
-                  serviceTypeFilter,
+                  mysqlServiceTypeFilter,
+                  postgresServiceTypeFilter,
                   serviceFilter,
                   mysqlStatusFilter,
                   postgresStatusFilter,
@@ -2486,13 +2493,22 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return "";
   }
 
-  private String buildServiceTypeFilter(String serviceType) {
+  // Per-dialect serviceType fragments, mirroring buildMysqlStatusFilter /
+  // buildPostgresStatusFilter.
+  // The MySQL expression uses JSON_UNQUOTE(JSON_EXTRACT(...)); the PostgreSQL expression uses the
+  // ->> operator on the JSONB column. Splicing a single MySQL-only fragment into the PostgreSQL
+  // query variants fails with "function json_unquote(jsonb, unknown) does not exist".
+  private String buildMysqlServiceTypeFilter(String serviceType) {
     if (serviceType != null && !serviceType.isEmpty()) {
-      String filter = "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :psServiceType";
-      LOG.debug("buildServiceTypeFilter: input='{}', filter='{}'", serviceType, filter);
-      return filter;
+      return "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :psServiceType";
     }
-    LOG.debug("buildServiceTypeFilter: returning empty filter (serviceType was null or empty)");
+    return "";
+  }
+
+  private String buildPostgresServiceTypeFilter(String serviceType) {
+    if (serviceType != null && !serviceType.isEmpty()) {
+      return "AND pe.json->>'serviceType' = :psServiceType";
+    }
     return "";
   }
 

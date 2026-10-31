@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,6 +44,9 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.PipelineExecutionTrendList;
+import org.openmetadata.schema.type.PipelineMetrics;
+import org.openmetadata.schema.type.PipelineRuntimeTrendList;
 import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
@@ -721,6 +725,164 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
             null, null, Fields.EMPTY_FIELDS, injectionFilter, 10, null, null);
     assertEquals(0, injectionResult.getPaging().getTotal());
     assertTrue(injectionResult.getData().isEmpty());
+  }
+
+  @Test
+  void get_pipelineMetricsWithServiceTypeFilterWorks(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_metrics_service_type"));
+    request.setService(service.getFullyQualifiedName());
+    createEntity(request);
+    PipelineRepository repository =
+        (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+
+    // Regression: a single MySQL-only JSON_UNQUOTE/JSON_EXTRACT serviceType fragment was spliced
+    // into the PostgreSQL query variants of getPipelineMetricsData and getServiceBreakdown, so
+    // filtering by serviceType failed on Postgres with dataAvailable=false + "Database
+    // unavailable". The fragment is now dialect-specific; the query must succeed on both dialects.
+    PipelineMetrics metrics =
+        repository.getPipelineMetrics(
+            null, service.getName(), "Airflow", null, null, null, null, null, null);
+    assertTrue(
+        metrics.getDataAvailable(), "metrics must be available when filtering by serviceType");
+    assertNull(metrics.getErrorMessage(), "no error expected when filtering by serviceType");
+    assertEquals(1, metrics.getTotalPipelines());
+    assertEquals(1, metrics.getServiceCount());
+    assertFalse(metrics.getServiceBreakdown().isEmpty());
+
+    // Non-matching serviceType: the query must still succeed (no dialect error) and match nothing.
+    PipelineMetrics noMatch =
+        repository.getPipelineMetrics(
+            null, service.getName(), "GluePipeline", null, null, null, null, null, null);
+    assertTrue(
+        noMatch.getDataAvailable(), "query must succeed even with a non-matching serviceType");
+    assertNull(noMatch.getErrorMessage());
+    assertEquals(0, noMatch.getTotalPipelines());
+
+    // Injection-style value is bound as a parameter, matching nothing on both dialects.
+    PipelineMetrics injected =
+        repository.getPipelineMetrics(
+            null, service.getName(), "Airflow' OR '1'='1", null, null, null, null, null, null);
+    assertTrue(injected.getDataAvailable());
+    assertNull(injected.getErrorMessage());
+    assertEquals(0, injected.getTotalPipelines());
+  }
+
+  @Test
+  void get_pipelineExecutionTrendWithServiceTypeFilterWorks(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_exec_trend_service_type"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(Arrays.asList(new Task().withName("task1").withDescription("Task 1")));
+    Pipeline pipeline = createEntity(request);
+
+    long timestamp = System.currentTimeMillis();
+    Status taskStatus =
+        new Status()
+            .withName("task1")
+            .withExecutionStatus(StatusType.Successful)
+            .withStartTime(timestamp)
+            .withEndTime(timestamp + 60_000L);
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(timestamp)
+            .withEndTime(timestamp + 60_000L)
+            .withTaskStatus(Arrays.asList(taskStatus));
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), pipelineStatus);
+
+    PipelineRepository repository =
+        (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+    long startTs = timestamp - 60_000L;
+    long endTs = timestamp + 120_000L;
+
+    // Regression: the same MySQL-only serviceType fragment was spliced into the PostgreSQL variant
+    // of getExecutionTrendData. The query must succeed on both dialects.
+    PipelineExecutionTrendList trend =
+        repository.getPipelineExecutionTrend(
+            startTs, endTs, null, service.getName(), "Airflow", null, null, null, null, null, null);
+    assertNull(trend.getErrorMessage(), "execution trend must not error with serviceType filter");
+    assertTrue(
+        trend.getDataAvailable(), "execution trend must surface data with serviceType filter");
+    assertFalse(trend.getData().isEmpty());
+
+    PipelineExecutionTrendList noMatch =
+        repository.getPipelineExecutionTrend(
+            startTs,
+            endTs,
+            null,
+            service.getName(),
+            "GluePipeline",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+    assertNull(
+        noMatch.getErrorMessage(), "non-matching serviceType must not raise a dialect error");
+    assertTrue(noMatch.getData().isEmpty());
+  }
+
+  @Test
+  void get_pipelineRuntimeTrendWithServiceTypeFilterWorks(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_runtime_trend_service_type"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(Arrays.asList(new Task().withName("task1").withDescription("Task 1")));
+    Pipeline pipeline = createEntity(request);
+
+    long startTime = System.currentTimeMillis();
+    long endTime = startTime + 600_000L;
+    Status taskStatus =
+        new Status()
+            .withName("task1")
+            .withExecutionStatus(StatusType.Successful)
+            .withStartTime(startTime)
+            .withEndTime(endTime);
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(endTime)
+            .withEndTime(endTime)
+            .withTaskStatus(Arrays.asList(taskStatus));
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), pipelineStatus);
+
+    PipelineRepository repository =
+        (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+    long startTs = startTime - 60_000L;
+    long endTs = endTime + 60_000L;
+
+    // Regression: the same MySQL-only serviceType fragment was spliced into the PostgreSQL variant
+    // of getRuntimeTrendData. The query must succeed on both dialects.
+    PipelineRuntimeTrendList trend =
+        repository.getPipelineRuntimeTrend(
+            startTs, endTs, null, service.getName(), "Airflow", null, null, null, null, null, null);
+    assertNull(trend.getErrorMessage(), "runtime trend must not error with serviceType filter");
+    assertTrue(trend.getDataAvailable(), "runtime trend must surface data with serviceType filter");
+    assertFalse(trend.getData().isEmpty());
+
+    PipelineRuntimeTrendList noMatch =
+        repository.getPipelineRuntimeTrend(
+            startTs,
+            endTs,
+            null,
+            service.getName(),
+            "GluePipeline",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+    assertNull(
+        noMatch.getErrorMessage(), "non-matching serviceType must not raise a dialect error");
+    assertTrue(noMatch.getData().isEmpty());
   }
 
   @Test
