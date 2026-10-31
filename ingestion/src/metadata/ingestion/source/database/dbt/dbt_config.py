@@ -227,15 +227,29 @@ def _(config: DbtHttpConfig):  # noqa: C901
         raise DBTConfigException(f"Error fetching dbt files from file server: {exc}")  # noqa: B904
 
 
+class DbtCloudNoRunException(DBTConfigException):
+    """
+    Raise when a dbt Cloud job has no completed run, so it has no artifacts to read
+    """
+
+
+# Fields dbt sets on a manifest node only in a run that compiled it
+DBT_COMPILED_NODE_KEYS = (
+    "compiled",
+    "compiled_code",
+    "compiled_sql",
+    "compiled_path",
+    "extra_ctes",
+    "extra_ctes_injected",
+)
+
+
 @get_dbt_details.register
-def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
-    dbt_catalog = None
-    dbt_manifest = None
-    dbt_run_results = None
+def _(config: DbtCloudConfig):
     try:
         # pylint: disable=import-outside-toplevel
         from metadata.ingestion.connections.source_api_client import TrackedREST
-        from metadata.ingestion.ometa.client import APIError, ClientConfig, RestTransportError
+        from metadata.ingestion.ometa.client import ClientConfig
 
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
@@ -245,122 +259,22 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
             auth_token=lambda: auth_token,
             auth_header="Authorization",
             allow_redirects=True,
+            # Reading many jobs can hit dbt Cloud's rate limit; the default treats 429 as final
+            retry_codes=[429, 503, 504],
+            limit_codes=[],
         )
         client = TrackedREST(client_config)
-        account_id = config.dbtCloudAccountId
-        project_id = config.dbtCloudProjectId
-        job_id = config.dbtCloudJobId
-        logger.debug("Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data")
-        params_data = {
-            "order_by": "-finished_at",
-            "limit": "1",
-            "status__in": "[10,20]",
-            # Without `step` the artifacts endpoint serves only the last step's files, so a
-            # job whose `dbt test` is not its final command would lose every test result.
-            "include_related": '["run_steps"]',
-        }
-        if project_id:
-            params_data["project_id"] = project_id
-
-        if job_id:
-            params_data["job_definition_id"] = job_id
-
-        try:
-            response = client.get(f"/accounts/{account_id}/runs", data=params_data)
-        except APIError as exc:
-            if exc.code == 401:
-                raise DBTConfigException(
-                    "Invalid dbt Cloud auth token. Please verify your token has "
-                    "'Account Viewer' permissions and is not expired."
-                ) from exc
-            if exc.code == 404:
-                raise DBTConfigException(
-                    f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
-                ) from exc
-            raise DBTConfigException(f"dbt Cloud API error {exc.code}: {exc}") from exc
-        except RestTransportError as exc:
-            raise DBTConfigException(
-                f"Unable to connect to dbt Cloud at '{config.dbtCloudUrl}'. "
-                "Please verify the URL is correct and accessible."
-            ) from exc
-        except requests.HTTPError as exc:
-            # The REST client only raises APIError for a body with a top-level "code" key.
-            # dbt Cloud nests it under "status", and an SSO gateway or proxy may answer with
-            # HTML that has no "code" at all - those reach here as a bare HTTPError, and the
-            # status line is the only thing left to classify on.
-            status_code = exc.response.status_code if exc.response is not None else None
-            if status_code in (401, 403):
-                raise DBTConfigException(
-                    "Invalid dbt Cloud auth token. Please verify your token has "
-                    "'Account Viewer' permissions and is not expired."
-                ) from exc
-            if status_code == 404:
-                raise DBTConfigException(
-                    f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
-                ) from exc
-            raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
-        except Exception as exc:
-            raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
-
-        # The client returns None for an error body it cannot classify, and can surface a raw
-        # Response on paths that bypass JSON decoding. Neither carries usable run data.
-        if not isinstance(response, dict):
-            raise DBTConfigException(  # noqa: TRY301
-                f"No usable response from dbt Cloud for account '{account_id}'. The API returned "
-                "an error the client could not classify, so the status was not preserved. "
-                "Possible causes: the account ID is wrong, the project or job ID is wrong, the "
-                "auth token is invalid, expired, or lacks 'Account Viewer' permission, or dbt "
-                "Cloud rate-limited the request and every retry was exhausted."
-            )
-
-        if not response.get("data"):
-            filter_info = []
-            if project_id:
-                filter_info.append(f"project ID '{project_id}'")
-            if job_id:
-                filter_info.append(f"job ID '{job_id}'")
-
-            if filter_info:
-                raise DBTConfigException(  # noqa: TRY301
-                    f"No completed dbt runs found for {' and '.join(filter_info)}. "
-                    "Please verify these IDs exist and have completed runs."
-                )
-            raise DBTConfigException(  # noqa: TRY301
-                f"No completed dbt runs found for account '{account_id}'. "
-                "Please ensure at least one job has completed successfully."
-            )
-        runs_data = response.get("data")
-        if runs_data:
-            last_run = runs_data[0]
-            run_id = last_run["id"]
-            logger.info(
-                f"Retrieved last completed run [{str(run_id)}]: "  # noqa: RUF010
-                f"Finished {str(last_run['finished_at_humanized'])} (duration: {str(last_run['duration_humanized'])})"  # noqa: RUF010
-            )
-            try:
-                logger.debug("Requesting [dbt_catalog]")
-                dbt_catalog = client.get(f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}")
-            except Exception as exc:
-                logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}")
-                logger.debug(traceback.format_exc())
-            try:
-                logger.debug("Requesting [dbt_manifest]")
-                dbt_manifest = client.get(f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}")
-            except Exception as exc:
-                raise DBTConfigException(
-                    f"Manifest artifact not found for run {run_id}. Please ensure the dbt job generates artifacts."
-                ) from exc
-            dbt_run_results = _get_dbt_cloud_run_results(client, account_id, run_id, last_run.get("run_steps"))
-        if not dbt_manifest:
-            raise DBTConfigException(  # noqa: TRY301
-                "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
-            )
-
-        yield DbtFiles(
-            dbt_catalog=dbt_catalog,
-            dbt_manifest=dbt_manifest,
-            dbt_run_results=dbt_run_results or None,
+        job_ids = list(
+            dict.fromkeys(job_id.strip() for job_id in (config.dbtCloudJobId or "").split(",") if job_id.strip())
         )
+        if not job_ids and config.dbtCloudIngestAllJobs:
+            job_ids = _get_dbt_cloud_job_ids(client, config)
+        if len(job_ids) > 1:
+            yield from _get_dbt_cloud_merged_files(client, config, job_ids)
+        else:
+            # A single run is read: the job's latest, or without a job ID the latest of any job
+            run = _get_dbt_cloud_latest_run(client, config, job_ids[0] if job_ids else None)
+            yield _get_dbt_cloud_run_files(client, config, run)
     except DBTConfigException as exc:
         raise exc  # noqa: TRY201
     except Exception as exc:
@@ -368,7 +282,290 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
         raise DBTConfigException(f"Error fetching dbt files from dbt Cloud: {exc}")  # noqa: B904
 
 
-def _get_dbt_cloud_run_results(client, account_id, run_id, run_steps: list[dict] | None) -> list[dict]:
+def _dbt_cloud_get(client, config: DbtCloudConfig, path: str, params: dict) -> dict:
+    """
+    GET a dbt Cloud list endpoint, translating every failure into a DBTConfigException
+    """
+    # pylint: disable=import-outside-toplevel
+    from metadata.ingestion.ometa.client import APIError, RestTransportError
+
+    account_id = config.dbtCloudAccountId
+    try:
+        response = client.get(path, data=params)
+    except APIError as exc:
+        if exc.code == 401:
+            raise DBTConfigException(
+                "Invalid dbt Cloud auth token. Please verify your token has "
+                "'Account Viewer' permissions and is not expired."
+            ) from exc
+        if exc.code == 404:
+            raise DBTConfigException(
+                f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
+            ) from exc
+        raise DBTConfigException(f"dbt Cloud API error {exc.code}: {exc}") from exc
+    except RestTransportError as exc:
+        raise DBTConfigException(
+            f"Unable to connect to dbt Cloud at '{config.dbtCloudUrl}'. Please verify the URL is correct and accessible."
+        ) from exc
+    except requests.HTTPError as exc:
+        # The REST client only raises APIError for a body with a top-level "code" key.
+        # dbt Cloud nests it under "status", and an SSO gateway or proxy may answer with
+        # HTML that has no "code" at all - those reach here as a bare HTTPError, and the
+        # status line is the only thing left to classify on.
+        status_code = exc.response.status_code if exc.response is not None else None
+        if status_code in (401, 403):
+            raise DBTConfigException(
+                "Invalid dbt Cloud auth token. Please verify your token has "
+                "'Account Viewer' permissions and is not expired."
+            ) from exc
+        if status_code == 404:
+            raise DBTConfigException(
+                f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
+            ) from exc
+        raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
+
+    # The client returns None for an error body it cannot classify, and can surface a raw
+    # Response on paths that bypass JSON decoding. Neither carries usable data.
+    if not isinstance(response, dict):
+        raise DBTConfigException(
+            f"No usable response from dbt Cloud for account '{account_id}'. The API returned "
+            "an error the client could not classify, so the status was not preserved. "
+            "Possible causes: the account ID is wrong, the project or job ID is wrong, the "
+            "auth token is invalid, expired, or lacks 'Account Viewer' permission, or dbt "
+            "Cloud rate-limited the request and every retry was exhausted."
+        )
+    return response
+
+
+def _get_dbt_cloud_job_ids(client, config: DbtCloudConfig) -> list[str]:
+    """
+    List every job of the account, or of the project when one is configured. CI jobs are
+    skipped: their runs build into temporary PR schemas that match no table in OpenMetadata.
+    """
+    account_id = config.dbtCloudAccountId
+    project_id = config.dbtCloudProjectId
+    params = {"offset": 0, "limit": 100}
+    if project_id:
+        params["project_id"] = project_id
+    job_ids = []
+    while True:
+        response = _dbt_cloud_get(client, config, f"/accounts/{account_id}/jobs/", params)
+        jobs = response.get("data") or []
+        job_ids.extend(str(job["id"]) for job in jobs if job.get("job_type") != "ci")
+        params["offset"] += len(jobs)
+        total_count = ((response.get("extra") or {}).get("pagination") or {}).get("total_count", 0)
+        if not jobs or params["offset"] >= total_count:
+            break
+    if not job_ids:
+        scope = f"project ID '{project_id}'" if project_id else f"account '{account_id}'"
+        raise DBTConfigException(f"No dbt Cloud jobs found for {scope}. Please verify the IDs are correct.")
+    logger.info(f"Fetching dbt artifacts from {len(job_ids)} dbt Cloud jobs: {job_ids}")
+    return job_ids
+
+
+def _get_dbt_cloud_merged_files(client, config: DbtCloudConfig, job_ids: list[str]) -> Iterable[DbtFiles]:
+    """
+    Every job's manifest lists the whole project, but only the nodes that job compiled carry
+    their SQL, and only a job running `docs generate` has a catalog. Processed one by one, a
+    partial job would blank out what a full one wrote, so the artifacts are merged into one
+    set per dbt Cloud environment. Environments stay apart: they build into different schemas.
+    ADR:2026-10-29-dbt-cloud-multi-job-artifacts-merge-per-environment
+
+    Only a job that never completed a run is skipped. Any other failure on a job leaves its
+    whole environment out, since merging without that job's artifacts would blank the models
+    only it compiled; the other environments are still ingested and the run is then failed.
+    """
+    runs_by_environment = defaultdict(list)
+    for job_id in job_ids:
+        try:
+            run = _get_dbt_cloud_latest_run(client, config, job_id)
+        except DbtCloudNoRunException as exc:
+            logger.warning(f"Skipping dbt Cloud job [{job_id}]: {exc}")
+            continue
+        runs_by_environment[run.get("environment_id")].append(run)
+    if not runs_by_environment:
+        raise DBTConfigException(
+            f"No completed dbt runs found for any of the dbt Cloud jobs {job_ids}. "
+            "Please verify these IDs exist and have completed runs."
+        )
+    failed_environments = []
+    # One environment's artifacts are held at a time: manifests of large projects are big
+    for environment_id, runs in runs_by_environment.items():
+        try:
+            merged = _get_dbt_cloud_environment_files(client, config, runs)
+        except DBTConfigException as exc:
+            logger.warning(f"Skipping dbt Cloud environment [{environment_id}]: {exc}")
+            failed_environments.append(f"[{environment_id}] {exc}")
+            continue
+        yield merged
+    if failed_environments:
+        raise DBTConfigException(
+            f"dbt artifacts of {len(failed_environments)} dbt Cloud environment(s) were not ingested: "
+            + " | ".join(failed_environments)
+        )
+
+
+def _get_dbt_cloud_environment_files(client, config: DbtCloudConfig, runs: list[dict]) -> DbtFiles:
+    # The newest run is merged first, so it wins wherever two runs compiled the same node
+    runs.sort(key=lambda run: run.get("finished_at") or "", reverse=True)
+    merged = _get_dbt_cloud_run_files(client, config, runs[0], strict=True)
+    for run in runs[1:]:
+        dbt_files = _get_dbt_cloud_run_files(client, config, run, strict=True)
+        _check_same_manifest_schema(merged, runs[0], dbt_files, run)
+        _merge_dbt_files(merged, dbt_files)
+    return merged
+
+
+def _check_same_manifest_schema(merged: DbtFiles, merged_run: dict, dbt_files: DbtFiles, run: dict) -> None:
+    """
+    A job can override its environment's dbt version, and the manifest parser validates every
+    node against the one schema version the merged manifest declares
+    """
+    merged_version = (merged.dbt_manifest.get("metadata") or {}).get("dbt_schema_version")
+    version = (dbt_files.dbt_manifest.get("metadata") or {}).get("dbt_schema_version")
+    if merged_version != version:
+        raise DBTConfigException(
+            f"dbt Cloud jobs [{merged_run.get('job_definition_id')}] and [{run.get('job_definition_id')}] share "
+            f"an environment but wrote different manifest versions ({merged_version} and {version}), so their "
+            "artifacts cannot be merged. List the jobs of one dbt version in the dbt Cloud Job Ids."
+        )
+
+
+def _merge_dbt_files(target: DbtFiles, source: DbtFiles) -> None:
+    """
+    Merge an older run's artifacts into the newest run's. The newest manifest decides which
+    nodes exist and how they are configured; the older one only fills in the compiled SQL of
+    nodes the newest run did not compile, so a model removed since then does not come back.
+    """
+    source_nodes = source.dbt_manifest.get("nodes") or {}
+    for unique_id, node in (target.dbt_manifest.get("nodes") or {}).items():
+        older_node = source_nodes.get(unique_id) or {}
+        if _compiled_query(older_node) and not _compiled_query(node):
+            node.update({key: older_node[key] for key in DBT_COMPILED_NODE_KEYS if key in older_node})
+    if source.dbt_catalog and target.dbt_catalog:
+        for section in ("nodes", "sources"):
+            target_entries = target.dbt_catalog.get(section) or {}
+            for unique_id, entry in (source.dbt_catalog.get(section) or {}).items():
+                target_entries.setdefault(unique_id, entry)
+            target.dbt_catalog[section] = target_entries
+    elif source.dbt_catalog:
+        target.dbt_catalog = source.dbt_catalog
+    if source.dbt_run_results:
+        # The source keeps the newest result per test when one appears in several files
+        target.dbt_run_results = (target.dbt_run_results or []) + source.dbt_run_results
+
+
+def _compiled_query(node: dict) -> str | None:
+    return node.get("compiled_code") or node.get("compiled_sql")
+
+
+def _get_dbt_cloud_latest_run(client, config: DbtCloudConfig, job_id: str | None) -> dict:
+    """
+    Fetch the latest completed run of a dbt Cloud job, or of any job when no job ID is given
+    """
+    account_id = config.dbtCloudAccountId
+    project_id = config.dbtCloudProjectId
+    params_data = {
+        "order_by": "-finished_at",
+        "limit": "1",
+        "status__in": "[10,20]",
+        # Without `step` the artifacts endpoint serves only the last step's files, so a
+        # job whose `dbt test` is not its final command would lose every test result.
+        "include_related": '["run_steps"]',
+    }
+    if project_id:
+        params_data["project_id"] = project_id
+    if job_id:
+        params_data["job_definition_id"] = job_id
+
+    logger.debug(f"Requesting the latest completed run of dbt Cloud job [{job_id or 'any'}]")
+    runs_data = _dbt_cloud_get(client, config, f"/accounts/{account_id}/runs", params_data).get("data")
+    if not runs_data:
+        filter_info = []
+        if project_id:
+            filter_info.append(f"project ID '{project_id}'")
+        if job_id:
+            filter_info.append(f"job ID '{job_id}'")
+        if filter_info:
+            raise DbtCloudNoRunException(
+                f"No completed dbt runs found for {' and '.join(filter_info)}. "
+                "Please verify these IDs exist and have completed runs."
+            )
+        raise DbtCloudNoRunException(
+            f"No completed dbt runs found for account '{account_id}'. "
+            "Please ensure at least one job has completed successfully."
+        )
+    last_run = runs_data[0]
+    logger.info(
+        f"Retrieved last completed run [{last_run['id']}]{f' of job [{job_id}]' if job_id else ''}: "
+        f"Finished {last_run['finished_at_humanized']} (duration: {last_run['duration_humanized']})"
+    )
+    return last_run
+
+
+def _get_dbt_cloud_run_files(client, config: DbtCloudConfig, run: dict, strict: bool = False) -> DbtFiles:
+    """
+    Fetch the artifacts of a dbt Cloud run. With `strict`, a failed request raises instead of
+    reading as a missing artifact: a merge would otherwise lose that job's catalog or tests.
+    """
+    account_id = config.dbtCloudAccountId
+    run_id = run["id"]
+    artifacts_path = f"/accounts/{account_id}/runs/{run_id}/artifacts"
+    if strict:
+        dbt_catalog = _get_dbt_cloud_artifact(client, f"{artifacts_path}/{DBT_CATALOG_FILE_NAME}")
+        dbt_manifest = _get_dbt_cloud_artifact(client, f"{artifacts_path}/{DBT_MANIFEST_FILE_NAME}")
+    else:
+        dbt_catalog = None
+        try:
+            logger.debug("Requesting [dbt_catalog]")
+            dbt_catalog = client.get(f"{artifacts_path}/{DBT_CATALOG_FILE_NAME}")
+        except Exception as exc:
+            logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}")
+            logger.debug(traceback.format_exc())
+        else:
+            if dbt_catalog is None:
+                logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog")
+        try:
+            logger.debug("Requesting [dbt_manifest]")
+            dbt_manifest = client.get(f"{artifacts_path}/{DBT_MANIFEST_FILE_NAME}")
+        except Exception as exc:
+            raise DBTConfigException(
+                f"Manifest artifact not found for run {run_id}. Please ensure the dbt job generates artifacts."
+            ) from exc
+    if not dbt_manifest and strict:
+        raise DBTConfigException(
+            f"Manifest file not found in dbt Cloud for run [{run_id}] of job [{run.get('job_definition_id')}]. "
+            "Please ensure the dbt job generates artifacts."
+        )
+    if not dbt_manifest:
+        raise DBTConfigException(
+            "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
+        )
+    return DbtFiles(
+        dbt_catalog=dbt_catalog,
+        dbt_manifest=dbt_manifest,
+        dbt_run_results=_get_dbt_cloud_run_results(client, account_id, run_id, run.get("run_steps"), strict) or None,
+    )
+
+
+def _get_dbt_cloud_artifact(client, path: str, data: dict | None = None) -> dict | None:
+    """
+    Fetch a run artifact, returning None only when it does not exist: `get` also returns None
+    for a request that ran out of retries
+    """
+    response = client.get_raw(path, data=data)
+    if response.status_code == 404:
+        return None
+    if not response.ok:
+        raise DBTConfigException(f"dbt Cloud answered {response.status_code} for {path}: {response.text[:200]}")
+    return response.json()
+
+
+def _get_dbt_cloud_run_results(
+    client, account_id, run_id, run_steps: list[dict] | None, strict: bool = False
+) -> list[dict]:
     """
     Collect run_results.json from every step of a dbt Cloud run. Steps that ran no dbt command
     (clone, profile, deps) have no artifacts and 404; a run without step details falls back to
@@ -378,12 +575,16 @@ def _get_dbt_cloud_run_results(client, account_id, run_id, run_steps: list[dict]
     step_indexes = [step["index"] for step in run_steps or [] if step.get("index") is not None] or [None]
     run_results = []
     for step_index in step_indexes:
-        try:
-            logger.debug("Requesting [dbt_run_results] for step [%s]", step_index)
-            result = client.get(path, data={"step": step_index} if step_index is not None else None)
-        except Exception as exc:
-            logger.debug("No dbt run_results for run %s step %s: %s", run_id, step_index, exc)
-            continue
+        data = {"step": step_index} if step_index is not None else None
+        logger.debug("Requesting [dbt_run_results] for step [%s]", step_index)
+        if strict:
+            result = _get_dbt_cloud_artifact(client, path, data)
+        else:
+            try:
+                result = client.get(path, data=data)
+            except Exception as exc:
+                logger.debug("No dbt run_results for run %s step %s: %s", run_id, step_index, exc)
+                continue
         if isinstance(result, dict):
             run_results.append(result)
     if not run_results:
