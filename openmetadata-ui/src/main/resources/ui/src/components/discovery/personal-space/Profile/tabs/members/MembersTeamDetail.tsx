@@ -1461,7 +1461,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       className="tw:flex-1 tw:h-full tw:min-h-0 tw:overflow-y-auto"
       data-testid="team-detail"
       direction="col">
-      <Box className="tw:shrink-0" direction="col">
+      <Box className="tw:shrink-0" direction="col" gap={4}>
         {/* Info widget section */}
         <MembersTeamInfoWidgets
           canEdit={canEditAll && !team.deleted}
