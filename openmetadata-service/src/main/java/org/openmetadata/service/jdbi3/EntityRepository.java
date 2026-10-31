@@ -10115,7 +10115,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             .withCurrentVersion(updated.getVersion())
             .withPreviousVersion(changeDescription.getPreviousVersion())
             .withChangeDescription(changeDescription)
-            .withEntity(updated);
+            .withEntity(JsonUtils.pojoToMaskedJson(updated));
 
     daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     LOG.debug(
@@ -14527,6 +14527,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Create a ChangeEvent for the feed
     ChangeEvent changeEvent =
         getChangeEvent(updated, change, entityType, change.getPreviousVersion());
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(updated));
     daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 
