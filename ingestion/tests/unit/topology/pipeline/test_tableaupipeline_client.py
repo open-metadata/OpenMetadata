@@ -24,6 +24,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
+from xml.etree.ElementTree import ParseError
 
 import pytest
 import requests
@@ -41,6 +42,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.tableauPipel
 )
 from metadata.ingestion.source.pipeline.tableaupipeline import client as client_module
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauFlowRecordError,
     TableauMetadataApiError,
     TableauPipelineClient,
     TableauSiteAdminRequiredError,
@@ -302,6 +304,22 @@ class TestFlows:
         assert sales.tags == ["finance", "pii"]
         assert sales.webpage_url == f"{HOST}/#/site/MarketingTeam/flows/flow-1"
 
+    def test_a_complete_flow_listing_is_marked_complete(self, tableau):
+        client = _client(include_extract_refreshes=False)
+
+        list(client.get_pipelines())
+
+        assert client.flow_listing_complete is True
+
+    def test_a_flow_listing_that_fails_part_way_is_marked_partial(self, tableau):
+        tableau.flow_pages[1] = "<not xml"
+        client = _client(include_extract_refreshes=False)
+
+        with pytest.raises(ParseError):
+            list(client.get_pipelines())
+
+        assert client.flow_listing_complete is False
+
     def test_configured_api_version_skips_the_version_lookup(self, tableau):
         next(iter(_client(api_version="3.19").get_pipelines()))
 
@@ -543,12 +561,30 @@ class TestFlowLineage:
         assert lineage is not None
         assert "20000 node limit" in caplog.text
 
-    def test_a_rejected_query_yields_no_lineage(self, tableau, caplog):
-        tableau.graphql_response = {"errors": [{"message": "Validation error of type FieldUndefined"}]}
+    def test_a_query_answered_with_errors_and_no_data_is_an_error(self, tableau):
+        """Tableau answers a timed-out or rejected query with errors and no data.
+        That says nothing about the flow, so its stored tasks must be kept."""
+        tableau.graphql_response = {
+            "data": None,
+            "errors": [{"message": "Execution canceled because timeout of 30000 millis was reached"}],
+        }
 
-        with caplog.at_level(logging.WARNING):
-            assert _client().get_flow_lineage("flow-1") is None
-        assert "FieldUndefined" in caplog.text
+        with pytest.raises(TableauMetadataApiError, match="30000 millis"):
+            _client().get_flow_lineage("flow-1")
+
+    @pytest.mark.parametrize("data", [{"flows": []}, {"flows": None}])
+    def test_errors_next_to_an_empty_answer_are_an_error(self, tableau, data):
+        """While Tableau rebuilds its store it answers with errors and an empty list."""
+        tableau.graphql_response = {"data": data, "errors": [{"message": "BACKFILL_RUNNING"}]}
+
+        with pytest.raises(TableauMetadataApiError, match="BACKFILL_RUNNING"):
+            _client().get_flow_lineage("flow-1")
+
+    def test_an_unparseable_flow_record_is_an_error(self, tableau):
+        tableau.graphql_response = {"data": {"flows": [{**LINEAGE, "upstreamTables": None}]}}
+
+        with pytest.raises(TableauFlowRecordError, match="flow-1"):
+            _client().get_flow_lineage("flow-1")
 
     def test_an_unreachable_metadata_api_is_an_error_not_an_empty_answer(self, tableau):
         """The source keeps a flow's existing tasks on this error, but not when

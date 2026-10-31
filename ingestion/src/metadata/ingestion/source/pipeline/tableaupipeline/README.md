@@ -145,9 +145,9 @@ would replace their column lineage whenever `overrideLineage` is on.
   queried, a flow keeps the tasks it already has in OpenMetadata rather than
   collapsing to a single task; a flow with no lineage records is a single
   task.
-- **Partial listings delete nothing.** When the extract refresh tasks, or one
-  of their data sources / workbooks, cannot be read, no pipeline is marked as
-  deleted that run. A data source or workbook that no longer exists is
+- **Partial listings delete nothing.** When the flows, the extract refresh
+  tasks, or one of their data sources / workbooks, cannot be read, no pipeline
+  is marked as deleted that run. A data source or workbook that no longer exists is
   skipped normally.
 - **Retries.** 429 and 502-504 answers are retried three times with backoff,
   honouring a `Retry-After` of up to 30 seconds. A longer one, as Tableau Cloud

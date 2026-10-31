@@ -87,8 +87,13 @@ class TableauSiteAdminRequiredError(Exception):
 
 
 class TableauMetadataApiError(Exception):
-    """The Metadata API could not be queried at all (as opposed to answering
-    with no data)."""
+    """The Metadata API failed or answered only with errors (as opposed to
+    answering with no data)."""
+
+
+class TableauFlowRecordError(TableauMetadataApiError):
+    """Tableau returned a flow record the connector cannot read; the Metadata
+    API itself works."""
 
 
 def _has_status(exc: ServerResponseError, status: int) -> bool:
@@ -193,6 +198,7 @@ class TableauPipelineClient:
         self.number_of_status = config.numberOfStatus or DEFAULT_NUMBER_OF_STATUS
         self._user_emails: LRUCache[str | None] = LRUCache(USER_EMAIL_CACHE_SIZE)
         self._user_lookup_failed = False
+        self.flow_listing_complete = False
         self.extract_refresh_listing_complete = True
         self._extract_targets: frozenset[str] = frozenset()
         # Holds at most MAX_EXTRACT_REFRESH_JOB_LOOKUPS runs, one per looked-up job.
@@ -228,6 +234,8 @@ class TableauPipelineClient:
             yield from self.get_extract_refresh_pipelines(keep)
 
     def _get_flow_pipelines(self) -> Iterable[TableauPipelineDetails]:
+        """Every flow. `flow_listing_complete` turns true only once the last page
+        is read, so a listing that fails part way deletes nothing."""
         flow: FlowItem
         for flow in Pager(self.tableau_server.flows):
             yield TableauPipelineDetails(
@@ -241,6 +249,7 @@ class TableauPipelineClient:
                 owner_id=str(flow.owner_id) if flow.owner_id else None,
                 tags=sorted(flow.tags) if flow.tags else [],
             )
+        self.flow_listing_complete = True
 
     def get_user_email(self, user_id: str) -> str | None:
         """Resolve a Tableau user id to an email address, or None on failure.
@@ -535,7 +544,8 @@ class TableauPipelineClient:
 
         Returns None when the flow has no lineage records yet (the Metadata store
         lags live publishes by a few minutes on Tableau Server); raises
-        TableauMetadataApiError when the Metadata API cannot be queried.
+        TableauMetadataApiError when the Metadata API cannot be queried or its
+        record cannot be read, so the source keeps the flow's stored tasks.
         """
         data = self._metadata_query(TABLEAU_FLOW_LINEAGE_QUERY.format(flow_luid=flow_luid), f"flow {flow_luid}")
         flows = data.get("flows") or []
@@ -545,8 +555,7 @@ class TableauPipelineClient:
         try:
             lineage = TableauFlowLineage.model_validate(flows[0])
         except Exception as exc:
-            logger.warning("Unable to parse the Tableau lineage of flow %s: %s", flow_luid, exc)
-            return None
+            raise TableauFlowRecordError(f"Unable to parse the Tableau lineage of flow {flow_luid}: {exc}") from exc
         self._attach_custom_sql(lineage)
         return lineage
 
@@ -594,11 +603,14 @@ class TableauPipelineClient:
     def _metadata_query(self, query: str, subject: str) -> dict:
         """The `data` of a Metadata API answer. A node-limit or permission error
         still returns partial data next to `errors`; the data is kept and the
-        truncation logged."""
+        truncation logged. Errors with no data at all, as a timed-out or rejected
+        query answers, are a failed query, not an empty one."""
         try:
             result = self.tableau_server.metadata.query(query=query)
         except Exception as exc:
             raise TableauMetadataApiError(f"Tableau Metadata API query failed for {subject}: {exc}") from exc
+        if result.get("errors") and not any((result.get("data") or {}).values()):
+            raise TableauMetadataApiError(f"Tableau Metadata API query failed for {subject}: {result['errors']}")
         if result.get("errors"):
             logger.warning("Tableau Metadata API returned errors for %s: %s", subject, result["errors"])
         return result.get("data") or {}
