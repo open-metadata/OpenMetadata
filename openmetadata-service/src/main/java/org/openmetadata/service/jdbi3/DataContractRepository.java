@@ -55,6 +55,7 @@ import org.openmetadata.schema.entity.datacontract.SlaValidation;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
@@ -1480,7 +1481,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public DataContractResult updateContractDQResults(
-      EntityReference contractReference, TestSuite testSuite) {
+      EntityReference contractReference, TestSuite testSuite, PipelineStatusType pipelineState) {
     DataContract dataContract =
         Entity.getEntity(contractReference, "entity,owners,reviewers", Include.NON_DELETED);
     if (dataContract == null) {
@@ -1497,11 +1498,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // Get the latest result or throw if none exists
     DataContractResult result = getLatestResult(dataContract);
-    QualityValidation validation = validateDQ(testSuite);
-
-    result.withQualityValidation(validation);
-
-    compileResult(result, ContractExecutionStatus.Success);
+    applyDQPipelineOutcome(result, testSuite, pipelineState);
     // Update the last result in the data contract
     addContractResult(dataContract, result);
 
@@ -1519,6 +1516,26 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
     return result;
+  }
+
+  void applyDQPipelineOutcome(
+      DataContractResult result, TestSuite testSuite, PipelineStatusType pipelineState) {
+    if (didPipelineAbort(pipelineState)) {
+      // The test suite summary may carry results from an earlier run, so it is not trusted here.
+      result.withResult(
+          "DQ validation pipeline ended with status "
+              + pipelineState
+              + " before recording test results");
+      compileResult(result, ContractExecutionStatus.Aborted);
+    } else {
+      result.withQualityValidation(validateDQ(testSuite));
+      compileResult(result, ContractExecutionStatus.Success);
+    }
+  }
+
+  static boolean didPipelineAbort(PipelineStatusType pipelineState) {
+    return pipelineState == PipelineStatusType.FAILED
+        || pipelineState == PipelineStatusType.PARTIAL_SUCCESS;
   }
 
   public DataContractResult getLatestResult(DataContract dataContract) {
