@@ -222,6 +222,7 @@ export const useWorkflowNavigationBlock = ({
       return;
     }
 
+    allowPop.current = false;
     currentEntry.current = globalThis.history.state;
     globalThis.addEventListener('beforeunload', preventUnload);
     globalThis.addEventListener('popstate', handlePopState, true);

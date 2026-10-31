@@ -39,6 +39,13 @@ const Harness = () => {
   return (
     <>
       <a href="/explore">Leave</a>
+      <button
+        onClick={() => {
+          mode.enterEditMode();
+          setHasNodeConfigSaved(true);
+        }}>
+        Edit again
+      </button>
       <button onClick={() => void save()}>Save workflow</button>
       <button onClick={() => void guard.onSave()}>Save and leave</button>
       <output data-testid="route">
@@ -125,3 +132,31 @@ it.each(['back', 'forward'])(
     view.unmount();
   }
 );
+
+it('guards Back again after saving and starting another edit session', async () => {
+  window.history.replaceState({ idx: 0 }, '', '/workflow?mode=view');
+  window.history.pushState({ idx: 1 }, '', '/workflow?mode=edit');
+  const view = render(
+    <BrowserRouter>
+      <Harness />
+    </BrowserRouter>
+  );
+  act(() => window.history.back());
+  await waitFor(() =>
+    expect(screen.getByTestId('modal')).toHaveTextContent('true')
+  );
+  fireEvent.click(screen.getByText('Save and leave'));
+  await waitFor(() => expect(window.history.state.idx).toBe(0));
+  fireEvent.click(screen.getByText('Edit again'));
+  await waitFor(() =>
+    expect(screen.getByTestId('route')).toHaveTextContent('/workflow?mode=edit')
+  );
+  act(() => window.history.back());
+  await waitFor(() =>
+    expect(screen.getByTestId('modal')).toHaveTextContent('true')
+  );
+
+  expect(screen.getByTestId('route')).toHaveTextContent('/workflow?mode=edit');
+
+  view.unmount();
+});
