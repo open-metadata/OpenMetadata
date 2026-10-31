@@ -2831,6 +2831,53 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertFalse(Boolean.TRUE.equals(Users.get(target.getId().toString()).getDeleted()));
   }
 
+  @Test
+  void test_patchUser_joinClosedTeamWithReplace_forbiddenForNonAdmin(TestNamespace ns) {
+    User user = createRegularUser(ns, "closedjoiner");
+    Team closed = createJoinableGroup(ns.prefix("closedReplace"), false);
+
+    assertPatchForbidden(clientFor(user), user, replaceTeamsOp(closed));
+
+    User reread = Users.get(user.getId().toString(), "teams");
+    assertTrue(
+        reread.getTeams().stream().noneMatch(team -> team.getId().equals(closed.getId())),
+        "a replace op must not put the user in a closed team");
+  }
+
+  @Test
+  void test_patchUser_joinOpenTeamWithReplace_allowedForNonAdmin(TestNamespace ns) {
+    User user = createRegularUser(ns, "openjoiner");
+    Team open = createJoinableGroup(ns.prefix("openReplace"), true);
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), replaceTeamsOp(open));
+
+    User reread = Users.get(user.getId().toString(), "teams");
+    assertTrue(reread.getTeams().stream().anyMatch(team -> team.getId().equals(open.getId())));
+  }
+
+  private static Team createJoinableGroup(String name, boolean joinable) {
+    return SdkClients.adminClient()
+        .teams()
+        .create(
+            new CreateTeam()
+                .withName(name)
+                .withTeamType(CreateTeam.TeamType.GROUP)
+                .withIsJoinable(joinable));
+  }
+
+  private ArrayNode replaceTeamsOp(Team team) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject()
+        .put("op", "replace")
+        .put("path", "/teams/0")
+        .putObject("value")
+        .put("id", team.getId().toString())
+        .put("type", "team");
+    return ops;
+  }
+
   private User createDataSteward(TestNamespace ns) {
     String localPart = "steward" + ns.shortPrefix();
     return createEntity(
