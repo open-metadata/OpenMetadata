@@ -6559,8 +6559,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     daoCollection.entityExtensionDAO().insertMany(ids, extensions, entityType, jsons);
   }
 
+  /** The copy of an entity a version stores, before the fields no version shows leave it. */
+  protected T prepareForVersionHistory(final T entity) {
+    return entity;
+  }
+
   final String serializeForVersionHistory(final T entity) {
-    return withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(entity));
+    return withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(prepareForVersionHistory(entity)));
   }
 
   /**
