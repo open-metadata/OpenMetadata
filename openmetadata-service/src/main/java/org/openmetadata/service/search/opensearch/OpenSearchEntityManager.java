@@ -271,12 +271,21 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             d ->
                 d.index(indexNames)
                     .query(q -> q.bool(boolQueryBuilder.build()))
+                    .conflicts(Conflicts.Proceed)
                     .refresh(Refresh.True));
 
     LOG.info(
         "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
         response.deleted(),
         response.failures().size());
+
+    if (response.versionConflicts() != null && response.versionConflicts() > 0) {
+      LOG.warn(
+          "DeleteByQuery skipped {} documents due to version conflicts for indices: {}, fields: {}",
+          response.versionConflicts(),
+          indexNames,
+          fieldAndValue);
+    }
 
     if (!response.failures().isEmpty()) {
       String failureDetails =
