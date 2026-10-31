@@ -324,6 +324,7 @@
                 <include>org/openmetadata/it/tests/alerts/LatchedConsumer*</include>
                 <include>org/openmetadata/it/tests/alerts/ReportingConsumer*</include>
                 <include>org/openmetadata/it/tests/alerts/FailingCommitConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/ErrorThrowingConsumer*</include>
                 <include>private_key.der</include>
                 <include>public_key.der</include>
                 <include>openmetadata-secure-test.yaml</include>
