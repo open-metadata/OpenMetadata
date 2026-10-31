@@ -36,8 +36,16 @@ import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.ai.CreateMcpServer;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
+import org.openmetadata.schema.api.services.CreateMcpService;
+import org.openmetadata.schema.entity.ai.Env;
+import org.openmetadata.schema.entity.ai.McpConnectionConfig;
+import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.entity.ai.McpServerType;
+import org.openmetadata.schema.entity.ai.McpTransportType;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
@@ -45,6 +53,7 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ConflictException;
@@ -59,6 +68,107 @@ import org.openmetadata.service.Entity;
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
 class ChangeRequestResourceIT {
+  @Test
+  void mcpApprovalOutputsAreMaskedWhileTheApprovedConnectionIsPreserved(TestNamespace ns)
+      throws Exception {
+    final String secret = "mcp-approval-secret";
+    final McpConnectionConfig config =
+        new McpConnectionConfig()
+            .withUrl("https://example.com/?token=" + secret)
+            .withArgs(List.of("package-name", "--token=" + secret))
+            .withEnv(new Env().withAdditionalProperty("SETTING", secret))
+            .withTimeout(1000);
+    final McpService service =
+        ns.trackRoot(
+            Entity.MCP_SERVICE,
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.POST,
+                    "/v1/services/mcpServices",
+                    new CreateMcpService()
+                        .withName(ns.prefix("mcp-approval-service"))
+                        .withServiceType(CreateMcpService.McpServiceType.Mcp),
+                    McpService.class));
+    final McpServer server =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/mcpServers",
+                new CreateMcpServer()
+                    .withName(ns.prefix("mcp-approval"))
+                    .withService(service.getName())
+                    .withServerType(McpServerType.Database)
+                    .withTransportType(McpTransportType.Stdio)
+                    .withConnectionConfig(config),
+                McpServer.class);
+    deployWorkflowAssigning(
+        ns,
+        Entity.MCP_SERVER,
+        "\"description\"",
+        "",
+        filterScopedTo(Entity.MCP_SERVER, server.getFullyQualifiedName()),
+        SharedEntities.get().USER1.getEntityReference());
+    final String patch =
+        """
+        [{"op":"add","path":"/description","value":"approved edit"},
+         {"op":"replace","path":"/connectionConfig/timeout","value":4000}]
+        """;
+    final var preview =
+        sendAsAdmin(
+            "POST",
+            "/v1/changeRequests/preview/mcpServer/" + server.getId(),
+            "application/json-patch+json",
+            patch);
+    assertEquals(200, preview.statusCode());
+    assertTrue(JsonUtils.readTree(preview.body()).path("requiresApproval").asBoolean());
+    assertFalse(preview.body().contains(secret));
+    final var staged =
+        sendAsAdmin(
+            "PATCH", "/v1/mcpServers/" + server.getId(), "application/json-patch+json", patch);
+    assertEquals(202, staged.statusCode());
+    assertFalse(staged.body().contains(secret));
+
+    final ChangeRequest request = onlyPendingRequest(server.getId());
+    for (String path :
+        List.of(
+            "/v1/changeRequests/" + request.getId(),
+            "/v1/changeRequests/" + request.getId() + "/revisions",
+            "/v1/changeRequests?entityId=" + server.getId())) {
+      assertFalse(
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, path, null)
+              .contains(secret));
+    }
+    assertTrue(
+        JsonUtils.pojoToJson(
+                Entity.getCollectionDAO()
+                    .changeRevisionDAO()
+                    .findById(request.getActiveRevisionId()))
+            .contains(secret));
+    final Task task = awaitOpenApprovalTask(server.getFullyQualifiedName());
+    assertFalse(taskPayloadJson(task.getId()).contains(secret));
+    resolveAs(SdkClients.user1Client(), task, "approve", TaskResolutionType.Approved, 1);
+    Awaitility.await("the MCP connection update is published")
+        .atMost(Duration.ofSeconds(60))
+        .until(
+            () ->
+                Entity.getCollectionDAO()
+                        .mcpServerDAO()
+                        .findEntityById(server.getId())
+                        .getConnectionConfig()
+                        .getTimeout()
+                    == 4000);
+    assertEquals(
+        config.withTimeout(4000),
+        Entity.getCollectionDAO()
+            .mcpServerDAO()
+            .findEntityById(server.getId())
+            .getConnectionConfig());
+  }
+
   private Glossary gated(TestNamespace ns) {
     Glossary glossary =
         gatedGlossaryOwnedBy(ns, "dn", SharedEntities.get().USER2.getEntityReference());

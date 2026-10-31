@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -369,7 +370,7 @@ class SocketAddressFilterSpoofRevalidationBypassTest {
       when(sessionClaim.asString()).thenReturn(SESSION_ID);
       when(jwtFilter.verifySignatureOnly("token"))
           .thenReturn(Map.of(JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
-      when(jwtFilter.resolveUserName(any())).thenReturn(username);
+      when(jwtFilter.resolveUserName(any(), anyString())).thenReturn(username);
     }
 
     private Enumeration<String> enumeration(String... values) {
