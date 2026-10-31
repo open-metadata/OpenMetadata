@@ -70,9 +70,14 @@ const OntologyIriInput = ({
       onBlur={() => setSearch(undefined)}
       onInputChange={(text) => {
         setSearch(text);
-        if (text !== selected?.label) {
-          onChange(text);
+        if (text === selected?.label) {
+          return;
         }
+        const label = text.trim().toLowerCase();
+        const matches = options.filter(
+          (option) => option.label.toLowerCase() === label
+        );
+        onChange(matches.length === 1 ? matches[0].iri : text);
       }}
       onSelectionChange={(key) => {
         const option = options.find((entry) => entry.iri === key);

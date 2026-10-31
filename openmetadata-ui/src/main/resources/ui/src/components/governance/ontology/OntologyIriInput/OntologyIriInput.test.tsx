@@ -13,18 +13,27 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import OntologyIriInput from './OntologyIriInput';
+import { OntologyIriOption } from './OntologyIriInput.types';
 
-const Harness = ({ initial = '' }: { initial?: string }) => {
+const OPTIONS = [
+  { iri: 'urn:Customer', label: 'Customer' },
+  { iri: 'urn:Person', label: 'Person' },
+];
+
+const Harness = ({
+  initial = '',
+  options = OPTIONS,
+}: {
+  initial?: string;
+  options?: OntologyIriOption[];
+}) => {
   const [value, setValue] = useState(initial);
 
   return (
     <>
       <OntologyIriInput
         label="Subject"
-        options={[
-          { iri: 'urn:Customer', label: 'Customer' },
-          { iri: 'urn:Person', label: 'Person' },
-        ]}
+        options={options}
         value={value}
         onChange={setValue}
       />
@@ -45,6 +54,59 @@ it('finds a concept by label and stores its exact IRI', async () => {
   );
 
   expect(input).toHaveValue('Person');
+});
+
+it.each(['Customer', 'customer', ' CUSTOMER '])(
+  'resolves the typed exact label %s without selecting a menu item',
+  (label) => {
+    render(<Harness />);
+    const input = screen.getByRole('combobox', { name: /Subject/ });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: label } });
+    fireEvent.blur(input);
+
+    expect(screen.getByTestId('stored-iri')).toHaveTextContent('urn:Customer');
+    expect(input).toHaveValue('Customer');
+  }
+);
+
+it('restores a selected IRI after editing and retyping its label', () => {
+  render(<Harness initial="urn:Customer" />);
+  const input = screen.getByRole('combobox', { name: /Subject/ });
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: 'Cust' } });
+  fireEvent.change(input, { target: { value: 'Customer' } });
+  fireEvent.blur(input);
+
+  expect(screen.getByTestId('stored-iri')).toHaveTextContent('urn:Customer');
+  expect(input).toHaveValue('Customer');
+});
+
+it('requires an explicit selection when more than one IRI has the same label', async () => {
+  render(
+    <Harness
+      options={[
+        { iri: 'urn:one:Customer', label: 'Customer' },
+        { iri: 'urn:two:Customer', label: 'CUSTOMER' },
+      ]}
+    />
+  );
+  const input = screen.getByRole('combobox', { name: /Subject/ });
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: 'Customer' } });
+  fireEvent.blur(input);
+
+  expect(screen.getByTestId('stored-iri')).toHaveTextContent(/^Customer$/);
+
+  fireEvent.focus(input);
+  fireEvent.keyDown(input, { key: 'ArrowDown' });
+  fireEvent.click(
+    await screen.findByRole('option', { name: 'CUSTOMER', exact: true })
+  );
+
+  expect(screen.getByTestId('stored-iri')).toHaveTextContent(
+    'urn:two:Customer'
+  );
 });
 
 it('retains an external IRI and accepts edits without requiring a local declaration', () => {

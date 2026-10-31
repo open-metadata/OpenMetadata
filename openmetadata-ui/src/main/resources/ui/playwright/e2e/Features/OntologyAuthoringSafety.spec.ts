@@ -293,11 +293,16 @@ test.describe(
                 name: new RegExp(label),
               });
               await scrollIntoViewAndSettle(input);
-              await input.fill(name);
-              await input.press('ArrowDown');
-              await page
-                .getByRole('option', { name: new RegExp('^' + name) })
-                .click();
+              if (label === 'Subject') {
+                await input.fill(' customer ');
+                await input.press('Tab');
+              } else {
+                await input.fill(name);
+                await input.press('ArrowDown');
+                await page
+                  .getByRole('option', { name: new RegExp('^' + name) })
+                  .click();
+              }
               await expect(input).toHaveValue(name);
             }
             await expect(

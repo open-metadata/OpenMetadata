@@ -132,6 +132,7 @@ export const useWorkflowNavigationBlock = ({
           setShowModal(true);
         }
       };
+    // ADR:2026-10-30-only-ontology-drafts-intercept-programmatic-navigation
     // BrowserRouter shares this navigator with sidebar buttons outside the editor subtree.
     navigator.push = intercept(push);
     navigator.replace = intercept(replace);
