@@ -124,9 +124,8 @@ const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
     ? getListTestCaseIncidentStatus({
         originEntityFQN: tableFqn,
         latest: true,
-        // The server picks each test case's latest status before applying this filter, so
-        // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
-        // before that and still includes resolved test cases.
+        // The server picks each incident's latest status before applying this filter, so
+        // Resolved history can't fill the page.
         testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
         // `latest` is only honoured together with a time range.
         startTs: 0,

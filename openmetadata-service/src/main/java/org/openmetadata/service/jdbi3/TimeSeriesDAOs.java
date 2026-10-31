@@ -2027,6 +2027,14 @@ public interface TimeSeriesDAOs {
         @Bind("recordId") String recordId,
         @Bind("severity") String severity);
 
+    // A latest listing returns the latest record of each incident, as the incident groups count
+    // them: a test case can hold more than one open incident, since a task-first incident starts
+    // its own chain without closing an older one.
+    @Override
+    default String getPartitionFieldName() {
+      return "stateId";
+    }
+
     @SqlQuery(
         "SELECT json FROM "
             + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
