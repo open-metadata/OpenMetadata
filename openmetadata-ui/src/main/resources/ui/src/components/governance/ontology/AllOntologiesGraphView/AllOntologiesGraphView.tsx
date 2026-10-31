@@ -15,17 +15,21 @@ import {
   Box,
   Button,
   Card,
+  FeaturedIcon,
   Input,
+  Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { Database01, Search } from '@openmetadata/ui-core-components/icons';
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getModelRelations,
   OntologyStudioModel,
@@ -44,13 +48,13 @@ import {
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
-import OntologyConceptDataGraph from '../OntologyGraphView/OntologyConceptDataGraph';
 import OntologyGraphModeTabs from '../OntologyGraphView/OntologyGraphModeTabs';
 import { useOntologyGraphSearchSlot } from '../OntologyGraphView/OntologyGraphSearchSlot.context';
 import {
   AI_GRAPH_BACKDROP_CLASS,
   AI_GRAPH_CONTROLS_CLASS,
 } from '../OntologyGraphView/OntologyGraphView.constants';
+import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import {
   EMPTY_COLOR_MAP,
   EMPTY_GLOSSARIES,
@@ -72,6 +76,67 @@ interface AllOntologiesGraphViewProps {
   readonly onEditConcept: (ontology: Ontology, conceptId: string) => void;
   readonly onSelectedConceptChange: (conceptId?: string) => void;
 }
+
+interface ConceptPickerEmptyStateProps {
+  readonly concepts: readonly OntologyConcept[];
+  readonly onSelectConcept?: (conceptId: string) => void;
+}
+
+const ConceptPickerEmptyState = ({
+  concepts,
+  onSelectConcept,
+}: ConceptPickerEmptyStateProps) => {
+  const { t } = useTranslation();
+  const items = useMemo(
+    () => concepts.map((item) => ({ id: item.id, label: getEntityName(item) })),
+    [concepts]
+  );
+
+  return (
+    <Box
+      align="center"
+      className="tw:absolute tw:inset-0 tw:z-6 tw:pointer-events-none"
+      data-testid="ontology-data-empty-state"
+      justify="center">
+      <Box
+        align="center"
+        className="tw:pointer-events-auto tw:w-105 tw:text-center"
+        direction="col"
+        gap={2}>
+        <FeaturedIcon color="gray" icon={Database01} size="lg" theme="modern" />
+        <Typography as="h3" size="text-lg" weight="semibold">
+          {t('label.select-entity', { entity: t('label.concept') })}
+        </Typography>
+        <Typography color="secondary" size="text-sm">
+          {t('message.ontology-data-graph-scope')}
+        </Typography>
+        {onSelectConcept ? (
+          <Select.ComboBox
+            aria-label={t('label.select-entity', {
+              entity: t('label.concept'),
+            })}
+            className="tw:mt-3 tw:w-full"
+            data-testid="ontology-data-concept-picker"
+            defaultItems={items}
+            placeholder={t('label.search-entity', {
+              entity: t('label.concept-plural'),
+            })}
+            shortcut={false}
+            size="md"
+            onSelectionChange={(key) => {
+              if (key !== null) {
+                onSelectConcept(String(key));
+              }
+            }}>
+            {(item) => (
+              <Select.Item id={item.id} key={item.id} label={item.label} />
+            )}
+          </Select.ComboBox>
+        ) : null}
+      </Box>
+    </Box>
+  );
+};
 
 const AllOntologiesGraphView = ({
   graph,
@@ -165,14 +230,26 @@ const AllOntologiesGraphView = ({
       );
     }
     if (graphMode === 'data') {
-      return (
-        <OntologyConceptDataGraph
-          concept={selected}
+      if (model) {
+        return (
+          <OntologyNativeDataMode
+            key={model.ontology.id}
+            ontologyId={model.ontology.id}
+            selectedConceptId={selectedConceptId}
+            onSelectConcept={onSelectedConceptChange}
+          />
+        );
+      }
+
+      return isAiMode ? (
+        <ConceptPickerEmptyState
           concepts={allConcepts}
-          key={selected?.id}
-          model={model}
           onSelectConcept={onSelectedConceptChange}
         />
+      ) : (
+        <Typography className="tw:relative tw:m-4" size="text-sm">
+          {t('label.select-entity', { entity: t('label.concept') })}
+        </Typography>
       );
     }
 

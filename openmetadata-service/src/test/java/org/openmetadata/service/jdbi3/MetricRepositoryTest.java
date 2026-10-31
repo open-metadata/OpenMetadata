@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.lang.reflect.InvocationTargetException;
@@ -444,6 +445,58 @@ class MetricRepositoryTest {
 
       assertNull(metricWithDeletedGroup.getMetricGroup());
       assertEquals(activeGroup, metricWithActiveGroup.getMetricGroup());
+    }
+  }
+
+  @Test
+  void parentHydrationReturnsASoftDeletedParentInsteadOfFailingThePage() {
+    final UUID parentId = UUID.randomUUID();
+    final EntityReference deletedParent =
+        new EntityReference().withId(parentId).withType(Entity.METRIC).withDeleted(true);
+    final Metric child = new Metric().withId(UUID.randomUUID());
+    final Metric root = new Metric().withId(UUID.randomUUID());
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(fixture
+              .relationshipDAO()
+              .findFromBatch(
+                  List.of(child.getId().toString(), root.getId().toString()),
+                  Relationship.CONTAINS.ordinal(),
+                  Entity.METRIC,
+                  NON_DELETED))
+          .thenReturn(
+              List.of(
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(parentId.toString())
+                      .toId(child.getId().toString())
+                      .build()));
+      entity
+          .when(() -> Entity.getEntityReferencesByIds(Entity.METRIC, List.of(parentId), ALL))
+          .thenReturn(List.of(deletedParent));
+
+      fixture.repository().setFieldsInBulk(new Fields(Set.of("parent")), List.of(child, root));
+
+      assertEquals(deletedParent, child.getParent());
+      assertNull(root.getParent());
+    }
+  }
+
+  @Test
+  void parentHydrationOfAPageWithoutParentsLeavesThemUnset() {
+    final Metric root = new Metric().withId(UUID.randomUUID());
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      when(fixture
+              .relationshipDAO()
+              .findFromBatch(
+                  List.of(root.getId().toString()),
+                  Relationship.CONTAINS.ordinal(),
+                  Entity.METRIC,
+                  NON_DELETED))
+          .thenReturn(List.of());
+
+      fixture.repository().setFieldsInBulk(new Fields(Set.of("parent")), List.of(root));
+
+      assertNull(root.getParent());
     }
   }
 

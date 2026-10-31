@@ -110,7 +110,8 @@ public interface OntologyConceptBindingDAO {
   @SqlQuery(
       "SELECT "
           + COLUMNS
-          + " FROM ontology_concept_binding WHERE conceptId = :conceptId AND assetId = :assetId")
+          + " FROM ontology_concept_binding WHERE conceptId = :conceptId AND assetId = :assetId "
+          + "LIMIT 1")
   @RegisterRowMapper(BindingRowMapper.class)
   BindingRow find(@BindUUID("conceptId") UUID conceptId, @BindUUID("assetId") UUID assetId);
 
@@ -137,6 +138,20 @@ public interface OntologyConceptBindingDAO {
       @Bind("afterConceptId") String afterConceptId,
       @Bind("afterAssetId") String afterAssetId,
       @Bind("limit") int limit);
+
+  /** The first {@code perConcept} table rows of each concept in asset id order, in one statement. */
+  @SqlQuery(
+      "SELECT "
+          + COLUMNS
+          + " FROM (SELECT "
+          + COLUMNS
+          + ", ROW_NUMBER() OVER (PARTITION BY conceptId ORDER BY assetId ASC) AS bindingOrder "
+          + "FROM ontology_concept_binding WHERE conceptId IN (<conceptIds>) "
+          + "AND assetType = 'table') ranked "
+          + "WHERE bindingOrder <= :perConcept ORDER BY conceptId ASC, assetId ASC")
+  @RegisterRowMapper(BindingRowMapper.class)
+  List<BindingRow> listFirstTablesForConcepts(
+      @BindList("conceptIds") List<String> conceptIds, @Bind("perConcept") int perConcept);
 
   @SqlQuery(
       "SELECT binding.conceptId, COUNT(*) AS assetCount "

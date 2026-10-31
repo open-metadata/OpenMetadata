@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { AxiomType } from '../../../../generated/api/data/createOntologyAxiom';
+import {
+  AxiomType,
+  ExpressionKind,
+  RestrictionKind,
+} from '../../../../generated/api/data/createOntologyAxiom';
 import {
   buildOntologyAxiomRequest,
   EMPTY_AXIOM_FORM,
+  formatOntologyExpression,
 } from './OntologyAxiomEditor.utils';
 
 describe('Ontology axiom form utilities', () => {
@@ -34,11 +39,88 @@ describe('Ontology axiom form utilities', () => {
         description: 'Classification',
         ontology: 'governed',
         subjectIri: 'https://example.org/Customer',
-        targetIri: 'https://example.org/Party',
       })
     );
     expect(request.expressions).toBeUndefined();
     expect(request.literal).toBeUndefined();
     expect(request.propertyIri).toBeUndefined();
+    expect(request.targetIri).toBeUndefined();
   });
+
+  it('preserves an empty string as a data-property fact and excludes class expressions', () => {
+    const request = buildOntologyAxiomRequest('governed', {
+      ...EMPTY_AXIOM_FORM,
+      axiomType: AxiomType.DataPropertyAssertion,
+      propertyIri: 'urn:code',
+      literalValue: '',
+      expressions: [
+        { kind: ExpressionKind.NamedClass, classIri: 'urn:Person' },
+      ],
+    });
+
+    expect(request.literal).toEqual({ value: '', datatypeIri: undefined });
+    expect(request.expressions).toBeUndefined();
+  });
+});
+
+const referenceLabel = (iri: string) => iri.replace('urn:', '');
+const translate = (key: string) => key;
+
+it('previews nested alternatives and zero cardinality without losing their meaning', () => {
+  expect(
+    formatOntologyExpression(
+      {
+        kind: ExpressionKind.Intersection,
+        operands: [
+          { kind: ExpressionKind.NamedClass, classIri: 'urn:Person' },
+          {
+            kind: ExpressionKind.Union,
+            operands: [
+              {
+                kind: ExpressionKind.OneOf,
+                individualIris: ['urn:Alice', 'urn:Bob'],
+              },
+              {
+                kind: ExpressionKind.Restriction,
+                propertyIri: 'urn:children',
+                restrictionKind: RestrictionKind.Max,
+                cardinality: 0,
+              },
+            ],
+          },
+        ],
+      },
+      referenceLabel,
+      translate
+    )
+  ).toBe(
+    '(Person label.and-lowercase ({Alice, Bob} label.or-lowercase children ≤ 0))'
+  );
+});
+
+it('previews a typed empty literal and a quantified filler', () => {
+  expect(
+    formatOntologyExpression(
+      {
+        kind: ExpressionKind.Restriction,
+        propertyIri: 'urn:code',
+        restrictionKind: RestrictionKind.Value,
+        literal: { value: '', datatypeIri: 'urn:string' },
+      },
+      referenceLabel,
+      translate
+    )
+  ).toBe('code = "" (string)');
+  expect(
+    formatOntologyExpression(
+      {
+        kind: ExpressionKind.Restriction,
+        propertyIri: 'urn:knows',
+        restrictionKind: RestrictionKind.Some,
+        filler: { kind: ExpressionKind.NamedClass, classIri: 'urn:Person' },
+      },
+      referenceLabel,
+      translate
+    )
+  ).toBe('knows label.ontology-some-values Person');
 });

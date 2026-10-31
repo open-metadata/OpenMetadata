@@ -46,6 +46,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
@@ -115,6 +116,11 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LifeCycleCreatedSentinelMigration.STEP_NAME,
         () -> removeCreatedSentinel(handle, POSTGRES));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        FirstTimeUserMigration.STEP_NAME,
+        () -> FirstTimeUserMigration.backfillFirstTimeUser(handle, POSTGRES));
     // Alerts the previous release stopped sending, because it could not build one of their
     // destinations, send again from this release; they start from the upgrade, not their backlog.
     runOnce(

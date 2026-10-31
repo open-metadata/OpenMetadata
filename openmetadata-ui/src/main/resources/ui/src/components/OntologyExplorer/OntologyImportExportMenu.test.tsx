@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
 import {
@@ -97,6 +98,53 @@ describe('OntologyImportExportMenu', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('opens Import with a new-ontology target when no ontology exists yet', () => {
+    render(
+      <MemoryRouter>
+        <OntologyImportExportMenu
+          isCatalogEmpty
+          kind="allOntologies"
+          ontologies={[]}
+          onApplied={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+
+    expect(screen.getByTestId('ontology-native-import-file')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-native-import-target')
+    ).toHaveTextContent('label.new-ontology');
+    expect(
+      screen.queryByTestId('ontology-import-target-picker')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the ontology picker when the list is empty only because it failed to load', () => {
+    render(
+      <MemoryRouter>
+        <OntologyImportExportMenu
+          isCatalogEmpty={false}
+          kind="allOntologies"
+          ontologies={[]}
+          onApplied={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+
+    expect(screen.getByTestId('ontology-import-target-picker')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-native-import-file')
+    ).not.toBeInTheDocument();
+  });
+
   it('opens the active-release export modal for a native ontology', () => {
     render(
       <OntologyImportExportMenu
@@ -137,6 +185,7 @@ describe('OntologyImportExportMenu', () => {
       }));
       render(
         <OntologyImportExportMenu
+          isCatalogEmpty={false}
           kind="allOntologies"
           ontologies={owners}
           onApplied={jest.fn()}
