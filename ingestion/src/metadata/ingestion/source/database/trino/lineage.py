@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.trino.queries import TRINO_SQL_STATEMENT
 from metadata.ingestion.source.database.trino.query_parser import (
@@ -131,7 +132,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
     ) -> str | None:
         trino_schema_name = None
         if trino_table.databaseSchema and trino_table.databaseSchema.name:
-            trino_schema_name = trino_table.databaseSchema.name.root
+            trino_schema_name = model_str(trino_table.databaseSchema.name)
 
         if not trino_schema_name and trino_table.fullyQualifiedName and trino_table.fullyQualifiedName.root:
             trino_table_fqn_parts = fqn.split(trino_table.fullyQualifiedName.root)
