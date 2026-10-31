@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SearchIndex } from '../../../src/enums/search.enum';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
@@ -30,7 +29,6 @@ import {
   readGraphEdges,
   readNodePositions,
 } from '../../utils/ontologyStudio';
-import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -165,72 +163,36 @@ test.describe(
 
     test('authors a native model through the shared View, Edit, and Query shell', async ({
       isolatedUserPage: page,
-      freshUserPage: { user: reviewer },
     }, testInfo) => {
       test.slow();
       const api = await getWorkerAdminAPIContext();
       const name = `pw_native_studio_${uuid()}`;
+      const prefix = `pw-native-studio-${uuid()}`;
       let ontology: Ontology | undefined;
 
       try {
-        await waitForSearchIndexed(
-          api,
-          reviewer.responseData.name,
-          SearchIndex.USER,
-          {
-            matchBy: 'nameOrDisplayName',
-          }
-        );
         await test.step('Create a native ontology from the shared scope menu', async () => {
           await page.goto('/governance/ontology');
           await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
           await page.getByTestId('ontology-scope-menu-trigger').click();
           await page.getByTestId('ontology-create').click();
 
-          const form = page.getByTestId('ontology-create-form');
-          await form
-            .getByRole('textbox', { name: 'Name', exact: true })
-            .fill(name);
-          await form
-            .getByRole('textbox', { name: 'Ontology IRI', exact: true })
-            .fill(`urn:${name}`);
-          await form
-            .getByRole('textbox', { name: 'Namespace', exact: true })
-            .fill('relative/path');
-          await form.getByRole('button', { name: 'Save', exact: true }).click();
-          await expect(form).toContainText('Enter a valid concept IRI.');
-          await form
-            .getByRole('textbox', { name: 'Namespace', exact: true })
-            .fill(`urn:${name}:`);
-          const reviewers = form.getByRole('combobox', {
-            name: 'Reviewers',
-            exact: true,
-          });
-          await reviewers.fill(reviewer.responseData.name);
-          await page
-            .getByRole('option')
-            .filter({
-              hasText:
-                reviewer.responseData.displayName ?? reviewer.responseData.name,
-            })
-            .click();
-          await reviewers.press('Escape');
+          const submit = page.getByTestId('ontology-create-submit');
+          await expect(submit).toBeDisabled();
+          await page.getByTestId('ontology-create-name').fill(name);
+          await page.getByTestId('ontology-create-prefix').fill(prefix);
           const created = page.waitForResponse(
             (response) =>
               new URL(response.url()).pathname === '/api/v1/ontologies' &&
               response.request().method() === 'POST'
           );
-          await form.getByRole('button', { name: 'Save', exact: true }).click();
+          await submit.click();
           ontology = await okJson<Ontology>(
             await created,
             'Create ontology in Studio'
           );
-          expect(ontology.reviewers).toEqual(
-            expect.arrayContaining([
-              expect.objectContaining({ id: reviewer.responseData.id }),
-            ])
-          );
           expect(ontology.owners).toHaveLength(1);
+          expect(ontology.namespace).toMatch(new RegExp(`/onto/${prefix}#$`));
 
           await expect(page).toHaveURL(
             new RegExp(`[?&]ontology=${ontology.id}(?:&|$)`)
@@ -238,11 +200,14 @@ test.describe(
           await expect(
             page.getByTestId('ontology-scope-menu-trigger')
           ).toHaveAttribute('data-scope-key', `ontology:${ontology.id}`);
-          await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
+          await expect(page.getByTestId('mode-tab-edit')).toHaveAttribute(
             'aria-selected',
             'true'
           );
-          await expect(page.getByTestId('mode-tab-edit')).toBeVisible();
+          await expect(
+            page.getByTestId('ontology-new-class-panel')
+          ).toBeVisible();
+          await expect(page.getByTestId('mode-tab-view')).toBeVisible();
           await expect(page.getByTestId('mode-tab-query')).toBeVisible();
           await expect(page.getByTestId('mode-tab-model')).toHaveCount(0);
           await expect(page.getByTestId('mode-tab-releases')).toHaveCount(0);
@@ -250,38 +215,50 @@ test.describe(
 
         const [customer, party] =
           await test.step('Create concepts without leaving the graph', async () => {
-            await page.getByTestId('mode-tab-edit').click();
-            await expect(page.getByTestId('mode-tab-edit')).toHaveAttribute(
-              'aria-selected',
-              'true'
-            );
-
             const createConcept = async (
               conceptName: string,
               description: string
             ) => {
-              await page.getByTestId('ontology-add-concept').click();
-              const editor = page.getByTestId('ontology-concept-editor');
-              await editor
-                .getByRole('textbox', { name: 'Name', exact: true })
-                .fill(conceptName);
-              await editor
-                .getByRole('textbox', { name: 'Description', exact: true })
-                .fill(description);
-              const response = page.waitForResponse(
+              if (!ontology) {
+                throw new Error('ontology not created');
+              }
+              const { fullyQualifiedName, namespace } = ontology;
+              if (
+                !(await page
+                  .getByTestId('ontology-new-class-panel')
+                  .isVisible())
+              ) {
+                await page.getByTestId('ontology-add-concept').click();
+              }
+              await page.getByTestId('new-class-label').fill(conceptName);
+              await page.getByTestId('new-class-description').fill(description);
+              const applied = page.waitForResponse(
                 (candidate) =>
-                  new URL(candidate.url()).pathname ===
-                    '/api/v1/ontologyConcepts' &&
+                  candidate.url().includes('/ontologyChangeSets/') &&
+                  candidate.url().endsWith('/apply') &&
                   candidate.request().method() === 'POST'
               );
-              await editor
-                .getByRole('button', { name: 'Save', exact: true })
-                .click();
-
-              return okJson<OntologyConcept>(
-                await response,
-                `Create ${conceptName} in Studio`
+              await clickIgnoringToasts(page.getByTestId('new-class-create'));
+              expect((await applied).status()).toBe(200);
+              await expect(
+                page.getByTestId('ontology-new-class-panel')
+              ).toHaveCount(0);
+              const concepts = await okJson<{ data: OntologyConcept[] }>(
+                await api.get('/api/v1/ontologyConcepts', {
+                  params: { ontology: fullyQualifiedName },
+                }),
+                `Read ${conceptName} in Studio`
               );
+              const created = concepts.data.find(
+                (concept) => concept.iri === namespace + conceptName
+              );
+              if (!created) {
+                throw new Error(
+                  `${conceptName} missing after the plan applied`
+                );
+              }
+
+              return created;
             };
 
             const customer = await createConcept(
@@ -316,6 +293,7 @@ test.describe(
           });
 
         await test.step('Author a property and hierarchy from the concept inspector', async () => {
+          await page.getByTestId('fit-view').click();
           await clickGraphNode(page, customer.id);
           const inspector = page.getByTestId('ontology-concept-inspector');
           await expect(inspector).toContainText('A person who buys.');

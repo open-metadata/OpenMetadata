@@ -74,7 +74,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // two more, moving the IngestionBot spec's checks to
     // DomainIsolationIT removes one more, and deleting the unused antd
     // reply-announcement helper removes two more.
-    'om-playwright/no-positional-locator': 533,
+    'om-playwright/no-positional-locator': 530,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

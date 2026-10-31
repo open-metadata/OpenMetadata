@@ -712,6 +712,37 @@ public class MetricGroupResourceIT {
   }
 
   @Test
+  void list_groupMembersCarryTheirTags(TestNamespace ns) {
+    Metric tagged =
+        SdkClients.adminClient()
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(ns.prefix("tagged_member"))
+                    .withDescription("Group member")
+                    .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN))));
+    MetricGroup group =
+        createGroup(
+            new CreateMetricGroup()
+                .withName(ns.prefix("tagged_group"))
+                .withMetrics(List.of(tagged.getFullyQualifiedName())));
+
+    JsonNode members =
+        JSON.valueToTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.GET,
+                    GROUPS_PATH + "/" + group.getId() + "/metrics?rootOnly=true",
+                    null,
+                    Object.class));
+
+    JsonNode tags = members.get("data").get(0).get("tags");
+    assertEquals(1, tags.size(), "Group members must be hydrated with the hierarchy row fields");
+    assertEquals(RESTRICTED_TAG_FQN, tags.get(0).get("tagFQN").asText());
+  }
+
+  @Test
   void list_groupMembersCanPageHierarchyRootsOnly(TestNamespace ns) {
     Metric root = createMetric(ns, "page_root");
     createChild(ns, "page_child", root);

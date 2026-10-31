@@ -123,17 +123,19 @@ const OntologyStudioHeader = <M extends string>({
         </Box>
         <Divider className="tw:h-5.5 tw:self-center" orientation="vertical" />
         <Box className="tw:min-w-18 tw:max-w-48 tw:shrink">{scopeMenu}</Box>
-        <Tabs
-          className="tw:w-auto tw:shrink-0"
-          selectedKey={mode}
-          onSelectionChange={handleSelectionChange}>
-          <Tabs.List
-            aria-label={t('label.mode')}
-            size="sm"
-            type="button-border">
-            {modeItems}
-          </Tabs.List>
-        </Tabs>
+        {modes.length > 0 ? (
+          <Tabs
+            className="tw:w-auto tw:shrink-0"
+            selectedKey={mode}
+            onSelectionChange={handleSelectionChange}>
+            <Tabs.List
+              aria-label={t('label.mode')}
+              size="sm"
+              type="button-border">
+              {modeItems}
+            </Tabs.List>
+          </Tabs>
+        ) : null}
         <span className="tw:min-w-0 tw:flex-1" />
         {actions ? (
           <Box align="center" className="tw:shrink-0" gap={2}>

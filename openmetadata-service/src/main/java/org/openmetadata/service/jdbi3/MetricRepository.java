@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -105,7 +106,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   private static final int ASSET_SCAN_BATCH_SIZE = 200;
   private static final int HIERARCHY_SCAN_BATCH_SIZE = 200;
   static final int MAX_OBSERVABILITY_ASSET_DETAILS = 1_000;
-  private static final String HIERARCHY_FIELDS =
+  // Fields every hierarchy row carries (tree roots, group members, detail context), so the list
+  // renders the same columns whichever endpoint a row came from.
+  static final String HIERARCHY_FIELDS =
       "owners,experts,reviewers,parent,childrenCount,metricGroup,domains,tags";
 
   private final MetricObservabilityBuilder observabilityBuilder =
@@ -364,22 +367,35 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (!fields.contains(FIELD_PARENT) || nullOrEmpty(metrics)) {
       return;
     }
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(
-                entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED);
-    Map<UUID, EntityReference> parents = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      // ALL, like the single-entity getParent: a cascade restore re-reads each child while its
-      // parent is still deleted, and a NON_DELETED lookup failed the whole restore.
-      parents.put(
-          UUID.fromString(record.getToId()),
-          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getFromId()), ALL));
-    }
+    Map<UUID, UUID> parentIdByChildId = new HashMap<>();
+    daoCollection
+        .relationshipDAO()
+        .findFromBatch(
+            entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED)
+        .forEach(
+            record ->
+                parentIdByChildId.put(
+                    UUID.fromString(record.getToId()), UUID.fromString(record.getFromId())));
+    Map<UUID, EntityReference> parentsById = loadParentReferences(parentIdByChildId.values());
     for (Metric metric : metrics) {
-      metric.setParent(parents.get(metric.getId()));
+      UUID parentId = parentIdByChildId.get(metric.getId());
+      metric.setParent(parentId == null ? null : parentsById.get(parentId));
     }
+  }
+
+  /**
+   * Resolved with ALL: a soft-deleted parent keeps its relationship rows, so a NON_DELETED lookup
+   * threw "not found" and failed the whole page (e.g. listing with include=all after a recursive
+   * soft delete). The reference carries deleted=true instead.
+   */
+  private static Map<UUID, EntityReference> loadParentReferences(Collection<UUID> parentIds) {
+    if (parentIds.isEmpty()) {
+      return Map.of();
+    }
+    return Entity.getEntityReferencesByIds(METRIC, List.copyOf(new HashSet<>(parentIds)), ALL)
+        .stream()
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (left, right) -> left));
   }
 
   @Override
@@ -387,24 +403,40 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (!fields.contains(FIELD_CHILDREN) || nullOrEmpty(metrics)) {
       return;
     }
-    Map<UUID, List<EntityReference>> children = new HashMap<>();
+    Map<UUID, List<UUID>> childIdsByParentId = new HashMap<>();
+    daoCollection
+        .relationshipDAO()
+        .findToBatch(entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, METRIC)
+        .forEach(
+            record ->
+                childIdsByParentId
+                    .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+                    .add(UUID.fromString(record.getToId())));
+    Map<UUID, EntityReference> liveChildrenById =
+        loadLiveChildReferences(childIdsByParentId.values());
     for (Metric metric : metrics) {
-      children.put(metric.getId(), new ArrayList<>());
+      metric.setChildren(
+          childIdsByParentId.getOrDefault(metric.getId(), List.of()).stream()
+              .map(liveChildrenById::get)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toCollection(ArrayList::new)));
     }
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(
-                entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, METRIC);
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID parentId = UUID.fromString(record.getFromId());
-      EntityReference child =
-          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getToId()), NON_DELETED);
-      children.get(parentId).add(child);
+  }
+
+  /**
+   * Soft delete keeps a child's CONTAINS row live, so a per-child NON_DELETED lookup threw "not
+   * found" and failed the whole page. A batch NON_DELETED lookup just omits deleted children,
+   * matching the single-entity {@link #getChildren}.
+   */
+  private static Map<UUID, EntityReference> loadLiveChildReferences(
+      Collection<List<UUID>> childIdLists) {
+    List<UUID> childIds = childIdLists.stream().flatMap(List::stream).distinct().toList();
+    if (childIds.isEmpty()) {
+      return Map.of();
     }
-    for (Metric metric : metrics) {
-      metric.setChildren(children.get(metric.getId()));
-    }
+    return Entity.getEntityReferencesByIds(METRIC, childIds, NON_DELETED).stream()
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (left, right) -> left));
   }
 
   private void fetchAndSetMetricGroups(List<Metric> metrics, EntityUtil.Fields fields) {

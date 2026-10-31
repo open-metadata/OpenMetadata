@@ -192,7 +192,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     }
     setIsDeleting(true);
     try {
-      await deleteKnowledgePage(knowledgePage.id);
+      await deleteKnowledgePage(knowledgePage.id, true, true);
       queryClient.invalidateQueries({
         queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
       });

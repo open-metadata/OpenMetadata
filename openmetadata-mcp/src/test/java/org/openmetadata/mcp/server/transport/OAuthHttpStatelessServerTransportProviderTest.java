@@ -18,7 +18,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
@@ -358,9 +359,8 @@ class OAuthHttpStatelessServerTransportProviderTest {
     when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
     when(authConfig.getEmailClaim()).thenReturn("email");
     JwtFilter jwtFilter = spy(new JwtFilter(authConfig, mock(AuthorizerConfiguration.class)));
-    Claim emailClaim = mock(Claim.class);
-    when(emailClaim.asString()).thenReturn("mcp.user@company.com");
-    doReturn(Map.of("email", emailClaim)).when(jwtFilter).verifySignatureOnly("token");
+    String token = JWT.create().withClaim("email", "mcp.user@company.com").sign(Algorithm.none());
+    doReturn(JWT.decode(token).getClaims()).when(jwtFilter).verifySignatureOnly(token);
     doNothing().when(jwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
     OAuthHttpStatelessServerTransportProvider transport =
         transportWith(mock(UserSSOOAuthProvider.class));
@@ -369,7 +369,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
     when(userRepository.getActiveUserByEmailForAuth(eq("mcp.user@company.com"), any()))
         .thenReturn(new User().withName("mcp.user_q9z1"));
     HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("Authorization")).thenReturn("Bearer token");
+    when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
     HttpServletResponse response = mock(HttpServletResponse.class);
 
     boolean authenticated;
@@ -380,7 +380,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
 
     assertThat(authenticated).isTrue();
     verify(response, never()).setStatus(anyInt());
-    verify(jwtFilter).checkValidationsForToken(any(), eq("token"), eq("mcp.user_q9z1"), isNull());
+    verify(jwtFilter).checkValidationsForToken(any(), eq(token), eq("mcp.user_q9z1"), isNull());
   }
 
   /** The real {@link JwtFilter} reads the local signing key from the generator at construction. */
