@@ -42,10 +42,7 @@ class NestedSecretConverterCoverageTest {
    * set; never grow it.
    */
   private static final Set<String> KNOWN_UNCONVERTIBLE =
-      Set.of(
-          "NatsConnection.authType",
-          "QlikSenseConnection.certificates",
-          "SapS4HanaConnection.authType");
+      Set.of("QlikSenseConnection.certificates", "SapS4HanaConnection.authType");
 
   @Test
   void everySecretBearingOneOfPropertyHasAConverter() {
