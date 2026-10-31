@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
@@ -21,6 +23,18 @@ import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
  * fix the string entries are stored as {@code fernet:} tokens and returned as {@code *********}.
  */
 public class KafkaConnectionMapSecretsTest {
+
+  @BeforeEach
+  void freshFactories() {
+    SecretsManagerFactory.setSecretsManager(null);
+    EntityMaskerFactory.setEntityMasker(null);
+  }
+
+  @AfterEach
+  void restoreFactories() {
+    SecretsManagerFactory.setSecretsManager(null);
+    EntityMaskerFactory.setEntityMasker(null);
+  }
 
   @Test
   void mapSecretsAreEncryptedAtRestAndMaskedOnRead() {
