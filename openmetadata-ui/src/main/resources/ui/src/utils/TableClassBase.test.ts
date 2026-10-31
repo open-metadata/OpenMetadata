@@ -26,7 +26,6 @@ import { TABLE_DUMMY_DATA } from '../constants/Table.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Table } from '../generated/entity/data/table';
-import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import tableClassBase, {
   TableClassBase,
@@ -96,21 +95,12 @@ jest.mock('./i18next/LocalUtil', () => ({
   }),
 }));
 
-jest.mock('../hooks/useApplicationStore', () => ({
-  useApplicationStore: {
-    getState: jest.fn(() => ({ rdfEnabled: false })),
-  },
-}));
-
 describe('TableClassBase', () => {
   let tableClass: TableClassBase;
 
   beforeEach(() => {
     tableClass = new TableClassBase();
     jest.clearAllMocks();
-    (useApplicationStore.getState as jest.Mock).mockReturnValue({
-      rdfEnabled: false,
-    });
   });
 
   describe('constructor', () => {
@@ -174,7 +164,7 @@ describe('TableClassBase', () => {
 
   describe('getTableDetailPageTabsIds', () => {
     it('should return correct tab configuration when rdf is disabled', () => {
-      const result = tableClass.getTableDetailPageTabsIds();
+      const result = tableClass.getTableDetailPageTabsIds(false);
 
       expect(result).toHaveLength(10);
       expect(result[0]).toEqual({
@@ -240,11 +230,7 @@ describe('TableClassBase', () => {
     });
 
     it('should include the KNOWLEDGE_GRAPH tab when rdf is enabled', () => {
-      (useApplicationStore.getState as jest.Mock).mockReturnValue({
-        rdfEnabled: true,
-      });
-
-      const result = tableClass.getTableDetailPageTabsIds();
+      const result = tableClass.getTableDetailPageTabsIds(true);
 
       expect(result).toHaveLength(11);
       expect(result[6]).toEqual({
@@ -256,7 +242,7 @@ describe('TableClassBase', () => {
     });
 
     it('should mark only SCHEMA tab as editable', () => {
-      const result = tableClass.getTableDetailPageTabsIds();
+      const result = tableClass.getTableDetailPageTabsIds(false);
       const schemaTab = result.find((tab) => tab.id === EntityTabs.SCHEMA);
       const otherTabs = result.filter((tab) => tab.id !== EntityTabs.SCHEMA);
 
