@@ -46,6 +46,7 @@ public class PasswordAnnotator extends AbstractAnnotator {
    * whose only member is the {@code additionalProperties} map; the {@code format} lives on the
    * property schema, never on the generated member, so without this the map is invisible to the
    * secret walkers.
+   * ADR:2026-10-30-password-format-on-additionalproperties-makes-a-map-of-secrets
    */
   private boolean isPasswordValuedMap(JsonNode propertyNode) {
     JsonNode additionalProperties = propertyNode.get("additionalProperties");

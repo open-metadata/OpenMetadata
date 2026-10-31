@@ -1,7 +1,7 @@
 # A masked connection secret is restored only while the connection still points at the same endpoint
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields)
+- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (typed-over password-map entries count as retargets)
 - **Deciders:** backend security
 - **Guard:** `ConnectionSecretsGuardTest`
 - **Related:** open-metadata/openmetadata-collate#7797, open-metadata/OpenMetadata#36016
@@ -40,3 +40,15 @@ runner send the real password to that server (collate#7797 YMVEJVF6).
   deliberate, safe default; widen `EXEMPT_FIELD_SUFFIXES`/the `supports` prefix only for fields that
   provably cannot change where a secret is sent.
 - The guard compares masked copies of the two configs, so it never needs the cleartext secret.
+
+## Amendment — v3 2026-10-30: typed-over password-map entries count as retargets
+
+Once `additionalProperties: {format: password}` made every string entry of a password-valued map
+mask to the same placeholder (ADR:2026-10-30-password-format-on-additionalproperties-makes-a-map-of-secrets),
+the masked comparison could no longer see an edit to a non-secret map entry — an OAuth token
+endpoint URL changed next to its masked client secret. The guard now also treats a typed
+(plaintext) value at a masked password-map entry as a change, unless it still equals the stored
+entry (compared after a local Fernet decrypt; an external `secret:` reference, which the server
+never fetches, cannot be disproved and fails closed). The check is scoped to password-map entries:
+a typed value at a scalar password field is a re-entered secret, which this record has always
+accepted.
