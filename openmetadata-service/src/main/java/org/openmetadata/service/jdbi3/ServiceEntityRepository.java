@@ -177,7 +177,7 @@ public abstract class ServiceEntityRepository<
           .getConnection()
           .setConfig(
               SecretsManagerFactory.getSecretsManager()
-                  .encryptServiceConnectionConfig(
+                  .prepareServiceConnectionConfig(
                       service.getConnection().getConfig(),
                       service.getServiceType().value(),
                       service.getName(),
@@ -203,6 +203,39 @@ public abstract class ServiceEntityRepository<
   @Override
   public void storeEntity(T service, boolean update) {
     store(service, update);
+  }
+
+  // ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage
+  @Override
+  protected void store(T service, boolean update, Double expectedVersion) {
+    encryptConnection(service);
+    super.store(service, update, expectedVersion);
+  }
+
+  @Override
+  protected void storeMany(List<T> services) {
+    services.forEach(this::encryptConnection);
+    super.storeMany(services);
+  }
+
+  @Override
+  protected void updateMany(List<T> services) {
+    services.forEach(this::encryptConnection);
+    super.updateMany(services);
+  }
+
+  private void encryptConnection(T service) {
+    if (service.getConnection() != null) {
+      service
+          .getConnection()
+          .setConfig(
+              SecretsManagerFactory.getSecretsManager()
+                  .encryptServiceConnectionConfig(
+                      service.getConnection().getConfig(),
+                      service.getServiceType().value(),
+                      service.getName(),
+                      serviceType));
+    }
   }
 
   @Override
