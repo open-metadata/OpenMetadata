@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
@@ -68,11 +70,12 @@ class EntityRepositoryBulkImportSecretsTest {
         .insert(anyString());
     doAnswer(
             invocation -> {
-              historyJson.set(invocation.getArgument(3));
+              final List<String> jsons = invocation.getArgument(3);
+              historyJson.set(jsons.getFirst());
               return null;
             })
         .when(extensionDAO)
-        .insert(any(UUID.class), anyString(), anyString(), anyString());
+        .insertMany(anyList(), anyList(), anyString(), anyList());
   }
 
   @AfterEach
