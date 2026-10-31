@@ -66,7 +66,6 @@ import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   addFollowers,
-  getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
   removeFollowers,
   restoreDatabaseSchema,
@@ -642,19 +641,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDatabaseSchemaVotes(id, data);
-      const response = await getDatabaseSchemaDetailsByFQN(
-        decodedDatabaseSchemaFQN,
-        {
-          fields: [
-            TabSpecificField.OWNERS,
-            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
-            TabSpecificField.TAGS,
-            TabSpecificField.VOTES,
-          ],
-          include: Include.All,
-        }
-      );
-      setDatabaseSchema(response);
+      // Server-side {@code updateVote} mutates a relationship only — the rest of the entity is
+      // unchanged. Invalidate the cache slot so the next read picks up the new vote totals
+      // (a focused refetch instead of the prior narrow GET + {@code setDatabaseSchema} that
+      // would null out domains/followers/extension/dataProducts). Background revalidation
+      // keeps the current data on screen until the new body arrives.
+      await refetchDatabaseSchema();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
