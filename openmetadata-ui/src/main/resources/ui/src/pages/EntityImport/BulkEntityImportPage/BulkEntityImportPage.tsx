@@ -748,6 +748,7 @@ const BulkEntityImportPage = () => {
         },
         isBulkEdit,
         signal,
+        onEditCellHeightChange: handleEditCellHeightChange,
         onProgress: (loadedCount, matchedCount) =>
           setBulkEditLoadState({
             isLoading: true,
@@ -776,6 +777,7 @@ const BulkEntityImportPage = () => {
       canAddMultipleTeamOwner,
       canAddMultipleUserOwners,
       handleActiveStepChange,
+      handleEditCellHeightChange,
       isBulkEdit,
       effectiveBulkEditScope,
     ]
@@ -2205,6 +2207,7 @@ const BulkEntityImportPage = () => {
             changedRowCount={bulkEditChangeSummary.changedRowCount}
             columns={filterColumns}
             dataSource={dataSource}
+            editingRowHeight={editingRowHeight}
             handleBack={handleBack}
             handleCopy={handleCopy}
             handleOnRowsChange={handleOnRowsChange}

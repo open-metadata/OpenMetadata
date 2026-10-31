@@ -26,7 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.AlertLimits;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationValidation;
 import org.openmetadata.service.alerting.definition.AlertDefinitionPolicy;
@@ -182,6 +183,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     // An update is validated by the updater, which knows what the alert looked like before.
     if (!update) {
       requireRegistered(entity);
+      AlertLimits.requireWithin(null, entity);
       DestinationValidation.ofANewAlert(entity);
       AlertDefinitionPolicy.ofNew(entity).prepareNew(entity);
     }
@@ -281,6 +283,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       // may be judged.
       AlertDefinitionPolicy.ofUpdate(original, updated)
           .settle(original, updated, operation.isPut());
+      AlertLimits.requireWithin(original, updated);
       DestinationValidation.ofWhatChanged(original, updated);
     }
 
@@ -293,7 +296,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       compareAndUpdate(
           "batchSize",
           () -> recordChange("batchSize", original.getBatchSize(), updated.getBatchSize()));
-      if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+      if (!original.getAlertType().equals(AlertType.ACTIVITY_FEED)) {
         compareAndUpdate(
             "filteringRules",
             () ->

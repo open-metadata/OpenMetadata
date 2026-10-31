@@ -17,6 +17,7 @@ import {
   BoostMode,
   FieldBoost,
   FieldValueBoost,
+  Modifier,
   RankingConfiguration,
   ScoreMode,
   SearchSettings,
@@ -144,3 +145,106 @@ export const setSignalMaxBoost = (
 /** Parses a numeric input: '' (cleared) becomes null. */
 export const parseOptionalNumber = (value: string): number | null =>
   value.trim() === '' || Number.isNaN(Number(value)) ? null : Number(value);
+
+interface SelectItem {
+  id: string;
+  label: string;
+}
+
+export interface FieldValueBoostFormValues {
+  field: SelectItem | null;
+  factor: number;
+  modifier: SelectItem | null;
+  missing: string;
+  gte: string;
+  lte: string;
+  gt: string;
+  lt: string;
+}
+
+export const RANGE_KEYS = ['gte', 'lte', 'gt', 'lt'] as const;
+
+export const MODIFIER_ITEMS: SelectItem[] = Object.values(Modifier).map(
+  (value) => ({ id: value, label: value })
+);
+
+const toItem = (value?: string) => (value ? { id: value, label: value } : null);
+
+export const toFieldValueBoostFormValues = (
+  boost?: FieldValueBoost
+): FieldValueBoostFormValues => ({
+  field: toItem(boost?.field),
+  factor: boost?.factor ?? 0,
+  modifier: toItem(boost?.modifier ?? Modifier.None),
+  missing: boost?.missing?.toString() ?? '0',
+  gte: boost?.condition?.range?.gte?.toString() ?? '',
+  lte: boost?.condition?.range?.lte?.toString() ?? '',
+  gt: boost?.condition?.range?.gt?.toString() ?? '',
+  lt: boost?.condition?.range?.lt?.toString() ?? '',
+});
+
+/** Empty range bounds are left out rather than sent as 0, as the classic modal did. */
+export const toFieldValueBoost = (
+  values: FieldValueBoostFormValues
+): FieldValueBoost => ({
+  field: values.field?.id ?? '',
+  factor: values.factor,
+  modifier: (values.modifier?.id as Modifier) ?? Modifier.None,
+  missing: values.missing ? Number(values.missing) : 0,
+  condition: {
+    range: Object.fromEntries(
+      RANGE_KEYS.filter((key) => values[key] !== '').map((key) => [
+        key,
+        Number(values[key]),
+      ])
+    ),
+  },
+});
+
+export const FIELD_VALUE_BOOST_SEGMENT = 'field-value-boost';
+
+/**
+ * The `search/edit/<itemId>` id of the field value boost form:
+ * `[<entity>/]field-value-boost[/<field>]`; no entity means the global boosts.
+ */
+export const toFieldValueBoostItemId = (entity?: string, field?: string) =>
+  [entity, FIELD_VALUE_BOOST_SEGMENT, field].filter(Boolean).join('/');
+
+export const parseFieldValueBoostItemId = (
+  itemId = ''
+): { entity?: string; field?: string } => {
+  const segments = itemId.split('/');
+  const index = segments.indexOf(FIELD_VALUE_BOOST_SEGMENT);
+
+  return {
+    entity: index > 0 ? segments.slice(0, index).join('/') : undefined,
+    field: segments.slice(index + 1).join('/') || undefined,
+  };
+};
+
+/**
+ * A search page's unsaved edits, kept by the panel while the field value boost
+ * form is open: an entity page's draft, or the global page's term boosts.
+ */
+export type SearchSavedState = (
+  | {
+      /** The entity page's `itemId`, so a draft never leaks onto another entity. */
+      entity: string;
+      draft: EntitySearchDraft;
+      isChanged: boolean;
+    }
+  | { entity?: undefined; termBoosts: TermBoost[] }
+) & {
+  /** Set by the form's Cancel/Save; a draft left any other way is abandoned. */
+  isReturning?: boolean;
+};
+
+/** The saved state to resume on `entity`'s page (undefined: the global page). */
+export const getReturningSearchState = (
+  savedState: unknown,
+  entity?: string
+): SearchSavedState | undefined => {
+  const state = savedState as SearchSavedState | undefined;
+
+  return state?.isReturning && state.entity === entity ? state : undefined;
+};

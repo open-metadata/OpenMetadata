@@ -35,6 +35,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
@@ -43,8 +44,21 @@ import org.openmetadata.service.security.session.UserSession;
 
 @Slf4j
 public class SocketAddressFilter implements Filter {
-  /** Null when sockets connect without a token. Replaced whole when security settings reload. */
+  private static final String HANDSHAKE_UNAUTHORIZED_MESSAGE = "Unauthorized WebSocket handshake";
+  private static final String SOCKET_USER_TOKEN_MISMATCH_MESSAGE =
+      "Socket user does not match token";
+
+  /**
+   * Null only when the authentication or authorizer configuration is absent — every presented token
+   * is then rejected. Replaced whole when security settings reload.
+   */
   private volatile JwtFilter jwtFilter;
+
+  /**
+   * Browsers cannot set headers on a WebSocket upgrade, so the UI's socket.io handshake passes the
+   * bearer token as this query parameter when it has no session cookie (public-client SSO).
+   */
+  private static final String TOKEN_QUERY_PARAM = "token";
 
   private SessionService sessionService;
 
@@ -73,11 +87,17 @@ public class SocketAddressFilter implements Filter {
     this.jwtFilter = jwtFilterFor(authenticationConfiguration, authorizerConf);
   }
 
+  /**
+   * Socket handshakes are always authenticated: a presented token is validated against the
+   * authentication configuration, a session cookie is validated against the session store, and a
+   * handshake with neither is rejected. Token validation must not depend on
+   * {@code enableSecureSocketConnection} — that gate let the default configuration key sockets on a
+   * caller-supplied user id.
+   */
   private static JwtFilter jwtFilterFor(
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConf) {
-    return authorizerConf != null
-            && Boolean.TRUE.equals(authorizerConf.getEnableSecureSocketConnection())
+    return authenticationConfiguration != null && authorizerConf != null
         ? new JwtFilter(authenticationConfiguration, authorizerConf)
         : null;
   }
@@ -92,62 +112,81 @@ public class SocketAddressFilter implements Filter {
     this.sessionService = sessionService;
   }
 
+  /**
+   * Validates a push-feed handshake on its own, without a servlet dispatch: a presented token is
+   * validated against the authentication configuration, a session cookie is validated against the
+   * session store, and a handshake with neither is rejected. The token must bind the socket to the
+   * identity its HTTP requests carry ({@link JwtFilter#resolveUserName}).
+   *
+   * <p>The servlet filter chain never sees a WebSocket upgrade — Jetty's upgrade negotiation runs
+   * before it — so {@code OpenMetadataApplication#initializeWebsockets} calls this in the upgrade
+   * creator; the returned identity is what the socket is keyed under, and a rejection fails the
+   * upgrade with the carried HTTP status. The servlet dispatch path (polling transport) stamps the
+   * same identity onto the request for the servlet behind this filter instead.
+   *
+   * @throws AuthenticationException the presented token failed validation
+   * @throws HandshakeRejectedException the handshake carries no verifiable credential, or its
+   *     credentials do not agree
+   * @throws CredentialUnavailableException the stored-credential check could not be confirmed
+   */
+  public HandshakeIdentity authenticate(HttpServletRequest request) throws AuthenticationException {
+    Map<String, String> query = parseQuery(request);
+    String requestedUserId = trimToNull(query.get("userId"));
+    TokenIdentity tokenIdentity = resolveTokenIdentity(request, query, requestedUserId);
+    String socketUserId = socketUserId(tokenIdentity, requestedUserId);
+    SessionValidationResult sessionValidation =
+        isSessionStillActive(request, tokenPrincipal(tokenIdentity), socketUserId);
+    return identity(sessionValidation, tokenIdentity, socketUserId);
+  }
+
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException {
     try {
       HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-      String queryString = httpServletRequest.getQueryString();
-      Map<String, String> query = hasText(queryString) ? ParseQS.decode(queryString) : Map.of();
-      String requestedUserId = trimToNull(query.get("userId"));
-
       HeaderRequestWrapper requestWrapper = new HeaderRequestWrapper(httpServletRequest);
       requestWrapper.addHeader("RemoteAddress", httpServletRequest.getRemoteAddr());
-      String socketUserId = requestedUserId;
-      ValidatedTokenPrincipal tokenPrincipal = null;
-
-      JwtFilter currentJwtFilter = jwtFilter;
-      if (currentJwtFilter != null) {
-        String tokenWithType = httpServletRequest.getHeader("Authorization");
-        tokenPrincipal = validatePrefixedTokenRequest(currentJwtFilter, tokenWithType);
-        UUID resolvedUserId = getUserIdForPrincipal(tokenPrincipal.userName());
-        if (requestedUserId != null && !requestedUserId.equals(resolvedUserId.toString())) {
-          ((HttpServletResponse) response)
-              .sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match token");
-          return;
-        }
-        socketUserId = resolvedUserId.toString();
-      }
-      SessionValidationResult sessionValidation =
-          isSessionStillActive(
-              requestWrapper, (HttpServletResponse) response, tokenPrincipal, socketUserId);
-      if (!sessionValidation.allowed()) {
-        return;
-      }
-      if (!hasText(socketUserId)) {
-        socketUserId = sessionValidation.userId();
-      }
-      if (hasText(socketUserId)) {
-        requestWrapper.addHeader("UserId", socketUserId);
-      }
-      String sessionId =
-          hasText(sessionValidation.sessionId())
-              ? sessionValidation.sessionId()
-              : tokenPrincipal != null ? tokenPrincipal.sessionId() : null;
-      if (hasText(sessionId)) {
-        requestWrapper.addHeader("SessionId", sessionId);
-      }
+      stampIdentity(requestWrapper, authenticate(httpServletRequest));
       // Goes to default servlet.
       chain.doFilter(requestWrapper, response);
+    } catch (CredentialUnavailableException ex) {
+      LOG.debug("[SAFilter] WebSocket handshake token could not be confirmed", ex);
+      sendRetryLater(response, ex.retryAfterSeconds());
     } catch (AuthenticationException ex) {
       LOG.warn("[SAFilter] Rejected WebSocket handshake", ex);
       sendHandshakeError(
-          response, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+          response, HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
+    } catch (HandshakeRejectedException ex) {
+      LOG.info("[SAFilter] Rejected WebSocket handshake: {}", ex.getMessage());
+      sendHandshakeError(response, ex.getStatus(), ex.getMessage());
     } catch (Exception ex) {
       LOG.error("[SAFilter] Failed in filtering request", ex);
       sendHandshakeError(
           response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "WebSocket handshake failed");
     }
+  }
+
+  /** The token binds the socket to its user only when the caller-id agrees — else it is invalid. */
+  private TokenIdentity resolveTokenIdentity(
+      HttpServletRequest request, Map<String, String> query, String requestedUserId) {
+    String tokenWithType = resolveHandshakeToken(request, query);
+    if (!hasText(tokenWithType)) {
+      return null;
+    }
+    JwtFilter currentJwtFilter = jwtFilter;
+    if (currentJwtFilter == null) {
+      // A credential was presented but this filter has no configuration to validate it.
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
+    }
+    ValidatedTokenPrincipal tokenPrincipal =
+        validatePrefixedTokenRequest(currentJwtFilter, tokenWithType);
+    UUID resolvedUserId = getUserIdForPrincipal(tokenPrincipal.userName());
+    if (requestedUserId != null && !requestedUserId.equals(resolvedUserId.toString())) {
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_FORBIDDEN, SOCKET_USER_TOKEN_MISMATCH_MESSAGE);
+    }
+    return new TokenIdentity(tokenPrincipal, resolvedUserId);
   }
 
   private void sendHandshakeError(ServletResponse response, int status, String message)
@@ -157,36 +196,67 @@ public class SocketAddressFilter implements Filter {
     }
   }
 
-  private SessionValidationResult isSessionStillActive(
-      HttpServletRequest request,
-      HttpServletResponse response,
-      ValidatedTokenPrincipal tokenPrincipal,
-      String socketUserId)
-      throws IOException {
-    if (sessionService == null) {
-      return SessionValidationResult.accepted();
+  private void sendRetryLater(ServletResponse response, long retryAfterSeconds) throws IOException {
+    if (response instanceof HttpServletResponse httpResponse && !httpResponse.isCommitted()) {
+      httpResponse.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+      httpResponse.sendError(
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+          CredentialUnavailableException.CLIENT_MESSAGE);
     }
+  }
+
+  /**
+   * A bearer token presented on the handshake — from the Authorization header, or (browsers cannot
+   * set headers on a WebSocket upgrade) from the {@code token} query parameter.
+   */
+  private static String resolveHandshakeToken(
+      HttpServletRequest request, Map<String, String> query) {
+    String headerToken = request.getHeader("Authorization");
+    if (hasText(headerToken)) {
+      return headerToken;
+    }
+    String queryToken = trimToNull(query.get(TOKEN_QUERY_PARAM));
+    return hasText(queryToken) ? "Bearer " + queryToken : null;
+  }
+
+  /**
+   * Every handshake must carry at least one verifiable credential — a validated token principal or
+   * a session cookie. Handshakes with neither are rejected so a socket can never be keyed under a
+   * caller-supplied identity.
+   */
+  private SessionValidationResult isSessionStillActive(
+      HttpServletRequest request, ValidatedTokenPrincipal tokenPrincipal, String socketUserId) {
     Optional<String> sessionId = SessionCookieUtil.getSessionId(request);
     if (sessionId.isEmpty()) {
-      if (tokenPrincipal == null) {
-        return SessionValidationResult.accepted();
-      }
-      if (tokenPrincipal.sessionId() != null) {
-        return validateSessionStillActive(
-            response, tokenPrincipal.sessionId(), tokenPrincipal, socketUserId);
-      }
-      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
-      return SessionValidationResult.rejected();
+      return validateCookielessHandshake(tokenPrincipal, socketUserId);
     }
-    return validateSessionStillActive(response, sessionId.get(), tokenPrincipal, socketUserId);
+    if (sessionService == null) {
+      // A cookie was presented but there is no session store to validate it against.
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
+    }
+    return validateSessionStillActive(sessionId.get(), tokenPrincipal, socketUserId);
+  }
+
+  private SessionValidationResult validateCookielessHandshake(
+      ValidatedTokenPrincipal tokenPrincipal, String socketUserId) {
+    if (tokenPrincipal == null) {
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
+    }
+    if (tokenPrincipal.sessionId() != null && sessionService != null) {
+      // OM-issued tokens carry the session claim — revalidate against the store so a revoked
+      // session cannot reconnect under a still-valid token.
+      return validateSessionStillActive(tokenPrincipal.sessionId(), tokenPrincipal, socketUserId);
+    }
+    // Externally-issued tokens (an IdP does not stamp our session claim) and the boot window
+    // before the store is wired are trusted on their token validation alone — the same basis
+    // every HTTP request from this principal already stands on.
+    return SessionValidationResult.accepted();
   }
 
   private SessionValidationResult validateSessionStillActive(
-      HttpServletResponse response,
-      String sessionId,
-      ValidatedTokenPrincipal tokenPrincipal,
-      String socketUserId)
-      throws IOException {
+      String sessionId, ValidatedTokenPrincipal tokenPrincipal, String socketUserId) {
     Optional<UserSession> session = sessionService.getFreshSessionById(sessionId);
     if (session.isEmpty()
         || session.get().getStatus() != SessionStatus.ACTIVE
@@ -194,59 +264,47 @@ public class SocketAddressFilter implements Filter {
       LOG.info(
           "Rejecting WebSocket handshake: session {} is not active",
           SessionService.truncateId(sessionId));
-      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is no longer active");
-      return SessionValidationResult.rejected();
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_UNAUTHORIZED, "Session is no longer active");
     }
     if (tokenPrincipal != null
         && session.get().getUsername() != null
-        && !session.get().getUsername().equalsIgnoreCase(tokenPrincipal.userName())) {
-      response.sendError(HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
-      return SessionValidationResult.rejected();
+        && !SecurityUtil.sameIdentifier(session.get().getUsername(), tokenPrincipal.userName())) {
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
     }
     if (tokenPrincipal != null
         && tokenPrincipal.sessionId() != null
         && !tokenPrincipal.sessionId().equals(session.get().getId())) {
-      response.sendError(HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
-      return SessionValidationResult.rejected();
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
     }
     if (hasText(socketUserId)
         && hasText(session.get().getUserId())
         && !socketUserId.equals(session.get().getUserId())) {
-      response.sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match session");
-      return SessionValidationResult.rejected();
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_FORBIDDEN, "Socket user does not match session");
     }
     return SessionValidationResult.accepted(session.get());
   }
 
+  /**
+   * Binds the token to the same identity its HTTP requests carry ({@link
+   * JwtFilter#resolveUserName(Map, String)}):
+   * with {@code emailClaim} configured that is the stored username resolved from the email, which
+   * need not match any legacy principal claim.
+   */
   public static ValidatedTokenPrincipal validatePrefixedTokenRequest(
       JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
-    Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
-    String userName =
-        SecurityUtil.findUserNameFromClaims(
-            jwtFilter.getJwtPrincipalClaimsMapping(), jwtFilter.getJwtPrincipalClaims(), claims);
-    String impersonatedBy =
-        claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
-            ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
-            : null;
-    jwtFilter.checkValidationsForToken(claims, token, userName, impersonatedBy);
+    Map<String, Claim> claims = jwtFilter.verifySignatureOnly(token);
+    String userName = jwtFilter.resolveUserName(claims, token);
+    jwtFilter.checkValidationsForToken(claims, token, userName, null);
     String sessionId =
         claims.containsKey(JWTTokenGenerator.SESSION_ID_CLAIM)
             ? claims.get(JWTTokenGenerator.SESSION_ID_CLAIM).asString()
             : null;
     return new ValidatedTokenPrincipal(userName, sessionId);
-  }
-
-  public static void checkForUsernameAndImpersonationValidation(
-      String token, Map<String, Claim> claims, JwtFilter jwtFilter) {
-    String userName =
-        SecurityUtil.findUserNameFromClaims(
-            jwtFilter.getJwtPrincipalClaimsMapping(), jwtFilter.getJwtPrincipalClaims(), claims);
-    String impersonatedBy =
-        claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
-            ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
-            : null;
-    jwtFilter.checkValidationsForToken(claims, token, userName, impersonatedBy);
   }
 
   private UUID getUserIdForPrincipal(String userName) {
@@ -273,19 +331,64 @@ public class SocketAddressFilter implements Filter {
     return value != null && !value.isBlank();
   }
 
+  private static Map<String, String> parseQuery(HttpServletRequest request) {
+    String queryString = request.getQueryString();
+    return hasText(queryString) ? ParseQS.decode(queryString) : Map.of();
+  }
+
+  /** A token-presenting handshake keyed as the user its principal resolves to; none without one. */
+  private static String socketUserId(TokenIdentity tokenIdentity, String requestedUserId) {
+    return tokenIdentity != null ? tokenIdentity.userId().toString() : requestedUserId;
+  }
+
+  private static HandshakeIdentity identity(
+      SessionValidationResult sessionValidation, TokenIdentity tokenIdentity, String socketUserId) {
+    ValidatedTokenPrincipal principal = tokenPrincipal(tokenIdentity);
+    String sessionId =
+        hasText(sessionValidation.sessionId())
+            ? sessionValidation.sessionId()
+            : principal != null ? principal.sessionId() : null;
+    String userId = hasText(socketUserId) ? socketUserId : sessionValidation.userId();
+    if (!hasText(userId)) {
+      // Nothing to key the socket under: WebSocketManager would accept the connection and never
+      // register it, leaving the client "connected" to a feed that delivers nothing.
+      throw new HandshakeRejectedException(
+          HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
+    }
+    return new HandshakeIdentity(userId, sessionId);
+  }
+
+  private static ValidatedTokenPrincipal tokenPrincipal(TokenIdentity tokenIdentity) {
+    return tokenIdentity != null ? tokenIdentity.tokenPrincipal() : null;
+  }
+
+  /**
+   * The client's own identity headers are always hidden, so a validated field that is absent leaves
+   * the header absent rather than falling back to the client's value.
+   */
+  private static void stampIdentity(
+      HeaderRequestWrapper requestWrapper, HandshakeIdentity identity) {
+    requestWrapper.removeHeader("UserId");
+    requestWrapper.removeHeader("SessionId");
+    if (hasText(identity.userId())) {
+      requestWrapper.addHeader("UserId", identity.userId());
+    }
+    if (hasText(identity.sessionId())) {
+      requestWrapper.addHeader("SessionId", identity.sessionId());
+    }
+  }
+
   public record ValidatedTokenPrincipal(String userName, String sessionId) {}
 
-  private record SessionValidationResult(boolean allowed, String sessionId, String userId) {
+  private record TokenIdentity(ValidatedTokenPrincipal tokenPrincipal, UUID userId) {}
+
+  private record SessionValidationResult(String sessionId, String userId) {
     private static SessionValidationResult accepted() {
-      return new SessionValidationResult(true, null, null);
+      return new SessionValidationResult(null, null);
     }
 
     private static SessionValidationResult accepted(UserSession session) {
-      return new SessionValidationResult(true, session.getId(), session.getUserId());
-    }
-
-    private static SessionValidationResult rejected() {
-      return new SessionValidationResult(false, null, null);
+      return new SessionValidationResult(session.getId(), session.getUserId());
     }
   }
 }

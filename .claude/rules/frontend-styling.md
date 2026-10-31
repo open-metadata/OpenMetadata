@@ -5,8 +5,8 @@ paths: "openmetadata-ui/src/main/resources/ui/**/*.{ts,tsx,less,css}"
 
 # Frontend styling & design tokens
 
-Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.md`. Token source of truth: core
-`globals.css` (`@theme`, dark values under `.dark-mode`); the app's `src/styles/tokens.css` holds the legacy `--om-*` tokens.
+Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.md`. Core `globals.css` owns theme tokens.
+Legacy `--om-*` is compatibility only; never add usage. Policy: ADR:2026-10-13-om-tokens-have-one-source-file.
 
 ## Tailwind & tokens (ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars)
 
@@ -65,7 +65,7 @@ borders; `transition-shadow` won't animate them) in [`colors.md` §2.3.1](../../
   `specs/untitled/*.md` page for the component you touch.
 - **Run the audits before committing — zero errors required** (from `openmetadata-ui/src/main/resources/ui`):
   `yarn tw-audit` (TSX: hardcoded values; `tw:dark:*` is a warning), `yarn token-audit` (LESS/CSS:
-  colours and resolvable spacing fail CI) and `yarn tw-guard` (new antd imports, raw-SVG assets, `.less` files).
+  colours and resolvable spacing fail CI) and `yarn tw-guard` (raw-SVG assets, `.less` files).
   **Legacy tool caveat:** `token-audit:report` / `token-migrate` still suggest/write `--om-color-*`;
   replace colour suggestions with semantic `--tw-*` bridge vars before accepting their edits.
 

@@ -54,7 +54,9 @@ public class PatchEntityTool implements McpTool {
   // patch would skip. Derived by auditing every @PATCH endpoint under openmetadata-service for a
   // body that is not a bare patchInternal() delegation - re-run that audit before adding an entry
   // here or dropping one. What each entry protects:
+  //   announcement         authorizeAdminOrBot on system announcements (no entityLink)
   //   app                  system-app guard, scheduler teardown/reinstall
+  //   contextFile          Private/Shared visibility, owner-only restriction of sharing
   //   document             requirePublic - private doc types are not editable
   //   eventsubscription    scheduler re-registration
   //   ingestionPipeline    secret decryptOrNullify on the response
@@ -68,7 +70,9 @@ public class PatchEntityTool implements McpTool {
   //   workflow             connection-secret decryptOrNullify
   private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
       Set.of(
+          Entity.ANNOUNCEMENT,
           Entity.APPLICATION,
+          Entity.CONTEXT_FILE,
           Entity.DOCUMENT,
           Entity.EVENT_SUBSCRIPTION,
           Entity.INGESTION_PIPELINE,
@@ -131,7 +135,9 @@ public class PatchEntityTool implements McpTool {
             null,
             ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
-    return McpResponseUtils.compactPatch(response.entity(), response.changeType());
+    return McpResponseUtils.compactPatch(
+        CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
+        response.changeType());
   }
 
   private static void requireTarget(String entityType, String fqn) {

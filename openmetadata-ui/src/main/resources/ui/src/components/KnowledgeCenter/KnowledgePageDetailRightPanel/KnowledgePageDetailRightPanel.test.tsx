@@ -14,11 +14,13 @@ import { render, screen } from '@testing-library/react';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import DataProductsContainer from '../../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
 import { PageProcessingStatus } from '../../../generated/entity/data/page';
 import {
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
+import { getEntityRulesValidation } from '../../../utils/RuleEnforcementUtils';
 import KnowledgePageDetailRightPanel from './KnowledgePageDetailRightPanel';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -259,7 +261,10 @@ describe('KnowledgePageDetailRightPanel', () => {
 
   it('holds single-select while entity rules are loading', () => {
     mockGenericContext({
-      entityRules: { canAddMultipleDataProducts: true },
+      entityRules: {
+        ...getEntityRulesValidation([], EntityType.PAGE),
+        canAddMultipleDataProducts: true,
+      },
       isRulesLoaded: false,
     });
 
@@ -270,7 +275,10 @@ describe('KnowledgePageDetailRightPanel', () => {
 
   it('enables multi-select once rules are loaded and allow multiple products', () => {
     mockGenericContext({
-      entityRules: { canAddMultipleDataProducts: true },
+      entityRules: {
+        ...getEntityRulesValidation([], EntityType.PAGE),
+        canAddMultipleDataProducts: true,
+      },
       isRulesLoaded: true,
     });
 
@@ -281,7 +289,10 @@ describe('KnowledgePageDetailRightPanel', () => {
 
   it('keeps single-select when loaded rules disallow multiple products', () => {
     mockGenericContext({
-      entityRules: { canAddMultipleDataProducts: false },
+      entityRules: {
+        ...getEntityRulesValidation([], EntityType.PAGE),
+        canAddMultipleDataProducts: false,
+      },
       isRulesLoaded: true,
     });
 

@@ -559,9 +559,6 @@ test.describe('Context Center Permissions', () => {
     test('user with view-only permission cannot see create or delete actions, but can use share/vote/conversation actions', async ({
       viewOnlyPage,
     }) => {
-      await viewOnlyPage.locator('.ant-skeleton-input').waitFor({
-        state: 'detached',
-      });
       await test.step('articles list create action is hidden', async () => {
         await navigateToArticles(viewOnlyPage);
 
@@ -1010,7 +1007,7 @@ test.describe('Context Center Permissions', () => {
         await deleteAllPage.getByTestId('delete-btn').click();
 
         const deleteResPromise = deleteAllPage.waitForResponse(
-          /\/api\/v1\/contextCenter\/pages\/[^?]+\?recursive=true&hardDelete=false/
+          /\/api\/v1\/contextCenter\/pages\/[^?]+\?recursive=true&hardDelete=true/
         );
         await deleteAllPage.getByTestId('confirm-button').click();
         const deleteRes = await deleteResPromise;

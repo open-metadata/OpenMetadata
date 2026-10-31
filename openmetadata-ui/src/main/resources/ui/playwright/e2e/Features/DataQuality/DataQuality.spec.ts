@@ -64,6 +64,7 @@ import {
 } from '../../../utils/testCases';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
+import { enableAiAppMode } from '../../Utils/appMode';
 
 // Test data for tags and glossary terms
 const testClassification = new ClassificationClass();
@@ -1111,11 +1112,9 @@ test.describe(
         await page.click('[data-testid="test-cases"]');
         await waitForAllLoadersToDisappear(page);
 
-        // get all the filters
+        // get all the filters; Last Run is already on by default, so clicking it would hide it
         await page.click('[data-testid="advanced-filter"]');
         await page.getByTestId('advanced-filter-option-testPlatforms').click();
-        await page.click('[data-testid="advanced-filter"]');
-        await page.getByTestId('advanced-filter-option-lastRunRange').click();
         await page.click('[data-testid="advanced-filter"]');
         await page.getByTestId('advanced-filter-option-serviceName').click();
         await page.click('[data-testid="advanced-filter"]');
@@ -1782,6 +1781,76 @@ test.describe(
         await tooltipTable.delete(apiContext);
         await afterAction();
       }
+    });
+  }
+);
+
+test.describe(
+  'Test Cases Last Run filter',
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`] },
+  () => {
+    const isTestCaseList = (url: string) =>
+      url.includes('/api/v1/dataQuality/testCases/search/list');
+
+    test('Classic mode shows Last Run as All time and clears back to it', async ({
+      page,
+    }) => {
+      await page.goto('/data-quality/test-cases');
+      await waitForAllLoadersToDisappear(page);
+      const lastRun = page.getByTestId('date-picker-menu');
+
+      await expect(lastRun).toContainText('All time');
+
+      const filteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && r.url().includes('startTimestamp')
+      );
+      await lastRun.click();
+      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
+      expect((await filteredList).status()).toBe(200);
+
+      await expect(lastRun).toContainText('Last 7 days');
+
+      const unfilteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && !r.url().includes('startTimestamp')
+      );
+      await page.getByTestId('clear-date-picker').click();
+      expect((await unfilteredList).status()).toBe(200);
+
+      await expect(lastRun).toContainText('All time');
+    });
+
+    test('AI mode shows Last Run as All time and clears back to it', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await page.goto('/observability/data-quality/test-cases');
+      await waitForAllLoadersToDisappear(page);
+      const lastRun = page
+        .getByRole('group', { name: 'Date range picker' })
+        .getByRole('button');
+
+      await expect(lastRun).toHaveText('Last Run: All time');
+
+      const filteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && r.url().includes('startTimestamp')
+      );
+      await lastRun.click();
+      await page
+        .getByRole('button', { name: 'This week', exact: true })
+        .click();
+      await page.getByRole('button', { name: 'Apply', exact: true }).click();
+      expect((await filteredList).status()).toBe(200);
+
+      await expect(lastRun).not.toHaveText('Last Run: All time');
+      await expect(page.getByTestId('clear-date-filter')).toBeVisible();
+
+      const unfilteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && !r.url().includes('startTimestamp')
+      );
+      await page.getByTestId('clear-date-filter').click();
+      expect((await unfilteredList).status()).toBe(200);
+
+      await expect(lastRun).toHaveText('Last Run: All time');
     });
   }
 );

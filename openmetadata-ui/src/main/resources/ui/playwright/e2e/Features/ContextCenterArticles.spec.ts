@@ -467,6 +467,24 @@ test.describe('Context Center Articles', () => {
     page,
   }) => {
     test.slow();
+    // Our own tag, indexed before use: the seeded KnowledgeCenter.QuickLink is
+    // only searchable if the CI fixture's tag index is complete, and a fixture
+    // snapshotted mid-reindex (Oct 25) dropped it, failing every attempt.
+    const quickLinkTag = new TagClass({
+      classification: articleTagClassification.data.name,
+    });
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await quickLinkTag.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        quickLinkTag.responseData.fullyQualifiedName,
+        'tag'
+      );
+    } finally {
+      await afterAction();
+    }
+
     const testQuickLink = {
       displayName: `CC QL Test ${uuid()}`,
       updatedDisplayName: `CC QL Test Updated ${uuid()}`,
@@ -474,8 +492,8 @@ test.describe('Context Center Articles', () => {
       updatedDescription: 'Quick link updated from Playwright modal',
       url: RELATED_QUICK_LINK_URL,
       updatedUrl: UPDATED_QUICK_LINK_URL,
-      tag: 'QuickLink',
-      tagFqn: 'KnowledgeCenter.QuickLink',
+      tag: quickLinkTag.data.displayName,
+      tagFqn: quickLinkTag.responseData.fullyQualifiedName,
     };
 
     await navigateToArticles(page);
@@ -1433,41 +1451,37 @@ test.describe('Context Center Articles', () => {
         page.getByTestId('popover-content').filter({ hasText: /admin/i }).last()
       ).toContainText(/admin/i);
 
-      await mainMessage.hover();
-      const resolveResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/api/v1/conversations/${createdConversation.id}`) &&
-          response.request().method() === 'PATCH'
-      );
-      await mainMessage.getByTestId('toggle-resolved').click();
-      await resolveResponse;
-      await mainMessage.hover();
-      await expect(mainMessage.getByTestId('toggle-resolved')).toHaveAttribute(
-        'aria-label',
-        'Open'
-      );
+      // The reply count opens the conversation inside the drawer. That view
+      // already lists the replies, so it shows no reply count of its own.
+      await mainMessage.getByTestId('reply-button').click();
+      await expect(page.getByTestId('comments-input-field')).toBeVisible();
+      await expect(mainMessage.getByTestId('reply-button')).toHaveCount(0);
+      await page.getByTestId('thread-back').click();
+      await expect(mainMessage.getByTestId('reply-button')).toBeVisible();
 
-      await mainMessage.hover();
-      await mainMessage.getByTestId('edit-message').click();
+      // In the drawer a conversation's Edit / Delete sit in its menu, which
+      // renders in a popover outside the card.
+      await mainMessage.getByTestId('conversation-actions').click();
+      await page.getByRole('menuitem', { name: 'Edit' }).click();
 
       const updatedMessage = `Updated Thread Message ${uuid()}`;
-      await editor.click();
-      await editor.clear();
-      await editor.fill(updatedMessage);
+      const editForm = mainMessage.getByTestId('edit-message-editor');
+      const editEditor = editForm.locator('[contenteditable="true"]');
+      await editEditor.click();
+      await editEditor.clear();
+      await editEditor.fill(updatedMessage);
 
       const updateThreadPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/conversations') &&
           response.request().method() === 'PATCH'
       );
-      await page.locator('[data-testid="save-button"]').click();
+      await editForm.getByTestId('send-button').click();
       await updateThreadPromise;
       await expect(page.getByText(updatedMessage)).toBeVisible();
 
-      await mainMessage.hover();
-      await mainMessage.getByTestId('delete-message').click();
+      await mainMessage.getByTestId('conversation-actions').click();
+      await page.getByRole('menuitem', { name: 'Delete' }).click();
       const deletePostPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/conversations') &&
@@ -1995,7 +2009,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, articleToDelete.fullyQualifiedName);
 
         const deleteResponse = page.waitForResponse(
-          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=false`
+          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=true`
         );
 
         await page.getByTestId('manage-button').first().click();

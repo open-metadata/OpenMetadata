@@ -16,8 +16,12 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Base64;
 import java.util.List;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -26,11 +30,26 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface OAuthDAOs {
+  /**
+   * The SHA-256 key the OAuth token tables store a token under. One definition, shared by the MCP
+   * repository that writes rows and JwtFilter that looks access tokens up.
+   */
+  static String hashToken(String token) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+      return Base64.getEncoder().encodeToString(hash);
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 algorithm not available", e);
+    }
+  }
+
   @CreateSqlObject
   OAuthClientDAO oauthClientDAO();
 
@@ -178,6 +197,52 @@ public interface OAuthDAOs {
     @SqlUpdate(
         "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE client_id = :clientId AND user_name = :userName AND revoked = FALSE")
     void revokeAllForUser(@Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    @SqlUpdate(
+        "DELETE FROM oauth_access_tokens WHERE client_id = :clientId AND user_name = :userName")
+    void deleteAccessTokensForUser(
+        @Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    /**
+     * Revokes a refresh token and deletes the access tokens of its grant in one transaction. Apart, a
+     * failure after the first write would leave the access tokens valid, and a retry would find the
+     * refresh token already revoked and nothing left to do. The revoke goes first so a refresh racing
+     * it fails its rotation.
+     */
+    @Transaction
+    default void revokeWithAccessTokens(String tokenHash, String clientId, String userName) {
+      revoke(tokenHash);
+      deleteAccessTokensForUser(clientId, userName);
+    }
+
+    @SqlUpdate(
+        "DELETE FROM mcp_pending_auth_requests WHERE LOWER(consent_user_name) = LOWER(:userName)")
+    void deletePendingConsentsOfUser(@Bind("userName") String userName);
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)")
+    void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
+
+    @SqlUpdate(
+        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE")
+    void revokeRefreshTokensOfUser(@Bind("userName") String userName);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)")
+    void deleteAccessTokensOfUser(@Bind("userName") String userName);
+
+    /**
+     * Ends every grant held under a user name, on all clients, and any sign-in waiting for its
+     * consent. Grants are keyed by name only, so a later account with the same name would otherwise
+     * take them over. Names compare ignoring case: rows written before grants were stored under the
+     * account's own name may hold the provider's spelling of it. Waiting consents and codes go first,
+     * so neither can start a new grant.
+     */
+    @Transaction
+    default void revokeAllGrantsOfUser(String userName) {
+      deletePendingConsentsOfUser(userName);
+      deleteAuthorizationCodesOfUser(userName);
+      revokeRefreshTokensOfUser(userName);
+      deleteAccessTokensOfUser(userName);
+    }
   }
 
   interface McpPendingAuthRequestDAO {
@@ -220,6 +285,26 @@ public interface OAuthDAOs {
         @Bind("pac4jState") String pac4jState,
         @Bind("pac4jNonce") String pac4jNonce,
         @Bind("pac4jCodeVerifier") String pac4jCodeVerifier);
+
+    @SqlUpdate(
+        "UPDATE mcp_pending_auth_requests SET consent_token_hash = :consentTokenHash, consent_user_name = :userName, expires_at = :expiresAt WHERE auth_request_id = :authRequestId AND consent_user_name IS NULL AND expires_at > :currentTime")
+    int storeConsent(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("consentTokenHash") String consentTokenHash,
+        @Bind("userName") String userName,
+        @Bind("expiresAt") long expiresAt,
+        @Bind("currentTime") long currentTime);
+
+    @SqlUpdate(
+        "UPDATE mcp_pending_auth_requests SET consent_token_hash = NULL WHERE auth_request_id = :authRequestId AND consent_token_hash = :consentTokenHash AND expires_at > :currentTime")
+    int claimConsent(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("consentTokenHash") String consentTokenHash,
+        @Bind("currentTime") long currentTime);
+
+    @SqlQuery(
+        "SELECT consent_user_name FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
+    String findConsentUserName(@Bind("authRequestId") String authRequestId);
 
     @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
     void delete(@Bind("authRequestId") String authRequestId);
