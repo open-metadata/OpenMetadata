@@ -52,3 +52,11 @@ entry (compared after a local Fernet decrypt; an external `secret:` reference, w
 never fetches, cannot be disproved and fails closed). The check is scoped to password-map entries:
 a typed value at a scalar password field is a re-entered secret, which this record has always
 accepted.
+
+The cost is deliberate: rotating one secret *inside* the map (a new
+`sasl.oauthbearer.client.secret`) while the connection's other secrets stay masked reads exactly
+like a redirect — both are typed values at masked map entries — and is refused, so the caller
+must re-enter every secret of the connection. That is the same rule the unmasked maps produced
+before they were declared secret, and the only sound distinction (marking which keys are secrets)
+is the per-key declaration ADR:2026-10-30-password-format-on-additionalproperties-makes-a-map-of-secrets
+leaves open. Pinned by `ConnectionSecretsGuardTest.rotatingOneSecretInsideTheConfigMapRequiresReenteringTheOthers`.

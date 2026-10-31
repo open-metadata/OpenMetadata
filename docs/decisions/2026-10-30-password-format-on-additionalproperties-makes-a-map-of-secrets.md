@@ -47,6 +47,8 @@ never reached an external secrets manager, and were returned in clear to any aut
 - `ConnectionSecretsGuard` compares masked configs, and a masked map hides edits to non-secret
   entries (a token endpoint URL) — so the guard treats a typed value at a masked map entry as a
   retarget; see ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged.
+  Because a rotated map secret looks exactly like a retargeted setting, rotating one entry
+  requires re-entering every secret of the connection.
 - Rows saved before this record keep their map values in plaintext until the service or pipeline
   is saved again; credentials already stored this way should be rotated.
 - Revisit if a per-key secret declaration (typed fields for known keys, refused in the map) is
