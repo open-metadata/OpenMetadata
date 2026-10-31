@@ -93,8 +93,12 @@ public class AIGovernanceEstateVisibilityIT {
     // Control: the by-id reads refuse the hidden asset and allow the visible one.
     assertHttpStatusFor(
         estate.confined(), 403, HttpMethod.GET, byNamePath(estate.hidden().getName()), null);
-    assertHttpStatusFor(
-        estate.confined(), 200, HttpMethod.GET, byNamePath(estate.visible().getName()), null);
+    assertNotNull(
+        estate
+            .confined()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, byNamePath(estate.visible().getName()), null),
+        "the untagged application stays readable");
 
     // Dashboard: nothing in the response may name the hidden asset.
     AIGovernanceDashboardResponse dashboard =
@@ -211,9 +215,12 @@ public class AIGovernanceEstateVisibilityIT {
                 null,
                 FrameworkCoverageResponse.class);
 
-    assertEquals(2, adminCoverage.getAssetsInScope());
+    // The estate may seed other Proposal-stage applications; the confined caller must see exactly
+    // one fewer than the admin — the hidden fixture — whoever else is in scope. Both calls count
+    // the same concurrent fixtures, so the difference is deterministic.
+    assertTrue(adminCoverage.getAssetsInScope() >= 2, "both fixtures are in scope for the admin");
     assertEquals(
-        1,
+        adminCoverage.getAssetsInScope() - 1,
         confinedCoverage.getAssetsInScope(),
         "coverage counts only the assets the caller may view");
   }
