@@ -16,6 +16,7 @@ import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MA
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
+import java.util.regex.Pattern;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
@@ -28,6 +29,9 @@ import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 import software.amazon.awssdk.services.ssm.model.Tag;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
+  private static final int MAX_PARAMETER_NAME_LENGTH = 1011;
+  private static final Pattern PARAMETER_ARN_PREFIX =
+      Pattern.compile("^arn:[^:]+:ssm:[^:]*:[^:]*:parameter");
   private static AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
@@ -112,6 +116,17 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   @Override
   protected boolean isNotFoundException(Exception exception) {
     return exception instanceof ParameterNotFoundException;
+  }
+
+  @Override
+  protected int maxSecretIdLength() {
+    return MAX_PARAMETER_NAME_LENGTH;
+  }
+
+  /** A parameter can also be read by its ARN, which ends with the parameter's name. */
+  @Override
+  protected String canonicalSecretName(String secretName) {
+    return PARAMETER_ARN_PREFIX.matcher(secretName).replaceFirst("");
   }
 
   public static AWSSSMSecretsManager getInstance(SecretsConfig secretsConfig) {
