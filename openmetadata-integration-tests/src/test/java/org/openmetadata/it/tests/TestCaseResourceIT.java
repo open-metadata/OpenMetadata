@@ -791,6 +791,99 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_testCaseSoftDeleteAndRestoreWithIncident_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("soft_delete_incident_restore"))
+            .forTable(createTable(ns))
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    addFailedResultWithIncidentEdge(client, testCase);
+
+    String testCaseId = testCase.getId().toString();
+    softDeleteTestCaseRecursively(client, testCaseId);
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+    assertTrue(
+        getEntityIncludeDeleted(testCaseId).getDeleted(),
+        "Test case must be soft-deleted, not gone");
+
+    restoreEntity(testCaseId);
+
+    // include=all returns the entity regardless of deleted state, so the deleted flag is
+    // observable on the restored entity.
+    TestCase restored = client.testCases().get(testCaseId, null, "all");
+    assertEquals(testCase.getName(), restored.getName());
+    assertFalse(restored.getDeleted(), "Restored test case must not be marked deleted");
+  }
+
+  @Test
+  void test_testCaseCreateOrUpdateOnSoftDeletedWithIncident_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTestCase createRequest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("soft_delete_incident_upsert"))
+            .forTable(createTable(ns))
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    TestCase testCase = client.testCases().create(createRequest);
+    addFailedResultWithIncidentEdge(client, testCase);
+
+    String testCaseId = testCase.getId().toString();
+    softDeleteTestCaseRecursively(client, testCaseId);
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+    assertTrue(
+        getEntityIncludeDeleted(testCaseId).getDeleted(),
+        "Test case must be soft-deleted, not gone");
+
+    // PUT create-or-update on the soft-deleted entity funnels through restoreEntity, so it
+    // exercises the same restoreChildren PARENT_OF walk as the /restore endpoint.
+    TestCase updated = updateEntity(testCaseId, createRequest);
+    assertFalse(updated.getDeleted(), "Upsert must restore the soft-deleted test case");
+
+    TestCase restored = client.testCases().get(testCaseId, null, "all");
+    assertEquals(testCase.getName(), restored.getName());
+    assertFalse(restored.getDeleted(), "Restored test case must not be marked deleted");
+  }
+
+  /**
+   * Posts a Failed result, which opens an incident: the resolution-status record and its
+   * TestCase --PARENT_OF--> testCaseResolutionStatus edge are written synchronously with the
+   * result. Guards against a vacuous pass: if the edge is missing, neither restore test reaches
+   * the time-series child that the regression is about.
+   */
+  private void addFailedResultWithIncidentEdge(OpenMetadataClient client, TestCase testCase) {
+    addTestCaseResult(client, testCase, TestCaseStatus.Failed, 1L);
+
+    UUID incidentId =
+        Awaitility.await("incident and its PARENT_OF edge exist before soft delete")
+            .atMost(90, TimeUnit.SECONDS)
+            .pollInterval(Duration.ofSeconds(2))
+            .until(
+                () ->
+                    client
+                        .testCases()
+                        .get(testCase.getId().toString(), "incidentId")
+                        .getIncidentId(),
+                java.util.Objects::nonNull);
+    assertTrue(
+        countRelationshipsTo(incidentId) >= 1,
+        "PARENT_OF edge to the incident must exist before soft delete");
+  }
+
+  /**
+   * Soft-deletes a test case that has incident history. Its PARENT_OF child makes the entity
+   * non-empty, so DELETE without recursive=true is rejected with "testCase is not empty".
+   */
+  private void softDeleteTestCaseRecursively(OpenMetadataClient client, String testCaseId) {
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    client.testCases().delete(testCaseId, params);
+  }
+
+  @Test
   void test_testCaseHardDelete_200_OK(TestNamespace ns) {
     Table table = createTable(ns);
 
