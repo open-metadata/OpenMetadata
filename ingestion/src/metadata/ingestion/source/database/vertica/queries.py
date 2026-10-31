@@ -119,7 +119,7 @@ VERTICA_VIEW_DEFINITION = textwrap.dedent(
     """
       SELECT VIEW_DEFINITION
       FROM V_CATALOG.VIEWS
-      WHERE table_name='{view_name}'
+      WHERE lower(table_name) = '{view_name}'
       AND {schema_condition}
     """
 )
