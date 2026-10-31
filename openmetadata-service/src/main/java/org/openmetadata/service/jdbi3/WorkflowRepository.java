@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.WORKFLOW;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -53,31 +52,24 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
+  protected Workflow prepareForStorage(Workflow entity) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    return secretsManager == null ? entity : secretsManager.encryptWorkflow(entity);
+  }
+
+  @Override
   public void storeEntity(Workflow entity, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-
-    if (secretsManager != null) {
-      entity = secretsManager.encryptWorkflow(entity);
-    }
-
     store(entity, update);
   }
 
+  @Override
   public void storeEntities(List<Workflow> workflows) {
-    List<String> fqns = new ArrayList<>(workflows.size());
-    List<String> jsons = new ArrayList<>(workflows.size());
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-
-    for (Workflow workflow : workflows) {
-      if (secretsManager != null) {
-        workflow = secretsManager.encryptWorkflow(workflow);
-      }
-
-      fqns.add(workflow.getFullyQualifiedName());
-      jsons.add(serializeForStorage(workflow));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(workflows);
   }
 
   /** Remove the secrets from the secret manager */
@@ -106,6 +98,8 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      // Trigger authorization and stored credentials are bound to the original execution inputs.
+      updated.withWorkflowType(original.getWorkflowType()).withRequest(original.getRequest());
       compareAndUpdate(
           "status", () -> recordChange("status", original.getStatus(), updated.getStatus()));
       compareAndUpdate(

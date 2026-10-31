@@ -27,7 +27,7 @@ export const getOwnerPath = (owner: EntityReference): string => {
     ? getSettingsLink(
         getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? owner.name ?? '')
       )
-    : getUserPath(owner.name ?? '');
+    : getSettingsLink(getUserPath(owner.name ?? ''));
 };
 
 /**

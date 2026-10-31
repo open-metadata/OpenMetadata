@@ -1,0 +1,256 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.it.tests;
+
+import static org.openmetadata.it.tests.MetricMigrationSqlFixture.currentConnectionType;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Metrics;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.Set;
+import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.tests.mcp.McpTestUtils;
+import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.GenerateTokenRequest;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.PersonalAccessToken;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+
+/**
+ * Principals, tokens, plain HTTP calls and direct SQL shared by the {@code Credential*IT} classes.
+ * Requests go over HTTP with a raw client, so a test sees the exact status and headers a caller of
+ * the API sees.
+ */
+public final class CredentialFixtures {
+  /** Authenticated, answers from the database, so it shows a request really ran. */
+  public static final String LOGGED_IN_USER = "/api/v1/users/loggedInUser";
+
+  /** Authenticated and answered from memory: the handler reads nothing from the database. */
+  public static final String PIPELINE_CONFIG = "/api/v1/system/config/pipeline-service-client";
+
+  public static final String MCP = "/mcp";
+
+  private static final Set<String> CHECK_READ_REASONS = Set.of("miss", "stale", "unknown_token");
+  private static final long LOGIN_TOKEN_TTL_SECONDS = 3600;
+  private static final HttpClient HTTP =
+      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+
+  private CredentialFixtures() {}
+
+  public static User createUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    return SdkClients.adminClient()
+        .users()
+        .create(new CreateUser().withName(localPart).withEmail(localPart + "@open-metadata.org"));
+  }
+
+  /** The bot's stored name must equal the email local part, which is how JwtFilter finds it. */
+  public static User createBot(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    AuthenticationMechanism mechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    return SdkClients.adminClient()
+        .users()
+        .create(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@test.com")
+                .withIsBot(true)
+                .withAuthenticationMechanism(mechanism));
+  }
+
+  public static String botToken(User bot) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users/generateToken/" + bot.getId(),
+                JsonUtils.pojoToJson(
+                    new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven)));
+    return JsonUtils.readValue(response, JWTAuthMechanism.class).getJWTToken();
+  }
+
+  public static void revokeBotToken(User bot) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users/revokeToken", "{\"id\":\"" + bot.getId() + "\"}");
+  }
+
+  /** A soft delete through the suite server's API, the way an administrator removes a user. */
+  public static void softDeleteUser(User user) {
+    SdkClients.adminClient().users().delete(user.getId().toString());
+  }
+
+  public static PersonalAccessToken createPat(User owner, String tokenName) {
+    String response =
+        clientFor(owner)
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users/security/token",
+                "{\"tokenName\":\"" + tokenName + "\",\"JWTTokenExpiry\":\"OneHour\"}");
+    return JsonUtils.readValue(response, PersonalAccessToken.class);
+  }
+
+  public static void revokePat(User owner, PersonalAccessToken pat) {
+    clientFor(owner)
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + pat.getToken() + "\"]}");
+  }
+
+  /** A token OpenMetadata signs for a session. It is not a bot or PAT token: no stored check. */
+  public static String loginToken(User user) {
+    return JwtAuthProvider.tokenFor(
+        user.getEmail(), user.getEmail(), new String[] {}, LOGIN_TOKEN_TTL_SECONDS);
+  }
+
+  /**
+   * How many reads the suite server's verifier has run for checks, each counted when it finishes.
+   * They run on the verifier's own read threads, which carry no request context, so a statement
+   * counter scoped to requests does not see them; this counter does. Fails when the server reports
+   * no such meter, so a renamed one cannot read as zero.
+   */
+  public static double checkReads() {
+    double reads = 0;
+    int series = 0;
+    for (Counter counter : Metrics.globalRegistry.find("om.credential.reads").counters()) {
+      if (CHECK_READ_REASONS.contains(counter.getId().getTag("reason"))) {
+        reads += counter.count();
+        series++;
+      }
+    }
+    if (series == 0) {
+      throw new IllegalStateException("The server reports no om.credential.reads meter");
+    }
+    return reads;
+  }
+
+  public static HttpResponse<String> get(String path, String bearerToken) {
+    return get(TestSuiteBootstrap.getBaseUrl(), path, bearerToken);
+  }
+
+  /** The same call against another server, for example a {@code ForkedServerNode}. */
+  public static HttpResponse<String> get(String baseUrl, String path, String bearerToken) {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(baseUrl + path))
+            .header("Authorization", "Bearer " + bearerToken)
+            .timeout(Duration.ofSeconds(20))
+            .GET()
+            .build();
+    return send(request, path);
+  }
+
+  /** A JSON {@code PUT} to the suite's server; {@code path} may carry a query string. */
+  public static HttpResponse<String> put(String path, String bearerToken, String body) {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(TestSuiteBootstrap.getBaseUrl() + path))
+            .header("Authorization", "Bearer " + bearerToken)
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(60))
+            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    return send(request, path);
+  }
+
+  /** An MCP {@code initialize}; the transport checks the bearer token before it reads the body. */
+  public static HttpResponse<String> mcpInitialize(String bearerToken) {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(TestSuiteBootstrap.getBaseUrl() + MCP))
+            .header("Authorization", "Bearer " + bearerToken)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json, text/event-stream")
+            .timeout(Duration.ofSeconds(20))
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    JsonUtils.pojoToJson(McpTestUtils.createInitializeRequest())))
+            .build();
+    return send(request, MCP);
+  }
+
+  private static HttpResponse<String> send(HttpRequest request, String path) {
+    try {
+      return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (IOException failure) {
+      throw new UncheckedIOException(failure);
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while calling " + path, interrupted);
+    }
+  }
+
+  public static int status(String baseUrl, String path, String bearerToken) {
+    return get(baseUrl, path, bearerToken).statusCode();
+  }
+
+  public static int status(String path, String bearerToken) {
+    return get(path, bearerToken).statusCode();
+  }
+
+  public static void execute(String sql, String name) {
+    Entity.getJdbi().useHandle(handle -> handle.createUpdate(sql).bind("name", name).execute());
+  }
+
+  public static void deletePatRows(User owner) {
+    Entity.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate(
+                        "DELETE FROM user_tokens WHERE userId = :id"
+                            + " AND tokenType = 'PERSONAL_ACCESS_TOKEN'")
+                    .bind("id", owner.getId().toString())
+                    .execute());
+  }
+
+  public static String removeMechanismSql() {
+    return currentConnectionType() == ConnectionType.MYSQL
+        ? "UPDATE user_entity SET json = JSON_REMOVE(json, '$.authenticationMechanism')"
+            + " WHERE name = :name"
+        : "UPDATE user_entity SET json = json - 'authenticationMechanism' WHERE name = :name";
+  }
+
+  public static String softDeleteSql() {
+    return currentConnectionType() == ConnectionType.MYSQL
+        ? "UPDATE user_entity SET json = JSON_SET(json, '$.deleted', true) WHERE name = :name"
+        : "UPDATE user_entity SET json = jsonb_set(json, '{deleted}', 'true') WHERE name = :name";
+  }
+
+  private static OpenMetadataClient clientFor(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+}

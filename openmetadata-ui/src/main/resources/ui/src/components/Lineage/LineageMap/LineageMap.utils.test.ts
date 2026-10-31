@@ -24,11 +24,13 @@ import {
 } from '../../../generated/api/lineage/lineageScene';
 import {
   buildLineagePathHighlightIndex,
+  getBoxNearestPoint,
   getBreadcrumbSceneRequest,
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
   getDeleteKeyAction,
   getDrillBand,
+  getDrilledRootBreadcrumb,
   getLensRootLabelKey,
   getLineageMapEmptyState,
   getParentSceneRequest,
@@ -45,6 +47,7 @@ import {
   getSceneSearch,
   getScreenFill,
   getSemanticZoomDirection,
+  isSceneNodeDrillableWithChildren,
   type SceneLayoutBox,
 } from './LineageMap.utils';
 
@@ -126,6 +129,43 @@ describe('scene URL navigation', () => {
       band: LineageBand.Asset,
     });
     expect(getSceneOriginFocus(scene, {})).toEqual(focus);
+  });
+
+  it('offers the root breadcrumb as the way back only once drilled in', () => {
+    const root: LineageSceneBreadcrumb = {
+      id: 'root',
+      label: 'root',
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+    const service: LineageSceneBreadcrumb = {
+      id: 'svc',
+      label: 'svc',
+      fullyQualifiedName: 'svc',
+      entityType: EntityType.DATABASE_SERVICE,
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+
+    expect(
+      getDrilledRootBreadcrumb({
+        breadcrumb: [root, service],
+        band: LineageBand.Asset,
+        focusFqn: 'svc',
+      })
+    ).toBe(root);
+    // An empty drilled scene carries only the root crumb.
+    expect(
+      getDrilledRootBreadcrumb({
+        breadcrumb: [root],
+        band: LineageBand.Asset,
+        focusFqn: 'svc',
+      })
+    ).toBe(root);
+    expect(
+      getDrilledRootBreadcrumb({ breadcrumb: [root], band: LineageBand.Layer })
+    ).toBeUndefined();
+    expect(getDrilledRootBreadcrumb(undefined)).toBeUndefined();
   });
 
   it('removes the previous focus when navigating to a root breadcrumb', () => {
@@ -438,6 +478,17 @@ describe('LineageMap utils', () => {
         getRailDrillFallbackNode([service('empty', 0), service('full', 64)])
           ?.fullyQualifiedName
       ).toBe('full');
+    });
+
+    it('treats an empty or non-expandable node as no unaimed drill target', () => {
+      expect(isSceneNodeDrillableWithChildren(service('full', 64))).toBe(true);
+      expect(isSceneNodeDrillableWithChildren(service('empty', 0))).toBe(false);
+      expect(
+        isSceneNodeDrillableWithChildren({
+          ...service('ghost', 5),
+          isExpandable: false,
+        })
+      ).toBe(false);
     });
 
     it('falls back to the first drillable node when none report children', () => {
@@ -771,6 +822,26 @@ describe('getDeleteKeyAction', () => {
   });
 });
 
+describe('box nearest a point', () => {
+  it('measures to box centres, not edges', () => {
+    const wide = { id: 'wide', x: 0, y: 0, width: 400, height: 40 };
+    const small = { id: 'small', x: 0, y: 60, width: 40, height: 40 };
+
+    // (20, 30) lies inside wide, 180 from its centre (200, 20), but only 50
+    // from small's centre (20, 80).
+    expect(getBoxNearestPoint([wide, small], { x: 20, y: 30 })?.id).toBe(
+      'small'
+    );
+    expect(getBoxNearestPoint([wide, small], { x: 200, y: 30 })?.id).toBe(
+      'wide'
+    );
+  });
+
+  it('returns undefined without boxes', () => {
+    expect(getBoxNearestPoint([], { x: 0, y: 0 })).toBeUndefined();
+  });
+});
+
 describe('semantic zoom by screen fill', () => {
   const screen = { width: 1200, height: 800 };
   const card = { width: 400, height: 0 };
@@ -823,11 +894,12 @@ describe('semantic zoom by screen fill', () => {
     ).toBe('out');
   });
 
-  it('goes down a level only once a card fills most of the screen', () => {
+  it('goes down a level only once a card fills 35% of the screen', () => {
+    // 1.0 zoom: 400 of 1200 wide, just under 35%.
     expect(
       getSemanticZoomDirection({
-        previousZoom: 1,
-        zoom: 1.5,
+        previousZoom: 0.9,
+        zoom: 1,
         graph: bigGraph,
         card,
         screen,
@@ -835,10 +907,11 @@ describe('semantic zoom by screen fill', () => {
         maxZoom: 10,
       })
     ).toBeUndefined();
+    // 1.1 zoom: 440 of 1200 wide, past 35%.
     expect(
       getSemanticZoomDirection({
-        previousZoom: 1.5,
-        zoom: 1.9,
+        previousZoom: 1,
+        zoom: 1.1,
         graph: bigGraph,
         card,
         screen,

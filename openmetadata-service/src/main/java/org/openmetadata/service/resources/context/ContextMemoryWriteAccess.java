@@ -29,6 +29,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,7 @@ public final class ContextMemoryWriteAccess {
   /** Whether an explicitly named writer may write memories for others or claim extraction provenance. */
   public static boolean isPrivilegedWriter(String writer) {
     return writer != null
-        && (Entity.ADMIN_USER_NAME.equalsIgnoreCase(writer) || isAdminOrBot(writer));
+        && (SecurityUtil.sameIdentifier(Entity.ADMIN_USER_NAME, writer) || isAdminOrBot(writer));
   }
 
   public static void requireWriter(String writer) {

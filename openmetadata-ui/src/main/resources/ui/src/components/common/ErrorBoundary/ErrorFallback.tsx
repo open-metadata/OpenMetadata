@@ -19,6 +19,11 @@ import { ERROR500 } from '../../../constants/constants';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { t } from '../../../utils/i18next/LocalUtil';
 
+const getErrorMessage = (error: unknown) =>
+  typeof error === 'object' && error !== null && 'message' in error
+    ? String(error.message ?? '')
+    : String(error ?? '');
+
 const ErrorFallback: React.FC<FallbackProps> = ({
   error,
   resetErrorBoundary,
@@ -30,13 +35,19 @@ const ErrorFallback: React.FC<FallbackProps> = ({
     ? 'dark'
     : 'light';
 
+  const errorMessage = getErrorMessage(error);
+  const errorName =
+    typeof error === 'object' && error !== null && 'name' in error
+      ? error.name
+      : undefined;
+
   const isChunkLoadError =
-    error?.name === 'ChunkLoadError' ||
-    error.message?.startsWith('Loading chunk') || // Legacy Webpack
-    error.message
-      ?.toLowerCase()
+    errorName === 'ChunkLoadError' ||
+    errorMessage.startsWith('Loading chunk') || // Legacy Webpack
+    errorMessage
+      .toLowerCase()
       .includes('failed to fetch dynamically imported module') || // Vite
-    error.message?.toLowerCase().includes('importing a module script failed'); // Vite (Safari)
+    errorMessage.toLowerCase().includes('importing a module script failed'); // Vite (Safari)
 
   if (!isChunkLoadError) {
     return (
@@ -51,7 +62,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
             {ERROR500}
           </Typography>
           <Typography as="p" color="secondary" size="text-sm">
-            {error.message}
+            {errorMessage}
           </Typography>
         </Box>
         <Button color="primary" onPress={resetErrorBoundary}>

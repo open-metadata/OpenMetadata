@@ -34,10 +34,11 @@ import { useTranslation } from 'react-i18next';
 import { InstallOntologyPack } from '../../generated/api/data/installOntologyPack';
 import { OntologyPackInstallResult } from '../../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
+import type { OntologyPackInstallationRecord } from '../../generated/type/ontologyPackInstallationRecord';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { installOntologyPack, listOntologyPacks } from '../../rest/ontologyAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import OntologyNativeLibraryDetail, {
-  NativeLibraryCompletion,
   OntologyNativeLibraryDetailProps,
 } from '../governance/ontology/OntologyNativeLibraryDetail/OntologyNativeLibraryDetail';
 import {
@@ -53,7 +54,7 @@ type OntologyLibraryProps = { onClose?: () => void } & (
   | {
       native: Omit<
         OntologyNativeLibraryDetailProps,
-        'pack' | 'onBack' | 'completion' | 'onCompleted' | 'onBusyChange'
+        'pack' | 'onBack' | 'installedIn' | 'onCompleted' | 'onBusyChange'
       >;
       canInstall?: never;
       onOpenGlossary?: never;
@@ -67,14 +68,93 @@ type OntologyLibraryProps = { onClose?: () => void } & (
 
 const LIBRARY_DIALOG_WIDTH = 1120;
 
+const getLibraryPresentation = (native: boolean, isAiMode: boolean) =>
+  native && !isAiMode ? 'fullscreen' : 'dialog';
+
+const getLibraryDividers = (isAiMode: boolean) =>
+  isAiMode ? 'always' : 'scroll';
+
+// Dialog draws this divider only for its built-in title; the library header is custom.
+const OntologyLibraryHeaderDivider = () =>
+  useIsAiMode() ? (
+    <>
+      <div className="tw:h-5 tw:w-full" />
+      <div className="tw:w-full tw:border-t tw:border-subtle" />
+    </>
+  ) : null;
+
+const OntologyLibraryHeaderIcon = () =>
+  useIsAiMode() ? (
+    <FeaturedIcon
+      color="brand"
+      icon={BookClosed}
+      radius="lg"
+      shape="square"
+      size="md"
+      theme="light"
+    />
+  ) : (
+    <FeaturedIcon color="brand" icon={BookClosed} size="sm" theme="dark" />
+  );
+
+const OntologyLibraryAiFooter = ({
+  hasLoadError,
+  isDetailOpen,
+  isDisabled,
+  isLoading,
+  packCount,
+  onClose,
+}: {
+  hasLoadError: boolean;
+  isDetailOpen: boolean;
+  isDisabled: boolean;
+  isLoading: boolean;
+  packCount: number;
+  onClose?: () => void;
+}) => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+
+  if (!isAiMode) {
+    return null;
+  }
+  const isCountVisible = !isLoading && !hasLoadError && !isDetailOpen;
+
+  return (
+    <Dialog.Footer>
+      {isCountVisible && (
+        <Typography
+          as="span"
+          className="tw:mr-auto tw:self-center"
+          color="secondary"
+          data-testid="ontology-library-count"
+          size="text-sm">
+          {packCount} {t('label.ontology-plural').toLocaleLowerCase()}
+        </Typography>
+      )}
+      <Button
+        color="secondary"
+        data-testid="ontology-library-cancel"
+        isDisabled={isDisabled}
+        onPress={onClose}>
+        {t('label.cancel')}
+      </Button>
+    </Dialog.Footer>
+  );
+};
+
 const OntologyLibrary = ({
   canInstall = false,
   native,
   onClose,
   onOpenGlossary,
 }: OntologyLibraryProps) => {
+  const isAiMode = useIsAiMode();
   const { t } = useTranslation();
   const [packs, setPacks] = useState<OntologyPackManifest[]>([]);
+  const [installations, setInstallations] = useState<
+    OntologyPackInstallationRecord[]
+  >([]);
   const [selectedPack, setSelectedPack] = useState<OntologyPackManifest>();
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
   const [targetGlossaryName, setTargetGlossaryName] = useState('');
@@ -86,26 +166,31 @@ const OntologyLibrary = ({
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [isNativeBusy, setIsNativeBusy] = useState(false);
-  const [nativeCompletions, setNativeCompletions] = useState<
-    Record<string, NativeLibraryCompletion>
-  >({});
+  const isNative = Boolean(native);
+  const loadPacks = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setHasLoadError(false);
 
-  const loadPacks = useCallback(async () => {
-    setIsLoading(true);
-    setHasLoadError(false);
-
-    try {
-      const catalogue = await listOntologyPacks();
-      setPacks(catalogue.packs);
-    } catch (error) {
-      setHasLoadError(true);
-      showErrorToast(
-        error instanceof Error ? error.message : t('server.unexpected-error')
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
+      try {
+        const catalogue = await listOntologyPacks();
+        setPacks(catalogue.packs);
+        setInstallations(isNative ? catalogue.installations ?? [] : []);
+      } catch (error) {
+        setHasLoadError(true);
+        showErrorToast(
+          error instanceof Error ? error.message : t('server.unexpected-error')
+        );
+      } finally {
+        if (showLoading) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [isNative, t]
+  );
 
   useEffect(() => {
     void loadPacks();
@@ -196,9 +281,10 @@ const OntologyLibrary = ({
   const sentenceCaseLibraryTitle = `${libraryTitle.charAt(0)}${libraryTitle
     .slice(1)
     .toLocaleLowerCase()}`;
-  const installedCount = packs.filter(
-    (pack) => nativeCompletions[pack.id]
-  ).length;
+  const installedPackIds = [
+    ...new Set(installations.map((record) => record.installation.packId)),
+  ];
+  const installedCount = installedPackIds.length;
 
   let libraryBody: JSX.Element;
   if (isLoading) {
@@ -231,16 +317,17 @@ const OntologyLibrary = ({
     libraryBody = (
       <OntologyNativeLibraryDetail
         {...native}
-        completion={nativeCompletions[selectedPack.id]}
+        installedIn={installations.filter(
+          (record) => record.installation.packId === selectedPack.id
+        )}
         key={selectedPack.id}
         pack={selectedPack}
         onBack={handleBack}
         onBusyChange={setIsNativeBusy}
         onCompleted={(completion) => {
-          setNativeCompletions((current) => ({
-            ...current,
-            [selectedPack.id]: completion,
-          }));
+          if (completion.outcome === 'applied') {
+            void loadPacks(false);
+          }
           setIsNativeBusy(false);
           setSelectedPack(undefined);
           showSuccessToast(
@@ -274,7 +361,7 @@ const OntologyLibrary = ({
   } else {
     libraryBody = (
       <OntologyLibraryCatalogue
-        installedPackIds={Object.keys(nativeCompletions)}
+        installedPackIds={installedPackIds}
         packs={packs}
         onSelect={handleSelectPack}
       />
@@ -286,7 +373,7 @@ const OntologyLibrary = ({
       isOpen
       isDismissable={!isNativeBusy}
       isKeyboardDismissDisabled={isNativeBusy}
-      presentation={native ? 'fullscreen' : 'dialog'}
+      presentation={getLibraryPresentation(Boolean(native), isAiMode)}
       onOpenChange={(isOpen) => {
         if (!isOpen && !isNativeBusy) {
           onClose?.();
@@ -296,16 +383,11 @@ const OntologyLibrary = ({
         <Dialog
           aria-labelledby="ontology-library-title"
           data-testid="ontology-library"
-          dividers="scroll"
+          dividers={getLibraryDividers(isAiMode)}
           width={LIBRARY_DIALOG_WIDTH}>
           <Dialog.Header>
             <Box align="start" gap={3}>
-              <FeaturedIcon
-                color="brand"
-                icon={BookClosed}
-                size="sm"
-                theme="dark"
-              />
+              <OntologyLibraryHeaderIcon />
               <Box
                 align="center"
                 className="tw:min-w-0 tw:flex-1"
@@ -349,6 +431,7 @@ const OntologyLibrary = ({
               />
             </Box>
           </Dialog.Header>
+          <OntologyLibraryHeaderDivider />
           <Dialog.Content>
             <Box
               className={
@@ -360,6 +443,14 @@ const OntologyLibrary = ({
               {libraryBody}
             </Box>
           </Dialog.Content>
+          <OntologyLibraryAiFooter
+            hasLoadError={hasLoadError}
+            isDetailOpen={Boolean(selectedPack)}
+            isDisabled={isNativeBusy}
+            isLoading={isLoading}
+            packCount={packs.length}
+            onClose={onClose}
+          />
         </Dialog>
       </Modal>
     </ModalOverlay>

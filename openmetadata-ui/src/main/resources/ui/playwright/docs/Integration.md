@@ -2,7 +2,7 @@
 
 # Integration
 
-> **1 Components** | **7 Files** | **61 Tests** | **66 Scenarios** 🚀
+> **1 Components** | **6 Files** | **60 Tests** | **62 Scenarios** 🚀
 
 ## Table of Contents
 - [Connectors](#connectors)
@@ -193,23 +193,6 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **API service** - add update and delete api service type REST | Add update and delete api service type REST |
-
-</details>
-
-<details open>
-<summary>📄 <b>IngestionBot.spec.ts</b> (1 tests, 4 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts)
-
-### Ingestion Bot 
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Ingestion Bot ** - Ingestion bot should be able to access domain specific domain | Ingestion bot should be able to access domain specific domain |
-| | ↳ *Assign assets to domains* | |
-| | ↳ *Ingestion bot should access domain assigned assets* | |
-| | ↳ *Assign services to domains* | |
-| | ↳ *Ingestion bot should access domain assigned services* | |
 
 </details>
 

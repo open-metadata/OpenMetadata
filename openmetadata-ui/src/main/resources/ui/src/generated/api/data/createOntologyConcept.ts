@@ -15,10 +15,13 @@
  * approval workflows.
  */
 export interface CreateOntologyConcept {
-    conceptMappings?: ConceptMapping[];
-    conceptType:      OntologyConceptType;
-    description?:     string;
-    displayName?:     string;
+    abstract?:         boolean;
+    conceptMappings?:  ConceptMapping[];
+    conceptType:       OntologyConceptType;
+    definitionSource?: string;
+    deprecated?:       boolean;
+    description?:      string;
+    displayName?:      string;
     /**
      * Semantic IRI preserved for imported definitions. If omitted, creation mints an IRI from
      * the ontology namespace and entity UUID; updates preserve the stored IRI.
@@ -28,10 +31,11 @@ export interface CreateOntologyConcept {
     /**
      * Fully qualified name of the owning ontology.
      */
-    ontology:  string;
-    owners?:   EntityReference[];
-    provider?: ProviderType;
-    synonyms?: string[];
+    ontology:    string;
+    owners?:     EntityReference[];
+    provider?:   ProviderType;
+    replacedBy?: string;
+    synonyms?:   string[];
 }
 
 /**

@@ -39,6 +39,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -329,6 +330,7 @@ class UserUtilTest {
             .withId(UUID.randomUUID())
             .withName("bot-user")
             .withFullyQualifiedName("bot-user")
+            .withIsBot(true)
             .withAuthenticationMechanism(existingMechanism);
     User botUser =
         new User()
@@ -352,6 +354,39 @@ class UserUtilTest {
       User returnedUser = UserUtil.addOrUpdateBotUser(botUser);
 
       assertEquals(existingMechanism, returnedUser.getAuthenticationMechanism());
+    }
+  }
+
+  @Test
+  void addOrUpdateBotUserRefusesToTurnAPersonsAccountIntoABot() {
+    UserRepository userRepository = mock(UserRepository.class);
+    User person =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("future-bot")
+            .withFullyQualifiedName("future-bot")
+            .withIsBot(false)
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+                    .withConfig(new BasicAuthMechanism().withPassword("hash")));
+    User seededBot =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("future-bot")
+            .withFullyQualifiedName("future-bot")
+            .withEmail("future-bot@example.com")
+            .withIsBot(true);
+    when(userRepository.getByName(any(), eq("future-bot"), any(Fields.class))).thenReturn(person);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      IllegalStateException refused =
+          assertThrows(IllegalStateException.class, () -> UserUtil.addOrUpdateBotUser(seededBot));
+
+      assertTrue(refused.getMessage().contains("future-bot"), refused.getMessage());
+      verify(userRepository, never()).createOrUpdate(any(), any(User.class), any());
     }
   }
 
@@ -1013,6 +1048,13 @@ class UserUtilTest {
     List<String> adminEmails = List.of("Admin@Company.COM");
 
     assertTrue(UserUtil.isAdminEmail("admin@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_upperCaseFoldingAloneDoesNotMatch() {
+    List<String> adminEmails = List.of("admin@company.com");
+
+    assertFalse(UserUtil.isAdminEmail("admın@company.com", adminEmails));
   }
 
   @Test

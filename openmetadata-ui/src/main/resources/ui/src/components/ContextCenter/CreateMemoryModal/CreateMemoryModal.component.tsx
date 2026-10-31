@@ -1260,6 +1260,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
                 {memoryToEdit && (
                   <MemoryDerivedTerm
+                    isViewOnly={isViewOnly}
                     memory={memoryToEdit}
                     onNavigate={handleClose}
                   />

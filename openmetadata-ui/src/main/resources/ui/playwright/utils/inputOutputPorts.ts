@@ -21,10 +21,7 @@ import {
   toDrawerAsset,
 } from './assetDrawerQuickFilter';
 import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
-import {
-  waitForAntOverlayToOpen,
-  waitForResponseWithStatus,
-} from './waitHelpers';
+import { waitForOverlayToOpen, waitForResponseWithStatus } from './waitHelpers';
 
 type PortAssetType = 'table' | 'topic' | 'dashboard';
 
@@ -40,7 +37,7 @@ export const confirmPortRemoval = async (
   }
 
   const dialog = page.getByRole('dialog', { name: 'Remove Port', exact: true });
-  await waitForAntOverlayToOpen(dialog);
+  await waitForOverlayToOpen(dialog);
   const response = waitForResponseWithStatus(
     page,
     (res) =>

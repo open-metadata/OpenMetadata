@@ -13,9 +13,70 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.CONCURRENT)
 class JwtIdentityResolverTest {
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testInternalTokenUsesStoredEmailForUsersAndBots(boolean isBotUser) {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(null, Map.of(), List.of("sub"), null, email -> "ignored");
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        resolver.resolve(
+            claims(Map.of("sub", "admin_ab12", "email", "admin@attacker.example")),
+            isBotUser,
+            true);
+
+    assertEquals("admin_ab12", identity.userName());
+    assertEquals("admin@attacker.example", identity.email());
+    assertFalse(identity.emailFirstFlow());
+  }
+
+  @Test
+  void testInternalTokenWithoutEmailRetainsLegacyFallback() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            null, Map.of(), List.of("sub"), "openmetadata.org", email -> "ignored");
+
+    assertEquals(
+        "ingestion-bot@openmetadata.org",
+        resolver.resolve(claims(Map.of("sub", "ingestion-bot")), true, true).email());
+  }
+
+  @Test
+  void testInternalTokenRetainsExplicitEmailMapping() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            null,
+            Map.of("username", "sub", "email", "mail"),
+            List.of("sub"),
+            "openmetadata.org",
+            email -> "ignored");
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        resolver.resolve(
+            claims(Map.of("sub", "john", "email", "username", "mail", "john@company.com")),
+            false,
+            true);
+
+    assertEquals("john@company.com", identity.email());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "invalid"})
+  void testInternalTokenRejectsInvalidEmailInsteadOfSynthesizingOne(String invalidEmail) {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            null, Map.of(), List.of("sub"), "openmetadata.org", email -> "ignored");
+
+    assertThrows(
+        AuthenticationException.class,
+        () -> resolver.resolve(claims(Map.of("sub", "john", "email", invalidEmail)), false, true));
+  }
 
   @Test
   void testResolveUsesEmailFirstFlowWhenConfigured() {
@@ -193,6 +254,7 @@ class JwtIdentityResolverTest {
             false);
 
     assertEquals("john", identity.userName());
+    assertEquals("john@openmetadata.org", identity.email());
     assertFalse(identity.emailFirstFlow());
   }
 

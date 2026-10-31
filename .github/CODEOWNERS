@@ -22,7 +22,8 @@
 /ingestion @open-metadata/ingestion
 
 # Review from Devops owners for changes around workflows
-/.github @akash-jain-10 @harshach @tutte @open-metadata/mergers
+/.github/workflows/ @akash-jain-10 @harshach @tutte @open-metadata/mergers
+/.github/CODEOWNERS @akash-jain-10 @harshach @tutte @open-metadata/mergers
 /docker @akash-jain-10 @harshach @tutte
 
 # Playwright CI (workflow + scripts + config) — UI team owns reliability.

@@ -13,6 +13,7 @@
 
 import {
   Alert,
+  Box,
   Button,
   Card,
   FieldProp,
@@ -25,7 +26,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, pick } from 'lodash';
-import { Key, useEffect, useRef, useState } from 'react';
+import { Key, ReactNode, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -35,26 +36,36 @@ import {
 import { OntologyProfileReport } from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
+import { Kind } from '../../../../generated/entity/data/ontologyProperty';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyAxiom,
   patchOntologyAxiom,
   validateOntologyAxiom,
 } from '../../../../rest/ontologyAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyExpressionEditor, {
   defaultExpression,
   getExpressionRenderKey,
 } from '../../../OntologyExplorer/OntologyExpressionEditor';
+import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
+import { OntologyReferenceOptions } from '../OntologyIriInput/OntologyIriInput.types';
 import {
+  AXIOM_LABELS,
   buildOntologyAxiomRequest,
   EMPTY_AXIOM_FORM,
+  formatOntologyExpression,
+  isClassExpressionAxiom,
   isOntologyAxiomReady,
   OntologyAxiomFormState,
 } from './OntologyAxiomEditor.utils';
 
 interface OntologyAxiomEditorProps {
   ontology: Ontology;
+  references?: OntologyReferenceOptions;
   axiom?: OntologyAxiom;
   canEdit: boolean;
   onSaved?: (axiom: OntologyAxiom) => void;
@@ -62,65 +73,26 @@ interface OntologyAxiomEditorProps {
 
 const LIVE_VALIDATION_DELAY_MILLIS = 450;
 
-const isClassExpressionAxiom = (axiomType: AxiomType) =>
-  [
-    AxiomType.ClassAssertion,
-    AxiomType.DisjointWith,
-    AxiomType.EquivalentClass,
-    AxiomType.SubclassOf,
-  ].includes(axiomType);
-
 const resetShape = (
   form: ReturnType<typeof useForm<OntologyAxiomFormState>>,
   axiomType: AxiomType
 ) => {
-  form.setValue(
-    'expressions',
-    isClassExpressionAxiom(axiomType)
-      ? [defaultExpression(ExpressionKind.NamedClass)]
-      : []
-  );
-  form.setValue('literalDatatypeIri', '');
-  form.setValue('literalValue', '');
-  form.setValue('propertyIri', '');
-  form.setValue('targetIri', '');
+  if (
+    isClassExpressionAxiom(axiomType) &&
+    !form.getValues('expressions').length
+  ) {
+    form.setValue(
+      'expressions',
+      [defaultExpression(ExpressionKind.NamedClass)],
+      { shouldDirty: true }
+    );
+  }
 };
 
 const axiomTypeLabel = (
   axiomType: AxiomType,
   t: ReturnType<typeof useTranslation>['t']
-) => {
-  let label: string;
-
-  switch (axiomType) {
-    case AxiomType.ClassAssertion:
-      label = t('label.classification');
-
-      break;
-    case AxiomType.DataPropertyAssertion:
-      label = t('label.custom-property');
-
-      break;
-    case AxiomType.DisjointWith:
-      label = t('label.conflict-resolution');
-
-      break;
-    case AxiomType.EquivalentClass:
-      label = t('label.exact-match');
-
-      break;
-    case AxiomType.ObjectPropertyAssertion:
-      label = t('label.relationship');
-
-      break;
-    case AxiomType.SubclassOf:
-      label = t('label.child-of');
-
-      break;
-  }
-
-  return label;
-};
+) => t(AXIOM_LABELS[axiomType]);
 
 const requiredField = (
   name: string,
@@ -159,6 +131,102 @@ const ProfileResult = ({ profile }: { profile: OntologyProfileReport }) => {
   );
 };
 
+const previewSentence = (
+  values: OntologyAxiomFormState,
+  t: ReturnType<typeof useTranslation>['t'],
+  references?: OntologyReferenceOptions
+) => {
+  const label = (iri: string) =>
+    references?.concepts.find((option) => option.iri === iri)?.label ??
+    references?.properties.find((option) => option.iri === iri)?.label ??
+    iri;
+
+  return [
+    label(values.subjectIri),
+    axiomTypeLabel(values.axiomType, t),
+    !isClassExpressionAxiom(values.axiomType)
+      ? label(values.propertyIri)
+      : undefined,
+    values.axiomType === AxiomType.ObjectPropertyAssertion
+      ? values.targetIri
+      : undefined,
+    values.axiomType === AxiomType.DataPropertyAssertion
+      ? JSON.stringify(values.literalValue)
+      : undefined,
+    ...(isClassExpressionAxiom(values.axiomType)
+      ? values.expressions.map((expression) =>
+          formatOntologyExpression(expression, label, t)
+        )
+      : []),
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
+
+const AxiomFrame = ({
+  isAiMode,
+  children,
+}: {
+  isAiMode: boolean;
+  children: ReactNode;
+}) =>
+  isAiMode ? (
+    <section
+      className="tw:flex tw:flex-col tw:gap-4.5"
+      data-testid="ontology-axiom-panel">
+      {children}
+    </section>
+  ) : (
+    <Card
+      className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5"
+      data-testid="ontology-axiom-panel">
+      {children}
+    </Card>
+  );
+
+const AxiomTitle = ({
+  isAiMode,
+  axiom,
+}: {
+  isAiMode: boolean;
+  axiom?: OntologyAxiom;
+}) => {
+  const { t } = useTranslation();
+
+  return isAiMode ? (
+    <Typography
+      as="h3"
+      className="not-prose tw:m-0"
+      size="text-sm"
+      weight="semibold">
+      {axiom
+        ? getEntityName(axiom)
+        : t('label.new-entity', { entity: t('label.constraint') })}
+    </Typography>
+  ) : (
+    <Typography as="h3" size="text-lg" weight="semibold">
+      {t('label.ontology')} {t('label.constraint-plural')}
+    </Typography>
+  );
+};
+
+const axiomButtonSize = (isAiMode: boolean) => (isAiMode ? 'sm' : undefined);
+
+const AxiomPreview = ({ sentence }: { sentence: string }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Card data-testid="ontology-axiom-preview" size="sm" variant="muted">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-1">
+        <Typography color="secondary" size="text-xs" weight="medium">
+          {t('label.preview')}
+        </Typography>
+        <Typography size="text-sm">{sentence}</Typography>
+      </Card.Content>
+    </Card>
+  );
+};
+
 const axiomFormValues = (axiom?: OntologyAxiom): OntologyAxiomFormState => {
   if (!axiom) {
     return {
@@ -185,34 +253,114 @@ const axiomFormValues = (axiom?: OntologyAxiom): OntologyAxiomFormState => {
   };
 };
 
+const AssertionFields = ({
+  form,
+  values,
+  references,
+}: {
+  form: ReturnType<typeof useForm<OntologyAxiomFormState>>;
+  values: OntologyAxiomFormState;
+  references?: OntologyReferenceOptions;
+}) => {
+  const { t } = useTranslation();
+  const propertyKind =
+    values.axiomType === AxiomType.DataPropertyAssertion
+      ? Kind.Data
+      : Kind.Object;
+  const usesProperty = [
+    AxiomType.DataPropertyAssertion,
+    AxiomType.ObjectPropertyAssertion,
+  ].includes(values.axiomType);
+
+  return (
+    <>
+      {usesProperty ? (
+        <OntologyIriInput
+          isRequired
+          label={`${t('label.property')} ${t('label.concept-iri')}`}
+          options={references?.properties.filter(
+            (property) => property.kind === propertyKind
+          )}
+          value={values.propertyIri}
+          onChange={(propertyIri) =>
+            form.setValue('propertyIri', propertyIri, { shouldDirty: true })
+          }
+        />
+      ) : null}
+      {values.axiomType === AxiomType.ObjectPropertyAssertion ? (
+        <Input
+          isRequired
+          label={`${t('label.target')} ${t('label.concept-iri')}`}
+          value={values.targetIri}
+          onChange={(targetIri) =>
+            form.setValue('targetIri', targetIri, { shouldDirty: true })
+          }
+        />
+      ) : null}
+      {values.axiomType === AxiomType.DataPropertyAssertion ? (
+        <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2">
+          <Input
+            isRequired={false}
+            label={t('label.value')}
+            value={values.literalValue}
+            onChange={(literalValue) =>
+              form.setValue('literalValue', literalValue, {
+                shouldDirty: true,
+              })
+            }
+          />
+          <Input
+            label={`${t('label.data-type')} ${t('label.concept-iri')}`}
+            value={values.literalDatatypeIri}
+            onChange={(literalDatatypeIri) =>
+              form.setValue('literalDatatypeIri', literalDatatypeIri, {
+                shouldDirty: true,
+              })
+            }
+          />
+        </div>
+      ) : null}
+    </>
+  );
+};
+
 const OntologyAxiomEditor = ({
   ontology,
+  references,
   axiom,
   canEdit,
   onSaved,
 }: OntologyAxiomEditorProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const buttonSize = axiomButtonSize(isAiMode);
   const form = useForm<OntologyAxiomFormState>({
     defaultValues: {
       ...EMPTY_AXIOM_FORM,
       expressions: [defaultExpression(ExpressionKind.NamedClass)],
     },
   });
+  const markSaved = useOntologyDirtyForm(form.formState.isDirty);
   const values = form.watch();
   const validationSequence = useRef(0);
-  const [profile, setProfile] = useState<OntologyProfileReport>();
+  const [validation, setValidation] = useState<{
+    key: string;
+    report: OntologyProfileReport;
+  }>();
   const [created, setCreated] = useState<OntologyAxiom>();
   const [isValidating, setIsValidating] = useState(false);
   const ontologyFullyQualifiedName =
     ontology.fullyQualifiedName ?? ontology.name;
   const validationKey = JSON.stringify(values);
+  const profile =
+    validation?.key === validationKey ? validation.report : undefined;
   const validationValues = useRef(values);
   validationValues.current = values;
 
   useEffect(() => {
     form.reset(axiomFormValues(axiom));
     setCreated(undefined);
-    setProfile(undefined);
+    setValidation(undefined);
   }, [
     form,
     axiom,
@@ -224,7 +372,7 @@ const OntologyAxiomEditor = ({
 
   useEffect(() => {
     if (!isOntologyAxiomReady(validationValues.current)) {
-      setProfile(undefined);
+      setValidation(undefined);
 
       return;
     }
@@ -238,17 +386,20 @@ const OntologyAxiomEditor = ({
       )
         .then((report) => {
           if (sequence === validationSequence.current) {
-            setProfile(report);
+            setValidation({ key: validationKey, report });
           }
         })
         .catch(() => {
           if (sequence === validationSequence.current) {
-            setProfile(undefined);
+            setValidation(undefined);
           }
         });
     }, LIVE_VALIDATION_DELAY_MILLIS);
 
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(timeout);
+      validationSequence.current += 1;
+    };
   }, [ontologyFullyQualifiedName, validationKey]);
 
   const validate = async (submitted = values) => {
@@ -258,7 +409,7 @@ const OntologyAxiomEditor = ({
       report = await validateOntologyAxiom(
         buildOntologyAxiomRequest(ontologyFullyQualifiedName, submitted)
       );
-      setProfile(report);
+      setValidation({ key: JSON.stringify(submitted), report });
     } catch {
       showErrorToast(t('server.unexpected-error'));
     } finally {
@@ -291,6 +442,8 @@ const OntologyAxiomEditor = ({
               ),
             ])
           : await createOntologyAxiom(request);
+        form.reset(axiomFormValues(saved));
+        markSaved();
         setCreated(saved);
         onSaved?.(saved);
         showSuccessToast(t('label.saved'));
@@ -321,22 +474,13 @@ const OntologyAxiomEditor = ({
       t,
       FieldTypes.TEXTAREA
     ),
-    requiredField('subjectIri', t('label.subject'), t),
   ];
   const usesExpressions = isClassExpressionAxiom(values.axiomType);
-  const usesProperty = [
-    AxiomType.DataPropertyAssertion,
-    AxiomType.ObjectPropertyAssertion,
-  ].includes(values.axiomType);
 
   return (
     <HookForm form={form} onSubmit={form.handleSubmit(submit)}>
-      <Card
-        className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5"
-        data-testid="ontology-axiom-panel">
-        <Typography as="h3" size="text-lg" weight="semibold">
-          {t('label.ontology')} {t('label.constraint-plural')}
-        </Typography>
+      <AxiomFrame isAiMode={isAiMode}>
+        <AxiomTitle axiom={axiom} isAiMode={isAiMode} />
         <Select
           items={Object.values(AxiomType).map((axiomType) => ({
             id: axiomType,
@@ -349,51 +493,41 @@ const OntologyAxiomEditor = ({
             <Select.Item id={item.id} key={item.id} label={item.label} />
           )}
         </Select>
+        <Card data-testid="ontology-axiom-help" size="sm" variant="muted">
+          <Card.Content>
+            <Typography color="secondary" size="text-sm">
+              {t(
+                `message.ontology-axiom-${values.axiomType
+                  .toLowerCase()
+                  .replaceAll('_', '-')}-help`
+              )}
+            </Typography>
+          </Card.Content>
+        </Card>
         <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2">
           {metadataFields.slice(0, 2).map((field) => (
             <div key={field.name}>{getField(field)}</div>
           ))}
           <div className="tw:md:col-span-2">{getField(metadataFields[2])}</div>
-          <div className="tw:md:col-span-2">{getField(metadataFields[3])}</div>
-        </div>
-
-        {usesProperty ? (
-          <Input
-            isRequired
-            label={`${t('label.property')} ${t('label.concept-iri')}`}
-            value={values.propertyIri}
-            onChange={(propertyIri) =>
-              form.setValue('propertyIri', propertyIri)
-            }
-          />
-        ) : null}
-        {values.axiomType === AxiomType.ObjectPropertyAssertion ? (
-          <Input
-            isRequired
-            label={`${t('label.target')} ${t('label.concept-iri')}`}
-            value={values.targetIri}
-            onChange={(targetIri) => form.setValue('targetIri', targetIri)}
-          />
-        ) : null}
-        {values.axiomType === AxiomType.DataPropertyAssertion ? (
-          <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2">
-            <Input
+          <div className="tw:md:col-span-2">
+            <OntologyIriInput
               isRequired
-              label={t('label.value')}
-              value={values.literalValue}
-              onChange={(literalValue) =>
-                form.setValue('literalValue', literalValue)
+              label={t('label.subject')}
+              options={
+                values.axiomType === AxiomType.ClassAssertion ||
+                !isClassExpressionAxiom(values.axiomType)
+                  ? undefined
+                  : references?.concepts
               }
-            />
-            <Input
-              label={`${t('label.data-type')} ${t('label.concept-iri')}`}
-              value={values.literalDatatypeIri}
-              onChange={(literalDatatypeIri) =>
-                form.setValue('literalDatatypeIri', literalDatatypeIri)
+              value={values.subjectIri}
+              onChange={(subjectIri) =>
+                form.setValue('subjectIri', subjectIri, { shouldDirty: true })
               }
             />
           </div>
-        ) : null}
+        </div>
+
+        <AssertionFields form={form} references={references} values={values} />
 
         {usesExpressions ? (
           <div className="tw:flex tw:flex-col tw:gap-3">
@@ -401,6 +535,7 @@ const OntologyAxiomEditor = ({
               <OntologyExpressionEditor
                 expression={expression}
                 key={getExpressionRenderKey(expression)}
+                references={references}
                 onChange={(next) =>
                   form.setValue(
                     'expressions',
@@ -439,13 +574,22 @@ const OntologyAxiomEditor = ({
           </div>
         ) : null}
 
-        {profile ? <ProfileResult profile={profile} /> : null}
+        <AxiomPreview sentence={previewSentence(values, t, references)} />
+        {profile ? (
+          <Box direction="col" gap={2}>
+            <ProfileResult profile={profile} />
+            <Typography color="secondary" size="text-xs">
+              {t('message.ontology-profile-validation-help')}
+            </Typography>
+          </Box>
+        ) : null}
         <div className="tw:flex tw:flex-wrap tw:justify-end tw:gap-2">
           <Button
             color="secondary"
             data-testid="ontology-axiom-validate"
             isDisabled={!isOntologyAxiomReady(values)}
             isLoading={isValidating}
+            size={buttonSize}
             onClick={() => void validate()}>
             {t('label.validate')}
           </Button>
@@ -454,6 +598,7 @@ const OntologyAxiomEditor = ({
             data-testid="ontology-axiom-submit"
             isDisabled={!canEdit || !profile?.valid}
             isLoading={form.formState.isSubmitting}
+            size={buttonSize}
             type="submit">
             {t('label.save')}
           </Button>
@@ -464,7 +609,7 @@ const OntologyAxiomEditor = ({
             variant="success"
           />
         ) : null}
-      </Card>
+      </AxiomFrame>
     </HookForm>
   );
 };

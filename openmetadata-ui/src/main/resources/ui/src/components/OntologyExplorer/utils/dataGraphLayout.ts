@@ -393,6 +393,24 @@ function planLink(
 }
 
 /**
+ * Joins two rows that sit inside cards. Each end leaves through the left or
+ * right side of its row that faces the other row, so it never crosses the
+ * rows stacked above or below it in the same card.
+ */
+export function buildRowLinkGeometry(
+  fromRow: CardBox,
+  toRow: CardBox
+): EdgeGeometry {
+  const fromSide = columnSide(fromRow, centerOf(toRow));
+  const toSide = columnSide(toRow, centerOf(fromRow));
+
+  return buildGeometry(
+    { anchor: anchorOnSide(fromRow, fromSide, 0), side: fromSide },
+    { anchor: anchorOnSide(toRow, toSide, 0), side: toSide }
+  );
+}
+
+/**
  * Draws every link between the borders of the cards it joins, ending in an
  * arrowhead on the target's border. A link with a laid-out route follows it
  * around the cards in between; any other link leaves the source through the

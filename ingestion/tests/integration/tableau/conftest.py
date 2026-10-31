@@ -71,6 +71,14 @@ VIEWS = {
 class FakeTableauSite:
     """A Tableau site answering the REST and Metadata API calls the dashboard connector makes."""
 
+    def __init__(self) -> None:
+        # Data sources per workbook id, in the Metadata API's shape. None by default.
+        self.datasources: dict[str, list[dict]] = {}
+        # While the store behind the Metadata API is rebuilt, every response carries the
+        # BACKFILL_RUNNING warning, and the workbooks it has not reached yet are missing.
+        self.backfill_running = False
+        self.not_indexed: set[str] = set()
+
     def answer(self, request: requests.PreparedRequest) -> requests.Response:
         path = urlparse(request.url).path
         status, body, content_type = 200, "", "text/xml"
@@ -114,20 +122,30 @@ class FakeTableauSite:
             f"<{element}>{''.join(items)}</{element}></tsResponse>"
         )
 
-    @staticmethod
-    def _graphql(query: str) -> dict:
-        if "customSQLTables" in query:
-            return {"data": {"customSQLTables": []}}
+    def _graphql(self, query: str) -> dict:
         luid = re.search(r'luid: "([^"]+)"', query)
-        if luid:
+        if "customSQLTables" in query:
+            response = {"data": {"customSQLTables": []}}
+        elif luid:
+            nodes = self.datasources.get(luid.group(1), [])
             workbook = {
                 "id": f"gql-{luid.group(1)}",
                 "luid": luid.group(1),
                 "name": luid.group(1),
-                "embeddedDatasourcesConnection": {"nodes": [], "totalCount": 0},
+                "embeddedDatasourcesConnection": {"nodes": nodes, "totalCount": len(nodes)},
             }
-            return {"data": {"workbooks": [workbook]}}
-        return {"data": {}}
+            response = {"data": {"workbooks": [] if luid.group(1) in self.not_indexed else [workbook]}}
+        else:
+            response = {"data": {}}
+        if self.backfill_running:
+            response["errors"] = [
+                {
+                    "message": "Still creating the Metadata API Store. "
+                    "Results from the query might be incomplete at this time.",
+                    "extensions": {"severity": "WARNING", "code": "BACKFILL_RUNNING"},
+                }
+            ]
+        return response
 
 
 @pytest.fixture(scope="module")

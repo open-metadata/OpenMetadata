@@ -283,20 +283,22 @@ class OracleUnitTest(TestCase):
             VIEW_DDL = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
 
         mock_result = [MockViewRowWithViewDef(), MockViewRowWithViewDdl()]
-        mock_connection.execute.return_value = mock_result
+        mock_connection.execute.return_value.__iter__.side_effect = lambda: iter(mock_result)
         mock_connection.engine.url.database = "test_database"
 
-        get_all_view_definitions(mock_dialect, mock_connection, "dummy_query")
+        from metadata.ingestion.source.database.oracle.queries import ORACLE_VIEW_DEFINITIONS
 
-        assert hasattr(mock_dialect, "all_view_definitions")
-        assert (
-            "test_view_with_def",
-            "test_schema",
-        ) in mock_dialect.all_view_definitions
-        assert (
-            "test_view_with_ddl",
-            "test_schema",
-        ) in mock_dialect.all_view_definitions
+        definitions = dict(
+            get_all_view_definitions(
+                mock_dialect,
+                mock_connection,
+                ORACLE_VIEW_DEFINITIONS.format(prefix="DBA"),
+                "TEST_SCHEMA",
+            )
+        )
+
+        assert definitions.get(("test_view_with_def", "test_schema")) is not None
+        assert definitions.get(("test_view_with_ddl", "test_schema")) is not None
 
         expected_view_def_definition = (
             "CREATE OR REPLACE VIEW test_view_with_def AS SELECT * FROM test_table WHERE id > 0"
@@ -305,8 +307,8 @@ class OracleUnitTest(TestCase):
             "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
         )
 
-        assert mock_dialect.all_view_definitions[("test_view_with_def", "test_schema")] == expected_view_def_definition
-        assert mock_dialect.all_view_definitions[("test_view_with_ddl", "test_schema")] == expected_view_ddl_definition
+        assert definitions.get(("test_view_with_def", "test_schema")) == expected_view_def_definition
+        assert definitions.get(("test_view_with_ddl", "test_schema")) == expected_view_ddl_definition
 
     def test_get_stored_procedures(self):
         """
@@ -627,11 +629,9 @@ class TestOracleViewDefinitionFallback:
 
     @staticmethod
     def _bulk_query_lowercase():
-        # Mirrors ORACLE_VIEW_DEFINITIONS: the LOWER() calls mean the cache keys
-        # are lowercased.
-        return (
-            'SELECT LOWER(v.view_name) AS "view_name", LOWER(v.owner) AS "schema", text AS "view_def" FROM DBA_VIEWS v'
-        )
+        from metadata.ingestion.source.database.oracle.queries import ORACLE_VIEW_DEFINITIONS
+
+        return ORACLE_VIEW_DEFINITIONS.format(prefix="DBA")
 
     def _make_connection(self, names_rows, texts=None, ddls=None, fail_text=(), fail_ddl=()):
         """Mock connection that routes each fallback query to canned results.
@@ -654,16 +654,16 @@ class TestOracleViewDefinitionFallback:
 
         def execute(clause, params=None):
             sql = str(clause)
-            if "GET_DDL" in sql:  # last-resort per-view GET_DDL
+            if sql.startswith("SELECT DBMS_METADATA.GET_DDL("):  # last-resort per-view GET_DDL
                 name = params["name"]
                 if name in fail_ddl:
                     raise DatabaseError("get_ddl", None, Exception("ORA-31603"))
                 return scalar_result(ddls.get(name))
             if "object_type" in sql:  # names-only fallback listing
                 res = MagicMock()
-                res.fetchall.return_value = names_rows
+                res.__iter__.side_effect = lambda: iter(names_rows)
                 return res
-            if ":name" in sql:  # single-row raw text/query read
+            if sql.lstrip().startswith(("SELECT text FROM", "SELECT query FROM")):
                 name = params["name"]
                 if name in fail_text:
                     raise DatabaseError("text", None, Exception("ORA-01406"))
@@ -704,15 +704,19 @@ class TestOracleViewDefinitionFallback:
             fail_ddl=("BAD_VIEW",),
         )
 
-        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
-
-        defs = dialect.all_view_definitions
+        defs = dict(
+            get_all_view_definitions(
+                dialect,
+                conn,
+                self._bulk_query_lowercase(),
+                "SAM",
+            )
+        )
         # Raw text is the primary source (no extra privileges needed).
-        assert defs[("good_view", "sam")] == "CREATE OR REPLACE VIEW GOOD_VIEW AS SELECT * FROM t"
-        assert defs[("mv1", "sam")] == "CREATE OR REPLACE VIEW MV1 AS SELECT count(*) FROM t"
+        assert defs.get(("good_view", "sam")) == "CREATE OR REPLACE VIEW GOOD_VIEW AS SELECT * FROM t"
+        assert defs.get(("mv1", "sam")) == "CREATE OR REPLACE VIEW MV1 AS SELECT count(*) FROM t"
         # NULL text falls back to GET_DDL, mirroring the bulk query.
-        assert defs[("null_text", "sam")] == "CREATE FORCE VIEW SAM.NULL_TEXT AS SELECT 1 FROM dual"
-        # A view that fails both reads is skipped, not fatal to the rest.
+        assert defs.get(("null_text", "sam")) == "CREATE FORCE VIEW SAM.NULL_TEXT AS SELECT 1 FROM dual"
         assert ("bad_view", "sam") not in defs
 
     def test_fallback_keeps_native_case_for_preserve_identifier_case(self):
@@ -728,9 +732,16 @@ class TestOracleViewDefinitionFallback:
         dialect.preserve_identifier_case = True
         conn = self._make_connection([("Sam", "MyView", "VIEW")], texts={"MyView": "SELECT 1"})
 
-        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+        definitions = dict(
+            get_all_view_definitions(
+                dialect,
+                conn,
+                self._bulk_query_lowercase(),
+                "Sam",
+            )
+        )
 
-        assert dialect.all_view_definitions[("MyView", "Sam")] == "CREATE OR REPLACE VIEW MyView AS SELECT 1"
+        assert definitions.get(("MyView", "Sam")) == "CREATE OR REPLACE VIEW MyView AS SELECT 1"
 
     def test_non_database_error_is_not_routed_through_fallback(self):
         """A non-DatabaseError during the bulk read must propagate, not trigger the fallback."""
@@ -749,7 +760,14 @@ class TestOracleViewDefinitionFallback:
         dialect = OracleDialect()
 
         with pytest.raises(ValueError):
-            get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+            dict(
+                get_all_view_definitions(
+                    dialect,
+                    conn,
+                    self._bulk_query_lowercase(),
+                    "SAM",
+                )
+            )
 
     def test_successful_bulk_fetch_does_not_trigger_fallback(self):
         """When the bulk fetch succeeds, definitions come from it and no fallback query runs."""
@@ -768,12 +786,19 @@ class TestOracleViewDefinitionFallback:
             view_ddl = None
 
         conn = MagicMock()
-        conn.execute.return_value = [Row()]
+        conn.execute.return_value.__iter__.side_effect = lambda: iter([Row()])
         conn.engine.url.database = "db"
         dialect = OracleDialect()
 
-        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+        definitions = dict(
+            get_all_view_definitions(
+                dialect,
+                conn,
+                self._bulk_query_lowercase(),
+                "SAM",
+            )
+        )
 
-        assert dialect.all_view_definitions[("v1", "sam")] == "CREATE OR REPLACE VIEW v1 AS SELECT 1 FROM dual"
+        assert definitions.get(("v1", "sam")) == "CREATE OR REPLACE VIEW v1 AS SELECT 1 FROM dual"
         # Only the bulk query executed: no names listing, no per-view reads.
         assert conn.execute.call_count == 1

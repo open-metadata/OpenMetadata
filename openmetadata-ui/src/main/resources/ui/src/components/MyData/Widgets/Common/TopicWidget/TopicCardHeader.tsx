@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  FeaturedIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
@@ -59,14 +63,25 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
 
   const content = (
     <>
-      <div
-        aria-hidden
-        className={classNames(
-          'tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
-          tone.tile
-        )}>
-        <ToneIcon size={20} />
-      </div>
+      {'color' in tone ? (
+        <FeaturedIcon
+          aria-hidden
+          color={tone.color}
+          icon={ToneIcon}
+          radius="lg"
+          shape="square"
+          size="md"
+        />
+      ) : (
+        <div
+          aria-hidden
+          className={classNames(
+            'tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+            tone.tile
+          )}>
+          <ToneIcon size={20} />
+        </div>
+      )}
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-0.5">
         <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">

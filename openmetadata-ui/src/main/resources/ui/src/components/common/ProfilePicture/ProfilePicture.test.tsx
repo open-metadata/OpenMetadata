@@ -70,6 +70,20 @@ describe('Test ProfilePicture component', () => {
     expect(profileImage).toBeInTheDocument();
   });
 
+  it('draws the themed team icon, not an image, for a team', async () => {
+    // useUserProfile hands teams the static icon URL; it must not become an <img>.
+    mockUseUserProfile.mockReturnValue(['/teams-grey.svg', false, {}]);
+
+    const { container, queryByTestId } = render(
+      <ProfilePicture {...mockData} isTeam width="36" />
+    );
+
+    const avatar = await findByTestId(container, 'profile-avatar');
+
+    expect(queryByTestId('profile-image')).not.toBeInTheDocument();
+    expect(avatar).toHaveClass('tw:text-fg-secondary');
+  });
+
   it('forwards a defined size straight to the Avatar', () => {
     mockUseUserProfile.mockReturnValue(['', false, {}]);
     (Avatar as jest.Mock).mockClear();

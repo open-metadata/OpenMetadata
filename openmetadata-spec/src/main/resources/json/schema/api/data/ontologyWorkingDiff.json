@@ -5,6 +5,47 @@
   "description": "A paginated comparison of the current working ontology with its active release.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.OntologyWorkingDiff",
+  "definitions": {
+    "conceptChange": {
+      "description": "Member changes grouped under the concept they define: the concept itself, axioms whose subject is the concept, and properties whose first domain in this ontology is the concept. The change type is the concept's own, or CHANGED when only its axioms or properties changed. A change that belongs to no concept forms its own group without a concept.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyConceptChange",
+      "properties": {
+        "concept": {
+          "description": "Label of the concept: its display name, or its name when it has none.",
+          "type": "string"
+        },
+        "iri": {
+          "$ref": "../../type/ontologyIri.json"
+        },
+        "changeType": {
+          "$ref": "ontologyReleaseDiff.json#/definitions/changeType"
+        },
+        "parents": {
+          "description": "Labels of the named superclasses from the concept's SUBCLASS_OF axioms.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "propertyCount": {
+          "description": "Number of properties whose domain includes the concept.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "ontologyReleaseDiff.json#/definitions/memberChange"
+          },
+          "default": []
+        }
+      },
+      "required": ["changeType", "parents", "propertyCount", "changes"],
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "state": {
       "$ref": "../../type/ontologyState.json"
@@ -16,6 +57,14 @@
         "$ref": "ontologyReleaseDiff.json#/definitions/memberChange"
       },
       "default": []
+    },
+    "groups": {
+      "description": "Changes grouped by concept, present when the request groups by concept. Data is then empty and paging counts groups.",
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "$ref": "#/definitions/conceptChange"
+      }
     },
     "paging": {
       "$ref": "../../type/paging.json"

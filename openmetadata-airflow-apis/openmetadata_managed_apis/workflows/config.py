@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import os
 from pathlib import Path
 
 
@@ -25,7 +24,10 @@ def load_config_file(config_file: Path) -> dict:
     with config_file.open() as raw_config_file:
         raw_config = raw_config_file.read()
 
-    expanded_config_file = os.path.expandvars(raw_config)
-    config = json.loads(expanded_config_file)
+    # The config is JSON dumped by the OpenMetadata server, not a templated
+    # file: expanding it here would substitute any `${VAR}` the pipeline
+    # editor wrote in a free-text field with values from this host's
+    # process environment.
+    config = json.loads(raw_config)
 
     return config  # noqa: RET504

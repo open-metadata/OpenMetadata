@@ -15,10 +15,12 @@ package org.openmetadata.service.security;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -32,8 +34,14 @@ import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.Claim;
+import com.github.benmanes.caffeine.cache.Ticker;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.PathSegment;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
@@ -49,17 +57,22 @@ import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -68,17 +81,25 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CredentialUnavailableExceptionMapper;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OAuthDAOs;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
+import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
+import org.openmetadata.service.security.credentials.CredentialVerifier;
+import org.openmetadata.service.security.credentials.CredentialVerifierFixture;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -86,6 +107,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.socket.SocketAddressFilter;
 
 class JwtFilterTest {
 
@@ -98,9 +120,35 @@ class JwtFilterTest {
 
   private static final String OM_ISSUER = "open-metadata.org";
   private static final String OM_KEY_ID = "om-signing-key";
+  private static final String BOT = "ingestion-bot";
+  private static final String USER = "sam";
+  private static final String BOT_MISMATCH =
+      "Not Authorized! The given token does not match the current bot's token!";
+  private static final String INVALID_PAT = "Not Authorized! Invalid personal access token!";
+  private static final String UNRECOGNIZED = "Not Authorized! Unrecognized token type!";
+
+  /** A real verifier over an in-memory source, replaced for every test. */
+  private static CredentialVerifierFixture credentials;
+
+  private static SimpleMeterRegistry registry;
+
+  private static final Supplier<CredentialVerifier> VERIFIER = () -> credentials.verifier();
+  private static JWTTokenGenerator generator;
+
+  /** Verifies tokens signed with OpenMetadata's own key, as the server's key lookup does. */
+  private static JwtFilter omFilter;
 
   @BeforeAll
   static void before() throws Exception {
+    generator = OpenMetadataSigningKey.install();
+    omFilter =
+        new JwtFilter(
+            OpenMetadataSigningKey.keyLookup(),
+            List.of("sub", "email"),
+            "openmetadata.org",
+            false,
+            VERIFIER);
+
     // Create a RSA256 algorithm wth random public/private key pair
     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
     keyPairGenerator.initialize(2048);
@@ -124,13 +172,38 @@ class JwtFilterTest {
     List<String> principalClaims = List.of("sub", "email");
     String domain = "openmetadata.org";
     boolean enforcePrincipalDomain = false;
-    jwtFilter = new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain);
+    jwtFilter =
+        new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain, VERIFIER);
+  }
+
+  @BeforeEach
+  void newVerifier() {
+    registry = new SimpleMeterRegistry();
+    credentials =
+        new CredentialVerifierFixture(
+            registry, Ticker.systemTicker(), CredentialVerificationConfig.defaults());
+  }
+
+  // Every test resolves accounts through this per-test mock. Left to the real SubjectCache, the
+  // filter would read the global Entity registry, which other test classes in the same JVM fill
+  // with
+  // their own mock repositories. A name nobody stubs has no account yet, as on a first login.
+  private MockedStatic<SubjectCache> subjectCache;
+
+  @BeforeEach
+  void isolateUserLookups() {
+    subjectCache = mockStatic(SubjectCache.class);
+    subjectCache
+        .when(() -> SubjectCache.getUserContext(anyString()))
+        .thenThrow(EntityNotFoundException.byMessage("no account holds this name yet"));
   }
 
   @AfterEach
   void clearRequestContext() {
+    subjectCache.close();
     ActivePersonaContext.clear();
     ActiveDomainContext.clear();
+    credentials.close();
   }
 
   @Test
@@ -139,7 +212,7 @@ class JwtFilterTest {
     String domain = "openmetadata.org";
     boolean enforcePrincipalDomain = true;
     JwtFilter domainEnforcingFilter =
-        new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain);
+        new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain, VERIFIER);
 
     // success case
     String jwt =
@@ -149,8 +222,13 @@ class JwtFilterTest {
             .sign(algorithm);
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    UserRepository users =
+        repositoryWith(new User().withName("sam").withEmail("sam@openmetadata.org"));
 
-    domainEnforcingFilter.filter(context);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(users);
+      domainEnforcingFilter.filter(context);
+    }
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
@@ -219,12 +297,10 @@ class JwtFilterTest {
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
     when(context.getHeaderString(JwtFilter.ACTIVE_PERSONA_HEADER)).thenReturn(activePersona);
 
-    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class);
-        MockedStatic<SubjectCache> subjectCache =
-            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(new User().withName("sam"));
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(new User().withName("sam"));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       jwtFilter.filter(context);
       entity.verifyNoInteractions();
     }
@@ -249,13 +325,10 @@ class JwtFilterTest {
         new EntityReference().withId(UUID.randomUUID()).withType("domain").withName("Sales");
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
-    try (MockedStatic<SubjectCache> subjectCache =
-        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(new User().withName("sam").withDefaultDomain(selected));
-      jwtFilter.filter(context);
-    }
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(new User().withName("sam").withDefaultDomain(selected));
+    jwtFilter.filter(context);
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
@@ -270,28 +343,18 @@ class JwtFilterTest {
   void testPersonalAccessTokensCarryNoActiveDomain() {
     // The navbar selection is a UI preference: scripts and SDK calls using a personal access token
     // list without it.
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
-            .sign(algorithm);
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
+    ContainerRequestContext context = createRequestContextWithJwt(pat);
 
-    try (MockedStatic<UserTokenCache> userTokenCache =
-            org.mockito.Mockito.mockStatic(UserTokenCache.class);
-        MockedStatic<SubjectCache> subjectCache =
-            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      userTokenCache.when(() -> UserTokenCache.isTokenValid("sam", jwt)).thenReturn(true);
-      subjectCache
-          .when(() -> SubjectCache.getUserContext("sam"))
-          .thenReturn(
-              new User()
-                  .withName("sam")
-                  .withDefaultDomain(
-                      new EntityReference().withId(UUID.randomUUID()).withType("domain")));
-      jwtFilter.filter(context);
-    }
+    subjectCache
+        .when(() -> SubjectCache.getUserContext(USER))
+        .thenReturn(
+            new User()
+                .withName(USER)
+                .withDefaultDomain(
+                    new EntityReference().withId(UUID.randomUUID()).withType("domain")));
+    omFilter.filter(context);
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
@@ -302,39 +365,238 @@ class JwtFilterTest {
 
   @Test
   void testBotsCarryNoActiveDomain() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "ingestion-bot")
-            .withClaim(JwtFilter.BOT_CLAIM, true)
-            .sign(algorithm);
+    String jwt = botToken(BOT);
+    credentials.withJwtMechanisms(Map.of(BOT, jwt));
 
-    try (MockedStatic<SubjectCache> subjectCache =
-        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
-      CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(jwt);
+    CatalogSecurityContext securityContext = omFilter.getCatalogSecurityContext(jwt);
 
-      assertNull(securityContext.activeDomain());
-      subjectCache.verifyNoInteractions();
-    }
+    assertNull(securityContext.activeDomain());
+    subjectCache.verifyNoInteractions();
   }
 
   @Test
   void testFilterWithEmailClaim() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("email", "sam@gmail.com")
-            .sign(algorithm);
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
+    UserRepository users = repositoryWith(new User().withName("sam").withEmail("sam@gmail.com"));
 
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
-
-    jwtFilter.filter(context);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(users);
+      jwtFilter.filter(context);
+    }
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  /**
+   * The legacy flow resolves the account by the claim's local part. A stored email that differs from
+   * the token's - set by an admin, by CSV import or SCIM, or after an IdP domain change - must still
+   * sign in, not be logged out on every request.
+   */
+  @Test
+  void aLegacyProviderTokenSignsInWhenTheStoredEmailDiffers() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("sam@other.example"));
+
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("sam"))
+        .thenReturn(new User().withName("sam").withEmail("sam@gmail.com"));
+    jwtFilter.filter(context);
+
+    verify(context, times(1)).setSecurityContext(any());
+  }
+
+  @Test
+  void aProviderTokenNeverSignsInToABotAccount() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("ingestion-bot@openmetadata.org"));
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("ingestion-bot"))
+        .thenReturn(botAccount("ingestion-bot"));
+
+    assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  /** A bare principal claim names the account just as an email's local part does. */
+  @Test
+  void aBareProviderPrincipalNeverSignsInToABotAccount() {
+    String bareBotPrincipal =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "ingestion-bot")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(bareBotPrincipal);
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("ingestion-bot"))
+        .thenReturn(botAccount("ingestion-bot"));
+
+    assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  /** A name no account holds yet makes the user lookup throw; that is a first login, not a bot. */
+  @Test
+  void aProviderTokenForANameNoAccountHoldsIsAFirstLogin() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("new@gmail.com"));
+    subjectCache
+        .when(() -> SubjectCache.getUserContext("new"))
+        .thenThrow(EntityNotFoundException.byMessage("user instance for new not found"));
+
+    jwtFilter.filter(context);
+
+    verify(context, times(1)).setSecurityContext(any());
+  }
+
+  @Test
+  void allowedEmailDomainsApplyToLegacyProviderTokens() {
+    JwtFilter legacyWithAllowList =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub", "email"),
+            "openmetadata.org",
+            false,
+            null,
+            null,
+            List.of("openmetadata.org"),
+            VERIFIER);
+
+    // A token that carries an email outside the allowed domains is rejected.
+    ContainerRequestContext outsider =
+        createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
+    assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(outsider));
+
+    // A token with no email runs as sam@openmetadata.org, an allowed domain, so a deployment whose
+    // first principal claim is a bare username keeps working instead of being locked out on
+    // upgrade.
+    String subjectOnly =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    ContainerRequestContext noEmail = createRequestContextWithJwt(subjectOnly);
+    legacyWithAllowList.filter(noEmail);
+    verify(noEmail, times(1)).setSecurityContext(any());
+  }
+
+  /** With no email, the address the legacy flow builds must still be in an allowed domain. */
+  @Test
+  void aBareClaimOutsideTheAllowedDomainsIsRejected() {
+    JwtFilter principalDomainOutsideAllowList =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub", "email"),
+            "contractor.example",
+            false,
+            null,
+            null,
+            List.of("openmetadata.org"),
+            VERIFIER);
+    String subjectOnly =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(subjectOnly);
+
+    assertThrows(
+        AuthenticationException.class, () -> principalDomainOutsideAllowList.filter(context));
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  @Test
+  void aPublicEntraClientIsRestrictedToTheTenantItsAuthorityNames() {
+    String tenant = "11111111-2222-3333-4444-555555555555";
+
+    assertEquals(
+        tenant,
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/" + tenant)));
+    assertEquals(
+        tenant,
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(
+                ClientType.PUBLIC, "https://login.microsoftonline.com/" + tenant + "/v2.0/")));
+  }
+
+  @Test
+  void onlyAPublicEntraClientNamingATenantIdIsRestricted() {
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/common")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/contoso.com")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(
+                ClientType.CONFIDENTIAL,
+                "https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            new AuthenticationConfiguration()
+                .withProvider(AuthProvider.GOOGLE)
+                .withClientType(ClientType.PUBLIC)
+                .withAuthority("https://accounts.google.com")));
+  }
+
+  private static AuthenticationConfiguration entraSignIn(ClientType clientType, String authority) {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.AZURE)
+        .withClientType(clientType)
+        .withAuthority(authority);
+  }
+
+  @Test
+  void excludedEndpointsAreMatchedExactlyAndIgnoreMatrixParameters() {
+    // A genuine excluded endpoint, and the same path with a matrix parameter, both match.
+    assertTrue(JwtFilter.isExcludedEndpoint(pathSegments(List.of("v1", "users", "login"))));
+    assertTrue(
+        JwtFilter.isExcludedEndpoint(pathSegments(List.of("v1", "users", "login;jsessionid=x"))));
+    // A write to an entity whose name merely embeds an excluded endpoint is not excluded.
+    assertFalse(
+        JwtFilter.isExcludedEndpoint(
+            pathSegments(List.of("v1", "tables", "name", "v1/users/login"))));
+    assertFalse(JwtFilter.isExcludedEndpoint(pathSegments(List.of("v1", "tables", "name", "foo"))));
+  }
+
+  private static UriInfo pathSegments(List<String> segments) {
+    List<PathSegment> pathSegments =
+        segments.stream()
+            .map(
+                segment -> {
+                  PathSegment pathSegment = mock(PathSegment.class);
+                  when(pathSegment.getPath())
+                      .thenReturn(segment.contains(";") ? segment.split(";")[0] : segment);
+                  return pathSegment;
+                })
+            .collect(Collectors.toList());
+    UriInfo uriInfo = mock(UriInfo.class);
+    when(uriInfo.getPathSegments()).thenReturn(pathSegments);
+    return uriInfo;
+  }
+
+  private static String legacyProviderJwt(String email) {
+    return JWT.create()
+        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+        .withClaim("email", email)
+        .sign(algorithm);
+  }
+
+  private static User botAccount(String name) {
+    return new User().withName(name).withEmail(name + "@openmetadata.org").withIsBot(true);
+  }
+
+  private static UserRepository repositoryWith(User account) {
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.findByNameOrNull(account.getName(), Include.NON_DELETED))
+        .thenReturn(account);
+    return userRepository;
   }
 
   @Test
@@ -412,86 +674,379 @@ class JwtFilterTest {
   }
 
   @Test
-  void testPersonalAccessTokenClaimIsValidated() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
-            .sign(algorithm);
+  void personalAccessTokenIsAcceptedWhileItIsStored() {
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
 
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
-
-    Exception exception =
-        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
-    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("personal access token"));
+    assertEquals(USER, principalOf(omFilter, pat));
+    assertEquals(1, credentials.fullReadsOf(USER));
   }
 
   @Test
-  void testPersonalAccessTokenValidationSucceedsWithCurrentToken() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
-            .sign(algorithm);
+  void revokedPersonalAccessTokenIsRejectedWithThePersonalAccessTokenMessage() {
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
+    assertEquals(USER, principalOf(omFilter, pat));
 
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    credentials.revoke(USER);
 
-    try (MockedStatic<UserTokenCache> userTokenCache =
-        org.mockito.Mockito.mockStatic(UserTokenCache.class)) {
-      userTokenCache.when(() -> UserTokenCache.isTokenValid("sam", jwt)).thenReturn(true);
-      jwtFilter.filter(context);
-    }
-
-    verify(context, times(1))
-        .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
-  }
-
-  @Test
-  void botTokenIsRejectedOnceRevokedOrRotated() {
-    String jwt = botJwt("ingestion-bot");
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
-
-    try (MockedStatic<BotTokenCache> botTokenCache =
-        org.mockito.Mockito.mockStatic(BotTokenCache.class)) {
-      // Revoked: the stored token is cleared. Rotated: a newer token is stored. The presented
-      // token matches neither, so both must fail even though the JWT is still signed and unexpired.
-      botTokenCache
-          .when(() -> BotTokenCache.isTokenValid("ingestion-bot", jwt))
-          .thenReturn(false, false);
-      for (int attempt = 0; attempt < 2; attempt++) {
-        Exception exception =
-            assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
-        assertTrue(exception.getMessage().contains("does not match the current bot's token"));
-      }
-    }
-    verify(context, never()).setSecurityContext(org.mockito.ArgumentMatchers.any());
+    assertRejectedBy(omFilter, pat, INVALID_PAT);
   }
 
   @Test
   void botTokenIsAcceptedWhileItIsTheCurrentOne() {
-    String jwt = botJwt("ingestion-bot");
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    String jwt = botToken(BOT);
+    credentials.withJwtMechanisms(Map.of(BOT, jwt));
 
-    try (MockedStatic<BotTokenCache> botTokenCache =
-        org.mockito.Mockito.mockStatic(BotTokenCache.class)) {
-      botTokenCache.when(() -> BotTokenCache.isTokenValid("ingestion-bot", jwt)).thenReturn(true);
-      jwtFilter.filter(context);
-    }
-
-    verify(context, times(1))
-        .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+    assertEquals(BOT, principalOf(omFilter, jwt));
   }
 
-  private static String botJwt(String botName) {
-    return JWT.create()
-        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-        .withClaim("sub", botName)
-        .withClaim("email", botName + "@openmetadata.org")
-        .withClaim(JwtFilter.BOT_CLAIM, true)
-        .withClaim(TOKEN_TYPE, ServiceTokenType.BOT.value())
-        .sign(algorithm);
+  @Test
+  void revokedBotTokenIsRejectedWithTheBotMessage() {
+    String jwt = botToken(BOT);
+    credentials.withJwtMechanisms(Map.of(BOT, jwt));
+    assertEquals(BOT, principalOf(omFilter, jwt));
+
+    credentials.revoke(BOT);
+
+    assertRejectedBy(omFilter, jwt, BOT_MISMATCH);
+  }
+
+  @Test
+  void rotatedBotTokenIsRejectedWithTheBotMessage() {
+    String rotatedAway = botToken(BOT);
+    credentials.withJwtMechanisms(Map.of(BOT, botToken(BOT)));
+
+    assertRejectedBy(omFilter, rotatedAway, BOT_MISMATCH);
+  }
+
+  @Test
+  void impersonatedRequestIsCheckedAgainstTheBotsOwnToken() {
+    String jwt = botToken(BOT);
+    credentials.withJwtMechanisms(Map.of(BOT, jwt));
+    assertEquals(BOT, principalOf(omFilter, jwt));
+    credentials.revoke(BOT);
+    ContainerRequestContext impersonating = createRequestContextWithJwt(jwt);
+    when(impersonating.getHeaderString(JwtFilter.IMPERSONATE_USER_HEADER)).thenReturn(USER);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      AuthenticationException rejected =
+          assertThrows(AuthenticationException.class, () -> omFilter.filter(impersonating));
+
+      assertEquals(BOT_MISMATCH, rejected.getMessage());
+      entity.verifyNoInteractions();
+    }
+    verify(impersonating, never()).setSecurityContext(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void everyEntryPointRejectsARevokedPersonalAccessToken(EntryPoint entryPoint) {
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
+    entryPoint.authenticate(omFilter, pat);
+
+    credentials.revoke(USER);
+
+    AuthenticationException rejected =
+        assertThrows(AuthenticationException.class, () -> entryPoint.authenticate(omFilter, pat));
+    assertEquals(INVALID_PAT, rejected.getMessage());
+  }
+
+  /** Operators read the check rate from {@code om.credential.checks}: one per authentication. */
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void everyEntryPointCountsOneStoredCredentialCheck(EntryPoint entryPoint) {
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
+
+    entryPoint.authenticate(omFilter, pat);
+
+    double checks =
+        registry.find("om.credential.checks").counters().stream().mapToDouble(Counter::count).sum();
+    assertEquals(1.0, checks);
+  }
+
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void storedCollisionIdentityWithoutPrincipalDomainStillChecksRevocation(EntryPoint entryPoint) {
+    String userName = "admin_ab12";
+    String token =
+        generator
+            .generateJWTToken(
+                userName,
+                Set.of(),
+                false,
+                "admin@attacker.example",
+                3600,
+                false,
+                ServiceTokenType.PERSONAL_ACCESS)
+            .getJWTToken();
+    credentials.withPats(Map.of(userName, List.of(token)));
+    JwtFilter filter =
+        new JwtFilter(
+            OpenMetadataSigningKey.keyLookup(), List.of("sub", "email"), null, false, VERIFIER);
+
+    entryPoint.authenticate(filter, token);
+    credentials.revoke(userName);
+
+    AuthenticationException rejected =
+        assertThrows(AuthenticationException.class, () -> entryPoint.authenticate(filter, token));
+    assertEquals(INVALID_PAT, rejected.getMessage());
+  }
+
+  @Test
+  void locallySignedTokenFromPreviousIssuerRetainsStoredEmail() {
+    String userName = "admin_ab12";
+    String email = "admin@attacker.example";
+    String token =
+        JWT.create()
+            .withKeyId(OpenMetadataSigningKey.KEY_ID)
+            .withIssuer("previous-issuer")
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", userName)
+            .withClaim("email", email)
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(OpenMetadataSigningKey.signingAlgorithm());
+    credentials.withPats(Map.of(userName, List.of(token)));
+
+    CatalogPrincipal principal =
+        (CatalogPrincipal) omFilter.getCatalogSecurityContext(token).getUserPrincipal();
+
+    assertEquals(userName, principal.getName());
+    assertEquals(email, principal.getEmail());
+  }
+
+  /** OpenMetadata never issues these: each one is rejected even when its token is stored. */
+  @ParameterizedTest
+  @CsvSource({"false, BOT", "true, PERSONAL_ACCESS", "true, OM_USER"})
+  void openMetadataSignedTokenOfNoIssuedKindIsRejected(boolean isBot, ServiceTokenType type) {
+    String jwt =
+        generator
+            .getJwtAuthMechanism(
+                USER, new HashSet<>(), false, emailOf(USER), isBot, type, inOneDay(), null)
+            .getJWTToken();
+    credentials.withPats(Map.of(USER, List.of(jwt))).withJwtMechanisms(Map.of(USER, jwt));
+
+    assertRejectedBy(omFilter, jwt, UNRECOGNIZED);
+    assertEquals(0, credentials.fullReads());
+  }
+
+  /** OpenMetadata writes tokenType as text, so a value of any other JSON type is no issued kind. */
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void openMetadataSignedTokenWithANonTextTokenTypeIsRejected(boolean isBot) {
+    String jwt =
+        JWT.create()
+            .withKeyId(OpenMetadataSigningKey.KEY_ID)
+            .withIssuer(OpenMetadataSigningKey.ISSUER)
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", USER)
+            .withClaim("email", emailOf(USER))
+            .withClaim(JwtFilter.BOT_CLAIM, isBot)
+            .withClaim(TOKEN_TYPE, 7)
+            .sign(OpenMetadataSigningKey.signingAlgorithm());
+
+    assertRejectedBy(omFilter, jwt, UNRECOGNIZED);
+    assertEquals(0, credentials.fullReads());
+  }
+
+  @Test
+  void providerTokenClaimingToBeABotIsRejected() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", BOT)
+            .withClaim(JwtFilter.BOT_CLAIM, true)
+            .withClaim(TOKEN_TYPE, ServiceTokenType.BOT.value())
+            .sign(algorithm);
+
+    assertRejectedBy(jwtFilter, jwt, UNRECOGNIZED);
+  }
+
+  @Test
+  void providerTokenClaimingToBeAPersonalAccessTokenIsRejected() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", USER)
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(algorithm);
+
+    assertRejectedBy(jwtFilter, jwt, UNRECOGNIZED);
+    assertEquals(0, credentials.fullReads());
+  }
+
+  @Test
+  void providerTokenReachesNoStoredCredentialRead() {
+    String jwt = JWT.create().withExpiresAt(inOneDay()).withClaim("sub", USER).sign(algorithm);
+
+    assertEquals(USER, principalOf(jwtFilter, jwt));
+    assertEquals(0, credentials.fullReads());
+    assertEquals(0, credentials.fingerprintReads());
+  }
+
+  @Test
+  void storedCredentialThatCannotBeConfirmedIsUnavailableNotRejected() {
+    String jwt = botToken(BOT);
+    credentials.withJwtMechanisms(Map.of(BOT, jwt));
+    credentials.failReads();
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    CredentialUnavailableException unavailable =
+        assertThrows(CredentialUnavailableException.class, () -> omFilter.filter(context));
+
+    Response response = new CredentialUnavailableExceptionMapper().toResponse(unavailable);
+    assertEquals(503, response.getStatus());
+    assertEquals("2", response.getHeaderString("Retry-After"));
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  /** Other distributions' tests build the filter this way, over provider-signed tokens. */
+  @Test
+  void fourArgumentConstructorAcceptsAProviderTokenWithNoVerifierInstalled() {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub", "email"), "openmetadata.org", false);
+    String jwt = JWT.create().withExpiresAt(inOneDay()).withClaim("sub", USER).sign(algorithm);
+
+    assertEquals(USER, principalOf(filter, jwt));
+  }
+
+  /** Other distributions map the principal themselves once this has returned the claims. */
+  @Test
+  void claimsOfAProviderTokenWithNoConfiguredPrincipalClaimAreReturned() {
+    String jwt =
+        JWT.create().withExpiresAt(inOneDay()).withClaim("oid", "opaque-guid").sign(algorithm);
+
+    assertEquals("opaque-guid", jwtFilter.validateJwtAndGetClaims(jwt).get("oid").asString());
+    ContainerRequestContext request = createRequestContextWithJwt(jwt);
+    assertThrows(AuthenticationException.class, () -> jwtFilter.filter(request));
+  }
+
+  @Test
+  void fourArgumentConstructorCannotConfirmAStoredTokenWithNoVerifierInstalled() {
+    JwtFilter filter =
+        new JwtFilter(
+            OpenMetadataSigningKey.keyLookup(), List.of("sub", "email"), "openmetadata.org", false);
+    String jwt = botToken(BOT);
+
+    assertThrows(CredentialUnavailableException.class, () -> filter.validateJwtAndGetClaims(jwt));
+  }
+
+  @Test
+  void checkValidationsForTokenChecksTheTokenItIsGivenWhateverClaimsAccompanyIt() {
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
+    Map<String, Claim> providerClaims =
+        JWT.decode(JWT.create().withExpiresAt(inOneDay()).withClaim("sub", USER).sign(algorithm))
+            .getClaims();
+    omFilter.checkValidationsForToken(providerClaims, pat, USER, null);
+
+    credentials.revoke(USER);
+
+    AuthenticationException rejected =
+        assertThrows(
+            AuthenticationException.class,
+            () -> omFilter.checkValidationsForToken(providerClaims, pat, USER, null));
+    assertEquals(INVALID_PAT, rejected.getMessage());
+    assertEquals(2, credentials.fullReadsOf(USER), "the first check's read and the revoke's");
+  }
+
+  @Test
+  void verifySignatureOnlySkipsTheStoredCredentialCheck() {
+    String neverStored = botToken(BOT);
+
+    Map<String, Claim> claims = omFilter.verifySignatureOnly(neverStored);
+
+    assertEquals(BOT, claims.get("sub").asString());
+    assertEquals(0, credentials.fullReads());
+    assertRejectedBy(omFilter, neverStored, BOT_MISMATCH);
+  }
+
+  /** The public ways a caller authenticates a token; each must run the stored-credential check. */
+  private enum EntryPoint {
+    REQUEST_FILTER {
+      @Override
+      void authenticate(JwtFilter filter, String token) {
+        filter.filter(createRequestContextWithJwt(token));
+      }
+    },
+    CLAIMS {
+      @Override
+      void authenticate(JwtFilter filter, String token) {
+        filter.validateJwtAndGetClaims(token);
+      }
+    },
+    SECURITY_CONTEXT {
+      @Override
+      void authenticate(JwtFilter filter, String token) {
+        filter.getCatalogSecurityContext(token);
+      }
+    },
+    /** A caller that obtains the claims some other way and then runs the follow-up checks. */
+    CHECKS_AFTER_SIGNATURE_ONLY {
+      @Override
+      void authenticate(JwtFilter filter, String token) {
+        Map<String, Claim> claims = filter.verifySignatureOnly(token);
+        filter.checkValidationsForToken(claims, token, claims.get("sub").asString(), null);
+      }
+    },
+    /** The WebSocket handshake and the MCP HTTP transport. */
+    PREFIXED_TOKEN_REQUEST {
+      @Override
+      void authenticate(JwtFilter filter, String token) {
+        SocketAddressFilter.validatePrefixedTokenRequest(filter, "Bearer " + token);
+      }
+    };
+
+    abstract void authenticate(JwtFilter filter, String token);
+  }
+
+  /** A bot token as bot creation and token regeneration mint it. */
+  private static String botToken(String botName) {
+    User bot =
+        new User().withName(botName).withEmail(emailOf(botName)).withIsBot(true).withIsAdmin(false);
+    return generator.generateJWTToken(bot, JWTTokenExpiry.Unlimited).getJWTToken();
+  }
+
+  /** A personal access token as {@code UserResource.createPersonalAccessToken} mints it. */
+  private static String personalAccessToken(String userName) {
+    return generator
+        .getJwtAuthMechanism(
+            userName,
+            new HashSet<>(),
+            false,
+            emailOf(userName),
+            false,
+            ServiceTokenType.PERSONAL_ACCESS,
+            JWTTokenGenerator.getExpiryDate(JWTTokenExpiry.Seven),
+            null)
+        .getJWTToken();
+  }
+
+  private static String emailOf(String name) {
+    return name + "@openmetadata.org";
+  }
+
+  private static Date inOneDay() {
+    return Date.from(Instant.now().plus(1, ChronoUnit.DAYS));
+  }
+
+  private static String principalOf(JwtFilter filter, String token) {
+    ContainerRequestContext context = createRequestContextWithJwt(token);
+    filter.filter(context);
+    ArgumentCaptor<SecurityContext> securityContext =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContext.capture());
+    return securityContext.getValue().getUserPrincipal().getName();
+  }
+
+  private static void assertRejectedBy(JwtFilter filter, String token, String message) {
+    ContainerRequestContext context = createRequestContextWithJwt(token);
+    AuthenticationException rejected =
+        assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertEquals(message, rejected.getMessage());
+    verify(context, never()).setSecurityContext(any());
   }
 
   @ParameterizedTest
@@ -602,8 +1157,115 @@ class JwtFilterTest {
       enforcingFilter.filter(context);
     }
 
-    verify(context, times(1))
-        .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+    ArgumentCaptor<SecurityContext> securityContext =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContext.capture());
+    CatalogPrincipal principal = (CatalogPrincipal) securityContext.getValue().getUserPrincipal();
+    assertEquals("asmith", principal.getName());
+    assertEquals("asmith@intermedia.com", principal.getEmail());
+  }
+
+  @Test
+  void mcpAccessTokenNoLongerStoredIsRejected() throws Exception {
+    String token = mcpAccessToken();
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> filterMcpAccessToken(token, null));
+    assertTrue(exception.getMessage().contains("revoked"));
+  }
+
+  /** Signed with our key under an issuer the server has since changed: still looked up. */
+  @Test
+  void mcpAccessTokenFromAnEarlierIssuerIsStillLookedUp() throws Exception {
+    String token =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer("an-earlier-issuer")
+            .withExpiresAt(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)))
+            .withClaim("sub", "sam")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+            .withClaim(JWTTokenGenerator.CLIENT_ID_CLAIM, "mcp-client")
+            .sign(algorithm);
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> filterMcpAccessToken(token, null));
+    assertTrue(exception.getMessage().contains("revoked"));
+  }
+
+  @Test
+  void mcpAccessTokenStillStoredIsAccepted() throws Exception {
+    String token = mcpAccessToken();
+    OAuthAccessTokenRecord stored =
+        new OAuthAccessTokenRecord(
+            UUID.randomUUID(),
+            OAuthDAOs.hashToken(token),
+            "encrypted",
+            "mcp-client",
+            "sam",
+            List.of(),
+            Long.MAX_VALUE);
+
+    ContainerRequestContext context = filterMcpAccessToken(token, stored);
+
+    verify(context).setSecurityContext(any(SecurityContext.class));
+  }
+
+  /** A provider's own token may carry client_id too; only a token OpenMetadata signed is looked up. */
+  @Test
+  void providerTokenWithAClientIdIsNotLookedUp() {
+    String token =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withAudience("openmetadata-client")
+            .withClaim(JWTTokenGenerator.CLIENT_ID_CLAIM, "openmetadata-client")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(token);
+
+    try (MockedStatic<Entity> entity =
+        mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      filterExpectingClient("openmetadata-client").filter(context);
+      entity.verify(Entity::getCollectionDAO, never());
+    }
+
+    verify(context).setSecurityContext(any(SecurityContext.class));
+  }
+
+  private static String mcpAccessToken() {
+    return JWT.create()
+        .withKeyId(OM_KEY_ID)
+        .withIssuer(OM_ISSUER)
+        .withExpiresAt(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)))
+        .withClaim("sub", "sam")
+        .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+        .withClaim(JWTTokenGenerator.CLIENT_ID_CLAIM, "mcp-client")
+        .sign(algorithm);
+  }
+
+  /** Runs an OpenMetadata-signed MCP access token through the filter with the given stored row. */
+  private static ContainerRequestContext filterMcpAccessToken(
+      String token, OAuthAccessTokenRecord storedRow) throws Exception {
+    JwtFilter filter =
+        new JwtFilter(jwkProviderForKeyId(OM_KEY_ID), List.of("sub", "email"), OM_ISSUER, false);
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.OAuthAccessTokenDAO accessTokens = mock(CollectionDAO.OAuthAccessTokenDAO.class);
+    when(dao.oauthAccessTokenDAO()).thenReturn(accessTokens);
+    when(accessTokens.findByTokenHash(OAuthDAOs.hashToken(token))).thenReturn(storedRow);
+    ContainerRequestContext context = createRequestContextWithJwt(token);
+
+    try (MockedStatic<JWTTokenGenerator> generator =
+            mockStatic(JWTTokenGenerator.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+        MockedStatic<Entity> entity =
+            mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      JWTTokenGenerator instance = mock(JWTTokenGenerator.class);
+      when(instance.getIssuer()).thenReturn(OM_ISSUER);
+      when(instance.getKid()).thenReturn(OM_KEY_ID);
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(instance);
+      entity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+      filter.filter(context);
+    }
+    return context;
   }
 
   @Test
@@ -665,7 +1327,8 @@ class JwtFilterTest {
   }
 
   private static JwtFilter newEnforcingFilterForKeyId(String keyId) throws Exception {
-    return new JwtFilter(jwkProviderForKeyId(keyId), List.of("sub", "email"), OM_ISSUER, true);
+    return new JwtFilter(
+        jwkProviderForKeyId(keyId), List.of("sub", "email"), OM_ISSUER, true, VERIFIER);
   }
 
   private static JwkProvider jwkProviderForKeyId(String keyId) throws Exception {
@@ -727,7 +1390,12 @@ class JwtFilterTest {
         null, sessionServiceReturning(openMetadataSession));
     JwtFilter basicProviderFilter =
         new JwtFilter(
-            jwkProvider, List.of("sub", "email"), "openmetadata.org", false, AuthProvider.BASIC);
+            jwkProvider,
+            List.of("sub", "email"),
+            "openmetadata.org",
+            false,
+            AuthProvider.BASIC,
+            VERIFIER);
 
     try {
       ContainerRequestContext context =
@@ -750,7 +1418,12 @@ class JwtFilterTest {
     AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(googleSession));
     JwtFilter basicProviderFilter =
         new JwtFilter(
-            jwkProvider, List.of("sub", "email"), "openmetadata.org", false, AuthProvider.BASIC);
+            jwkProvider,
+            List.of("sub", "email"),
+            "openmetadata.org",
+            false,
+            AuthProvider.BASIC,
+            VERIFIER);
 
     try {
       ContainerRequestContext context =
@@ -765,7 +1438,7 @@ class JwtFilterTest {
 
   @Test
   void testEmailFirstFlowSuccess() {
-    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of(), VERIFIER);
 
     String jwt =
         JWT.create()
@@ -789,7 +1462,7 @@ class JwtFilterTest {
   @Test
   void testEmailFirstFlowWithDomainValidation() {
     JwtFilter emailFirstFilter =
-        new JwtFilter(jwkProvider, "email", "name", List.of("company.com", "corp.com"));
+        new JwtFilter(jwkProvider, "email", "name", List.of("company.com", "corp.com"), VERIFIER);
 
     String jwt =
         JWT.create()
@@ -812,7 +1485,7 @@ class JwtFilterTest {
   @Test
   void testEmailFirstFlowWithInvalidDomain() {
     JwtFilter emailFirstFilter =
-        new JwtFilter(jwkProvider, "email", "name", List.of("company.com"));
+        new JwtFilter(jwkProvider, "email", "name", List.of("company.com"), VERIFIER);
 
     String jwt =
         JWT.create()
@@ -832,7 +1505,7 @@ class JwtFilterTest {
 
   @Test
   void testEmailFirstFlowRejectsUnknownEmailWhenUsernameIsTaken() {
-    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of(), VERIFIER);
     UserRepository userRepository = mock(UserRepository.class);
     when(userRepository.getActiveUserByEmailForAuth(any(), any()))
         .thenThrow(EntityNotFoundException.byMessage("user not found"));
@@ -856,7 +1529,7 @@ class JwtFilterTest {
 
   @Test
   void testEmailFirstFlowRejectsDeactivatedUser() {
-    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of(), VERIFIER);
     UserRepository userRepository = mock(UserRepository.class);
     when(userRepository.getActiveUserByEmailForAuth(any(), any()))
         .thenThrow(new AuthenticationException("Your account has been deactivated"));
@@ -879,7 +1552,7 @@ class JwtFilterTest {
 
   @Test
   void testEmailFirstFlowMissingEmailClaim() {
-    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of(), VERIFIER);
 
     String jwt =
         JWT.create()
@@ -905,7 +1578,8 @@ class JwtFilterTest {
             false,
             "email",
             "name",
-            List.of());
+            List.of(),
+            VERIFIER);
 
     String jwt =
         JWT.create()
@@ -925,7 +1599,7 @@ class JwtFilterTest {
 
   @Test
   void testEmailFirstFlowUsesStoredUsernameForExistingUser() {
-    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of(), VERIFIER);
     UserRepository userRepository = mock(UserRepository.class);
     User existingUser = new User().withName("john.doe_x7k2");
 
@@ -955,7 +1629,7 @@ class JwtFilterTest {
 
   @Test
   void testEmailFirstFlowUsesExactEmailLookupForSameLocalPartUsers() {
-    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of(), VERIFIER);
     UserRepository userRepository = mock(UserRepository.class);
     User johnAtX = new User().withName("john");
     User johnAtY = new User().withName("john_a1b2");
@@ -997,7 +1671,8 @@ class JwtFilterTest {
 
   @Test
   void testEmailFirstFlowWithCustomEmailClaim() {
-    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "userEmail", "displayName", List.of());
+    JwtFilter emailFirstFilter =
+        new JwtFilter(jwkProvider, "userEmail", "displayName", List.of(), VERIFIER);
 
     String jwt =
         JWT.create()
@@ -1120,14 +1795,16 @@ class JwtFilterTest {
 
   @Test
   void botTokensNeverCarryProviderRoles() throws Exception {
-    JwtFilter filter = filterWithRolesFromProvider(true);
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "ingestion-bot")
-            .withClaim("isBot", true)
-            .withClaim("roles", List.of("DataSteward"))
-            .sign(algorithm);
+    JwtFilter filter = filterWithRolesFromProvider(OpenMetadataSigningKey.keyLookup(), true);
+    User bot =
+        new User()
+            .withName(BOT)
+            .withEmail(emailOf(BOT))
+            .withIsBot(true)
+            .withIsAdmin(false)
+            .withRoles(List.of(new EntityReference().withName("DataSteward").withType("role")));
+    String jwt = generator.generateJWTToken(bot, JWTTokenExpiry.Unlimited).getJWTToken();
+    credentials.withJwtMechanisms(Map.of(BOT, jwt));
 
     CatalogSecurityContext context = filter.getCatalogSecurityContext(jwt);
 
@@ -1152,7 +1829,8 @@ class JwtFilterTest {
 
   private static JwtFilter filterWithRolesFromProvider(
       JwkProvider provider, boolean useRolesFromProvider) throws Exception {
-    JwtFilter filter = new JwtFilter(provider, List.of("sub", "email"), "openmetadata.org", false);
+    JwtFilter filter =
+        new JwtFilter(provider, List.of("sub", "email"), "openmetadata.org", false, VERIFIER);
     Field field = JwtFilter.class.getDeclaredField("useRolesFromProvider");
     field.setAccessible(true);
     field.setBoolean(filter, useRolesFromProvider);
@@ -1199,7 +1877,8 @@ class JwtFilterTest {
             keyIdAwareProvider,
             List.of("sub", "email"),
             "openmetadata.org",
-            new ProviderTokenValidator(Set.of("openmetadata-client"), Optional::empty));
+            new ProviderTokenValidator(Set.of("openmetadata-client"), Optional::empty),
+            VERIFIER);
     String botToken =
         JWT.create()
             .withKeyId(OM_KEY_ID)
@@ -1240,7 +1919,8 @@ class JwtFilterTest {
         jwkProvider,
         List.of("sub", "email"),
         "openmetadata.org",
-        new ProviderTokenValidator(Set.of(clientId), Optional::empty));
+        new ProviderTokenValidator(Set.of(clientId), Optional::empty),
+        VERIFIER);
   }
 
   private static String providerToken(String audience) {

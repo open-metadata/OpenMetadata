@@ -173,4 +173,30 @@ describe('RelatedMetricsForm', () => {
       screen.queryByTestId('cancelRelatedMetrics')
     ).not.toBeInTheDocument();
   });
+
+  it('shows the standard no-results placeholder when a search matches nothing', async () => {
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }>
+        <RelatedMetricsForm
+          defaultValue={[]}
+          initialOptions={[]}
+          metricFqn="finance.current"
+          onCancel={onCancel}
+          onSubmit={onSubmit}
+        />
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'zzz' },
+    });
+
+    expect(
+      await screen.findByTestId('related-metrics-empty')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('label.no-data')).not.toBeInTheDocument();
+  });
 });

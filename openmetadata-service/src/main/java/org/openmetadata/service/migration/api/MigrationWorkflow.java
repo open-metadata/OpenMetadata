@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flywaydb.core.api.configuration.ClassicConfiguration;
 import org.flywaydb.core.api.configuration.Configuration;
 import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
@@ -166,23 +167,34 @@ public class MigrationWorkflow {
     List<MigrationFile> applyMigrations = resolveApplyMigrations(availableMigrations);
     List<MigrationProcessExtensionProvider> extensionProviders = loadExtensionProviders();
     List<MigrationProcess> processes = new ArrayList<>();
-    try {
-      for (MigrationFile file : applyMigrations) {
-        file.parseSQLFiles();
-        MigrationProcess process = resolveMigrationProcess(file, extensionProviders);
-        if (file.isReprocessing() && !hasPendingWork(file, process)) {
-          LOG.debug(
-              "[MigrationWorkflow] Skipping version {} - reprocessing with no new SQL statements"
-                  + " and no pending data migration",
-              file.version);
-          continue;
-        }
-        processes.add(process);
+    for (MigrationFile file : applyMigrations) {
+      MigrationProcess process = loadMigration(file, extensionProviders);
+      if (file.isReprocessing() && !hasPendingWork(file, process)) {
+        LOG.debug(
+            "[MigrationWorkflow] Skipping version {} - reprocessing with no new SQL statements"
+                + " and no pending data migration",
+            file.version);
+        continue;
       }
-    } catch (Exception e) {
-      LOG.error("Failed to list and add migrations to run due to ", e);
+      processes.add(process);
     }
     return processes;
+  }
+
+  // A version that cannot be loaded stops the run before any version runs: skipping it would also
+  // skip every later version and leave the database on a partial schema.
+  private MigrationProcess loadMigration(
+      MigrationFile file, List<MigrationProcessExtensionProvider> extensionProviders) {
+    try {
+      file.parseSQLFiles();
+      return resolveMigrationProcess(file, extensionProviders);
+    } catch (ReflectiveOperationException | RuntimeException e) {
+      throw new IllegalStateException(
+          String.format(
+              "Migration %s cannot be loaded, so no migration was run: %s",
+              file.version, ExceptionUtils.getRootCauseMessage(e)),
+          e);
+    }
   }
 
   private MigrationProcess resolveMigrationProcess(
@@ -795,8 +807,8 @@ public class MigrationWorkflow {
           if (sql != null && !sql.isBlank()) {
             String checksum = hash(sql);
             try {
-              String existingQuery = migrationDAO.checkIfQueryPreviouslyRan(checksum);
-              if (existingQuery == null) {
+              String executedInVersion = migrationDAO.checkIfQueryPreviouslyRan(checksum);
+              if (executedInVersion == null) {
                 migrationDAO.upsertServerMigrationSQL(omVersion, sql, checksum);
                 totalStatements++;
               }

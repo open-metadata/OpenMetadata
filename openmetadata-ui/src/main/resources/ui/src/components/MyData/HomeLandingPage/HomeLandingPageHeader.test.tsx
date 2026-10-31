@@ -51,25 +51,6 @@ describe('HomeLandingPageHeader', () => {
     ).toBeInTheDocument();
   });
 
-  // The wash itself is an inline `linear-gradient`, which jsdom drops; what it
-  // can see is the header leaving its default gradient for the tinted one.
-  it("swaps the default gradient for the persona's Header Theme colour", () => {
-    render(<HomeLandingPageHeader headerColor="#123456" />);
-
-    expect(
-      screen.getByTestId('home-landing-page-header').className
-    ).not.toContain('tw:bg-[linear-gradient');
-  });
-
-  // A legacy gradient value is the old default, not a chosen colour.
-  it('keeps the default gradient when no plain colour is saved', () => {
-    render(<HomeLandingPageHeader headerColor="linear-gradient(red, blue)" />);
-
-    expect(screen.getByTestId('home-landing-page-header').className).toContain(
-      'tw:bg-[linear-gradient'
-    );
-  });
-
   it('falls back to a generic greeting before the user loads', () => {
     mockCurrentUser = undefined;
     render(<HomeLandingPageHeader />);

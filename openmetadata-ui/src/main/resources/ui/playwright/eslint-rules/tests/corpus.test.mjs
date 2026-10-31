@@ -25,7 +25,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
   const actual = {};
-  // src/ entries belong to the antd ratchet in eslint-rules/openmetadata-antd.test.mjs.
+  // Only playwright/ entries carry suppressions; src/ is not suppressed.
   const playwrightFiles = Object.entries(suppressions)
     .filter(([path]) => path.startsWith('playwright/'))
     .map(([, file]) => file);
@@ -69,9 +69,12 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // Data Marketplace announcements carousel spec dropped its `.first()` item
     // lookup, picking the bulk-import entity type by its option role removes
     // one more, editor-scoped bulk tag selection removes another
-    // positional fallback, and scoping the Topic nested copy-link button to its
-    // row removes two more.
-    'om-playwright/no-positional-locator': 539,
+    // positional fallback, scoping the Topic nested copy-link button to its
+    // row removes two more, deleting the unused task-count helper removes
+    // two more, moving the IngestionBot spec's checks to
+    // DomainIsolationIT removes one more, and deleting the unused antd
+    // reply-announcement helper removes two more.
+    'om-playwright/no-positional-locator': 530,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

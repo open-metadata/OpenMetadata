@@ -199,7 +199,7 @@ class TableauUnitTest(TestCase):
             mock_tableau_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.tableau.client = SimpleNamespace()
+        self.tableau.client = SimpleNamespace(metadata_api_backfill_running=False)
         self.tableau.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard_name(self):
@@ -802,6 +802,67 @@ class TableauUnitTest(TestCase):
 
                 mock_get_by_name.assert_called_once()
                 assert result is None
+
+    def _search_finds_only_sales_orders(self, entity_type, fqn_search_string, **_):
+        """OM holds svc.dev.sales.orders and nothing else."""
+        return MagicMock(spec=Table) if fqn_search_string.endswith("dev.sales.orders") else None
+
+    def _lineage_tables_for_prefix(self, db_service_prefix, schema="sales"):
+        table = UpstreamTable(
+            id="t1",
+            luid="t1-luid",
+            name="sales.orders" if schema else "orders",
+            fullName="[dev].[sales].[orders]",
+            schema_=schema,
+            database={"id": "db1", "name": "dev"},
+        )
+        with (
+            patch.object(self.tableau.metadata, "get_by_name", return_value=None),
+            patch.object(
+                self.tableau.metadata, "search_in_any_service", side_effect=self._search_finds_only_sales_orders
+            ) as search,
+        ):
+            return self.tableau._get_table_entities_from_api(db_service_prefix=db_service_prefix, table=table), search
+
+    def test_table_lineage_matches_a_schema_prefix(self):
+        result, _ = self._lineage_tables_for_prefix("svc.dev.sales")
+
+        assert result is not None and len(result) == 1
+
+    def test_table_lineage_skips_a_table_outside_the_schema_prefix(self):
+        # dbServicePrefixes svc.dev.inventory must not link a table of schema sales
+        result, search = self._lineage_tables_for_prefix("svc.dev.inventory")
+
+        assert result is None
+        search.assert_not_called()
+
+    def test_table_lineage_skips_a_table_other_than_the_table_prefix(self):
+        result, search = self._lineage_tables_for_prefix("svc.dev.sales.customers")
+
+        assert result is None
+        search.assert_not_called()
+
+    def test_table_lineage_full_name_fallback_respects_the_schema_prefix(self):
+        # Tableau reports no schema, so only the fullName [dev].[sales].[orders] carries it
+        result, _ = self._lineage_tables_for_prefix("svc.dev.inventory", schema=None)
+
+        assert result is None
+
+    def test_datamodel_dashboard_lineage_skipped_when_the_dashboard_failed(self):
+        # A workbook whose yield_dashboard failed leaves no dashboard in the context; its
+        # data models must not try to build a lineage edge to it.
+        context = self.tableau.context.get()
+        context.__dict__["dataModels"] = ["ds-bad"]
+        context.__dict__["dashboard"] = None
+        datamodel = MagicMock(spec=DashboardDataModel, dataModelType="TableauEmbeddedDatasource")
+        with (
+            patch.object(self.tableau.metadata, "get_by_name", return_value=datamodel),
+            patch("metadata.ingestion.source.dashboard.tableau.metadata.logger") as log,
+        ):
+            lineage = list(self.tableau.yield_datamodel_dashboard_lineage())
+
+        assert lineage == []
+        log.error.assert_not_called()
 
     def test_datamodel_uses_own_project_over_dashboard_project(self):
         """

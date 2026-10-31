@@ -18,7 +18,7 @@ import { LINEAGE_NODE_DARK_CLASS } from '../../../Entity/EntityLineage/CustomNod
 import LineageNodeLabelV1 from '../../../Entity/EntityLineage/LineageNodeLabelV1';
 import { PortNodeProps } from './PortsLineageView.types';
 
-const PortNode = memo(({ data }: PortNodeProps) => {
+const PortNode = memo(({ data, id }: PortNodeProps) => {
   const { port, isInputPort, handleId } = data;
   const { entityType: _, ...portWithoutEntityType } = port;
 
@@ -45,7 +45,9 @@ const PortNode = memo(({ data }: PortNodeProps) => {
 
       <div className="lineage-node-content">
         <div className="label-container">
-          <LineageNodeLabelV1 node={portWithoutEntityType} />
+          <LineageNodeLabelV1
+            node={{ ...portWithoutEntityType, id, type: port.entityType ?? '' }}
+          />
         </div>
       </div>
     </div>

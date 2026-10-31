@@ -67,7 +67,6 @@ import {
 } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './policies-list.less';
 
 const PoliciesListPage = () => {
   const { t } = useTranslation();
@@ -138,7 +137,7 @@ const PoliciesListPage = () => {
           </Link>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<Policy>(),
       {
         title: t('label.role-plural').toString(),
         dataIndex: 'roles',

@@ -256,9 +256,9 @@ public class IngestionPipelineOwnerInheritanceIT {
 
             try {
               OpenMetadataClient ownerClient =
-                  SdkClients.createClient(ownerName, ownerName, new String[] {});
+                  SdkClients.createClient(ownerName, pipelineOwner.getEmail(), new String[] {});
               OpenMetadataClient otherClient =
-                  SdkClients.createClient(otherName, otherName, new String[] {});
+                  SdkClients.createClient(otherName, otherUser.getEmail(), new String[] {});
 
               // Owner can PATCH displayName.
               IngestionPipeline ownerEdit =
@@ -496,7 +496,7 @@ public class IngestionPipelineOwnerInheritanceIT {
 
             try {
               OpenMetadataClient deployerClient =
-                  SdkClients.createClient(deployerName, deployerName, new String[] {});
+                  SdkClients.createClient(deployerName, deployer.getEmail(), new String[] {});
               String deployPath = "/v1/services/ingestionPipelines/deploy/" + pipeline.getId();
               deployerClient.getHttpClient().execute(HttpMethod.POST, deployPath, null, Void.class);
               deployerClient
@@ -616,9 +616,9 @@ public class IngestionPipelineOwnerInheritanceIT {
 
             try {
               OpenMetadataClient viewerClient =
-                  SdkClients.createClient(viewerName, viewerName, new String[] {});
+                  SdkClients.createClient(viewerName, viewer.getEmail(), new String[] {});
               OpenMetadataClient editorClient =
-                  SdkClients.createClient(editorName, editorName, new String[] {});
+                  SdkClients.createClient(editorName, editor.getEmail(), new String[] {});
 
               String killPath = "/v1/services/ingestionPipelines/kill/" + pipeline.getId();
 

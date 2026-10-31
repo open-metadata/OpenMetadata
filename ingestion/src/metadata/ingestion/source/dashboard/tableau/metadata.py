@@ -66,6 +66,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
@@ -73,6 +74,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_table_fqn_from_query_name,
 )
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -82,7 +84,10 @@ from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
     DashboardUsage,
 )
-from metadata.ingestion.source.dashboard.tableau.client import TableauClient
+from metadata.ingestion.source.dashboard.tableau.client import (
+    BACKFILL_RUNNING,
+    TableauClient,
+)
 from metadata.ingestion.source.dashboard.tableau.metrics import (
     build_metric_request,
     datasource_dimensions,
@@ -118,6 +123,7 @@ logger = ingestion_logger()
 
 TABLEAU_TAG_CATEGORY = "TableauTags"
 TABLEAU_FIELD_TYPE_DISPLAY = "Tableau Field"
+METADATA_API_STATUS = "Tableau Metadata API"
 # The server rejects char/varchar/binary/varbinary columns with a null dataLength.
 # Tableau's metadata API never reports a column length for any type, so there is no
 # real value to report here - this placeholder only exists to satisfy that constraint.
@@ -183,6 +189,66 @@ class TableauSource(DashboardServiceSource):
         if not isinstance(connection, TableauConnection):
             raise InvalidSourceException(f"Expected TableauConnection, but got {connection}")
         return cls(config, metadata)
+
+    def _iter(self) -> Iterable[Either]:
+        """
+        Fail a run that stopped for a Metadata API backfill, whatever the success threshold:
+        every record it sent succeeded. It is raised once the topology is done because the
+        runner only records a producer's exception, then reconciles anyway.
+        """
+        yield from super()._iter()
+        if self._stops_for_backfill():
+            message = (
+                f"Tableau's Metadata API is still building its store ({BACKFILL_RUNNING}), so its "
+                "results may be incomplete. The run stopped there and marked nothing as deleted: with "
+                "markDeletedDataModels on, it would soft-delete data models that still exist in Tableau. "
+                "Re-run once the backfill completes. To ingest meanwhile, turn off markDeletedDataModels; "
+                "dashboards then lose their links to the data models the store has not reached, until a "
+                "run after the backfill."
+            )
+            self.status.failed(StackTraceError(name=METADATA_API_STATUS, error=message))
+            raise WorkflowFatalError(message)
+        if self.client.metadata_api_backfill_running:
+            self.status.warning(
+                METADATA_API_STATUS,
+                f"Tableau's Metadata API is still building its store ({BACKFILL_RUNNING}), so data models, "
+                "their links to dashboards and lineage ingested in this run may be incomplete. Re-run once "
+                "the backfill completes.",
+            )
+
+    def _stops_for_backfill(self) -> bool:
+        """
+        Data models are read only from the Metadata API. While Tableau backfills it, a run that
+        reconciles data models would delete the ones the store has not reached yet, so it stops.
+        Without that reconciliation, the partial results are ingested as they are.
+        See ADR:2026-10-22-tableau-runs-stop-without-deleting-while-the-metadata-api-backfills.
+        """
+        return self.client.metadata_api_backfill_running and bool(
+            self.source_config.includeDataModels and self.source_config.markDeletedDataModels
+        )
+
+    def get_dashboard(self) -> Iterable[TableauDashboard]:
+        """
+        Stop at the first dashboard read once the run stops for a backfill: it would be sent
+        without the data models the store left out, unlinking them.
+        """
+        for dashboard_details in super().get_dashboard():
+            if self._stops_for_backfill():
+                return
+            yield dashboard_details
+
+    # A run that stopped for a backfill has not listed every dashboard, chart or data model.
+    def mark_dashboards_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._stops_for_backfill():
+            yield from super().mark_dashboards_as_deleted()
+
+    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._stops_for_backfill():
+            yield from super().mark_datamodels_as_deleted()
+
+    def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._stops_for_backfill():
+            yield from super().mark_charts_as_deleted()
 
     def get_dashboards_list(self) -> Iterable[TableauDashboard]:
         if not self.source_config.includeOwners:
@@ -507,6 +573,9 @@ class TableauSource(DashboardServiceSource):
         Returns:
             Lineage request between Data Models and Dashboards
         """
+        # The dashboard failed in yield_dashboard: there is no edge to draw
+        if not getattr(self.context.get(), "dashboard", None):
+            return
         if hasattr(self.context.get(), "dataModels") and self.context.get().dataModels:
             for datamodel in self.context.get().dataModels:
                 try:
@@ -1021,8 +1090,10 @@ class TableauSource(DashboardServiceSource):
                 return None
             if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
                 logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
+                return None
             if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
                 logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
+                return None
 
             fqn_search_string = build_es_fqn_search_string(
                 database_name=prefix_database_name or database_name,
@@ -1050,6 +1121,13 @@ class TableauSource(DashboardServiceSource):
             database_query, schema_query, table_query = get_table_fqn_from_query_name(
                 table.fullName.replace("[", "").replace("]", "")
             )
+            # The database was matched above, after its lineage mapping; the raw fullName is not mapped
+            if prefix_schema_name and schema_query and prefix_schema_name.lower() != schema_query.lower():
+                logger.debug("Schema %s does not match prefix %s", schema_query, prefix_schema_name)
+                return None
+            if prefix_table_name and table_query and prefix_table_name.lower() != table_query.lower():
+                logger.debug("Table %s does not match prefix %s", table_query, prefix_table_name)
+                return None
             if table_query:
                 fqn_search_string = build_es_fqn_search_string(
                     database_name=database_query,

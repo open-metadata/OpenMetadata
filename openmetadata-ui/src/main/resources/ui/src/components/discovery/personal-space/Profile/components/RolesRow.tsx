@@ -24,6 +24,7 @@ import {
   User,
 } from '../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
@@ -32,7 +33,7 @@ import InlineEditCard from './InlineEditCard';
 
 interface RolesRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   // Overrides the default admin-only rule (e.g. per-user EditAll permission).
   canEdit?: boolean;
   // Overrides the first-person description used on your own profile.
@@ -50,6 +51,7 @@ const RolesRow: React.FC<RolesRowProps> = ({
   showAdminRole = true,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
 
@@ -117,7 +119,8 @@ const RolesRow: React.FC<RolesRowProps> = ({
     const newlyAddedRoles = draftRoleIds
       .filter((id) => id !== TERM_ADMIN && !currentRoleIdSet.has(id))
       .map((id) => ({ id, type: 'role' }));
-    await updateUserDetails(
+
+    return updateUserDetails(
       { roles: [...retainedRoles, ...newlyAddedRoles], isAdmin },
       'roles'
     );
@@ -142,7 +145,13 @@ const RolesRow: React.FC<RolesRowProps> = ({
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={description ?? t('message.role-granting-description')}
+      description={
+        description ??
+        copy(
+          'message.role-granting-description',
+          'message.role-granting-description-of-user'
+        )
+      }
       isSaveDisabled={isEmpty(xor(draftRoleIds, initialRoleIds))}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (

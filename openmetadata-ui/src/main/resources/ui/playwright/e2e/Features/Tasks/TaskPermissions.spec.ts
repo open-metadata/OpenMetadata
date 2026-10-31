@@ -626,7 +626,7 @@ test.describe('Task Permissions - Task Creator', () => {
         assignees: [assigneeUser.responseData.name],
       },
     });
-    const task = await taskResponse.json();
+    expect(taskResponse.ok()).toBeTruthy();
     await afterAction();
 
     // Try to close as creator user (who did NOT create this task)
