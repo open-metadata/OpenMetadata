@@ -152,11 +152,6 @@
       "count": 3
     }
   },
-  "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 3
-    }
-  },
   "playwright/e2e/Features/EntitySummaryPanel.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
