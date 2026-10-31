@@ -429,7 +429,10 @@ const OntologyReleasePanel = ({
       : total + ' ' + t('label.pending-changes');
 
   const renderAiFooter = () => (
-    <div className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4">
+    <Box
+      className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
+      direction="col"
+      gap={3}>
       <Typography color="secondary" size="text-sm">
         <span data-testid="ontology-version-preview">
           {getVersionPreview()}
@@ -442,8 +445,8 @@ const OntologyReleasePanel = ({
             )
           : null}
       </Typography>
-      {renderPublicationButtons()}
-    </div>
+      {currentStage && renderFooter()}
+    </Box>
   );
 
   const renderChangesHeading = () => (
@@ -620,6 +623,13 @@ const OntologyReleasePanel = ({
           {renderVersionError()}
         </Box>
         <Box className="tw:min-w-0" direction="col" gap={4}>
+          <OntologyReleaseReviewers
+            key={scopeKey}
+            scopeKey={scopeKey}
+            view={panelView}
+            onChange={updateReviewSettings}
+            onRefresh={refresh}
+          />
           {renderValidation()}
           {renderVersionEditor()}
         </Box>
@@ -731,7 +741,7 @@ const OntologyReleasePanel = ({
         {renderStorageStatus()}
         {renderRecovery()}
         {currentStage || state.isError ? null : renderStageStatus()}
-        {isChanges ? renderAiFooter() : null}
+        {isChanges ? renderAiFooter() : currentStage && renderFooter()}
       </Box>
     );
   };

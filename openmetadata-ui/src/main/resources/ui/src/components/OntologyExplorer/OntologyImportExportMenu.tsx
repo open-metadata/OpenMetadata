@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
+import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -51,6 +52,7 @@ interface NativeOntologyExportProps {
   readonly ontology: Ontology;
   readonly canImport: boolean;
   readonly onApplied: () => void;
+  readonly onOpen?: () => void;
 }
 
 type OntologyImportExportMenuProps =
@@ -67,6 +69,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const [isOpen, setIsOpen] = useState(false);
+  const guard = useOntologyDraftGuard();
   const [selectedOwner, setSelectedOwner] = useState<Ontology>();
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
@@ -178,7 +181,14 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
         iconLeading={isAiMode ? Download01 : SwitchVertical01}
         size="sm"
         tooltip={t('label.import-export')}
-        onPress={() => setIsOpen(true)}
+        onPress={() =>
+          guard(() => {
+            if (props.kind === 'ontology') {
+              props.onOpen?.();
+            }
+            setIsOpen(true);
+          })
+        }
       />
       {renderModal()}
     </>

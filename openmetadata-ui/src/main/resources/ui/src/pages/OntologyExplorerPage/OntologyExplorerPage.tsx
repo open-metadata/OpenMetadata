@@ -70,6 +70,7 @@ import { getOntologyHealthSummary } from '../../components/OntologyExplorer/Onto
 import OntologyStudioQueryConsole from '../../components/OntologyExplorer/OntologyStudioQueryConsole';
 import OntologyVisualQueryBuilder from '../../components/OntologyExplorer/OntologyVisualQueryBuilder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import OntologyDraftProvider from '../../context/OntologyDraft/OntologyDraftProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -79,6 +80,7 @@ import { Ontology } from '../../generated/entity/data/ontology';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAuth } from '../../hooks/authHooks';
+import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
   OntologyEditLeaseState,
   useOntologyEditLease,
@@ -585,7 +587,8 @@ function aggregateEnabled(
 
 const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
 
-const OntologyExplorerPage: React.FC = () => {
+const OntologyExplorerContent: React.FC = () => {
+  const guard = useOntologyDraftGuard();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const { isAdminUser } = useAuth();
@@ -825,23 +828,6 @@ const OntologyExplorerPage: React.FC = () => {
     setOntologyLoadAttempt((attempt) => attempt + 1);
     requestedNativeMode.current = nextMode;
     setMode(nextMode);
-    const cachedModel = allModels.models?.find(
-      (model) => model.ontology.id === ontology?.id
-    );
-    if (
-      cachedModel &&
-      !allModels.isFetching &&
-      !queryClient.getQueryState([
-        ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
-        'all',
-        studioScopes.ontologies.map(({ id }) => id),
-      ])?.isInvalidated
-    ) {
-      queryClient.setQueryData(
-        [ONTOLOGY_STUDIO_MODEL_QUERY_KEY, ontology?.id],
-        cachedModel
-      );
-    }
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       if ((ontology?.id ?? null) !== current.get('ontology')) {
@@ -1248,7 +1234,11 @@ const OntologyExplorerPage: React.FC = () => {
         scope={studioScope}
         onCreateOntology={
           canCreateOntology && !nativeAuthoringLocked
-            ? () => setIsCreateDialogOpen(true)
+            ? () =>
+                guard(() => {
+                  handleModeChange('view');
+                  setIsCreateDialogOpen(true);
+                })
             : undefined
         }
         onEditOntology={
@@ -1264,7 +1254,7 @@ const OntologyExplorerPage: React.FC = () => {
             ? studioScopes.refetch()
             : studioScopes.refetchOntologies())
         }
-        onScopeChange={handleScopeChange}
+        onScopeChange={(scope) => guard(() => handleScopeChange(scope))}
       />
     );
   }
@@ -1301,7 +1291,7 @@ const OntologyExplorerPage: React.FC = () => {
           iconLeading={Plus}
           isDisabled={!isNativeOntology && Boolean(conceptDraft)}
           size={headerActionSize}
-          onPress={handleAddConcept}>
+          onPress={() => guard(handleAddConcept)}>
           {t('label.add-entity', { entity: t('label.concept') })}
         </Button>
       );
@@ -1422,7 +1412,14 @@ const OntologyExplorerPage: React.FC = () => {
         size="sm"
         tooltip={t('label.library')}
         tooltipPlacement="bottom"
-        onPress={() => setIsLibraryOpen(true)}
+        onPress={() =>
+          guard(() => {
+            if (isNativeOntology) {
+              handleModeChange('view');
+            }
+            setIsLibraryOpen(true);
+          })
+        }
       />
     );
   }
@@ -1455,6 +1452,7 @@ const OntologyExplorerPage: React.FC = () => {
               setNativeRefresh((value) => value + 1);
               refreshNativeWorkingDiff();
             }}
+            onOpen={() => handleModeChange('view')}
           />
         ) : null}
         {isAllOntologies ? (
@@ -1515,7 +1513,7 @@ const OntologyExplorerPage: React.FC = () => {
         mode={mode}
         modes={isCatalogEmpty || isFirstListLoading ? [] : modeTabs}
         scopeMenu={renderScopeMenu()}
-        onModeChange={handleModeChange}
+        onModeChange={(mode) => guard(() => handleModeChange(mode))}
       />
     );
   }
@@ -1585,7 +1583,9 @@ const OntologyExplorerPage: React.FC = () => {
             </Typography>
           </Box>
         }
-        onSurfaceChange={handleSubModeChange}>
+        onSurfaceChange={(surface) =>
+          guard(() => handleSubModeChange(surface))
+        }>
         {renderPrimaryAction()}
         {renderVersionChip()}
         {renderSearchSlot()}
@@ -1713,7 +1713,7 @@ const OntologyExplorerPage: React.FC = () => {
         selectedConceptId={selectedConceptId}
         viewSurface={explorerSurface}
         onAuthoringLockChange={setNativeAuthoringLocked}
-        onRequestCreateConcept={handleAddConcept}
+        onRequestCreateConcept={() => guard(handleAddConcept)}
         onRequestEdit={() => {
           setEditSurface('graph');
           handleModeChange('edit');
@@ -2026,9 +2026,11 @@ const OntologyExplorerPage: React.FC = () => {
             });
           },
           onOpenOntology: (ontology) => {
-            selectOntology(ontology);
-            setViewSurface('graph');
-            setIsLibraryOpen(false);
+            guard(() => {
+              selectOntology(ontology);
+              setViewSurface('graph');
+              setIsLibraryOpen(false);
+            });
           },
           onApplied: (ontology) => {
             void queryClient.invalidateQueries({
@@ -2114,5 +2116,11 @@ const OntologyExplorerPage: React.FC = () => {
     </PageLayoutV1>
   );
 };
+
+const OntologyExplorerPage: React.FC = () => (
+  <OntologyDraftProvider>
+    <OntologyExplorerContent />
+  </OntologyDraftProvider>
+);
 
 export default OntologyExplorerPage;

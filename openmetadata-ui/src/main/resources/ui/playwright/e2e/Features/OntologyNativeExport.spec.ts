@@ -13,6 +13,12 @@
 import { Page } from '@playwright/test';
 import { readFile } from 'fs/promises';
 import {
+  AxiomType,
+  CreateOntologyAxiom,
+  ExpressionKind,
+  Provenance,
+} from '../../../src/generated/api/data/createOntologyAxiom';
+import {
   FindingSeverity,
   LogicalCheck,
   OntologyReleaseValidation,
@@ -71,18 +77,21 @@ const approveAndActivate = async (
       return ready.availableTransitions?.length;
     })
     .toBe(2);
-  await okJson(
-    await page.request.post(`/api/v1/tasks/${task.id}/resolve`, {
-      data: { resolutionType: 'Approved' },
-    }),
-    'Approve release review'
+  await page.goto(`/tasks/${task.id}`);
+  const approved = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === `/api/v1/tasks/${task.id}/resolve` &&
+      response.request().method() === 'POST'
   );
+  await page.getByTestId('task-approve').click();
+  expect((await approved).ok()).toBeTruthy();
+  await expect(page.getByTestId('task-status-badge')).toHaveText('Approved');
   const state = await okJson<OntologyState>(
     await api.get(`/api/v1/ontologies/${ontology.id}/state`),
     'Read ontology state'
   );
   const activated = await okJson<OntologyState>(
-    await page.request.put(`/api/v1/ontologies/${ontology.id}/activation`, {
+    await api.put(`/api/v1/ontologies/${ontology.id}/activation`, {
       data: {
         releaseId: release.id,
         expectedActivationRevision: state.activationRevision,
@@ -108,15 +117,21 @@ test.describe(
   () => {
     test('downloads every format of the current ontology release, then gates on SHACL', async ({
       isolatedUserPage: page,
+      isolatedUser: reviewer,
     }, testInfo) => {
       test.slow();
       const api = await getWorkerAdminAPIContext();
       const tasks: string[] = [];
       const name = `pw_native_export_${uuid()}`;
-      const namespace = `urn:${name}:`;
+      const namespace = `https://example.org/${name}#`;
       const ontology = await okJson<Ontology>(
         await api.post('/api/v1/ontologies', {
-          data: { name, iri: `urn:${name}`, namespace },
+          data: {
+            name,
+            iri: `https://example.org/${name}`,
+            namespace,
+            reviewers: [{ id: reviewer.responseData.id, type: 'user' }],
+          },
         }),
         'Create export ontology'
       );
@@ -124,8 +139,8 @@ test.describe(
         await api.post('/api/v1/ontologies', {
           data: {
             name: `${name}_other`,
-            iri: `urn:${name}_other`,
-            namespace: `urn:${name}_other:`,
+            iri: `https://example.org/${name}_other`,
+            namespace: `https://example.org/${name}_other#`,
           },
         }),
         'Create unrelated ontology'
@@ -137,9 +152,7 @@ test.describe(
               data: {
                 name: conceptName,
                 ontology: owner.fullyQualifiedName,
-                iri: `${
-                  owner.id === ontology.id ? namespace : `urn:${name}_other:`
-                }${conceptName}`,
+                iri: `${owner.namespace}${conceptName}`,
                 conceptType: 'OWL_CLASS',
                 synonyms: conceptName === 'Customer' ? ['Client'] : [],
               },
@@ -153,12 +166,16 @@ test.describe(
           await api.post('/api/v1/ontologyAxioms', {
             data: {
               name: 'customer-is-party',
-              ontology: ontology.fullyQualifiedName,
-              axiomType: 'SUBCLASS_OF',
+              displayName: 'Customer is a Party',
+              description: 'Every customer is a party.',
+              ontology: ontology.name,
+              axiomType: AxiomType.SubclassOf,
               subjectIri: customer.iri,
-              provenance: 'MANUAL',
-              expressions: [{ kind: 'NAMED_CLASS', classIri: party.iri }],
-            },
+              provenance: Provenance.Manual,
+              expressions: [
+                { kind: ExpressionKind.NamedClass, classIri: party.iri },
+              ],
+            } satisfies CreateOntologyAxiom,
           }),
           'Create parent axiom'
         );
