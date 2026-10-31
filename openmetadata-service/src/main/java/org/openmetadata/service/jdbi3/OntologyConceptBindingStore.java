@@ -1,77 +1,222 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.net.URI;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
+import org.openmetadata.schema.type.OntologyAssetBinding;
+import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyConceptBindings;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingPosition;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.ConceptAssetCount;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.LiveAsset;
 import org.openmetadata.service.ontology.OntologyClassHierarchy;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.util.FreshReadScope;
 
-/** Operational catalog associations share the ontology lock without advancing semantic revisions. */
+/**
+ * Operational catalog associations share the ontology lock without advancing semantic revisions.
+ * Bindings are {@code ontology_concept_binding} rows; the per-concept revision stays in the {@code
+ * ontology.conceptBindings} extension document and is compared under the ontology lock.
+ */
 public final class OntologyConceptBindingStore {
   public static final String EXTENSION = "ontology.conceptBindings";
+
+  /**
+   * Rows one internal scan reads per statement, for the data graph and for cleanup under the lock
+   * (ADR:2026-10-19-native-concept-bindings-remain-operational-metadata).
+   */
+  public static final int SCAN_PAGE_SIZE = 500;
+
   private static final String SCHEMA = "ontologyConceptBindings";
+  private static final String FIRST_PAGE = "";
   private static final int MAX_ANCESTORS = OntologyReleaseManifest.MAX_MEMBERS;
   private final CollectionDAO dao;
+  private final Function<OntologyBindingAssetType, String> assetTables;
 
-  public OntologyConceptBindingStore(final CollectionDAO dao) {
-    this.dao = dao;
+  /** Runs under the ontology lock and returns the revision to commit; the current one is a no-op. */
+  @FunctionalInterface
+  public interface Mutation {
+    long apply(OntologyConcept concept, OntologyConceptBindingStore locked, long currentRevision);
   }
 
-  public OntologyConceptBindings read(final UUID conceptId) {
+  /** @param assetTables the entity table that holds each bindable asset type */
+  public OntologyConceptBindingStore(
+      final CollectionDAO dao, final Function<OntologyBindingAssetType, String> assetTables) {
+    this.dao = dao;
+    this.assetTables = assetTables;
+  }
+
+  /** The production resolver; the one composition point that reads the entity registry. */
+  public static Function<OntologyBindingAssetType, String> registeredAssetTables() {
+    return type -> Entity.getEntityRepository(type.value()).getDao().getTableName();
+  }
+
+  public long revision(final UUID conceptId) {
     final String json = dao.entityExtensionDAO().getExtension(conceptId, EXTENSION);
     return json == null
-        ? new OntologyConceptBindings().withRevision(0L).withAssets(List.of())
-        : JsonUtils.readValue(json, OntologyConceptBindings.class);
+        ? 0L
+        : JsonUtils.readValue(json, OntologyConceptBindings.class).getRevision();
+  }
+
+  public Map<UUID, Long> revisions(final Collection<UUID> conceptIds) {
+    final Map<UUID, Long> revisions = new HashMap<>();
+    conceptIds.forEach(id -> revisions.put(id, 0L));
+    if (!conceptIds.isEmpty()) {
+      dao.entityExtensionDAO()
+          .getExtensionBatch(conceptIds.stream().map(UUID::toString).toList(), EXTENSION)
+          .forEach(
+              extension ->
+                  revisions.put(
+                      extension.id(),
+                      JsonUtils.readValue(extension.extensionJson(), OntologyConceptBindings.class)
+                          .getRevision()));
+    }
+    return revisions;
   }
 
   public void requireLiveOntology(final OntologyConcept concept) {
     dao.ontologyEntityDAO().findEntityById(concept.getOntology().getId());
   }
 
-  public OntologyConceptBindings update(
-      final OntologyConcept concept,
-      final BiFunction<OntologyConcept, OntologyConceptBindings, OntologyConceptBindings>
-          mutation) {
-    return dao.inTransaction(
-        transaction ->
-            new OntologyConceptBindingStore(transaction).updateLocked(concept, mutation));
+  public BindingRow find(final UUID conceptId, final UUID assetId) {
+    return dao.ontologyConceptBindingDAO().find(conceptId, assetId);
   }
 
-  private OntologyConceptBindings updateLocked(
-      final OntologyConcept concept,
-      final BiFunction<OntologyConcept, OntologyConceptBindings, OntologyConceptBindings>
-          mutation) {
+  public List<BindingRow> page(final UUID conceptId, final UUID after, final int limit) {
+    return dao.ontologyConceptBindingDAO()
+        .listAfter(conceptId, after == null ? FIRST_PAGE : after.toString(), limit);
+  }
+
+  public List<BindingRow> page(
+      final Collection<UUID> conceptIds, final BindingPosition after, final int limit) {
+    return conceptIds.isEmpty()
+        ? List.of()
+        : dao.ontologyConceptBindingDAO()
+            .listForConceptsAfter(
+                conceptIds.stream().map(UUID::toString).toList(),
+                after != null,
+                after == null ? FIRST_PAGE : after.conceptId().toString(),
+                after == null ? FIRST_PAGE : after.assetId().toString(),
+                limit);
+  }
+
+  /** The live properties of one ontology declared with these IRIs, in one statement. */
+  public List<OntologyProperty> liveProperties(final UUID ontologyId, final Collection<URI> iris) {
+    final var properties = dao.ontologyPropertyDAO();
+    return iris.isEmpty()
+        ? List.of()
+        : properties
+            .findDeclarations(
+                properties.getTableName(),
+                ontologyId,
+                iris.stream().map(iri -> DigestUtils.md5Hex(iri.toString())).toList(),
+                iris.size(),
+                "")
+            .stream()
+            .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
+            .toList();
+  }
+
+  public List<BindingRow> firstTables(final Collection<UUID> conceptIds, final int perConcept) {
+    return conceptIds.isEmpty()
+        ? List.of()
+        : dao.ontologyConceptBindingDAO()
+            .listFirstTablesForConcepts(
+                conceptIds.stream().map(UUID::toString).toList(), perConcept);
+  }
+
+  public List<ConceptAssetCount> boundConcepts(
+      final UUID ontologyId, final int limit, final int offset) {
+    return dao.ontologyConceptBindingDAO().listBoundConcepts(ontologyId, limit, offset);
+  }
+
+  public int countBoundConcepts(final UUID ontologyId) {
+    return dao.ontologyConceptBindingDAO().countBoundConcepts(ontologyId);
+  }
+
+  /** The assets of {@code rows} that are not deleted, with their service type, one query per type. */
+  public Map<UUID, LiveAsset> liveAssets(final List<BindingRow> rows) {
+    final Map<UUID, LiveAsset> live = new HashMap<>();
+    BindingRow.assetIdsByType(rows)
+        .forEach(
+            (type, ids) -> {
+              final String table = assetTables.apply(type);
+              EntityDAO.queryInChunks(
+                      ids.stream().map(UUID::toString).distinct().toList(),
+                      chunk -> dao.ontologyConceptBindingDAO().findLiveAssets(table, chunk))
+                  .forEach(asset -> live.put(asset.id(), asset));
+            });
+    return live;
+  }
+
+  public long update(final OntologyConcept concept, final Mutation mutation) {
+    return dao.inTransaction(
+        transaction ->
+            new OntologyConceptBindingStore(transaction, assetTables)
+                .updateLocked(concept, mutation));
+  }
+
+  private long updateLocked(final OntologyConcept concept, final Mutation mutation) {
     final UUID ontologyId = concept.getOntology().getId();
     dao.ontologyStateDAO().initialize(ontologyId);
     dao.ontologyStateDAO().lock(ontologyId);
     try (final var ignored = FreshReadScope.enter()) {
       final var currentConcept = dao.ontologyConceptDAO().findEntityById(concept.getId());
       requireLiveOntology(currentConcept);
-      return save(currentConcept, mutation);
+      final long current = revision(currentConcept.getId());
+      final long next = mutation.apply(currentConcept, this, current);
+      if (next != current) {
+        dao.entityExtensionDAO()
+            .insert(
+                currentConcept.getId(),
+                EXTENSION,
+                SCHEMA,
+                JsonUtils.pojoToJson(new OntologyConceptBindings().withRevision(next)));
+      }
+      return next;
     }
   }
 
-  private OntologyConceptBindings save(
-      final OntologyConcept concept,
-      final BiFunction<OntologyConcept, OntologyConceptBindings, OntologyConceptBindings>
-          mutation) {
-    final var current = read(concept.getId());
-    final var updated = mutation.apply(concept, current);
-    if (!current.getRevision().equals(updated.getRevision())) {
-      dao.entityExtensionDAO()
-          .insert(concept.getId(), EXTENSION, SCHEMA, JsonUtils.pojoToJson(updated));
+  public void save(final UUID conceptId, final OntologyAssetBinding asset, final String fqnHash) {
+    dao.ontologyConceptBindingDAO()
+        .upsert(
+            conceptId,
+            asset.getAssetId(),
+            asset.getAssetType().value(),
+            fqnHash,
+            JsonUtils.pojoToJson(listOrEmpty(asset.getColumns())));
+  }
+
+  public void remove(final UUID conceptId, final UUID assetId) {
+    dao.ontologyConceptBindingDAO().delete(conceptId, assetId);
+  }
+
+  public void remove(final UUID conceptId, final Collection<UUID> assetIds) {
+    if (!assetIds.isEmpty()) {
+      EntityDAO.updateInChunks(
+          assetIds.stream().map(UUID::toString).distinct().toList(),
+          chunk -> dao.ontologyConceptBindingDAO().deleteAssets(conceptId, chunk));
     }
-    return updated;
+  }
+
+  public void deleteConcept(final UUID conceptId) {
+    dao.ontologyConceptBindingDAO().deleteConcept(conceptId);
   }
 
   public Set<String> ancestors(final OntologyConcept concept) {

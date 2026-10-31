@@ -43,6 +43,7 @@ import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
 import jakarta.servlet.SessionCookieConfig;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Validation;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseFilter;
@@ -71,6 +72,8 @@ import org.eclipse.jetty.ee10.servlet.ServletHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.ee10.servlet.ServletMapping;
 import org.eclipse.jetty.ee10.servlet.SessionHandler;
+import org.eclipse.jetty.ee10.websocket.server.JettyServerUpgradeRequest;
+import org.eclipse.jetty.ee10.websocket.server.JettyServerUpgradeResponse;
 import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.UriCompliance;
@@ -122,6 +125,7 @@ import org.openmetadata.service.events.consumer.schedule.EventSubscriptionSchedu
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
+import org.openmetadata.service.exception.CredentialUnavailableExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
@@ -179,6 +183,7 @@ import org.openmetadata.service.security.AuthRefreshServlet;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerFactory;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
 import org.openmetadata.service.security.CspNonceHandler;
@@ -195,6 +200,9 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.TestLoginSessionSweeper;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
+import org.openmetadata.service.security.credentials.CredentialVerifier;
+import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
@@ -208,6 +216,8 @@ import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionTimeoutResolver;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.socket.FeedServlet;
+import org.openmetadata.service.socket.HandshakeIdentity;
+import org.openmetadata.service.socket.HandshakeRejectedException;
 import org.openmetadata.service.socket.Jetty12WebSocketHandler;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
@@ -427,6 +437,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
+
+    startCredentialVerifier(catalogConfig, environment);
 
     // Register Authenticator
     registerAuthenticator(SecurityConfigurationManager.getInstance());
@@ -733,6 +745,25 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   /**
+   * Builds this server's credential verifier, starts its sweep and installs it for every
+   * authentication entry point. The ops CLI never reaches here, so it installs none.
+   */
+  private void startCredentialVerifier(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    CredentialVerifier verifier =
+        CredentialVerifier.create(
+            catalogConfig
+                .getCredentialVerification()
+                .forPool(catalogConfig.getDataSourceFactory().getMaxSize()),
+            jdbi,
+            SecretsManagerFactory::getSecretsManager,
+            List.of());
+    verifier.start();
+    Credentials.install(verifier);
+    environment.lifecycle().manage(verifier);
+  }
+
+  /**
    * Phase 1: Initialize core search infrastructure without advanced features.
    * This creates the basic SearchRepository and SearchClient but defers
    * lineage builders that depend on settings.
@@ -798,6 +829,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JsonProcessingExceptionMapper(false));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
+    environment.jersey().register(CredentialUnavailableExceptionMapper.class);
   }
 
   private void registerMicrometerFilter(
@@ -1061,10 +1093,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               config.getJwtTokenConfiguration());
 
       // Re-register authenticator with new config
-      registerAuthenticator(SecurityConfigurationManager.getInstance());
+      AuthenticatorHandler reloadedAuthenticator = authenticatorForCurrentProvider();
       reRegisterAuthorizer(config, environment);
       config.setAuthenticationConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
-      authenticatorHandler.init(config);
+      initializeThenPublish(reloadedAuthenticator, config);
+      authenticatorHandler = reloadedAuthenticator;
 
       // Reinitialize SAML settings if SAML is enabled
       if (SecurityConfigurationManager.getCurrentAuthConfig() != null
@@ -1108,6 +1141,23 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (previousAuthenticator != currentAuthenticator) {
       closeQuietly(previousAuthenticator::close);
     }
+  }
+
+  /**
+   * Registers an authenticator a reload built only once it is initialized, since logins read the
+   * registered one on every request. One that fails to start is closed and never registered, so
+   * logins keep the previous authenticator while the reload rolls back.
+   */
+  @VisibleForTesting
+  static void initializeThenPublish(
+      AuthenticatorHandler authenticator, OpenMetadataApplicationConfig config) {
+    try {
+      authenticator.init(config);
+    } catch (RuntimeException e) {
+      closeQuietly(authenticator::close);
+      throw e;
+    }
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticator);
   }
 
   /** A failed close must neither hide the reload's own error nor fail a reload that worked. */
@@ -1240,16 +1290,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {
-    AuthenticationConfiguration authenticationConfiguration =
-        SecurityConfigurationManager.getCurrentAuthConfig();
-    switch (authenticationConfiguration.getProvider()) {
-      case BASIC -> authenticatorHandler = new BasicAuthenticator();
-      case LDAP -> authenticatorHandler = new LdapAuthenticator();
-      default ->
-      // For all other types, google, okta etc. auth is handled externally
-      authenticatorHandler = new NoopAuthenticator();
-    }
+    authenticatorHandler = authenticatorForCurrentProvider();
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticatorHandler);
+  }
+
+  private static AuthenticatorHandler authenticatorForCurrentProvider() {
+    return switch (SecurityConfigurationManager.getCurrentAuthConfig().getProvider()) {
+      case BASIC -> new BasicAuthenticator();
+      case LDAP -> new LdapAuthenticator();
+        // For all other types, google, okta etc. auth is handled externally
+      default -> new NoopAuthenticator();
+    };
   }
 
   private void registerLimits(OpenMetadataApplicationConfig serverConfig)
@@ -1376,6 +1427,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               SecurityConfigurationManager.getCurrentAuthConfig(),
               SecurityConfigurationManager.getCurrentAuthzConfig());
     } else {
+      LOG.warn(
+          "No authorizer configuration is present: push-feed WebSocket handshakes have no token"
+              + " validator or session store and will be rejected"
+              + " (ADR:2026-10-26-push-feed-handshakes-always-authenticate)");
       socketAddressFilter = new SocketAddressFilter();
     }
     SocketAddressFilter websocketFilter = socketAddressFilter;
@@ -1406,12 +1461,63 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             // Register endpoint using Jetty 12 WebSocket API
             wsContainer.addMapping(
                 pathSpec,
-                (req, resp) ->
-                    new Jetty12WebSocketHandler(
-                        WebSocketManager.getInstance().getEngineIoServer()));
+                (upgradeRequest, upgradeResponse) -> {
+                  HandshakeIdentity identity =
+                      authenticateUpgrade(websocketFilter, upgradeRequest, upgradeResponse);
+                  // A rejected upgrade already answered with 401, 403 or 503; a null creator result
+                  // stops the negotiation instead of surfacing it as a creator failure.
+                  return identity == null
+                      ? null
+                      : new Jetty12WebSocketHandler(
+                          WebSocketManager.getInstance().getEngineIoServer(), identity);
+                });
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
+    }
+  }
+
+  /**
+   * The servlet filter chain never sees a WebSocket upgrade — Jetty's upgrade negotiation runs
+   * before it — so this is where the websocket transport's handshake is authenticated. The
+   * returned identity is stamped into the socket's connection headers by the handler, mirroring
+   * what the servlet filter stamps for the polling transport (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+   */
+  static HandshakeIdentity authenticateUpgrade(
+      SocketAddressFilter websocketFilter,
+      JettyServerUpgradeRequest upgradeRequest,
+      JettyServerUpgradeResponse upgradeResponse) {
+    try {
+      return websocketFilter.authenticate(upgradeRequest.getHttpServletRequest());
+    } catch (CredentialUnavailableException unavailable) {
+      LOG.debug("[WSUpgrade] Push-feed upgrade token could not be confirmed", unavailable);
+      answerRetryLater(upgradeResponse, unavailable.retryAfterSeconds());
+    } catch (HandshakeRejectedException reject) {
+      LOG.info("[WSUpgrade] Rejected push-feed WebSocket upgrade: {}", reject.getMessage());
+      answerFailedUpgrade(upgradeResponse, reject.getStatus(), reject.getMessage());
+    } catch (AuthenticationException reject) {
+      answerFailedUpgrade(
+          upgradeResponse, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    }
+    // The failed upgrade response completes the exchange; null only stops the socket negotiation.
+    return null;
+  }
+
+  private static void answerRetryLater(
+      JettyServerUpgradeResponse upgradeResponse, long retryAfterSeconds) {
+    upgradeResponse.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+    answerFailedUpgrade(
+        upgradeResponse,
+        HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+        CredentialUnavailableException.CLIENT_MESSAGE);
+  }
+
+  private static void answerFailedUpgrade(
+      JettyServerUpgradeResponse upgradeResponse, int status, String message) {
+    try {
+      upgradeResponse.sendError(status, message);
+    } catch (IOException ex) {
+      LOG.warn("[WSUpgrade] Failed to answer push-feed handshake rejection", ex);
     }
   }
 

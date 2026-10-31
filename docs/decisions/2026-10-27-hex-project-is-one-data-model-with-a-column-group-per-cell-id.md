@@ -1,7 +1,7 @@
 # A Hex project is one data model with a column group per SQL cell, named by the cell's id
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial)
+- **Revisions:** v1 2026-10-27 (initial) · v2 2026-10-29 (cells reading a broken cell keep their groups)
 - **Deciders:** Hex connector maintainers (review of the Hex data models PR, #36357)
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_hex_cell_lineage.py`
   (`test_one_data_model_per_project_with_a_struct_per_sql_cell`,
@@ -11,7 +11,7 @@
   `test_a_cell_too_large_to_inline_leaves_its_chained_cells_untraced`,
   `test_cells_past_the_projects_budget_leave_their_chained_cells_untraced`,
   `test_rate_limited_requests_are_retried`, `test_without_data_connections_an_existing_data_model_is_kept`,
-  `test_a_cell_that_stops_parsing_keeps_its_group`)
+  `test_a_cell_that_stops_parsing_keeps_its_group`, `test_cells_reading_a_broken_cell_keep_their_groups`)
 - **Related:** #36357
 
 ## Context
@@ -61,3 +61,12 @@ delete the data model from incomplete input.
   rate limiting.
 - Revisit if Hex exposes a semantic model or a stable per-cell name that users see, or if a missing
   edge for an ambiguous table is reported as worse than a wrong one.
+
+## Amendment: cells reading a broken cell keep their groups (v2, 2026-10-29)
+
+A cell whose SQL fails to parse used to keep only its own group. The cells reading its result lost
+theirs: dataframe SQL over it was dropped, and a warehouse cell on its connection searched its name
+as a table and came back with UNKNOWN columns and no lineage. Now a cell that reads a failed cell
+(under the same chaining rules: same connection, or any for dataframe SQL) fails too, and so on down
+the chain, so each keeps its group from the existing data model. A new project's cells chained on a
+broken cell get no group until it parses, as for the broken cell itself.

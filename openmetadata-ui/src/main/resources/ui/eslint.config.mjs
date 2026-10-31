@@ -347,6 +347,10 @@ export default [
       // per-area, then promote to 'error' (and re-add a shade-restricted
       // fixer). See docs/colors.md + the dark-mode guidelines.
       'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
+      // The error baseline preserves existing consumers; its counts only shrink.
+      // Keep warnings visible while new references exceed the baseline and fail.
+      'openmetadata-ui-patterns/deprecated-om-tokens': 'warn',
+      'openmetadata-ui-patterns/no-new-om-tokens': 'error',
       // A Typography ellipsis tooltip inside a link/button renders a nested
       // <button> (#30779). Report-only, so `eslint --fix` never edits it.
       'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'error',

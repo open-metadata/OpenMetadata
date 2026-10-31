@@ -15,6 +15,8 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.resources.scim.ScimResource;
+import org.openmetadata.service.resources.system.SystemResource;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -27,6 +29,10 @@ class ImpersonationRestrictionFilterTest {
     // the annotation from any of these reopens that surface.
     Set<String> expected =
         Set.of(
+            "createUser",
+            "importCsv",
+            "importCsvAsync",
+            "restoreTable",
             "generateRandomPassword",
             "logoutUser",
             "generateToken",
@@ -40,6 +46,18 @@ class ImpersonationRestrictionFilterTest {
             "createAccessToken");
 
     assertEquals(expected, identityEndpoints(UserResource.class));
+  }
+
+  @Test
+  void securityConfigurationWritesAreBoundToTheFilter() {
+    assertEquals(
+        Set.of("updateSecurityConfig", "patchSecurityConfig", "adoptDeploymentConfig"),
+        identityEndpoints(SystemResource.class));
+  }
+
+  @Test
+  void scimUserCreationIsBoundToTheFilter() {
+    assertEquals(Set.of("createUser"), identityEndpoints(ScimResource.class));
   }
 
   @Test
