@@ -95,8 +95,9 @@ class ConversationFilterTest {
             .build(false);
 
     assertTrue(sql.condition().contains("c.resolved = :resolved"));
-    assertTrue(sql.condition().contains("c.createdAt >= :startTs"));
-    assertTrue(sql.condition().contains("c.createdAt <= :endTs"));
+    assertTrue(sql.condition().contains("c.updatedAt >= :startTs"));
+    assertTrue(sql.condition().contains("c.updatedAt <= :endTs"));
+    assertFalse(sql.condition().contains("c.createdAt"));
     assertEquals(true, sql.params().get("resolved"));
     assertEquals(1000L, sql.params().get("startTs"));
     assertEquals(2000L, sql.params().get("endTs"));
