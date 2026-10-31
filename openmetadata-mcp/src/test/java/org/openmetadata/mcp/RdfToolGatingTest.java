@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.rdf.RdfRepository;
 
 /**
@@ -85,6 +87,28 @@ class RdfToolGatingTest {
           names.stream().filter(RDF_DEPENDENT::contains).toList(),
           "a disabled repository must withhold the graph tools");
     }
+  }
+
+  @Test
+  void configuredAllowlistRestrictsAdvertisedToolsAlongsideRdfGating() {
+    try (MockedStatic<RdfRepository> repositories = mockStatic(RdfRepository.class)) {
+      repositories.when(RdfRepository::getInstanceOrNull).thenReturn(null);
+
+      McpServer server =
+          new McpServer(
+              new DefaultToolContext(" search_metadata, create_entity, sparql_query "),
+              new DefaultPromptsContext());
+      List<String> names = server.getTools().stream().map(McpSchema.Tool::name).toList();
+
+      assertEquals(List.of("search_metadata", "create_entity"), names);
+    }
+  }
+
+  @Test
+  void emptyAllowlistAdvertisesNoTools() {
+    McpServer server = new McpServer(new DefaultToolContext(""), new DefaultPromptsContext());
+
+    assertTrue(server.getTools().isEmpty());
   }
 
   private static List<String> toolNames() {
