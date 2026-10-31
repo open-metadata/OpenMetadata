@@ -20,10 +20,12 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -162,10 +164,39 @@ public class CreateEntityTool implements McpTool {
     return entity;
   }
 
+  // The hierarchy references of domains, glossary terms, teams and tags are resolved as the type
+  // each field holds, as the REST mappers build them, before authorization reads them: the
+  // attributes bind straight to the entity class.
   private static void applyRepositoryDefaults(EntityInterface<?> entity) {
     if (entity instanceof Tag tag) {
       deriveTagClassification(tag);
     }
+    if (entity instanceof Domain domain) {
+      domain.setParent(resolveAs(Entity.DOMAIN, domain.getParent()));
+    }
+    if (entity instanceof GlossaryTerm term) {
+      term.setGlossary(resolveAs(Entity.GLOSSARY, term.getGlossary()));
+      term.setParent(resolveAs(Entity.GLOSSARY_TERM, term.getParent()));
+    }
+    if (entity instanceof Team team && team.getParents() != null) {
+      team.getParents().replaceAll(parent -> resolveAs(Entity.TEAM, parent));
+    }
+  }
+
+  /** The persisted reference the caller's reference names, looked up as {@code entityType}. */
+  private static EntityReference resolveAs(String entityType, EntityReference reference) {
+    if (reference == null) {
+      return null;
+    }
+    EntityReference resolved =
+        Entity.getEntityReference(reference.withType(entityType), Include.NON_DELETED);
+    if (resolved == null) {
+      throw new IllegalArgumentException(
+          "A reference to a '"
+              + entityType
+              + "' needs an 'id' or a 'fullyQualifiedName'. Nothing was created.");
+    }
+    return resolved;
   }
 
   private static void deriveTagClassification(Tag tag) {
@@ -177,11 +208,11 @@ public class CreateEntityTool implements McpTool {
             "Attribute 'classification' is required for a tag unless 'parent' identifies a parent"
                 + " tag. Nothing was created.");
       }
-      tag.setClassification(Entity.getEntityReference(classification, Include.NON_DELETED));
+      tag.setClassification(resolveAs(Entity.CLASSIFICATION, classification));
       return;
     }
 
-    EntityReference resolvedParent = Entity.getEntityReference(parent, Include.NON_DELETED);
+    EntityReference resolvedParent = resolveAs(Entity.TAG, parent);
     tag.setParent(resolvedParent);
     String derivedClassification =
         FullyQualifiedName.split(resolvedParent.getFullyQualifiedName())[0];
@@ -192,8 +223,7 @@ public class CreateEntityTool implements McpTool {
               .withFullyQualifiedName(derivedClassification);
     }
 
-    EntityReference resolvedClassification =
-        Entity.getEntityReference(classification, Include.NON_DELETED);
+    EntityReference resolvedClassification = resolveAs(Entity.CLASSIFICATION, classification);
     if (!derivedClassification.equals(resolvedClassification.getFullyQualifiedName())) {
       throw new IllegalArgumentException(
           "Tag classification '"
