@@ -10,16 +10,55 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Edge, Node } from 'reactflow';
+import {
+  ExportTypes,
+  LINEAGE_EXPORT_SELECTOR,
+} from '../../../constants/Export.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { Lineage } from './Lineage';
+import { useLineageHandlers } from './LineageHandlersContext';
+
+const mockShowModal = jest.fn();
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+
+jest.mock(
+  '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => ({
+    useEntityExportModalProvider: () => ({ showModal: mockShowModal }),
+  })
+);
+
+const MAP_NODES = [
+  { id: 'service:a', position: { x: 0, y: 0 }, data: {} },
+  { id: 'service:b', position: { x: 400, y: 0 }, data: {} },
+] as Node[];
+const MAP_EDGES = [
+  {
+    id: 'scene-edge:service:a->service:b:LAYER',
+    source: 'service:a',
+    target: 'service:b',
+  },
+] as Edge[];
+
+const ExportTrigger = ({ exportTypes }: { exportTypes: ExportTypes[] }) => {
+  const { onExportClick } = useLineageHandlers();
+
+  return (
+    <button
+      data-testid="trigger-export"
+      onClick={() => onExportClick(exportTypes)}>
+      Export
+    </button>
+  );
+};
 
 jest.mock('../../../rest/lineageAPI', () => ({
   getDataQualityLineage: jest.fn(),
@@ -146,5 +185,56 @@ describe('Lineage', () => {
       expect(s.entityFqn).toBe('svc.db.s.t');
       expect(s.entityType).toBe(EntityType.TABLE);
     });
+  });
+
+  describe('on the Lineage page, where the lineage map draws the graph', () => {
+    beforeEach(() => {
+      // The map publishes what it draws; its effects run before this
+      // parent's, so the graph is already in the store when Lineage mounts.
+      useLineageStore.setState({ nodes: MAP_NODES, edges: MAP_EDGES });
+    });
+
+    it("keeps the map's graph in the store", () => {
+      render(
+        <MemoryRouter>
+          <Lineage isPlatformLineage entityFqn="" />
+        </MemoryRouter>
+      );
+
+      expect(useLineageStore.getState().nodes).toEqual(MAP_NODES);
+      expect(useLineageStore.getState().edges).toEqual(MAP_EDGES);
+    });
+  });
+
+  describe('on an asset Lineage tab', () => {
+    it.each([
+      [[ExportTypes.CSV, ExportTypes.PNG], true],
+      [[ExportTypes.CSV], false],
+    ])(
+      'exports %j with the PNG frame and capture hooks: %s',
+      (exportTypes, hasPngOptions) => {
+        render(
+          <MemoryRouter>
+            <Lineage entityFqn="svc.db.s.t" isPlatformLineage={false}>
+              <ExportTrigger exportTypes={exportTypes} />
+            </Lineage>
+          </MemoryRouter>
+        );
+
+        fireEvent.click(screen.getByTestId('trigger-export'));
+
+        const options = mockShowModal.mock.calls[0][0];
+
+        expect(options).toEqual(
+          expect.objectContaining({
+            name: 'svc.db.s.t',
+            exportTypes,
+            documentSelector: LINEAGE_EXPORT_SELECTOR,
+          })
+        );
+        expect(typeof options.getViewport === 'function').toBe(hasPngOptions);
+        expect(typeof options.beforeCapture === 'function').toBe(hasPngOptions);
+      }
+    );
   });
 });

@@ -18,13 +18,10 @@ import {
   PageLayout,
 } from '@openmetadata/ui-core-components';
 import {
-  Download01,
   PlatformLineage as PlatformLineageIcon,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
-import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -33,25 +30,24 @@ import Loader from '../../components/common/Loader/Loader';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DataAssetAsyncSelectList from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import LineageConfigModal from '../../components/Entity/EntityLineage/LineageConfigModal';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import LineageComponent from '../../components/Lineage/Lineage.component';
 import { Lineage } from '../../components/Lineage/Lineage/Lineage';
+import LineageExportButton from '../../components/Lineage/LineageExportButton/LineageExportButton';
+import {
+  getLensLabelKey,
+  getSceneRequestFromSearch,
+} from '../../components/Lineage/LineageMap/LineageMap.utils';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import {
-  ExportTypes,
-  LINEAGE_EXPORT_SELECTOR,
-} from '../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { LineagePlatformView } from '../../hooks/lineage/types';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
@@ -59,8 +55,6 @@ import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
 import { LineageConfig } from '../../interface/lineage.interface';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
-import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
-import { getViewportForLineageExport } from '../../utils/EntityLineageLayoutUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEncodedFqn } from '../../utils/StringUtils';
@@ -89,7 +83,6 @@ const PlatformLineage = () => {
   const lineageConfig = useLineageStore((state) => state.lineageConfig);
   const setLineageConfig = useLineageStore((state) => state.setLineageConfig);
   const [dialogVisible, setDialogVisible] = useState(false);
-  const { showModal } = useEntityExportModalProvider();
 
   // Fetch-owner, by fqn — `entityType` doubles as the resource here (cast, matching the old
   // code's own `entityType as unknown as ResourceEntity`). Ungated: the old raw
@@ -119,15 +112,9 @@ const PlatformLineage = () => {
   // permission-gated).
   const loading = isEntityLoading || isPermissionsLoading;
 
-  const queryParams = useMemo(() => {
-    return QueryString.parse(location.search, {
-      ignoreQueryPrefix: true,
-    });
-  }, [location.search]);
-
-  const platformView =
-    (queryParams['platformView'] as LineagePlatformView) ??
-    LineagePlatformView.Service;
+  // The header names the lens the map is drawn through, read the same way
+  // the map reads it.
+  const { lens } = getSceneRequestFromSearch(location.search, {}, true);
 
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
@@ -175,17 +162,6 @@ const PlatformLineage = () => {
       setIsEntityLoading(false);
     }
   }, [decodedFqn, entityType]);
-
-  const handleExport = useCallback(() => {
-    showModal({
-      name: `${t('label.lineage')}_${getCurrentISODate()}`,
-      exportTypes: [ExportTypes.PNG],
-      title: t('label.lineage'),
-      documentSelector: LINEAGE_EXPORT_SELECTOR,
-      viewport: getViewportForLineageExport([], LINEAGE_EXPORT_SELECTOR),
-      onExport: async () => '',
-    });
-  }, [showModal, t]);
 
   useEffect(() => {
     init();
@@ -235,15 +211,7 @@ const PlatformLineage = () => {
   const actionButtons = useMemo(
     () => (
       <div className="d-flex gap-2">
-        <ButtonUtility
-          data-testid="export-button"
-          icon={Download01}
-          size={buttonSize}
-          tooltip={t('label.export-as-type', {
-            type: t('label.png-uppercase'),
-          })}
-          onClick={handleExport}
-        />
+        <LineageExportButton size={buttonSize} />
 
         <ButtonUtility
           data-testid="lineage-config"
@@ -253,11 +221,11 @@ const PlatformLineage = () => {
         />
       </div>
     ),
-    [t, handleExport, buttonSize]
+    [buttonSize]
   );
 
   const title = t('label.platform-type-lineage', {
-    platformType: startCase(platformView),
+    platformType: t(getLensLabelKey(lens)),
   });
 
   // AI mode moves the search and actions into the shared gradient header;
@@ -330,8 +298,8 @@ const PlatformLineage = () => {
   // `/lineage` with no entity is the platform-wide view; the focused variant
   // names the entity it is centred on.
   const pageTitle = decodedFqn
-    ? t('label.entity-lineage', {
-        entity: getEntityName(selectedEntity) || decodedFqn,
+    ? t('label.platform-type-lineage', {
+        platformType: getEntityName(selectedEntity) || decodedFqn,
       })
     : t('label.lineage');
 
