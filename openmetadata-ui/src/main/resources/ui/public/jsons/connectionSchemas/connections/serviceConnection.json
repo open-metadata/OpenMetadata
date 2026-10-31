@@ -22292,7 +22292,8 @@
                           "^db_.*",
                           "^guest$",
                           "^information_schema$",
-                          "^sys$"
+                          "^sys$",
+                          "^_rsc$"
                         ]
                       },
                       "type": "object",
@@ -22385,6 +22386,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
                     },
@@ -59996,7 +60003,8 @@
                           "^db_.*",
                           "^guest$",
                           "^information_schema$",
-                          "^sys$"
+                          "^sys$",
+                          "^_rsc$"
                         ]
                       },
                       "type": "object",
@@ -60089,6 +60097,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
                     },

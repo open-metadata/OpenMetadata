@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
@@ -49,9 +49,10 @@ class _Row:
         return dict(ROW_FIELDS)
 
 
-def _engine_yielding(row_count: int):
+def _engine_yielding(row_count: int, error=None):
     connection = MagicMock()
     connection.execute.return_value = [_Row() for _ in range(row_count)]
+    connection.execute.side_effect = error
 
     @contextmanager
     def connect():
@@ -156,6 +157,27 @@ def test_yield_table_query_skips_engine_that_fails_to_connect(error):
     queries = list(bound())
 
     assert len(queries) == 2
+
+
+@pytest.mark.parametrize(
+    "failing_engine",
+    [
+        lambda: _failing_engine(OperationalError("SELECT 1", {}, Exception("VIEW SERVER STATE denied"))),
+        lambda: _failing_engine(OSError("connection reset")),
+        lambda: _failing_engine(TimeoutError("timed out")),
+        lambda: _engine_yielding(0, error=ProgrammingError("SELECT 1", {}, Exception("SELECT permission denied"))),
+    ],
+    ids=["sqlalchemy_error", "os_error", "timeout", "query_log_read_denied"],
+)
+def test_yield_table_queries_skips_engine_it_cannot_read(failing_engine):
+    """Usage counterpart of the lineage test above: the engines after a failing one
+    must still be read."""
+    bound = _source(UsageSource, "yield_table_queries", row_count=2, result_limit=5)
+    bound.__self__.get_engine.return_value = [failing_engine(), _engine_yielding(2)]
+
+    batches = list(bound())
+
+    assert [len(batch.queries) for batch in batches] == [2]
 
 
 def test_yield_table_query_does_not_swallow_a_statement_builder_bug():
