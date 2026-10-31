@@ -61,6 +61,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -68,15 +69,18 @@ import org.openmetadata.sdk.network.HttpMethod;
 /**
  * Regression IT for the estate-wide AI governance authorization fix (issue #36761).
  *
- * <p>A principal denied {@code ViewBasic} on {@code aiApplication} gets 403 from the by-id reads.
- * The estate-wide reads — dashboard, activity feed, policy violations, framework coverage — must
- * not reveal the denied asset either: they are computed only over the assets the caller may view.
- * Audit packs additionally carry an owner: only the requester (or an admin) may download the
- * artifacts, and a pack a confined user requests contains only her viewable assets.
+ * <p>A principal denied {@code ViewBasic} on the hidden fixture — an {@code aiApplication} tagged
+ * with the restricted tag, via a conditional deny rule — gets 403 from the by-id reads. The
+ * estate-wide reads must not reveal the denied asset either: they are computed only over the
+ * assets the caller may view. Audit packs additionally carry an owner: only the requester (or an
+ * admin) may download the artifacts, and a pack a confined user requests contains only her
+ * viewable assets.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class AIGovernanceEstateVisibilityIT {
+
+  private static final String RESTRICTED_TAG = "PII.Sensitive";
 
   /** The two applications under test plus the client confined from the hidden one. */
   private record Estate(AIApplication visible, AIApplication hidden, OpenMetadataClient confined) {}
@@ -272,14 +276,17 @@ public class AIGovernanceEstateVisibilityIT {
 
   private Estate estateFixture(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
-    AIApplication hidden = createApplication(ns.prefix("finance_scorer"));
-    AIApplication visible = createApplication(ns.prefix("marketing_writer"));
+    // The deny is per-asset: only the hidden application carries the restricted tag, so the
+    // visible application stays readable by the confined principal (mirrors the finding's
+    // per-asset DomainAccessDenyRule rather than a type-wide deny).
+    AIApplication hidden = createApplication(ns.prefix("finance_scorer"), restrictedTag());
+    AIApplication visible = createApplication(ns.prefix("marketing_writer"), null);
     submitForReview(hidden);
     submitForReview(visible);
     return new Estate(visible, hidden, confinedClient(ns));
   }
 
-  private AIApplication createApplication(String name) {
+  private AIApplication createApplication(String name, TagLabel tag) {
     return SdkClients.adminClient()
         .aiApplications()
         .create(
@@ -287,7 +294,16 @@ public class AIGovernanceEstateVisibilityIT {
                 .withName(name)
                 .withApplicationType(ApplicationType.Chatbot)
                 .withDevelopmentStage(DevelopmentStage.Proposal)
-                .withDescription("Estate visibility IT fixture"));
+                .withDescription("Estate visibility IT fixture")
+                .withTags(tag == null ? null : List.of(tag)));
+  }
+
+  private static TagLabel restrictedTag() {
+    return new TagLabel()
+        .withTagFQN(RESTRICTED_TAG)
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
   }
 
   private void submitForReview(AIApplication app) {
@@ -301,9 +317,10 @@ public class AIGovernanceEstateVisibilityIT {
   }
 
   /**
-   * A principal whose policy denies {@code ViewBasic} on {@code aiApplication} but allows
-   * {@code Create} on {@code auditReport} (so the pack-request path is reachable). Wiring follows
-   * {@code DenyPolicyPrincipals}: policy to role to team to user.
+   * A principal denied {@code ViewBasic} on {@code aiApplication} assets tagged
+   * {@value #RESTRICTED_TAG} (the hidden fixture), but allowed {@code Create} on {@code
+   * auditReport} so the pack-request path is reachable. Wiring follows {@code
+   * DenyPolicyPrincipals}: policy to role to team to user.
    */
   private OpenMetadataClient confinedClient(TestNamespace ns) {
     String p = ns.shortPrefix("confined");
@@ -314,7 +331,7 @@ public class AIGovernanceEstateVisibilityIT {
             .create(
                 new CreatePolicy()
                     .withName(p + "_policy")
-                    .withDescription("Deny aiApplication reads, allow audit pack requests")
+                    .withDescription("Deny tagged aiApplication reads, allow audit pack requests")
                     .withRules(
                         List.of(
                             new Rule()
@@ -326,6 +343,7 @@ public class AIGovernanceEstateVisibilityIT {
                                 .withName(p + "_deny")
                                 .withResources(List.of("aiApplication"))
                                 .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+                                .withCondition("matchAnyTag('" + RESTRICTED_TAG + "')")
                                 .withEffect(Rule.Effect.DENY))));
     Role role =
         admin
