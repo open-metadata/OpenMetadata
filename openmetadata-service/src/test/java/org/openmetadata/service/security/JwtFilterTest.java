@@ -787,6 +787,56 @@ class JwtFilterTest {
     assertEquals(1.0, checks);
   }
 
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void storedCollisionIdentityWithoutPrincipalDomainStillChecksRevocation(EntryPoint entryPoint) {
+    String userName = "admin_ab12";
+    String token =
+        generator
+            .generateJWTToken(
+                userName,
+                Set.of(),
+                false,
+                "admin@attacker.example",
+                3600,
+                false,
+                ServiceTokenType.PERSONAL_ACCESS)
+            .getJWTToken();
+    credentials.withPats(Map.of(userName, List.of(token)));
+    JwtFilter filter =
+        new JwtFilter(
+            OpenMetadataSigningKey.keyLookup(), List.of("sub", "email"), null, false, VERIFIER);
+
+    entryPoint.authenticate(filter, token);
+    credentials.revoke(userName);
+
+    AuthenticationException rejected =
+        assertThrows(AuthenticationException.class, () -> entryPoint.authenticate(filter, token));
+    assertEquals(INVALID_PAT, rejected.getMessage());
+  }
+
+  @Test
+  void locallySignedTokenFromPreviousIssuerRetainsStoredEmail() {
+    String userName = "admin_ab12";
+    String email = "admin@attacker.example";
+    String token =
+        JWT.create()
+            .withKeyId(OpenMetadataSigningKey.KEY_ID)
+            .withIssuer("previous-issuer")
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", userName)
+            .withClaim("email", email)
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(OpenMetadataSigningKey.signingAlgorithm());
+    credentials.withPats(Map.of(userName, List.of(token)));
+
+    CatalogPrincipal principal =
+        (CatalogPrincipal) omFilter.getCatalogSecurityContext(token).getUserPrincipal();
+
+    assertEquals(userName, principal.getName());
+    assertEquals(email, principal.getEmail());
+  }
+
   /** OpenMetadata never issues these: each one is rejected even when its token is stored. */
   @ParameterizedTest
   @CsvSource({"false, BOT", "true, PERSONAL_ACCESS", "true, OM_USER"})
@@ -1127,8 +1177,12 @@ class JwtFilterTest {
       enforcingFilter.filter(context);
     }
 
-    verify(context, times(1))
-        .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+    ArgumentCaptor<SecurityContext> securityContext =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContext.capture());
+    CatalogPrincipal principal = (CatalogPrincipal) securityContext.getValue().getUserPrincipal();
+    assertEquals("asmith", principal.getName());
+    assertEquals("asmith@intermedia.com", principal.getEmail());
   }
 
   @Test

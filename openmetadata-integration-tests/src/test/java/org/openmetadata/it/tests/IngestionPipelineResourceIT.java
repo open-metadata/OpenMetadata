@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -31,6 +32,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -79,10 +82,12 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1761,6 +1766,160 @@ public class IngestionPipelineResourceIT
     op.put("op", "replace").put("path", path);
     op.set("value", JsonUtils.valueToTree(value));
     return op;
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"*", "W/\"0.1\""})
+  void patchWithIfMatch_dbtCredentialsStayEncrypted(String ifMatch, TestNamespace ns) {
+    String secret = "dbt-conditional-secret-" + UUID.randomUUID();
+    IngestionPipeline pipeline = createDbtPipelineWithSecret(ns, secret);
+    OpenMetadataClient user = SdkClients.testUserClient();
+
+    IngestionPipeline patched =
+        user.ingestionPipelines()
+            .patch(pipeline.getId(), descriptionPatch("Updated by a regular user"), ifMatch);
+
+    assertEquals("Updated by a regular user", patched.getDescription());
+    assertNotEquals(pipeline.getVersion(), patched.getVersion());
+    assertAll(
+        () -> assertDbtSecretEncrypted(storedPipelineJson(pipeline.getId()), secret),
+        () ->
+            assertDbtSecretEncrypted(
+                storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion()), secret));
+    assertDbtSecretMasked(JsonUtils.pojoToJson(patched), secret);
+    assertPipelineReadsMaskSecrets(user, pipeline, patched, secret);
+    assertFollowerResponsesMaskSecrets(user, pipeline.getId(), secret);
+    assertEquals(
+        secret,
+        dbtSecret(
+            JsonUtils.pojoToJson(
+                SdkClients.ingestionBotClient().ingestionPipelines().get(pipeline.getId()))));
+
+    IngestionPipeline reverted =
+        user.ingestionPipelines()
+            .patch(pipeline.getId(), descriptionPatch(pipeline.getDescription()));
+    assertEquals(pipeline.getVersion(), reverted.getVersion());
+    assertEquals(pipeline.getDescription(), reverted.getDescription());
+    assertDbtSecretEncrypted(storedPipelineJson(pipeline.getId()), secret);
+  }
+
+  @Test
+  void patchWithStaleIfMatch_doesNotRewriteDbtCredentials(TestNamespace ns) {
+    IngestionPipeline pipeline =
+        createDbtPipelineWithSecret(ns, "dbt-stale-secret-" + UUID.randomUUID());
+    OpenMetadataClient user = SdkClients.testUserClient();
+    user.ingestionPipelines().patch(pipeline.getId(), descriptionPatch("Accepted edit"), "*");
+    String stored = storedPipelineJson(pipeline.getId());
+    String history = storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion());
+
+    OpenMetadataException failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                user.ingestionPipelines()
+                    .patch(
+                        pipeline.getId(),
+                        descriptionPatch("Rejected edit"),
+                        "W/\"" + pipeline.getVersion() + "\""));
+
+    assertEquals(412, failure.getStatusCode());
+    assertEquals(stored, storedPipelineJson(pipeline.getId()));
+    assertEquals(history, storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion()));
+  }
+
+  private IngestionPipeline createDbtPipelineWithSecret(TestNamespace ns, String secret) {
+    assertTrue(Fernet.getInstance().isKeyDefined(), "The test server must encrypt secrets at rest");
+    AWSCredentials credentials =
+        new AWSCredentials()
+            .withAwsAccessKeyId("dbt-conditional-access-key")
+            .withAwsSecretAccessKey(secret)
+            .withAwsRegion("us-east-1");
+    DbtPipeline dbt =
+        new DbtPipeline().withDbtConfigSource(new DbtS3Config().withDbtSecurityConfig(credentials));
+    return createEntity(
+        createMinimalRequest(ns)
+            .withName(ns.prefix("dbt_conditional_credentials"))
+            .withPipelineType(PipelineType.DBT)
+            .withSourceConfig(new SourceConfig().withConfig(dbt)));
+  }
+
+  private static ArrayNode descriptionPatch(String description) {
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch.addObject().put("op", "replace").put("path", "/description").put("value", description);
+    return patch;
+  }
+
+  private static String storedPipelineJson(UUID id) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT json FROM ingestion_pipeline_entity WHERE id = :id")
+                    .bind("id", id.toString())
+                    .mapTo(String.class)
+                    .one());
+  }
+
+  private static String storedPipelineVersionJson(UUID id, Double version) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
+                    .bind("id", id.toString())
+                    .bind(
+                        "extension",
+                        EntityUtil.getVersionExtension(Entity.INGESTION_PIPELINE, version))
+                    .mapTo(String.class)
+                    .one());
+  }
+
+  private static String dbtSecret(String json) {
+    return JsonUtils.readTree(json)
+        .at("/sourceConfig/config/dbtConfigSource/dbtSecurityConfig/awsSecretAccessKey")
+        .asText();
+  }
+
+  private static void assertDbtSecretEncrypted(String json, String secret) {
+    assertFalse(json.contains(secret), "Persisted pipeline must not contain plaintext credentials");
+    String storedSecret = dbtSecret(json);
+    assertTrue(Fernet.isTokenized(storedSecret), "Stored dbt credential must be Fernet ciphertext");
+    assertEquals(secret, Fernet.getInstance().decrypt(storedSecret));
+  }
+
+  private static void assertDbtSecretMasked(String json, String secret) {
+    assertFalse(json.contains(secret), "API response must not contain plaintext credentials");
+    assertFalse(json.contains(Fernet.FERNET_PREFIX), "API response must not contain ciphertext");
+    assertTrue(
+        json.contains(PasswordEntityMasker.PASSWORD_MASK), "API response must mask the credential");
+  }
+
+  private static void assertPipelineReadsMaskSecrets(
+      OpenMetadataClient user,
+      IngestionPipeline original,
+      IngestionPipeline patched,
+      String secret) {
+    UUID id = original.getId();
+    EntityHistory versions = user.ingestionPipelines().getVersionList(id);
+    assertEquals(2, versions.getVersions().size());
+    assertDbtSecretMasked(JsonUtils.pojoToJson(versions), secret);
+    assertDbtSecretMasked(JsonUtils.pojoToJson(user.ingestionPipelines().get(id)), secret);
+    for (Double version : List.of(original.getVersion(), patched.getVersion())) {
+      assertDbtSecretMasked(
+          JsonUtils.pojoToJson(user.ingestionPipelines().getVersion(id, version)), secret);
+    }
+  }
+
+  private static void assertFollowerResponsesMaskSecrets(
+      OpenMetadataClient user, UUID pipelineId, String secret) {
+    UUID userId = user.users().getByName("test").getId();
+    String path = "/v1/services/ingestionPipelines/" + pipelineId + "/followers";
+    assertDbtSecretMasked(
+        user.getHttpClient().executeForString(HttpMethod.PUT, path, userId), secret);
+    assertDbtSecretMasked(
+        user.getHttpClient().executeForString(HttpMethod.DELETE, path + "/" + userId, null),
+        secret);
   }
 
   @Test

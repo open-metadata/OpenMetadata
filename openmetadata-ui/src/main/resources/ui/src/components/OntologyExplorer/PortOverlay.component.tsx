@@ -82,7 +82,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
       if (!point) {
         return;
       }
-      if (armedFromId !== null && nodeId !== armedFromId) {
+      if (armedFromId !== null || nodeId === pendingRelation?.fromId) {
         editEvent.preventDefault();
         selectTarget(nodeId, point);
 
@@ -114,6 +114,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
     containerRef,
     dismissPending,
     isEditMode,
+    pendingRelation,
     selectTarget,
     startArm,
     toLocalPoint,
@@ -197,6 +198,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
           className="tw:absolute tw:inset-0 tw:h-full tw:w-full"
           style={{ overflow: 'visible' }}>
           <line
+            className="tw:motion-safe:animate-pulse"
             data-testid="ontology-connection-line"
             stroke="var(--tw-color-bg-brand-solid)"
             strokeDasharray="6 5"

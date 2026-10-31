@@ -17,6 +17,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.api.data.ConceptMapping;
+import org.openmetadata.schema.api.data.OntologyReleaseExportOptions;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
@@ -33,8 +34,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.OntologyValidationException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.rdf.BoundAssetLinks;
+import org.openmetadata.service.rdf.OntologyExportFormat;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
-import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 class OntologyReleaseCaptureTest {
   @ParameterizedTest
@@ -278,7 +280,12 @@ class OntologyReleaseCaptureTest {
           assertEquals(2L, second.getReleaseRevision());
           String exported =
               new OntologyReleaseExporter(fixture.releases)
-                  .export(first, RdfSerializationFormat.N_TRIPLES, member -> {});
+                  .export(
+                      first,
+                      OntologyExportFormat.N_TRIPLES,
+                      new OntologyReleaseExportOptions(),
+                      member -> {},
+                      BoundAssetLinks.NONE);
           var model = ModelFactory.createDefaultModel();
           try {
             RDFParser.fromString(exported, Lang.NTRIPLES).parse(model);
