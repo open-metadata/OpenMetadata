@@ -2316,7 +2316,8 @@
                           "description": "Custom HTTP headers to include in every request when fetching dbt artifacts (e.g. Authorization for private GitLab/GitHub repos).",
                           "type": "object",
                           "additionalProperties": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "password"
                           }
                         },
                         "dbtVerifySSL": {
@@ -15803,14 +15804,18 @@
                           "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryConfig": {
                           "title": "Schema Registry Config",
                           "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryTopicSuffixName": {
                           "title": "Schema Registry Topic Suffix Name",
@@ -15934,14 +15939,18 @@
                           "description": "Confluent Redpanda Consumer Config",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryConfig": {
                           "title": "Schema Registry Config",
                           "description": "Confluent Redpanda Schema Registry Config.",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "topicFilterPattern": {
                           "description": "Regex to only fetch topics that matches the pattern.",

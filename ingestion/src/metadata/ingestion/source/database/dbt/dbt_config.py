@@ -127,7 +127,13 @@ def _(config: DbtHttpConfig):  # noqa: C901
         ssl_verify = verify_ssl_fn(config.dbtSSLConfig) if config.dbtVerifySSL else None
         if ssl_verify is None:
             ssl_verify = True
-        request_headers = dict(config.dbtHttpHeaders) if config.dbtHttpHeaders else {}
+        # dbtHttpHeaders values are CustomSecretStr (format: password in the schema), so
+        # unwrap them - this also resolves `secret:` references against the secrets manager.
+        request_headers = (
+            {key: value.get_secret_value() for key, value in config.dbtHttpHeaders.items()}
+            if config.dbtHttpHeaders
+            else {}
+        )
 
         manifest_url = config.dbtManifestHttpPath
         logger.debug(f"Requesting [dbtManifestHttpPath] to: {manifest_url}")
