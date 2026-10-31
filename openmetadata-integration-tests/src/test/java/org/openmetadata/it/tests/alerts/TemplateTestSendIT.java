@@ -18,6 +18,7 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.NotificationTemplateRenderRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateSendRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
@@ -108,7 +109,7 @@ class TemplateTestSendIT {
             .create(
                 new CreateEventSubscription()
                     .withName("template-send-" + UUID.randomUUID())
-                    .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+                    .withAlertType(AlertType.NOTIFICATION)
                     .withResources(List.of(Entity.TABLE))
                     .withEnabled(false)
                     .withDestinations(

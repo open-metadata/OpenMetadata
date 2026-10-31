@@ -721,7 +721,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  protected String serializeForVersionHistory(IngestionPipeline ingestionPipeline) {
+  protected IngestionPipeline prepareForVersionHistory(IngestionPipeline ingestionPipeline) {
     final IngestionPipeline snapshot =
         JsonUtils.deepCopy(ingestionPipeline, IngestionPipeline.class);
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
@@ -730,7 +730,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       DBSecretsManager.getInstance(SecretsManagerProvider.DB, secretsManager.getSecretsConfig())
           .encryptIngestionPipeline(snapshot);
     }
-    return super.serializeForVersionHistory(snapshot);
+    return snapshot;
   }
 
   @Override
