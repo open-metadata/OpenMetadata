@@ -321,10 +321,10 @@ class AlertsClassBase {
       ...alertData,
       input: getAlertInputForForm(alertData),
       hasRulesWithoutSelections: hasRulesWithoutSelections(alertData),
-      timeout: alertData.destinations[0].timeout ?? 10,
+      timeout: alertData.destinations?.[0]?.timeout ?? 10,
       readTimeout:
-        alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
-      destinations: alertData.destinations.map((destination) => {
+        alertData.destinations?.[0]?.readTimeout ?? DEFAULT_READ_TIMEOUT,
+      destinations: (alertData.destinations ?? []).map((destination) => {
         const isExternalDestination =
           destination.category === SubscriptionCategory.External;
 
