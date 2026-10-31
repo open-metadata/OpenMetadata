@@ -154,15 +154,28 @@ test.describe('AI Profile Team Detail', () => {
     const searchInput = page
       .getByTestId('team-detail')
       .getByTestId('searchbar');
+    const teamLink = page.getByTestId(`team-link-${team.responseData.name}`);
+    const teamLinks = page
+      .getByTestId('sub-teams-table')
+      .locator('[data-testid^="team-link-"]');
+
+    // The search filters the loaded teams in the browser (no request to
+    // await). It is debounced, and applying it writes the term back into the
+    // input, so a term typed before that write-back is overwritten by it. Wait
+    // for each step to show in the table — the render that applies the term —
+    // before typing the next one.
     await searchInput.fill(team.responseData.displayName);
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeVisible();
+    await expect(teamLinks).toHaveCount(1);
+    await expect(teamLink).toBeVisible();
+
+    await searchInput.clear();
+    await expect(searchInput).toHaveValue('');
+    // The full list is back once the cleared term has been applied.
+    await expect(teamLinks).not.toHaveCount(1);
 
     await searchInput.fill('non-existent-team-xyz');
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeHidden();
+    await expect(searchInput).toHaveValue('non-existent-team-xyz');
+    await expect(teamLink).toBeHidden();
   });
 
   test('Should rename a team inline', async ({ browser, page }) => {
@@ -244,8 +257,8 @@ test.describe('AI Profile Team Detail', () => {
         ['PATCH', 'DELETE'].includes(response.request().method())
     );
     await page.getByTestId(`remove-user-${member.responseData.name}`).click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('confirm-button').click();
+    await expect(page.getByTestId('remove-from-team-popover')).toBeVisible();
+    await page.getByTestId('remove-from-team-popover-confirm').click();
     await removeResponse;
 
     await expect(
@@ -388,8 +401,8 @@ test.describe('AI Profile Team Detail', () => {
 
       const removePatch = waitForTeamPatch(page, team.responseData.id ?? '');
       await page.getByTestId(`remove-${name}`).click();
-      await page.getByTestId('delete-modal').waitFor();
-      await page.getByTestId('confirm-button').click();
+      await expect(page.getByTestId('remove-from-team-popover')).toBeVisible();
+      await page.getByTestId('remove-from-team-popover-confirm').click();
       await removePatch;
 
       await expect(entityButton).toBeHidden();
@@ -468,9 +481,8 @@ test.describe('AI Profile Team Detail', () => {
         response.request().method() === 'DELETE'
     );
     await page.getByTestId('delete-team').click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('soft-delete').click();
-    await page.getByTestId('confirm-button').click();
+    await expect(page.getByTestId('delete-team-popover')).toBeVisible();
+    await page.getByTestId('delete-team-popover-confirm').click();
     await deleteResponse;
 
     // Re-open with deleted teams shown, restore it.

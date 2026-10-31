@@ -12,9 +12,9 @@
  */
 
 import { Badge } from '@openmetadata/ui-core-components';
-import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Severities } from '../../../../generated/tests/testCaseIncidentGroup';
+import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import { INCIDENT_GROUP_SEVERITY_COLOR } from './IncidentGroups.constants';
 
 /**
@@ -40,7 +40,7 @@ const IncidentSeverityBadge = ({
       size="sm"
       type="pill-color">
       {severity
-        ? startCase(severity)
+        ? getSeverityLabel(severity, t)
         : t('label.no-entity', { entity: t('label.severity') })}
     </Badge>
   );

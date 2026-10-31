@@ -322,6 +322,8 @@ export const navigateToArchive = async (page: Page) => {
 
 export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
   page.getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+    // Exact: an expanded empty folder renders a child row "<name> is empty".
+    exact: true,
     name: folderName,
   });
 

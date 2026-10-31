@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useLayoutEffect, useRef } from 'react';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import PortOverlay from './PortOverlay.component';
 import {
   OntologyEditNodeClickDetail,
@@ -26,6 +27,11 @@ import {
   ONTOLOGY_EDIT_NODE_CLICK_EVENT,
 } from './PortOverlay.interface';
 import { RelationshipTypePickerProps } from './RelationshipTypePicker.interface';
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 jest.mock(
   './RelationshipTypePicker.component',
@@ -217,11 +223,98 @@ describe('PortOverlay', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([true, false])(
+    'cancels source selection without a relation, port=%s',
+    (isPort) => {
+      const persist = jest.fn();
+      render(<Harness onCreateRelation={persist} />);
+      dispatchNodeClick({
+        clientX: 600,
+        clientY: 180,
+        isPort: true,
+        nodeId: 'source',
+      });
+
+      expect(screen.getByTestId('ontology-connection-line')).toHaveClass(
+        'tw:motion-safe:animate-pulse'
+      );
+
+      dispatchNodeClick({
+        clientX: 600,
+        clientY: 180,
+        isPort,
+        nodeId: 'source',
+      });
+
+      expect(
+        screen.queryByTestId('ontology-connection-line')
+      ).not.toBeInTheDocument();
+      expect(persist).not.toHaveBeenCalled();
+    }
+  );
+
+  it('closes the pending picker without persisting', () => {
+    const persist = jest.fn();
+    render(<Harness onCreateRelation={persist} />);
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
+    });
+    dispatchNodeClick({
+      clientX: 780,
+      clientY: 180,
+      isPort: false,
+      nodeId: 'target',
+    });
+    fireEvent.click(screen.getByTestId('relationship-type-picker-cancel'));
+
+    expect(
+      screen.queryByTestId('ontology-connection-line')
+    ).not.toBeInTheDocument();
+    expect(persist).not.toHaveBeenCalled();
+  });
+
   it('does not render edit controls outside edit mode', () => {
     render(<Harness isEditMode={false} onCreateRelation={jest.fn()} />);
 
     expect(
       screen.queryByTestId('ontology-port-overlay')
     ).not.toBeInTheDocument();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('shows the connect pill and cancels the connection from its close button', () => {
+      render(<Harness onCreateRelation={jest.fn()} />);
+
+      dispatchNodeClick({
+        clientX: 600,
+        clientY: 180,
+        isPort: true,
+        nodeId: 'source',
+      });
+
+      expect(
+        screen.getByTestId('ontology-connect-instruction')
+      ).toHaveTextContent('label.esc');
+
+      fireEvent.click(screen.getByTestId('ontology-connect-cancel'));
+
+      expect(
+        screen.queryByTestId('ontology-connect-instruction')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ontology-connection-line')
+      ).not.toBeInTheDocument();
+    });
   });
 });

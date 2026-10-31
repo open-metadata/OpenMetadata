@@ -470,7 +470,7 @@ test.describe('Task Navigation - URL Validation', () => {
       (r) => r.url().includes('/api/v1/tables/name/TASK-00001'),
       { timeout: ACTION_TIMEOUT }
     );
-    await page.goto('/table/TASK-00001');
+    await page.goto('/table/TASK-00001', { waitUntil: 'domcontentloaded' });
     const response = await tableNotFound;
 
     expect(response.status()).toBe(404);
@@ -510,7 +510,9 @@ test.describe('Task Navigation - URL Validation', () => {
       const entityFqn = table.entityResponseData?.fullyQualifiedName;
 
       if (entityFqn) {
-        await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
+        await page.goto(`/table/${encodeURIComponent(entityFqn)}`, {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForPageLoaded(page);
 
         // Should NOT be 404
@@ -584,10 +586,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
 
     await test.step('Log in and navigate to entity page', async () => {
       await adminUser.signIn(page);
-      const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
-      await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
-      await waitForPageLoaded(page);
-      await waitForAllLoadersToDisappear(page);
+      await table.visitEntityPage(page);
     });
 
     await test.step('Open Activity Feed & Tasks tab and stay there', async () => {
@@ -690,9 +689,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       });
 
       await test.step('Other user navigates to entity Activity Feed & Tasks tab', async () => {
-        await userPage.goto(`/table/${encodeURIComponent(entityFqn)}`);
-        await waitForPageLoaded(userPage);
-        await waitForAllLoadersToDisappear(userPage);
+        await table.visitEntityPage(userPage);
         const feedResponse = userPage.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/activity') &&

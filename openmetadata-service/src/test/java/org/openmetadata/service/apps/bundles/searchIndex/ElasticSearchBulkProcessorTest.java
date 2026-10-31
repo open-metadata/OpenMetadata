@@ -35,6 +35,21 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 class ElasticSearchBulkProcessorTest {
 
   @Test
+  void transportThatThrowsBeforeSendingReleasesItsPermitsAndRecordsTheBulk() throws Exception {
+    try (ProcessorHarness harness = newHarness(1, 1)) {
+      when(harness.asyncClient.bulk(anyBulkRequestBuilder()))
+          .thenThrow(new IllegalStateException("I/O reactor has been shut down"))
+          .thenReturn(CompletableFuture.completedFuture(successResponse()));
+
+      harness.processor.add(indexOperation("table_search_index", "doc-1"));
+      harness.processor.add(indexOperation("table_search_index", "doc-2"));
+
+      assertEquals(1, harness.totalFailed.get(), "the bulk that never left is recorded as failed");
+      assertEquals(1, harness.totalSuccess.get(), "its send permits came back for the next bulk");
+    }
+  }
+
+  @Test
   void addReportsSuccessAndCleansTrackingMaps() throws Exception {
     try (ProcessorHarness harness = newHarness(2, 1)) {
       StageStatsTracker tableTracker = mock(StageStatsTracker.class);
@@ -112,8 +127,9 @@ class ElasticSearchBulkProcessorTest {
   }
 
   @Test
-  void addFailsFastWhenCircuitBreakerIsOpenAndReportsDroppedRecords() throws Exception {
-    try (ProcessorHarness harness = newHarness(2, 1)) {
+  void addRecordsBulksAsFailedWhenTheCircuitStaysOpenPastTheirDeadline() throws Exception {
+    // A zero lifetime puts the deadline in the past, so the first pause already gives up.
+    try (ProcessorHarness harness = newHarness(2, 1, new BulkRetryPolicy(1, 5L, 5L, 0))) {
       StageStatsTracker tableTracker = mock(StageStatsTracker.class);
       StageStatsTracker mlModelTracker = mock(StageStatsTracker.class);
       BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
@@ -213,7 +229,7 @@ class ElasticSearchBulkProcessorTest {
 
       Method method =
           ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
-              "handleBulkFailure", List.class, long.class, int.class, int.class, Throwable.class);
+              "handleBulkFailure", BulkAttempt.class, Throwable.class);
       method.setAccessible(true);
 
       BulkOperation operation =
@@ -222,10 +238,7 @@ class ElasticSearchBulkProcessorTest {
           (boolean)
               method.invoke(
                   harness.processor,
-                  List.of(operation),
-                  99L,
-                  1,
-                  Integer.MAX_VALUE,
+                  new BulkAttempt<>(List.of(operation), 99L, Integer.MAX_VALUE, Long.MAX_VALUE),
                   new IllegalStateException("boom"));
 
       assertFalse(retry);
@@ -236,10 +249,17 @@ class ElasticSearchBulkProcessorTest {
   }
 
   private ProcessorHarness newHarness(int bulkActions, int concurrentRequests) {
+    return newHarness(bulkActions, concurrentRequests, new BulkRetryPolicy(1, 5L, 5L));
+  }
+
+  private ProcessorHarness newHarness(
+      int bulkActions, int concurrentRequests, BulkRetryPolicy retryPolicy) {
     ElasticSearchClient searchClient = mock(ElasticSearchClient.class);
     es.co.elastic.clients.elasticsearch.ElasticsearchClient restClient =
         mock(es.co.elastic.clients.elasticsearch.ElasticsearchClient.class, RETURNS_DEEP_STUBS);
     when(searchClient.getNewClient()).thenReturn(restClient);
+    when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
 
     BulkCircuitBreaker circuitBreaker = mock(BulkCircuitBreaker.class);
     when(circuitBreaker.allowRequest()).thenReturn(true);
@@ -257,17 +277,13 @@ class ElasticSearchBulkProcessorTest {
     ElasticSearchBulkSink.CustomBulkProcessor processor =
         new ElasticSearchBulkSink.CustomBulkProcessor(
             searchClient,
-            bulkActions,
-            4096L,
-            concurrentRequests,
-            60_000L,
-            5L,
-            1,
-            totalSubmitted,
-            totalSuccess,
-            totalFailed,
-            totalWarnings,
-            statsUpdates::incrementAndGet,
+            new BulkProcessorSettings(bulkActions, 4096L, concurrentRequests, 60_000L, retryPolicy),
+            new BulkProcessorCounters(
+                totalSubmitted,
+                totalSuccess,
+                totalFailed,
+                totalWarnings,
+                statsUpdates::incrementAndGet),
             circuitBreaker);
 
     return new ProcessorHarness(

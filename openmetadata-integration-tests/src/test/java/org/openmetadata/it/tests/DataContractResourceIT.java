@@ -9,10 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.json.Json;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -82,12 +85,14 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
@@ -97,6 +102,8 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -1545,6 +1552,61 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testValidateLandsOnRequestedContractWithDuplicateActiveContracts(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract first =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("misroute_first"))
+                .withEntity(table.getEntityReference())
+                .withDescription("Contract whose semantic rule passes")
+                .withSemantics(
+                    List.of(
+                        new SemanticsRule()
+                            .withName("Has a name")
+                            .withDescription("The table must have a name")
+                            .withRule("{\"!!\":{\"var\":\"name\"}}")
+                            .withEnabled(true))));
+    deleteEntity(first.getId().toString());
+    DataContract second =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("misroute_second"))
+                .withEntity(table.getEntityReference())
+                .withDescription("Contract whose semantic rule fails")
+                .withSemantics(
+                    List.of(
+                        new SemanticsRule()
+                            .withName("Has another name")
+                            .withDescription("The table must have a different name")
+                            .withRule("{\"==\":[{\"var\":\"name\"},\"a_different_table\"]}")
+                            .withEnabled(true))));
+    // Restore does not rerun the create-time uniqueness check.
+    restoreEntity(first.getId().toString());
+
+    DataContractResult firstResult =
+        SdkClients.adminClient().dataContracts().validate(first.getId());
+    DataContractResult secondResult =
+        SdkClients.adminClient().dataContracts().validate(second.getId());
+
+    assertEquals(first.getFullyQualifiedName(), firstResult.getDataContractFQN());
+    assertEquals(second.getFullyQualifiedName(), secondResult.getDataContractFQN());
+    assertEquals(ContractExecutionStatus.Success, firstResult.getContractExecutionStatus());
+    assertEquals(ContractExecutionStatus.Failed, secondResult.getContractExecutionStatus());
+    assertEquals(1, firstResult.getSemanticsValidation().getPassed());
+    assertEquals(1, secondResult.getSemanticsValidation().getFailed());
+
+    DataContractResult firstLatest =
+        SdkClients.adminClient().dataContracts().getLatestResult(first.getId());
+    DataContractResult secondLatest =
+        SdkClients.adminClient().dataContracts().getLatestResult(second.getId());
+    assertNotNull(firstLatest);
+    assertNotNull(secondLatest);
+    assertEquals(firstResult.getId(), firstLatest.getId());
+    assertEquals(secondResult.getId(), secondLatest.getId());
+  }
+
+  @Test
   void testDataContractResultSuccessToFailure(TestNamespace ns) {
     Table table = createTestTable(ns);
 
@@ -2820,35 +2882,104 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testListDataContractResults(TestNamespace ns) {
-    Table table = createTestTable(ns);
-
-    CreateDataContract request =
-        new CreateDataContract()
-            .withName(ns.prefix("list_results"))
-            .withEntity(table.getEntityReference());
-
-    DataContract contract = SdkClients.adminClient().dataContracts().create(request);
-
-    // Create multiple contract results
-    for (int i = 1; i <= 3; i++) {
-      DataContractResult createResult =
-          new DataContractResult()
-              .withDataContractFQN(contract.getFullyQualifiedName())
-              .withTimestamp(System.currentTimeMillis() + (i * 1000))
-              .withContractExecutionStatus(
-                  i % 2 == 0 ? ContractExecutionStatus.Success : ContractExecutionStatus.Failed)
-              .withResult("Result " + i)
-              .withExecutionTime(1000L + i);
-
-      SdkClients.adminClient().dataContracts().addResult(contract.getId(), createResult);
+    final DataContract contract =
+        SdkClients.adminClient().dataContracts().create(createMinimalRequest(ns));
+    final long start = System.currentTimeMillis() - 10_000;
+    for (long offset : List.of(0L, 3L, 1L, 4L, 2L, 11L, 10L, 9L, 8L, 7L, 6L, 5L)) {
+      addExecutionResult(contract, start + offset, ContractExecutionStatus.Success);
     }
 
-    // List results - verify at least 3 were created
-    // Note: The SDK may not expose a direct list results method, so we verify via latest
-    DataContractResult latest =
-        SdkClients.adminClient().dataContracts().getLatestResult(contract.getId());
-    assertNotNull(latest);
+    final ContractExecutionResultList newest =
+        listExecutionResults(contract, 2, start + 1, start + 3);
+    assertEquals(
+        List.of(start + 3, start + 2),
+        newest.getData().stream().map(DataContractResult::getTimestamp).toList());
+    assertEquals(2, newest.getPaging().getTotal());
+    assertEquals(
+        String.valueOf(start + 1),
+        new String(
+            Base64.getUrlDecoder().decode(newest.getPaging().getBefore()), StandardCharsets.UTF_8));
+    assertEquals(
+        String.valueOf(start + 3),
+        new String(
+            Base64.getUrlDecoder().decode(newest.getPaging().getAfter()), StandardCharsets.UTF_8));
+
+    final ContractExecutionResultList fewer =
+        listExecutionResults(contract, 10_000, start + 1, start + 3);
+    assertEquals(
+        List.of(start + 3, start + 2, start + 1),
+        fewer.getData().stream().map(DataContractResult::getTimestamp).toList());
+    assertEquals(3, fewer.getPaging().getTotal());
+
+    final ContractExecutionResultList unlimited =
+        listExecutionResults(contract, 0, start, start + 11);
+    assertEquals(
+        List.of(
+            start + 11,
+            start + 10,
+            start + 9,
+            start + 8,
+            start + 7,
+            start + 6,
+            start + 5,
+            start + 4,
+            start + 3,
+            start + 2,
+            start + 1,
+            start),
+        unlimited.getData().stream().map(DataContractResult::getTimestamp).toList());
+    assertEquals(12, unlimited.getPaging().getTotal());
   }
+
+  @Test
+  void testListDataContractResultsLimitsBeforeDeserialization(TestNamespace ns) {
+    final DataContract contract =
+        SdkClients.adminClient().dataContracts().create(createMinimalRequest(ns));
+    final long start = System.currentTimeMillis() - 10_000;
+    addExecutionResult(contract, start + 1, ContractExecutionStatus.Success);
+    // An older invalid payload exposes reads that deserialize beyond the requested SQL page.
+    final var dao = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    dao.insert(
+        contract.getFullyQualifiedName(),
+        DataContractRepository.RESULT_EXTENSION,
+        DataContractRepository.RESULT_SCHEMA,
+        "{\"timestamp\":" + start + ",\"executionTime\":\"invalid\"}");
+    try {
+      final ContractExecutionResultList result =
+          listExecutionResults(contract, 1, start, start + 1);
+      assertEquals(
+          List.of(start + 1),
+          result.getData().stream().map(DataContractResult::getTimestamp).toList());
+      assertEquals(1, result.getPaging().getTotal());
+      assertEquals(
+          500,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () -> listExecutionResults(contract, 0, start, start + 1))
+              .getStatusCode());
+    } finally {
+      dao.deleteAtTimestamp(
+          contract.getFullyQualifiedName(), DataContractRepository.RESULT_EXTENSION, start);
+    }
+  }
+
+  private ContractExecutionResultList listExecutionResults(
+      DataContract contract, int limit, long start, long end) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/dataContracts/" + contract.getId() + "/results",
+            null,
+            ContractExecutionResultList.class,
+            RequestOptions.builder()
+                .queryParam("limit", String.valueOf(limit))
+                .queryParam("startTs", String.valueOf(start))
+                .queryParam("endTs", String.valueOf(end))
+                .build());
+  }
+
+  private static class ContractExecutionResultList extends ResultList<DataContractResult> {}
 
   @Test
   void testGetContractResultUsesRequestedExecution(TestNamespace ns) {
@@ -8806,6 +8937,268 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(1, semantics.getPassed());
     assertEquals(0, semantics.getFailed());
     assertEquals(1, semantics.getSkipped());
+  }
+
+  /**
+   * A contract left pointing at another contract's suite, as a create could store before it cleared
+   * the field, gets a suite of its own on its next update. The other suite keeps its tests and
+   * stops linking back. ADR:2026-10-26-a-data-contract-only-acts-on-the-test-suite-named-after-it
+   */
+  @Test
+  void testUpdateReleasesAnotherContractsTestSuite(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table ownerTable = createTestTable(ns);
+    TestCase ownerTest = rowCountTest(client, ns, ownerTable, "suite_owner_tc");
+    DataContract owner =
+        contractWithExpectations(ns, ownerTable, "suite_owner", List.of(ownerTest));
+    Table borrowerTable = createTestTable(ns);
+    CreateDataContract borrowerRequest =
+        new CreateDataContract()
+            .withName(ns.prefix("suite_borrower"))
+            .withEntity(borrowerTable.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED);
+    DataContract borrower = createEntity(borrowerRequest);
+    TestCase borrowerTest = rowCountTest(client, ns, borrowerTable, "suite_borrower_tc");
+    pointAtTestSuiteOf(borrower, owner, List.of(borrowerTest));
+
+    DataContractResult refused = client.dataContracts().validate(borrower.getId());
+    assertEquals(ContractExecutionStatus.Aborted, refused.getContractExecutionStatus());
+    assertTrue(
+        refused.getResult().contains("does not have a test suite defined"),
+        "validating must not run another contract's suite: " + refused.getResult());
+
+    DataContract updated =
+        client
+            .dataContracts()
+            .createOrUpdate(
+                borrowerRequest.withQualityExpectations(
+                    List.of(borrowerTest.getEntityReference())));
+
+    TestSuite borrowerSuite =
+        client.testSuites().get(updated.getTestSuite().getId().toString(), "tests");
+    assertEquals(updated.getId().toString(), borrowerSuite.getName());
+    TestSuite ownerSuite =
+        client.testSuites().get(owner.getTestSuite().getId().toString(), "tests,dataContract");
+    assertEquals(
+        List.of(ownerTest.getId()),
+        ownerSuite.getTests().stream().map(EntityReference::getId).toList());
+    assertEquals(owner.getId(), ownerSuite.getDataContract().getId());
+    assertFalse(
+        suiteLinksTo(ownerSuite, borrower),
+        "the owner's suite must no longer link back to the borrowing contract");
+  }
+
+  /** Hard-deleting a contract left pointing at another contract's suite leaves that suite alone. */
+  @Test
+  void testHardDeleteLeavesAnotherContractsTestSuite(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table ownerTable = createTestTable(ns);
+    TestCase ownerTest = rowCountTest(client, ns, ownerTable, "kept_owner_tc");
+    DataContract owner = contractWithExpectations(ns, ownerTable, "kept_owner", List.of(ownerTest));
+    DataContract borrower =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("deleted_borrower"))
+                .withEntity(createTestTable(ns).getEntityReference())
+                .withEntityStatus(EntityStatus.APPROVED));
+    pointAtTestSuiteOf(borrower, owner, List.of());
+
+    hardDeleteEntity(borrower.getId().toString());
+
+    TestSuite ownerSuite =
+        client.testSuites().get(owner.getTestSuite().getId().toString(), "tests,dataContract");
+    assertFalse(Boolean.TRUE.equals(ownerSuite.getDeleted()));
+    assertEquals(
+        List.of(ownerTest.getId()),
+        ownerSuite.getTests().stream().map(EntityReference::getId).toList());
+    assertEquals(owner.getId(), ownerSuite.getDataContract().getId());
+    assertFalse(
+        suiteLinksTo(ownerSuite, borrower),
+        "the owner's suite must not link back to the deleted contract");
+  }
+
+  private static boolean suiteLinksTo(TestSuite suite, DataContract contract) {
+    return Entity.getCollectionDAO()
+        .relationshipDAO()
+        .findTo(suite.getId(), Entity.TEST_SUITE, Relationship.CONTAINS.ordinal())
+        .stream()
+        .anyMatch(link -> contract.getId().equals(link.getId()));
+  }
+
+  /**
+   * A PATCH that changes nothing still stores the suite a contract gets in place of another
+   * contract's, so its next update does not try to create that suite again.
+   */
+  @Test
+  void testNoOpPatchStoresTheReleasedContractsOwnSuite(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table ownerTable = createTestTable(ns);
+    TestCase ownerTest = rowCountTest(client, ns, ownerTable, "noop_owner_tc");
+    DataContract owner = contractWithExpectations(ns, ownerTable, "noop_owner", List.of(ownerTest));
+    Table borrowerTable = createTestTable(ns);
+    TestCase borrowerTest = rowCountTest(client, ns, borrowerTable, "noop_borrower_tc");
+    CreateDataContract borrowerRequest =
+        new CreateDataContract()
+            .withName(ns.prefix("noop_borrower"))
+            .withDescription("unchanged")
+            .withEntity(borrowerTable.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED);
+    DataContract borrower = createEntity(borrowerRequest);
+    pointAtTestSuiteOf(borrower, owner, List.of(borrowerTest));
+
+    // Patched by another user, so the change is not folded into admin's editing session.
+    Entity.getEntityRepository(Entity.DATA_CONTRACT)
+        .patch(
+            null,
+            borrower.getId(),
+            "ingestion-bot",
+            Json.createPatchBuilder().replace("/description", "unchanged").build());
+    DataContract updated =
+        client
+            .dataContracts()
+            .createOrUpdate(
+                borrowerRequest.withQualityExpectations(
+                    List.of(borrowerTest.getEntityReference())));
+
+    TestSuite suite = client.testSuites().get(updated.getTestSuite().getId().toString(), "");
+    assertEquals(borrower.getId().toString(), suite.getName());
+  }
+
+  /** A PUT that restores a soft-deleted contract keeps the suite named after that contract. */
+  @Test
+  void testPutRestoringASoftDeletedContractKeepsItsOwnSuite(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    TestCase test = rowCountTest(client, ns, table, "restored_tc");
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("restored"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(List.of(test.getEntityReference()));
+    DataContract created = createEntity(request);
+    deleteEntity(created.getId().toString());
+
+    DataContract restored = client.dataContracts().createOrUpdate(request);
+
+    assertEquals(created.getId(), restored.getId());
+    assertFalse(Boolean.TRUE.equals(restored.getDeleted()));
+    TestSuite suite = client.testSuites().get(restored.getTestSuite().getId().toString(), "");
+    assertEquals(created.getId().toString(), suite.getName());
+  }
+
+  /**
+   * A PUT the caller may not make leaves the contract's suite alone. PUT prepares a contract before
+   * it authorizes, so the suite is only changed once the update itself runs.
+   */
+  @Test
+  void testForbiddenPutLeavesTheContractsTestSuite(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    TestCase test = rowCountTest(client, ns, table, "forbidden_put_tc");
+    DataContract contract = contractWithExpectations(ns, table, "forbidden_put", List.of(test));
+    CreateDataContract withoutExpectations =
+        new CreateDataContract()
+            .withName(contract.getName())
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED);
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().dataContracts().createOrUpdate(withoutExpectations));
+
+    TestSuite suite = client.testSuites().get(contract.getTestSuite().getId().toString(), "tests");
+    assertEquals(
+        List.of(test.getId()), suite.getTests().stream().map(EntityReference::getId).toList());
+  }
+
+  /** A PUT that may not create a contract does not put its test cases in a new suite. */
+  @Test
+  void testForbiddenPutCreateLeavesTheTestCasesSuites(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    TestCase test = rowCountTest(client, ns, table, "forbidden_create_tc");
+    int suitesBefore = suitesOf(client, test);
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("forbidden_create"))
+            .withEntity(table.getEntityReference())
+            .withQualityExpectations(List.of(test.getEntityReference()));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().dataContracts().createOrUpdate(request));
+
+    assertEquals(suitesBefore, suitesOf(client, test));
+  }
+
+  /** A PUT for an entity type contracts do not support is a bad request, not a missing entity. */
+  @Test
+  void testPutForUnsupportedEntityTypeIsRejected(TestNamespace ns) {
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("unsupported_put"))
+            .withEntity(
+                new EntityReference().withId(UUID.randomUUID()).withType("unsupportedType"));
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().dataContracts().createOrUpdate(request));
+    assertEquals(400, error.getStatusCode());
+  }
+
+  private static int suitesOf(OpenMetadataClient client, TestCase test) {
+    List<TestSuite> suites =
+        client.testCases().get(test.getId().toString(), "testSuites").getTestSuites();
+    return suites == null ? 0 : suites.size();
+  }
+
+  private DataContract contractWithExpectations(
+      TestNamespace ns, Table table, String name, List<TestCase> tests) {
+    return createEntity(
+        new CreateDataContract()
+            .withName(ns.prefix(name))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(tests.stream().map(TestCase::getEntityReference).toList()));
+  }
+
+  private static TestCase rowCountTest(
+      OpenMetadataClient client, TestNamespace ns, Table table, String name) {
+    return TestCaseBuilder.create(client)
+        .name(ns.prefix(name))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+  }
+
+  /**
+   * Stores {@code contract} with {@code expectations}, pointing at {@code owner}'s suite, with the
+   * suite linked back to it. The server runs in-process, so this seeds a state no public API can
+   * produce any more.
+   */
+  private static void pointAtTestSuiteOf(
+      DataContract contract, DataContract owner, List<TestCase> expectations) {
+    DataContract stored =
+        Entity.getCollectionDAO().dataContractDAO().findEntityById(contract.getId());
+    Entity.getCollectionDAO()
+        .dataContractDAO()
+        .update(
+            stored
+                .withTestSuite(owner.getTestSuite())
+                .withQualityExpectations(
+                    expectations.stream().map(TestCase::getEntityReference).toList()));
+    EntityRepository.invalidateCacheForEntity(
+        Entity.DATA_CONTRACT, contract.getId(), contract.getFullyQualifiedName());
+    Entity.getEntityRepository(Entity.DATA_CONTRACT)
+        .addRelationship(
+            owner.getTestSuite().getId(),
+            contract.getId(),
+            Entity.TEST_SUITE,
+            Entity.DATA_CONTRACT,
+            Relationship.CONTAINS);
   }
 
   private static ContractSLA dailyRefresh() {

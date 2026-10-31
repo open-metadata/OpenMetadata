@@ -30,6 +30,7 @@ import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { useTabSearchMemory } from '../../../hooks/observability/data-quality/useTabSearchMemory';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import DataQualityProvider, {
   useDataQualityProvider,
@@ -100,7 +101,7 @@ const DataQualityTabContent = ({
 
 const DataQualityPage = () => {
   const { t } = useTranslation();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   // App mode keeps visited routes mounted, so this page outlives its own URL.
   // Its filters come from the query string — which is global — so once another
   // route owns the URL, anything derived from it here is that route's state,
@@ -134,17 +135,21 @@ const DataQualityPage = () => {
     [activeTab]
   );
 
+  const getTabSearch = useTabSearchMemory(activeTab, search, ownsTheUrl);
+
   const handleTabChange = useCallback(
     (tabKey: string) => {
       if (tabKey !== activeTab) {
-        navigate(
-          observabilityRouterClassBase.getDataQualityPagePath(
-            tabKey as DataQualityPageTabs
-          )
-        );
+        const targetTab = tabKey as DataQualityPageTabs;
+
+        void navigate({
+          pathname:
+            observabilityRouterClassBase.getDataQualityPagePath(targetTab),
+          search: getTabSearch(targetTab),
+        });
       }
     },
-    [navigate, activeTab]
+    [navigate, activeTab, getTabSearch]
   );
 
   const handleOpenTestCaseModal = useCallback(

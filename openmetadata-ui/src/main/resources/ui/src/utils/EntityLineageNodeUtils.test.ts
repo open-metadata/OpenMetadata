@@ -86,17 +86,11 @@ describe('getUpstreamDownstreamNodesEdges', () => {
   });
 
   describe('at the size a busy table returns', () => {
-    beforeAll(() => {
-      jest.useRealTimers();
-    });
-
-    afterAll(() => {
-      jest.useFakeTimers();
-    });
-
-    // Scanning every edge per visited node grows with nodes x edges and took
-    // over a second here; the indexed walk takes tens of milliseconds.
-    it('walks 2,551 nodes and 52,550 edges in well under a second', () => {
+    // Counts endpoint reads instead of timing the walk: a wall-clock bound
+    // flaked on loaded CI runners, while the read count tells the indexed walk
+    // (a few reads per edge) from the quadratic scan (every edge per visited
+    // node, #34904) on any machine.
+    it('walks 2,551 nodes and 52,550 edges reading each edge a bounded number of times', () => {
       const nodes = [ref('root')];
       const edges: EdgeDetails[] = [];
       for (let i = 0; i < 50; i++) {
@@ -111,17 +105,29 @@ describe('getUpstreamDownstreamNodesEdges', () => {
         }
       }
 
-      const started = performance.now();
+      let endpointReads = 0;
+      const countedEdges = edges.map(({ fromEntity, toEntity }) => ({
+        get fromEntity() {
+          endpointReads++;
+
+          return fromEntity;
+        },
+        get toEntity() {
+          endpointReads++;
+
+          return toEntity;
+        },
+      }));
+
       const { upstreamNodes, upstreamEdges } = getUpstreamDownstreamNodesEdges(
-        edges,
+        countedEdges,
         nodes,
         'root'
       );
-      const elapsedMs = performance.now() - started;
 
       expect(upstreamNodes).toHaveLength(2550);
       expect(upstreamEdges).toHaveLength(52550);
-      expect(elapsedMs).toBeLessThan(300);
+      expect(endpointReads).toBeLessThanOrEqual(edges.length * 4);
     });
   });
 });
