@@ -370,6 +370,11 @@ plugins: dict[str, set[str]] = {
         "thrift-sasl~=0.4",
         "impyla~=0.24.0",
     },
+    "informix": {
+        # JDBC-only: the driver generation must match the server, and the
+        # bson jar is fetched alongside it. See informix/dialect.py.
+        "sqlalchemy-jdbcapi>=2.2.1,<3",
+    },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
         # ADBC 1.13 requires Python >=3.11; retain 1.12 for Python 3.10 compatibility.

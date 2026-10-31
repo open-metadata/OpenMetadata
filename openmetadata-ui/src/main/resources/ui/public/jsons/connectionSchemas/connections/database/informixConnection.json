@@ -294,18 +294,6 @@
       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
       "type": "boolean",
       "default": true
-    },
-    "supportsLineageExtraction": {
-      "title": "Supports Lineage Extraction",
-      "description": "Supports Lineage Extraction.",
-      "type": "boolean",
-      "default": true
-    },
-    "supportsUsageExtraction": {
-      "title": "Supports Usage Extraction",
-      "description": "Supports Usage Extraction.",
-      "type": "boolean",
-      "default": true
     }
   },
   "additionalProperties": false,
