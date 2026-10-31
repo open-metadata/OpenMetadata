@@ -76,7 +76,11 @@ def _resolve_secret_value(value: str) -> str:
     try:
         resolved = secrets_manager.get_string_value(secret_id)
     except Exception as exc:  # pylint: disable=broad-except
-        logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")
+        logger.error(
+            "Secret value [%s] not present in the configured secrets manager: %s",
+            secret_id,
+            exc,
+        )
         return value
     return resolved if resolved is not None else value
 
