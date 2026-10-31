@@ -340,7 +340,7 @@ public abstract class SecretsManager {
         decryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection());
     ingestionPipeline.setOpenMetadataServerConnection(null);
     // we don't store OM conn sensitive data
-    IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
+    IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline);
     try {
       decryptPasswordFields(ingestionPipeline);
     } catch (Exception e) {

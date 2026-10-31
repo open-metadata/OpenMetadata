@@ -2695,6 +2695,226 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
   }
 
+  /** A user created by an admin with a password, so its stored record carries the hash. */
+  private User createPasswordUser(TestNamespace ns, String base) {
+    String userName = ns.shortPrefix(base);
+    String password = "Keep!Passw0rd" + ns.uniqueShortId();
+    return createEntity(
+        new CreateUser()
+            .withName(userName)
+            .withEmail(userName + "@example.com")
+            .withPassword(password)
+            .withConfirmPassword(password)
+            .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+            .withIsBot(false));
+  }
+
+  /**
+   * Version and history snapshots answer like the live read: another user's email stays masked
+   * and no credential appears, through every snapshot route.
+   */
+  @Test
+  void test_versionsAndHistoryMaskAnotherUsersEmail(TestNamespace ns) throws Exception {
+    User target = createPasswordUser(ns, "histmask");
+    OpenMetadataClient viewer = clientFor(createEntity(selfLoginUserRequest()));
+    String live =
+        viewer
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/" + target.getId(), null);
+    assertFalse(live.contains(target.getEmail()), "the live read masks the email for this viewer");
+
+    String history =
+        viewer
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/users/history?startTs="
+                    + target.getUpdatedAt()
+                    + "&endTs="
+                    + target.getUpdatedAt()
+                    + "&limit=500",
+                null);
+    assertTrue(history.contains(target.getId().toString()), "history must list the user");
+    List<String> snapshots =
+        List.of(
+            viewer
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET, "/v1/users/" + target.getId() + "/versions", null),
+            viewer
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/users/" + target.getId() + "/versions/" + target.getVersion(),
+                    null),
+            history);
+    for (String snapshot : snapshots) {
+      assertFalse(snapshot.contains(target.getEmail()), snapshot);
+      assertFalse(snapshot.contains("authenticationMechanism"), snapshot);
+    }
+  }
+
+  /** A write answers with the user as a read would, never with the stored password hash. */
+  @Test
+  void test_writeResponsesCarryNoPasswordHash(TestNamespace ns) throws Exception {
+    User user = createPasswordUser(ns, "writemask");
+    OpenMetadataClient self = clientFor(user);
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/description")
+        .put("value", "edited by its owner");
+
+    String patched =
+        self.getHttpClient().executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch);
+    String put =
+        self.getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users",
+                new CreateUser()
+                    .withName(user.getName())
+                    .withEmail(user.getEmail())
+                    .withDescription("put by its owner"));
+
+    assertTrue(patched.contains("edited by its owner"), patched);
+    assertTrue(put.contains("put by its owner"), put);
+    for (String response : List.of(patched, put)) {
+      assertFalse(response.contains("authenticationMechanism"), response);
+    }
+  }
+
+  /** EditAll on users lets a non-admin edit an admin's record, never take its admin flag away. */
+  @Test
+  void test_nonAdminPutCannotRevokeAdmin(TestNamespace ns) {
+    String name = "keptadmin" + ns.shortPrefix();
+    User target =
+        createEntity(
+            new CreateUser().withName(name).withEmail(name + "@test.com").withIsAdmin(true));
+    OpenMetadataClient editor = createUserEditorClient(ns);
+
+    editor
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser()
+                .withName(target.getName())
+                .withEmail(target.getEmail())
+                .withDescription("edited by a user editor"),
+            User.class);
+
+    User reread = Users.get(target.getId().toString());
+    assertEquals("edited by a user editor", reread.getDescription());
+    assertTrue(Boolean.TRUE.equals(reread.getIsAdmin()), "a non-admin PUT revoked admin");
+  }
+
+  /**
+   * A users CSV names the team it covers, not a user. Matching that name against a user who happens
+   * to share it would let that user, who owns only their own account, import into the team.
+   */
+  @Test
+  void test_usersImportIsNotAuthorizedByAUserOfTheTeamsName(TestNamespace ns) {
+    String name = "csvteam" + ns.shortPrefix();
+    createGroupTeam(name);
+    User namesake = createEntity(new CreateUser().withName(name).withEmail(name + "@test.com"));
+
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> usersImport(clientFor(namesake), name, "name\n", true));
+    assertEquals(403, denied.getStatusCode(), denied.getMessage());
+  }
+
+  /** EditAll on users lets a non-admin import users, never take an admin's admin flag away. */
+  @Test
+  void test_usersImportCannotRevokeAdmin(TestNamespace ns) throws Exception {
+    String teamName = "csvadmins" + ns.shortPrefix();
+    Team team = createGroupTeam(teamName);
+    String adminName = "teamadmin" + ns.shortPrefix();
+    User teamAdmin =
+        createEntity(
+            new CreateUser()
+                .withName(adminName)
+                .withEmail(adminName + "@test.com")
+                .withIsAdmin(true)
+                .withTeams(List.of(team.getId())));
+    String header =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/export?team=" + teamName, null)
+            .lines()
+            .findFirst()
+            .orElseThrow();
+    String row =
+        String.join(",", adminName, "", "", teamAdmin.getEmail(), "", "false", teamName, "");
+
+    String result =
+        usersImport(createUserEditorClient(ns), teamName, header + "\n" + row + "\n", false);
+
+    assertEquals(1, PATCH_MAPPER.readTree(result).path("numberOfRowsFailed").asInt(), result);
+    assertTrue(Boolean.TRUE.equals(Users.get(teamAdmin.getId().toString()).getIsAdmin()));
+  }
+
+  /**
+   * A users CSV carries every member's email in the clear, which a user read masks for anyone but
+   * an admin or a bot. ViewAll on users, which the default policies give every user, is not enough
+   * to export one, on either route.
+   */
+  @Test
+  void test_usersExportNeedsAccessToEmails(TestNamespace ns) {
+    String teamName = "csvexport" + ns.shortPrefix();
+    Team team = createGroupTeam(teamName);
+    String memberName = "csvmember" + ns.shortPrefix();
+    User member =
+        createEntity(
+            new CreateUser()
+                .withName(memberName)
+                .withEmail(memberName + "@test.com")
+                .withTeams(List.of(team.getId())));
+    String readerName = "csvreader" + ns.shortPrefix();
+    User reader =
+        createEntity(new CreateUser().withName(readerName).withEmail(readerName + "@test.com"));
+    OpenMetadataClient asReader = clientFor(reader);
+
+    for (String path :
+        List.of("/v1/users/export?team=" + teamName, "/v1/users/exportAsync?team=" + teamName)) {
+      OpenMetadataException denied =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> asReader.getHttpClient().executeForString(HttpMethod.GET, path, null));
+      assertEquals(403, denied.getStatusCode(), path + ": " + denied.getMessage());
+    }
+    assertTrue(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/export?team=" + teamName, null)
+            .contains(member.getEmail()));
+  }
+
+  private static Team createGroupTeam(String name) {
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(name);
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    return SdkClients.adminClient().teams().create(createTeam);
+  }
+
+  private static String usersImport(
+      OpenMetadataClient client, String team, String csv, boolean dryRun) {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/import",
+            csv,
+            RequestOptions.builder()
+                .header("Content-Type", "text/plain; charset=UTF-8")
+                .queryParam("team", team)
+                .queryParam("dryRun", String.valueOf(dryRun))
+                .build());
+  }
+
   private static HttpResponse<String> basicLogin(String email, String password) throws Exception {
     LoginRequest request =
         new LoginRequest()

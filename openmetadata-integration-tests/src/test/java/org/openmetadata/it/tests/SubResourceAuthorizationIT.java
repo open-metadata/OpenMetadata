@@ -25,6 +25,7 @@ import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.DenyPolicyPrincipals;
+import org.openmetadata.it.util.ImpersonatingClients;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -122,6 +123,19 @@ public class SubResourceAuthorizationIT {
     assertHttpStatusFor(
         denied, 403, HttpMethod.GET, "/v1/tables/entityRelationship/Upstream" + fqnQuery, null);
     assertNotNull(adminGet("/v1/tables/entityRelationship" + fqnQuery));
+  }
+
+  /**
+   * The RDF diff reads stored versions directly, past the redaction each entity's own versions
+   * endpoint applies, so viewing the entity is not enough to read it.
+   */
+  @Test
+  void rdfEntityDiff_isAdminOnly(TestNamespace ns) {
+    Table table = createTable(ns);
+    String path = "/v1/rdf/entity/table/" + table.getId() + "/diff?fromVersion=0.1&toVersion=0.1";
+
+    assertHttpStatusFor(SdkClients.dataConsumerClient(), 403, HttpMethod.GET, path, null);
+    assertNotNull(adminGet(path));
   }
 
   @Test
@@ -565,6 +579,163 @@ public class SubResourceAuthorizationIT {
             "/v1/lineage/export?upstreamDepth=1&downstreamDepth=1&fqn=" + fqn)) {
       assertHttpStatusFor(denied, 403, HttpMethod.GET, path, null);
     }
+  }
+
+  /**
+   * Search lineage checks the root, and must also leave out the neighbours the caller cannot view:
+   * their documents, the edges to them, and their entries in a kept node's upstream lineage.
+   */
+  @Test
+  void lineageSearch_leavesOutNeighboursTheCallerCannotView(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table open = createTable(ns, schema, "nb_open", List.of());
+    Table sensitive = createTable(ns, schema, "nb_sensitive", List.of(piiSensitiveTag()));
+    addLineage(sensitive, open);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("neighbours"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+    String fqn = encodeURIComponent(open.getFullyQualifiedName());
+    List<String> paths =
+        List.of(
+            "/v1/lineage/getLineage?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn,
+            "/v1/lineage/getLineage/Upstream?type=table&upstreamDepth=1&downstreamDepth=0&fqn="
+                + fqn,
+            "/v1/lineage/getLineageByEntityCount?entityType=table&direction=Upstream&nodeDepth=1&fqn="
+                + fqn,
+            "/v1/lineage/export?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn);
+    Awaitility.await("the admin finds the upstream neighbour on every path")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              for (String path : paths) {
+                assertTrue(adminGet(path).contains(sensitive.getFullyQualifiedName()), path);
+              }
+            });
+
+    for (String path : paths) {
+      String view = denied.getHttpClient().executeForString(HttpMethod.GET, path, null);
+      assertFalse(view.contains(sensitive.getFullyQualifiedName()), path + " -> " + view);
+      assertFalse(view.contains(sensitive.getId().toString()), path + " -> " + view);
+    }
+    String graph = denied.getHttpClient().executeForString(HttpMethod.GET, paths.getFirst(), null);
+    assertTrue(graph.contains(open.getFullyQualifiedName()), graph);
+  }
+
+  /**
+   * An async lineage export runs after the request, as the user who asked. A deny that holds only
+   * for impersonated requests must hold for the export a bot started on that user's behalf too, on
+   * both export routes.
+   */
+  @Test
+  void lineageAsyncExport_keepsTheImpersonationItWasRequestedUnder(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table open = createTable(ns, schema, "imp_open", List.of());
+    Table sensitive = createTable(ns, schema, "imp_sensitive", List.of(piiSensitiveTag()));
+    addLineage(sensitive, open);
+    User target =
+        DenyPolicyPrincipals.userDeniedWhen(
+            ns.shortPrefix("impexport"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "isImpersonated() && matchAnyTag('" + PII_SENSITIVE + "')");
+    OpenMetadataClient botForTarget = ImpersonatingClients.actingAs(ns, target.getName());
+    String fqn = encodeURIComponent(open.getFullyQualifiedName());
+    String syncExport =
+        "/v1/lineage/export?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn;
+    Awaitility.await("the admin export names the upstream neighbour")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertTrue(adminGet(syncExport).contains(sensitive.getFullyQualifiedName())));
+    assertFalse(
+        botForTarget
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, syncExport, null)
+            .contains(sensitive.getFullyQualifiedName()),
+        "the deny holds for the impersonated request itself");
+
+    for (String asyncExport :
+        List.of(
+            "/v1/lineage/exportAsync?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn,
+            "/v1/lineage/exportByEntityCountAsync?entityType=table&direction=Upstream&nodeDepth=1&fqn="
+                + fqn)) {
+      String csv = asyncExportResult(botForTarget, asyncExport);
+      assertFalse(csv.contains(sensitive.getFullyQualifiedName()), asyncExport + " -> " + csv);
+    }
+  }
+
+  /**
+   * An entity-count page is one window of the nodes up to a depth, sorted by depth, so the node that
+   * links a deeper one to the root can sit on an earlier page. Reachability is decided on the whole
+   * graph before the page is cut; decided on the page, a node the caller can view would drop out.
+   * On this branch the root takes the first slot of the window, so the second-depth node is alone
+   * at offset 2.
+   */
+  @Test
+  void lineageByEntityCount_keepsANodeWhoseLinkToTheRootIsOnAnotherPage(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table root = createTable(ns, schema, "page_root", List.of());
+    Table middle = createTable(ns, schema, "page_middle", List.of());
+    Table leaf = createTable(ns, schema, "page_leaf", List.of());
+    addLineage(root, middle);
+    addLineage(middle, leaf);
+    OpenMetadataClient restricted =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("pagereach"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+    String leafPage =
+        "/v1/lineage/getLineageByEntityCount?entityType=table&direction=Downstream&nodeDepth=2"
+            + "&from=2&size=1&fqn="
+            + encodeURIComponent(root.getFullyQualifiedName());
+    Awaitility.await("the admin finds the second-depth node alone on its page")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertTrue(adminGet(leafPage).contains(leaf.getFullyQualifiedName())));
+
+    String page = restricted.getHttpClient().executeForString(HttpMethod.GET, leafPage, null);
+
+    assertTrue(page.contains(leaf.getFullyQualifiedName()), page);
+  }
+
+  private static String asyncExportResult(OpenMetadataClient client, String exportPath) {
+    String jobId =
+        JsonUtils.readTree(
+                client.getHttpClient().executeForString(HttpMethod.GET, exportPath, null))
+            .path("jobId")
+            .asText();
+    String jobPath = "/v1/csvAsyncJobs/" + jobId;
+    Awaitility.await("export job " + jobId + " completes")
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () -> {
+              String status =
+                  JsonUtils.readTree(
+                          client.getHttpClient().executeForString(HttpMethod.GET, jobPath, null))
+                      .path("status")
+                      .asText();
+              assertNotEquals("FAILED", status, exportPath);
+              return "COMPLETED".equals(status);
+            });
+    return client.getHttpClient().executeForString(HttpMethod.GET, jobPath + "/result", null);
+  }
+
+  /** Platform lineage is every asset's lineage at once, unfiltered, so it is admin only. */
+  @Test
+  void platformLineage_isAdminOnly() {
+    String path = "/v1/lineage/getPlatformLineage?view=service";
+
+    assertHttpStatusFor(SdkClients.dataConsumerClient(), 403, HttpMethod.GET, path, null);
+    assertNotNull(adminGet(path));
   }
 
   /** Column search walks every table, so it must leave out the tables the caller cannot view. */

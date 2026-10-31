@@ -892,7 +892,7 @@ public class UserRepository extends EntityRepository<User> {
     // back would erase them -- for a bot, that means its token.
     UUID userId = getByEmail(null, currentEmail, EntityUtil.Fields.EMPTY_FIELDS).getId();
     if (checkEmailAlreadyExists(normalizedNewEmail)
-        && !normalizedNewEmail.equalsIgnoreCase(currentEmail)) {
+        && !SecurityUtil.sameIdentifier(normalizedNewEmail, currentEmail)) {
       throw new IllegalArgumentException(
           String.format("Email %s is already used by another account", normalizedNewEmail));
     }
@@ -1542,7 +1542,9 @@ public class UserRepository extends EntityRepository<User> {
     /**
      * The import endpoints authorize {@code EDIT_ALL} on users, not administrator, so anyone who
      * can manage a team could otherwise hand themselves {@code isAdmin} or any role straight from
-     * the spreadsheet - the escalation the PATCH and PUT paths already reject.
+     * the spreadsheet - the escalation the PATCH and PUT paths already reject. A row carries the
+     * flag whole, so one for an existing admin would revoke it just as easily: the flag is
+     * admin-only in both directions.
      *
      * <p>Keyed off {@code importedBy} rather than a {@code SecurityContext} because the async
      * import ({@code PUT /v1/users/importAsync}) runs the rows on a background thread where no
@@ -1553,7 +1555,7 @@ public class UserRepository extends EntityRepository<User> {
       if (!processRecord || SubjectContext.getSubjectContext(importedBy).isAdmin()) {
         return;
       }
-      if (Boolean.TRUE.equals(user.getIsAdmin())) {
+      if (Boolean.TRUE.equals(user.getIsAdmin()) || isStoredAdmin(user)) {
         importFailure(printer, privilegedFieldRequiresAdmin(5, "isAdmin"), csvRecord);
         processRecord = false;
         return;
@@ -1562,6 +1564,11 @@ public class UserRepository extends EntityRepository<User> {
         importFailure(printer, privilegedFieldRequiresAdmin(7, ROLES_FIELD), csvRecord);
         processRecord = false;
       }
+    }
+
+    private static boolean isStoredAdmin(User user) {
+      User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
+      return stored != null && Boolean.TRUE.equals(stored.getIsAdmin());
     }
 
     public static String privilegedFieldRequiresAdmin(int field, String fieldName) {
