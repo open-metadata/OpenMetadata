@@ -35,6 +35,37 @@ public class PasswordAnnotator extends AbstractAnnotator {
         && "password".equals(propertyNode.get("format").asText())) {
       field.annotate(PasswordField.class);
     }
+    if (isPasswordValuedMap(propertyNode)) {
+      annotateAdditionalPropertiesAccessor(field);
+    }
+  }
+
+  /**
+   * A property whose schema is an object with password-formatted {@code additionalProperties} holds
+   * a map of secrets (e.g. Kafka {@code consumerConfig}). jsonschema2pojo generates a holder class
+   * whose only member is the {@code additionalProperties} map; the {@code format} lives on the
+   * property schema, never on the generated member, so without this the map is invisible to the
+   * secret walkers.
+   * ADR:2026-10-30-password-format-on-additionalproperties-makes-a-map-of-secrets
+   */
+  private boolean isPasswordValuedMap(JsonNode propertyNode) {
+    JsonNode additionalProperties = propertyNode.get("additionalProperties");
+    return additionalProperties != null
+        && additionalProperties.isObject()
+        && additionalProperties.get("format") != null
+        && "password".equals(additionalProperties.get("format").asText());
+  }
+
+  private void annotateAdditionalPropertiesAccessor(JFieldVar field) {
+    if (field.type() instanceof JDefinedClass mapHolderClass) {
+      JFieldVar additionalProperties = mapHolderClass.fields().get("additionalProperties");
+      if (additionalProperties != null) {
+        additionalProperties.annotate(PasswordField.class);
+      }
+      mapHolderClass.methods().stream()
+          .filter(method -> "getAdditionalProperties".equals(method.name()))
+          .forEach(method -> method.annotate(PasswordField.class));
+    }
   }
 
   /** Add {@link PasswordField} annotation to getter methods */

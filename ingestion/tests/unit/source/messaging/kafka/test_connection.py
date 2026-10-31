@@ -108,3 +108,52 @@ def test_close_consumer_releases_a_built_consumer():
         client.close_consumer()
 
     mock_consumer.return_value.close.assert_called_once()
+
+
+def test_secret_references_in_config_maps_are_resolved():
+    """Map entries arrive as `secret:` references when an external secrets manager is
+    configured; they must be resolved before the dict reaches librdkafka."""
+    from metadata.ingestion.source.messaging.kafka.connection import get_connection
+
+    config = _kafka_config(
+        consumerConfig={
+            "sasl.oauthbearer.client.secret": "secret:/om/messaging/prod_kafka/consumerconfig/additionalproperties/sasl_oauthbearer_client_secret",
+            "session.timeout.ms": 6000,
+        },
+        schemaRegistryConfig={
+            "basic.auth.user.info": "secret:/om/messaging/prod_kafka/schemaregistryconfig/additionalproperties/basic_auth_user_info",
+        },
+        schemaRegistryURL="https://registry.example.com",
+    )
+    secrets_manager = MagicMock()
+    secrets_manager.get_string_value.side_effect = lambda secret_id: f"resolved:{secret_id}"
+
+    with (
+        patch(f"{CONNECTION_MODULE}.AdminClient") as mock_admin,
+        patch(f"{CONNECTION_MODULE}.SchemaRegistryClient") as mock_registry,
+        patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as mock_factory,
+    ):
+        mock_factory.return_value.get_secrets_manager.return_value = secrets_manager
+        get_connection(config)
+
+    admin_config = mock_admin.call_args.args[0]
+    assert admin_config["sasl.oauthbearer.client.secret"].startswith("resolved:/om/messaging")
+    assert admin_config["session.timeout.ms"] == 6000
+    registry_config = mock_registry.call_args.args[0]
+    assert registry_config["basic.auth.user.info"].startswith("resolved:/om/messaging")
+
+
+def test_config_maps_pass_through_when_no_secrets_manager_is_configured():
+    from metadata.ingestion.source.messaging.kafka.connection import get_connection
+
+    config = _kafka_config(consumerConfig={"ssl.key.password": "secret:/om/messaging/prod/key"})
+
+    with (
+        patch(f"{CONNECTION_MODULE}.AdminClient") as mock_admin,
+        patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as mock_factory,
+    ):
+        mock_factory.return_value.get_secrets_manager.return_value = None
+        get_connection(config)
+
+    admin_config = mock_admin.call_args.args[0]
+    assert admin_config["ssl.key.password"] == "secret:/om/messaging/prod/key"
