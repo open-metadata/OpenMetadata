@@ -107,9 +107,9 @@ test.describe(
             );
             if (mode === 'ai') {
               await page
-                .getByTestId('ask-main-panel')
+                .getByTestId('ask-rail')
                 .getByTestId('ask-logo-btn')
-                .click();
+                .press('Enter');
               await expect(confirmation).toBeVisible();
               await confirmation
                 .getByRole('button', { name: 'Cancel', exact: true })
