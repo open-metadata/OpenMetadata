@@ -13,13 +13,13 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
   getDataProductInputPorts,
   getDataProductOutputPorts,
   getDataProductPortsView,
 } from '../../../rest/dataProductAPI';
-import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { InputOutputPortsTab } from './InputOutputPortsTab.component';
 import { InputOutputPortsTabProps } from './InputOutputPortsTab.types';
 
