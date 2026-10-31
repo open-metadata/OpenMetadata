@@ -53,20 +53,22 @@ final class GovernanceActivity {
 
   private GovernanceActivity() {}
 
-  static AIGovernanceActivityResponse compute(String entityType, String entityId, int limit) {
+  static AIGovernanceActivityResponse compute(
+      String entityType, String entityId, int limit, AIAssetVisibility visibility) {
     List<EntityInterface<?>> assets = new ArrayList<>();
     boolean singleEntity = entityType != null && entityId != null;
     if (singleEntity) {
+      // The caller already passed a per-asset authorize, which is stricter than the filter.
       EntityInterface<?> single = loadSingle(entityType, entityId);
       if (single != null) {
         assets.add(single);
       }
     } else if (entityType != null) {
-      collect(entityType, assets);
+      collect(entityType, visibility, assets);
     } else {
-      collect(Entity.AI_APPLICATION, assets);
-      collect(Entity.MCP_SERVER, assets);
-      collect(Entity.LLM_MODEL, assets);
+      collect(Entity.AI_APPLICATION, visibility, assets);
+      collect(Entity.MCP_SERVER, visibility, assets);
+      collect(Entity.LLM_MODEL, visibility, assets);
     }
 
     List<AIGovernanceActivityEvent> events = new ArrayList<>();
@@ -93,7 +95,8 @@ final class GovernanceActivity {
     return result;
   }
 
-  private static void collect(String entityType, List<EntityInterface<?>> out) {
+  private static void collect(
+      String entityType, AIAssetVisibility visibility, List<EntityInterface<?>> out) {
     try {
       EntityRepository<? extends EntityInterface<?>> repo = Entity.getEntityRepository(entityType);
       Fields fields = repo.getFields(fieldList(entityType));
@@ -102,7 +105,7 @@ final class GovernanceActivity {
       do {
         ResultList<? extends EntityInterface<?>> page =
             repo.listAfter(null, fields, filter, PAGE_SIZE, after);
-        out.addAll(page.getData());
+        out.addAll(visibility.filter(page.getData()));
         after = page.getPaging() == null ? null : page.getPaging().getAfter();
       } while (after != null);
     } catch (Exception error) {

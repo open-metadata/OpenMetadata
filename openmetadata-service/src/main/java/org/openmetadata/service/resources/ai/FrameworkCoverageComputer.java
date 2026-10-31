@@ -70,13 +70,33 @@ public final class FrameworkCoverageComputer {
 
   public static FrameworkCoverageResponse compute(
       AIGovernanceFramework framework, List<AIFrameworkControl> controls) {
-    return compute(framework, controls, collectInScopeAssets(framework));
+    return compute(framework, controls, AIAssetVisibility.unrestricted());
+  }
+
+  /**
+   * Coverage over the caller's view of the estate: {@code assetsInScope}, {@code affectedAssetCount}
+   * and {@code evidenceCount} count only assets the given visibility admits.
+   */
+  public static FrameworkCoverageResponse compute(
+      AIGovernanceFramework framework,
+      List<AIFrameworkControl> controls,
+      AIAssetVisibility visibility) {
+    return compute(framework, controls, collectInScopeAssets(framework, visibility), visibility);
   }
 
   static FrameworkCoverageResponse compute(
       AIGovernanceFramework framework,
       List<AIFrameworkControl> controls,
       List<EntityInterface<?>> assets) {
+    return compute(framework, controls, assets, AIAssetVisibility.unrestricted());
+  }
+
+  static FrameworkCoverageResponse compute(
+      AIGovernanceFramework framework,
+      List<AIFrameworkControl> controls,
+      List<EntityInterface<?>> assets,
+      AIAssetVisibility visibility) {
+    assets = new ArrayList<>(visibility.filter(assets));
     FrameworkCoverageResponse response = new FrameworkCoverageResponse();
     response.setFrameworkId(framework.getId());
     response.setFrameworkName(framework.getName());
@@ -228,13 +248,14 @@ public final class FrameworkCoverageComputer {
     return recordFramework != null && recordFramework.value().equalsIgnoreCase(frameworkName);
   }
 
-  private static List<EntityInterface<?>> collectInScopeAssets(AIGovernanceFramework framework) {
+  private static List<EntityInterface<?>> collectInScopeAssets(
+      AIGovernanceFramework framework, AIAssetVisibility visibility) {
     FrameworkAutoApplyRules rules = framework.getAutoApply();
     String frameworkName = framework.getName();
     List<EntityInterface<?>> result = new ArrayList<>();
     List<String> assetTypes = autoApplyAssetTypes(rules);
     for (String entityType : assetTypes) {
-      for (EntityInterface<?> entity : listEntities(entityType)) {
+      for (EntityInterface<?> entity : listEntities(entityType, visibility)) {
         // In-scope when the asset matches the auto-apply rules OR already carries
         // a compliance record for this framework (an explicit assessment always
         // counts, even if the asset hasn't declared the matching region/stage).
@@ -266,14 +287,15 @@ public final class FrameworkCoverageComputer {
     return result;
   }
 
-  private static List<? extends EntityInterface<?>> listEntities(String entityType) {
+  private static List<? extends EntityInterface<?>> listEntities(
+      String entityType, AIAssetVisibility visibility) {
     List<EntityInterface<?>> result = new ArrayList<>();
     try {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
       String after = null;
       do {
         ResultList<? extends EntityInterface<?>> page = listEntityPage(entityType, filter, after);
-        result.addAll(page.getData());
+        result.addAll(visibility.filter(page.getData()));
         after = page.getPaging() == null ? null : page.getPaging().getAfter();
       } while (after != null);
     } catch (Exception e) {

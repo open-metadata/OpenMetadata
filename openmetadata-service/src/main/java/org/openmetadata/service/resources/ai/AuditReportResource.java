@@ -32,20 +32,24 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.ai.CreateAuditReport;
 import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.entity.ai.AuditReportStatus;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AuditReportRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 @Path("/v1/auditReports")
@@ -85,8 +89,11 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
       filter.addQueryParam("status", statusFilter);
     }
 
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<AuditReport> reports =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    reports.getData().forEach(report -> retainArtifactsForRequester(securityContext, report));
+    return reports;
   }
 
   @GET
@@ -98,7 +105,8 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
       @PathParam("id") UUID id,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include, null);
+    return retainArtifactsForRequester(
+        securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include, null));
   }
 
   @GET
@@ -110,7 +118,9 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
       @PathParam("fqn") String fqn,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, null);
+    return retainArtifactsForRequester(
+        securityContext,
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, null));
   }
 
   @POST
@@ -147,6 +157,7 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
       @Valid CreateAuditReport create) {
     AuditReport report =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    preserveRequesterOnUpdate(report);
 
     return createOrUpdate(uriInfo, securityContext, report);
   }
@@ -160,7 +171,68 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       JsonPatch patch) {
+    validateRequestedByUnchanged(patch);
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  /**
+   * The pack belongs to the user who requested it: it was assembled with their view of the estate
+   * and its artifacts may only be downloaded by that user or an admin. Everyone else gets the
+   * report shell (status, manifest counts) with the artifacts withheld.
+   */
+  private AuditReport retainArtifactsForRequester(
+      SecurityContext securityContext, AuditReport report) {
+    if (report != null
+        && report.getArtifacts() != null
+        && !report.getArtifacts().isEmpty()
+        && !mayReadArtifacts(securityContext, report)) {
+      report.setArtifacts(List.of());
+    }
+    return report;
+  }
+
+  static boolean mayReadArtifacts(SecurityContext securityContext, AuditReport report) {
+    if (securityContext == null) {
+      return true;
+    }
+    if (DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return true;
+    }
+    String caller = securityContext.getUserPrincipal().getName();
+    EntityReference requestedBy = report.getRequestedBy();
+    return requestedBy != null
+        && (caller.equals(requestedBy.getName())
+            || caller.equals(requestedBy.getFullyQualifiedName()));
+  }
+
+  /**
+   * A create-or-update must not re-home an existing pack: the artifacts were generated with the
+   * original requester's view, so letting a PUT swap {@code requestedBy} would hand that pack to
+   * whoever re-submits it.
+   */
+  void preserveRequesterOnUpdate(AuditReport report) {
+    try {
+      AuditReport existing =
+          repository.getByName(null, report.getName(), repository.getFields("requestedBy"));
+      report.setRequestedBy(existing.getRequestedBy());
+    } catch (EntityNotFoundException e) {
+      // No report under this name yet — nothing to preserve.
+    }
+  }
+
+  /** {@code requestedBy} decides who may download the pack; it can never be changed by a patch. */
+  private static void validateRequestedByUnchanged(JsonPatch patch) {
+    for (jakarta.json.JsonValue operation : patch.toJsonArray()) {
+      jakarta.json.JsonValue path = operation.asJsonObject().get("path");
+      if (path != null && isRequestedByPath(path.toString())) {
+        throw new IllegalArgumentException("Field 'requestedBy' cannot be changed");
+      }
+    }
+  }
+
+  private static boolean isRequestedByPath(String path) {
+    String unquoted = path.replace("\"", "");
+    return unquoted.equals("/requestedBy") || unquoted.startsWith("/requestedBy/");
   }
 
   @DELETE
@@ -195,7 +267,7 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
     if (current == AuditReportStatus.Completed
         || current == AuditReportStatus.Failed
         || current == AuditReportStatus.Cancelled) {
-      return Response.ok(report).build();
+      return Response.ok(retainArtifactsForRequester(securityContext, report)).build();
     }
     String json = org.openmetadata.schema.utils.JsonUtils.pojoToJson(report);
     report.setStatus(AuditReportStatus.Cancelled);
@@ -205,6 +277,6 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
         org.openmetadata.schema.utils.JsonUtils.getJsonPatch(json, updatedJson);
     repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
 
-    return Response.ok(report).build();
+    return Response.ok(retainArtifactsForRequester(securityContext, report)).build();
   }
 }
