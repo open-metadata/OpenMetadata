@@ -129,6 +129,7 @@ function resolvePageSize(hash: number | undefined): number {
   return hash || PAGE_SIZE_MEDIUM;
 }
 
+// ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
 // A non-default page size keeps the control visible so the user can switch back.
 function shouldShowPagination(total: number | undefined, pageSize: number) {
   return (total ?? 0) > pageSize || pageSize !== PAGE_SIZE_MEDIUM;
