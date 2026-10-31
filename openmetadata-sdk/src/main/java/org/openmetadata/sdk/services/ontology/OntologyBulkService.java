@@ -45,9 +45,18 @@ public final class OntologyBulkService {
   }
 
   public OntologyBulkJobList listJobs(final int limit) throws OpenMetadataException {
-    final RequestOptions options =
-        RequestOptions.builder().queryParam("limit", Integer.toString(limit)).build();
-    return httpClient.execute(HttpMethod.GET, JOBS_PATH, null, OntologyBulkJobList.class, options);
+    return listJobs(null, limit);
+  }
+
+  public OntologyBulkJobList listJobs(final String glossaryId, final int limit)
+      throws OpenMetadataException {
+    final RequestOptions.Builder builder =
+        RequestOptions.builder().queryParam("limit", Integer.toString(limit));
+    if (glossaryId != null) {
+      builder.queryParam("glossaryId", glossaryId);
+    }
+    return httpClient.execute(
+        HttpMethod.GET, JOBS_PATH, null, OntologyBulkJobList.class, builder.build());
   }
 
   public OntologyBulkJob getJob(final long id) throws OpenMetadataException {

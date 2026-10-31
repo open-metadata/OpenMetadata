@@ -107,9 +107,10 @@ public final class OntologyBulkResource {
   @Operation(operationId = "listOntologyBulkJobs", summary = "List the caller's ontology bulk jobs")
   public OntologyBulkJobList listJobs(
       @Context final SecurityContext securityContext,
+      @QueryParam("glossaryId") final String glossaryId,
       @QueryParam("limit") @DefaultValue("20") final int limit) {
     final String user = subject(securityContext).user().getName();
-    return jobManager.list(user, boundedLimit(limit));
+    return jobManager.list(user, glossaryId, boundedLimit(limit));
   }
 
   @GET
