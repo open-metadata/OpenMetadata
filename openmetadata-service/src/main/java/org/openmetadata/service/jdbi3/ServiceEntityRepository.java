@@ -270,10 +270,11 @@ public abstract class ServiceEntityRepository<
   protected void postDelete(T service, boolean hardDelete) {
     super.postDelete(service, hardDelete);
     invalidateServiceAttributes(service);
-    // A matchAnyServiceName condition left pointing at a deleted service silently stops matching,
-    // so a Deny rule meant to hide that service's assets would quietly grant access instead.
-    // Only on hard delete: a soft-deleted service still resolves (the snapshot reads Include.ALL)
-    // and so still hides its assets, and rewriting the condition would not survive a restore.
+    // A hard-deleted service takes its assets with it, so a matchAnyServiceName call naming it
+    // can match nothing; it is rewritten to false so a later service reusing the name does not
+    // inherit the rule. Only on hard delete: a soft-deleted service still resolves (the snapshot
+    // reads Include.ALL) and so still hides its assets, and rewriting the condition would not
+    // survive a restore.
     if (hardDelete && !anotherServiceGoesByName(service.getName(), service.getId())) {
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
