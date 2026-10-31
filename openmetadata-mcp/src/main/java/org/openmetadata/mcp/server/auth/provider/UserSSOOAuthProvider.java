@@ -47,7 +47,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
-import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.SamlAuthServletHandler;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -111,7 +110,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private static final long REFRESH_TOKEN_EXPIRY_SECONDS = REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60;
 
   private final JWTTokenGenerator jwtGenerator;
-  private final AuthenticatorHandler credentialAuthenticator;
 
   private final OAuthClientRepository clientRepository;
   private final OAuthAuthorizationCodeRepository codeRepository;
@@ -129,10 +127,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // sets it again whenever the configured base URL changes while the server is running.
   private volatile String issuer;
 
-  public UserSSOOAuthProvider(
-      JWTTokenGenerator jwtGenerator, AuthenticatorHandler credentialAuthenticator) {
+  public UserSSOOAuthProvider(JWTTokenGenerator jwtGenerator) {
     this.jwtGenerator = jwtGenerator;
-    this.credentialAuthenticator = credentialAuthenticator;
 
     this.clientRepository = new OAuthClientRepository();
     this.codeRepository = new OAuthAuthorizationCodeRepository();
@@ -150,10 +146,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   @Override
   public void setIssuer(String issuer) {
     this.issuer = issuer;
-  }
-
-  public AuthenticatorHandler getCredentialAuthenticator() {
-    return credentialAuthenticator;
   }
 
   /**
