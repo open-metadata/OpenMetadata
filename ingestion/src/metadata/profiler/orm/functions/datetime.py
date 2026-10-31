@@ -94,6 +94,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
 
 
 @compiles(DateAddFn, Dialects.Impala)
+@compiles(DateAddFn, Dialects.Impala4)
 def _(elements, compiler, **kwargs):
     """Impala date function. Bare CURRENT_TIMESTAMP is not a function there (#35590)."""
     interval, interval_unit = [compiler.process(element, **kwargs) for element in elements.clauses]
@@ -169,6 +170,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(DatetimeAddFn, Dialects.Impala)
+@compiles(DatetimeAddFn, Dialects.Impala4)
 def _(elements, compiler, **kwargs):
     """Impala datetime function"""
     return impala_function(elements, compiler, **kwargs)
@@ -252,6 +254,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(TimestampAddFn, Dialects.Impala)
+@compiles(TimestampAddFn, Dialects.Impala4)
 def _(elements, compiler, **kwargs):
     """Impala timestamp function"""
     return impala_function(elements, compiler, **kwargs)

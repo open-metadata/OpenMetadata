@@ -14,11 +14,12 @@ Impala datetime SQL generation for DQ / profiler interval filters.
 
 #35590: Impala has no bare CURRENT_TIMESTAMP; the generic compiler emitted that and
 the table_row_inserted_count_to_be_between test aborted with a column-reference error.
+Both ``impala`` and ``impala4`` schemes must register the same overrides (impyla 0.24
+exposes ``dialect.name == "impala4"`` for that URL).
 """
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy import create_engine, text
 
 from metadata.profiler.orm.functions.datetime import (
     DateAddFn,
@@ -27,15 +28,20 @@ from metadata.profiler.orm.functions.datetime import (
 )
 from metadata.profiler.orm.registry import Dialects
 
+IMPALA_SCHEMES = (
+    pytest.param(("impala", Dialects.Impala), id="impala"),
+    pytest.param(("impala4", Dialects.Impala4), id="impala4"),
+)
 
-@pytest.fixture(name="impala_dialect")
-def impala_dialect_fixture():
-    """Compile-only dialect; no Impala connection is required."""
 
-    class _ImpalaDialect(DefaultDialect):
-        name = Dialects.Impala
-
-    return _ImpalaDialect()
+@pytest.fixture(params=IMPALA_SCHEMES)
+def impala_dialect(request):
+    """Compile against the real impyla dialect for each supported scheme."""
+    pytest.importorskip("impala.sqlalchemy")
+    scheme, expected_name = request.param
+    dialect = create_engine(f"{scheme}://").dialect
+    assert dialect.name == expected_name
+    return dialect
 
 
 @pytest.mark.parametrize(
@@ -52,3 +58,8 @@ def test_impala_interval_uses_now_not_bare_current_timestamp(impala_dialect, fn,
 
     assert sql == expected
     assert "CURRENT_TIMESTAMP" not in sql
+
+
+def test_impala4_is_a_registered_dialect():
+    """Without this entry the @compiles(..., Dialects.Impala4) hooks cannot register."""
+    assert Dialects.Impala4 == "impala4"

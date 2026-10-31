@@ -660,6 +660,7 @@ class TestImpalaTableMetricComputer:
 
     def test_impala_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Impala] is ImpalaTableMetricComputer
+        assert table_metric_computer_factory._constructs[Dialects.Impala4] is ImpalaTableMetricComputer
 
 
 class TestDatabricksTableMetricComputer:
