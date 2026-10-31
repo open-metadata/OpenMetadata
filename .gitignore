@@ -211,6 +211,3 @@ ingestion/.claude/agents
 test-results/
 
 docs/superpowers/*
-
-# Local, machine-specific Vite overrides
-openmetadata-ui/src/main/resources/ui/*.tmp.config.mjs
