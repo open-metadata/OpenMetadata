@@ -136,8 +136,17 @@ const ChangeParentHierarchy = ({
         fullyQualifiedName: parent.fullyQualifiedName,
       });
 
-      submittedJobId.current = response.jobId;
       awaitingResponse.current = false;
+      // An approval workflow holds the move: no job runs, and the pending-change
+      // interceptor has already told the user the move awaits approval.
+      if (!response.jobId) {
+        bufferedEvents.current.clear();
+        setLoadingState((prev) => ({ ...prev, isSaving: false }));
+        onCancel();
+
+        return;
+      }
+      submittedJobId.current = response.jobId;
 
       const early = bufferedEvents.current.get(response.jobId);
       bufferedEvents.current.clear();
