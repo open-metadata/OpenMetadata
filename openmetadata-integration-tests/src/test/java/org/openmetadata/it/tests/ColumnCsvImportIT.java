@@ -123,7 +123,8 @@ public class ColumnCsvImportIT {
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     Column id = Columns.build("id").withType(ColumnDataType.BIGINT).primaryKey().create();
-    Column everywhere = Columns.build("everywhere_col").withType(ColumnDataType.VARCHAR).create();
+    Column everywhere =
+        Columns.build("everywhere_col").withType(ColumnDataType.VARCHAR).withLength(100).create();
     List<CreateTable> requests = new ArrayList<>();
     for (int i = 0; i < TABLES_FOR_OVER_CAP; i++) {
       requests.add(
@@ -170,7 +171,7 @@ public class ColumnCsvImportIT {
                     .withType(ColumnDataType.VARCHAR)
                     .withLength(100)
                     .create(),
-                Columns.build("a_note").withType(ColumnDataType.VARCHAR).create())
+                Columns.build("a_note").withType(ColumnDataType.VARCHAR).withLength(100).create())
             .execute();
 
     DatabaseService serviceB = DatabaseServiceTestFactory.createPostgres(ns);
@@ -185,7 +186,7 @@ public class ColumnCsvImportIT {
                     .withType(ColumnDataType.VARCHAR)
                     .withLength(100)
                     .create(),
-                Columns.build("b_note").withType(ColumnDataType.VARCHAR).create())
+                Columns.build("b_note").withType(ColumnDataType.VARCHAR).withLength(100).create())
             .execute();
 
     return new Catalog(serviceA, serviceB, tableA, tableB);

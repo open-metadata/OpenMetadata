@@ -43,7 +43,7 @@ class ColumnRepositoryImportTest {
     repository = spy(new ColumnRepository(mock(Authorizer.class), mock(ElasticSearchClient.class)));
     doReturn(catalog())
         .when(repository)
-        .searchColumns(any(), isNull(), any(), any(), any(), any(), any());
+        .searchColumns(any(), any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -186,6 +186,118 @@ class ColumnRepositoryImportTest {
                 null,
                 null));
     verify(repository, never()).bulkUpdateColumns(any(), any(), any(BulkColumnUpdateRequest.class));
+  }
+
+  @Test
+  void importWithoutDataRowsIsAborted() {
+    CsvImportResult result =
+        repository.importColumnsCSV(
+            null, null, "column,displayName,description\n", true, null, null, null, null, null);
+
+    assertEquals(ApiStatus.ABORTED, result.getStatus());
+    assertEquals("No data to import", result.getAbortReason());
+  }
+
+  @Test
+  void blankLinesAreSkippedAndShortRowsStillResolve() {
+    CsvImportResult result =
+        repository.importColumnsCSV(
+            null,
+            null,
+            "column,displayName,description,tags,glossaryTerms\n"
+                + "\n"
+                + "col_a\n"
+                + "col_a,Display only\n",
+            true,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    // The blank line does not count; one-column and two-column rows resolve the same name.
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(2, result.getNumberOfRowsPassed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+  }
+
+  @Test
+  void writeRowWhoseUpdatePassesNothingIsFailed() {
+    BulkOperationResult writeResult =
+        new BulkOperationResult()
+            .withStatus(ApiStatus.FAILURE)
+            .withNumberOfRowsProcessed(1)
+            .withNumberOfRowsPassed(0)
+            .withNumberOfRowsFailed(1);
+    doReturn(writeResult)
+        .when(repository)
+        .bulkUpdateColumns(any(), any(), any(BulkColumnUpdateRequest.class));
+
+    CsvImportResult result =
+        repository.importColumnsCSV(
+            null,
+            null,
+            "column,displayName,description,tags,glossaryTerms\ncol_a,A,desc,,",
+            false,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    assertEquals(1, result.getNumberOfRowsFailed());
+    assertEquals(0, result.getNumberOfRowsPassed());
+    assertEquals(ApiStatus.FAILURE, result.getStatus());
+  }
+
+  @Test
+  void writeRowSurvivesAnUpdatePassThatThrows() {
+    doReturn(
+            new BulkOperationResult()
+                .withStatus(ApiStatus.SUCCESS)
+                .withNumberOfRowsProcessed(1)
+                .withNumberOfRowsPassed(1))
+        .doThrow(new RuntimeException("database is gone"))
+        .when(repository)
+        .bulkUpdateColumns(any(), any(), any(BulkColumnUpdateRequest.class));
+
+    CsvImportResult result =
+        repository.importColumnsCSV(
+            null,
+            null,
+            "column,displayName,description,tags,glossaryTerms\n"
+                + "col_a,A,desc,,\n"
+                + "col_b,B,desc,,",
+            false,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    // One row applied, one row failed on the throwing pass; the import still answers.
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(1, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+  }
+
+  @Test
+  void searchBasedBulkUpdateDryRunSharesTheOccurrenceConversion() {
+    BulkOperationResult result =
+        repository.bulkUpdateColumns(
+            null,
+            null,
+            new BulkColumnUpdateRequest()
+                .withColumnName("col_a")
+                .withDryRun(true)
+                .withDescription("d"));
+
+    // The stubbed walk returns one occurrence per catalog group; dry-run reports both as
+    // would-update rows without touching a repository.
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(2, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
   }
 
   private static List<GroupedColumnsResponse> catalog() {
