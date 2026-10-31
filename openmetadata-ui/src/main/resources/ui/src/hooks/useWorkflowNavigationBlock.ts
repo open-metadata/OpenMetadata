@@ -67,7 +67,11 @@ export const useWorkflowNavigationBlock = ({
   blockCheck.current = isBlocked;
 
   const currentEntry = useRef(globalThis.history.state);
-  const pendingDelta = useRef<number>();
+  const pendingPop = useRef<{
+    delta: number;
+    sourceIndex: number;
+    state: unknown;
+  }>();
   const restoring = useRef(false);
   const allowPop = useRef(false);
   const currentPath = `${location.pathname}${location.search}${location.hash}`;
@@ -84,16 +88,28 @@ export const useWorkflowNavigationBlock = ({
 
   const proceed = useCallback(() => {
     const path = pendingPathRef.current;
-    const delta = pendingDelta.current;
+    const pop = pendingPop.current;
     const navigation = pendingNavigation.current;
     pendingNavigation.current = undefined;
     pendingPathRef.current = NO_PENDING_PATH;
-    pendingDelta.current = undefined;
+    pendingPop.current = undefined;
     if (navigation) {
       runWithoutBlocking(navigation);
-    } else if (delta !== undefined) {
-      allowPop.current = true;
-      globalThis.history.go(delta);
+    } else if (pop && path) {
+      const currentIndex = globalThis.history.state?.idx;
+      const targetIndex = pop.sourceIndex + pop.delta;
+      // A save can push View mode, replacing the original forward entry.
+      const targetSurvives =
+        typeof currentIndex === 'number' &&
+        (currentIndex === pop.sourceIndex || pop.delta < 0);
+      if (targetSurvives && targetIndex !== currentIndex) {
+        allowPop.current = true;
+        globalThis.history.go(targetIndex - currentIndex);
+      } else {
+        runWithoutBlocking(() =>
+          navigate(path, { replace: true, state: pop.state })
+        );
+      }
     } else if (path) {
       runWithoutBlocking(() => navigate(path));
     }
@@ -112,7 +128,7 @@ export const useWorkflowNavigationBlock = ({
         } else {
           pendingNavigation.current = () => method(...args);
           pendingPathRef.current = NO_PENDING_PATH;
-          pendingDelta.current = undefined;
+          pendingPop.current = undefined;
           setShowModal(true);
         }
       };
@@ -158,9 +174,13 @@ export const useWorkflowNavigationBlock = ({
         typeof nextIndex === 'number' &&
         previousIndex !== nextIndex
       ) {
-        pendingDelta.current = nextIndex - previousIndex;
+        pendingPop.current = {
+          delta: nextIndex - previousIndex,
+          sourceIndex: previousIndex,
+          state: event.state?.usr,
+        };
         restoring.current = true;
-        globalThis.history.go(-pendingDelta.current);
+        globalThis.history.go(-pendingPop.current.delta);
       } else {
         globalThis.history.replaceState(currentEntry.current, '', currentPath);
         setShowModal(true);
@@ -191,6 +211,7 @@ export const useWorkflowNavigationBlock = ({
       e.preventDefault();
       e.stopPropagation();
       pendingNavigation.current = undefined;
+      pendingPop.current = undefined;
       blockAndShowModal(href, pendingPathRef, setShowModal);
     },
     [currentPath]
@@ -216,7 +237,7 @@ export const useWorkflowNavigationBlock = ({
   const closeModal = useCallback(() => {
     setShowModal(false);
     pendingPathRef.current = NO_PENDING_PATH;
-    pendingDelta.current = undefined;
+    pendingPop.current = undefined;
     pendingNavigation.current = undefined;
   }, []);
 
@@ -234,7 +255,7 @@ export const useWorkflowNavigationBlock = ({
       proceed();
     } else {
       pendingPathRef.current = NO_PENDING_PATH;
-      pendingDelta.current = undefined;
+      pendingPop.current = undefined;
       pendingNavigation.current = undefined;
     }
   }, [onSaveWorkflow, proceed]);

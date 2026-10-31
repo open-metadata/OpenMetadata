@@ -107,7 +107,7 @@ test.describe(
             );
             if (mode === 'ai') {
               await page
-                .getByTestId('ask-rail')
+                .getByTestId('ask-main-panel')
                 .getByTestId('ask-logo-btn')
                 .click();
               await expect(confirmation).toBeVisible();
