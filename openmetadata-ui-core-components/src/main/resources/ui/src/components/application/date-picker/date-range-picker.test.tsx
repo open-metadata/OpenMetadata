@@ -124,4 +124,11 @@ describe('DateRangePicker dismiss', () => {
 
     expect(onApply).toHaveBeenCalledWith(undefined);
   });
+
+  it('draws the dialog with a shadow only, no outline', () => {
+    render(<DateRangePicker />);
+    fireEvent.click(screen.getByRole('button'));
+
+    expect(screen.getByRole('dialog').className).not.toMatch(/outline/);
+  });
 });

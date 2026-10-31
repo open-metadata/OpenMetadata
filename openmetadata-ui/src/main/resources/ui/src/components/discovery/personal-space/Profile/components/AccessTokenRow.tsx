@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   Card,
+  ConfirmPopover,
   FeaturedIcon,
   Select,
   Skeleton,
@@ -183,7 +184,7 @@ const AccessTokenDetails = ({
   isLoading: boolean;
   isLimitReached: boolean;
   handleRegenerate: () => void;
-  handleRevoke: () => void;
+  handleRevoke: () => Promise<boolean>;
 }) => (
   <Card
     className="tw:flex tw:flex-col ai-profile-page__edit-card tw:w-full"
@@ -276,15 +277,21 @@ const AccessTokenDetails = ({
         onClick={handleRegenerate}>
         {t('label.regenerate')}
       </Button>
-      <Button
-        color="secondary-destructive"
-        data-testid="revoke-token"
-        iconLeading={<Trash02 height={12} width={12} />}
-        isLoading={isLoading}
-        size="sm"
-        onClick={handleRevoke}>
-        {t('label.revoke')}
-      </Button>
+      <ConfirmPopover
+        confirmText={t('label.revoke')}
+        data-testid="revoke-token-popover"
+        description={t('message.are-you-sure-to-revoke-access-personal-access')}
+        title={t('message.are-you-sure')}
+        onConfirm={handleRevoke}>
+        <Button
+          color="secondary-destructive"
+          data-testid="revoke-token"
+          iconLeading={<Trash02 height={12} width={12} />}
+          isLoading={isLoading}
+          size="sm">
+          {t('label.revoke')}
+        </Button>
+      </ConfirmPopover>
       {isLimitReached && <TokenLimitHint t={t} />}
     </Box>
   </Card>
@@ -394,14 +401,18 @@ const AccessTokenRow: React.FC = () => {
 
   const handleRevoke = async () => {
     if (!token?.token) {
-      return;
+      return false;
     }
     setIsLoading(true);
     try {
       await revokeToken(token.token);
       setToken(undefined);
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsLoading(false);
     }

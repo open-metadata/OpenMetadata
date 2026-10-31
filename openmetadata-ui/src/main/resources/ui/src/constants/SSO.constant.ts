@@ -867,7 +867,7 @@ export interface AuthorizerConfiguration {
 export const SSO_AUTHENTICATION_FIELD_GROUPS = {
   basic: ['provider', 'providerName'],
   client: ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'],
-  authority: ['authority', 'domain'],
+  authority: ['authority'],
   security: ['publicKeyUrls', 'tokenValidationAlgorithm'],
   credentials: ['secret', 'clientSecret'],
   // Each provider object is a card of its own.

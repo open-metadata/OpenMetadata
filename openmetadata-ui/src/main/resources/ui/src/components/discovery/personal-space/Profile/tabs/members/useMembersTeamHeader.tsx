@@ -94,18 +94,18 @@ const buildTitleInput = (
         }}
       />
       <Button
-        color="primary"
-        data-testid="save-display-name"
-        size="xs"
-        onPress={onSaveDisplayName}>
-        {t('label.save')}
-      </Button>
-      <Button
         color="tertiary"
         data-testid="cancel-display-name"
         size="xs"
         onPress={onCancelEditName}>
         {t('label.cancel')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="save-display-name"
+        size="xs"
+        onPress={onSaveDisplayName}>
+        {t('label.save')}
       </Button>
     </Box>
   ) : undefined;

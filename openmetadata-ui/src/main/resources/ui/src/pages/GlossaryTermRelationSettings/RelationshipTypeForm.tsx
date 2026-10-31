@@ -160,6 +160,7 @@ const RelationshipTypeForm = ({
       className="tw:flex tw:flex-col tw:gap-6"
       data-testid="relation-type-form">
       <Input
+        isRequired
         data-testid="name-input"
         hint={errors.name}
         isDisabled={isEditing}
@@ -169,6 +170,7 @@ const RelationshipTypeForm = ({
         onChange={(value) => update('name', value)}
       />
       <Input
+        isRequired
         data-testid="display-name-input"
         hint={errors.displayName}
         isInvalid={Boolean(errors.displayName)}
@@ -202,6 +204,7 @@ const RelationshipTypeForm = ({
         onChange={(value) => update('inverse', value || undefined)}
       />
       <Input
+        isRequired
         data-testid="rdf-predicate-input"
         hint={errors.rdfPredicate}
         isInvalid={Boolean(errors.rdfPredicate)}

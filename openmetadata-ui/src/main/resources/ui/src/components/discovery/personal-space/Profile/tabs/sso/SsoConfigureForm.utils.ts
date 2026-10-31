@@ -12,12 +12,12 @@
  */
 
 import { orderProperties, RJSFSchema, UiSchema } from '@rjsf/utils';
-import { omit } from 'lodash';
 import { ADVANCED_PROPERTIES } from '../../../../../../constants/Services.constant';
 import {
   SSO_AUTHENTICATION_FIELD_GROUPS,
   SSO_AUTHORIZER_FIELD_GROUPS,
 } from '../../../../../../constants/SSO.constant';
+import { t } from '../../../../../../utils/i18next/LocalUtil';
 import { FIELD_MAPPINGS } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
 
 /**
@@ -36,74 +36,102 @@ export const getFieldDocsByName = (
   ),
 });
 
-/**
- * The classic SSO uiSchema names two renderers only that page registers.
- * FormBuilderV1's own cover them: role names as tags (the field's default
- * array renderer) and the LDAP group → roles JSON as a textarea.
- */
-const toCoreRenderer = (fieldUiSchema: UiSchema): UiSchema => {
-  if (fieldUiSchema['ui:widget'] === 'LdapRoleMappingWidget') {
-    return { ...fieldUiSchema, 'ui:widget': 'textarea' };
-  }
-
-  return fieldUiSchema['ui:field'] === 'RolesSelectField'
-    ? omit(fieldUiSchema, 'ui:field')
-    : fieldUiSchema;
-};
-
 const CARD_CLASS_NAME =
   'tw:flex tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary_alt tw:p-5';
 
+interface SectionCard {
+  title?: string;
+  fields: string[];
+}
+
+const configurationTitle = (entityKey: string) =>
+  t('label.entity-configuration', { entity: t(entityKey) });
+
 /**
- * The cards each SSO section is split into, from the groups the classic
- * settings page uses. Fields in no group share one last card.
+ * The cards each SSO section is split into, with the titles of the groups the
+ * classic settings page uses. Fields in no group share a last card.
  */
-const SECTION_CARDS: Record<string, string[][]> = {
+const getSectionCards = (): Record<string, SectionCard[]> => ({
   authenticationConfiguration: [
-    SSO_AUTHENTICATION_FIELD_GROUPS.basic,
-    SSO_AUTHENTICATION_FIELD_GROUPS.client,
-    SSO_AUTHENTICATION_FIELD_GROUPS.authority,
-    SSO_AUTHENTICATION_FIELD_GROUPS.security,
-    SSO_AUTHENTICATION_FIELD_GROUPS.credentials,
-    ...SSO_AUTHENTICATION_FIELD_GROUPS.providerConfigs.map((name) => [name]),
-    SSO_AUTHENTICATION_FIELD_GROUPS.identity,
+    {
+      title: t('label.basic-configuration'),
+      fields: SSO_AUTHENTICATION_FIELD_GROUPS.basic,
+    },
+    {
+      title: configurationTitle('label.client'),
+      fields: SSO_AUTHENTICATION_FIELD_GROUPS.client,
+    },
+    {
+      title: t('label.authority'),
+      fields: SSO_AUTHENTICATION_FIELD_GROUPS.authority,
+    },
+    {
+      title: configurationTitle('label.security'),
+      fields: SSO_AUTHENTICATION_FIELD_GROUPS.security,
+    },
+    {
+      title: t('label.credential-plural'),
+      fields: SSO_AUTHENTICATION_FIELD_GROUPS.credentials,
+    },
+    // A provider object titles itself.
+    ...SSO_AUTHENTICATION_FIELD_GROUPS.providerConfigs.map((name) => ({
+      fields: [name],
+    })),
+    {
+      title: configurationTitle('label.identity'),
+      fields: SSO_AUTHENTICATION_FIELD_GROUPS.identity,
+    },
   ],
   authorizerConfiguration: [
-    SSO_AUTHORIZER_FIELD_GROUPS.admin,
-    SSO_AUTHORIZER_FIELD_GROUPS.domain,
-    SSO_AUTHORIZER_FIELD_GROUPS.connection,
-    SSO_AUTHORIZER_FIELD_GROUPS.deprecated,
+    {
+      title: t('label.admin-plural'),
+      fields: SSO_AUTHORIZER_FIELD_GROUPS.admin,
+    },
+    {
+      title: configurationTitle('label.domain'),
+      fields: SSO_AUTHORIZER_FIELD_GROUPS.domain,
+    },
+    {
+      title: configurationTitle('label.connection'),
+      fields: SSO_AUTHORIZER_FIELD_GROUPS.connection,
+    },
+    {
+      title: t('label.deprecated'),
+      fields: SSO_AUTHORIZER_FIELD_GROUPS.deprecated,
+    },
   ],
-};
+});
 
 /**
  * Lays a section out with FormBuilderV1's LayoutGridField, one card per
- * group. Fields the schema drops or the uiSchema hides are left out so no
- * card renders empty; hidden fields stay mounted in a hidden row.
+ * group in the group's own field order. Fields the schema drops or the
+ * uiSchema hides are left out so no card renders empty; hidden fields stay
+ * mounted in a hidden row.
  */
 const toCardLayout = (
   sectionSchema: RJSFSchema,
   sectionUiSchema: UiSchema,
-  groups: string[][]
+  cards: SectionCard[]
 ): UiSchema => {
-  // The order RJSF itself would render the section in (schema order, then
-  // any `ui:order`); each card keeps it, as the classic page does.
   const names = orderProperties(
     Object.keys(sectionSchema.properties ?? {}),
     sectionUiSchema['ui:order']
   );
   const isHidden = (name: string) =>
     (sectionUiSchema[name] as UiSchema | undefined)?.['ui:widget'] === 'hidden';
-  const visibleGroups = groups
-    .map((group) =>
-      names.filter((name) => group.includes(name) && !isHidden(name))
-    )
-    .filter((group) => group.length > 0);
-  const grouped = new Set(groups.flat());
+  const isShown = (name: string) => names.includes(name) && !isHidden(name);
+  const visibleCards = cards
+    .map(({ title, fields }) => ({ title, fields: fields.filter(isShown) }))
+    .filter(({ fields }) => fields.length > 0);
+  const grouped = new Set(cards.flatMap(({ fields }) => fields));
   const rest = names.filter((name) => !grouped.has(name) && !isHidden(name));
-  const toRow = (group: string[], className = CARD_CLASS_NAME) => ({
+  const toRow = (
+    { title, fields }: SectionCard,
+    className = CARD_CLASS_NAME
+  ) => ({
     className,
-    columns: group.map((name) => ({ name })),
+    title,
+    columns: fields.map((name) => ({ name })),
   });
 
   return {
@@ -113,9 +141,11 @@ const toCardLayout = (
     'ui:options': {
       className: 'tw:flex tw:flex-col tw:gap-5',
       rows: [
-        ...visibleGroups.map((group) => toRow(group)),
-        ...(rest.length ? [toRow(rest)] : []),
-        toRow(names.filter(isHidden), 'tw:hidden'),
+        ...visibleCards.map((card) => toRow(card)),
+        ...(rest.length
+          ? [toRow({ title: t('label.advanced-configuration'), fields: rest })]
+          : []),
+        toRow({ fields: names.filter(isHidden) }, 'tw:hidden'),
       ],
     } as unknown as UiSchema['ui:options'],
   };
@@ -124,19 +154,21 @@ const toCardLayout = (
 /**
  * Adapts the classic SSO uiSchema to FormBuilderV1: every field full width
  * (one column — the default three-column grid is built for full-page forms
- * and the SSO form is narrower), no description on nested objects (it only
- * restates their name), and core renderers in place of the classic ones.
+ * and the SSO form is narrower) and no description on nested objects (it only
+ * restates their name).
  */
 export const toCoreUiSchema = (
   schema: RJSFSchema,
   uiSchema: UiSchema = {}
-): UiSchema =>
-  Object.entries(schema.properties ?? {}).reduce<UiSchema>(
+): UiSchema => {
+  const sectionCards = getSectionCards();
+
+  return Object.entries(schema.properties ?? {}).reduce<UiSchema>(
     (next, [name, property]) => {
       if (typeof property !== 'object') {
         return next;
       }
-      const fieldUiSchema = toCoreRenderer((uiSchema[name] ?? {}) as UiSchema);
+      const fieldUiSchema = (uiSchema[name] ?? {}) as UiSchema;
       const isObject = property.type === 'object';
 
       const nextUiSchema: UiSchema = {
@@ -149,7 +181,7 @@ export const toCoreUiSchema = (
           ...(isObject && { advancedProperties: ADVANCED_PROPERTIES }),
         },
       };
-      const cards = SECTION_CARDS[name];
+      const cards = sectionCards[name];
 
       next[name] = cards
         ? {
@@ -162,3 +194,4 @@ export const toCoreUiSchema = (
     },
     { ...uiSchema }
   );
+};

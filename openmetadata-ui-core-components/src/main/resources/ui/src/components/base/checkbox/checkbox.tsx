@@ -123,7 +123,8 @@ export const Checkbox = forwardRef<
       {...ariaCheckboxProps}
       className={(state) =>
         cx(
-          'tw:flex tw:items-start',
+          // relative contains react-aria's absolutely positioned hidden input.
+          'tw:relative tw:flex tw:items-start',
           state.isDisabled && 'tw:cursor-not-allowed',
           sizes[size].root,
           typeof className === 'function' ? className(state) : className

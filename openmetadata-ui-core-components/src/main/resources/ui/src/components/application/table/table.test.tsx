@@ -59,6 +59,35 @@ describe('Table header accessibility', () => {
   });
 });
 
+describe('Table header alignment', () => {
+  it('starts header content by default and centres it on request', () => {
+    render(
+      <Table aria-label="aligned-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+          <Table.Head align="center" id="allowed">
+            Allowed
+          </Table.Head>
+        </Table.Header>
+        <Table.Body>
+          <Table.Row id="r1">
+            <Table.Cell>alpha</Table.Cell>
+            <Table.Cell>yes</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    );
+
+    const content = (name: string) =>
+      screen.getByRole('columnheader', { name }).firstElementChild;
+
+    expect(content('Name')).not.toHaveClass('tw:justify-center');
+    expect(content('Allowed')).toHaveClass('tw:justify-center');
+  });
+});
+
 describe('Table sizes', () => {
   it('applies the compact scale', () => {
     renderTable({ size: 'compact' });

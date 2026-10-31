@@ -31,6 +31,7 @@ import {
 import { okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { removeCustomPropertyViaApi } from '../../../utils/customProperty';
+import { dragAndDropElement } from '../../../utils/dragDrop';
 import { waitForOwnedAssetCount } from '../../../utils/polling';
 import { expect, test } from '../../fixtures/pages';
 
@@ -251,6 +252,58 @@ test.describe('AI Profile Team Detail', () => {
     await expect(
       page.getByTestId('team-users-table').getByText(member.responseData.name)
     ).toBeHidden();
+  });
+
+  test('Should confirm a team move in a popover, not a modal', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const parent = await makeTeam(apiContext, { teamType: 'Department' });
+    const target = await makeTeam(apiContext, {
+      teamType: 'Department',
+      parents: [parent.responseData.id ?? ''],
+    });
+    const moved = await makeTeam(apiContext, {
+      teamType: 'Department',
+      parents: [parent.responseData.id ?? ''],
+    });
+    await openCreatedTeam(page, parent);
+
+    const subTeams = page.getByTestId('sub-teams-table');
+    await expect(
+      subTeams.locator(`[data-row-key="${target.responseData.name}"]`)
+    ).toBeVisible();
+    await expect(
+      subTeams.locator(`[data-row-key="${moved.responseData.name}"]`)
+    ).toBeVisible();
+
+    await dragAndDropElement(
+      page,
+      moved.responseData.name,
+      target.responseData.name
+    );
+
+    await expect(page.getByTestId('move-team-popover')).toBeVisible();
+
+    const patchResponse = waitForTeamPatch(page, moved.responseData.id ?? '');
+    await page.getByTestId('move-team-popover-confirm').click();
+    const patch = await patchResponse;
+
+    await expect(page.getByTestId('move-team-popover')).toBeHidden();
+    expect(JSON.stringify(patch.request().postDataJSON())).toContain(
+      target.responseData.id ?? ''
+    );
+
+    const movedTeam = await okJson<{ parents?: { id: string }[] }>(
+      await apiContext.get(
+        `/api/v1/teams/${moved.responseData.id}?fields=parents`
+      ),
+      'Read the moved team'
+    );
+    expect(movedTeam.parents?.map(({ id }) => id)).toEqual([
+      target.responseData.id,
+    ]);
   });
 
   test('Should render and update the team user count', async ({

@@ -41,7 +41,7 @@ jest.mock(
   () => ({
     __esModule: true,
     default: ({ items }: any) => (
-      <div data-testid="breadcrumb">
+      <div data-href={items?.[0]?.href} data-testid="breadcrumb">
         {(items ?? [])
           .map((i: any) => i.ariaLabel ?? i.label)
           .filter(Boolean)
@@ -95,6 +95,21 @@ describe('MarketplaceOverviewHeader', () => {
     expect(screen.getByTestId('breadcrumb')).toHaveTextContent(
       'label.data-marketplace'
     );
+  });
+
+  it('links the breadcrumb icon to the marketplace', () => {
+    render(<MarketplaceOverviewHeader />);
+
+    expect(screen.getByTestId('breadcrumb')).toHaveAttribute(
+      'data-href',
+      '/data-marketplace'
+    );
+  });
+
+  it('does not link the breadcrumb icon in the customize preview', () => {
+    render(<MarketplaceOverviewHeader isCustomizeView />);
+
+    expect(screen.getByTestId('breadcrumb')).not.toHaveAttribute('data-href');
   });
 
   it('moves the search and Add New menu into the title layout', () => {
