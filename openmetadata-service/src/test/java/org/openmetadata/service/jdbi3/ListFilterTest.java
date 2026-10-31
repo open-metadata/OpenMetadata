@@ -141,6 +141,23 @@ class ListFilterTest {
   }
 
   @Test
+  void getCondition_executionAssetIds() {
+    // /api/v1/agentExecutions?agentId=… must reach the WHERE clause — without it the listing
+    // ignored the filter and returned another application's records.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("agentId", "agent-id");
+    String condition = filter.getCondition();
+    assertTrue(condition.contains("agentId = :agentId"), condition);
+
+    filter = new ListFilter();
+    filter.addQueryParam("serverId", "server-id");
+    condition = filter.getCondition();
+    assertTrue(condition.contains("serverId = :serverId"), condition);
+
+    assertFalse(new ListFilter().getCondition().contains("agentId"));
+  }
+
+  @Test
   void taskConditions_bindValuesInsteadOfInliningThemInSql() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("taskType", "task-type");
