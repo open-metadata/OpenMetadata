@@ -134,6 +134,19 @@ describe('getFailedImportRowIds', () => {
     ).toBe(1);
   });
 
+  it('matches failed rows with formula-like cells the server echoes restored', () => {
+    const escapedCsv = ['name*,description', "A,'- bullet", "B,'-5"].join('\n');
+    const importResultsCsv = [
+      'status,details,name*,description',
+      'failure,bad,A,- bullet',
+      'success,ok,B,-5',
+    ].join('\n');
+
+    expect([
+      ...getFailedImportRowIds({ importResultsCsv, submittedCsv: escapedCsv }),
+    ]).toEqual(['0']);
+  });
+
   it('returns no ids without a result', () => {
     expect(getFailedImportRowIds({ submittedCsv }).size).toBe(0);
   });

@@ -482,7 +482,10 @@ export const getFailedImportRowIds = ({
 
   const failedIds = new Set<string>();
   submitted.forEach((row, position) => {
-    const key = toKey(submittedHeader.map((_, index) => row[index] ?? ''));
+    // The server echoes parsed (restored) cells, so compare stored values (e.g. "- x" not "'- x").
+    const key = toKey(
+      submittedHeader.map((_, index) => restoreFormula(row[index] ?? ''))
+    );
     const remaining = pendingFailures.get(key) ?? 0;
 
     if (remaining > 0) {
