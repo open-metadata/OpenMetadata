@@ -730,7 +730,8 @@ const ContractDetail: React.FC<{
         entityId={entityId}
         entityName={entityName}
         entityType={entityType}
-        existingContract={contract}
+        // An inherited contract belongs to the parent: importing creates this asset's own one.
+        existingContract={contract?.inherited ? null : contract}
         format={importFormat}
         visible={isImportModalVisible}
         onClose={handleImportModalClose}

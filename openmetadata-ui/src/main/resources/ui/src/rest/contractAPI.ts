@@ -77,6 +77,18 @@ export const getContract = async (fqn: string) => {
   return response.data;
 };
 
+export const getContractById = async (
+  contractId: string,
+  fields: string[] = []
+) => {
+  const response = await APIClient.get<DataContract>(
+    `${BASE_URL}/${contractId}`,
+    { params: fields.length > 0 ? { fields: fields.join(',') } : undefined }
+  );
+
+  return response.data;
+};
+
 export const createContract = async (contract: CreateDataContract) => {
   const response = await APIClient.post<CreateDataContract>(
     `/dataContracts`,
