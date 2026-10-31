@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -983,6 +984,12 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       return CSVFormat.DEFAULT.parse(in).stream().toList();
     } catch (IOException e) {
       documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+    } catch (UncheckedIOException e) {
+      // Commons CSV wraps lexer errors (e.g. malformed quoted fields) raised during record
+      // iteration in UncheckedIOException; report them as parser failures like IOException.
+      IOException cause = e.getCause();
+      documentFailure(
+          failed(cause != null ? cause.getMessage() : e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
     return null;
   }
@@ -1024,6 +1031,10 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
 
     } catch (IOException e) {
       documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+    } catch (UncheckedIOException e) {
+      IOException cause = e.getCause();
+      documentFailure(
+          failed(cause != null ? cause.getMessage() : e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
 
     return records;
