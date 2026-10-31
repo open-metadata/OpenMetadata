@@ -33,7 +33,7 @@
       "title": "Base URL",
       "description": "Optional custom base URL (for HuggingFace Inference Endpoints)",
       "type": "string",
-      "default": "https://api-inference.huggingface.co"
+      "default": "https://router.huggingface.co/hf-inference"
     },
     "timeout": {
       "title": "Timeout",
