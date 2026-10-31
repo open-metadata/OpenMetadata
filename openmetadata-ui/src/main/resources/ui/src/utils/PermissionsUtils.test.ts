@@ -20,7 +20,7 @@ const resourcePermission = (access: Access) => ({
   permissions: [{ operation: Operation.ViewAll, access }],
 });
 
-describe('conditionalAllow translation (#31783)', () => {
+describe('conditional access translation (#31783, #33834, #33356)', () => {
   it('entity-level (default) keeps conditionalAllow as false', () => {
     const op = getOperationPermissions(
       resourcePermission(Access.ConditionalAllow)
@@ -38,12 +38,21 @@ describe('conditionalAllow translation (#31783)', () => {
     expect(op[Operation.ViewAll]).toBe(true);
   });
 
-  it('deny and conditionalDeny stay false in both modes', () => {
-    for (const access of [
-      Access.Deny,
-      Access.ConditionalDeny,
-      Access.NotAllow,
-    ]) {
+  it('conditionalDeny follows conditionalAllow: false entity-level, true resource-level', () => {
+    expect(
+      getOperationPermissions(resourcePermission(Access.ConditionalDeny))[
+        Operation.ViewAll
+      ]
+    ).toBe(false);
+    expect(
+      getOperationPermissions(resourcePermission(Access.ConditionalDeny), true)[
+        Operation.ViewAll
+      ]
+    ).toBe(true);
+  });
+
+  it('deny and notAllow stay false in both modes', () => {
+    for (const access of [Access.Deny, Access.NotAllow]) {
       expect(
         getOperationPermissions(resourcePermission(access))[Operation.ViewAll]
       ).toBe(false);
