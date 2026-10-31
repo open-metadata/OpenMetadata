@@ -1,0 +1,155 @@
+name: CI Explain
+# When the merge gate ejects a PR, explain why in an advisory PR comment
+# (ADR:2026-10-13-ci-ai-output-is-advisory-and-never-decides-a-merge). One model call
+# over a deterministic, capped, redacted evidence bundle (.github/scripts/ci_ai/);
+# infra-only ejections, already-explained failures and runs past the daily cap get the
+# deterministic section without a model call. Dispatched by merge-gate.yml.
+#
+# vars.CI_AI_MODE: shadow writes the explanation to the job summary only; on also
+# comments on the PR. vars.CI_AI_DAILY_EXPLAIN_MAX caps model calls per day (40).
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR the gate ejected
+        required: true
+      gate_run_id:
+        description: merge-gate.yml run that decided
+        required: true
+      ci_run_id:
+        description: ci.yml run the decision was about
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: ci-explain-${{ inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  explain:
+    name: explain
+    if: ${{ contains(fromJSON('["shadow","on"]'), vars.CI_AI_MODE) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ci-ai
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - name: Count today's runs
+        id: budget
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          started=$(gh api "repos/$REPO/actions/workflows/ci-ai-explain.yml/runs?created=>=$(date -u +%F)&per_page=1" --jq .total_count)
+          # The count includes this run; the cap is checked against the runs before it.
+          echo "before=$(( started > 0 ? started - 1 : 0 ))" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Download the gate's decision
+        uses: actions/download-artifact@v7
+        with:
+          pattern: merge-gate-decision-${{ inputs.ci_run_id }}-*
+          run-id: ${{ inputs.gate_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/gate
+          merge-multiple: true
+      - name: Download the run's verification
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          pattern: verify-*
+          run-id: ${{ inputs.ci_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/verify
+      - name: Download the run's test outcomes
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          pattern: evidence-*
+          run-id: ${{ inputs.ci_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/evidence
+      # The entry's queue branch is gone once it is ejected; its commits are still
+      # fetchable by SHA. Without them the explanation has no diff, not no section.
+      - name: Fetch the entry and its parent
+        env:
+          DECISION: ${{ runner.temp }}/gate/decision.json
+        run: |
+          read -r head parent < <(python3 -c 'import json,sys; c=json.load(open(sys.argv[1])).get("context") or {}; print(c.get("headSha") or "-", c.get("parentSha") or "-")' "$DECISION")
+          for sha in "$head" "$parent"; do
+            [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || continue
+            git fetch --no-tags --quiet origin "$sha" || echo "::warning::could not fetch $sha"
+          done
+      - name: Restore the verdict cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/ci-ai-cache.json
+          key: ci-ai-verdicts-v1-${{ github.run_id }}
+          restore-keys: ci-ai-verdicts-v1-
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Explain
+        id: explain
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.CI_AI_ANTHROPIC_API_KEY }}
+          CI_AI_MODE: ${{ vars.CI_AI_MODE }}
+          CI_AI_EXPLAIN_MODEL: ${{ vars.CI_AI_EXPLAIN_MODEL }}
+          CI_AI_EXPLAIN_EFFORT: ${{ vars.CI_AI_EXPLAIN_EFFORT }}
+          CI_AI_DAILY_EXPLAIN_MAX: ${{ vars.CI_AI_DAILY_EXPLAIN_MAX }}
+          PR: ${{ inputs.pr }}
+          RUNS_BEFORE: ${{ steps.budget.outputs.before }}
+        run: |
+          pip install --quiet anthropic
+          python3 .github/scripts/ci_ai/explain.py \
+            --decision "$RUNNER_TEMP/gate/decision.json" \
+            --verify-dir "$RUNNER_TEMP/verify" \
+            --evidence-dir "$RUNNER_TEMP/evidence" \
+            --pr "$PR" \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --runs-today "$RUNS_BEFORE" \
+            --cache "$RUNNER_TEMP/ci-ai-cache.json" \
+            --usage-out "$RUNNER_TEMP/ci-ai-usage.json" \
+            --out "$RUNNER_TEMP/comment.md"
+          cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
+          # hashFiles() only sees the workspace, so the cache's existence is passed on here.
+          if [ -f "$RUNNER_TEMP/ci-ai-cache.json" ]; then echo "cache=yes" >> "$GITHUB_OUTPUT"; fi
+      # One explanation comment per PR, updated in place on the next ejection. The
+      # section is empty when the decision was not a failure.
+      - name: Comment on the PR
+        if: ${{ vars.CI_AI_MODE == 'on' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ inputs.pr }}
+        run: |
+          body="$RUNNER_TEMP/comment.md"
+          [ -s "$body" ] || { echo "Nothing to post."; exit 0; }
+          existing=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- ci-ai-explain -->"))) | .id' | tail -n 1)
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F "body=@$body" > /dev/null
+          else
+            gh pr comment "$PR" --repo "$REPO" --body-file "$body"
+          fi
+      - name: Save the verdict cache
+        if: ${{ always() && steps.explain.outputs.cache == 'yes' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/ci-ai-cache.json
+          key: ci-ai-verdicts-v1-${{ github.run_id }}
+      - name: Upload usage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-ai-usage-explain-${{ inputs.pr }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-ai-usage.json
+          if-no-files-found: ignore
+          retention-days: 35

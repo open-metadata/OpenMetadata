@@ -26,11 +26,29 @@ def _local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+def _test_record(
+    test_case: ElementTree.Element, kind: str, element: ElementTree.Element, report_file: Path
+) -> dict[str, str]:
+    class_name = test_case.attrib.get("classname", "")
+    test_name = test_case.attrib.get("name", "")
+    return {
+        "id": f"{class_name}#{test_name}",
+        "className": class_name,
+        "name": test_name,
+        "type": kind,
+        "message": element.attrib.get("message", "")[:1000],
+        "report": str(report_file),
+    }
+
+
 def _junit_counts(
     report_files: list[Path],
-) -> tuple[dict[str, int], list[dict[str, str]], list[str]]:
+) -> tuple[dict[str, int], list[dict[str, str]], list[dict[str, str]], list[str]]:
     totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
     failed_tests = []
+    # Passed only on a surefire/failsafe re-run (rerunFailingTestsCount): green, but
+    # the merge-gate registry tracks them so the flake gets fixed.
+    flaky_tests = []
     parse_errors = []
     for report_file in report_files:
         try:
@@ -56,18 +74,17 @@ def _junit_counts(
                     failure = children_by_name.get(failure_type)
                     if failure is None:
                         continue
-                    class_name = test_case.attrib.get("classname", "")
-                    test_name = test_case.attrib.get("name", "")
                     failed_tests.append(
-                        {
-                            "id": f"{class_name}#{test_name}",
-                            "className": class_name,
-                            "name": test_name,
-                            "type": failure_type,
-                            "message": failure.attrib.get("message", "")[:1000],
-                            "report": str(report_file),
-                        }
+                        _test_record(test_case, failure_type, failure, report_file)
                     )
+                if not child_names & {"failure", "error"}:
+                    for flaky_type in ("flakyFailure", "flakyError"):
+                        flaky = children_by_name.get(flaky_type)
+                        if flaky is not None:
+                            flaky_tests.append(
+                                _test_record(test_case, flaky_type, flaky, report_file)
+                            )
+                            break
             continue
 
         if _local_name(root.tag) in {"testsuite", "testsuites"}:
@@ -78,7 +95,7 @@ def _junit_counts(
                     parse_errors.append(
                         f"{report_file}: invalid {key} count {root.attrib.get(key)!r}"
                     )
-    return totals, failed_tests, parse_errors
+    return totals, failed_tests, flaky_tests, parse_errors
 
 
 def _contains_process_timeout(diagnostic_files: list[Path]) -> bool:
@@ -126,7 +143,7 @@ def classify_outcome(
     report_files: list[Path],
     diagnostic_files: list[Path],
 ) -> dict[str, object]:
-    tests, failed_tests, parse_errors = _junit_counts(report_files)
+    tests, failed_tests, flaky_tests, parse_errors = _junit_counts(report_files)
     reasons = []
 
     if step_outcome == "cancelled":
@@ -163,6 +180,7 @@ def classify_outcome(
         "exitCode": exit_code,
         "tests": tests,
         "failedTests": failed_tests,
+        "flakyTests": flaky_tests,
         "reportCount": len(report_files),
         "reports": _file_manifest(report_files),
         "reportParseErrors": parse_errors,
