@@ -205,6 +205,22 @@ class EmailFirstIdentityIT {
         firstEmail, provision(firstEmail, "First").getEmail(), "Failed change must not mutate");
   }
 
+  /** A dotless ı is not an i, so an address that only case-folds to the caller's is still taken. */
+  @Test
+  void testChangeEmailRejectsAnAddressThatOnlyFoldsToTheCurrentOne(TestNamespace ns) {
+    String suffix = ns.uniqueShortId().toLowerCase(Locale.ROOT);
+    String takenEmail = "admin" + suffix + "@x.test.om.org";
+    String lookalikeEmail = "adm\u0131n" + suffix + "@x.test.om.org";
+
+    User holder = provision(takenEmail, "Holder");
+    provision(lookalikeEmail, "Lookalike");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> Entity.getUserRepository().changeEmail(lookalikeEmail, takenEmail, false));
+    assertEquals(holder.getId(), provision(takenEmail, "Holder").getId());
+  }
+
   @Test
   void testChangeEmailPreservesStoredFieldsTheReadDidNotRequest(TestNamespace ns) {
     String localPart = ("keepfields" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);

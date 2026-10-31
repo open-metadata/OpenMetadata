@@ -83,6 +83,9 @@ public class CsvAsyncJobArgs {
     private Integer nodeDepth;
     private Integer maxDepth;
     private String includeSourceFields;
+    // The bot that asked on the user's behalf, if any: policies that only hold for impersonated
+    // requests must still hold for the export, which runs after the request is gone.
+    private String impersonatedBy;
   }
 
   /** Filters for an audit-log export. The payload is JSON, not CSV. */

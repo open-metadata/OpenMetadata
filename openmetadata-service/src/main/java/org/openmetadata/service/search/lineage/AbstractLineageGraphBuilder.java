@@ -596,6 +596,11 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   }
 
   protected int getTraversalDepth(Integer nodeDepth, Integer maxDepth) {
+    return traversalDepth(nodeDepth, maxDepth);
+  }
+
+  /** The depth an entity-count request walks to: its node depth, capped by its max depth. */
+  public static int traversalDepth(Integer nodeDepth, Integer maxDepth) {
     int boundedMaxDepth = maxDepth != null && maxDepth > 0 ? maxDepth : 0;
     int selectedDepth = nodeDepth != null ? Math.abs(nodeDepth) : 0;
 

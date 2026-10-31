@@ -89,6 +89,7 @@ import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
+import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
@@ -1052,6 +1053,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     Set<Map<String, Object>> nodes = new HashSet<>();
     searchDataQualityLineageInternal(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
     LineageDomainFilter.pruneDataQualityLineage(nodes, edges, subjectContext);
+    SearchLineagePermissionFilter.filterDataQualityLineageFor(subjectContext, nodes, edges);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
@@ -1322,7 +1324,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         String responseJson = serializeSearchResponse(searchResponse);
         return Response.status(OK).entity(responseJson).build();
       } else {
-        List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
+        List<?> response =
+            buildSearchHierarchy(request, searchResponse, clusterAlias, subjectContext);
         return Response.status(OK).entity(response).build();
       }
 
@@ -1659,7 +1662,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     // Build hierarchy query if needed
     if (Boolean.TRUE.equals(request.getIsHierarchy())) {
-      requestBuilder = buildHierarchyQuery(request, requestBuilder, clusterAlias);
+      requestBuilder = buildHierarchyQuery(request, requestBuilder, clusterAlias, subjectContext);
     }
 
     // Handle fetch source
@@ -1705,7 +1708,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private ElasticSearchRequestBuilder buildHierarchyQuery(
       org.openmetadata.schema.search.SearchRequest request,
       ElasticSearchRequestBuilder requestBuilder,
-      String clusterAlias)
+      String clusterAlias,
+      SubjectContext subjectContext)
       throws IOException {
 
     String indexName = request.getIndex();
@@ -1768,7 +1772,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     // The subject's visibility filter was ANDed into the query this rewrite has just demoted to a
     // should clause, where minimumShouldMatch(1) lets a name/displayName phrase match satisfy the
     // query without it. Re-AND the memory guard so hierarchy search cannot become a bypass.
-    Query originalQuery = restrictToOrgWideMemories(baseQueryBuilder.build());
+    Query originalQuery =
+        restrictToOrgWideMemories(
+            hierarchyConstrained(baseQueryBuilder.build(), request, subjectContext, true));
     requestBuilder.query(originalQuery);
 
     // Add fqnParts aggregation to fetch parent terms
@@ -1811,12 +1817,18 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                           // Add the original query as a should clause to preserve high scores
                           b.should(originalQuery);
                           // Add parent term queries as should clauses to fetch hierarchy
-                          if (indexName.equalsIgnoreCase(glossaryTermIndex)
-                              || indexName.equalsIgnoreCase(glossaryTermAlias)) {
-                            b.should(withZeroScore(parentTermQueries));
-                          } else {
-                            parentTermQueries.forEach(b::should);
-                          }
+                          Query parentTerms =
+                              indexName.equalsIgnoreCase(glossaryTermIndex)
+                                      || indexName.equalsIgnoreCase(glossaryTermAlias)
+                                  ? withZeroScore(parentTermQueries)
+                                  : Query.of(
+                                      pq ->
+                                          pq.bool(
+                                              pb ->
+                                                  pb.should(parentTermQueries)
+                                                      .minimumShouldMatch("1")));
+                          b.should(
+                              hierarchyConstrained(parentTerms, request, subjectContext, false));
                           if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
                             b.must(m -> m.match(ma -> ma.field("entityStatus").query("Approved")));
                           }
@@ -1838,7 +1850,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private List<?> buildSearchHierarchy(
       org.openmetadata.schema.search.SearchRequest request,
       SearchResponse<JsonData> searchResponse,
-      String clusterAlias) {
+      String clusterAlias,
+      SubjectContext subjectContext) {
     List<?> response = new ArrayList<>();
 
     String indexName = request.getIndex();
@@ -1853,7 +1866,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     if (indexName.equalsIgnoreCase(glossaryTermIndex)
         || indexName.equalsIgnoreCase(glossaryTermAlias)) {
-      response = buildGlossaryTermSearchHierarchy(indexName, searchResponse);
+      response = buildGlossaryTermSearchHierarchy(request, searchResponse, subjectContext);
     } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       response = buildDomainSearchHierarchy(searchResponse);
     }
@@ -1861,7 +1874,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   private List<EntityHierarchy> buildGlossaryTermSearchHierarchy(
-      String indexName, SearchResponse<JsonData> searchResponse) {
+      org.openmetadata.schema.search.SearchRequest request,
+      SearchResponse<JsonData> searchResponse,
+      SubjectContext subjectContext) {
     Map<String, EntityHierarchy> termMap = new LinkedHashMap<>();
     Map<String, EntityHierarchy> rootTerms = new LinkedHashMap<>();
 
@@ -1885,7 +1900,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       termMap.putIfAbsent(term.getFullyQualifiedName(), term);
     }
 
-    addMissingParents(indexName, termMap);
+    addMissingParents(request, termMap, subjectContext);
     termMap.putAll(rootTerms);
 
     termMap
@@ -1924,8 +1939,39 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                         .boost(0f)));
   }
 
+  /**
+   * The hierarchy rewrite folds the caller's query, which carried their access policies, query_filter
+   * and deleted flag, into one should clause among name matches, so they are applied again around
+   * each query it builds. The parents that only draw the tree skip the query_filter, which selects
+   * matches, but never the policies or the deleted flag. A policy that yields no filter matches
+   * nothing.
+   */
+  private Query hierarchyConstrained(
+      Query query,
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      boolean applyQueryFilter) {
+    List<Query> filters = new ArrayList<>();
+    if (!nullOrEmpty(request.getDeleted())) {
+      filters.add(
+          Query.of(
+              q -> q.term(t -> t.field("deleted").value(FieldValue.of(request.getDeleted())))));
+    }
+    String queryFilter = request.getQueryFilter();
+    if (applyQueryFilter && !nullOrEmpty(queryFilter) && !EMPTY_JSON_OBJECT.equals(queryFilter)) {
+      String queryDsl = QueryFilterShape.requireQueryDsl(queryFilter);
+      filters.add(Query.of(q -> q.withJson(new StringReader(queryDsl))));
+    }
+    Query filtered =
+        filters.isEmpty() ? query : Query.of(q -> q.bool(b -> b.must(query).filter(filters)));
+    return ElasticRbacQueries.withAccessPolicies(filtered, subjectContext, rbacConditionEvaluator);
+  }
+
   // A hit whose parent ranked below the page cut would otherwise be dropped from the tree
-  private void addMissingParents(String indexName, Map<String, EntityHierarchy> termMap) {
+  private void addMissingParents(
+      org.openmetadata.schema.search.SearchRequest request,
+      Map<String, EntityHierarchy> termMap,
+      SubjectContext subjectContext) {
     List<FieldValue> missing =
         termMap.keySet().stream()
             .flatMap(fqn -> parentTermFqns(fqn).stream())
@@ -1934,25 +1980,29 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             .map(FieldValue::of)
             .toList();
     if (!missing.isEmpty()) {
-      for (EntityHierarchy parent : fetchApprovedTermsByFqn(indexName, missing)) {
+      for (EntityHierarchy parent : fetchApprovedTermsByFqn(request, missing, subjectContext)) {
         parent.setChildren(new ArrayList<>());
         termMap.putIfAbsent(parent.getFullyQualifiedName(), parent);
       }
     }
   }
 
-  private List<EntityHierarchy> fetchApprovedTermsByFqn(String indexName, List<FieldValue> fqns) {
+  private List<EntityHierarchy> fetchApprovedTermsByFqn(
+      org.openmetadata.schema.search.SearchRequest request,
+      List<FieldValue> fqns,
+      SubjectContext subjectContext) {
     Query byFqn =
         Query.of(q -> q.terms(t -> t.field("fullyQualifiedName").terms(tv -> tv.value(fqns))));
     Query approved = Query.of(q -> q.match(m -> m.field("entityStatus").query("Approved")));
+    Query parents =
+        hierarchyConstrained(
+            Query.of(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
+            request,
+            subjectContext,
+            false);
     try {
       return client
-          .search(
-              s ->
-                  s.index(indexName)
-                      .size(fqns.size())
-                      .query(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
-              JsonData.class)
+          .search(s -> s.index(request.getIndex()).size(fqns.size()).query(parents), JsonData.class)
           .hits()
           .hits()
           .stream()
