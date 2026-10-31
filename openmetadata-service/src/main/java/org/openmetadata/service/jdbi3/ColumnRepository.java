@@ -954,8 +954,6 @@ public class ColumnRepository {
     }
 
     // One catalog walk for the whole import; every row resolves against it with a map lookup.
-    // The per-row searchColumns this replaced re-read every table and data model per row, so a
-    // few-KB CSV held its request thread for rows x catalog size.
     Map<String, List<ColumnOccurrence>> occurrencesByName = new HashMap<>();
     for (GroupedColumnsResponse group :
         searchColumns(
@@ -963,8 +961,7 @@ public class ColumnRepository {
       occurrencesByName.put(group.getColumnName(), group.getOccurrences());
     }
 
-    // Resolve every write row up front: identical rows share one update pass instead of
-    // rewriting the same columns, and an over-limit import is refused before it has applied
+    // Resolve all write rows first: an over-limit import is refused before it has applied
     // anything.
     Map<List<String>, List<ColumnUpdate>> updatesByRow = new HashMap<>();
     List<String[]> parsedRows = new ArrayList<>();
