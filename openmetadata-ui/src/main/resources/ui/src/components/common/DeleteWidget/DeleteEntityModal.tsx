@@ -54,6 +54,7 @@ const DeleteEntityModal = ({
   isAsyncDelete = false,
   isRecursiveDelete,
   afterDeleteAction,
+  onDeleteFailure,
   successMessage,
   deleteOptions,
   onDelete,
@@ -195,6 +196,7 @@ const DeleteEntityModal = ({
           prepareType,
           isRecursiveDelete: isRecursiveDelete ?? false,
           afterDeleteAction,
+          onDeleteFailure,
         });
       } finally {
         setIsLoading(false);
@@ -216,6 +218,7 @@ const DeleteEntityModal = ({
     handleOnEntityDeleteConfirm,
     handleOnEntityDeleteCancel,
     afterDeleteAction,
+    onDeleteFailure,
   ]);
 
   useEffect(() => {

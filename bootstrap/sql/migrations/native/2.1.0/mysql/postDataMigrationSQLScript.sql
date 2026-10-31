@@ -734,3 +734,21 @@ WHERE name = 'tableCustomSQLQuery'
     COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
     '"partitionExpression"'
   );
+
+-- Remove personal access token rows whose user no longer exists. A missing user row here always
+-- means the user was hard-deleted, so this is safe on every upgrade; the second run deletes
+-- nothing. Other token types keep their own lifecycle.
+DELETE FROM user_tokens
+WHERE tokenType = 'PERSONAL_ACCESS_TOKEN'
+  AND NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.id = user_tokens.userId);
+
+-- End MCP OAuth grants of users who no longer exist or are deleted. Grants are keyed by user name,
+-- so a later user given the same name would otherwise take them over; deleting a user now ends
+-- its grants, and this clears the ones left from before. The second run changes nothing.
+DELETE FROM oauth_authorization_codes
+WHERE NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.name = oauth_authorization_codes.user_name COLLATE utf8mb4_0900_ai_ci AND u.deleted IS NOT TRUE);
+UPDATE oauth_refresh_tokens SET revoked = TRUE
+WHERE revoked = FALSE
+  AND NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.name = oauth_refresh_tokens.user_name COLLATE utf8mb4_0900_ai_ci AND u.deleted IS NOT TRUE);
+DELETE FROM oauth_access_tokens
+WHERE NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.name = oauth_access_tokens.user_name COLLATE utf8mb4_0900_ai_ci AND u.deleted IS NOT TRUE);
