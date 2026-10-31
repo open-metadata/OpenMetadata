@@ -70,7 +70,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   public ListFilter(Include include) {
-    this.include = include;
+    this.include = include == null ? Include.ALL : include;
   }
 
   public String getConditionForEntity(String tableName) {
@@ -138,10 +138,12 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getSpreadsheetCondition(tableName));
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
+    conditions.add(getTaskReviewerOrAssigneeCondition());
     conditions.add(getCreatedByCondition());
     conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
     conditions.add(getAboutEntityIdsCondition(tableName));
+    conditions.add(getAboutEntityTypeCondition(tableName));
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getNotificationTemplateCondition());
@@ -409,6 +411,27 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
+   * Tasks that any of the given users or teams review or are assigned, by comma-separated id. A
+   * vote removes the voter from a task's assignees, so a reviewer's own listing keeps the task
+   * through the reviewer relationship.
+   */
+  private String getTaskReviewerOrAssigneeCondition() {
+    String ids = queryParams.get("reviewerOrAssigneeIds");
+    if (nullOrEmpty(ids)) {
+      return "";
+    }
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromEntity IN ('user', 'team') "
+            + "AND entity_relationship.fromId IN (%s) "
+            + "AND entity_relationship.toEntity = 'task' "
+            + "AND entity_relationship.relation IN (%d, %d)))",
+        buildIndexedBindParams("reviewerOrAssigneeId", ids),
+        Relationship.ASSIGNED_TO.ordinal(),
+        Relationship.REVIEWS.ordinal());
+  }
+
+  /**
    * Hash a user/team name (assignee, creator, approver) the same way its stored {@code nameHash} was
    * computed. A user or team {@code nameHash} is {@code buildHash(fullyQualifiedName)} where the FQN
    * is the quoted name (e.g. {@code "john.doe"} for a name containing a dot). Calling {@code
@@ -445,6 +468,15 @@ public class ListFilter extends Filter<ListFilter> {
             Entity.TASK,
             Relationship.MENTIONED_IN.ordinal(),
             buildIndexedBindParams("aboutEntityId", ids));
+  }
+
+  private String getAboutEntityTypeCondition(String tableName) {
+    return nullOrEmpty(queryParams.get("aboutEntityType"))
+        ? ""
+        : String.format(
+            "%s IN (SELECT toId FROM entity_relationship WHERE fromEntity = :aboutEntityType "
+                + "AND toEntity = '%s' AND relation = %d AND deleted = FALSE)",
+            qualifyColumn(tableName, "id"), Entity.TASK, Relationship.MENTIONED_IN.ordinal());
   }
 
   /**
@@ -1010,10 +1042,13 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
-    if (include == Include.NON_DELETED || include == Include.DELETED) {
-      return columnName + String.format(" = %s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
-    }
-    return "";
+    // Exhaustive on purpose: ALL must stay a named "" and not a siloed fall-through that a
+    // refactor could turn back into a deleted clause (invalid on time-series tables).
+    return switch (include) {
+      case NON_DELETED -> columnName + " = FALSE";
+      case DELETED -> columnName + " = TRUE";
+      case ALL -> "";
+    };
   }
 
   public String getDatabaseCondition(String tableName) {

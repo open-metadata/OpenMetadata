@@ -820,4 +820,24 @@ class ListFilterTest {
     filter.addQueryParam(WORKFLOW_INSTANCE_ID_PARAM, "11111111-1111-1111-1111-111111111111");
     assertTrue(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_CONDITION));
   }
+
+  // A null include means "no deletion scoping" — an explicit ALL — never the no-arg
+  // NON_DELETED default, whose deleted clause is invalid on the time-series tables that
+  // have no deleted column. Consumers of getInclude() must never observe a null.
+  @Test
+  void aNullIncludeIsAnExplicitAllThatEmitsNoDeletedClause() {
+    final ListFilter filter = new ListFilter(null);
+
+    assertEquals(Include.ALL, filter.getInclude());
+    assertEquals("", filter.getIncludeCondition(null));
+    assertFalse(filter.getCondition().contains("deleted"));
+  }
+
+  @Test
+  void theNoArgConstructorKeepsTheNonDeletedDefaultForEntityTables() {
+    assertEquals(Include.NON_DELETED, new ListFilter().getInclude());
+    assertEquals("deleted = FALSE", new ListFilter().getIncludeCondition(null));
+    assertEquals("deleted = TRUE", new ListFilter(Include.DELETED).getIncludeCondition(null));
+    assertEquals("", new ListFilter(Include.ALL).getIncludeCondition(null));
+  }
 }

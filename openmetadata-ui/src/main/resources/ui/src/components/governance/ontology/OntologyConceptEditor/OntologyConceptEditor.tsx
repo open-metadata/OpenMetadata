@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   Box,
   Button,
   getField,
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import { Fragment, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -26,6 +28,8 @@ import {
   ConceptMappingType,
   OntologyConcept,
 } from '../../../../generated/entity/data/ontologyConcept';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyConcept,
   patchOntologyConcept,
@@ -54,9 +58,11 @@ const OntologyConceptEditor = ({
   onSaved,
 }: OntologyConceptEditorProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const form = useForm<OntologyConceptFormValues>({
     defaultValues: conceptFormValues(concept),
   });
+  const markSaved = useOntologyDirtyForm(form.formState.isDirty);
   const [isSaving, setIsSaving] = useState(false);
   const mappings = useFieldArray({
     control: form.control,
@@ -75,6 +81,8 @@ const OntologyConceptEditor = ({
       const result = concept
         ? await patchOntologyConcept(concept.id, conceptPatch(concept, request))
         : await createOntologyConcept(request);
+      form.reset(conceptFormValues(result));
+      markSaved();
       onSaved(result);
     } catch (error) {
       showErrorToast(
@@ -85,15 +93,120 @@ const OntologyConceptEditor = ({
     }
   };
 
+  const appendMapping = () =>
+    mappings.append({
+      conceptIri: '',
+      mappingType: {
+        id: ConceptMappingType.ExactMatch,
+        label: ConceptMappingType.ExactMatch,
+      },
+      schemeIri: '',
+      source: '',
+    });
+
+  const renderFields = () =>
+    conceptFormFields(t, Boolean(concept), disabled).map((field) => (
+      <Fragment key={field.name}>{getField(field)}</Fragment>
+    ));
+
+  const renderMappingFields = (index: number) => (
+    <>
+      {mappingFormFields(t, index, disabled).map((field) => (
+        <Fragment key={field.name}>{getField(field)}</Fragment>
+      ))}
+    </>
+  );
+
+  const removeMapping = (index: number) => {
+    mappings.remove(index);
+    addMappingButton.current?.focus();
+  };
+
+  if (isAiMode) {
+    return (
+      <HookForm
+        data-testid="ontology-concept-editor"
+        form={form}
+        onSubmit={form.handleSubmit(save)}>
+        <Box direction="col" gap={5}>
+          {renderFields()}
+          <Box
+            className="tw:border-t tw:border-secondary tw:pt-5"
+            direction="col"
+            gap={3}>
+            <Box align="center" gap={2}>
+              <Typography
+                as="h3"
+                className="not-prose tw:m-0"
+                size="text-sm"
+                weight="semibold">
+                {t('label.mapping-plural')}
+              </Typography>
+              <Badge color="gray" size="sm" type="pill-color">
+                {mappings.fields.length}
+              </Badge>
+              <Button
+                className="tw:ml-auto"
+                color="link-color"
+                iconLeading={Plus}
+                isDisabled={disabled}
+                ref={addMappingButton}
+                size="sm"
+                onPress={appendMapping}>
+                {t('label.add-mapping')}
+              </Button>
+            </Box>
+            {mappings.fields.map((mapping, index) => (
+              <fieldset
+                className="tw:m-0 tw:rounded-xl tw:border tw:border-secondary tw:p-4"
+                data-testid="ontology-concept-mapping"
+                key={mapping.id}>
+                <legend className="tw:px-1 tw:text-xs tw:font-semibold tw:text-secondary">
+                  {t('label.mapping')} {index + 1}
+                </legend>
+                <Box direction="col" gap={3}>
+                  {renderMappingFields(index)}
+                  <Box justify="end">
+                    <Button
+                      color="secondary"
+                      isDisabled={disabled}
+                      size="sm"
+                      onPress={() => removeMapping(index)}>
+                      {t('label.remove')}
+                    </Button>
+                  </Box>
+                </Box>
+              </fieldset>
+            ))}
+          </Box>
+          <Box
+            align="center"
+            className="tw:sticky tw:bottom-0 tw:border-t tw:border-secondary tw:bg-surface tw:py-3"
+            gap={2}>
+            <Typography className="tw:flex-1 tw:text-tertiary" size="text-xs">
+              {form.formState.isDirty ? t('label.unsaved-changes') : null}
+            </Typography>
+            <Button
+              color="primary"
+              isDisabled={!canEdit}
+              isLoading={isSaving}
+              size="sm"
+              type="submit">
+              {t('label.save')}
+            </Button>
+          </Box>
+        </Box>
+      </HookForm>
+    );
+  }
+
   return (
     <HookForm
       data-testid="ontology-concept-editor"
       form={form}
       onSubmit={form.handleSubmit(save)}>
       <Box direction="col" gap={4}>
-        {conceptFormFields(t, Boolean(concept), disabled).map((field) => (
-          <Fragment key={field.name}>{getField(field)}</Fragment>
-        ))}
+        {renderFields()}
         <Typography as="h3" weight="semibold">
           {t('label.mapping-plural')}
         </Typography>
@@ -103,16 +216,11 @@ const OntologyConceptEditor = ({
               {t('label.mapping')} {index + 1}
             </legend>
             <Box direction="col" gap={3}>
-              {mappingFormFields(t, index, disabled).map((field) => (
-                <Fragment key={field.name}>{getField(field)}</Fragment>
-              ))}
+              {renderMappingFields(index)}
               <Button
                 color="secondary"
                 isDisabled={disabled}
-                onPress={() => {
-                  mappings.remove(index);
-                  addMappingButton.current?.focus();
-                }}>
+                onPress={() => removeMapping(index)}>
                 {t('label.remove')}
               </Button>
             </Box>
@@ -122,17 +230,7 @@ const OntologyConceptEditor = ({
           color="secondary"
           isDisabled={disabled}
           ref={addMappingButton}
-          onPress={() =>
-            mappings.append({
-              conceptIri: '',
-              mappingType: {
-                id: ConceptMappingType.ExactMatch,
-                label: ConceptMappingType.ExactMatch,
-              },
-              schemeIri: '',
-              source: '',
-            })
-          }>
+          onPress={appendMapping}>
           {t('label.add-mapping')}
         </Button>
         <Button isDisabled={!canEdit} isLoading={isSaving} type="submit">

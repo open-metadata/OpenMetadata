@@ -223,6 +223,13 @@ class SearchIndexFactoryTest {
   }
 
   @Test
+  void searchIndexReindexFieldsIncludeFields() {
+    // Field-level tags are hydrated by SearchIndexRepository only when "fields" is requested, so a
+    // reindex drops them from the search_index doc without this entry.
+    assertReindexFields(Entity.SEARCH_INDEX, "fields");
+  }
+
+  @Test
   void containerReindexFieldsIncludeDataModel() {
     assertReindexFields(Entity.CONTAINER, "dataModel");
   }

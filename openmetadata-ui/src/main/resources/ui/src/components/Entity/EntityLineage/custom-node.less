@@ -14,15 +14,6 @@
 // it for border-primary via LINEAGE_NODE_DARK_CLASS on the node element; light
 // keeps these static greys.
 
-.ant-btn.ant-btn-background-ghost.expand-btn {
-  background-color: var(--tw-background-color-surface);
-  box-shadow: none;
-
-  &:hover {
-    background-color: var(--tw-background-color-surface);
-  }
-}
-
 .react-flow__node {
   box-shadow: none;
 
@@ -175,6 +166,9 @@
   .profiler-item {
     margin-right: var(--om-space-4);
     border-radius: var(--om-radius-sm);
+    // The node footer sets no colour, so without this the count inherits React
+    // Flow's fixed #222 node text, which disappears on dark cards.
+    color: var(--tw-text-color-primary);
 
     &.medium {
       width: 36px;

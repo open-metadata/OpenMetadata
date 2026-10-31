@@ -420,6 +420,7 @@ const SsoConfigureForm = ({
                   </Box>
                 }
                 renderDoc={renderFieldDoc}
+                variant="muted"
               />
             )}
           </FieldDocProvider>

@@ -64,6 +64,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -522,6 +523,38 @@ public class DomainIsolationIT {
   }
 
   @Test
+  void test_ingestionBot_readsDomainAssetAndService(TestNamespace ns) throws Exception {
+    // Moved from playwright Flow/IngestionBot.spec.ts, which drove the UI with the ingestion bot's
+    // token. The UI now rejects bot tokens, so the same guarantee is checked here at the API. The
+    // stored bot JWT (isBot / tokenType=BOT claims) is used rather than a minted one so the request
+    // takes the same server path as real ingestion traffic.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_ingbot", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table table = createTable(admin, p + "_ingbot_t", schema, domain, cleanup);
+
+      String serviceId = schema.getService().getId().toString();
+      DatabaseService service = admin.databaseServices().get(serviceId, "domains");
+      service.setDomains(List.of(domain.getEntityReference()));
+      admin.databaseServices().update(serviceId, service);
+
+      OpenMetadataClient ingestionBot = storedIngestionBotClient(admin);
+      String domainFqn = domain.getFullyQualifiedName();
+
+      Table botTable = ingestionBot.tables().get(table.getId().toString(), "domains");
+      assertEquals(domainFqn, botTable.getDomains().get(0).getFullyQualifiedName());
+
+      DatabaseService botService = ingestionBot.databaseServices().get(serviceId, "domains");
+      assertEquals(domainFqn, botService.getDomains().get(0).getFullyQualifiedName());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
   void test_lineage_restrictedBotSeesOnlyOwnDomainNodes(TestNamespace ns) throws Exception {
     // Deliberately does NOT enable search access control: the lineage prune is gated on the role
     // alone (DomainAccessFilter#shouldApply), independently of the search RBAC setting.
@@ -803,6 +836,24 @@ public class DomainIsolationIT {
     org.openmetadata.schema.entity.teams.User bot = admin.users().create(request);
     cleanup.push(() -> admin.users().delete(bot.getId()));
     return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  /** Reads the ingestion bot's stored token; generating one would rotate it under other tests. */
+  private OpenMetadataClient storedIngestionBotClient(OpenMetadataClient admin) throws Exception {
+    User botUser = admin.users().getByName("ingestion-bot");
+    JsonNode auth =
+        admin
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/users/auth-mechanism/" + botUser.getId(),
+                null,
+                JsonNode.class);
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.baseUrl())
+            .accessToken(auth.at("/config/JWTToken").asText())
+            .build());
   }
 
   /**

@@ -98,6 +98,8 @@ interface DateRangePickerProps extends AriaDateRangePickerProps<DateValue> {
   size?: 'sm' | 'md';
   /** Stretch the trigger across its container instead of sizing it to the dates. */
   fullWidth?: boolean;
+  /** Trigger text while no range is set. Defaults to "Select dates". */
+  placeholder?: string;
 }
 
 export const DateRangePicker = ({
@@ -108,6 +110,7 @@ export const DateRangePicker = ({
   onCancel,
   size = 'md',
   fullWidth = false,
+  placeholder,
   ...props
 }: DateRangePickerProps) => {
   const { t } = useCoreTranslation();
@@ -161,7 +164,7 @@ export const DateRangePicker = ({
           size={size === 'md' ? 'lg' : 'md'}>
           {!value ? (
             <span className="tw:text-placeholder">
-              {t('label.select-dates', 'Select dates')}
+              {placeholder ?? t('label.select-dates', 'Select dates')}
             </span>
           ) : (
             `${formattedStartDate} – ${formattedEndDate}`

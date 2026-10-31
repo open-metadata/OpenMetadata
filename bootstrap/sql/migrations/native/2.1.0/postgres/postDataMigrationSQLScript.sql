@@ -680,3 +680,61 @@ WHERE name = 'columnValuesToBeInSet'
 UPDATE test_definition
 SET json = jsonb_set(json, '{description}', to_jsonb('Checks column values against an allowed set according to the matchEnum mode.'::text))
 WHERE name = 'columnValuesToBeInSet';
+
+-- `tableCustomSQLQuery.operator` was seeded in #20307 and `partitionExpression` in #22697, but
+-- seeding only creates missing definitions (EntityRepository.initializeEntity returns early once
+-- the entity exists) — a definition record created from a pre-#20307 seed keeps neither, and no
+-- earlier migration backfilled them: the deployment then renders the Add Test Case form with no
+-- Operator to compare the query result to the threshold, and no Partition Expression for Compute
+-- Row Count. Both are appended to the migrated definition, after the `thresholdUnit` statement
+-- above, so a migrated install matches a fresh install except for these two trailing entries.
+-- Each parameter is guarded on being absent, which keeps re-runs — and every deployment that
+-- already has it — a no-op.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'operator',
+        'displayName', 'Operator',
+        'description', 'Operator to use to compare the result of the custom SQL query to the threshold.',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', '["==",">",">=","<","<=","!="]'::jsonb
+    )::jsonb
+)
+WHERE name = 'tableCustomSQLQuery'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "operator"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'partitionExpression',
+        'displayName', 'Partition Expression',
+        'description', 'Partition expression that will be used to compute the passed/failed row count, if compute row count is enabled.',
+        'dataType', 'STRING',
+        'required', false
+    )::jsonb
+)
+WHERE name = 'tableCustomSQLQuery'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "partitionExpression"}]'::jsonb);
+
+-- Remove personal access token rows whose user no longer exists. A missing user row here always
+-- means the user was hard-deleted, so this is safe on every upgrade; the second run deletes
+-- nothing. Other token types keep their own lifecycle.
+DELETE FROM user_tokens
+WHERE tokenType = 'PERSONAL_ACCESS_TOKEN'
+  AND NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.id = user_tokens.userId);
+
+-- End MCP OAuth grants of users who no longer exist or are deleted. Grants are keyed by user name,
+-- so a later user given the same name would otherwise take them over; deleting a user now ends
+-- its grants, and this clears the ones left from before. The second run changes nothing.
+DELETE FROM oauth_authorization_codes
+WHERE NOT EXISTS (SELECT 1 FROM user_entity u WHERE LOWER(u.name) = LOWER(oauth_authorization_codes.user_name) AND u.deleted IS NOT TRUE);
+UPDATE oauth_refresh_tokens SET revoked = TRUE
+WHERE revoked = FALSE
+  AND NOT EXISTS (SELECT 1 FROM user_entity u WHERE LOWER(u.name) = LOWER(oauth_refresh_tokens.user_name) AND u.deleted IS NOT TRUE);
+DELETE FROM oauth_access_tokens
+WHERE NOT EXISTS (SELECT 1 FROM user_entity u WHERE LOWER(u.name) = LOWER(oauth_access_tokens.user_name) AND u.deleted IS NOT TRUE);

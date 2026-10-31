@@ -59,7 +59,7 @@ const PlatformSettingsLanding = ({
               <Box align="start" direction="row" gap={4}>
                 <Box
                   align="center"
-                  className={`tw:size-10 tw:shrink-0 tw:rounded-lg ${getLandingIconColor(
+                  className={`tw:mt-1 tw:size-10 tw:shrink-0 tw:rounded-lg ${getLandingIconColor(
                     index
                   )}`}
                   justify="center">

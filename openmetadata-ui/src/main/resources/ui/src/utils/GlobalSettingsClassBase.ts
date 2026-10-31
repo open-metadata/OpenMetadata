@@ -12,6 +12,7 @@
  */
 import {
   AnnouncementColored,
+  ArticleSettings,
   DefaultAppMode,
   DefaultTime,
   GlossaryTerm,
@@ -961,7 +962,8 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.ARTICLES}`,
-            icon: FileIcon,
+            icon: ArticleSettings,
+            iconColor: 'green' as const,
           },
           {
             label: t('label.team-plural'),

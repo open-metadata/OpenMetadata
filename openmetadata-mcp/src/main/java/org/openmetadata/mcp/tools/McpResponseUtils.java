@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -25,6 +26,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.secrets.masker.EntityMasker;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 
@@ -70,6 +72,7 @@ public final class McpResponseUtils {
     // only known from the instance.
     EntityMasker masker = EntityMaskerFactory.getEntityMasker();
     return switch (entity) {
+      case McpServer server -> maskedCopy(server, McpServerMasker::mask);
       case WorkflowDefinition definition -> WorkflowDefinitionMasker.mask(definition);
       case IngestionPipeline pipeline -> maskedCopy(pipeline, masker::maskIngestionPipeline);
       case User user -> maskedCopy(user, copy -> copy.setAuthenticationMechanism(null));

@@ -45,7 +45,6 @@ import {
   redirectToHomePage,
   uuid,
   visitGlossaryPage,
-  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import { switchNavbarDomain } from '../../utils/domain';
 import {
@@ -2708,7 +2707,6 @@ test.describe('Glossary tests', () => {
         .getByRole('menuitem')
         .filter({ has: page.getByTestId('rename-button') });
       await expect(renameItem).toBeVisible();
-      await waitForAntdPopupToSettle(page);
       await renameItem.click();
 
       const renameModal = page.getByRole('dialog');

@@ -113,7 +113,7 @@ const AuthMechanism: FC<Props> = ({
           inline
           align="center"
           className={`layout-space layout-space-horizontal ${classNames(
-            'w-full justify-between ant-space-authMechanism',
+            'w-full justify-between auth-mechanism-space',
             isSCIMBot && 'm-t-xs'
           )}`}
           gap={2}

@@ -1720,6 +1720,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(GLOSSARY_TERM);
+  }
+
+  @Override
   public void setFullyQualifiedName(GlossaryTerm entity) {
     // Validate parent
     if (entity.getParent() == null) { // Glossary term at the root of the glossary
@@ -2105,27 +2110,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       oldFqnForRenamedDescendant(oldFqn, newFqn, childNewFqn)
           .ifPresent(childOldFqn -> conversations.updateEntityReference(child, childOldFqn));
     }
-
-    // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
-    // relationship, not in the task JSON), and it is computed once at creation. Batch the hash
-    // rewrites for the moved term and every nested descendant.
-    Map<String, String> taskFqnHashUpdates = new HashMap<>();
-    taskFqnHashUpdates.put(
-        FullyQualifiedName.buildHash(oldFqn), FullyQualifiedName.buildHash(newFqn));
-    for (GlossaryTerm descendant : getNestedTerms(updated)) {
-      String descendantNewFqn = descendant.getFullyQualifiedName();
-      Optional<String> descendantOldFqn =
-          oldFqnForRenamedDescendant(oldFqn, newFqn, descendantNewFqn);
-      if (descendantOldFqn.isEmpty()) {
-        continue;
-      }
-      taskFqnHashUpdates.put(
-          FullyQualifiedName.buildHash(descendantOldFqn.get()),
-          FullyQualifiedName.buildHash(descendantNewFqn));
-    }
-    updateTaskAboutFqnHashes(taskFqnHashUpdates);
-
-    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   static Optional<String> oldFqnForRenamedDescendant(

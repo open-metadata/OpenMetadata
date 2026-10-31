@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -234,7 +233,7 @@ public class FieldPathUtils {
                   String.join(".", Arrays.copyOfRange(parts, 1, fieldEnd)));
           return new FieldPathComponents(parts[0], fieldName, property);
         }
-      } catch (ParseCancellationException | IllegalArgumentException e) {
+      } catch (IllegalArgumentException e) {
         LOG.warn("[FieldPathUtils] Could not parse dot field path: {}", fieldPath, e);
       }
     }

@@ -38,6 +38,9 @@
     },
     "prefixes": {
       "$ref": "../../entity/data/ontology.json#/properties/prefixes"
+    },
+    "approvalRule": {
+      "$ref": "../../entity/data/ontology.json#/properties/approvalRule"
     }
   },
   "required": [

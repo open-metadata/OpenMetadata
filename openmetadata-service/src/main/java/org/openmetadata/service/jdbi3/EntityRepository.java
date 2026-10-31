@@ -284,6 +284,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -1051,6 +1052,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * @see TableRepository#setInheritedFields(Table, Fields) for an example implementation
    */
   @SuppressWarnings("unused")
+  /**
+   * Runs inheritance on a single already-loaded entity, for a caller outside this package such as
+   * the authorization {@code ResourceContext}, which must see inherited tags for a deny rule.
+   */
+  public void setInheritedFieldsInternal(T entity, Fields fields) {
+    setInheritedFields(entity, fields);
+  }
+
   protected void setInheritedFields(T entity, Fields fields) {
     if (!requiresParentForInheritance(entity, fields)) {
       return;
@@ -2863,43 +2872,60 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Batch-rewrite {@code task_entity.aboutFqnHash} from old to new for a set of
-   * {@code oldHash -> newHash} pairs (one per entity in a moved/renamed subtree). Tasks are keyed by
-   * an opaque FQN hash that cannot be prefix-matched, so each entity is rewritten by exact hash.
-   * No-op when empty.
+   * Entity types whose FQNs nest under this entity's FQN and change with it on a rename or move.
+   * Empty when the FQN is the bare name: metric {@code X.Y} hashes under metric {@code X} without
+   * being nested in it. See ADR:2026-10-26-tasks-follow-fqn-changes-from-store-update.
    */
-  protected void updateTaskAboutFqnHashes(Map<String, String> fqnHashUpdates) {
-    if (nullOrEmpty(fqnHashUpdates)) {
-      return;
-    }
-    int rows = 0;
-    int[] counts =
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of();
+  }
+
+  /**
+   * Carry the tasks and workflow instances that find an entity by FQN over to its new FQN: the
+   * entity itself by exact FQN, and the nested entity types under it by FQN prefix.
+   */
+  private void repointTasksAndWorkflowInstancesForFqnChange(String oldFqn, String newFqn) {
+    List<String> nestedTypes = List.copyOf(getNestedFqnEntityTypes());
+    int tasks =
         daoCollection
             .taskDAO()
-            .updateAboutFqnHashBatch(
-                new ArrayList<>(fqnHashUpdates.keySet()), new ArrayList<>(fqnHashUpdates.values()));
-    for (int count : counts) {
-      rows += count;
+            .repointAboutFqnHash(
+                FullyQualifiedName.buildHash(oldFqn),
+                FullyQualifiedName.buildHash(newFqn),
+                entityType,
+                Relationship.MENTIONED_IN.ordinal(),
+                nestedTypes);
+    // One statement per type, so a link the exact match moves is not matched again by the prefix.
+    repointWorkflowInstancesForFqnChange(
+        entityType, oldFqn, newFqn, nestedTypes.contains(entityType));
+    nestedTypes.stream()
+        .filter(type -> !type.equals(entityType))
+        .forEach(type -> repointWorkflowInstancesForFqnChange(type, oldFqn, newFqn, true));
+    if (tasks > 0) {
+      LOG.info("[fqn-change] repointed tasks {} -> {} rows={}", oldFqn, newFqn, tasks);
     }
-    LOG.info(
-        "[fqn-change] task aboutFqnHash updates={} rowsUpdated={}", fqnHashUpdates.size(), rows);
   }
 
   /**
    * Repoint workflow-instance {@code relatedEntity} (the history-card filter key) for a moved or
-   * renamed subtree in a single set-based statement: the root entity itself (exact link) plus every
-   * descendant ({@code entityLink LIKE oldStem.%}). The workflow instance stores the FQN as a
-   * readable {@link MessageParser.EntityLink}, so unlike the opaque task hash the whole subtree is
-   * covered at once. The {@code .}-suffixed prefix is collision-safe (a move of {@code a.b} never
-   * touches sibling {@code a.bc}).
+   * renamed entity in a single set-based statement: the entity itself (exact link) plus, with
+   * {@code includeNested}, every descendant ({@code entityLink LIKE oldStem.%}). The
+   * {@code .}-suffixed prefix is collision-safe (a move of {@code a.b} never touches sibling
+   * {@code a.bc}).
    */
   protected void repointWorkflowInstancesForFqnChange(
-      String entityType, String oldFqn, String newFqn) {
+      String entityType, String oldFqn, String newFqn, boolean includeNested) {
     String oldLink = new MessageParser.EntityLink(entityType, oldFqn).getLinkString();
     String newLink = new MessageParser.EntityLink(entityType, newFqn).getLinkString();
     String oldStem = oldLink.substring(0, oldLink.length() - 1);
     String newStem = newLink.substring(0, newLink.length() - 1);
-    String oldChildPrefix = oldStem + Entity.SEPARATOR + "%";
+    // Entity names may contain the LIKE wildcards % and _; escape them so the pattern only matches
+    // this link, or the links nested under it.
+    String escapedStem = ListFilter.escapeLikeBindValue(oldStem);
+    String oldChildPrefix =
+        includeNested
+            ? escapedStem + Entity.SEPARATOR + "%"
+            : ListFilter.escapeLikeBindValue(oldLink);
     int instances =
         daoCollection
             .workflowInstanceTimeSeriesDAO()
@@ -6494,8 +6520,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return node;
   }
 
+  /** Applies entity-specific preparation to ordinary, conditional, and bulk storage writes. */
+  protected T prepareForStorage(T entity) {
+    return entity;
+  }
+
+  protected boolean isStoragePreparationSideEffecting() {
+    return false;
+  }
+
   protected String serializeForStorage(T entity) {
-    return JsonStorageUtils.sanitizeNulCharacters(storageJsonNode(entity).toString());
+    return JsonStorageUtils.sanitizeNulCharacters(
+        storageJsonNode(prepareForStorage(entity)).toString());
   }
 
   protected String serializeForVersionHistory(T entity) {
@@ -6512,8 +6548,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected void store(T entity, boolean update, Double expectedVersion) {
-    String json = serializeForStorage(entity);
     EntityDAO<T> writeDAO = entityDAOForWrite();
+    if (update && expectedVersion != null && isStoragePreparationSideEffecting()) {
+      lockAndValidateVersion(writeDAO, entity, expectedVersion);
+    }
+    String json = serializeForStorage(entity);
 
     if (update) {
       if (expectedVersion != null) {
@@ -6549,6 +6588,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           entity.getFullyQualifiedName(),
           json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+    }
+  }
+
+  private void lockAndValidateVersion(EntityDAO<T> writeDAO, T entity, Double expectedVersion) {
+    // Secret preparation can mutate an external vault before the conditional SQL update.
+    String currentVersion =
+        writeDAO.findVersionByIdForUpdate(writeDAO.getTableName(), entity.getId());
+    if (!expectedVersion.toString().equals(currentVersion)) {
+      throw new PreconditionFailedException(
+          "The entity has been modified by another user. Please refresh and retry.");
     }
   }
 
@@ -7790,8 +7839,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
     T restoredEntity = find(id, ALL);
-    return executeEntityWrite(
-        List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity));
+    return RdfUpdater.restoring(
+        () ->
+            executeEntityWrite(
+                List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity)));
   }
 
   private PutResponse<T> restoreLoadedEntity(String updatedBy, UUID id, T restoredEntity) {
@@ -7820,6 +7871,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
       updater.update();
+      RdfUpdater.recordRestored(List.of(updated));
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
@@ -7935,6 +7987,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       List<EntityUpdater> changed = filterChanged(updaters);
       if (!changed.isEmpty()) {
         persistBulkUpdaters(changed, "bulkRestore");
+        RdfUpdater.recordRestored(changed.stream().map(EntityUpdater::getUpdated).toList());
         ListCountCache.invalidate(entityType);
       }
     }
@@ -8598,7 +8651,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * charts attached to dashboards) and entity types without a {@code parent.id} field in
    * their ES mapping would otherwise drift — DB shows restored / soft-deleted, but ES still
    * reflects the previous state. {@code SearchIndexHandler.onEntitiesUpdated} batches the
-   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side.
+   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side. The RDF graph
+   * gets the same descendants for the same reason: no cascade hook reaches it otherwise.
    */
   private void persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
     writeBulkVersionHistory(changed, phasePrefix);
@@ -8613,6 +8667,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       hydrateForSearchIndex(changedEntities);
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
+    RdfUpdater.updateEntities(changedEntities);
     // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
@@ -9637,7 +9692,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** The user a write records as its author; {@code admin} is the system, an unknown name a user. */
   protected static User authorOf(final String userName) {
     final User author =
-        userName.equalsIgnoreCase(ADMIN_USER_NAME)
+        SecurityUtil.sameIdentifier(userName, ADMIN_USER_NAME)
             ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
             : findEntityByNameOrNull(USER, userName, ALL);
     return author == null ? new User().withName(userName).withIsAdmin(false) : author;
@@ -10060,7 +10115,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             .withCurrentVersion(updated.getVersion())
             .withPreviousVersion(changeDescription.getPreviousVersion())
             .withChangeDescription(changeDescription)
-            .withEntity(updated);
+            .withEntity(JsonUtils.pojoToMaskedJson(updated));
 
     daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     LOG.debug(
@@ -12230,6 +12285,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           revertToPreviousVersion();
         }
       }
+      repointTasksAndWorkflowInstancesIfFqnChanged();
+    }
+
+    /**
+     * {@code originalFqn} is the FQN the entity had when this request started, which is what its
+     * tasks and workflow instances still point at; {@code original} may already be the rebased
+     * pre-session version by now. Nothing moves unless the update was stored: a dropped rename
+     * leaves the FQN in the database unchanged.
+     */
+    private void repointTasksAndWorkflowInstancesIfFqnChanged() {
+      String newFqn = updated.getFullyQualifiedName();
+      if (entityStored && originalFqn != null && newFqn != null && !originalFqn.equals(newFqn)) {
+        repointTasksAndWorkflowInstancesForFqnChange(originalFqn, newFqn);
+      }
     }
 
     /**
@@ -12296,6 +12365,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           revertToPreviousVersion();
         }
       }
+      repointTasksAndWorkflowInstancesIfFqnChanged();
     }
 
     private void storeEntityHistory() {
@@ -12548,7 +12618,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           .orElse(null);
     }
 
-    private T getPreviousVersion(T original) {
+    protected T getPreviousVersion(T original) {
       String extensionName =
           EntityUtil.getVersionExtension(
               entityType, original.getChangeDescription().getPreviousVersion());
@@ -13590,7 +13660,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * tag policy evaluates against tags fetched once for the whole request rather than once per entity.
    */
   public void batchLoadTags(List<T> entities) {
-    fetchAndSetTags(entities, getFields(FIELD_TAGS));
+    Fields tagFields = getFields(FIELD_TAGS);
+    fetchAndSetTags(entities, tagFields);
+    // Inherited tags (from a service, database, ...) must be visible to a tag-based deny rule in
+    // the
+    // bulk authorization path too, just as the single-entity ResourceContext loads them.
+    setInheritedFields(entities, tagFields);
   }
 
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {
@@ -14452,6 +14527,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Create a ChangeEvent for the feed
     ChangeEvent changeEvent =
         getChangeEvent(updated, change, entityType, change.getPreviousVersion());
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(updated));
     daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 

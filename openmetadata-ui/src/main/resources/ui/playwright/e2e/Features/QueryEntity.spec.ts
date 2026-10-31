@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { Query } from '../../../src/generated/entity/data/query';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { deleteFixtureEntity } from '../../utils/apiResponse';
 import { CODE_EDITOR_LINE } from '../../utils/codeEditor';
 import {
   clickOutside,
@@ -39,6 +41,7 @@ const table3 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
 const entityData = [table1, table2, table3, user1, user2];
+let table2Query: Query | undefined;
 const queryData = {
   query: `select * from table ${table1.entity.name}`,
   description: 'select all the field from table',
@@ -56,7 +59,7 @@ test.beforeAll(async ({ browser }) => {
   for (const entity of entityData) {
     await entity.create(apiContext);
   }
-  const table2Query = await createQueryByTableName({
+  table2Query = await createQueryByTableName({
     apiContext,
     tableResponseData: table2.entityResponseData,
   });
@@ -483,8 +486,21 @@ test('Verify Query Pagination', async ({ page, browser }) => {
 
 test.afterAll(async ({ browser }) => {
   const { afterAction, apiContext } = await createNewPage(browser);
-  for (const entity of entityData) {
-    await entity.delete(apiContext);
+  // The query lives under the shard's shared service, so deleting table2 does
+  // not remove it. Under fullyParallel, beforeAll reruns in this worker before
+  // the next test and would POST the same query again, which answers 409.
+  try {
+    if (table2Query) {
+      await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/queries/${table2Query.id}?hardDelete=true`
+      );
+      table2Query = undefined;
+    }
+  } finally {
+    for (const entity of entityData) {
+      await entity.delete(apiContext);
+    }
+    await afterAction();
   }
-  await afterAction();
 });

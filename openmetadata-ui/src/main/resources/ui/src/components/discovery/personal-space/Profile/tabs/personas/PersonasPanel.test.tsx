@@ -40,6 +40,8 @@ jest.mock('./PersonaAddForm', () => ({
   ),
 }));
 
+const mockDeletedCallbacks: Array<() => void> = [];
+
 jest.mock('./PersonaDetail', () => ({
   __esModule: true,
   default: (props: {
@@ -50,32 +52,36 @@ jest.mock('./PersonaDetail', () => ({
     onRename: (name: string) => void;
     onSelectCategory: (category: string) => void;
     onTabChange: (tab: PersonaDetailTab) => void;
-  }) => (
-    <div
-      data-active-tab={props.activeTab}
-      data-fqn={props.fqn}
-      data-sub-category={props.subCategory ?? ''}
-      data-testid="persona-detail">
-      <button
-        data-testid="detail-rename"
-        onClick={() => props.onRename('Data Steward')}>
-        detail-rename
-      </button>
-      <button
-        data-testid="detail-select-navigation"
-        onClick={() => props.onSelectCategory('navigation')}>
-        detail-select-navigation
-      </button>
-      <button
-        data-testid="detail-select-users-tab"
-        onClick={() => props.onTabChange('users')}>
-        detail-select-users-tab
-      </button>
-      <button data-testid="detail-delete" onClick={props.onDeleted}>
-        detail-delete
-      </button>
-    </div>
-  ),
+  }) => {
+    mockDeletedCallbacks.push(props.onDeleted);
+
+    return (
+      <div
+        data-active-tab={props.activeTab}
+        data-fqn={props.fqn}
+        data-sub-category={props.subCategory ?? ''}
+        data-testid="persona-detail">
+        <button
+          data-testid="detail-rename"
+          onClick={() => props.onRename('Data Steward')}>
+          detail-rename
+        </button>
+        <button
+          data-testid="detail-select-navigation"
+          onClick={() => props.onSelectCategory('navigation')}>
+          detail-select-navigation
+        </button>
+        <button
+          data-testid="detail-select-users-tab"
+          onClick={() => props.onTabChange('users')}>
+          detail-select-users-tab
+        </button>
+        <button data-testid="detail-delete" onClick={props.onDeleted}>
+          detail-delete
+        </button>
+      </div>
+    );
+  },
 }));
 
 const mockEditorSave = jest.fn();
@@ -232,6 +238,18 @@ describe('PersonasPanel', () => {
     expect(screen.getByTestId('header-title')).toHaveTextContent(
       'Data Steward'
     );
+  });
+
+  it('keeps onDeleted stable across re-renders', () => {
+    // PersonaDetail builds its header actions from onDeleted and pushes them
+    // back up here; a new callback per render re-renders in a loop.
+    mockDeletedCallbacks.length = 0;
+    renderAt('#personas/p1');
+
+    fireEvent.click(screen.getByTestId('detail-rename'));
+
+    expect(mockDeletedCallbacks.length).toBeGreaterThan(1);
+    expect(new Set(mockDeletedCallbacks).size).toBe(1);
   });
 
   it('reads the active tab from the hash', () => {

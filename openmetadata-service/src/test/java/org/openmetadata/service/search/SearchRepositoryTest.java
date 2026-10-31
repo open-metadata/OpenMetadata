@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
@@ -87,6 +88,9 @@ class SearchRepositoryTest {
         mock(es.co.elastic.clients.transport.ElasticsearchTransport.class);
     lenient().when(mockEsNewClient._transport()).thenReturn(mockEsTransport);
     lenient().when(elasticSearchClient.getNewClient()).thenReturn(mockEsNewClient);
+    lenient()
+        .when(elasticSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     lenient().when(elasticSearchClient.isClientAvailable()).thenReturn(true);
 
     os.org.opensearch.client.opensearch.OpenSearchClient mockOsNewClient =
@@ -95,6 +99,9 @@ class SearchRepositoryTest {
         mock(os.org.opensearch.client.transport.OpenSearchTransport.class);
     lenient().when(mockOsNewClient._transport()).thenReturn(mockOsTransport);
     lenient().when(openSearchClient.getNewClient()).thenReturn(mockOsNewClient);
+    lenient()
+        .when(openSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     lenient().when(openSearchClient.isClientAvailable()).thenReturn(true);
 
     // Enable calling real methods for the methods we want to test

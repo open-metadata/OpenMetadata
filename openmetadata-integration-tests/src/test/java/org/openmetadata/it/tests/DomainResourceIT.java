@@ -224,6 +224,28 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertEquals(parent.getId(), child.getParent().getId());
   }
 
+  // domain_entity.fqnHash stores one 32-char hash per FQN level, so an eighth-level subdomain
+  // (263 chars) needs more than the varchar(256) the column was created with.
+  @Test
+  void test_createEighthLevelSubDomain(TestNamespace ns) {
+    Domain domain = null;
+    for (int level = 1; level <= 8; level++) {
+      CreateDomain create =
+          new CreateDomain()
+              .withName(level == 1 ? ns.prefix("deepDomain") : "l" + level)
+              .withDomainType(DomainType.AGGREGATE)
+              .withDescription("Deep domain");
+      if (domain != null) {
+        create.withParent(domain.getFullyQualifiedName());
+      }
+      domain = createEntity(create);
+    }
+
+    Domain fetched = SdkClients.adminClient().domains().getByName(domain.getFullyQualifiedName());
+
+    assertEquals(domain.getId(), fetched.getId());
+  }
+
   @Test
   void test_createDomainWithExperts(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();

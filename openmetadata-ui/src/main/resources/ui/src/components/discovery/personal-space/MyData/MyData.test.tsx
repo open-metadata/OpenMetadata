@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import MyDataPage from './MyData';
 
 const mockCurrentUser = { id: 'u1', name: 'alice' };
@@ -28,6 +29,8 @@ jest.mock('../UserAssets/UserAssetsView', () => ({
 }));
 
 describe('MyDataPage', () => {
+  beforeEach(() => usePersonalSpaceStore.setState({ myDataTab: 'owned' }));
+
   it('shows the current user owned assets on the My Data tab by default', () => {
     render(<MyDataPage />);
 
@@ -37,6 +40,18 @@ describe('MyDataPage', () => {
     );
     expect(screen.getByTestId('user-assets-view')).toHaveTextContent(
       'owned:u1'
+    );
+  });
+
+  it('opens on the tab it was opened for', () => {
+    usePersonalSpaceStore.getState().open('my-data', 'following');
+    render(<MyDataPage />);
+
+    expect(
+      screen.getByRole('tab', { name: 'label.following' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('user-assets-view')).toHaveTextContent(
+      'following:u1'
     );
   });
 

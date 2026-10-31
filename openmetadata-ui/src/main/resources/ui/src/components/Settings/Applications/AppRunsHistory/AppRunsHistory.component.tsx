@@ -103,6 +103,7 @@ const AppRunsHistory = forwardRef(
       jsonSchema,
       showPagination = true,
       onViewRunConfig,
+      variant,
     }: AppRunsHistoryProps,
     ref
   ) => {
@@ -541,6 +542,7 @@ const AppRunsHistory = forwardRef(
           pagination={false}
           rowKey="id"
           size="small"
+          variant={variant}
         />
 
         {isStopModalOpen && (
