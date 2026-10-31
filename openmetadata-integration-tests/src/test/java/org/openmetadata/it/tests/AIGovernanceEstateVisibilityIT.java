@@ -102,10 +102,6 @@ public class AIGovernanceEstateVisibilityIT {
   /** The shared applications under test plus a client confined from the hidden one. */
   private record Estate(AIApplication visible, AIApplication hidden, OpenMetadataClient confined) {}
 
-  private Estate estateFixture(TestNamespace ns) {
-    return new Estate(visibleApp, hiddenApp, confinedClient(ns));
-  }
-
   @Test
   void estateViews_hideAssetsTheCallerCannotView(TestNamespace ns) {
     Estate estate = estateFixture(ns);
