@@ -255,6 +255,32 @@ class ConnectionSecretsGuardTest {
     assertDoesNotThrow(() -> guardKafka(rotated, stored));
   }
 
+  /**
+   * Rotating one secret inside the map is indistinguishable from retargeting a setting: both are
+   * typed values at a masked map entry. The guard fails closed and asks for every secret again -
+   * the same rule the unmasked maps produced before they were declared secret.
+   */
+  @Test
+  void rotatingOneSecretInsideTheConfigMapRequiresReenteringTheOthers() {
+    Map<String, Object> stored = storedKafka(IDP_URL);
+    Map<String, Object> rotated =
+        Map.of(
+            "type",
+            "Kafka",
+            "bootstrapServers",
+            "broker:9092",
+            "saslPassword",
+            PASSWORD_MASK,
+            "consumerConfig",
+            Map.of(
+                "sasl.oauthbearer.token.endpoint.url",
+                PASSWORD_MASK,
+                "sasl.oauthbearer.client.secret",
+                "rotated-secret"));
+
+    assertThrows(BadRequestException.class, () -> guardKafka(rotated, stored));
+  }
+
   private static void guardKafka(Map<String, Object> incoming, Map<String, Object> stored) {
     ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
         incoming, stored, "Kafka", ServiceType.MESSAGING);
