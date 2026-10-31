@@ -13,8 +13,8 @@ name: py-tests-postgres
 on:
   merge_group:
   workflow_dispatch:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: true
 
 jobs:
   # Integration tests only, so PR runs skip everything (merge queue runs the suite);
@@ -40,7 +40,7 @@ jobs:
   py-tests-status:
     name: py-tests-status
     needs: python
-    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify the shared PostgreSQL Python pipeline succeeded
