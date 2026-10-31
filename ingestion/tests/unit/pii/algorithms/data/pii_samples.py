@@ -72,6 +72,9 @@ phone_data: LabeledData = {
 }
 
 data_time_data: LabeledData = {
+    # event_time is an operational timestamp — must NOT be tagged as PII.
+    # DATE_TIME content hits are suppressed; only the column-name allowlist can produce
+    # a DATE_TIME PII tag (birth_date, dob, hire_date, …).
     "column_name": "event_time",
     "column_data_type": DataType.STRING,
     "sample_data": [
@@ -79,6 +82,20 @@ data_time_data: LabeledData = {
         "2023-10-02 15:30:00Z",
         "2023-10-03 18:45:00Z",
         "2023-10-04 21:15:00Z",
+    ],
+    "pii_tags": [],
+    "pii_sensitivity": False,
+}
+
+personal_date_data: LabeledData = {
+    # birth_date is a personal date — should be tagged as DATE_TIME via column name.
+    "column_name": "birth_date",
+    "column_data_type": DataType.STRING,
+    "sample_data": [
+        "1990-04-12",
+        "1985-07-23",
+        "2001-01-01",
+        "1975-11-30",
     ],
     "pii_tags": [PIITag.DATE_TIME],
     "pii_sensitivity": False,
