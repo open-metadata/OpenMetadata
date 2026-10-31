@@ -72,14 +72,18 @@
       "description": "Confluent Redpanda Consumer Config",
       "type": "object",
       "default": {},
-      "additionalProperties": true
+      "additionalProperties": {
+        "format": "password"
+      }
     },
     "schemaRegistryConfig": {
       "title": "Schema Registry Config",
       "description": "Confluent Redpanda Schema Registry Config.",
       "type": "object",
       "default": {},
-      "additionalProperties": true
+      "additionalProperties": {
+        "format": "password"
+      }
     },
     "topicFilterPattern": {
       "description": "Regex to only fetch topics that matches the pattern.",
