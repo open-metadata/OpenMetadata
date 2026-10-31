@@ -441,7 +441,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
             if (updated.getFields() != null) {
               updateSearchIndexFields(
                   "fields",
-                  original.getFields() == null ? null : original.getFields(),
+                  original.getFields(),
                   updated.getFields(),
                   EntityUtil.searchIndexFieldMatch);
             }
@@ -473,6 +473,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         List<SearchIndexField> origFields,
         List<SearchIndexField> updatedFields,
         BiPredicate<SearchIndexField, SearchIndexField> fieldMatch) {
+      // Normalize null lists to empty, mirroring EntityRepository.updateColumns, so that a stored
+      // SearchIndex whose `fields` is null (reachable via JSON PATCH that removes/nulls `/fields`)
+      // does not cause an NPE here on the subsequent write carrying fields.
+      origFields = listOrEmpty(origFields);
+      updatedFields = listOrEmpty(updatedFields);
       List<SearchIndexField> deletedFields = new ArrayList<>();
       List<SearchIndexField> addedFields = new ArrayList<>();
       recordListChange(
