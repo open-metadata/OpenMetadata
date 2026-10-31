@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.PlainJWT;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
@@ -238,6 +240,31 @@ class TestLoginOidcHandlerTest {
     assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
     assertEquals(TestLoginStage.TOKEN_VALIDATED, result.getStage());
     assertEquals(TestLoginStageStatus.FAILED, statusOf(result, TestLoginStage.TOKEN_VALIDATED));
+  }
+
+  @Test
+  void aCallbackWithoutACodeFailsTokenValidation() {
+    TestLoginOidcHandler.Authorization authorization =
+        TestLoginOidcHandler.authorize(provider.confidentialClient(), MARKER);
+    String frontChannelToken =
+        new PlainJWT(
+                new JWTClaimsSet.Builder()
+                    .claim("nonce", authorization.handshake().nonce())
+                    .claim("email", "alice@example.com")
+                    .build())
+            .serialize();
+
+    TestLoginResult result =
+        TestLoginOidcHandler.complete(
+            FakeOidcProvider.securityConfigFor(provider.confidentialClient()),
+            authorization.handshake(),
+            callback("id_token", frontChannelToken));
+
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertEquals(TestLoginStage.TOKEN_VALIDATED, result.getStage());
+    assertTrue(
+        result.getErrors().getFirst().contains("Authorization code is required"),
+        result.getErrors().getFirst());
   }
 
   @Test

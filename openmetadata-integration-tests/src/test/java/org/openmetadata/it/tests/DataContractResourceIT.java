@@ -1552,6 +1552,61 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testValidateLandsOnRequestedContractWithDuplicateActiveContracts(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract first =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("misroute_first"))
+                .withEntity(table.getEntityReference())
+                .withDescription("Contract whose semantic rule passes")
+                .withSemantics(
+                    List.of(
+                        new SemanticsRule()
+                            .withName("Has a name")
+                            .withDescription("The table must have a name")
+                            .withRule("{\"!!\":{\"var\":\"name\"}}")
+                            .withEnabled(true))));
+    deleteEntity(first.getId().toString());
+    DataContract second =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("misroute_second"))
+                .withEntity(table.getEntityReference())
+                .withDescription("Contract whose semantic rule fails")
+                .withSemantics(
+                    List.of(
+                        new SemanticsRule()
+                            .withName("Has another name")
+                            .withDescription("The table must have a different name")
+                            .withRule("{\"==\":[{\"var\":\"name\"},\"a_different_table\"]}")
+                            .withEnabled(true))));
+    // Restore does not rerun the create-time uniqueness check.
+    restoreEntity(first.getId().toString());
+
+    DataContractResult firstResult =
+        SdkClients.adminClient().dataContracts().validate(first.getId());
+    DataContractResult secondResult =
+        SdkClients.adminClient().dataContracts().validate(second.getId());
+
+    assertEquals(first.getFullyQualifiedName(), firstResult.getDataContractFQN());
+    assertEquals(second.getFullyQualifiedName(), secondResult.getDataContractFQN());
+    assertEquals(ContractExecutionStatus.Success, firstResult.getContractExecutionStatus());
+    assertEquals(ContractExecutionStatus.Failed, secondResult.getContractExecutionStatus());
+    assertEquals(1, firstResult.getSemanticsValidation().getPassed());
+    assertEquals(1, secondResult.getSemanticsValidation().getFailed());
+
+    DataContractResult firstLatest =
+        SdkClients.adminClient().dataContracts().getLatestResult(first.getId());
+    DataContractResult secondLatest =
+        SdkClients.adminClient().dataContracts().getLatestResult(second.getId());
+    assertNotNull(firstLatest);
+    assertNotNull(secondLatest);
+    assertEquals(firstResult.getId(), firstLatest.getId());
+    assertEquals(secondResult.getId(), secondLatest.getId());
+  }
+
+  @Test
   void testDataContractResultSuccessToFailure(TestNamespace ns) {
     Table table = createTestTable(ns);
 
