@@ -294,18 +294,23 @@ class AuditPackGeneratorTest {
   @SuppressWarnings("unchecked")
   void requesterVisibilityCoversTheEstateForAnAdminRequester() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-        MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
+        MockedStatic<SubjectContext> subjectMock = mockStatic(SubjectContext.class)) {
       EntityRepository<AIApplication> repository = mock(EntityRepository.class);
       entityMock
           .when(() -> Entity.getEntityRepository(Entity.AI_APPLICATION))
           .thenReturn(repository);
-      // Admin subject: authorizeUser grants without touching policies, so nothing is hidden.
+      when(repository.getFields(anyString())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+      SubjectContext adminSubject = mock(SubjectContext.class);
+      when(adminSubject.isAdmin()).thenReturn(true);
+      subjectMock.when(() -> SubjectContext.getSubjectContext("admin")).thenReturn(adminSubject);
       AuditReport report =
           new AuditReport()
               .withId(UUID.randomUUID())
               .withRequestedBy(
                   new EntityReference().withType("user").withFullyQualifiedName("admin"));
 
+      // authorizeUser is the real method here: the mocked admin subject short-circuits the policy
+      // evaluation, which is exactly the estate-wide behavior an admin requester gets.
       AIAssetVisibility visibility = AuditPackGenerator.requesterVisibility(report);
       assertEquals(
           2,

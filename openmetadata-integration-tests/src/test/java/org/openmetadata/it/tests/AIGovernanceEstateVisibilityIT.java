@@ -286,7 +286,7 @@ public class AIGovernanceEstateVisibilityIT {
             new CreateAIApplication()
                 .withName(name)
                 .withApplicationType(ApplicationType.Chatbot)
-                .withDevelopmentStage(DevelopmentStage.PROPOSAL)
+                .withDevelopmentStage(DevelopmentStage.Proposal)
                 .withDescription("Estate visibility IT fixture"));
   }
 
