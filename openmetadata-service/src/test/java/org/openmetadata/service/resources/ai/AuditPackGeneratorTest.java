@@ -46,6 +46,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
