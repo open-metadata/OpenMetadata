@@ -62,7 +62,9 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
@@ -520,6 +522,60 @@ public class DomainIsolationIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  /** The ingestion bot reads assets moved into a domain, and their service once it joins too. */
+  @Test
+  void test_ingestionBot_readsDomainAssetsAndServices(final TestNamespace ns) throws Exception {
+    final Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      for (final String suffix : List.of("_ingest1", "_ingest2")) {
+        assertBotReadsDomainTableAndService(ns, ns.shortPrefix() + suffix, cleanup);
+      }
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /** A table moved into a new domain, then its service, both read back with that domain. */
+  private void assertBotReadsDomainTableAndService(
+      final TestNamespace ns, final String name, final Deque<Runnable> cleanup) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    final Domain domain = createDomain(admin, name, cleanup);
+    final DatabaseSchema schema = createSchema(ns, cleanup);
+    final Table table = createTable(admin, name, schema, null, cleanup);
+    addAssetsToDomain(admin, domain, table.getEntityReference());
+    assertEquals(
+        List.of(domain.getFullyQualifiedName()),
+        domainFqns(bot.tables().get(table.getId().toString(), "domains").getDomains()));
+    final String serviceId = schema.getService().getId().toString();
+    moveServiceToDomain(admin, serviceId, domain);
+    assertEquals(
+        List.of(domain.getFullyQualifiedName()),
+        domainFqns(bot.databaseServices().get(serviceId, "domains").getDomains()));
+  }
+
+  private void moveServiceToDomain(
+      final OpenMetadataClient admin, final String serviceId, final Domain domain) {
+    final DatabaseService service = admin.databaseServices().get(serviceId, "domains");
+    service.setDomains(List.of(domain.getEntityReference()));
+    admin.databaseServices().update(service.getId().toString(), service);
+  }
+
+  private void addAssetsToDomain(
+      final OpenMetadataClient admin, final Domain domain, final EntityReference asset) {
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/" + domain.getFullyQualifiedName() + "/assets/add",
+            new BulkAssets().withAssets(List.of(asset)).withDryRun(false),
+            Void.class);
+  }
+
+  private List<String> domainFqns(final List<EntityReference> domains) {
+    return domains.stream().map(EntityReference::getFullyQualifiedName).toList();
   }
 
   @Test

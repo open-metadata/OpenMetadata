@@ -47,6 +47,8 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
 
   {
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;

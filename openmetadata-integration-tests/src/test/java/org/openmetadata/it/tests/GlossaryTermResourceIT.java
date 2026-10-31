@@ -108,6 +108,8 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // Disable tests that don't apply to GlossaryTerm
   {
     supportsFollowers = false; // GlossaryTerm doesn't support followers directly
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     // GlossaryTerm export is done through Glossary endpoint, not GlossaryTerm endpoint
     // The Glossary export (/v1/glossaries/name/{name}/export) exports all terms in that glossary
     supportsImportExport = false;
@@ -4994,5 +4996,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                       + glossaryFqn
                       + ") must still include the linked table");
             });
+  }
+
+  /** Rename, then edit the description in the same session: the rename survives consolidation. */
+  @Test
+  void test_renameAndUpdateDescriptionConsolidation(final TestNamespace ns) {
+    final GlossaryTerm entity = createEntity(createMinimalRequest(ns));
+    final GlossaryTerm updated =
+        renameThenUpdateDescription(entity, "renamed_" + ns.uniqueShortId(), 1);
+    assertEquals(
+        updated.getFullyQualifiedName(),
+        getEntityByName(updated.getFullyQualifiedName()).getFullyQualifiedName());
   }
 }

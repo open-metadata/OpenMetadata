@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -34,6 +35,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.ApiAssertions;
 import org.openmetadata.it.util.BulkApi;
+import org.openmetadata.it.util.CustomPropertyValueContract;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -184,7 +186,8 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   protected boolean supportsDataProductAssetsSearch = true;
   protected boolean supportsDataContract = false;
   protected boolean supportsSoftDelete = true;
-  protected boolean supportsCustomExtension = true;
+  protected boolean supportsCustomExtension = false; // Type defined and extension accepted
+  protected boolean supportsRestore = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsPatch = true;
   // Whether the entity type has a lifecycle stage (its schema declares entityStatus). Opt out for
@@ -773,34 +776,32 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   // DELETE RESTORE TESTS
   // ===================================================================
 
-  /**
-   * Test: Soft deleted entity can be restored
-   * Equivalent to: delete_restore_entity_200 in EntityResourceTest
-   *
-   * Note: This test verifies the restore functionality for soft-deleted entities.
-   * The original test uses a PUT request to restore. Since we're using the SDK,
-   * we'll verify that after soft delete, the entity can be restored and is functional.
-   */
+  /** A soft-deleted entity is hidden from a plain GET, and restoring it brings it back live. */
   @Test
-  void delete_restore_entity_200(TestNamespace ns) {
-    if (!supportsSoftDelete) return;
+  void delete_restore_entity_200(final TestNamespace ns) {
+    if (!supportsSoftDelete || !supportsRestore) return;
+    final T created = createEntity(createMinimalRequest(ns));
+    final String entityId = created.getId().toString();
 
-    // Create entity
-    K createRequest = createMinimalRequest(ns);
-    T created = createEntity(createRequest);
-    String entityId = created.getId().toString();
-
-    // Soft delete entity
     deleteEntity(entityId);
-
-    // Verify entity is deleted (should not be retrievable by default)
     assertThrows(
         Exception.class,
         () -> getEntity(entityId),
         "Deleted entity should not be retrievable without include=deleted");
 
-    // TODO: Add restore functionality once SDK supports it
-    // For now, this test verifies soft delete works correctly
+    restoreEntity(entityId);
+    final T restored = getEntity(entityId);
+    assertEquals(created.getFullyQualifiedName(), restored.getFullyQualifiedName());
+    assertFalse(Boolean.TRUE.equals(restored.getDeleted()), "Restored entity is live again");
+  }
+
+  /** The raw entity JSON, whether or not it is soft-deleted. */
+  private JsonNode readIncludingDeleted(final String id) {
+    final String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, getResourcePath() + id + "?include=all", null);
+    return JsonUtils.readTree(json);
   }
 
   // ===================================================================
@@ -2805,24 +2806,65 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   // ===================================================================
 
   /**
-   * Test: Add custom extension attributes to entity
-   * Equivalent to: put_addEntityCustomAttributes in EntityResourceTest
+   * For each of the 16 custom property types: define a property on this entity type, set a value
+   * on an instance via JSON Patch on {@code /extension}, replace it, remove it, then delete the
+   * property definition.
    */
   @Test
-  void put_addEntityCustomAttributes(TestNamespace ns) {
+  void put_addEntityCustomAttributes(final TestNamespace ns) {
     if (!supportsCustomExtension) return;
+    final T entity = createEntity(createMinimalRequest(ns));
+    final String entityPath = getResourcePath() + entity.getId();
+    CustomPropertyValueContract.exercise(
+        SdkClients.adminClient(),
+        getEntityType(),
+        "cp" + ns.uniqueShortId(),
+        CustomPropertyValueContract.variants(testUser1Ref(), testUser2Ref()),
+        new ExtensionPatchTarget(entityPath));
+  }
 
-    // Create entity without extension
-    K createRequest = createMinimalRequest(ns);
-    T entity = createEntity(createRequest);
+  /** Reads an entity's extension and writes it with JSON Patch, as the UI does. */
+  private record ExtensionPatchTarget(String entityPath)
+      implements CustomPropertyValueContract.ValueTarget {
+    @Override
+    public JsonNode extension() {
+      final String json =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, entityPath + "?fields=extension", null);
+      return JsonUtils.readTree(json).path("extension");
+    }
 
-    // Note: Full custom attributes test requires:
-    // 1. Adding custom property to entity type via Type API
-    // 2. Creating entity with extension
-    // 3. Updating extension via PUT and PATCH
-    // This is a placeholder that verifies the entity can be created
+    @Override
+    public void setValue(final String propertyName, final Object value) {
+      patch(setOperation(extension(), propertyName, value));
+    }
 
-    assertNotNull(entity.getId(), "Entity should be created");
+    /** Patches the one key into an existing extension, or adds the whole extension when empty. */
+    private static Map<String, Object> setOperation(
+        final JsonNode current, final String propertyName, final Object value) {
+      return current.isObject() && !current.isEmpty()
+          ? Map.of(
+              "op",
+              current.has(propertyName) ? "replace" : "add",
+              "path",
+              "/extension/" + propertyName,
+              "value",
+              value)
+          : Map.of("op", "add", "path", "/extension", "value", Map.of(propertyName, value));
+    }
+
+    @Override
+    public void removeValue(final String propertyName) {
+      patch(Map.of("op", "remove", "path", "/extension/" + propertyName));
+    }
+
+    private void patch(final Map<String, Object> operation) {
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PATCH, entityPath, JsonUtils.valueToTree(List.of(operation)));
+    }
   }
 
   // ===================================================================
@@ -2879,57 +2921,119 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   }
 
   // ===================================================================
-  // ASYNC DELETE TESTS (Placeholder - requires WebSocket)
+  // ASYNC DELETE TESTS
   // ===================================================================
 
+  /** Subclasses whose resource exposes {@code DELETE <collection>/async/{id}} set this. */
   protected boolean supportsAsyncDelete = false;
 
-  /**
-   * Test: Async delete of non-existent entity returns 404
-   * Equivalent to: delete_async_nonExistentEntity_404 in EntityResourceTest
-   */
   @Test
-  void delete_async_nonExistentEntity_404(TestNamespace ns) {
+  void delete_async_nonExistentEntity_404(final TestNamespace ns) {
     if (!supportsAsyncDelete) return;
+    final OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> deleteAsync(SdkClients.adminClient(), UUID.randomUUID().toString(), false));
+    assertEquals(404, error.getStatusCode());
+  }
 
-    // Note: Async delete requires WebSocket connection to receive delete messages
-    // This is a placeholder test
+  @Test
+  void delete_async_entity_as_non_admin_401(final TestNamespace ns) {
+    if (!supportsAsyncDelete) return;
+    final String entityId = createEntity(createMinimalRequest(ns)).getId().toString();
+    final OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> deleteAsync(SdkClients.user3Client(), entityId, true));
+    assertEquals(403, error.getStatusCode());
+    assertFalse(readIncludingDeleted(entityId).path("deleted").asBoolean(), "Still live");
+  }
+
+  /** The job hard-deletes the entity: it is gone even with include=all. */
+  @Test
+  void delete_async_with_recursive_hardDelete(final TestNamespace ns) throws Exception {
+    if (!supportsAsyncDelete) return;
+    final T entity = createEntity(createMinimalRequest(ns));
+    assertAsyncDeleteAccepted(entity, true);
+    Awaitility.await("async hard delete of " + entity.getName())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              final OpenMetadataException gone =
+                  assertThrows(
+                      OpenMetadataException.class,
+                      () -> readIncludingDeleted(entity.getId().toString()));
+              assertEquals(404, gone.getStatusCode());
+            });
+  }
+
+  /** The job soft-deletes the entity, and the soft-deleted entity can then be restored. */
+  @Test
+  void delete_async_soft_delete(final TestNamespace ns) throws Exception {
+    if (!supportsAsyncDelete || !supportsSoftDelete || !supportsRestore) return;
+    final T entity = createEntity(createMinimalRequest(ns));
+    final String entityId = entity.getId().toString();
+    assertAsyncDeleteAccepted(entity, false);
+    Awaitility.await("async soft delete of " + entity.getName())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofMillis(500))
+        .until(() -> readIncludingDeleted(entityId).path("deleted").asBoolean());
+
+    restoreEntity(entityId);
+    assertFalse(Boolean.TRUE.equals(getEntity(entityId).getDeleted()), "Restored entity is live");
+  }
+
+  private void deleteAsync(
+      final OpenMetadataClient client, final String id, final boolean hardDelete) {
+    client
+        .getHttpClient()
+        .executeForString(HttpMethod.DELETE, asyncDeletePath(id, hardDelete), null);
+  }
+
+  private String asyncDeletePath(final String id, final boolean hardDelete) {
+    return getResourcePath() + "async/" + id + "?recursive=true&hardDelete=" + hardDelete;
+  }
+
+  /** Raw HTTP as admin: the SDK client discards the status, and the contract is a 202. */
+  private void assertAsyncDeleteAccepted(final T entity, final boolean hardDelete)
+      throws Exception {
+    final HttpResponse<String> response = deleteAsyncAsAdmin(entity.getId().toString(), hardDelete);
+    assertEquals(202, response.statusCode(), response.body());
+    final JsonNode accepted = JsonUtils.readTree(response.body());
+    assertFalse(accepted.path("jobId").asText().isBlank(), "202 body names the delete job");
+    assertEquals(entity.getName(), accepted.path("entityName").asText());
+    assertEquals(hardDelete, accepted.path("hardDelete").asBoolean());
+  }
+
+  private HttpResponse<String> deleteAsyncAsAdmin(final String id, final boolean hardDelete)
+      throws Exception {
+    final String url = SdkClients.getServerUrl() + asyncDeletePath(id, hardDelete);
+    return HttpClient.newHttpClient()
+        .send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                .DELETE()
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
   }
 
   /**
-   * Test: Async delete as non-admin should fail
-   * Equivalent to: delete_async_entity_as_non_admin_401 in EntityResourceTest
+   * Renames {@code entity}, then edits its description in the same session, and asserts the rename
+   * survives the change-consolidation of the second edit.
    */
-  @Test
-  void delete_async_entity_as_non_admin_401(TestNamespace ns) {
-    if (!supportsAsyncDelete) return;
-
-    // Note: Async delete requires WebSocket connection
-    // This is a placeholder test
-  }
-
-  /**
-   * Test: Async delete with recursive hard delete
-   * Equivalent to: delete_async_with_recursive_hardDelete in EntityResourceTest
-   */
-  @Test
-  void delete_async_with_recursive_hardDelete(TestNamespace ns) {
-    if (!supportsAsyncDelete) return;
-
-    // Note: Async delete requires WebSocket connection
-    // This is a placeholder test
-  }
-
-  /**
-   * Test: Async soft delete
-   * Equivalent to: delete_async_soft_delete in EntityResourceTest
-   */
-  @Test
-  void delete_async_soft_delete(TestNamespace ns) {
-    if (!supportsAsyncDelete || !supportsSoftDelete) return;
-
-    // Note: Async delete requires WebSocket connection
-    // This is a placeholder test
+  protected T renameThenUpdateDescription(final T entity, final String newName, final int cycle) {
+    entity.setName(newName);
+    final T renamed = patchEntity(entity.getId().toString(), entity);
+    assertEquals(newName, renamed.getName());
+    final String description = "Description after rename " + cycle;
+    renamed.setDescription(description);
+    final T updated = patchEntity(renamed.getId().toString(), renamed);
+    assertEquals(newName, updated.getName(), "Rename survives the in-session description edit");
+    assertEquals(description, updated.getDescription());
+    assertTrue(updated.getFullyQualifiedName().endsWith(newName), updated.getFullyQualifiedName());
+    return updated;
   }
 
   // ===================================================================
