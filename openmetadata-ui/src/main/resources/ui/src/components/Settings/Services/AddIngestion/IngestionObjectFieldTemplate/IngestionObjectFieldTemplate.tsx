@@ -23,7 +23,7 @@ import {
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
 import classNames from 'classnames';
-import { FocusEvent, FunctionComponent, useState } from 'react';
+import { FocusEvent, FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../../../../../constants/ServiceConnection.constants';
 import {
@@ -286,9 +286,11 @@ const SectionFields = ({
 };
 
 const SectionCard = ({
+  errorSchema,
   isCompact,
   section,
 }: {
+  errorSchema?: Record<string, { __errors?: string[] }>;
   isCompact?: boolean;
   section: IngestionSectionConfig;
 }) => {
@@ -296,6 +298,23 @@ const SectionCard = ({
   const [active, setActive] = useState(false);
   const showBody = !section.collapsible || open;
   const hasVisibleFields = section.properties.some((p) => !p.hidden);
+
+  // Collapsed sections keep their fields mounted (tw:hidden) so that
+  // transformErrors can find DOM elements, but the error messages rendered
+  // by CoreFieldErrorTemplate are also hidden. Auto-expand a collapsed
+  // section when it contains fields with validation errors so the user can
+  // see why submission was rejected.
+  useEffect(() => {
+    if (!section.collapsible || open) {
+      return;
+    }
+    const hasErrors = section.properties.some((p) =>
+      Boolean(errorSchema?.[p.name]?.__errors?.length)
+    );
+    if (hasErrors) {
+      setOpen(true);
+    }
+  }, [errorSchema, open, section.collapsible, section.properties]);
 
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
     const nextFocusedElement = event.relatedTarget as Node | null;
@@ -338,7 +357,15 @@ const SectionCard = ({
           />
         </>
       ) : (
-        <HiddenFields properties={section.properties.filter((p) => p.hidden)} />
+        // Collapsed section must keep ALL properties mounted (not just hidden
+        // ones): transformErrors in formPureUtils discards any validation
+        // error whose field element is absent from the DOM, so unmounting
+        // visible fields here would silently swallow constraint violations
+        // (e.g. minimum/maximum on confidence, sampleDataCount) and let
+        // invalid data submit. Matches the pattern in
+        // SSOGroupedFieldTemplate which keeps advanced fields mounted for the
+        // same reason.
+        <HiddenFields properties={section.properties} />
       )}
     </Card>
   );
@@ -364,6 +391,7 @@ const getCompactAdvancedSection = (
 export const IngestionObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = ({
+  errorSchema,
   idSchema,
   onAddClick,
   properties,
@@ -511,6 +539,9 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
     <div className="tw:flex tw:flex-col tw:gap-3">
       {sections.map((section) => (
         <SectionCard
+          errorSchema={
+            errorSchema as Record<string, { __errors?: string[] }> | undefined
+          }
           isCompact={compactAdvancedSection && section.key === 'advanced'}
           key={section.key}
           section={section}
