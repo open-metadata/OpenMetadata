@@ -29,6 +29,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication;
 import org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication;
+import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -303,6 +304,61 @@ public class SecretsManagerLifecycleTest {
         ServiceType.DATABASE);
 
     assertTrue(secretsManager.getSecretsMap().containsKey(sharedSecretId));
+  }
+
+  /**
+   * Each string entry of a password-valued map (Kafka {@code consumerConfig} here) is a secret of
+   * its own: it is stored under an id derived from the entry key, encrypted at rest, decrypted on
+   * read and deleted with the service, while non-string settings are left alone.
+   */
+  @Test
+  void testKafkaMapSecretEntriesLifecycle() {
+    String connectionName = "prod_kafka";
+    String mapSecretBase =
+        secretsManager.buildSecretId(true, "messaging", connectionName)
+            + "/consumerconfig/additionalproperties";
+    String oauthEntryId = mapSecretBase + "/sasl_oauthbearer_client_secret";
+    String keyPassEntryId = mapSecretBase + "/ssl_key_password";
+    Map<String, Object> kafkaConnection =
+        Map.of(
+            "bootstrapServers",
+            "broker:9092",
+            "consumerConfig",
+            Map.of(
+                "sasl.oauthbearer.client.secret", "oauth-client-secret",
+                "ssl.key.password", "client-key-passphrase",
+                "session.timeout.ms", 6000));
+
+    KafkaConnection encrypted =
+        (KafkaConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                kafkaConnection, "Kafka", connectionName, ServiceType.MESSAGING);
+    assertNotEquals(
+        "oauth-client-secret",
+        encrypted
+            .getConsumerConfig()
+            .getAdditionalProperties()
+            .get("sasl.oauthbearer.client.secret"));
+    assertEquals(
+        6000, encrypted.getConsumerConfig().getAdditionalProperties().get("session.timeout.ms"));
+    assertEquals(DECRYPTED_VALUE, secretsManager.getSecret(oauthEntryId));
+    assertEquals(DECRYPTED_VALUE, secretsManager.getSecret(keyPassEntryId));
+
+    KafkaConnection decrypted =
+        (KafkaConnection)
+            secretsManager.decryptServiceConnectionConfig(
+                encrypted, "Kafka", ServiceType.MESSAGING);
+    assertEquals(
+        DECRYPTED_VALUE,
+        decrypted
+            .getConsumerConfig()
+            .getAdditionalProperties()
+            .get("sasl.oauthbearer.client.secret"));
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        kafkaConnection, "Kafka", connectionName, ServiceType.MESSAGING);
+    assertFalse(secretsManager.getSecretsMap().containsKey(oauthEntryId));
+    assertFalse(secretsManager.getSecretsMap().containsKey(keyPassEntryId));
   }
 
   private Map<String, Object> fabricConfig(Map<String, String> authType) {

@@ -82,14 +82,18 @@
       "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
       "type": "object",
       "default": {},
-      "additionalProperties": true
+      "additionalProperties": {
+        "format": "password"
+      }
     },
     "schemaRegistryConfig": {
       "title": "Schema Registry Config",
       "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
       "type": "object",
       "default": {},
-      "additionalProperties": true
+      "additionalProperties": {
+        "format": "password"
+      }
     },
     "schemaRegistryTopicSuffixName": {
       "title": "Schema Registry Topic Suffix Name",
