@@ -272,9 +272,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setService(getContainer(pipeline.getId()));
 
     // validate all the Tasks
-    for (Status taskStatus : listOrEmpty(pipelineStatus.getTaskStatus())) {
-      validateTask(pipeline, taskStatus.getName());
-    }
+    validateTasks(pipeline, List.of(pipelineStatus));
 
     StatusChange statusChange =
         resolveStatusChange(pipeline.getFullyQualifiedName(), pipelineStatus);
@@ -391,12 +389,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .toList();
   }
 
-  private void validateTasks(Pipeline pipeline, List<PipelineStatus> statuses) {
-    Set<String> validatedTasks = new HashSet<>();
+  static void validateTasks(Pipeline pipeline, List<PipelineStatus> statuses) {
+    Set<String> taskNames = new HashSet<>();
+    for (Task task : listOrEmpty(pipeline.getTasks())) {
+      taskNames.add(task.getName());
+    }
     for (PipelineStatus status : statuses) {
       for (Status taskStatus : listOrEmpty(status.getTaskStatus())) {
-        if (validatedTasks.add(taskStatus.getName())) {
-          validateTask(pipeline, taskStatus.getName());
+        if (!taskNames.contains(taskStatus.getName())) {
+          throw new IllegalArgumentException("Invalid task name " + taskStatus.getName());
         }
       }
     }
@@ -735,15 +736,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     return new ResultList<>(paginatedResults, beforeCursor, afterCursor, total);
-  }
-
-  // Validate if a given task exists in the pipeline
-  private void validateTask(Pipeline pipeline, String taskName) {
-    boolean validTask =
-        pipeline.getTasks().stream().anyMatch(task -> task.getName().equals(taskName));
-    if (!validTask) {
-      throw new IllegalArgumentException("Invalid task name " + taskName);
-    }
   }
 
   @Override
