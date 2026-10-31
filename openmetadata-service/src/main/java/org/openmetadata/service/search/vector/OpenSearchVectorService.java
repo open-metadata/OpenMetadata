@@ -1972,36 +1972,69 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
+  /**
+   * Returns true when the OpenSearch error body represents a transient, segment-lifecycle
+   * exception that is safe to retry (e.g. a Lucene segment closed during a concurrent merge).
+   */
+  private static boolean isTransientOpenSearchError(int status, String errorBody) {
+    return status >= 500 && errorBody != null && errorBody.contains("already_closed_exception");
+  }
+
+  private static final int GENERIC_REQUEST_MAX_ATTEMPTS = 3;
+  private static final long GENERIC_REQUEST_BACKOFF_MS = 200L;
+
   @Override
   public String executeGenericRequest(String method, String endpoint, String body) {
-    try {
-      OpenSearchGenericClient genericClient = client.generic();
-      var builder = Requests.builder().endpoint(endpoint).method(method);
-      if (body != null) {
-        builder.json(body);
-      }
-      var request = builder.build();
-      try (var response = genericClient.execute(request)) {
-        if (response.getStatus() >= 400) {
-          String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
-          throw new IOException(
-              "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody);
+    Exception lastException = null;
+    for (int attempt = 0; attempt < GENERIC_REQUEST_MAX_ATTEMPTS; attempt++) {
+      try {
+        OpenSearchGenericClient genericClient = client.generic();
+        var builder = Requests.builder().endpoint(endpoint).method(method);
+        if (body != null) {
+          builder.json(body);
         }
-        return response
-            .getBody()
-            .map(
-                b -> {
-                  try {
-                    return new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
-                  } catch (Exception e) {
-                    return "{}";
-                  }
-                })
-            .orElse("{}");
+        var request = builder.build();
+        try (var response = genericClient.execute(request)) {
+          if (response.getStatus() >= 400) {
+            String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
+            if (isTransientOpenSearchError(response.getStatus(), errorBody)
+                && attempt < GENERIC_REQUEST_MAX_ATTEMPTS - 1) {
+              LOG.warn(
+                  "Transient OpenSearch error on attempt {}/{} for {} {}: {}. Retrying after backoff.",
+                  attempt + 1,
+                  GENERIC_REQUEST_MAX_ATTEMPTS,
+                  method,
+                  endpoint,
+                  errorBody);
+              Thread.sleep(GENERIC_REQUEST_BACKOFF_MS * (1L << attempt));
+              continue;
+            }
+            throw new IOException(
+                "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody);
+          }
+          return response
+              .getBody()
+              .map(
+                  b -> {
+                    try {
+                      return new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                      return "{}";
+                    }
+                  })
+              .orElse("{}");
+        }
+      } catch (IOException | RuntimeException e) {
+        lastException = e;
+        LOG.error("Generic request failed: {} {}", method, endpoint, e);
+        throw new RuntimeException("OpenSearch generic request failed", e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException("OpenSearch generic request interrupted during retry backoff", e);
       }
-    } catch (Exception e) {
-      LOG.error("Generic request failed: {} {}", method, endpoint, e);
-      throw new RuntimeException("OpenSearch generic request failed", e);
     }
+    LOG.error(
+        "Generic request failed after {} attempts: {} {}", GENERIC_REQUEST_MAX_ATTEMPTS, method, endpoint, lastException);
+    throw new RuntimeException("OpenSearch generic request failed after retries", lastException);
   }
 }
