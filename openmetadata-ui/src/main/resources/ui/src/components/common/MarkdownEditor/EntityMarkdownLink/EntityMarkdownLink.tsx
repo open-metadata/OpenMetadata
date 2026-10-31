@@ -16,6 +16,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { safeDecodeURIComponent } from '../../../../utils/SettingsHashUtils';
 import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
 import DocumentMarkdownLink from './DocumentMarkdownLink';
 import {
@@ -57,8 +58,8 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
       return { isEntityLink: false };
     }
     const [serviceCategory, encodedServiceFqn, ...fqnParts] = parts;
-    const serviceFqn = decodeURIComponent(encodedServiceFqn);
-    const fullyQualifiedName = decodeURIComponent(fqnParts.join('/'));
+    const serviceFqn = safeDecodeURIComponent(encodedServiceFqn);
+    const fullyQualifiedName = safeDecodeURIComponent(fqnParts.join('/'));
 
     return {
       isEntityLink: true,
@@ -75,7 +76,7 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
     isEntityLink: true,
     entityInfo: {
       entityType: entityType as EntityType,
-      fullyQualifiedName: decodeURIComponent(rest),
+      fullyQualifiedName: safeDecodeURIComponent(rest),
     },
   };
 };
@@ -152,7 +153,9 @@ const EntityMarkdownLink: React.FC<EntityMarkdownLinkProps> = ({
   if (href?.startsWith(DOCUMENT_LINK_PREFIX)) {
     return (
       <DocumentMarkdownLink
-        assetId={decodeURIComponent(href.slice(DOCUMENT_LINK_PREFIX.length))}
+        assetId={safeDecodeURIComponent(
+          href.slice(DOCUMENT_LINK_PREFIX.length)
+        )}
         className={className}
         documentsRoute={ROUTES.CONTEXT_CENTER_DOCUMENTS}>
         {children}
