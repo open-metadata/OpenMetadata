@@ -25,6 +25,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -82,8 +83,28 @@ public class AIGovernanceEstateVisibilityIT {
 
   private static final String RESTRICTED_TAG = "PII.Sensitive";
 
-  /** The two applications under test plus the client confined from the hidden one. */
+  // One shared fixture for the whole class: every hidden application tagged RESTRICTED_TAG hides
+  // from the confined principal, so exactly one hidden fixture must ever exist or the coverage
+  // gap below stops being exactly one.
+  private static final String SUFFIX =
+      UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+  private static AIApplication hiddenApp;
+  private static AIApplication visibleApp;
+
+  @BeforeAll
+  static void createFixtures() {
+    hiddenApp = createApplication("aigov_hidden_" + SUFFIX, restrictedTag());
+    visibleApp = createApplication("aigov_visible_" + SUFFIX, null);
+    submitForReview(hiddenApp);
+    submitForReview(visibleApp);
+  }
+
+  /** The shared applications under test plus a client confined from the hidden one. */
   private record Estate(AIApplication visible, AIApplication hidden, OpenMetadataClient confined) {}
+
+  private Estate estateFixture(TestNamespace ns) {
+    return new Estate(visibleApp, hiddenApp, confinedClient(ns));
+  }
 
   @Test
   void estateViews_hideAssetsTheCallerCannotView(TestNamespace ns) {
@@ -179,8 +200,12 @@ public class AIGovernanceEstateVisibilityIT {
     Estate estate = estateFixture(ns);
     OpenMetadataClient admin = SdkClients.adminClient();
 
-    // A framework whose auto-apply rules match only this test's two applications: the coverage
-    // counts become exact, immune to whatever the concurrent ITs create.
+    // An auto-apply scope of Proposal-stage aiApplications picks up the server-seeded sample
+    // applications too, so exact counts are not available. The gap is deterministic instead:
+    // exactly one hidden fixture exists for the whole class (the shared @BeforeAll fixture), so
+    // the confined caller must see precisely one fewer asset than the admin, whoever else is in
+    // scope. The two calls land within milliseconds and no other test creates Proposal-stage
+    // applications, so nothing can enter the scope between them.
     AIGovernanceFramework framework =
         admin
             .getHttpClient()
@@ -215,9 +240,8 @@ public class AIGovernanceEstateVisibilityIT {
                 null,
                 FrameworkCoverageResponse.class);
 
-    // The estate may seed other Proposal-stage applications; the confined caller must see exactly
-    // one fewer than the admin — the hidden fixture — whoever else is in scope. Both calls count
-    // the same concurrent fixtures, so the difference is deterministic.
+    // The estate seeds other Proposal-stage applications; the confined caller must see exactly
+    // one fewer than the admin — the class's single hidden fixture — whoever else is in scope.
     assertTrue(adminCoverage.getAssetsInScope() >= 2, "both fixtures are in scope for the admin");
     assertEquals(
         adminCoverage.getAssetsInScope() - 1,
@@ -282,18 +306,10 @@ public class AIGovernanceEstateVisibilityIT {
   }
 
   private Estate estateFixture(TestNamespace ns) {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    // The deny is per-asset: only the hidden application carries the restricted tag, so the
-    // visible application stays readable by the confined principal (mirrors the finding's
-    // per-asset DomainAccessDenyRule rather than a type-wide deny).
-    AIApplication hidden = createApplication(ns.prefix("finance_scorer"), restrictedTag());
-    AIApplication visible = createApplication(ns.prefix("marketing_writer"), null);
-    submitForReview(hidden);
-    submitForReview(visible);
-    return new Estate(visible, hidden, confinedClient(ns));
+    return new Estate(visibleApp, hiddenApp, confinedClient(ns));
   }
 
-  private AIApplication createApplication(String name, TagLabel tag) {
+  private static AIApplication createApplication(String name, TagLabel tag) {
     return SdkClients.adminClient()
         .aiApplications()
         .create(
@@ -313,7 +329,7 @@ public class AIGovernanceEstateVisibilityIT {
         .withState(TagLabel.State.CONFIRMED);
   }
 
-  private void submitForReview(AIApplication app) {
+  private static void submitForReview(AIApplication app) {
     SdkClients.adminClient()
         .getHttpClient()
         .execute(
