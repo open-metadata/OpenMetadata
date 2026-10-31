@@ -102,6 +102,7 @@ class BulkImportChangeEventMaskingTest {
     assertEquals(
         JsonUtils.valueToTree(service.getConnection()),
         JsonUtils.valueToTree(stored.getConnection()));
+    @SuppressWarnings("unchecked")
     final ArgumentCaptor<List<String>> historyJsons = ArgumentCaptor.forClass(List.class);
     verify(daoCollection.entityExtensionDAO())
         .insertMany(
@@ -109,6 +110,7 @@ class BulkImportChangeEventMaskingTest {
             eq(List.of("databaseService.version.0.1")),
             eq(Entity.DATABASE_SERVICE),
             historyJsons.capture());
+    assertEquals(1, historyJsons.getValue().size());
     assertEquals(
         JsonUtils.valueToTree(service),
         JsonUtils.valueToTree(
