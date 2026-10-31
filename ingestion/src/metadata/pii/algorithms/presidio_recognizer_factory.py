@@ -120,8 +120,9 @@ class PresidioRecognizerFactory:
 
         flags = PresidioRecognizerFactory._get_regex_flags(config.regexFlags)
         try:
-            # Presidio compiles patterns with `regex` on first use, so an invalid one would
-            # otherwise fail every column this recognizer runs on, along with its other tags.
+            # Presidio compiles patterns with `regex` on first use, so a pattern that cannot be
+            # compiled (invalid, or nested too deeply for the parser) would otherwise fail every
+            # column this recognizer is built for, along with its other tags.
             for pattern in patterns:
                 regex.compile(pattern.regex, flags=flags or 0)
             recognizer = PresidioPatternRecognizer(
@@ -132,7 +133,7 @@ class PresidioRecognizerFactory:
                 context=config.context or [],
                 global_regex_flags=flags,
             )
-        except (ValueError, regex.error) as exc:
+        except (ValueError, RecursionError, regex.error) as exc:
             logger.error("Skipping recognizer %s: %s", recognizer_config.name.root, exc)
             return None
         return recognizer

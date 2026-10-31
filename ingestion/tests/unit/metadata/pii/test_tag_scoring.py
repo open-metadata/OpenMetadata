@@ -217,14 +217,29 @@ class TestTagScorer:
         )
 
     @pytest.mark.parametrize(
-        "patterns",
+        "patterns, language",
         [
-            pytest.param([PatternFactory.build(name="Badge", regex=r"EMP-(\d{6}")], id="invalid-regex"),
-            pytest.param([], id="no-patterns"),
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex=r"EMP-(\d{6}")],
+                ClassificationLanguage.en,
+                id="invalid-regex",
+            ),
+            pytest.param([], ClassificationLanguage.en, id="no-patterns"),
+            # Too deeply nested to compile; the recognizer is not even for the language analyzed.
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.de,
+                id="too-deeply-nested-other-language",
+            ),
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.en,
+                id="too-deeply-nested",
+            ),
         ],
     )
     def test_broken_recognizer_does_not_drop_other_tags(
-        self, email_tag, general_classification, column_to_analyze, nlp_engine, patterns
+        self, email_tag, general_classification, column_to_analyze, nlp_engine, patterns, language
     ):
         broken_tag = TagFactory.create(
             tag_name="BadgeTag",
@@ -236,7 +251,7 @@ class TestTagScorer:
                     recognizerConfig=PatternRecognizerFactory.create(
                         patterns=patterns,
                         context=[],
-                        supportedLanguage=ClassificationLanguage.en,
+                        supportedLanguage=language,
                     ),
                     target=Target.content,
                 )
