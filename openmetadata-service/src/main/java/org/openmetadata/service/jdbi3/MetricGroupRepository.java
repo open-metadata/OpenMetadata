@@ -21,11 +21,13 @@ import static org.openmetadata.service.Entity.METRIC_GROUP;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -35,8 +37,10 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.Relationship;
@@ -447,6 +451,146 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
       }
       scanned += batch.size();
     } while (batch.size() == MEMBER_SCAN_BATCH_SIZE && scanned < MAX_PERMISSION_FILTER_SCAN_SIZE);
+    return visible;
+  }
+
+  /**
+   * Every membership payload a group response carries answers the caller's view permission on
+   * metrics: the member references, the member-derived metric count, and the membership entries
+   * of the stored change descriptions. The /metricGroups/{id}/metrics endpoint has always
+   * applied this; the generic reads and stored snapshots apply it here.
+   */
+  public MetricGroup sanitizeMembership(
+      MetricGroup group, Predicate<EntityReference> canViewMetric) {
+    MetricGroup sanitized = sanitizeMembershipReferences(group, canViewMetric);
+    if (group.getMetricCount() != null) {
+      sanitized.setMetricCount(visibleMetricCount(group.getId(), canViewMetric));
+    }
+    return sanitized;
+  }
+
+  /**
+   * Filters the member references and the membership change entries a group payload carries;
+   * {@code metricCount} is left as loaded. The single-entity {@link #sanitizeMembership} recounts
+   * it with {@link #visibleMetricCount}; list responses recount a whole page at once through {@link
+   * #sanitizeMembership(List, Predicate)} so the count queries batch instead of running one scan
+   * per row.
+   */
+  public MetricGroup sanitizeMembershipReferences(
+      MetricGroup group, Predicate<EntityReference> canViewMetric) {
+    MetricGroup sanitized = JsonUtils.deepCopy(group, MetricGroup.class);
+    if (sanitized.getMetrics() != null) {
+      sanitized.setMetrics(
+          sanitized.getMetrics().stream()
+              .filter(canViewMetric)
+              .collect(Collectors.toCollection(ArrayList::new)));
+    }
+    sanitizeMembershipChanges(sanitized.getChangeDescription(), canViewMetric);
+    sanitizeMembershipChanges(sanitized.getIncrementalChangeDescription(), canViewMetric);
+    return sanitized;
+  }
+
+  /**
+   * Page-sized variant of {@link #sanitizeMembership} for list responses: the visible member
+   * counts are computed with one relationship query and one reference load for the whole page
+   * instead of the per-group scan {@link #visibleMetricCount} runs.
+   */
+  public List<MetricGroup> sanitizeMembership(
+      List<MetricGroup> groups, Predicate<EntityReference> canViewMetric) {
+    List<MetricGroup> sanitized =
+        groups.stream()
+            .map(group -> sanitizeMembershipReferences(group, canViewMetric))
+            .collect(Collectors.toCollection(ArrayList::new));
+    Map<UUID, Integer> visibleCounts =
+        visibleMetricCounts(
+            groups.stream()
+                .filter(group -> group.getMetricCount() != null)
+                .map(MetricGroup::getId)
+                .toList(),
+            canViewMetric);
+    for (MetricGroup group : sanitized) {
+      if (group.getMetricCount() != null) {
+        group.setMetricCount(visibleCounts.getOrDefault(group.getId(), 0));
+      }
+    }
+    return sanitized;
+  }
+
+  /**
+   * Visible member counts for a page of groups: one chunked relationship query and one reference
+   * load for all groups, then one cached visibility test per member. Each group's members are
+   * truncated to {@link #MAX_PERMISSION_FILTER_SCAN_SIZE} before the reference load, matching the
+   * single-group {@link #visibleMetricCount} cap: an oversized group under-reports its badge,
+   * which is the milder failure.
+   */
+  private Map<UUID, Integer> visibleMetricCounts(
+      Collection<UUID> groupIds, Predicate<EntityReference> canViewMetric) {
+    Map<UUID, Integer> counts = new HashMap<>();
+    if (nullOrEmpty(groupIds)) {
+      return counts;
+    }
+    Map<UUID, List<UUID>> memberIdsByGroup = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record :
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                groupIds.stream().map(UUID::toString).toList(),
+                Relationship.HAS.ordinal(),
+                METRIC_GROUP,
+                METRIC)) {
+      memberIdsByGroup
+          .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+          .add(UUID.fromString(record.getToId()));
+    }
+    memberIdsByGroup.replaceAll(
+        (groupId, ids) ->
+            ids.size() > MAX_PERMISSION_FILTER_SCAN_SIZE
+                ? List.copyOf(ids.subList(0, MAX_PERMISSION_FILTER_SCAN_SIZE))
+                : ids);
+    Set<UUID> memberIds =
+        memberIdsByGroup.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+    Map<UUID, EntityReference> referencesById =
+        Entity.getEntityReferencesByIds(METRIC, new ArrayList<>(memberIds), NON_DELETED).stream()
+            .collect(
+                Collectors.toMap(
+                    EntityReference::getId, reference -> reference, (left, right) -> left));
+    for (UUID groupId : groupIds) {
+      int visible =
+          (int)
+              memberIdsByGroup.getOrDefault(groupId, List.of()).stream()
+                  .map(referencesById::get)
+                  .filter(Objects::nonNull)
+                  .filter(canViewMetric)
+                  .count();
+      counts.put(groupId, visible);
+    }
+    return counts;
+  }
+
+  private static void sanitizeMembershipChanges(
+      ChangeDescription changeDescription, Predicate<EntityReference> canViewMetric) {
+    if (changeDescription == null) {
+      return;
+    }
+    changeDescription.setFieldsAdded(
+        visibleMembershipChanges(changeDescription.getFieldsAdded(), canViewMetric));
+    changeDescription.setFieldsUpdated(
+        visibleMembershipChanges(changeDescription.getFieldsUpdated(), canViewMetric));
+    changeDescription.setFieldsDeleted(
+        visibleMembershipChanges(changeDescription.getFieldsDeleted(), canViewMetric));
+  }
+
+  private static List<FieldChange> visibleMembershipChanges(
+      List<FieldChange> changes, Predicate<EntityReference> canViewMetric) {
+    List<FieldChange> visible = new ArrayList<>();
+    for (FieldChange change : listOrEmpty(changes)) {
+      if (!FIELD_METRICS.equals(change.getName())
+          || (MetricRepository.referencesOnlyVisibleEntities(change.getOldValue(), canViewMetric)
+              && MetricRepository.referencesOnlyVisibleEntities(
+                  change.getNewValue(), canViewMetric))) {
+        visible.add(change);
+      }
+    }
     return visible;
   }
 
