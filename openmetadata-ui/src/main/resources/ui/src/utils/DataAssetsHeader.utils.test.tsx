@@ -210,6 +210,25 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('formatted-0');
   });
 
+  it('Function getDataAssetsHeaderInfo should hide a year-0001 placeholder table creation time', () => {
+    const assetData = getDataAssetsHeaderInfo(
+      EntityType.TABLE,
+      {
+        ...MOCK_TABLE,
+        lifeCycle: { created: { timestamp: -62135596800000 } },
+      },
+      'Redshift',
+      []
+    );
+
+    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
+      'label.created-time'
+    );
+    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
+      'formatted--62135596800000'
+    );
+  });
+
   // Test for Topic entity
   it('Function getDataAssetsHeaderInfo should return data for Topic entity', () => {
     const assetData = getDataAssetsHeaderInfo(

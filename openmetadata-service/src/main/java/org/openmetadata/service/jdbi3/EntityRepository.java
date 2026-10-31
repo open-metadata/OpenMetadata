@@ -299,6 +299,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
+import org.openmetadata.service.util.LifeCycles;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.PostCommitActionQueue;
@@ -3502,6 +3503,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public final void prepareInternal(T entity, boolean update) {
     validateTags(entity);
+    entity.setLifeCycle(LifeCycles.withoutPlaceholderTimestamps(entity.getLifeCycle()));
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
@@ -4568,6 +4570,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // The import records its author as impersonatedBy too; it carries no bot impersonation.
     authorizeImportedDomains(originals, updates, ChangeActor.recorded(updatedBy, null));
 
+    // Each original is a fresh read that nothing else holds, so it takes the relationships a PUT or
+    // PATCH records in history in place. Serializing here keeps the transaction to the inserts.
+    setFieldsInBulk(putFields, originals);
+    VersionHistoryRows previousVersions = versionHistoryRows(originals);
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
       T original = originals.get(i);
@@ -4576,6 +4582,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setId(original.getId());
       carryCreationAudit(original, updated);
       updated.setVersion(nextVersion(original.getVersion()));
+      updated.setChangeDescription(importChangeDescription(original));
+      updated.setIncrementalChangeDescription(null);
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       // 2. Set impersonatedBy
@@ -4588,6 +4596,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // round trip runs while the handle is held.
     flushInOneTransaction(
         () -> {
+          storeVersionHistory(previousVersions);
           updateMany(updatedEntities);
           replaceExtensions(originals, updatedEntities);
           clearRelationshipsForUpdateMany(updatedEntities);
@@ -4600,6 +4609,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         });
 
     return updatedEntities;
+  }
+
+  /**
+   * The change description of an imported entity. It follows the stored version, so an edit in the
+   * same session consolidates against that version, and it keeps the per-field change summary.
+   */
+  private ChangeDescription importChangeDescription(T original) {
+    ChangeSummaryMap changeSummary =
+        Optional.ofNullable(original.getChangeDescription())
+            .map(ChangeDescription::getChangeSummary)
+            .orElse(null);
+    return new ChangeDescription()
+        .withPreviousVersion(original.getVersion())
+        .withChangeSummary(changeSummary);
   }
 
   @SuppressWarnings("unused")
@@ -5166,6 +5189,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // The patched copy carries the stored impersonatedBy. Replace it (null for a regular user)
     // before prepare, so validation sees who makes this change rather than who made the last one.
     updated.setImpersonatedBy(impersonatedBy);
+    updated.setLifeCycle(
+        LifeCycles.withoutPlaceholderTimestamps(updated.getLifeCycle(), original.getLifeCycle()));
 
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
@@ -8692,22 +8717,35 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
     try (var ignored = phase(phasePrefix + "VersionHistory")) {
-      List<UUID> historyIds = new ArrayList<>();
-      List<String> historyExtensions = new ArrayList<>();
-      List<String> historyJsons = new ArrayList<>();
-      for (EntityUpdater u : changed) {
-        if (u.isVersionChanged()) {
-          historyIds.add(u.getOriginal().getId());
-          historyExtensions.add(
-              EntityUtil.getVersionExtension(entityType, u.getOriginal().getVersion()));
-          historyJsons.add(serializeForVersionHistory(u.getOriginal()));
-        }
-      }
-      if (!historyIds.isEmpty()) {
-        daoCollection
-            .entityExtensionDAO()
-            .insertMany(historyIds, historyExtensions, entityType, historyJsons);
-      }
+      storeVersionHistory(
+          versionHistoryRows(
+              changed.stream()
+                  .filter(EntityUpdater::isVersionChanged)
+                  .map(EntityUpdater::getOriginal)
+                  .toList()));
+    }
+  }
+
+  /** The id, version extension and serialized entity of each history row, column by column. */
+  private record VersionHistoryRows(List<UUID> ids, List<String> extensions, List<String> jsons) {}
+
+  private VersionHistoryRows versionHistoryRows(List<T> previousVersions) {
+    List<UUID> ids = new ArrayList<>(previousVersions.size());
+    List<String> extensions = new ArrayList<>(previousVersions.size());
+    List<String> jsons = new ArrayList<>(previousVersions.size());
+    for (T previous : previousVersions) {
+      ids.add(previous.getId());
+      extensions.add(EntityUtil.getVersionExtension(entityType, previous.getVersion()));
+      jsons.add(serializeForVersionHistory(previous));
+    }
+    return new VersionHistoryRows(ids, extensions, jsons);
+  }
+
+  private void storeVersionHistory(VersionHistoryRows rows) {
+    if (!rows.ids().isEmpty()) {
+      daoCollection
+          .entityExtensionDAO()
+          .insertMany(rows.ids(), rows.extensions(), entityType, rows.jsons());
     }
   }
 
