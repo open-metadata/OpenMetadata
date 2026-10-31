@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -34,6 +35,14 @@ public class AuditReportRepository extends EntityRepository<AuditReport> {
         FIELDS,
         FIELDS);
     supportsSearch = true;
+  }
+
+  @Override
+  protected List<String> getFieldsHiddenFromHistory() {
+    // The pack bytes are the requester's private view of the estate (see
+    // ADR:2026-10-31-audit-pack-artifacts-belong-to-the-requester): no stored version and no
+    // version read may carry them, however a report row was patched.
+    return List.of("artifacts");
   }
 
   @Override
@@ -90,9 +99,9 @@ public class AuditReportRepository extends EntityRepository<AuditReport> {
       compareAndUpdate(
           "runningOn",
           () -> recordChange("runningOn", original.getRunningOn(), updated.getRunningOn()));
-      compareAndUpdate(
-          "artifacts",
-          () -> recordChange("artifacts", original.getArtifacts(), updated.getArtifacts(), true));
+      // Artifacts are deliberately not recorded: change events and alerts fan out to readers who
+      // are not the pack's requester, and the bytes stay out of stored versions (see
+      // getFieldsHiddenFromHistory). The async worker writes them through the DAO, not here.
       compareAndUpdate(
           "manifest",
           () -> recordChange("manifest", original.getManifest(), updated.getManifest(), true));

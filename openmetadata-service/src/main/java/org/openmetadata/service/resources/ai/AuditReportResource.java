@@ -159,7 +159,11 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     preserveRequesterOnUpdate(report);
 
-    return createOrUpdate(uriInfo, securityContext, report);
+    Response response = createOrUpdate(uriInfo, securityContext, report);
+    if (response.getEntity() instanceof AuditReport saved) {
+      retainArtifactsForRequester(securityContext, saved);
+    }
+    return response;
   }
 
   @PATCH
@@ -172,7 +176,11 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
       @PathParam("id") UUID id,
       JsonPatch patch) {
     validateRequestedByUnchanged(patch);
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    if (response.getEntity() instanceof AuditReport patched) {
+      retainArtifactsForRequester(securityContext, patched);
+    }
+    return response;
   }
 
   /**

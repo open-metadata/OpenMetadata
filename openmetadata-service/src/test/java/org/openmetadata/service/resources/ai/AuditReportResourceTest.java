@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -127,13 +128,22 @@ class AuditReportResourceTest {
   @Test
   @SuppressWarnings("unchecked")
   void patchAllowsChangesToOtherFields() {
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
       AuditReportRepository repository = mock(AuditReportRepository.class);
       entityMock.when(() -> Entity.getEntityRepository(Entity.AUDIT_REPORT)).thenReturn(repository);
       entityMock
           .when(() -> Entity.getEntityClassFromType(Entity.AUDIT_REPORT))
           .thenReturn(AuditReport.class);
-      AuditReport report = new AuditReport().withId(UUID.randomUUID());
+      AuditReport report =
+          new AuditReport()
+              .withId(UUID.randomUUID())
+              .withRequestedBy(userRef("admin"))
+              .withArtifacts(
+                  List.of(
+                      new org.openmetadata.schema.entity.ai.AuditReportArtifact()
+                          .withFormat(org.openmetadata.schema.entity.ai.AuditReportFormat.Json)
+                          .withDownloadUrl("data:application/json;base64,e30=")));
       when(repository.patch(
               any(), any(UUID.class), anyString(), any(JsonPatch.class), any(), any(), any()))
           .thenReturn(
@@ -146,7 +156,25 @@ class AuditReportResourceTest {
               .replace("/description", Json.createValue("quarterly evidence"))
               .build();
 
-      resource.patch(mock(UriInfo.class), securityContext("bob"), UUID.randomUUID(), patch);
+      SecurityContext bob = securityContext("bob");
+      SubjectContext bobSubject = subject(false);
+      authMock.when(() -> DefaultAuthorizer.getSubjectContext(bob)).thenReturn(bobSubject);
+      SecurityContext admin = securityContext("admin");
+      SubjectContext adminSubject = subject(true);
+      authMock.when(() -> DefaultAuthorizer.getSubjectContext(admin)).thenReturn(adminSubject);
+
+      // A non-requester gets the patched report but not the pack bytes.
+      resource.patch(mock(UriInfo.class), bob, UUID.randomUUID(), patch);
+      assertTrue(report.getArtifacts().isEmpty(), "PATCH response must withhold the artifacts");
+
+      // The requester keeps them (the first call emptied the shared fixture).
+      report.setArtifacts(
+          List.of(
+              new org.openmetadata.schema.entity.ai.AuditReportArtifact()
+                  .withFormat(org.openmetadata.schema.entity.ai.AuditReportFormat.Json)
+                  .withDownloadUrl("data:application/json;base64,e30=")));
+      resource.patch(mock(UriInfo.class), admin, UUID.randomUUID(), patch);
+      assertFalse(report.getArtifacts().isEmpty());
     }
   }
 

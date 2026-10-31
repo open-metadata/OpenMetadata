@@ -81,7 +81,9 @@ public final class FrameworkCoverageComputer {
       AIGovernanceFramework framework,
       List<AIFrameworkControl> controls,
       AIAssetVisibility visibility) {
-    return compute(framework, controls, collectInScopeAssets(framework, visibility), visibility);
+    // collectInScopeAssets already filters every page through the visibility — filtering the
+    // aggregate again would re-run a ViewBasic policy check per asset for nothing.
+    return computeInternal(framework, controls, collectInScopeAssets(framework, visibility));
   }
 
   static FrameworkCoverageResponse compute(
@@ -96,7 +98,13 @@ public final class FrameworkCoverageComputer {
       List<AIFrameworkControl> controls,
       List<EntityInterface<?>> assets,
       AIAssetVisibility visibility) {
-    assets = new ArrayList<>(visibility.filter(assets));
+    return computeInternal(framework, controls, new ArrayList<>(visibility.filter(assets)));
+  }
+
+  private static FrameworkCoverageResponse computeInternal(
+      AIGovernanceFramework framework,
+      List<AIFrameworkControl> controls,
+      List<EntityInterface<?>> assets) {
     FrameworkCoverageResponse response = new FrameworkCoverageResponse();
     response.setFrameworkId(framework.getId());
     response.setFrameworkName(framework.getName());
