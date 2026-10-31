@@ -241,11 +241,12 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       boolean skipErrors) {
     // Mirror the data query's branching in listWithOffsetInternal: without a time range the
     // ranged count would evaluate `timestamp BETWEEN NULL AND NULL`, reporting total = 0 for a
-    // non-empty listing and suppressing the after-cursor.
+    // non-empty listing and suppressing the after-cursor, and latest would count revisions
+    // instead of the partitions its listing returns one row per.
     int total =
         (startTs != null && endTs != null)
             ? timeSeriesDao.listCount(filter, startTs, endTs, latest)
-            : timeSeriesDao.listCount(filter);
+            : timeSeriesDao.listCount(filter, latest);
     return listWithOffsetInternal(
         offset, filter, limitParam, startTs, endTs, latest, skipErrors, total);
   }
@@ -275,7 +276,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       List<String> jsons =
           (startTs != null && endTs != null)
               ? timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest)
-              : timeSeriesDao.listWithOffset(filter, limitParam, offsetInt);
+              : timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, latest);
       Map<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
       entityList = (List<T>) entityListMap.get("entityList");
       if (skipErrors) {

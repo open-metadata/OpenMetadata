@@ -37,12 +37,18 @@ import {
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
 import OntologyReleasePanel from './OntologyReleasePanel';
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
@@ -89,6 +95,7 @@ const renderPanel = async (
 runQueryNotificationsSynchronously();
 
 beforeEach(() => {
+  (useIsAiMode as jest.Mock).mockReturnValue(false);
   historical = undefined;
   get.mockReset();
   (APIClient.post as jest.MockedFunction<typeof APIClient.post>).mockReset();
@@ -257,6 +264,32 @@ const setStage = (stage: Stage) => {
     };
   }
 };
+
+it('keeps independent reviewer configuration and the review stage available in AI mode', async () => {
+  (useIsAiMode as jest.Mock).mockReturnValue(true);
+  setStage(Stage.Draft);
+  await renderPanel();
+
+  expect(screen.getByTestId('ontology-release-reviewers')).toBeVisible();
+  expect(screen.getByTestId('ontology-release-stage')).toHaveTextContent(
+    'label.draft'
+  );
+});
+
+it('shows the rejection reason and review task in AI mode', async () => {
+  (useIsAiMode as jest.Mock).mockReturnValue(true);
+  setStage(Stage.ChangesRequested);
+  await renderPanel();
+
+  expect(screen.getByTestId('ontology-rejection-reason')).toHaveTextContent(
+    'Keep this literal.'
+  );
+  expect(screen.getByRole('link', { name: 'TASK-00042' })).toHaveAttribute(
+    'href',
+    `/tasks/${review.task.id}`
+  );
+  expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
+});
 
 it.each([
   [Stage.Draft, 'label.draft'],

@@ -1,6 +1,7 @@
 package org.openmetadata.service.socket;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
@@ -14,6 +15,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
@@ -244,7 +247,7 @@ class SocketAddressFilterTest {
   void secureSocketAsksToRetryWhenTheTokenCannotBeConfirmed() throws Exception {
     mockRequest("userId=" + UUID.randomUUID(), "Bearer token");
     when(jwtFilter.verifySignatureOnly("token")).thenReturn(Map.of("sub", mock(Claim.class)));
-    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+    when(jwtFilter.resolveUserName(any(), anyString())).thenReturn("sam");
     doThrow(new CredentialUnavailableException("No read slot for sam", 2, null))
         .when(jwtFilter)
         .checkValidationsForToken(any(), eq("token"), eq("sam"), isNull());
@@ -388,7 +391,7 @@ class SocketAddressFilterTest {
     UUID tokenUserId = UUID.randomUUID();
     mockRequest("userId=" + tokenUserId, "Bearer token");
     when(jwtFilter.verifySignatureOnly("token")).thenReturn(Map.of("sub", mock(Claim.class)));
-    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+    when(jwtFilter.resolveUserName(any(), anyString())).thenReturn("sam");
     // Lenient: with the fix the wrapper never consults the client's SessionId at all.
     lenient().when(request.getHeader("SessionId")).thenReturn("attacker-session");
     lenient()
@@ -469,7 +472,7 @@ class SocketAddressFilterTest {
     UUID tokenUserId = UUID.randomUUID();
     mockRequest("userId=" + tokenUserId, "Bearer token");
     when(jwtFilter.verifySignatureOnly("token")).thenReturn(Map.of("sub", mock(Claim.class)));
-    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+    when(jwtFilter.resolveUserName(any(), anyString())).thenReturn("sam");
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
@@ -492,9 +495,9 @@ class SocketAddressFilterTest {
   void emailFirstTokenBindsSocketToStoredUsername() throws Exception {
     when(authConfig.getEmailClaim()).thenReturn("email");
     JwtFilter emailFirstJwtFilter = spy(new JwtFilter(authConfig, authorizerConfig));
-    Claim emailClaim = mock(Claim.class);
-    when(emailClaim.asString()).thenReturn("socket.user@company.com");
-    doReturn(Map.of("email", emailClaim)).when(emailFirstJwtFilter).verifySignatureOnly("token");
+    String token =
+        JWT.create().withClaim("email", "socket.user@company.com").sign(Algorithm.none());
+    doReturn(JWT.decode(token).getClaims()).when(emailFirstJwtFilter).verifySignatureOnly(token);
     doNothing().when(emailFirstJwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
     SocketAddressFilter emailFirstFilter = defaultConfigFilter();
     Field jwtFilterField = SocketAddressFilter.class.getDeclaredField("jwtFilter");
@@ -505,7 +508,7 @@ class SocketAddressFilterTest {
     UserRepository userRepository = mock(UserRepository.class);
     when(userRepository.getActiveUserByEmailForAuth(eq("socket.user@company.com"), any()))
         .thenReturn(new User().withName("socket.user_x7k2"));
-    mockRequest("userId=" + storedUserId + "&token=token", null);
+    mockRequest("userId=" + storedUserId + "&token=" + token, null);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getUserRepository).thenReturn(userRepository);
@@ -621,7 +624,7 @@ class SocketAddressFilterTest {
     when(sessionClaim.asString()).thenReturn(sessionId);
     when(jwtFilter.verifySignatureOnly("token"))
         .thenReturn(Map.of(JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
-    when(jwtFilter.resolveUserName(any())).thenReturn(username);
+    when(jwtFilter.resolveUserName(any(), anyString())).thenReturn(username);
   }
 
   private UserSession activeSession(String sessionId, String username) {

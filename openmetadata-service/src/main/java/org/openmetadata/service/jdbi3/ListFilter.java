@@ -70,7 +70,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   public ListFilter(Include include) {
-    this.include = include;
+    this.include = include == null ? Include.ALL : include;
   }
 
   public String getConditionForEntity(String tableName) {
@@ -1042,10 +1042,13 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
-    if (include == Include.NON_DELETED || include == Include.DELETED) {
-      return columnName + String.format(" = %s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
-    }
-    return "";
+    // Exhaustive on purpose: ALL must stay a named "" and not a siloed fall-through that a
+    // refactor could turn back into a deleted clause (invalid on time-series tables).
+    return switch (include) {
+      case NON_DELETED -> columnName + " = FALSE";
+      case DELETED -> columnName + " = TRUE";
+      case ALL -> "";
+    };
   }
 
   public String getDatabaseCondition(String tableName) {

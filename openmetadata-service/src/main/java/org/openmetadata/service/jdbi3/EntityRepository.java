@@ -6520,8 +6520,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return node;
   }
 
+  /** Applies entity-specific preparation to ordinary, conditional, and bulk storage writes. */
+  protected T prepareForStorage(T entity) {
+    return entity;
+  }
+
+  protected boolean isStoragePreparationSideEffecting() {
+    return false;
+  }
+
   protected String serializeForStorage(T entity) {
-    return JsonStorageUtils.sanitizeNulCharacters(storageJsonNode(entity).toString());
+    return JsonStorageUtils.sanitizeNulCharacters(
+        storageJsonNode(prepareForStorage(entity)).toString());
   }
 
   protected String serializeForVersionHistory(T entity) {
@@ -6538,8 +6548,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected void store(T entity, boolean update, Double expectedVersion) {
-    String json = serializeForStorage(entity);
     EntityDAO<T> writeDAO = entityDAOForWrite();
+    if (update && expectedVersion != null && isStoragePreparationSideEffecting()) {
+      lockAndValidateVersion(writeDAO, entity, expectedVersion);
+    }
+    String json = serializeForStorage(entity);
 
     if (update) {
       if (expectedVersion != null) {
@@ -6575,6 +6588,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           entity.getFullyQualifiedName(),
           json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+    }
+  }
+
+  private void lockAndValidateVersion(EntityDAO<T> writeDAO, T entity, Double expectedVersion) {
+    // Secret preparation can mutate an external vault before the conditional SQL update.
+    String currentVersion =
+        writeDAO.findVersionByIdForUpdate(writeDAO.getTableName(), entity.getId());
+    if (!expectedVersion.toString().equals(currentVersion)) {
+      throw new PreconditionFailedException(
+          "The entity has been modified by another user. Please refresh and retry.");
     }
   }
 
@@ -10092,7 +10115,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             .withCurrentVersion(updated.getVersion())
             .withPreviousVersion(changeDescription.getPreviousVersion())
             .withChangeDescription(changeDescription)
-            .withEntity(updated);
+            .withEntity(JsonUtils.pojoToMaskedJson(updated));
 
     daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     LOG.debug(
@@ -12595,7 +12618,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           .orElse(null);
     }
 
-    private T getPreviousVersion(T original) {
+    protected T getPreviousVersion(T original) {
       String extensionName =
           EntityUtil.getVersionExtension(
               entityType, original.getChangeDescription().getPreviousVersion());
@@ -14504,6 +14527,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Create a ChangeEvent for the feed
     ChangeEvent changeEvent =
         getChangeEvent(updated, change, entityType, change.getPreviousVersion());
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(updated));
     daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 

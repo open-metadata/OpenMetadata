@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosResponse, isAxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { InferenceMaterializationResult } from '../generated/api/configuration/rdf/inferenceMaterializationResult';
@@ -32,6 +32,8 @@ import { CreateOntologyProperty } from '../generated/api/data/createOntologyProp
 import { CreateRelationshipType } from '../generated/api/data/createRelationshipType';
 import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyResource';
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
+import type { NativeOntologyDataGraphPage } from '../generated/api/data/nativeOntologyDataGraphPage';
+import type { NativeOntologyDataGraphPageRequest } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
 import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
 import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
@@ -41,6 +43,10 @@ import { OntologyBulkResultArtifact } from '../generated/api/data/ontologyBulkRe
 import { OntologyBulkSubmission } from '../generated/api/data/ontologyBulkSubmission';
 import { OntologyBulkTemplate } from '../generated/api/data/ontologyBulkTemplate';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import type {
+  Hop,
+  OntologyConceptQuery,
+} from '../generated/api/data/ontologyConceptQuery';
 import { OntologyDeleteResult } from '../generated/api/data/ontologyDeleteResult';
 import { OntologyDomainDraftRequest } from '../generated/api/data/ontologyDomainDraftRequest';
 import {
@@ -62,6 +68,7 @@ import { OntologyProfileReport } from '../generated/api/data/ontologyProfileRepo
 import { OntologyRelationshipSuggestionList } from '../generated/api/data/ontologyRelationshipSuggestionList';
 import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ontologyRelationshipSuggestionRequest';
 import type { OntologyReleaseDiff } from '../generated/api/data/ontologyReleaseDiff';
+import type { OntologyReleaseExportOptions } from '../generated/api/data/ontologyReleaseExportOptions';
 import type { OntologyReleaseReview } from '../generated/api/data/ontologyReleaseReview';
 import { OntologyReleaseReviewList } from '../generated/api/data/ontologyReleaseReviewList';
 import type { OntologyReleaseStructureReport } from '../generated/api/data/ontologyReleaseStructureReport';
@@ -97,7 +104,10 @@ import {
 } from '../interface/governance/ontology/ontologyConceptBindings.types';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
-import { EXPORT_FORMAT_TO_ACCEPT_HEADER, OntologyExportFormat } from './rdfAPI';
+import {
+  NATIVE_EXPORT_MEDIA_TYPES,
+  OntologyReleaseExportFormat,
+} from './ontologyExport.constants';
 
 const RELATIONSHIP_TYPES_PATH = '/relationshipTypes';
 const ONTOLOGIES_PATH = '/ontologies';
@@ -146,6 +156,34 @@ export const getOntologyConceptBindings = async (
   );
 
   return collectOntologyConceptBindings(id, response.data, signal);
+};
+
+export const generateOntologyConceptQuery = async (
+  id: string,
+  hops: Hop[],
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.post<OntologyConceptQuery>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/query`,
+    { hops },
+    { signal }
+  );
+
+  return response.data;
+};
+
+export const getNativeOntologyDataGraphPage = async (
+  ontologyId: string,
+  request: NativeOntologyDataGraphPageRequest,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.post<NativeOntologyDataGraphPage>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/dataGraph/pages`,
+    request,
+    { signal }
+  );
+
+  return response.data;
 };
 
 export const putOntologyConceptBinding = async (
@@ -349,7 +387,7 @@ export const getOntologyState = async (
 
 export const getOntologyWorkingDiff = async (
   ontologyId: string,
-  params: Pick<ListParams, 'limit' | 'after'> = {},
+  params: Pick<ListParams, 'limit' | 'after'> & { groupBy?: 'concept' } = {},
   signal?: AbortSignal
 ) => {
   const response = await APIClient.get<OntologyWorkingDiff>(
@@ -468,22 +506,44 @@ export const getOntologyReleaseValidation = async (
   return response.data;
 };
 
+/** The gated export answers 422 with the validation report as JSON, which a text response leaves unparsed. */
+const parseGateReport = (error: unknown) => {
+  if (
+    isAxiosError<string>(error) &&
+    error.response?.status === 422 &&
+    typeof error.response.data === 'string'
+  ) {
+    try {
+      error.response.data = JSON.parse(error.response.data);
+    } catch {
+      return error;
+    }
+  }
+
+  return error;
+};
+
 export const exportOntologyRelease = async (
   releaseId: string,
-  format: OntologyExportFormat,
+  format: OntologyReleaseExportFormat,
+  options: OntologyReleaseExportOptions = {},
   signal?: AbortSignal
 ) => {
-  const response = await APIClient.get<string>(
-    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/export`,
-    {
-      params: { format },
-      headers: { Accept: EXPORT_FORMAT_TO_ACCEPT_HEADER[format] },
-      responseType: 'text',
-      ...(signal ? { signal } : {}),
-    }
-  );
+  try {
+    const response = await APIClient.get<string>(
+      `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/export`,
+      {
+        params: { format, ...options },
+        headers: { Accept: NATIVE_EXPORT_MEDIA_TYPES[format] },
+        responseType: 'text',
+        signal,
+      }
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    throw parseGateReport(error);
+  }
 };
 
 type OntologyChangeSetCreation =
