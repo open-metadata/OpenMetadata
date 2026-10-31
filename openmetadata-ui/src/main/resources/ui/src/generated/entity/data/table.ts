@@ -424,6 +424,9 @@ export enum State {
 /**
  * UI Style is used to associate a color code and/or icon to entity to customize the look of
  * that entity in UI.
+ *
+ * Style (color and icon) of the referenced entity. Set only on domain references, from the
+ * domain's own style, so a client can render the domain without fetching it.
  */
 export interface Style {
     /**
@@ -816,6 +819,11 @@ export interface EntityReference {
      * Name of the entity instance.
      */
     name?: string;
+    /**
+     * Style (color and icon) of the referenced entity. Set only on domain references, from the
+     * domain's own style, so a client can render the domain without fetching it.
+     */
+    style?: Style;
     /**
      * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
      * `dashboardService`...

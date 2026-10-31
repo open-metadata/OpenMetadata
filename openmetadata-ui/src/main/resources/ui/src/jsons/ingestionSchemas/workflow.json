@@ -5009,6 +5009,10 @@
                                     "description": "Link to the entity resource.",
                                     "type": "string",
                                     "format": "uri"
+                                  },
+                                  "style": {
+                                    "description": "Style (color and icon) of the referenced entity. Set only on domain references, from the domain's own style, so a client can render the domain without fetching it.",
+                                    "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/20/definitions/operation/properties/parameters/oneOf/2/properties/addedTags/items/properties/style"
                                   }
                                 },
                                 "required": [
