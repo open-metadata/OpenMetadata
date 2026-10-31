@@ -167,11 +167,14 @@ def test_build_regex_from_filter():
     assert result.regex == "(finance.*)|(sales.*)"
     assert result.mode == "include"
 
-    # Includes take precedence over excludes
+    # When both includes and excludes are set, the includes go server-side
+    # (mode="include") and the excludes are carried for client-side
+    # re-application so that exclude-wins semantics are preserved.
     result = _build_regex_from_filter(FilterPattern(includes=["finance"], excludes=["temp.*"]))
     assert result is not None
     assert result.regex == "finance"
     assert result.mode == "include"
+    assert result.excludes == ["temp.*"]
 
     # Invalid regex in includes raises InvalidPatternException
     with raises(InvalidPatternException, match="Invalid regex"):

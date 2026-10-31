@@ -80,7 +80,7 @@ def filter_by_schema(schema_filter_pattern: FilterPattern | None, schema_name: s
     """
     Return True if the schema needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param schema_filter_pattern: Model defining schema filtering logic
     :param schema fqn: table schema fqn
@@ -93,7 +93,7 @@ def filter_by_table(table_filter_pattern: FilterPattern | None, table_name: str)
     """
     Return True if the table needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param table_filter_pattern: Model defining schema filtering logic
     :param table_fqn: table fqn
@@ -117,7 +117,7 @@ def filter_by_chart(chart_filter_pattern: FilterPattern | None, chart_name: str)
     """
     Return True if the chart needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param chart_filter_pattern: Model defining chart filtering logic
     :param chart_name: chart name
@@ -130,7 +130,7 @@ def filter_by_topic(topic_filter_pattern: FilterPattern | None, topic_name: str)
     """
     Return True if the topic needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param topic_filter_pattern: Model defining chart filtering logic
     :param topic_name: topic name
@@ -143,7 +143,7 @@ def filter_by_dashboard(dashboard_filter_pattern: FilterPattern | None, dashboar
     """
     Return True if the dashboard needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param dashboard_filter_pattern: Model defining dashboard filtering logic
     :param dashboard_name: dashboard name
@@ -159,7 +159,7 @@ def filter_by_stored_procedure(
     """
     Return True if the stored procedure needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param stored_procedure_filter_pattern: Model defining stored procedure filtering logic
     :param stored_procedure_name: stored procedure name
@@ -172,7 +172,7 @@ def filter_by_fqn(fqn_filter_pattern: FilterPattern | None, fqn: str) -> bool:
     """
     Return True if the FQN needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param fqn_filter_pattern: Model defining FQN filtering logic
     :param fqn: table FQN name
@@ -185,7 +185,7 @@ def filter_by_database(database_filter_pattern: FilterPattern | None, database_n
     """
     Return True if the schema needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param database_filter_pattern: Model defining database filtering logic
     :param database_name: database name
@@ -198,7 +198,7 @@ def filter_by_pipeline(pipeline_filter_pattern: FilterPattern | None, pipeline_n
     """
     Return True if the schema needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param pipeline_filter_pattern: Model defining the pipeline filtering logic
     :param pipeline_name: pipeline name
@@ -211,7 +211,7 @@ def filter_by_mlmodel(mlmodel_filter_pattern: FilterPattern | None, mlmodel_name
     """
     Return True if the mlmodel needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param mlmodel_filter_pattern: Model defining the mlmodel filtering logic
     :param mlmodel_name: mlmodel name
@@ -224,7 +224,7 @@ def filter_by_container(container_filter_pattern: FilterPattern | None, containe
     """
     Return True if the container needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param container_filter_pattern: Container defining the container filtering logic
     :param container_name: container name
@@ -237,7 +237,7 @@ def filter_by_datamodel(datamodel_filter_pattern: FilterPattern | None, datamode
     """
     Return True if the models needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param datamodel_filter_pattern: Model defining data model filtering logic
     :param datamodel_name: data model name
@@ -250,7 +250,7 @@ def filter_by_project(project_filter_pattern: FilterPattern | None, project_name
     """
     Return True if the project needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param project_filter_pattern: Model defining project filtering logic
     :param project_name: project name
@@ -263,7 +263,7 @@ def filter_by_search_index(search_index_filter_pattern: FilterPattern | None, se
     """
     Return True if the models needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param search_index_filter_pattern: Model defining search index filtering logic
     :param search_index_name: search index name
@@ -276,7 +276,7 @@ def filter_by_classification(classification_pattern: FilterPattern | None, class
     """
     Return True if the models needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param search_index_filter_pattern: Model defining search index filtering logic
     :param search_index_name: search index name
@@ -324,7 +324,7 @@ def filter_by_collection(collection_pattern: FilterPattern | None, collection_na
     """
     Return True if the models needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param collection_pattern: Model defining collection filtering logic
     :param collection_name: collection name
@@ -337,7 +337,7 @@ def filter_by_endpoint(endpoint_pattern: FilterPattern | None, endpoint_name: st
     """
     Return True if the endpoint needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param endpoint_pattern: Model defining endpoint filtering logic
     :param endpoint_name: endpoint name
@@ -350,7 +350,7 @@ def filter_by_tag(tag_pattern: FilterPattern | None, tag_name: str) -> bool:
     """
     Return True if the models needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param tag_pattern: Model defining tag filtering logic
     :param tag_name: tag name
@@ -363,7 +363,7 @@ def filter_by_spreadsheet(spreadsheet_filter_pattern: FilterPattern | None, spre
     """
     Return True if the spreadsheet needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param spreadsheet_filter_pattern: Model defining spreadsheet filtering logic
     :param spreadsheet_name: spreadsheet name
@@ -376,7 +376,7 @@ def filter_by_directory(directory_filter_pattern: FilterPattern | None, director
     """
     Return True if the directory needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param directory_filter_pattern: Model defining directory filtering logic
     :param directory_name: directory name
@@ -389,7 +389,7 @@ def filter_by_file(file_filter_pattern: FilterPattern | None, file_name: str) ->
     """
     Return True if the file needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param file_filter_pattern: Model defining file filtering logic
     :param file_name: file name
@@ -402,7 +402,7 @@ def filter_by_worksheet(worksheet_filter_pattern: FilterPattern | None, workshee
     """
     Return True if the worksheet needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param worksheet_filter_pattern: Model defining worksheet filtering logic
     :param worksheet_name: worksheet name
@@ -415,7 +415,7 @@ def filter_by_server(server_filter_pattern: FilterPattern | None, server_name: s
     """
     Return True if the MCP server needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include
 
     :param server_filter_pattern: Model defining server filtering logic
     :param server_name: server name
