@@ -1006,7 +1006,11 @@ public class MetricRepository extends EntityRepository<Metric> {
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
       List<EntityReference> originalRelatedMetrics = listOrEmpty(original.getRelatedMetrics());
-      List<EntityReference> updatedRelatedMetrics = listOrEmpty(updated.getRelatedMetrics());
+      List<EntityReference> updatedRelatedMetrics =
+          operation.isPut() && updatedByBot()
+              ? withUnrequestedRelatedMetrics(originalRelatedMetrics, updated.getRelatedMetrics())
+              : listOrEmpty(updated.getRelatedMetrics());
+      updated.setRelatedMetrics(updatedRelatedMetrics);
       validateRelatedTerms(updated, updatedRelatedMetrics);
       updateToRelationships(
           "relatedMetrics",
@@ -1017,6 +1021,19 @@ public class MetricRepository extends EntityRepository<Metric> {
           originalRelatedMetrics,
           updatedRelatedMetrics,
           true);
+    }
+
+    /**
+     * A bot PUT adds related metrics and never removes one. See
+     * ADR:2026-10-27-a-bot-put-never-removes-a-related-metric-edge.
+     */
+    private List<EntityReference> withUnrequestedRelatedMetrics(
+        List<EntityReference> original, List<EntityReference> requested) {
+      List<EntityReference> merged = new ArrayList<>(listOrEmpty(requested));
+      Set<UUID> requestedIds =
+          merged.stream().map(EntityReference::getId).collect(Collectors.toSet());
+      original.stream().filter(ref -> !requestedIds.contains(ref.getId())).forEach(merged::add);
+      return merged;
     }
   }
 
