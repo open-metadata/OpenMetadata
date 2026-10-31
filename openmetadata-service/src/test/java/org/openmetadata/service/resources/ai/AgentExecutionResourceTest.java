@@ -33,6 +33,7 @@ import org.openmetadata.service.jdbi3.AgentExecutionRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.AgentExecutionContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
@@ -66,6 +67,21 @@ class AgentExecutionResourceTest {
                 if (deniedAgentId.equals(idOf(resourceContext))) {
                   throw new AuthorizationException("denied");
                 }
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    return authorizer;
+  }
+
+  /** Authorizer that refuses the type-level agentExecution check while allowing everything else. */
+  private static Authorizer authorizerRefusingExecutionType() {
+    Authorizer authorizer = mock(Authorizer.class);
+    doAnswer(
+            inv -> {
+              if (inv.getArgument(2) instanceof AgentExecutionContext) {
+                throw new AuthorizationException("denied");
               }
               return null;
             })
@@ -181,6 +197,22 @@ class AgentExecutionResourceTest {
 
       UUID id = UUID.randomUUID();
       AgentExecution execution = new AgentExecution().withId(id).withAgentId(deniedAgentId);
+      when(mockRepo.getByIdOrNotFound(id)).thenReturn(execution);
+
+      assertThrows(
+          AuthorizationException.class, () -> resource.get(mock(SecurityContext.class), id));
+    }
+  }
+
+  @Test
+  void testGetRefusedWhenExecutionTypeDenied() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      AgentExecutionRepository mockRepo = mock(AgentExecutionRepository.class);
+      Authorizer mockAuth = authorizerRefusingExecutionType();
+      AgentExecutionResource resource = createResource(entityMock, mockRepo, mockAuth);
+
+      UUID id = UUID.randomUUID();
+      AgentExecution execution = new AgentExecution().withId(id).withAgentId(UUID.randomUUID());
       when(mockRepo.getByIdOrNotFound(id)).thenReturn(execution);
 
       assertThrows(

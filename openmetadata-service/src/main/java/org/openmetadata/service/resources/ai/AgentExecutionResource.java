@@ -139,6 +139,10 @@ public class AgentExecutionResource
           @PathParam("id")
           UUID id) {
     AgentExecution execution = repository.getByIdOrNotFound(id);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     authorizeAgent(securityContext, MetadataOperation.VIEW_BASIC, execution.getAgentId());
     return execution;
   }

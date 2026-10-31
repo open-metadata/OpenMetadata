@@ -160,6 +160,10 @@ public class McpExecutionResource
           @PathParam("id")
           UUID id) {
     McpExecution execution = repository.getByIdOrNotFound(id);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    ResourceContextInterface resourceContext = McpExecutionContext.builder().build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     authorizeServer(securityContext, MetadataOperation.VIEW_BASIC, execution.getServerId());
     return execution;
   }

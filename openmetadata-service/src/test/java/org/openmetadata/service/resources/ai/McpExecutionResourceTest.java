@@ -35,6 +35,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.McpExecutionRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.McpExecutionContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
@@ -68,6 +69,21 @@ class McpExecutionResourceTest {
                 if (deniedServerId.equals(idOf(resourceContext))) {
                   throw new AuthorizationException("denied");
                 }
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    return authorizer;
+  }
+
+  /** Authorizer that refuses the type-level mcpExecution check while allowing everything else. */
+  private static Authorizer authorizerRefusingExecutionType() {
+    Authorizer authorizer = mock(Authorizer.class);
+    doAnswer(
+            inv -> {
+              if (inv.getArgument(2) instanceof McpExecutionContext) {
+                throw new AuthorizationException("denied");
               }
               return null;
             })
@@ -224,6 +240,22 @@ class McpExecutionResourceTest {
 
       UUID id = UUID.randomUUID();
       McpExecution execution = new McpExecution().withId(id).withServerId(deniedServerId);
+      when(mockRepo.getByIdOrNotFound(id)).thenReturn(execution);
+
+      assertThrows(
+          AuthorizationException.class, () -> resource.get(mock(SecurityContext.class), id));
+    }
+  }
+
+  @Test
+  void testGetRefusedWhenExecutionTypeDenied() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      McpExecutionRepository mockRepo = mock(McpExecutionRepository.class);
+      Authorizer mockAuth = authorizerRefusingExecutionType();
+      McpExecutionResource resource = createResource(entityMock, mockRepo, mockAuth);
+
+      UUID id = UUID.randomUUID();
+      McpExecution execution = new McpExecution().withId(id).withServerId(UUID.randomUUID());
       when(mockRepo.getByIdOrNotFound(id)).thenReturn(execution);
 
       assertThrows(
