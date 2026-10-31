@@ -114,13 +114,23 @@ public class BulkCircuitBreaker {
   /**
    * Records a failed send attempt. A request that only timed out waiting for a pooled connection
    * never reached the cluster, so it says nothing about cluster health and frees the probe slot.
-   * Otherwise a bulk request counts once, on its first attempt, so one bulk's retries cannot open
-   * the circuit on their own; a failure while half-open is the probe's verdict and always counts.
+   * Otherwise a bulk request counts once: the first attempt of the bulk that actually reached the
+   * cluster, so one bulk's retries cannot open the circuit on their own. The caller carries that
+   * "once" memory as {@code bulkAlreadyCounted} — clear while the bulk has only seen pool-waits,
+   * set after the breaker has counted the bulk — so a pool-wait first attempt can no longer hide the
+   * real cluster error that surfaces on a retry. A failure while half-open is the probe's verdict
+   * and always counts, regardless of {@code bulkAlreadyCounted}.
    */
-  public void recordBulkFailure(Throwable error, int attemptNumber) {
+  public void recordBulkFailure(Throwable error, boolean bulkAlreadyCounted) {
     if (BulkConnectionBudget.isPoolWaitTimeout(error)) {
       releaseProbe();
-    } else if (attemptNumber == 0 || state.get() == State.HALF_OPEN) {
+      return;
+    }
+    if (state.get() == State.HALF_OPEN) {
+      recordFailure();
+      return;
+    }
+    if (!bulkAlreadyCounted) {
       recordFailure();
     }
   }

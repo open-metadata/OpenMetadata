@@ -1571,7 +1571,6 @@ public class OpenSearchBulkSink implements BulkSink {
       List<BulkOperation> operations = attempt.operations();
       long executionId = attempt.executionId();
       int numberOfActions = attempt.size();
-      int attemptNumber = attempt.attemptNumber();
 
       ReindexingMetrics metrics = ReindexingMetrics.getInstance();
       io.micrometer.core.instrument.Timer.Sample bulkTimerSample =
@@ -1594,7 +1593,7 @@ public class OpenSearchBulkSink implements BulkSink {
           metrics.recordBulkRequestCompleted(bulkTimerSample, false);
         }
         sendPermits.releaseConnection();
-        circuitBreaker.recordBulkFailure(e, attemptNumber);
+        circuitBreaker.recordBulkFailure(e, attempt.bulkAlreadyCounted());
         boolean retryScheduled = handleBulkFailure(attempt, e);
         if (!retryScheduled) {
           finishBulk();
@@ -1615,7 +1614,7 @@ public class OpenSearchBulkSink implements BulkSink {
                 if (metrics != null && bulkTimerSample != null) {
                   metrics.recordBulkRequestCompleted(bulkTimerSample, false);
                 }
-                circuitBreaker.recordBulkFailure(error, attemptNumber);
+                circuitBreaker.recordBulkFailure(error, attempt.bulkAlreadyCounted());
                 retryScheduled = handleBulkFailure(attempt, error);
               } else if (response.errors()) {
                 if (metrics != null && bulkTimerSample != null) {
@@ -1734,7 +1733,8 @@ public class OpenSearchBulkSink implements BulkSink {
             attempt.attemptNumber() + 1,
             backoffTime,
             error.getMessage());
-        scheduleAttempt(() -> executeBulkWithRetry(attempt.next()), backoffTime, attempt);
+        scheduleAttempt(
+            () -> executeBulkWithRetry(attempt.nextAfterFailure(error)), backoffTime, attempt);
       } else {
         LOG.error(
             "Bulk request {} failed completely after {} attempts with {} actions",
