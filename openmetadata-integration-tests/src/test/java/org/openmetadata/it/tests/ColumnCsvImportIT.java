@@ -28,7 +28,6 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -76,7 +75,7 @@ public class ColumnCsvImportIT {
     assertEquals(3, result.get("numberOfRowsProcessed").asInt());
     assertEquals(1, result.get("numberOfRowsPassed").asInt());
     assertEquals(2, result.get("numberOfRowsFailed").asInt());
-    assertEquals(ApiStatus.PARTIAL_SUCCESS.name(), result.get("status").asText());
+    assertEquals("partialSuccess", result.get("status").asText());
   }
 
   @Test

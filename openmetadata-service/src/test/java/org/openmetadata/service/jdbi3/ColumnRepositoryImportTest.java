@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
 import org.openmetadata.schema.api.data.ColumnOccurrence;
+import org.openmetadata.schema.api.data.ColumnUpdate;
 import org.openmetadata.schema.api.data.GroupedColumnsResponse;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -293,11 +294,19 @@ class ColumnRepositoryImportTest {
                 .withDescription("d"));
 
     // The stubbed walk returns one occurrence per catalog group; dry-run reports both as
-    // would-update rows without touching a repository.
+    // would-update rows without touching a repository, converted through the same helper the
+    // CSV import uses.
     assertEquals(2, result.getNumberOfRowsProcessed());
     assertEquals(2, result.getNumberOfRowsPassed());
     assertEquals(0, result.getNumberOfRowsFailed());
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(
+        List.of("svc.db.schema.t1.col_a", "svc.db.schema.t1.col_b"),
+        result.getSuccessRequest().stream()
+            .map(r -> ((ColumnUpdate) r.getRequest()).getColumnFQN())
+            .toList());
+    assertEquals(
+        "d", ((ColumnUpdate) result.getSuccessRequest().get(0).getRequest()).getDescription());
   }
 
   private static List<GroupedColumnsResponse> catalog() {
