@@ -1913,16 +1913,6 @@ public class OpenSearchBulkSink implements BulkSink {
       return indexName;
     }
 
-    boolean isPayloadTooLargeError(Throwable error) {
-      if (error == null || error.getMessage() == null) {
-        return false;
-      }
-      String lowerCaseMessage = error.getMessage().toLowerCase();
-      return lowerCaseMessage.contains("request entity too large")
-          || lowerCaseMessage.contains("content too long")
-          || lowerCaseMessage.contains("413");
-    }
-
     boolean awaitClose(long timeout, TimeUnit unit) throws InterruptedException {
       closed = true;
       long deadlineMillis = System.currentTimeMillis() + unit.toMillis(timeout);
