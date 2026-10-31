@@ -22,7 +22,10 @@ from metadata.sampler.sqlalchemy.sampler import (
     ProfileSampleType,
     SQASampler,
 )
-from metadata.sampler.sqlalchemy.tsql import get_temporal_column_names
+from metadata.sampler.sqlalchemy.tsql import (
+    NOT_COMPUTE_PYODBC,
+    get_temporal_column_names,
+)
 
 
 class AzureSQLSampler(SQASampler):
@@ -31,10 +34,9 @@ class AzureSQLSampler(SQASampler):
     run the query in the whole table.
     """
 
-    # These types are not supported by pyodbc - it throws
-    # an error when trying to fetch data from these columns
-    # pyodbc.ProgrammingError: ('ODBC SQL type -151 is not yet supported.  column-index=x  type=-151', 'HY106')
-    NOT_COMPUTE_PYODBC = {"SQASGeography", "UndeterminedType"}  # noqa: RUF012
+    # Shared with MssqlSampler via tsql so the two pyodbc dialects cannot drift;
+    # kept as a class attribute so pyodbc-based subclasses can still override it.
+    NOT_COMPUTE_PYODBC = NOT_COMPUTE_PYODBC
 
     def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
         """Set the TABLESAMPLE clause for MSSQL
