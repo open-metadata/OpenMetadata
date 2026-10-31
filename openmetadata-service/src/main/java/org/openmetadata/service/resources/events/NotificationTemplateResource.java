@@ -63,11 +63,13 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerting.TemplatePreview;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.events.subscription.DestinationTestSecrets;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
@@ -93,10 +95,15 @@ public class NotificationTemplateResource
   private final NotificationTemplateMapper mapper = new NotificationTemplateMapper();
 
   private final TemplatePreview preview;
+  private final DestinationTestSecrets destinationTestSecrets;
 
   public NotificationTemplateResource(Authorizer authorizer, Limits limits) {
     super(Entity.NOTIFICATION_TEMPLATE, authorizer, limits);
     this.preview = new TemplatePreview(repository);
+    this.destinationTestSecrets =
+        new DestinationTestSecrets(
+            (EventSubscriptionRepository) Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION),
+            authorizer);
   }
 
   @Override
@@ -873,6 +880,8 @@ public class NotificationTemplateResource
               + "Returns validation status only. Delivery errors are logged server-side, except a "
               + "message too large for a destination's channel, which is returned as a body error. "
               + "Only external destinations (Email, Slack, Teams, GChat, Webhook) are supported. "
+              + "A destination sent back as it was read carries masks; it is sent with the secrets "
+              + "stored for it, as testDestination is. "
               + "Requires any of: CREATE, EDIT_ALL, EDIT_USER_NOTIFICATION_TEMPLATE.",
       responses = {
         @ApiResponse(
@@ -888,6 +897,9 @@ public class NotificationTemplateResource
   public Response sendTemplate(
       @Context SecurityContext securityContext, @Valid NotificationTemplateSendRequest request) {
     authorizePreviewCapability(securityContext);
+    request
+        .getDestinations()
+        .forEach(destination -> destinationTestSecrets.resolve(securityContext, destination));
     NotificationTemplateValidationResponse response = preview.send(request);
 
     return Response.ok(response).build();

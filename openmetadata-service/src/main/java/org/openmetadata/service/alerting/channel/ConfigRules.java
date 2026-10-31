@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.alerting.channel;
 
+import com.fasterxml.jackson.core.JsonPointer;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
+import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -43,8 +46,14 @@ public interface ConfigRules {
   /** The configured receivers, or null for a channel that has none. */
   SubscriptionAction receiversOf(SubscriptionDestination destination);
 
-  /** Encrypts, in place, whatever the configuration holds that must not be stored in the clear. */
-  default void encryptSecrets(SubscriptionDestination destination) {}
+  /**
+   * Where a configuration, as JSON, holds text that must not be stored or read back in the clear.
+   * {@link DestinationSecrets} encrypts, decrypts, masks and restores what is found there, so a
+   * channel names its secrets here and nowhere else.
+   */
+  default List<JsonPointer> secretFields(JsonNode config) {
+    return List.of();
+  }
 
   /**
    * A destination whose configuration names its receivers: External, or one saved before

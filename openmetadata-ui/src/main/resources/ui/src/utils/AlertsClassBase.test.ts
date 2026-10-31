@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,17 +26,20 @@ import {
   SubscriptionType,
 } from '../generated/events/eventSubscription';
 import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-} from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import {
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
   getConfigQueryParamsArrayFromObject,
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtilPure';
-import alertsClassBase, { AlertsClassBase } from './AlertsClassBase';
+import alertsClassBase, {
+  AlertsClassBase,
+  destinationsAsAWholeListReplace,
+} from './AlertsClassBase';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+} from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { showSuccessToast } from './ToastUtils';
@@ -274,6 +277,18 @@ describe('AlertsClassBase', () => {
       expect(getConfigQueryParamsObjectFromArray).toHaveBeenCalledWith(
         mockDestinationData.config?.queryParams
       );
+    });
+  });
+
+  describe('formatDestinations', () => {
+    // A test send finds a masked destination's stored secrets by its id.
+    it('should keep the destination id when not given the stored alert', () => {
+      const destinations = alertsClass.formatDestinations({
+        ...mockModifiedData,
+        destinations: [{ ...mockDestinationData, id: 'destination-id-1' }],
+      });
+
+      expect(destinations?.[0].id).toBe('destination-id-1');
     });
   });
 
@@ -701,6 +716,37 @@ describe('AlertsClassBase', () => {
       });
 
       expect(mockAfterSave).toHaveBeenCalledWith('');
+    });
+  });
+
+  describe('destinationsAsAWholeListReplace', () => {
+    it('keeps a patch with no destination operation as it is', () => {
+      const jsonPatch = [
+        { op: 'replace', path: '/displayName', value: 'New Name' },
+      ];
+
+      expect(
+        destinationsAsAWholeListReplace(jsonPatch, mockInitialData.destinations)
+      ).toEqual(jsonPatch);
+    });
+
+    it('replaces a changed destination list in one move', () => {
+      const jsonPatch = [
+        { op: 'remove', path: '/destinations/1' },
+        { op: 'replace', path: '/destinations/0/id', value: '' },
+        { op: 'replace', path: '/description', value: 'New' },
+      ];
+
+      expect(
+        destinationsAsAWholeListReplace(jsonPatch, mockInitialData.destinations)
+      ).toEqual([
+        { op: 'replace', path: '/description', value: 'New' },
+        {
+          op: 'replace',
+          path: '/destinations',
+          value: mockInitialData.destinations,
+        },
+      ]);
     });
   });
 
