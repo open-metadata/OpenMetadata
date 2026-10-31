@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  UNSAFE_NavigationContext,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 
 const NO_PENDING_PATH = null;
 
@@ -40,18 +44,25 @@ const preventUnload = (e: BeforeUnloadEvent) => {
 
 export interface UseWorkflowNavigationBlockOptions {
   enabled: boolean;
+  isBlocked?: () => boolean;
   onSaveWorkflow: () => Promise<boolean>;
 }
 
 export const useWorkflowNavigationBlock = ({
   enabled,
+  isBlocked,
   onSaveWorkflow,
 }: UseWorkflowNavigationBlockOptions) => {
   const navigate = useNavigate();
+  const navigator = useContext(UNSAFE_NavigationContext)?.navigator;
   const location = useLocation();
   const [showModal, setShowModal] = useState(false);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const pendingPathRef = useRef<string | null>(NO_PENDING_PATH);
+  const pendingNavigation = useRef<() => void>();
+  const bypass = useRef(false);
+  const blockCheck = useRef(isBlocked);
+  blockCheck.current = isBlocked;
 
   const currentEntry = useRef(globalThis.history.state);
   const pendingDelta = useRef<number>();
@@ -59,18 +70,59 @@ export const useWorkflowNavigationBlock = ({
   const allowPop = useRef(false);
   const currentPath = `${location.pathname}${location.search}${location.hash}`;
 
+  const runWithoutBlocking = useCallback((action: () => void) => {
+    const previous = bypass.current;
+    bypass.current = true;
+    try {
+      action();
+    } finally {
+      bypass.current = previous;
+    }
+  }, []);
+
   const proceed = useCallback(() => {
     const path = pendingPathRef.current;
     const delta = pendingDelta.current;
+    const navigation = pendingNavigation.current;
+    pendingNavigation.current = undefined;
     pendingPathRef.current = NO_PENDING_PATH;
     pendingDelta.current = undefined;
-    if (delta !== undefined) {
+    if (navigation) {
+      runWithoutBlocking(navigation);
+    } else if (delta !== undefined) {
       allowPop.current = true;
       globalThis.history.go(delta);
     } else if (path) {
-      navigate(path);
+      runWithoutBlocking(() => navigate(path));
     }
-  }, [navigate]);
+  }, [navigate, runWithoutBlocking]);
+
+  useEffect(() => {
+    if (!enabled || !navigator) {
+      return;
+    }
+    const { push, replace } = navigator;
+    const intercept =
+      (method: typeof push): typeof push =>
+      (...args) => {
+        if (bypass.current || blockCheck.current?.() === false) {
+          method(...args);
+        } else {
+          pendingNavigation.current = () => method(...args);
+          pendingPathRef.current = NO_PENDING_PATH;
+          pendingDelta.current = undefined;
+          setShowModal(true);
+        }
+      };
+    // BrowserRouter shares this navigator with sidebar buttons outside the editor subtree.
+    navigator.push = intercept(push);
+    navigator.replace = intercept(replace);
+
+    return () => {
+      navigator.push = push;
+      navigator.replace = replace;
+    };
+  }, [enabled, navigator]);
 
   const handlePopState = useCallback(
     (event: PopStateEvent) => {
@@ -95,6 +147,7 @@ export const useWorkflowNavigationBlock = ({
       }
       // Restore the existing entry before React Router can unmount the dirty editor.
       event.stopImmediatePropagation();
+      pendingNavigation.current = undefined;
       pendingPathRef.current = nextPath;
       const previousIndex = currentEntry.current?.idx;
       const nextIndex = event.state?.idx;
@@ -135,6 +188,7 @@ export const useWorkflowNavigationBlock = ({
 
       e.preventDefault();
       e.stopPropagation();
+      pendingNavigation.current = undefined;
       blockAndShowModal(href, pendingPathRef, setShowModal);
     },
     [currentPath]
@@ -161,6 +215,7 @@ export const useWorkflowNavigationBlock = ({
     setShowModal(false);
     pendingPathRef.current = NO_PENDING_PATH;
     pendingDelta.current = undefined;
+    pendingNavigation.current = undefined;
   }, []);
 
   const onSave = useCallback(async () => {
@@ -178,6 +233,7 @@ export const useWorkflowNavigationBlock = ({
     } else {
       pendingPathRef.current = NO_PENDING_PATH;
       pendingDelta.current = undefined;
+      pendingNavigation.current = undefined;
     }
   }, [onSaveWorkflow, proceed]);
 
@@ -192,5 +248,6 @@ export const useWorkflowNavigationBlock = ({
     onSave,
     onDiscard,
     onCancel: closeModal,
+    runWithoutBlocking,
   };
 };

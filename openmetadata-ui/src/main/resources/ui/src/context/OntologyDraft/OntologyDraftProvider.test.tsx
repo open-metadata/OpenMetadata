@@ -19,7 +19,14 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useState } from 'react';
-import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom';
+import {
+  BrowserRouter,
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import {
   useOntologyDirtyForm,
   useOntologyDraftGuard,
@@ -136,6 +143,123 @@ const RouteEditor = () => {
     </>
   );
 };
+
+const SidebarNavigation = ({ replace }: { replace: boolean }) => {
+  const navigate = useNavigate();
+
+  return (
+    <Button
+      onPress={() =>
+        navigate('/explore?tab=all#results', {
+          replace,
+          state: { source: 'sidebar' },
+        })
+      }>
+      Explore
+    </Button>
+  );
+};
+
+it.each([false, true])(
+  'guards sidebar navigation and preserves replace=%s after confirmation',
+  async (replace) => {
+    window.history.replaceState({ idx: 1 }, '', '/governance/ontology');
+    const view = render(
+      <BrowserRouter>
+        <SidebarNavigation replace={replace} />
+        <Routes>
+          <Route
+            element={
+              <OntologyDraftProvider>
+                <Editor />
+              </OntologyDraftProvider>
+            }
+            path="/governance/ontology"
+          />
+          <Route
+            element={<output>Explore destination</output>}
+            path="/explore"
+          />
+        </Routes>
+      </BrowserRouter>
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), {
+      target: { value: 'Keep this draft' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Explore' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.cancel' })
+    );
+
+    expect(window.location.pathname).toBe('/governance/ontology');
+    expect(screen.getByDisplayValue('Keep this draft')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Explore' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.discard' }));
+
+    expect(await screen.findByText('Explore destination')).toBeVisible();
+    expect(
+      window.location.pathname + window.location.search + window.location.hash
+    ).toBe('/explore?tab=all#results');
+    expect(window.history.state).toMatchObject({
+      idx: replace ? 1 : 2,
+      usr: { source: 'sidebar' },
+    });
+
+    view.unmount();
+  }
+);
+
+it('keeps an uncertain attempt mounted when a sidebar button navigates', () => {
+  const view = (locked: boolean) => (
+    <MemoryRouter>
+      <SidebarNavigation replace={false} />
+      <OntologyDraftProvider>
+        <Editor locked={locked} />
+      </OntologyDraftProvider>
+    </MemoryRouter>
+  );
+  const { rerender } = render(view(true));
+  fireEvent.click(screen.getByRole('button', { name: 'Explore' }));
+
+  expect(screen.getByRole('button', { name: 'label.discard' })).toBeDisabled();
+  expect(
+    screen.getByRole('textbox', { name: 'Description', hidden: true })
+  ).toBeInTheDocument();
+
+  rerender(view(false));
+
+  expect(screen.getByRole('button', { name: 'label.discard' })).toBeEnabled();
+});
+
+it('allows navigation immediately after a successful save clears the dirty registration', () => {
+  const SavedEditor = () => {
+    const markSaved = useOntologyDirtyForm(true);
+    const navigate = useNavigate();
+
+    return (
+      <Button
+        onPress={() => {
+          markSaved();
+          navigate('/explore');
+        }}>
+        Save and leave
+      </Button>
+    );
+  };
+  render(
+    <MemoryRouter>
+      <OntologyDraftProvider>
+        <SavedEditor />
+        <RouteEditor />
+      </OntologyDraftProvider>
+    </MemoryRouter>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Save and leave' }));
+
+  expect(screen.getByTestId('route')).toHaveTextContent('/explore');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
 
 const NestedEditor = () => {
   const [open, setOpen] = useState(true);

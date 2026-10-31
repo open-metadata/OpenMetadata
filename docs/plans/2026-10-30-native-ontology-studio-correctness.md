@@ -123,3 +123,9 @@ attempt is reconciled. Acknowledged-success selection uses the completion path.
 The browser safeguard cases exercise concept/property/settings saves, definition
 selection, overlay entry and create-dialog cancellation in all three layout/theme
 combinations.
+
+Final review also covers button-driven sidebar navigation, including router replace
+and saved navigation state. Confirmation replays only the consented transition.
+Opening a native ontology now loads its own model instead of copying an older
+aggregate snapshot; the real library installation browser flow exposed that race.
+The operational unlink browser test exercises Cancel, confirmation and persistence.

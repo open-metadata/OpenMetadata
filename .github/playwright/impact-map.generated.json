@@ -12237,6 +12237,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/Sidebar/SidebarBrand.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/Sidebar/SubPanel.tsx"
       ],
       "specs": [

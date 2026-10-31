@@ -53,6 +53,8 @@ const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   const routing = useWorkflowNavigationBlock({
     enabled: dirty || locked,
+    isBlocked: () =>
+      Boolean(dirtyForms.current.size || lockedForms.current.size),
     onSaveWorkflow: async () => false,
   });
   const value = useMemo(
@@ -69,7 +71,7 @@ const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
     }
     setPending(undefined);
     if (pending) {
-      pending();
+      routing.runWithoutBlocking(pending);
     } else {
       routing.onDiscard();
     }

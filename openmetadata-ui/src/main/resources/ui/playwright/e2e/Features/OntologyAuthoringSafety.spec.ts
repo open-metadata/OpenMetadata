@@ -105,6 +105,16 @@ test.describe(
             await expect(page.getByTestId('new-class-label')).toHaveValue(
               'Unsaved class'
             );
+            if (mode === 'ai') {
+              await page.getByTestId('ask-logo-btn').click();
+              await expect(confirmation).toBeVisible();
+              await confirmation
+                .getByRole('button', { name: 'Cancel', exact: true })
+                .click();
+              await expect(page.getByTestId('new-class-label')).toHaveValue(
+                'Unsaved class'
+              );
+            }
             await page.getByTestId('ontology-new-class-close').click();
             await expect(confirmation).toBeVisible();
             await confirmation

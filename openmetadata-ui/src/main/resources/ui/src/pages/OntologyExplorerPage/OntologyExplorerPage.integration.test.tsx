@@ -298,6 +298,48 @@ describe('Ontology Studio mode-switch integration', () => {
     }
   );
 
+  it('loads current definitions when opening an ontology from an older aggregate snapshot', async () => {
+    const ontology: Ontology = {
+      id: 'retail',
+      name: 'Retail',
+      fullyQualifiedName: 'Retail',
+      iri: 'urn:retail',
+      namespace: 'urn:retail:',
+    };
+    mockGetOntology.mockResolvedValue(ontology);
+    mockListOntologies.mockResolvedValue({
+      data: [ontology],
+      paging: { total: 1 },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    await screen.findByTestId('all-ontologies-graph');
+    mockListOntologyConcepts.mockResolvedValue({
+      data: [
+        {
+          id: 'customer',
+          name: 'Customer',
+          fullyQualifiedName: 'Retail.Customer',
+          iri: 'urn:retail:Customer',
+          conceptType: OntologyConceptType.OwlClass,
+          ontology: { id: ontology.id, type: 'ontology' },
+        },
+      ],
+      paging: { total: 1 },
+    });
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-retail'));
+
+    expect(
+      await screen.findByRole('button', { name: 'Customer' })
+    ).toBeVisible();
+  });
+
   it('keeps the native inspector and selection across aggregate tree, owner Edit, and Query', async () => {
     const ontology: Ontology = {
       id: 'retail',
@@ -367,7 +409,7 @@ describe('Ontology Studio mode-switch integration', () => {
       'owners,reviewers',
       expect.any(AbortSignal)
     );
-    expect(mockListOntologyConcepts).toHaveBeenCalledTimes(2);
+    expect(mockListOntologyConcepts).toHaveBeenCalledTimes(3);
 
     fireEvent.click(screen.getByTestId('mode-tab-query'));
 
@@ -380,7 +422,7 @@ describe('Ontology Studio mode-switch integration', () => {
     expect(
       await screen.findByTestId('ontology-concept-inspector')
     ).toHaveTextContent('urn:retail:Customer');
-    expect(mockListOntologyConcepts).toHaveBeenCalledTimes(2);
+    expect(mockListOntologyConcepts).toHaveBeenCalledTimes(3);
   });
 
   it('shows saved Definitions in the owner and aggregate concept inspectors', async () => {

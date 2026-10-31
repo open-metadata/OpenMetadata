@@ -828,23 +828,6 @@ const OntologyExplorerContent: React.FC = () => {
     setOntologyLoadAttempt((attempt) => attempt + 1);
     requestedNativeMode.current = nextMode;
     setMode(nextMode);
-    const cachedModel = allModels.models?.find(
-      (model) => model.ontology.id === ontology?.id
-    );
-    if (
-      cachedModel &&
-      !allModels.isFetching &&
-      !queryClient.getQueryState([
-        ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
-        'all',
-        studioScopes.ontologies.map(({ id }) => id),
-      ])?.isInvalidated
-    ) {
-      queryClient.setQueryData(
-        [ONTOLOGY_STUDIO_MODEL_QUERY_KEY, ontology?.id],
-        cachedModel
-      );
-    }
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       if ((ontology?.id ?? null) !== current.get('ontology')) {
