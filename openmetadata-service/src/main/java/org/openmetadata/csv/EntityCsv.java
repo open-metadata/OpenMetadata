@@ -980,7 +980,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   public List<CSVRecord> parse(String csv) {
     Reader in = new StringReader(csv);
     try {
-      return CSVFormat.DEFAULT.parse(in).stream().toList();
+      return restoreFormulas(CSVFormat.DEFAULT.parse(in).getRecords());
     } catch (IOException e) {
       documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
@@ -1011,8 +1011,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       for (CSVRecord record : parser) {
         List<String> fixedRow = new ArrayList<>();
         for (String value : record) {
-          // Preserve the raw value without additional processing
-          fixedRow.add(value);
+          fixedRow.add(CsvUtil.restoreFormula(value));
         }
         // Pad or trim the row to match the number of columns in headers
         fixedRow = padOrTrimColumns(fixedRow);
@@ -1027,6 +1026,24 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     }
 
     return records;
+  }
+
+  // CSVRecord is immutable, so records with escaped formula cells are re-printed and re-parsed.
+  private static List<CSVRecord> restoreFormulas(List<CSVRecord> records) throws IOException {
+    boolean anyEscaped =
+        records.stream()
+            .flatMap(CSVRecord::stream)
+            .anyMatch(value -> !value.equals(CsvUtil.restoreFormula(value)));
+    if (!anyEscaped) {
+      return records;
+    }
+    StringWriter writer = new StringWriter();
+    try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT)) {
+      for (CSVRecord csvRecord : records) {
+        printer.printRecord(csvRecord.stream().map(CsvUtil::restoreFormula).toList());
+      }
+    }
+    return CSVFormat.DEFAULT.parse(new StringReader(writer.toString())).getRecords();
   }
 
   private List<CSVRecord> convertToCSVRecords(List<List<String>> fixedRows, List<String> headers)
