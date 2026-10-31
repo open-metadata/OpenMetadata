@@ -11709,8 +11709,17 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyCreateDialog/OntologyCreateDialog.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts",
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyCreateForm/OntologyCreateForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts"
       ]
     },
     {
@@ -11906,6 +11915,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts",
         "playwright/e2e/Features/OntologyNativeRelations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
@@ -12789,6 +12799,7 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/ontologyProperty.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",

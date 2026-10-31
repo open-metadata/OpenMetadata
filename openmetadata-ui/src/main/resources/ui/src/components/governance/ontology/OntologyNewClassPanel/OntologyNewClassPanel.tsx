@@ -33,7 +33,10 @@ import { v4 as uuid } from 'uuid';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
-import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
+import {
+  useOntologyDirtyForm,
+  useOntologyDraftLock,
+} from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getOntologyState } from '../../../../rest/ontologyAPI';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
@@ -212,6 +215,7 @@ const OntologyNewClassPanel = ({
     },
   });
   const leaveLocked = preparing || reconciling || apply.configurationLocked;
+  useOntologyDraftLock(leaveLocked);
   const locked = leaveLocked || apply.status.kind === 'applied';
   useEffect(() => {
     onLockChange?.(leaveLocked);

@@ -1251,7 +1251,11 @@ const OntologyExplorerContent: React.FC = () => {
         scope={studioScope}
         onCreateOntology={
           canCreateOntology && !nativeAuthoringLocked
-            ? () => setIsCreateDialogOpen(true)
+            ? () =>
+                guard(() => {
+                  handleModeChange('view');
+                  setIsCreateDialogOpen(true);
+                })
             : undefined
         }
         onEditOntology={
@@ -1425,7 +1429,14 @@ const OntologyExplorerContent: React.FC = () => {
         size="sm"
         tooltip={t('label.library')}
         tooltipPlacement="bottom"
-        onPress={() => setIsLibraryOpen(true)}
+        onPress={() =>
+          guard(() => {
+            if (isNativeOntology) {
+              handleModeChange('view');
+            }
+            setIsLibraryOpen(true);
+          })
+        }
       />
     );
   }
@@ -1458,6 +1469,7 @@ const OntologyExplorerContent: React.FC = () => {
               setNativeRefresh((value) => value + 1);
               refreshNativeWorkingDiff();
             }}
+            onOpen={() => handleModeChange('view')}
           />
         ) : null}
         {isAllOntologies ? (
@@ -2031,9 +2043,11 @@ const OntologyExplorerContent: React.FC = () => {
             });
           },
           onOpenOntology: (ontology) => {
-            selectOntology(ontology);
-            setViewSurface('graph');
-            setIsLibraryOpen(false);
+            guard(() => {
+              selectOntology(ontology);
+              setViewSurface('graph');
+              setIsLibraryOpen(false);
+            });
           },
           onApplied: (ontology) => {
             void queryClient.invalidateQueries({

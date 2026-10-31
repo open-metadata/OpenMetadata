@@ -123,12 +123,12 @@ test.describe(
       const api = await getWorkerAdminAPIContext();
       const tasks: string[] = [];
       const name = `pw_native_export_${uuid()}`;
-      const namespace = `urn:${name}:`;
+      const namespace = `https://example.org/${name}#`;
       const ontology = await okJson<Ontology>(
         await api.post('/api/v1/ontologies', {
           data: {
             name,
-            iri: `urn:${name}`,
+            iri: `https://example.org/${name}`,
             namespace,
             reviewers: [{ id: reviewer.responseData.id, type: 'user' }],
           },
@@ -139,8 +139,8 @@ test.describe(
         await api.post('/api/v1/ontologies', {
           data: {
             name: `${name}_other`,
-            iri: `urn:${name}_other`,
-            namespace: `urn:${name}_other:`,
+            iri: `https://example.org/${name}_other`,
+            namespace: `https://example.org/${name}_other#`,
           },
         }),
         'Create unrelated ontology'
@@ -152,9 +152,7 @@ test.describe(
               data: {
                 name: conceptName,
                 ontology: owner.fullyQualifiedName,
-                iri: `${
-                  owner.id === ontology.id ? namespace : `urn:${name}_other:`
-                }${conceptName}`,
+                iri: `${owner.namespace}${conceptName}`,
                 conceptType: 'OWL_CLASS',
                 synonyms: conceptName === 'Customer' ? ['Client'] : [],
               },

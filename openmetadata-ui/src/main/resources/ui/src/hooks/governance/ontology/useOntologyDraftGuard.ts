@@ -27,3 +27,13 @@ export const useOntologyDirtyForm = (dirty: boolean) => {
 
   return useCallback(() => setDirty(id, false), [id, setDirty]);
 };
+
+export const useOntologyDraftLock = (locked: boolean) => {
+  const { setLocked } = useContext(OntologyDraftContext);
+  const id = useId();
+  useEffect(() => {
+    setLocked(id, locked);
+
+    return () => setLocked(id, false);
+  }, [id, locked, setLocked]);
+};

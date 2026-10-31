@@ -23,14 +23,16 @@ import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom';
 import {
   useOntologyDirtyForm,
   useOntologyDraftGuard,
+  useOntologyDraftLock,
 } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import OntologyDraftProvider from './OntologyDraftProvider';
 
-const Editor = () => {
+const Editor = ({ locked = false }: { locked?: boolean }) => {
   const [draft, setDraft] = useState('');
   const [selected, setSelected] = useState('Customer');
   const guard = useOntologyDraftGuard();
   const markSaved = useOntologyDirtyForm(Boolean(draft));
+  useOntologyDraftLock(locked);
 
   return (
     <>
@@ -99,6 +101,28 @@ it('does not ask to discard after a successful save', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Select person' }));
 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.getByText('Person')).toBeInTheDocument();
+});
+
+it('cannot discard a pending attempt until its outcome is reconciled', () => {
+  const view = (locked: boolean) => (
+    <MemoryRouter>
+      <OntologyDraftProvider>
+        <Editor locked={locked} />
+      </OntologyDraftProvider>
+    </MemoryRouter>
+  );
+  const { rerender } = render(view(true));
+  fireEvent.click(screen.getByRole('button', { name: 'Select person' }));
+
+  expect(
+    screen.getByText('message.ontology-class-attempt-pending')
+  ).toBeVisible();
+  expect(screen.getByRole('button', { name: 'label.discard' })).toBeDisabled();
+
+  rerender(view(false));
+  fireEvent.click(screen.getByRole('button', { name: 'label.discard' }));
+
   expect(screen.getByText('Person')).toBeInTheDocument();
 });
 

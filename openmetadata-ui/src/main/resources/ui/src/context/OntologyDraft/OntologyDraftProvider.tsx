@@ -24,7 +24,9 @@ import { OntologyDraftContext } from './OntologyDraftContext';
 const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const dirtyForms = useRef(new Set<string>());
+  const lockedForms = useRef(new Set<string>());
   const [dirty, updateDirty] = useState(false);
+  const [locked, updateLocked] = useState(false);
   const [pending, setPending] = useState<() => void>();
   const setDirty = useCallback((id: string, next: boolean) => {
     if (next) {
@@ -34,23 +36,37 @@ const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
     }
     updateDirty(dirtyForms.current.size > 0);
   }, []);
+  const setLocked = useCallback((id: string, next: boolean) => {
+    if (next) {
+      lockedForms.current.add(id);
+    } else {
+      lockedForms.current.delete(id);
+    }
+    updateLocked(lockedForms.current.size > 0);
+  }, []);
   const guard = useCallback((action: () => void) => {
-    if (dirtyForms.current.size) {
+    if (dirtyForms.current.size || lockedForms.current.size) {
       setPending(() => action);
     } else {
       action();
     }
   }, []);
   const routing = useWorkflowNavigationBlock({
-    enabled: dirty,
+    enabled: dirty || locked,
     onSaveWorkflow: async () => false,
   });
-  const value = useMemo(() => ({ setDirty, guard }), [setDirty, guard]);
+  const value = useMemo(
+    () => ({ setDirty, setLocked, guard }),
+    [setDirty, setLocked, guard]
+  );
   const cancel = () => {
     setPending(undefined);
     routing.onCancel();
   };
   const discard = () => {
+    if (lockedForms.current.size) {
+      return;
+    }
     setPending(undefined);
     if (pending) {
       pending();
@@ -76,13 +92,20 @@ const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
             title={t('message.discard-your-changes')}
             onClose={cancel}>
             <Dialog.Content>
-              {t('message.unsaved-change-in-page')}
+              {t(
+                locked
+                  ? 'message.ontology-class-attempt-pending'
+                  : 'message.unsaved-change-in-page'
+              )}
             </Dialog.Content>
             <Dialog.Footer>
               <Button color="secondary" onPress={cancel}>
                 {t('label.cancel')}
               </Button>
-              <Button color="primary-destructive" onPress={discard}>
+              <Button
+                color="primary-destructive"
+                isDisabled={locked}
+                onPress={discard}>
                 {t('label.discard')}
               </Button>
             </Dialog.Footer>

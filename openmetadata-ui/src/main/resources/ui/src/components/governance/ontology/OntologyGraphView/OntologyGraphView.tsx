@@ -701,7 +701,7 @@ const OntologyGraphView = ({
       handledCreateConceptRequest.current !== createConceptRequestKey
     ) {
       handledCreateConceptRequest.current = createConceptRequestKey;
-      setSelectedId(undefined);
+      (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
       setConceptEditor({});
       setGraphMode('model');
       onRequestGraphSurface();
@@ -710,7 +710,7 @@ const OntologyGraphView = ({
     createConceptRequestKey,
     isEditing,
     onRequestGraphSurface,
-    setSelectedId,
+    onSelectedConceptChange,
   ]);
 
   if ([isError, !model].every(Boolean)) {
@@ -771,7 +771,7 @@ const OntologyGraphView = ({
               created.id
             );
             setNodePositions(positions);
-            setSelectedId(created.id);
+            (onSelectedConceptChange ?? setLocalSelectedId)(created.id);
             setConceptEditor(undefined);
             noteWorkingChange();
 

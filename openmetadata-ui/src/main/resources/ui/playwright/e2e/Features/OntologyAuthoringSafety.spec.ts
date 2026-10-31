@@ -14,6 +14,7 @@
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
+import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
@@ -74,6 +75,17 @@ test.describe(
               )
             );
           }
+          const property = await okJson<OntologyProperty>(
+            await api.post('/api/v1/ontologyProperties', {
+              data: {
+                name: 'knows',
+                ontology: owner.fullyQualifiedName,
+                iri: owner.namespace + 'knows',
+                kind: 'OBJECT',
+              },
+            }),
+            'Create property reference'
+          );
           await page.goto('/governance/ontology?ontology=' + owner.id);
           if (theme === 'dark') {
             await expect(page.locator('html')).toHaveClass(/dark-mode/);
@@ -110,6 +122,142 @@ test.describe(
             expect(saved.data.map((concept) => concept.id).sort()).toEqual(
               concepts.map((concept) => concept.id).sort()
             );
+          });
+          await test.step('Guard real definition and settings forms, then clear protection after save', async () => {
+            await page.getByTestId('submode-tab-definitions').click();
+            for (const [tab, editorId, row, endpoint] of [
+              [
+                'Concepts',
+                'ontology-concept-editor',
+                'Customer',
+                '/api/v1/ontologyConcepts/' + concepts[0].id,
+              ],
+              [
+                'Properties',
+                'ontology-property-editor',
+                'knows',
+                '/api/v1/ontologyProperties/' + property.id,
+              ],
+              [
+                'Settings',
+                'ontology-create-form',
+                '',
+                '/api/v1/ontologies/' + owner.id,
+              ],
+            ]) {
+              await page.getByRole('tab', { name: tab, exact: true }).click();
+              if (row) {
+                await page
+                  .getByRole('button', { name: row, exact: true })
+                  .click();
+              }
+              const editor = page.getByTestId(editorId);
+              const description = editor.getByRole('textbox', {
+                name: 'Description',
+                exact: true,
+              });
+              const text = 'Saved ' + tab + ' description';
+              await description.fill(text);
+              if (tab === 'Concepts') {
+                await page
+                  .getByRole('button', { name: 'Person', exact: true })
+                  .click();
+              } else {
+                await page
+                  .getByRole('tab', { name: 'Constraints', exact: true })
+                  .click();
+              }
+              const confirmation = page.getByRole('dialog', {
+                name: 'Discard your changes?',
+              });
+              await expect(confirmation).toBeVisible();
+              await confirmation
+                .getByRole('button', { name: 'Cancel', exact: true })
+                .click();
+              await expect(description).toHaveValue(text);
+              const saved = page.waitForResponse(
+                (response) =>
+                  new URL(response.url()).pathname === endpoint &&
+                  response.request().method() === 'PATCH',
+                { timeout: 20_000 }
+              );
+              await clickIgnoringToasts(
+                editor.getByRole('button', { name: 'Save', exact: true })
+              );
+              const updated = await okJson<{ description: string }>(
+                await saved,
+                'Save guarded definition'
+              );
+              expect(updated.description).toBe(text);
+              if (tab === 'Settings') {
+                await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
+                  'aria-selected',
+                  'true'
+                );
+                await page.getByTestId('mode-tab-edit').click();
+                await page.getByTestId('submode-tab-definitions').click();
+              }
+              await page
+                .getByRole('tab', { name: 'Constraints', exact: true })
+                .click();
+              await expect(
+                page.getByRole('tab', { name: 'Constraints', exact: true })
+              ).toHaveAttribute('aria-selected', 'true');
+              await expect(confirmation).toHaveCount(0);
+            }
+          });
+          await test.step('Protect edits before opening sibling authoring workflows', async () => {
+            await page
+              .getByRole('tab', { name: 'Settings', exact: true })
+              .click();
+            const description = page
+              .getByTestId('ontology-create-form')
+              .getByRole('textbox', { name: 'Description', exact: true });
+            await description.fill('Keep settings until discard');
+            const confirmation = page.getByRole('dialog', {
+              name: 'Discard your changes?',
+            });
+            for (const trigger of [
+              'ontology-library-trigger',
+              'ontology-import-export-trigger',
+            ]) {
+              await page.getByTestId(trigger).click();
+              await expect(confirmation).toBeVisible();
+              await confirmation
+                .getByRole('button', { name: 'Cancel', exact: true })
+                .click();
+              await expect(description).toHaveValue(
+                'Keep settings until discard'
+              );
+            }
+            await page.getByTestId('ontology-scope-menu-trigger').click();
+            await page.getByTestId('ontology-create').click();
+            await expect(confirmation).toBeVisible();
+            await confirmation
+              .getByRole('button', { name: 'Discard', exact: true })
+              .click();
+            await expect(page.getByTestId('ontology-create-form')).toHaveCount(
+              0
+            );
+            await page
+              .getByTestId('ontology-create-name')
+              .fill('Unsaved ontology');
+            await page.getByTestId('ontology-create-cancel').click();
+            await expect(confirmation).toBeVisible();
+            await confirmation
+              .getByRole('button', { name: 'Cancel', exact: true })
+              .click();
+            await expect(page.getByTestId('ontology-create-name')).toHaveValue(
+              'Unsaved ontology'
+            );
+            await page.getByTestId('ontology-create-cancel').click();
+            await confirmation
+              .getByRole('button', { name: 'Discard', exact: true })
+              .click();
+            await expect(
+              page.getByTestId('ontology-create-dialog')
+            ).toHaveCount(0);
+            await page.getByTestId('mode-tab-edit').click();
           });
           await test.step('Select classes by label and persist their exact IRIs', async () => {
             await page.getByTestId('submode-tab-definitions').click();

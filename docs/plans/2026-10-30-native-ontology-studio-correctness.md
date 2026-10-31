@@ -114,3 +114,12 @@ a locally built backend at `370b7162a533731e4b63d3b173b29384816d77b2`.
 The PR description records the final counts, reviewed commit and recording evidence.
 The whole-app type check still reports the existing RJSF validator mismatch in
 `IngestionWorkflowForm.tsx:413`; the Playwright type check passes.
+
+The independent review identified two additional navigation boundaries. Create,
+Library and Import/export now confirm pending edits and leave the editor before
+opening a workflow that can replace/refetch its model. Busy or uncertain class
+creation attempts register a navigation lock; Discard remains disabled until the
+attempt is reconciled. Acknowledged-success selection uses the completion path.
+The browser safeguard cases exercise concept/property/settings saves, definition
+selection, overlay entry and create-dialog cancellation in all three layout/theme
+combinations.
