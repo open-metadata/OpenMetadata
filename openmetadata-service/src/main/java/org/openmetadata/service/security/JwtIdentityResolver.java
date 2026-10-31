@@ -1,5 +1,7 @@
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.SecurityUtil.extractEmailFromClaim;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
@@ -36,6 +38,12 @@ public class JwtIdentityResolver {
   }
 
   public ResolvedIdentity resolve(Map<String, Claim> claims, boolean isBotUser) {
+    return resolve(claims, isBotUser, false);
+  }
+
+  /** The internal-token flag must come from verification against OpenMetadata's signing key. */
+  public ResolvedIdentity resolve(
+      Map<String, Claim> claims, boolean isBotUser, boolean internallyIssued) {
     if (shouldUseEmailFirstFlow(isBotUser)) {
       String email = null;
       try {
@@ -64,12 +72,21 @@ public class JwtIdentityResolver {
     }
 
     String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
-    String email =
-        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    String email = resolveLegacyEmail(claims, internallyIssued);
     // The legacy path resolves identity from the claims too, so it needs the same guard: a
     // provider that says the address is unverified must not reach an account through it either.
     validateEmailVerifiedClaim(claims, email);
     return new ResolvedIdentity(userName, email, false);
+  }
+
+  private String resolveLegacyEmail(Map<String, Claim> claims, boolean internallyIssued) {
+    if (internallyIssued
+        && nullOrEmpty(jwtPrincipalClaimsMapping)
+        && claims.containsKey(EMAIL_CLAIM_KEY)) {
+      return extractEmailFromClaim(claims, EMAIL_CLAIM_KEY);
+    }
+    return findEmailFromClaims(
+        jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
   }
 
   private boolean shouldUseEmailFirstFlow(boolean isBotUser) {

@@ -32,6 +32,7 @@ import {
   Kind,
   OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyProperty,
@@ -86,6 +87,7 @@ const OntologyPropertyEditor = ({
   const form = useForm<OntologyPropertyFormValues>({
     defaultValues: propertyFormValues(property),
   });
+  const markSaved = useOntologyDirtyForm(form.formState.isDirty);
   const literals = useFieldArray({ control: form.control, name: 'enumValues' });
   const kind = form.watch('kind').id;
   const [isSaving, setIsSaving] = useState(false);
@@ -105,14 +107,15 @@ const OntologyPropertyEditor = ({
     setIsSaving(true);
     try {
       const request = propertyRequest(values, ontology.fullyQualifiedName);
-      onSaved(
-        property
-          ? await patchOntologyProperty(
-              property.id,
-              propertyPatch(property, request)
-            )
-          : await createOntologyProperty(request)
-      );
+      const saved = property
+        ? await patchOntologyProperty(
+            property.id,
+            propertyPatch(property, request)
+          )
+        : await createOntologyProperty(request);
+      form.reset(propertyFormValues(saved));
+      markSaved();
+      onSaved(saved);
     } catch (error) {
       showErrorToast(
         isAxiosError(error) ? error : t('server.unexpected-error')

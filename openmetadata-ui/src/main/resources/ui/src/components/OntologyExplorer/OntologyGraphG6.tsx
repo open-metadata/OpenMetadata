@@ -126,6 +126,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       relationTypeGroups,
       canCreateRelationType,
       studioMode,
+      keepCanvasOnAdd,
       isAuthoringMode,
       isEditMode,
       onCreateRelation,
@@ -190,6 +191,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       useOntologyGraph({
         containerRef,
         graphData,
+        nodePositions,
         inputNodes,
         mergedEdgesList,
         explorationMode,
@@ -211,6 +213,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         hierarchicalRelationTypes,
         isEditMode,
         studioMode,
+        keepCanvasOnAdd,
       });
 
     useImperativeHandle(

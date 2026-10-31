@@ -25,7 +25,7 @@ export const styles = {
   primary: buttonStyles.colors.primary.root,
   secondary: [
     'tw:bg-surface tw:shadow-xs-skeuomorphic',
-    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:disabled:shadow-xs',
+    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:dark:disabled:bg-disabled tw:disabled:shadow-xs',
     borderAfter,
     'tw:after:outline-primary tw:disabled:after:outline-disabled_subtle',
     neutralIcon,

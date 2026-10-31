@@ -57,6 +57,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -84,6 +85,7 @@ import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressStat
 import org.openmetadata.service.monitoring.ServiceProgressStreamer;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
+import org.openmetadata.service.secrets.DBSecretsManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
@@ -711,31 +713,41 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
+  protected IngestionPipeline prepareForStorage(IngestionPipeline ingestionPipeline) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
       secretsManager.encryptIngestionPipeline(ingestionPipeline);
     }
+    return ingestionPipeline;
+  }
+
+  @Override
+  protected String serializeForVersionHistory(IngestionPipeline ingestionPipeline) {
+    final IngestionPipeline snapshot =
+        JsonUtils.deepCopy(ingestionPipeline, IngestionPipeline.class);
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (secretsManager != null) {
+      // Recording history must not overwrite credentials in an external vault.
+      DBSecretsManager.getInstance(SecretsManagerProvider.DB, secretsManager.getSecretsConfig())
+          .encryptIngestionPipeline(snapshot);
+    }
+    return super.serializeForVersionHistory(snapshot);
+  }
+
+  @Override
+  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
     store(ingestionPipeline, update);
   }
 
   @Override
   public void storeEntities(List<IngestionPipeline> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-
-    for (IngestionPipeline ingestionPipeline : entities) {
-      if (secretsManager != null) {
-        secretsManager.encryptIngestionPipeline(ingestionPipeline);
-      }
-
-      fqns.add(ingestionPipeline.getFullyQualifiedName());
-      jsons.add(serializeForStorage(ingestionPipeline));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override
@@ -1286,6 +1298,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     public IngestionPipelineUpdater(
         IngestionPipeline original, IngestionPipeline updated, Operation operation) {
       super(buildIngestionPipelineDecrypted(original), updated, operation);
+    }
+
+    @Override
+    protected IngestionPipeline getPreviousVersion(IngestionPipeline original) {
+      final IngestionPipeline previous = super.getPreviousVersion(original);
+      return previous == null ? null : buildIngestionPipelineDecrypted(previous);
     }
 
     @Transaction

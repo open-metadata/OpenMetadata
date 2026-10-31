@@ -1,17 +1,21 @@
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -64,6 +68,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for DatabaseService entity operations.
@@ -188,6 +193,75 @@ public class DatabaseServiceResourceIT
   // ===================================================================
   // DATABASE SERVICE-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void csvImportAuditLogOmitsConnectionSecretsForNonAdmin(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String password = "csv-audit-secret-" + UUID.randomUUID();
+    DatabaseService service =
+        ns.trackRoot(
+            getEntityType(),
+            createEntity(
+                createMinimalRequest(ns)
+                    .withConnection(
+                        new DatabaseConnection()
+                            .withConfig(
+                                new PostgresConnection()
+                                    .withHostPort("localhost:5432")
+                                    .withUsername("test")
+                                    .withAuthType(new basicAuth().withPassword(password))))));
+    for (String name : List.of("first", "second")) {
+      SdkClients.adminClient()
+          .databases()
+          .create(new CreateDatabase().withName(name).withService(service.getFullyQualifiedName()));
+    }
+
+    CsvImportResult result =
+        importCsvRecursive(
+            service.getFullyQualifiedName(),
+            exportCsvRecursive(service.getFullyQualifiedName()),
+            false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertTrue(result.getNumberOfRowsPassed() >= 2);
+
+    await("bulk import audit entry")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> assertBulkImportAuditHasNoSecrets(service, password));
+    assertEquals(
+        PASSWORD_MASK,
+        JsonUtils.valueToTree(getEntity(service.getId().toString()))
+            .at("/connection/config/authType/password")
+            .asText());
+    DatabaseService reloaded =
+        SdkClients.botClient().databaseServices().get(service.getId().toString());
+    assertEquals(
+        password,
+        JsonUtils.valueToTree(reloaded).at("/connection/config/authType/password").asText());
+  }
+
+  private void assertBulkImportAuditHasNoSecrets(DatabaseService service, String password) {
+    String response =
+        SdkClients.testUserClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/audit/logs",
+                null,
+                RequestOptions.builder()
+                    .queryParam("entityType", getEntityType())
+                    .queryParam("entityFQN", service.getFullyQualifiedName())
+                    .queryParam("eventType", "entityUpdated")
+                    .build());
+    JsonNode entries = JsonUtils.readTree(response).path("data");
+    assertEquals(1, entries.size());
+    JsonNode changeEvent = entries.get(0).path("changeEvent");
+    assertEquals("bulkImport", changeEvent.at("/changeDescription/fieldsUpdated/0/name").asText());
+    assertEquals(service.getId().toString(), changeEvent.path("entityId").asText());
+    assertFalse(response.contains(password));
+    assertFalse(response.contains("fernet:"));
+    JsonNode payload = JsonUtils.readTree(changeEvent.path("entity").asText());
+    assertFalse(payload.path("connection").has("config"));
+  }
 
   @Test
   void post_databaseServiceWithPostgresConnection_200_OK(TestNamespace ns) {
