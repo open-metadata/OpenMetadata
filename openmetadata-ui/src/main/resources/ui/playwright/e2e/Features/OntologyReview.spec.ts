@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, Locator, Page } from '@playwright/test';
 import { readFile } from 'fs/promises';
 import { SearchIndex } from '../../../src/enums/search.enum';
 import { ContextMemory } from '../../../src/generated/entity/context/contextMemory';
@@ -413,6 +413,22 @@ test.describe(
         await author.getByTestId('ontology-publication-trigger').click();
         const card = author.getByTestId('ontology-release-reviewers');
         const picker = card.getByRole('combobox', { name: 'Add reviewer' });
+        // The picker searches only once focused, and React Aria opens its list
+        // only on a text change while options are already loaded. Typing before
+        // that first search returns leaves the list closed; that is current
+        // product behaviour, kept as-is here, so load the options first.
+        const loadReviewerOptions = async (combobox: Locator) => {
+          const loaded = author.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === '/api/v1/search/query' &&
+              url.searchParams.get('index') === SearchIndex.USER
+            );
+          });
+          await combobox.click();
+          expect((await loaded).status()).toBe(200);
+        };
         const searchFor = async (name: string) => {
           const users = author.waitForResponse((response) => {
             const url = new URL(response.url());
@@ -440,6 +456,7 @@ test.describe(
 
         await test.step('Add a user and exclude the current user, added user and teams', async () => {
           await expect(picker).toBeEnabled();
+          await loadReviewerOptions(picker);
           await searchFor(reviewer.responseData.name);
           const firstAddition = author.waitForResponse(
             (response) =>
@@ -502,9 +519,11 @@ test.describe(
           await author.getByTestId('ontology-publication-trigger').click();
           const emptyCard = author.getByTestId('ontology-release-reviewers');
           await expect(emptyCard).toContainText('No configured reviewers');
-          await emptyCard
-            .getByRole('combobox', { name: 'Add reviewer' })
-            .fill(reviewer.responseData.name);
+          const emptyPicker = emptyCard.getByRole('combobox', {
+            name: 'Add reviewer',
+          });
+          await loadReviewerOptions(emptyPicker);
+          await emptyPicker.fill(reviewer.responseData.name);
           const addition = author.waitForResponse(
             (response) =>
               new URL(response.url()).pathname ===
@@ -562,9 +581,13 @@ test.describe(
           await expect(
             locked.getByRole('combobox', { name: 'Add reviewer' })
           ).toBeDisabled();
+          // A locked control also renders a focusable tooltip trigger with the
+          // same name, so match the disabled select itself.
           await expect(
-            locked.getByRole('button', { name: 'All' })
-          ).toBeDisabled();
+            locked
+              .getByRole('button', { name: 'All' })
+              .and(author.locator('[data-disabled="true"]'))
+          ).toBeVisible();
           await expect(locked).toContainText('locked by review');
           await expect(
             locked.getByRole('row', {
@@ -881,36 +904,36 @@ test.describe(
         await expect(
           author.getByTestId('ontology-publication-modal')
         ).not.toBeVisible();
-        for (const [format, extension] of [
-          ['turtle', 'ttl'],
-          ['rdfxml', 'rdf'],
-          ['ntriples', 'nt'],
-          ['jsonld', 'jsonld'],
+        for (const [card, previewFormat, extension] of [
+          ['rdfxml', 'turtle', 'rdf'],
+          ['jsonld', 'turtle', 'jsonld'],
+          ['skos', 'skos', 'ttl'],
+          ['csv', 'csv', 'csv'],
         ]) {
-          const exported = author.waitForResponse((response) => {
+          const exportPath = `/api/v1/ontologyReleases/${firstRelease.id}/export`;
+          const previewed = author.waitForResponse((response) => {
             const url = new URL(response.url());
 
             return (
-              url.pathname ===
-                `/api/v1/ontologyReleases/${firstRelease.id}/export` &&
-              url.searchParams.get('format') === format
+              url.pathname === exportPath &&
+              url.searchParams.get('format') === previewFormat
             );
           });
           await author.getByTestId('ontology-import-export-trigger').click();
           const formatButton = author.getByTestId(
-            `ontology-release-format-${format}`
+            `ontology-release-format-${card}`
           );
           await expect(formatButton).toBeVisible();
-          if (format !== 'rdfxml') {
+          if (card !== 'rdfxml') {
             await formatButton.click();
           }
-          const response = await exported;
-          expect(response.ok()).toBeTruthy();
-          expect(await response.text()).toContain('First published definition');
+          const preview = await previewed;
+          expect(preview.ok()).toBeTruthy();
+          expect(await preview.text()).toContain('First published definition');
           await expect(
             author.getByTestId('ontology-release-export-preview')
           ).not.toBeEmpty();
-          if (format === 'turtle') {
+          if (card === 'rdfxml') {
             await testInfo.attach('native-release-export', {
               body: await author
                 .getByRole('dialog')
@@ -918,6 +941,15 @@ test.describe(
               contentType: 'image/png',
             });
           }
+          const fetched = author.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === exportPath &&
+              url.searchParams.get('format') === card &&
+              url.searchParams.get('shaclGate') === 'false'
+            );
+          });
           const downloaded = author.waitForEvent('download');
           await clickIgnoringToasts(
             author.getByTestId('ontology-run-release-export')
@@ -929,7 +961,7 @@ test.describe(
           const path = testInfo.outputPath(download.suggestedFilename());
           await download.saveAs(path);
           const content = await readFile(path, 'utf8');
-          expect(content).toBe(await response.text());
+          expect(content).toBe(await (await fetched).text());
           expect(content).toContain(concept.iri);
           expect(content).toContain('First published definition');
           expect(content).not.toContain('Second published definition');
@@ -1049,6 +1081,7 @@ test(
         page.getByTestId(`ontology-memory-draft-${draft.id}`)
       ).toBeHidden();
       await selectOntology(page, ontology);
+      await page.getByTestId('fit-view').click();
       const positions = await readNodePositions(page);
       await page.mouse.click(positions[conceptId].x, positions[conceptId].y);
       await expect(
