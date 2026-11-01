@@ -11,12 +11,14 @@ import com.azure.security.keyvault.secrets.models.DeletedSecret;
 import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import com.azure.security.keyvault.secrets.models.SecretProperties;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.Locale;
 import java.util.regex.Pattern;
 import org.apache.logging.log4j.util.Strings;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 
 public class AzureKVSecretsManager extends ExternalSecretsManager {
+  private static final int MAX_SECRET_NAME_LENGTH = 127;
 
   private static AzureKVSecretsManager instance = null;
   private SecretClient client;
@@ -119,6 +121,17 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   @Override
   protected boolean isNotFoundException(Exception exception) {
     return exception instanceof ResourceNotFoundException;
+  }
+
+  @Override
+  protected int maxSecretIdLength() {
+    return MAX_SECRET_NAME_LENGTH;
+  }
+
+  /** Key Vault secret names are case-insensitive. */
+  @Override
+  protected String canonicalSecretName(String secretName) {
+    return secretName.toLowerCase(Locale.ROOT);
   }
 
   public static AzureKVSecretsManager getInstance(SecretsConfig secretsConfig) {
