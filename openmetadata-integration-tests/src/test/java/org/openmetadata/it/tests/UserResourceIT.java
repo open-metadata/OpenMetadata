@@ -2963,6 +2963,47 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_updateUser_keepsLoginAndActivityTimes(TestNamespace ns) {
+    CreateUser createRequest = createMinimalRequest(ns);
+    String userId = createEntity(createRequest).getId().toString();
+    long loginTime = 1_700_000_000_000L;
+    long activityTime = loginTime + 500;
+    ArrayNode setTimes = PATCH_MAPPER.createArrayNode();
+    setTimes.addObject().put("op", "add").put("path", "/lastLoginTime").put("value", loginTime);
+    setTimes
+        .addObject()
+        .put("op", "add")
+        .put("path", "/lastActivityTime")
+        .put("value", activityTime);
+    patchUserAsAdmin(userId, setTimes);
+
+    patchUserAsAdmin(userId, replaceOp("/description", "edited"));
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, "/v1/users", createRequest.withDescription("put again"));
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
+
+    // A soft-deleted user is not readable by default, so check after the restore.
+    deleteEntity(userId);
+    restoreEntity(userId);
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
+  }
+
+  private void patchUserAsAdmin(String userId, ArrayNode patch) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + userId, patch);
+  }
+
+  private void assertLoginAndActivityTimes(String userId, long loginTime, long activityTime) {
+    User stored = Users.get(userId, "lastLoginTime,lastActivityTime");
+    assertEquals(loginTime, stored.getLastLoginTime());
+    assertEquals(activityTime, stored.getLastActivityTime());
+  }
+
+  @Test
   void test_patchUser_otherUser_allowedWithUserEditAll(TestNamespace ns) {
     // A role granting EDIT_ALL on users is how a non admin is allowed to edit other users.
     OpenMetadataClient editorClient = createUserEditorClient(ns);
