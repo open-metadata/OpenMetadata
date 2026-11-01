@@ -219,13 +219,14 @@ def class_fqn(path: str) -> str | None:
 
 def class_header(text: str, name: str) -> str | None:
     """The annotations and declaration of class `name` in a Java source, without comments."""
+    text = COMMENT.sub(" ", text)
     declaration = re.search(rf"\bclass\s+{re.escape(name)}\b", text)
     if not declaration:
         return None
     start = 0
     for statement in IMPORT_OR_PACKAGE.finditer(text, 0, declaration.start()):
         start = statement.end()
-    return COMMENT.sub(" ", text[start : declaration.end()])
+    return text[start : declaration.end()]
 
 
 def is_pattern(test: str) -> bool:
@@ -585,14 +586,27 @@ class Repo:
             if prop not in self.pom
         }
 
-    def _integration_test_classes(self) -> dict[str, str]:
-        prefix = self.it_root + "/"
-        return {
-            path[len(prefix) :]: simple_name(path)
+    def _declared_test_classes(
+        self, prefix: str, pattern: re.Pattern[str]
+    ) -> dict[str, str]:
+        candidates = [
+            path
             for path in self.files
             if path.startswith(prefix)
             and path.endswith(".java")
-            and IT_CLASS.match(simple_name(path))
+            and pattern.match(simple_name(path))
+        ]
+        return {
+            path: simple_name(path)
+            for path, text in self._read_all(candidates).items()
+            if class_header(text, simple_name(path)) is not None
+        }
+
+    def _integration_test_classes(self) -> dict[str, str]:
+        prefix = self.it_root + "/"
+        return {
+            path[len(prefix) :]: name
+            for path, name in self._declared_test_classes(prefix, IT_CLASS).items()
         }
 
     def _unit_test_classes(self) -> dict[str, dict[str, str]]:
@@ -600,11 +614,10 @@ class Repo:
         for module in self.maven["unitTestModules"]:
             prefix = f"{module}/src/test/java/"
             modules[module] = {
-                simple_name(path): path
-                for path in self.files
-                if path.startswith(prefix)
-                and path.endswith(".java")
-                and UNIT_TEST_CLASS.match(simple_name(path))
+                name: path
+                for path, name in self._declared_test_classes(
+                    prefix, UNIT_TEST_CLASS
+                ).items()
             }
         return modules
 

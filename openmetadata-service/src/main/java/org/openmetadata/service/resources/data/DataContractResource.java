@@ -1033,18 +1033,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    // Get the effective contract (with inherited properties from data products) for validation
     EntityInterface<?> entity =
         Entity.getEntity(
             dataContract.getEntity().getType(),
             dataContract.getEntity().getId(),
             "*",
             Include.NON_DELETED);
-    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
+    DataContract effectiveContract = repository.getEffectiveDataContract(entity, dataContract);
 
-    // Use the effective contract for validation to include inherited semantics
     RestUtil.PutResponse<DataContractResult> result =
-        repository.validateContract(effectiveContract != null ? effectiveContract : dataContract);
+        repository.validateContractWithEffective(dataContract, effectiveContract);
     return result.toResponse();
   }
 

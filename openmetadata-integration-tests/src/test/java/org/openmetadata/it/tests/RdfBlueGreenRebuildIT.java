@@ -23,7 +23,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -53,6 +52,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfDatasetNames;
@@ -63,6 +63,8 @@ import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore.JournalLimits;
+import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
+import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
 import org.openmetadata.service.rdf.storage.InferenceInvalidatingRdfStorage;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
@@ -71,8 +73,6 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteReque
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.RelationshipData;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Real SQL transactions and HTTP/TDB2, including two independent server routing instances. */
 @Tag("rdf")
@@ -83,7 +83,6 @@ public class RdfBlueGreenRebuildIT {
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final Path ROOT = RdfTestDatabase.repositoryRoot();
   private static GenericContainer<?> fuseki;
   private static String endpoint;
 
@@ -107,14 +106,9 @@ public class RdfBlueGreenRebuildIT {
   static void startServices() throws Exception {
     endpoint = System.getProperty("rdfRebuildFusekiEndpoint");
     if (endpoint == null) {
-      fuseki =
-          new GenericContainer<>(
-                  new ImageFromDockerfile().withFileFromPath(".", ROOT.resolve("docker/rdf-store")))
-              .withExposedPorts(3030)
-              .withEnv("JVM_ARGS", "-Xms512m -Xmx1g")
-              .waitingFor(Wait.forHttp("/$/ping"));
+      fuseki = FusekiTestImage.forOpenMetadata("-Xms512m -Xmx1g");
       fuseki.start();
-      endpoint = "http://" + fuseki.getHost() + ":" + fuseki.getMappedPort(3030);
+      endpoint = FusekiTestImage.serverUrl(fuseki);
     }
     for (Database database : Database.values()) {
       database.start();
@@ -146,20 +140,45 @@ public class RdfBlueGreenRebuildIT {
           queue.processNext(
               payload ->
                   JsonUtils.readValue(payload, RdfMutation.class)
-                      .apply(fixture.other.routedStorage())));
+                      .apply(fixture.other.routedStorage(RdfWriteDelivery.DIRECT))));
       fixture.primary.promote(target, "test");
-      assertName(fixture.other.routedStorage(), id, "before-promotion");
+      assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "before-promotion");
 
       queue.enqueue(livePayload(id, "after-promotion"));
       assertTrue(
           queue.processNext(
               payload ->
                   JsonUtils.readValue(payload, RdfMutation.class)
-                      .apply(fixture.other.routedStorage())));
-      assertName(fixture.other.routedStorage(), id, "after-promotion");
+                      .apply(fixture.other.routedStorage(RdfWriteDelivery.DIRECT))));
+      assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "after-promotion");
       try (RdfStorageInterface previous = raw("openmetadata")) {
         assertName(previous, id, "before-promotion");
       }
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
+  void theDatasetAPromotionRetiredIsEmptiedWhileTheNewOneKeepsServing(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      final UUID id = UUID.randomUUID();
+      write(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "old-graph");
+      final BuildTarget target = fixture.primary.begin();
+      write(fixture.primary.buildStorage(target), id, "rebuilt");
+      fixture.primary.promote(target, "test");
+
+      assertThrows(
+          IllegalStateException.class,
+          () -> fixture.primary.clearRetired(target.dataset(), Duration.ofMinutes(5)),
+          "the serving dataset is never cleared as retired");
+      final CompactionResult cleared =
+          fixture.primary.clearRetired("openmetadata", Duration.ofMinutes(5));
+
+      assertEquals(CompactionResult.Outcome.SUCCEEDED, cleared.outcome(), cleared.detail());
+      try (RdfStorageInterface retired = raw("openmetadata")) {
+        assertFalse(hasEntity(retired, id), "the retired dataset keeps no copy of the old graph");
+      }
+      assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "rebuilt");
     }
   }
 
@@ -170,7 +189,7 @@ public class RdfBlueGreenRebuildIT {
       final UUID id = UUID.randomUUID();
       final BuildTarget target = fixture.primary.begin();
       write(fixture.primary.buildStorage(target), id, "snapshot");
-      write(fixture.other.routedStorage(), id, "live");
+      write(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "live");
 
       database.applyReleaseMigration();
 
@@ -179,7 +198,7 @@ public class RdfBlueGreenRebuildIT {
       fixture.primary.promote(target, "test");
       database.applyReleaseMigration();
       assertEquals(target.dataset(), fixture.other.activeDataset());
-      assertName(fixture.other.routedStorage(), id, "live");
+      assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "live");
     }
   }
 
@@ -190,7 +209,7 @@ public class RdfBlueGreenRebuildIT {
       final AtomicInteger invalidations = new AtomicInteger();
       final RdfStorageInterface live =
           new InferenceInvalidatingRdfStorage(
-              fixture.other.routedStorage(), invalidations::incrementAndGet);
+              fixture.other.routedStorage(RdfWriteDelivery.DIRECT), invalidations::incrementAndGet);
       final UUID updated = UUID.randomUUID();
       final UUID deleted = UUID.randomUUID();
       final UUID created = UUID.randomUUID();
@@ -241,13 +260,14 @@ public class RdfBlueGreenRebuildIT {
       final UUID id = UUID.randomUUID();
       final BuildTarget target = fixture.primary.begin();
       write(fixture.primary.buildStorage(target), id, "snapshot");
-      write(fixture.other.routedStorage(), id, "first-live");
+      write(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "first-live");
       fixture.duringBuildWrite =
-          () -> write(fixture.other.routedStorage(), id, "live-during-replay");
+          () ->
+              write(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "live-during-replay");
 
       fixture.primary.promote(target, "test");
 
-      assertName(fixture.other.routedStorage(), id, "live-during-replay");
+      assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "live-during-replay");
     }
   }
 
@@ -261,12 +281,14 @@ public class RdfBlueGreenRebuildIT {
       fixture.failAfterLiveWrite.set(true);
       assertThrows(
           IllegalStateException.class,
-          () -> write(fixture.primary.routedStorage(), id, "remote-committed"));
+          () ->
+              write(
+                  fixture.primary.routedStorage(RdfWriteDelivery.DIRECT), id, "remote-committed"));
       assertEquals(1, fixture.store.page(target.id(), 0, 10).size());
 
       fixture.primary.promote(target, "test");
 
-      assertName(fixture.other.routedStorage(), id, "remote-committed");
+      assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "remote-committed");
     }
   }
 
@@ -276,9 +298,10 @@ public class RdfBlueGreenRebuildIT {
     try (Fixture fixture = new Fixture(database, new JournalLimits(16, 1))) {
       final UUID id = UUID.randomUUID();
       final BuildTarget target = fixture.primary.begin();
-      write(fixture.primary.routedStorage(), id, "live-write-must-survive");
+      write(fixture.primary.routedStorage(RdfWriteDelivery.DIRECT), id, "live-write-must-survive");
       assertThrows(IllegalStateException.class, () -> fixture.primary.promote(target, "test"));
-      assertName(fixture.other.routedStorage(), id, "live-write-must-survive");
+      assertName(
+          fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "live-write-must-survive");
       assertEquals("openmetadata", fixture.primary.activeDataset());
       assertTrue(fixture.store.page(target.id(), 0, 10).isEmpty());
     }
@@ -319,7 +342,7 @@ public class RdfBlueGreenRebuildIT {
         fixture.primary.promote(target, "test");
         try (RdfDatasetManager restarted = fixture.manager(false)) {
           assertEquals(expected, restarted.activeDataset());
-          assertName(restarted.routedStorage(), id, expected);
+          assertName(restarted.routedStorage(RdfWriteDelivery.DIRECT), id, expected);
         }
       }
     }
@@ -374,32 +397,32 @@ public class RdfBlueGreenRebuildIT {
 
   @ParameterizedTest
   @EnumSource(Database.class)
-  void textSearchSurvivesPromotionLiveWritesAndTargetReuse(final Database database)
+  void namedGraphReadsFollowPromotionLiveWritesAndTargetReuse(final Database database)
       throws Exception {
     try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
       final UUID id = UUID.randomUUID();
-      final RdfStorageInterface live = fixture.other.routedStorage();
+      final RdfStorageInterface live = fixture.other.routedStorage(RdfWriteDelivery.DIRECT);
       write(live, id, "baseline");
-      assertTextMatch(live, id, "baseline", true);
+      assertNameMatch(live, id, "baseline", true);
 
       for (String expected : List.of("openmetadata_a", "openmetadata_b", "openmetadata_a")) {
         final BuildTarget target = fixture.primary.begin();
         assertEquals(expected, target.dataset());
         final RdfStorageInterface build = fixture.primary.buildStorage(target);
         build.clearGraph(GRAPH);
-        assertTextMatch(build, id, "snapshot", false);
-        assertTextMatch(build, id, "retained", false);
+        assertNameMatch(build, id, "snapshot", false);
+        assertNameMatch(build, id, "retained", false);
         append(build, id, "snapshot");
-        assertTextMatch(build, id, "snapshot", true);
-        assertTextMatch(live, id, "snapshot", false);
+        assertNameMatch(build, id, "snapshot", true);
+        assertNameMatch(live, id, "snapshot", false);
 
         fixture.primary.promote(target, "test");
-        assertTextMatch(live, id, "snapshot", true);
+        assertNameMatch(live, id, "snapshot", true);
         write(live, id, "updated");
-        assertTextMatch(live, id, "snapshot", false);
-        assertTextMatch(live, id, "updated", true);
+        assertNameMatch(live, id, "snapshot", false);
+        assertNameMatch(live, id, "updated", true);
         live.deleteEntity("table", id);
-        assertTextMatch(live, id, "updated", false);
+        assertNameMatch(live, id, "updated", false);
         append(live, id, "retained");
       }
     }
@@ -464,7 +487,7 @@ public class RdfBlueGreenRebuildIT {
       final AtomicInteger invalidations = new AtomicInteger();
       final RdfStorageInterface live =
           new InferenceInvalidatingRdfStorage(
-              fixture.other.routedStorage(), invalidations::incrementAndGet);
+              fixture.other.routedStorage(RdfWriteDelivery.DIRECT), invalidations::incrementAndGet);
       final UUID id = UUID.randomUUID();
       final Model model = ModelFactory.createDefaultModel();
       try {
@@ -492,10 +515,22 @@ public class RdfBlueGreenRebuildIT {
 
       fixture.primary.promote(target, "test");
 
-      assertName(fixture.other.routedStorage(), id, "batch");
-      assertEquals(1, fixture.other.routedStorage().getTripleCount("urn:journal:turtle"));
-      assertEquals(0, fixture.other.routedStorage().getTripleCount("urn:journal:clear"));
-      assertEquals(1, fixture.other.routedStorage().getTripleCount("urn:journal:activeOntology"));
+      assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "batch");
+      assertEquals(
+          1,
+          fixture
+              .other
+              .routedStorage(RdfWriteDelivery.DIRECT)
+              .getTripleCount("urn:journal:turtle"));
+      assertEquals(
+          0,
+          fixture.other.routedStorage(RdfWriteDelivery.DIRECT).getTripleCount("urn:journal:clear"));
+      assertEquals(
+          1,
+          fixture
+              .other
+              .routedStorage(RdfWriteDelivery.DIRECT)
+              .getTripleCount("urn:journal:activeOntology"));
       assertEquals(8, invalidations.get());
     }
   }
@@ -615,7 +650,8 @@ public class RdfBlueGreenRebuildIT {
                 }
               }
             };
-          });
+          },
+          Duration.ofMinutes(1));
     }
 
     @Override
@@ -633,7 +669,7 @@ public class RdfBlueGreenRebuildIT {
             .withBaseUri(URI.create(BASE))
             .withRemoteEndpoint(URI.create(endpoint + "/" + dataset))
             .withUsername("admin")
-            .withPassword("admin")
+            .withPassword(FusekiTestImage.ADMIN_PASSWORD)
             .withWriteMaxRetries(0));
   }
 
@@ -686,11 +722,12 @@ public class RdfBlueGreenRebuildIT {
     }
   }
 
-  private static void assertTextMatch(
+  private static void assertNameMatch(
       final RdfStorageInterface storage, final UUID id, final String term, final boolean expected)
       throws Exception {
+    // Through the union default graph and through the named graph, as readers query it.
     final String pattern =
-        "?entity <http://jena.apache.org/text#query> (<%s> \"%s\") FILTER (?entity = <%sentity/table/%s>)"
+        "?entity <%s> \"%s\" FILTER (?entity = <%sentity/table/%s>)"
             .formatted(NAME, term, BASE, id);
     for (String body : List.of(pattern, "GRAPH <%s> { %s }".formatted(GRAPH, pattern))) {
       final String result = storage.executeSparqlQuery("ASK { " + body + " }", "json");

@@ -128,6 +128,7 @@ import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.CredentialUnavailableExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
+import org.openmetadata.service.exception.RdfStorageMaintenanceExceptionMapper;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.approval.ChangeRequestRecoveryScheduler;
 import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
@@ -830,6 +831,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.jersey().register(CredentialUnavailableExceptionMapper.class);
+    environment.jersey().register(RdfStorageMaintenanceExceptionMapper.class);
   }
 
   private void registerMicrometerFilter(
@@ -1093,10 +1095,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               config.getJwtTokenConfiguration());
 
       // Re-register authenticator with new config
-      registerAuthenticator(SecurityConfigurationManager.getInstance());
+      AuthenticatorHandler reloadedAuthenticator = authenticatorForCurrentProvider();
       reRegisterAuthorizer(config, environment);
       config.setAuthenticationConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
-      authenticatorHandler.init(config);
+      initializeThenPublish(reloadedAuthenticator, config);
+      authenticatorHandler = reloadedAuthenticator;
 
       // Reinitialize SAML settings if SAML is enabled
       if (SecurityConfigurationManager.getCurrentAuthConfig() != null
@@ -1140,6 +1143,23 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (previousAuthenticator != currentAuthenticator) {
       closeQuietly(previousAuthenticator::close);
     }
+  }
+
+  /**
+   * Registers an authenticator a reload built only once it is initialized, since logins read the
+   * registered one on every request. One that fails to start is closed and never registered, so
+   * logins keep the previous authenticator while the reload rolls back.
+   */
+  @VisibleForTesting
+  static void initializeThenPublish(
+      AuthenticatorHandler authenticator, OpenMetadataApplicationConfig config) {
+    try {
+      authenticator.init(config);
+    } catch (RuntimeException e) {
+      closeQuietly(authenticator::close);
+      throw e;
+    }
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticator);
   }
 
   /** A failed close must neither hide the reload's own error nor fail a reload that worked. */
@@ -1272,16 +1292,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {
-    AuthenticationConfiguration authenticationConfiguration =
-        SecurityConfigurationManager.getCurrentAuthConfig();
-    switch (authenticationConfiguration.getProvider()) {
-      case BASIC -> authenticatorHandler = new BasicAuthenticator();
-      case LDAP -> authenticatorHandler = new LdapAuthenticator();
-      default ->
-      // For all other types, google, okta etc. auth is handled externally
-      authenticatorHandler = new NoopAuthenticator();
-    }
+    authenticatorHandler = authenticatorForCurrentProvider();
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticatorHandler);
+  }
+
+  private static AuthenticatorHandler authenticatorForCurrentProvider() {
+    return switch (SecurityConfigurationManager.getCurrentAuthConfig().getProvider()) {
+      case BASIC -> new BasicAuthenticator();
+      case LDAP -> new LdapAuthenticator();
+        // For all other types, google, okta etc. auth is handled externally
+      default -> new NoopAuthenticator();
+    };
   }
 
   private void registerLimits(OpenMetadataApplicationConfig serverConfig)

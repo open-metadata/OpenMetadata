@@ -64,16 +64,9 @@ services:
         condition: service_healthy
 
   fuseki:
-    # Build from the in-repo Dockerfile (Fuseki 6.2.0) instead of the
-    # unmaintained `stain/jena-fuseki` Docker Hub image, which capped at 5.1.0
-    # and never picked up the 2025 admin-side Fuseki CVE fixes (CVE-2025-49656,
-    # CVE-2025-50151 — both fixed in Jena 5.5.0). The `image:` tag below names
-    # the locally-built image so subsequent `docker compose up` runs reuse the
-    # cached build instead of rebuilding from scratch each time.
-    build:
-      context: ../rdf-store
-      dockerfile: Dockerfile
-    image: openmetadata-fuseki:6.2.0
+    # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
+    # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
+    image: openmetadata/fuseki:6.2.0-c75b095
     container_name: openmetadata-fuseki
     hostname: fuseki
     ports:
@@ -81,27 +74,21 @@ services:
     networks:
       - local_app_net
     environment:
-      # Default for local dev only — production deployments MUST override
-      # via the FUSEKI_ADMIN_PASSWORD env var (and FUSEKI_OPENMETADATA_PASSWORD)
-      # before bringing this stack up. The entrypoint envsubsts these into
-      # shiro.ini at container start so the override actually takes effect.
-      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
-      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
-      # Dev-sized heap; NOT representative of production (production guidance in
-      # docs/rdf-production-setup.md is equal min/max -Xms4g -Xmx4g plus page-cache
-      # headroom). Equal min/max even in dev so throughput observations are stable.
-      - JVM_ARGS=${FUSEKI_JVM_ARGS:--Xms1500m -Xmx1500m}
+      # The image's environment contract, set as OpenMetadata needs it: the serving dataset and
+      # its two blue/green rebuild targets, the union default graph (OpenMetadata writes every
+      # entity into a named graph), server-side deadlines below the 60 s client deadline, and the
+      # bounded Graph Store extension. docs/rdf-production-setup.md explains each one.
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      # JVM_ARGS replaces the image's FUSEKI_HEAP flags. It caps direct buffers until the pinned
+      # image applies that cap itself (open-metadata/jena#6).
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
     volumes:
-      # New volume name (was `fuseki-data` mounted at `/fuseki`). The in-repo
-      # Dockerfile stores TDB2 at `/fuseki-data` and the data layout differs
-      # from the old stain/jena-fuseki image — re-using the previous volume
-      # name would mount stale state at a path Fuseki no longer reads from,
-      # silently looking like an empty database. Using a fresh volume name
-      # forces operators to consciously migrate (or accept a re-index). The
-      # orphaned `fuseki-data` volume can be removed manually with
-      # `docker volume rm fuseki-data` after confirming the new stack is
-      # healthy.
-      - fuseki-tdb2-data:/fuseki-data
+      - fuseki-store:/fuseki
     deploy:
       resources:
         limits:
@@ -110,7 +97,7 @@ services:
           memory: 256m
     restart: "on-failure:3"
     healthcheck:
-      test: "curl -s -f http://localhost:3030/\\$/ping > /dev/null || exit 1"
+      test: ["CMD", "/healthcheck.sh"]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -125,5 +112,8 @@ networks:
         - subnet: "172.16.239.0/24"
 
 volumes:
-  fuseki-tdb2-data:
+  # TDB2 datasets, configuration and shiro.ini of the published image live under /fuseki. Not the
+  # older `fuseki-tdb2-data` volume: it holds the retired in-repo image's /fuseki-data layout, and
+  # mounting it here would start an empty store. docs/rdf-production-setup.md has the migration.
+  fuseki-store:
     driver: local

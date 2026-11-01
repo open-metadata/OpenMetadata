@@ -36,6 +36,10 @@ import { useIsAiMode } from '../../../../hooks/useAppMode';
 import enUS from '../../../../locale/languages/en-us.json';
 import APIClient from '../../../../rest/axiosClient';
 import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
+import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
@@ -103,6 +107,8 @@ const initialState: OntologyState = {
 };
 let currentState: OntologyState;
 let currentRelease: OntologyRelease;
+let groupedWorking = false;
+let groupedPropertyCount = 3;
 let nextWorkingPage: string | undefined;
 let nextPageState: OntologyState | undefined;
 let nextPageError: Error | undefined;
@@ -151,18 +157,32 @@ const workingDiffPage = (after?: string) => {
   return {
     data: {
       state: isNextPage ? nextPageState ?? currentState : currentState,
-      data: [
-        {
-          changeType: 'ADDED',
-          entity: {
-            id: isNextPage ? 'account-id' : 'concept-id',
-            name: isNextPage ? 'Account' : 'Customer',
-            type: 'ontologyConcept',
-          },
-          memberKind: 'CONCEPT',
-          ontologyId: ontology.id,
-        },
-      ],
+      groups: groupedWorking
+        ? [
+            {
+              concept: 'Funds Transfer',
+              iri: 'https://example.org/fin#FundsTransfer',
+              parents: ['Payment', 'Transaction'],
+              propertyCount: groupedPropertyCount,
+              changes: [],
+              changeType: 'ADDED',
+            },
+          ]
+        : undefined,
+      data: groupedWorking
+        ? []
+        : [
+            {
+              changeType: 'ADDED',
+              entity: {
+                id: isNextPage ? 'account-id' : 'concept-id',
+                name: isNextPage ? 'Account' : 'Customer',
+                type: 'ontologyConcept',
+              },
+              memberKind: 'CONCEPT',
+              ontologyId: ontology.id,
+            },
+          ],
       paging: {
         total: nextWorkingPage ? 2 : 1,
         after: isNextPage ? undefined : nextWorkingPage,
@@ -210,6 +230,8 @@ describe('OntologyReleasePanel', () => {
     currentState = { ...initialState };
     currentRelease = { ...release };
     nextWorkingPage = undefined;
+    groupedWorking = false;
+    groupedPropertyCount = 3;
     nextPageState = undefined;
     nextPageError = undefined;
     const ownerResponse = (url: string) => {
@@ -360,6 +382,7 @@ describe('OntologyReleasePanel', () => {
     anchorClick.mockRestore();
     URL.createObjectURL = originalCreateObjectURL;
     URL.revokeObjectURL = originalRevokeObjectURL;
+    useKeyEchoTranslations();
   });
 
   it('separates working changes from release history for the publication modal', async () => {
@@ -1621,7 +1644,41 @@ describe('OntologyReleasePanel', () => {
     expect(put).not.toHaveBeenCalled();
   });
 
-  it('groups working changes and captures with the chosen version in AI mode', async () => {
+  it('renders one server-grouped class change row instead of individual definition rows', async () => {
+    useEnUsTranslations();
+    groupedWorking = true;
+    await renderPanel(true, 'changes');
+
+    const summary = await screen.findByTestId(
+      'ontology-working-concept-summary'
+    );
+
+    expect(summary.textContent).toBe(
+      'Class FundsTransfer ⊑ Payment, Transaction · 3 properties'
+    );
+    expect(
+      screen.getAllByTestId('ontology-working-concept-group')
+    ).toHaveLength(1);
+    expect(screen.getByText('Changed classes: 1')).toBeVisible();
+    expect(screen.queryByText('Concept')).not.toBeInTheDocument();
+  });
+
+  it('reads a single property in the singular', async () => {
+    useEnUsTranslations();
+    groupedWorking = true;
+    groupedPropertyCount = 1;
+    await renderPanel(true, 'changes');
+
+    const summary = await screen.findByTestId(
+      'ontology-working-concept-summary'
+    );
+
+    expect(summary.textContent).toBe(
+      'Class FundsTransfer ⊑ Payment, Transaction · 1 property'
+    );
+  });
+
+  it('groups an ungrouped working diff and captures with the chosen version in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     post.mockResolvedValue({ data: release });
     await renderPanel(true, 'changes');
@@ -1661,7 +1718,7 @@ describe('OntologyReleasePanel', () => {
     });
   });
 
-  it('shows a deprecated working change with its badge in AI mode', async () => {
+  it('shows a deprecated change from an ungrouped working diff with its badge in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     const defaultGet = get.getMockImplementation();
     get.mockImplementation(async (url, config) =>
@@ -1691,6 +1748,140 @@ describe('OntologyReleasePanel', () => {
     const row = (await screen.findByText('LegacyCustomer')).closest('li');
 
     expect(row).toHaveTextContent('label.deprecated');
+  });
+
+  it('shows the server-grouped class change row in the AI Changes view', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    useEnUsTranslations();
+    groupedWorking = true;
+    await renderPanel(true, 'changes');
+
+    const summary = await screen.findByTestId(
+      'ontology-working-concept-summary'
+    );
+
+    expect(summary.textContent).toBe(
+      'Class FundsTransfer ⊑ Payment, Transaction · 3 properties'
+    );
+    expect(
+      screen.getAllByTestId('ontology-working-concept-group')
+    ).toHaveLength(1);
+    expect(screen.getByText('Changed classes: 1')).toBeVisible();
+  });
+
+  it('counts changed classes, not member changes, in the AI footer of a grouped working diff', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    useEnUsTranslations();
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) =>
+      url.endsWith('/working/diff')
+        ? {
+            data: {
+              state: currentState,
+              data: [],
+              groups: [
+                {
+                  concept: 'Funds Transfer',
+                  iri: 'https://example.org/fin#FundsTransfer',
+                  parents: ['Payment', 'Transaction'],
+                  propertyCount: 3,
+                  changeType: 'ADDED',
+                  changes: [
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'funds-transfer-id',
+                        name: 'FundsTransfer',
+                        type: 'ontologyConcept',
+                      },
+                      memberKind: 'CONCEPT',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'payment-axiom-id',
+                        name: 'FundsTransfer subClassOf Payment',
+                        type: 'ontologyAxiom',
+                      },
+                      memberKind: 'AXIOM',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'transaction-axiom-id',
+                        name: 'FundsTransfer subClassOf Transaction',
+                        type: 'ontologyAxiom',
+                      },
+                      memberKind: 'AXIOM',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'amount-id',
+                        name: 'amount',
+                        type: 'ontologyProperty',
+                      },
+                      memberKind: 'PROPERTY',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'currency-id',
+                        name: 'currency',
+                        type: 'ontologyProperty',
+                      },
+                      memberKind: 'PROPERTY',
+                      ontologyId: ontology.id,
+                    },
+                    {
+                      changeType: 'ADDED',
+                      entity: {
+                        id: 'value-date-id',
+                        name: 'valueDate',
+                        type: 'ontologyProperty',
+                      },
+                      memberKind: 'PROPERTY',
+                      ontologyId: ontology.id,
+                    },
+                  ],
+                },
+                {
+                  changeType: 'CHANGED',
+                  parents: [],
+                  propertyCount: 0,
+                  changes: [
+                    {
+                      changeType: 'CHANGED',
+                      entity: {
+                        id: 'payment-shape-id',
+                        name: 'PaymentShape',
+                        type: 'ontologyShape',
+                      },
+                      memberKind: 'SHAPE',
+                      ontologyId: ontology.id,
+                    },
+                  ],
+                },
+              ],
+              paging: { total: 2 },
+            },
+          }
+        : defaultGet?.(url, config)
+    );
+    await renderPanel(true, 'changes');
+
+    await screen.findByText('Changed classes: 2');
+    const preview = await screen.findByTestId('ontology-version-preview');
+
+    await waitFor(() => expect(preview).toHaveTextContent('1.2.3 → 1.3.0'));
+
+    expect(preview.parentElement?.textContent).toBe(
+      '1.2.3 → 1.3.0 · Changed classes: 2'
+    );
   });
 
   it('keeps release rows, export and the release detail actions in AI mode', async () => {

@@ -1723,7 +1723,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public DataContract getEffectiveDataContract(EntityInterface<?> entity) {
-    DataContract entityContract = getEntityDataContractSafely(entity);
+    return getEffectiveDataContract(entity, getEntityDataContractSafely(entity));
+  }
+
+  public DataContract getEffectiveDataContract(
+      EntityInterface<?> entity, DataContract entityContract) {
     DataContract parentContract = getInheritableContract(entity);
     return parentContract == null
         ? entityContract

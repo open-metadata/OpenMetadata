@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.SearchDocs.awaitDoc;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -79,6 +81,7 @@ import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -268,6 +271,63 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // ===================================================================
   // GLOSSARY TERM-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void test_parentTermChildrenCountFollowsItsChildrenInSearch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+    GlossaryTerm parent = createEntity(countedTerm(ns, "counted_parent", glossary, null));
+    GlossaryTerm other = createEntity(countedTerm(ns, "counted_other", glossary, null));
+    GlossaryTerm child = createEntity(countedTerm(ns, "counted_child", glossary, parent));
+    awaitChildrenCount(parent, 1);
+
+    GlossaryTerm moving = client.glossaryTerms().get(child.getId().toString(), "parent");
+    moving.setParent(other.getEntityReference());
+    client.glossaryTerms().update(child.getId().toString(), moving);
+    awaitChildrenCount(parent, 0);
+    awaitChildrenCount(other, 1);
+
+    // A CSV import matches the term by glossary and name, so a new parent column moves it back.
+    String movedBack =
+        client
+            .glossaries()
+            .exportCsv(glossary.getName())
+            .lines()
+            .map(
+                line ->
+                    line.contains(child.getName())
+                        ? line.replace(
+                            other.getFullyQualifiedName(), parent.getFullyQualifiedName())
+                        : line)
+            .collect(Collectors.joining("\n", "", "\n"));
+    CsvImportResult imported =
+        JsonUtils.readValue(
+            client.glossaries().importCsv(glossary.getName(), movedBack, false),
+            CsvImportResult.class);
+    assertEquals(0, imported.getNumberOfRowsFailed(), imported.getImportResultsCsv());
+    awaitChildrenCount(other, 0);
+    awaitChildrenCount(parent, 1);
+
+    // The count includes soft-deleted terms, as REST reports it, so only a hard delete lowers it.
+    client.glossaryTerms().delete(child.getId().toString(), Map.of("hardDelete", "true"));
+    awaitChildrenCount(parent, 0);
+  }
+
+  private static CreateGlossaryTerm countedTerm(
+      TestNamespace ns, String name, Glossary glossary, GlossaryTerm parent) {
+    return new CreateGlossaryTerm()
+        .withName(ns.prefix(name))
+        .withGlossary(glossary.getFullyQualifiedName())
+        .withParent(parent == null ? null : parent.getFullyQualifiedName())
+        .withDescription("Counted term");
+  }
+
+  private static void awaitChildrenCount(GlossaryTerm term, int count) {
+    awaitDoc(
+        "glossary_term_search_index",
+        term.getId(),
+        doc -> doc.has("childrenCount") && doc.path("childrenCount").asInt() == count);
+  }
 
   @Test
   void post_glossaryTermWithSynonyms_200_OK(TestNamespace ns) {
