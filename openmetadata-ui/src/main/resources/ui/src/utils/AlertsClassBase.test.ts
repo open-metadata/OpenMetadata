@@ -732,6 +732,46 @@ describe('AlertsClassBase', () => {
       expect(result.readTimeout).toBe(DEFAULT_READ_TIMEOUT);
     });
 
+    it('should not throw and should use default timeout values when destinations is an empty array', () => {
+      // The backend permits zero-destination alerts (no minItems on the
+      // createEventSubscription schema, and DestinationValidation iterates an
+      // empty list without rejecting it). A non-UI writer can persist such an
+      // alert, so the transform must tolerate `destinations: []` rather than
+      // throwing `Cannot read properties of undefined (reading 'timeout')`.
+      const dataWithNoDestinations = {
+        ...mockInitialData,
+        destinations: [],
+      } as EventSubscription;
+
+      const result = alertsClass.getModifiedAlertDataForForm(
+        dataWithNoDestinations
+      );
+
+      expect(result.timeout).toBe(10);
+      expect(result.readTimeout).toBe(DEFAULT_READ_TIMEOUT);
+      expect(result.destinations).toEqual([]);
+      expect(getConfigHeaderArrayFromObject).not.toHaveBeenCalled();
+      expect(getConfigQueryParamsArrayFromObject).not.toHaveBeenCalled();
+    });
+
+    it('should not throw and should use default timeout values when destinations is undefined', () => {
+      // Defends against a fetched alert whose `destinations` field is missing
+      // entirely (e.g. omitted by a non-UI writer). The transform must fall back
+      // to the default timeouts and an empty mapped destinations list.
+      const dataWithoutDestinations = {
+        ...mockInitialData,
+        destinations: undefined as unknown as EventSubscription['destinations'],
+      } as EventSubscription;
+
+      const result = alertsClass.getModifiedAlertDataForForm(
+        dataWithoutDestinations
+      );
+
+      expect(result.timeout).toBe(10);
+      expect(result.readTimeout).toBe(DEFAULT_READ_TIMEOUT);
+      expect(result.destinations).toEqual([]);
+    });
+
     it('should convert destinations to form format', () => {
       const result = alertsClass.getModifiedAlertDataForForm(mockInitialData);
 
