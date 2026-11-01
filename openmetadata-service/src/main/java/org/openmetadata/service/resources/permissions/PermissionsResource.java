@@ -154,7 +154,7 @@ public class PermissionsResource {
   }
 
   @GET
-  @Path("/{resource}/name/{name}")
+  @Path("/{resource}/name/{name: .+}")
   @Operation(
       operationId = "getResourcePermissionByName",
       summary = "Get permissions for a given entity name for a logged in user",
