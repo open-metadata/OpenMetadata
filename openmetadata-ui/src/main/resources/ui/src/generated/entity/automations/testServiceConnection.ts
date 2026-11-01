@@ -1552,6 +1552,11 @@ export interface Connection {
      */
     configSource?: DataLakeConfigurationSource;
     /**
+     * Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for
+     * files that use doubled quotes and literal backslashes.
+     */
+    csvEscapeChar?: string;
+    /**
      * Prefix of the data source.
      */
     prefix?: string;
