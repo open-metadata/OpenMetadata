@@ -54,6 +54,15 @@ const field = (name: string) => ({
   hidden: false,
 });
 
+// jsdom does not process Tailwind CSS, so tw:hidden does not affect
+// toBeVisible(). Instead, check the wrapper div's class list.
+const isFieldHidden = (container: HTMLElement, testId: string): boolean => {
+  const el = within(container).getByTestId(testId);
+  const wrapper = el.closest('.property-wrapper');
+
+  return wrapper?.classList.contains('tw:hidden') ?? false;
+};
+
 const getProps = (id: string): ObjectFieldTemplateProps =>
   ({
     idSchema: { $id: id },
@@ -222,7 +231,13 @@ describe('ConnectionObjectFieldTemplate', () => {
       within(connection).getByTestId('field-organizationId')
     ).toBeInTheDocument();
     expect(within(connection).getByText('label.optional')).toBeInTheDocument();
-    expect(screen.queryByTestId('field-sobjectNames')).not.toBeInTheDocument();
+
+    // sobjectNames lives in the collapsed Scope & options section, which now
+    // keeps fields mounted (tw:hidden) so validation cannot be bypassed.
+    const scope = screen.getByTestId('connection-section-scope');
+
+    expect(within(scope).getByTestId('field-sobjectNames')).toBeInTheDocument();
+    expect(isFieldHidden(scope, 'field-sobjectNames')).toBe(true);
 
     fireEvent.click(within(connection).getByRole('button'));
 
@@ -242,17 +257,41 @@ describe('ConnectionObjectFieldTemplate', () => {
     ).toBeInTheDocument();
   });
 
-  it('collapses Scope & options until expanded', () => {
+  it('keeps Scope & options fields mounted (tw:hidden) until expanded', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
 
-    expect(screen.queryByTestId('field-database')).not.toBeInTheDocument();
+    const scope = screen.getByTestId('connection-section-scope');
 
-    fireEvent.click(
-      within(screen.getByTestId('connection-section-scope')).getByRole('button')
+    // Collapsed sections must keep fields mounted (tw:hidden) so that
+    // transformErrors can find DOM elements and validation is not bypassed.
+    expect(within(scope).getByTestId('field-database')).toBeInTheDocument();
+    expect(within(scope).getByTestId('field-queryTag')).toBeInTheDocument();
+    expect(isFieldHidden(scope, 'field-database')).toBe(true);
+    expect(isFieldHidden(scope, 'field-queryTag')).toBe(true);
+
+    fireEvent.click(within(scope).getByRole('button'));
+
+    expect(isFieldHidden(scope, 'field-database')).toBe(false);
+    expect(isFieldHidden(scope, 'field-queryTag')).toBe(false);
+  });
+
+  it('auto-expands a collapsed section when it has validation errors', () => {
+    const props = getProps('root');
+
+    render(
+      <ConnectionObjectFieldTemplate
+        {...props}
+        errorSchema={
+          {
+            accessHistoryChunkSize: { __errors: ['must be >= 1'] },
+          } as unknown as ObjectFieldTemplateProps['errorSchema']
+        }
+      />
     );
 
-    expect(screen.getByTestId('field-database')).toBeInTheDocument();
-    expect(screen.getByTestId('field-queryTag')).toBeInTheDocument();
+    const advanced = screen.getByTestId('connection-section-advanced');
+
+    expect(isFieldHidden(advanced, 'field-accessHistoryChunkSize')).toBe(false);
   });
 
   it('does not render Scope & options when it only has hidden fields', () => {
