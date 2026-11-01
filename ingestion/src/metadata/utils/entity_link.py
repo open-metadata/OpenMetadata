@@ -99,7 +99,7 @@ def get_table_or_column_fqn(entity_link: str) -> str:
     if len(split_entity_link) == 4 and split_entity_link[2] == "columns":
         return f"{split_entity_link[1]}.{split_entity_link[3]}"
 
-    raise ValueError("Invalid entity link. {split_entity_link} does not look like a table or a column entity link")
+    raise ValueError(f"Invalid entity link. {split_entity_link} does not look like a table or a column entity link")
 
 
 def get_column_name_or_none(entity_link: str) -> str | None:
