@@ -7980,8 +7980,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
     }
     for (var entry : idsByType.entrySet()) {
-      EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
-      repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
+      // Time-series children (e.g., TestCase --PARENT_OF--> testCaseResolutionStatus) carry no
+      // deleted flag and have no repository in ENTITY_REPOSITORY_MAP — skip them, mirroring
+      // dispatchToContainedChildren, instead of failing the whole subtree restore.
+      String childType = entry.getKey();
+      if (!Entity.isTimeSeriesEntity(childType)) {
+        EntityRepository<?> repo = Entity.getEntityRepository(childType);
+        repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
+      }
     }
   }
 
