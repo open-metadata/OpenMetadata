@@ -2,6 +2,7 @@ package org.openmetadata.service.rdf.storage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.google.common.base.Throwables;
 import com.google.common.base.Utf8;
 import io.micrometer.core.instrument.Metrics;
 import java.io.ByteArrayOutputStream;
@@ -26,6 +27,7 @@ import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
@@ -63,7 +65,9 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
+import org.apache.jena.web.HttpSC;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -123,6 +127,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String REQUEST_OUTCOME_TIMEOUT = "timeout";
   private static final String REQUEST_OUTCOME_ERROR = "error";
   private static final String READINESS_PROBE = "readinessProbe";
+  static final String STORAGE_REPORT_PATH = "/$/openmetadata/storage";
   private static final Duration COMPACTION_RETRY_AFTER = Duration.ofSeconds(5);
 
   // Dedicated virtual-thread executor for the timeout wrapper. We deliberately
@@ -336,7 +341,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       final String datasetEndpoint, final RDFConnection datasetConnection) {
     final DatasetEndpoint dataset = requireDatasetEndpoint(datasetEndpoint);
     final UnionDefaultGraphProbe probe = UnionDefaultGraphProbe.unique();
-    writeProbe(dataset, datasetConnection, probe);
+    if (writeProbe(dataset, datasetConnection, probe)) {
+      requireProbeVisible(dataset, datasetConnection, probe);
+    }
+  }
+
+  private void requireProbeVisible(
+      final DatasetEndpoint dataset,
+      final RDFConnection datasetConnection,
+      final UnionDefaultGraphProbe probe) {
     final boolean visible;
     try {
       visible = runWithTimeout(() -> askProbe(datasetConnection, probe), READINESS_PROBE);
@@ -350,12 +363,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
-  private void writeProbe(
+  /**
+   * Writes the probe triple, or returns false when the store's disk guard refuses it: Fuseki is
+   * reachable but takes no writes until space is freed, and queued writes wait for that.
+   */
+  private boolean writeProbe(
       final DatasetEndpoint dataset,
       final RDFConnection datasetConnection,
       final UnionDefaultGraphProbe probe) {
     try {
       runWriteWithTimeout(() -> datasetConnection.update(probe.write()), READINESS_PROBE);
+      return true;
+    } catch (RdfStorageLowDiskException lowDisk) {
+      LOG.warn(
+          "Fuseki dataset '{}' is below its free-space reserve; its union default graph is checked"
+              + " once it accepts writes again",
+          dataset.datasetName());
+      return false;
     } catch (RdfWriteOutcomeUnknownException exception) {
       // Fuseki may still apply a write the client stopped waiting for.
       removeProbe(dataset, datasetConnection, probe);
@@ -913,6 +937,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           description,
           timeoutMillis);
     } catch (RuntimeException exception) {
+      // Checked first: a 507 would otherwise read as an uncertain server error, and the refusal is
+      // thrown without its HttpException cause so no failure classifier counts it either.
+      if (isStorageGuardRefusal(exception)) {
+        throw new RdfStorageLowDiskException(description);
+      }
       // A compaction this server did not pause for (a lost pause lease, an operator, an older
       // server) blocks the write until it ends: retry it without counting a failure.
       if (RdfWriteRetry.isUncertain(exception)) {
@@ -923,6 +952,27 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       }
       throw exception;
     }
+  }
+
+  /**
+   * A write the store refused before applying it, such as a storage guard refusal, is a retry-later
+   * signal for the caller, not a write failure: it passes through unwrapped and unlogged.
+   */
+  private static void rethrowIfHeldBack(final Exception failure) {
+    final Optional<RdfStorageMaintenanceException> heldBack =
+        RdfStorageMaintenanceException.find(failure);
+    if (heldBack.isPresent()) {
+      throw heldBack.get();
+    }
+  }
+
+  /** Fuseki's storage guard answers 507 Insufficient Storage before the write reaches TDB2. */
+  static boolean isStorageGuardRefusal(final Throwable failure) {
+    return Throwables.getCausalChain(failure).stream()
+        .anyMatch(
+            cause ->
+                cause instanceof HttpException http
+                    && http.getStatusCode() == HttpSC.INSUFFICIENT_STORAGE_507);
   }
 
   private boolean isCompacting() {
@@ -1174,6 +1224,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       // Keep INFO reserved for events ops actually want to grep for.
       LOG.debug("Bulk-reconciled {} entities in {}", requests.size(), KNOWLEDGE_GRAPH);
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to bulk-store {} entities in Fuseki", requests.size(), e);
       throw new RuntimeException("Failed to bulk-store entities in RDF", e);
     }
@@ -1340,6 +1391,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       runWriteWithRetry(() -> connection.update(request), "storeEntity");
       LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to store entity in Fuseki", e);
       throw new RuntimeException("Failed to store entity in RDF", e);
     }
@@ -1388,6 +1440,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       runWriteWithRetry(() -> connection.update(request), "storeRelationship");
       LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to store relationship in Fuseki", e);
       throw new RuntimeException("Failed to store relationship in RDF", e);
     }
@@ -1421,6 +1474,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           relationships.size(),
           effectiveSources.size());
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to bulk store relationships in Fuseki", e);
       throw new RuntimeException("Failed to bulk store relationships in RDF", e);
     }
@@ -1502,6 +1556,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.debug("Deleted entity {} from Fuseki", entityId);
       recordSuccess();
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to delete entity from Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
         recordFailure();
@@ -1596,6 +1651,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.debug("Executed SPARQL update on Fuseki");
       recordSuccess();
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to execute SPARQL update on Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
         recordFailure();
@@ -1640,6 +1696,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.info("Loaded Turtle file into graph {} with {} triples", graphUri, model.size());
       recordSuccess();
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to load Turtle file into Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
         recordFailure();
@@ -1746,6 +1803,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.info("Cleared graph: {}", graphUri);
       recordSuccess();
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to clear graph on Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
         recordFailure();
@@ -1806,6 +1864,36 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       final HttpRequest.Builder builder, final String endpointUserInfo) {
     addBasicAuth(builder, username, password, endpointUserInfo);
     return builder;
+  }
+
+  /**
+   * Reads the storage report of OpenMetadata's Fuseki images. Stock Fuseki has no such endpoint,
+   * and a report that cannot be read is treated the same way: maintenance then runs on its
+   * schedule only.
+   */
+  @Override
+  public Optional<StorageFacts> storageFacts() {
+    final DatasetEndpoint info = requireServerInfo("storageFacts");
+    try {
+      final HttpResponse<String> response =
+          sendAdminRequest(
+              info.serverBaseUrl() + STORAGE_REPORT_PATH,
+              builder -> builder.timeout(Duration.ofSeconds(10)).GET(),
+              info.userInfo());
+      return response.statusCode() == 200
+          ? Optional.of(parseStorageFacts(response.body()))
+          : Optional.empty();
+    } catch (IOException | RuntimeException exception) {
+      LOG.debug("Fuseki storage report unavailable", exception);
+      return Optional.empty();
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      return Optional.empty();
+    }
+  }
+
+  static StorageFacts parseStorageFacts(final String body) {
+    return JsonUtils.readValueLenient(body, StorageFacts.class);
   }
 
   @Override

@@ -33,6 +33,7 @@ import ch.qos.logback.core.read.ListAppender;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -45,6 +46,7 @@ import org.openmetadata.service.jdbi3.InMemoryRdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.storage.CompactionResult;
+import org.openmetadata.service.rdf.storage.StorageFacts;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -53,6 +55,7 @@ import org.slf4j.LoggerFactory;
  * for two servers.
  */
 class RdfStorageMaintenanceServiceTest {
+  private static final long GIB = 1L << 30;
   private static final CompactionResult SUCCEEDED =
       new CompactionResult(CompactionResult.Outcome.SUCCEEDED, "1", null, Duration.ofSeconds(3));
   private static final CompactionResult FAILED =
@@ -62,7 +65,10 @@ class RdfStorageMaintenanceServiceTest {
   private final RdfRepository repository = mock(RdfRepository.class);
   private final RdfLiveWriteStore compactions = mock(RdfLiveWriteStore.class);
   private final RdfStorageMaintenanceConfig config =
-      new RdfStorageMaintenanceConfig().withCompactionIntervalHours(24).withMaxDurationMinutes(30);
+      new RdfStorageMaintenanceConfig()
+          .withCompactionIntervalHours(24)
+          .withMaxDurationMinutes(30)
+          .withUrgentFreeSpacePercent(50);
   private RdfStorageMaintenanceService serverA;
   private RdfStorageMaintenanceService serverB;
 
@@ -291,6 +297,70 @@ class RdfStorageMaintenanceServiceTest {
       logger.detachAppender(appender);
       appender.stop();
     }
+  }
+
+  @Test
+  void aCompactionThatFreesSpaceLetsTheNextBurstBeCompactedAtOnce() {
+    serverA.compactIfDue();
+    final Optional<StorageFacts> low = Optional.of(new StorageFacts(100 * GIB, 30 * GIB, false));
+    final Optional<StorageFacts> freed = Optional.of(new StorageFacts(100 * GIB, 90 * GIB, false));
+    when(repository.storageFacts()).thenReturn(low, freed, low, freed);
+
+    assertEquals(SUCCEEDED, serverB.compactIfDue(), "30% free is below the 50% threshold");
+    assertEquals(SUCCEEDED, serverA.compactIfDue(), "the store filled up again");
+    verify(repository, times(3)).compact(any());
+  }
+
+  @Test
+  void aCompactionThatCannotFreeSpaceStopsUrgentCompactionsForOneInterval() {
+    serverA.compactIfDue();
+    when(repository.storageFacts())
+        .thenReturn(Optional.of(new StorageFacts(100 * GIB, 30 * GIB, false)));
+    final long before = System.currentTimeMillis();
+
+    assertEquals(SUCCEEDED, serverB.compactIfDue());
+    assertNull(serverA.compactIfDue(), "data compaction cannot remove fills the volume");
+    verify(repository, times(2)).compact(any());
+    final long heldFor =
+        locks.findByKey(RdfStorageMaintenanceService.URGENT_COMPACTION_KEY).expiresAt() - before;
+    assertTrue(heldFor >= Duration.ofHours(23).toMillis(), "no urgent compaction for one interval");
+  }
+
+  @Test
+  void anUrgentCompactionFusekiLostStopsUrgentCompactionsForOneInterval() {
+    serverA.compactIfDue();
+    when(repository.storageFacts())
+        .thenReturn(Optional.of(new StorageFacts(100 * GIB, 5 * GIB, true)));
+    final CompactionResult lost =
+        new CompactionResult(
+            CompactionResult.Outcome.UNKNOWN,
+            "4",
+            "Fuseki no longer reports task 4",
+            Duration.ofMinutes(4));
+    when(repository.compact(any())).thenReturn(lost);
+
+    assertEquals(lost, serverB.compactIfDue());
+    assertNull(serverA.compactIfDue(), "Fuseki restarted during the copy; retrying restarts it");
+    verify(repository, times(2)).compact(any());
+  }
+
+  @Test
+  void aStoreWithRoomWaitsForTheInterval() {
+    serverA.compactIfDue();
+    when(repository.storageFacts())
+        .thenReturn(Optional.of(new StorageFacts(100 * GIB, 70 * GIB, false)));
+
+    assertNull(serverB.compactIfDue());
+    verify(repository, times(1)).compact(any());
+  }
+
+  @Test
+  void aGuardRefusingWritesIsUrgentWhateverTheThreshold() {
+    serverA.compactIfDue();
+    when(repository.storageFacts())
+        .thenReturn(Optional.of(new StorageFacts(100 * GIB, 90 * GIB, true)));
+
+    assertEquals(SUCCEEDED, serverB.compactIfDue());
   }
 
   private RdfStorageMaintenanceService service(final String serverId) {
