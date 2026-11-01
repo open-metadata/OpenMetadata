@@ -27,10 +27,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -194,15 +196,23 @@ public final class DestinationSecrets {
    */
   static Optional<SubscriptionDestination> counterpart(
       List<SubscriptionDestination> stored, SubscriptionDestination destination, int position) {
-    Optional<SubscriptionDestination> found;
+    OptionalInt index = counterpartIndex(stored, destination, position);
+    return index.isPresent() ? Optional.of(stored.get(index.getAsInt())) : Optional.empty();
+  }
+
+  /** Where in {@code stored} the counterpart of an incoming destination is. */
+  static OptionalInt counterpartIndex(
+      List<SubscriptionDestination> stored, SubscriptionDestination destination, int position) {
+    OptionalInt found;
     if (destination.getId() != null) {
-      found = stored.stream().filter(it -> destination.getId().equals(it.getId())).findFirst();
-    } else {
       found =
-          Optional.of(position)
-              .filter(it -> it < stored.size())
-              .map(stored::get)
-              .filter(it -> sameKind(it, destination));
+          IntStream.range(0, stored.size())
+              .filter(it -> destination.getId().equals(stored.get(it).getId()))
+              .findFirst();
+    } else {
+      boolean sameKindAtPosition =
+          position < stored.size() && sameKind(stored.get(position), destination);
+      found = sameKindAtPosition ? OptionalInt.of(position) : OptionalInt.empty();
     }
     return found;
   }

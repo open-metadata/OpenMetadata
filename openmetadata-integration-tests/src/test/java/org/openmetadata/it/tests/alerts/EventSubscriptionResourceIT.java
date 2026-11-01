@@ -2672,6 +2672,24 @@ public class EventSubscriptionResourceIT
     }
   }
 
+  /** A request may set a destination's id; a masked one is tested only when one alert holds it. */
+  @Test
+  void test_testDestinationRefusesAnIdTwoAlertsHold(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription first =
+          createEntity(
+              secretRequest(ns, "first_holder", receiver.url("/first"), ns.prefix("one"), null));
+      SubscriptionDestination masked = first.getDestinations().getFirst();
+      CreateEventSubscription second =
+          secretRequest(ns, "second_holder", receiver.url("/second"), ns.prefix("two"), null);
+      second.getDestinations().getFirst().withId(masked.getId());
+      createEntity(second);
+
+      assertEquals(400, postTestDestination(List.of(masked)).statusCode());
+      assertTrue(receiver.received().isEmpty(), "a refused test sends nothing");
+    }
+  }
+
   private static EventSubscription putSubscription(CreateEventSubscription request) {
     return SdkClients.adminClient()
         .getHttpClient()

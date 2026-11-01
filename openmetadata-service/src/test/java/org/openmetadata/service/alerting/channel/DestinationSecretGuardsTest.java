@@ -372,8 +372,104 @@ class DestinationSecretGuardsTest {
         "a new destination is served by the channel its save chooses");
   }
 
+  // A carried secret belongs to the field of the destination it was stored in: a new id does not
+  // make it a new destination's, and a copy does not make it another destination's.
+  @Test
+  void aCarriedSecretStaysWithTheDestinationItWasStoredIn() {
+    EventSubscription original = alertWith(incomingWebhook(SubscriptionType.WEBHOOK));
+    assertRefusedAsUnwritten(
+        original,
+        Json.createPatchBuilder()
+            .replace("/destinations/0/id", UUID.randomUUID().toString())
+            .replace(ENDPOINT_PATH, "https://hooks.example.com/moved")
+            .build(),
+        "a new id does not leave the stored header behind");
+
+    SubscriptionDestination added = incomingWebhook(SubscriptionType.WEBHOOK);
+    added.withConfig(configWith(added, "https://hooks.example.com/added", "typed"));
+    assertRefusedAsUnwritten(
+        original,
+        Json.createPatchBuilder()
+            .add("/destinations/1", jsonArrayOf(List.of(added)).getJsonObject(0))
+            .copy("/destinations/1/config/headers/Authorization", HEADER_PATH)
+            .build(),
+        "a new destination does not take a stored header");
+
+    SubscriptionDestination other = incomingWebhook(SubscriptionType.WEBHOOK);
+    other.withConfig(configWith(other, "https://hooks.example.com/other", "own"));
+    DestinationSecrets.encrypt(List.of(other));
+    EventSubscription two =
+        new EventSubscription()
+            .withName("alert")
+            .withDestinations(List.of(incomingWebhook(SubscriptionType.WEBHOOK), other));
+    assertRefusedAsUnwritten(
+        two,
+        Json.createPatchBuilder()
+            .copy("/destinations/1/config/headers/Authorization", HEADER_PATH)
+            .build(),
+        "a stored destination does not take another's header");
+
+    JsonPatch reordered =
+        Json.createPatchBuilder().move("/destinations/0", "/destinations/1").build();
+    assertDoesNotThrow(
+        () ->
+            DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
+                two, patched(two, reordered), reordered),
+        "destinations moved around keep their own secrets");
+  }
+
+  // The patch already applied to the alert as stored, so one that fails on the markers reads a
+  // secret's value. It is refused, not judged against the alert as it was before the patch.
+  @Test
+  void aPatchThatDependsOnASecretValueIsRefused() {
+    SubscriptionDestination email =
+        new SubscriptionDestination()
+            .withId(UUID.randomUUID())
+            .withType(SubscriptionType.EMAIL)
+            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+            .withConfig(new LinkedHashMap<>(Map.of("receivers", List.of("a@example.com"))));
+    EventSubscription original =
+        new EventSubscription()
+            .withName("alert")
+            .withDestinations(List.of(email, incomingWebhook(SubscriptionType.SLACK)));
+    JsonPatch tested =
+        Json.createPatchBuilder()
+            .test("/destinations/1/config/headers/Authorization", TOKEN)
+            .remove("/destinations/0")
+            .add("/destinations/0/id", UUID.randomUUID().toString())
+            .add("/destinations/0/type", "ActivityFeed")
+            .build();
+    EventSubscription carried = patched(original, tested);
+
+    BadRequestException refused =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
+                    original, carried, tested));
+    assertTrue(refused.getMessage().contains("depend on the value"), refused.getMessage());
+  }
+
   private static final String ENDPOINT_PATH = "/destinations/0/config/endpoint";
   private static final String HEADER_PATH = "/destinations/0/config/headers/Authorization";
+
+  private static void assertRefusedAsUnwritten(
+      EventSubscription original, JsonPatch patch, String message) {
+    EventSubscription updated = patched(original, patch);
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            DestinationSecretGuards.requireUnwrittenSecretsStayProtected(original, updated, patch),
+        message);
+  }
+
+  private static Map<String, Object> configWith(
+      SubscriptionDestination destination, String endpoint, String header) {
+    Map<String, Object> config = new LinkedHashMap<>(configOf(destination));
+    config.put("endpoint", endpoint);
+    config.put("headers", new LinkedHashMap<>(Map.of("Authorization", header)));
+    return config;
+  }
 
   private static JsonArray jsonArrayOf(List<SubscriptionDestination> destinations) {
     return Json.createReader(new StringReader(JsonUtils.pojoToJson(destinations))).readArray();

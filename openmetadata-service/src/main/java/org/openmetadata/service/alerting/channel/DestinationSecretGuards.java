@@ -22,8 +22,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -49,13 +52,16 @@ public final class DestinationSecretGuards {
       "A destination secret cannot be copied or moved out of its field; it was found at '%s'";
   private static final String CARRIED_MESSAGE =
       "Destination %s still carries the stored value at '%s', which channel '%s' does not treat as a secret; to change a destination's channel, delete it and add a destination for the new channel instead";
+  private static final String UNREPLAYED_MESSAGE =
+      "A patch may not depend on the value of a destination secret, such as by testing it";
   private static final JsonPointer TOKEN_URL = JsonPointer.compile("/authType/tokenUrl");
   private static final List<String> SERVER_SET_FIELDS =
       List.of("changeDescription", "incrementalChangeDescription", "updatedBy");
   private static final String DESTINATION_CONFIG = "/destinations/%d/config";
-  // Stands in for every stored secret while a patch is replayed; unguessable, so a patch cannot
-  // write it on purpose and pass a carried secret off as one it entered.
-  private static final String LEFT_IN_PLACE = "left-in-place:" + UUID.randomUUID();
+  // Stands in for every stored secret while a patch is replayed, followed by the destination and
+  // the field it is stored at; unguessable, so a patch cannot write it on purpose and pass a
+  // carried secret off as one it entered.
+  private static final String LEFT_IN_PLACE = "left-in-place:" + UUID.randomUUID() + ":";
 
   private DestinationSecretGuards() {}
 
@@ -155,50 +161,96 @@ public final class DestinationSecretGuards {
    * the plaintext, which the caller never read either, and which reads as entered to the form
    * above. The same patch replayed on the stored alert with a marker at every secret leaves the
    * marker wherever it wrote nothing. That tells a secret the patch entered again from one it
-   * carried, and a carried one must stay protected by the destination that keeps it: it may not
-   * follow a moved target, and its channel must still name its field a secret, or the value would
-   * be stored and served in the clear.
+   * carried, and a carried one must stay protected by the destination that keeps it: it stays in
+   * the field of the destination it was stored in, whatever id the patch gives that destination,
+   * it may not follow a moved target, and its channel must still name its field a secret, or the
+   * value would be stored and served in the clear.
    */
   public static void requireUnwrittenSecretsStayProtected(
       EventSubscription original, EventSubscription updated, JsonPatch patch) {
-    List<SubscriptionDestination> stored = listOrEmpty(original.getDestinations());
     List<SubscriptionDestination> incoming = listOrEmpty(updated.getDestinations());
-    JsonNode replayed = null;
-    for (int position = 0; position < incoming.size(); position++) {
-      SubscriptionDestination sent = incoming.get(position);
-      boolean moved =
-          DestinationSecrets.counterpart(stored, sent, position)
-              .filter(it -> DestinationSecrets.targetMoved(it, sent))
-              .isPresent();
-      if (replayed == null) {
-        replayed = replayedOnMarkedSecrets(original, patch);
-      }
-      JsonNode config = replayed.at(DESTINATION_CONFIG.formatted(position));
-      firstMarkerOutsideTheSecretFields(sent, config)
-          .ifPresent(
-              field ->
-                  refuse(CARRIED_MESSAGE, sent, field, ChannelResolution.of(sent).channelId()));
-      if (moved) {
-        firstSecret(sent, (field, value) -> LEFT_IN_PLACE.equals(config.at(field).asText(null)))
-            .ifPresent(field -> refuse(MOVED_TARGET_MESSAGE, sent, field));
+    if (!incoming.isEmpty()) {
+      List<SubscriptionDestination> stored = listOrEmpty(original.getDestinations());
+      JsonNode replayed = replayedOnMarkedSecrets(original, patch);
+      for (int position = 0; position < incoming.size(); position++) {
+        JsonNode config = replayed.at(DESTINATION_CONFIG.formatted(position));
+        requireCarriedSecretsStayProtected(stored, incoming.get(position), position, config);
       }
     }
   }
 
-  // A replay that fails (a test operation on a secret, say) leaves the marker everywhere, so every
-  // secret of a moved destination reads as carried along and the patch is refused.
+  private static void requireCarriedSecretsStayProtected(
+      List<SubscriptionDestination> stored,
+      SubscriptionDestination sent,
+      int position,
+      JsonNode config) {
+    List<JsonPointer> secretFields = DestinationSecrets.secretFieldsOf(sent, config);
+    OptionalInt own = DestinationSecrets.counterpartIndex(stored, sent, position);
+    boolean moved =
+        own.isPresent() && DestinationSecrets.targetMoved(stored.get(own.getAsInt()), sent);
+    carriedIn(config)
+        .forEach(
+            (at, carried) -> {
+              if (!secretFields.contains(at)) {
+                refuse(CARRIED_MESSAGE, sent, at, ChannelResolution.of(sent).channelId());
+              }
+              if (!carried.isStoredAt(own, at)) {
+                throw new BadRequestException(
+                    COPIED_MESSAGE.formatted(DESTINATION_CONFIG.formatted(position) + at));
+              }
+              if (moved) {
+                refuse(MOVED_TARGET_MESSAGE, sent, at);
+              }
+            });
+  }
+
+  // The patch already applied to the alert as stored, so a replay that fails on the markers is one
+  // that reads a secret's value, a test operation on it, say: it is refused rather than guessed at.
   private static JsonNode replayedOnMarkedSecrets(EventSubscription original, JsonPatch patch) {
     EventSubscription marked = JsonUtils.deepCopy(original, EventSubscription.class);
-    for (SubscriptionDestination destination : listOrEmpty(marked.getDestinations())) {
-      JsonNode config = JsonUtils.valueToTree(destination.getConfig());
-      DestinationSecrets.secretFieldsOf(destination, config)
-          .forEach(field -> DestinationSecrets.set(config, field, LEFT_IN_PLACE));
-      destination.withConfig(JsonUtils.treeToValue(config, Object.class));
+    List<SubscriptionDestination> destinations = listOrEmpty(marked.getDestinations());
+    for (int index = 0; index < destinations.size(); index++) {
+      markSecrets(destinations.get(index), index);
     }
     try {
       return JsonUtils.valueToTree(JsonUtils.applyPatch(marked, patch, EventSubscription.class));
     } catch (RuntimeException e) {
-      return JsonUtils.valueToTree(marked);
+      throw new BadRequestException(UNREPLAYED_MESSAGE);
+    }
+  }
+
+  private static void markSecrets(SubscriptionDestination destination, int index) {
+    JsonNode config = JsonUtils.valueToTree(destination.getConfig());
+    DestinationSecrets.secretFieldsOf(destination, config)
+        .forEach(
+            field -> DestinationSecrets.set(config, field, new Carried(index, field).marker()));
+    destination.withConfig(JsonUtils.treeToValue(config, Object.class));
+  }
+
+  /** A stored secret a patch left in place: the destination and the field it is stored at. */
+  private record Carried(int destination, JsonPointer field) {
+    private static Optional<Carried> of(String text) {
+      Optional<Carried> carried = Optional.empty();
+      if (text.startsWith(LEFT_IN_PLACE)) {
+        String origin = text.substring(LEFT_IN_PLACE.length());
+        int separator = origin.indexOf(':');
+        carried =
+            Optional.of(
+                new Carried(
+                    Integer.parseInt(origin.substring(0, separator)),
+                    JsonPointer.compile(origin.substring(separator + 1))));
+      }
+      return carried;
+    }
+
+    private String marker() {
+      return LEFT_IN_PLACE + destination + ":" + field;
+    }
+
+    private boolean isStoredAt(OptionalInt storedDestination, JsonPointer at) {
+      return storedDestination.isPresent()
+          && storedDestination.getAsInt() == destination
+          && field.equals(at);
     }
   }
 
@@ -281,40 +333,27 @@ public final class DestinationSecretGuards {
     return json;
   }
 
-  /**
-   * A marker the request left in a field its destination no longer names a secret: the stored value
-   * would be encrypted and read back by nobody's rules, so it would be stored and served as written.
-   */
-  private static Optional<JsonPointer> firstMarkerOutsideTheSecretFields(
-      SubscriptionDestination sent, JsonNode config) {
-    return findMarker(config, JsonPointer.empty(), DestinationSecrets.secretFieldsOf(sent, config));
+  /** Every stored secret the request left in this configuration, by where it ends up. */
+  private static Map<JsonPointer, Carried> carriedIn(JsonNode config) {
+    Map<JsonPointer, Carried> found = new LinkedHashMap<>();
+    collectCarried(config, JsonPointer.empty(), found);
+    return found;
   }
 
-  private static Optional<JsonPointer> findMarker(
-      JsonNode node, JsonPointer pointer, List<JsonPointer> secretFields) {
+  private static void collectCarried(
+      JsonNode node, JsonPointer pointer, Map<JsonPointer, Carried> found) {
     if (node.isTextual()) {
-      boolean carried = LEFT_IN_PLACE.equals(node.textValue());
-      return carried && !secretFields.contains(pointer) ? Optional.of(pointer) : Optional.empty();
-    }
-    if (node.isArray()) {
+      Carried.of(node.textValue()).ifPresent(carried -> found.put(pointer, carried));
+    } else if (node.isArray()) {
       for (int i = 0; i < node.size(); i++) {
-        Optional<JsonPointer> found = findMarker(node.get(i), pointer.appendIndex(i), secretFields);
-        if (found.isPresent()) {
-          return found;
-        }
+        collectCarried(node.get(i), pointer.appendIndex(i), found);
       }
     } else if (node.isObject()) {
-      var fields = node.properties().iterator();
-      while (fields.hasNext()) {
-        var field = fields.next();
-        Optional<JsonPointer> found =
-            findMarker(field.getValue(), pointer.appendProperty(field.getKey()), secretFields);
-        if (found.isPresent()) {
-          return found;
-        }
-      }
+      node.properties()
+          .forEach(
+              field ->
+                  collectCarried(field.getValue(), pointer.appendProperty(field.getKey()), found));
     }
-    return Optional.empty();
   }
 
   private static Optional<JsonPointer> findText(

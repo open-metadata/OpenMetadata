@@ -62,6 +62,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   static final String ALERT_UPDATE_FIELDS =
       "trigger,enabled,batchSize,input,filteringRules,notificationTemplate,destinations";
   private static final String FIELD_ENABLED = "enabled";
+  private static final String AMBIGUOUS_DESTINATION =
+      "More than one destination is stored with id %s; provide its actual values to test it";
 
   public EventSubscriptionRepository() {
     super(
@@ -284,12 +286,21 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   /** A destination as stored, and the alert it belongs to. */
   public record StoredDestination(UUID alertId, SubscriptionDestination destination) {}
 
-  /** The stored destination with this id, whichever alert holds it. */
+  /**
+   * The stored destination with this id, whichever alert holds it. A request may set a
+   * destination's id, so more than one may hold it; then none is chosen for the caller.
+   */
   public Optional<StoredDestination> findDestination(UUID destinationId) {
-    return daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
-        .map(json -> JsonUtils.readValue(json, EventSubscription.class))
-        .flatMap(alert -> storedDestinations(alert, destinationId))
-        .findFirst();
+    List<StoredDestination> found =
+        daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+            .map(json -> JsonUtils.readValue(json, EventSubscription.class))
+            .flatMap(alert -> storedDestinations(alert, destinationId))
+            .limit(2)
+            .toList();
+    if (found.size() > 1) {
+      throw new BadRequestException(AMBIGUOUS_DESTINATION.formatted(destinationId));
+    }
+    return found.stream().findFirst();
   }
 
   private static Stream<StoredDestination> storedDestinations(
