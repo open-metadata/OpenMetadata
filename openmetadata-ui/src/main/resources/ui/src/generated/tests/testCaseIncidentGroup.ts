@@ -1,15 +1,3 @@
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 /**
  * Aggregated count of open test case incidents for a given grouping dimension.
  */
@@ -55,7 +43,8 @@ export interface TestCaseIncidentGroup {
      */
     incidentCount: number;
     /**
-     * Timestamp of the most recent status change across the group's open incidents.
+     * Timestamp of the most recent status change across the group's open incidents. Not used
+     * for the `trend` bucket span, which runs over the incident open times.
      */
     lastSeen?: number;
     /**
@@ -97,8 +86,9 @@ export interface TestCaseIncidentGroup {
      */
     testDefinitions?: EntityReference[];
     /**
-     * Number of incidents opened in each of 8 equal time buckets spanning `firstSeen` to
-     * `lastSeen`.
+     * Number of incidents opened in each of 8 equal time buckets spanning the group's earliest
+     * incident open time to its latest incident open time (`firstSeen` to `max(createdAt)`).
+     * `lastSeen` is a status-change timestamp, not a bucket boundary.
      */
     trend?: number[];
     /**
