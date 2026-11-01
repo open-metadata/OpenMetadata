@@ -49,6 +49,7 @@ from metadata.utils.db_utils import Table
 from metadata.utils.filters import (
     filter_by_classifications,
     filter_by_container,
+    filter_by_database,
     filter_by_schema,
     filter_by_table,
     filter_by_topic,
@@ -66,6 +67,7 @@ CONTAINER_FIELDS = ["dataModel", "tags"]
 class RegexFilter(BaseModel):
     regex: str
     mode: str
+    excludes: list[str] | None = None
 
 
 def _combine_patterns(patterns: list[str]) -> str:
@@ -79,13 +81,27 @@ def _build_regex_from_filter(
 ) -> RegexFilter | None:
     """Build a RegexFilter from a FilterPattern for server-side filtering.
 
-    When both includes and excludes are set, includes take precedence.
+    The OpenMetadata API supports a single regex mode (include OR exclude) per
+    request, so a FilterPattern carrying both includes and excludes cannot be
+    fully expressed server-side. When both are set we keep the includes
+    server-side (mode="include") and carry the excludes on the returned
+    ``RegexFilter`` (``excludes``) so they can be re-applied client-side. This
+    preserves the platform-wide exclude-wins semantics of
+    ``metadata.utils.filters._filter``, where a name matching both an include
+    and an exclude pattern is filtered out.
+
     Validates that all regex patterns compile before sending them to the server.
     """
     if not filter_pattern:
         return None
     validate_regex(filter_pattern.includes)
     validate_regex(filter_pattern.excludes)
+    if filter_pattern.includes and filter_pattern.excludes:
+        return RegexFilter(
+            regex=_combine_patterns(filter_pattern.includes),
+            mode="include",
+            excludes=filter_pattern.excludes,
+        )
     if filter_pattern.includes:
         return RegexFilter(regex=_combine_patterns(filter_pattern.includes), mode="include")
     if filter_pattern.excludes:
@@ -183,6 +199,31 @@ class DatabaseFetcherStrategy(FetcherStrategy):
 
         return False
 
+    def _filter_deferred_database_excludes(self, database: Database) -> bool:
+        """Apply database exclude filters deferred to client-side.
+
+        Excludes are deferred client-side when a ``databaseFilterPattern`` carries
+        both includes and excludes: the includes are pushed server-side
+        (mode="include") and the excludes are re-applied here so that exclude-wins
+        semantics are preserved. There is no schema-vs-table mode conflict at the
+        database level, so this is the only deferred case for databases.
+        """
+        db_filter = self.database_filter_pattern
+        source_pattern = self.source_config.databaseFilterPattern
+        if db_filter and db_filter.excludes is not None and source_pattern is not None:
+            exclude_only = FilterPattern(excludes=source_pattern.excludes)
+            if self.source_config.useFqnForFiltering and database.fullyQualifiedName:
+                db_name = database.fullyQualifiedName.root
+            else:
+                db_name = database.name.root
+            if filter_by_database(exclude_only, db_name):
+                self.status.filter(
+                    db_name,
+                    f"Database pattern not allowed for database {db_name}",
+                )
+                return True
+        return False
+
     def _get_database_entities(self) -> Iterable[Database]:
         """Get database entities"""
         if not self.config.source.serviceName:
@@ -196,6 +237,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
 
         count = 0
         for database in databases:
+            if self._filter_deferred_database_excludes(database):
+                continue
             count += 1
             yield database
 
@@ -240,13 +283,47 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         table_filter = self.table_filter_pattern
         return schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
 
+    def _has_deferred_filters(self) -> bool:
+        """Whether any exclude filter must be re-applied client-side.
+
+        This happens when schema and table filters use conflicting server-side
+        modes (so the exclude-mode filter could not be pushed to the server), or
+        when a single FilterPattern carries both includes and excludes (the
+        includes are pushed server-side with mode="include" and the excludes
+        are carried on the ``RegexFilter`` for client-side re-application to
+        preserve exclude-wins semantics).
+        """
+        if self._has_conflicting_filter_modes():
+            return True
+        return any(
+            regex_filter is not None and regex_filter.excludes is not None
+            for regex_filter in (self.schema_filter_pattern, self.table_filter_pattern)
+        )
+
     def _filter_deferred_excludes(self, table: Table) -> bool:
-        """Apply exclude filters that were deferred to client-side
-        because schema and table filters use conflicting modes."""
+        """Apply exclude filters that were deferred to client-side.
+
+        Excludes are re-applied client-side in two situations:
+
+        1. Schema and table filters use conflicting server-side modes, so the
+           exclude-mode filter could not be pushed to the server. In this case
+           the filter is in ``mode == "exclude"``.
+        2. A single FilterPattern carries both includes and excludes. The
+           includes are pushed server-side (mode="include") and the excludes
+           are carried on the ``RegexFilter`` (``excludes``) and re-applied here
+           so that exclude-wins semantics are preserved.
+
+        In both cases the actual exclude patterns are read back from the
+        original ``FilterPattern`` on ``source_config``.
+        """
         schema_filter = self.schema_filter_pattern
         table_filter = self.table_filter_pattern
 
-        if schema_filter and schema_filter.mode == "exclude" and table.databaseSchema:
+        if (
+            schema_filter
+            and table.databaseSchema
+            and (schema_filter.mode == "exclude" or schema_filter.excludes is not None)
+        ):
             exclude_only = FilterPattern(excludes=self.source_config.schemaFilterPattern.excludes)
             schema_name = (
                 table.databaseSchema.fullyQualifiedName
@@ -260,7 +337,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 )
                 return True
 
-        if table_filter and table_filter.mode == "exclude":
+        if table_filter and (table_filter.mode == "exclude" or table_filter.excludes is not None):
             exclude_only = FilterPattern(excludes=self.source_config.tableFilterPattern.excludes)
             table_name = table.name.root
             if table.fullyQualifiedName and self.source_config.useFqnForFiltering:
@@ -283,7 +360,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             params=params,
         )
 
-        has_deferred = self._has_conflicting_filter_modes()
+        has_deferred = self._has_deferred_filters()
 
         for table in tables:
             if has_deferred and self._filter_deferred_excludes(table):

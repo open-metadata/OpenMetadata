@@ -300,6 +300,16 @@ TIER_REVENUE_TABLE = Table(
     ],
 )
 
+SENSITIVE_TABLE = Table(
+    id=uuid.uuid4(),
+    name="sensitive_pii",
+    fullyQualifiedName="my_service.prod.finance.sensitive_pii",
+    columns=[Column(name="id", dataType=DataType.INT)],
+    database=DB_REF,
+    databaseSchema=FINANCE_SCHEMA_REF,
+    tableType=TableType.Regular,
+)
+
 
 def _make_fetcher(source_config_overrides=None):
     """Build a DatabaseFetcherStrategy with a mocked metadata client"""
@@ -407,6 +417,67 @@ class TestGetDatabaseEntities:
 
         with pytest.raises(ValueError, match="databaseFilterPattern returned 0 result"):
             list(fetcher._get_database_entities())
+
+    def test_database_include_and_exclude_applies_exclude_client_side(self):
+        """With databaseFilterPattern includes=['.*'] excludes=['staging'],
+        the includes are pushed server-side (regexMode=include) and the excludes
+        are re-applied client-side so that staging is filtered out. Exclude-wins
+        semantics match ``metadata.utils.filters._filter`` used by the rest of
+        the platform."""
+        fetcher = _make_fetcher({"databaseFilterPattern": {"includes": [".*"], "excludes": ["staging"]}})
+        # The server returns everything matching the include ".*"
+        fetcher.metadata.list_all_entities.return_value = iter([PROD_DB, STAGING_DB, TEMP_DB])
+
+        result = list(fetcher._get_database_entities())
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["databaseRegex"] == ".*"
+        assert call_params["regexMode"] == "include"
+        assert STAGING_DB not in result
+        assert result == [PROD_DB, TEMP_DB]
+
+    def test_database_include_and_exclude_with_fqn_filtering(self):
+        """useFqnForFiltering + a combined database filter applies the excludes
+        against the database FQN client-side."""
+        fetcher = _make_fetcher(
+            {
+                "useFqnForFiltering": True,
+                "databaseFilterPattern": {"includes": [".*"], "excludes": ["my_service\\.staging"]},
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([PROD_DB, STAGING_DB, TEMP_DB])
+
+        result = list(fetcher._get_database_entities())
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["databaseRegex"] == ".*"
+        assert call_params["regexMode"] == "include"
+        assert call_params["regexFilterByFqn"] == "true"
+        assert STAGING_DB not in result
+        assert result == [PROD_DB, TEMP_DB]
+
+    def test_database_exclude_wins_over_include_for_overlapping_match(self):
+        """A database matching both the include and the exclude pattern is
+        filtered out client-side (exclude-wins), consistent with
+        ``test_filter_pattern.py::test_filter``."""
+        fetcher = _make_fetcher({"databaseFilterPattern": {"includes": [".*"], "excludes": [".*"]}})
+        fetcher.metadata.list_all_entities.return_value = iter([PROD_DB, STAGING_DB])
+
+        with pytest.raises(ValueError, match="databaseFilterPattern returned 0 result"):
+            list(fetcher._get_database_entities())
+
+    def test_database_pure_include_and_pure_exclude_unaffected(self):
+        """Patterns with only includes or only excludes keep their existing
+        server-side behavior — the client-side fallback must not change them."""
+        includes_only = _make_fetcher({"databaseFilterPattern": {"includes": ["prod"]}})
+        includes_only.metadata.list_all_entities.return_value = iter([PROD_DB])
+        assert list(includes_only._get_database_entities()) == [PROD_DB]
+        assert includes_only._build_database_params()["regexMode"] == "include"
+
+        excludes_only = _make_fetcher({"databaseFilterPattern": {"excludes": ["temp.*"]}})
+        excludes_only.metadata.list_all_entities.return_value = iter([PROD_DB, STAGING_DB])
+        assert list(excludes_only._get_database_entities()) == [PROD_DB, STAGING_DB]
+        assert excludes_only._build_database_params()["regexMode"] == "exclude"
 
 
 class TestGetTableEntities:
@@ -650,6 +721,136 @@ class TestGetTableEntities:
         assert EMPLOYEES_TABLE not in result
         assert result == [ORDERS_TABLE]
 
+    def test_table_include_and_exclude_applies_exclude_client_side(self):
+        """With tableFilterPattern includes=['.*'] excludes=['sensitive_.*'],
+        the includes are pushed server-side (regexMode=include) and the
+        excludes are re-applied client-side so that sensitive tables are
+        filtered out. Exclude-wins semantics match ``_filter`` used by the
+        rest of the platform."""
+        fetcher = _make_fetcher(
+            {
+                "tableFilterPattern": {"includes": [".*"], "excludes": ["sensitive_.*"]},
+                "includeViews": True,
+            }
+        )
+        # The server returns everything matching the include ".*"
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, SENSITIVE_TABLE, CUSTOMERS_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["tableRegex"] == ".*"
+        assert call_params["regexMode"] == "include"
+        assert SENSITIVE_TABLE not in result
+        assert result == [ORDERS_TABLE, CUSTOMERS_TABLE]
+
+    def test_table_exclude_wins_over_include_for_overlapping_match(self):
+        """A table matching both the include and the exclude pattern is
+        filtered out client-side, consistent with
+        ``test_filter_pattern.py::test_filter`` (potato_tomato is filtered)."""
+        fetcher = _make_fetcher(
+            {
+                "tableFilterPattern": {"includes": ["sen.*"], "excludes": ["sensitive_.*"]},
+                "includeViews": True,
+            }
+        )
+        # "sensitive_pii" matches both include "sen.*" and exclude "sensitive_.*"
+        fetcher.metadata.list_all_entities.return_value = iter([SENSITIVE_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == []
+
+    def test_table_include_and_exclude_with_fqn_filtering(self):
+        """useFqnForFiltering + a combined table filter applies the excludes
+        against the table FQN client-side."""
+        fetcher = _make_fetcher(
+            {
+                "useFqnForFiltering": True,
+                "tableFilterPattern": {
+                    "includes": [".*"],
+                    "excludes": ["my_service\\.prod\\.finance\\.sensitive_pii"],
+                },
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, SENSITIVE_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["regexFilterByFqn"] == "true"
+        assert call_params["regexMode"] == "include"
+        assert SENSITIVE_TABLE not in result
+        assert result == [ORDERS_TABLE]
+
+    def test_schema_include_and_exclude_applies_exclude_client_side(self):
+        """With schemaFilterPattern includes=['.*'] excludes=['hr'], the
+        includes are pushed server-side and hr-schema tables are filtered out
+        client-side (exclude-wins)."""
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": [".*"], "excludes": ["hr"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, EMPLOYEES_TABLE, SALARY_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["databaseSchemaRegex"] == ".*"
+        assert call_params["regexMode"] == "include"
+        assert EMPLOYEES_TABLE not in result
+        assert SALARY_TABLE not in result
+        assert result == [ORDERS_TABLE]
+
+    def test_schema_include_and_exclude_with_fqn_filtering(self):
+        """useFqnForFiltering + a combined schema filter applies the excludes
+        against the schema FQN client-side."""
+        fetcher = _make_fetcher(
+            {
+                "useFqnForFiltering": True,
+                "schemaFilterPattern": {"includes": [".*"], "excludes": ["my_service\\.prod\\.hr"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, EMPLOYEES_TABLE, SALARY_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["regexFilterByFqn"] == "true"
+        assert call_params["regexMode"] == "include"
+        assert EMPLOYEES_TABLE not in result
+        assert SALARY_TABLE not in result
+        assert result == [ORDERS_TABLE]
+
+    def test_schema_and_table_combined_excludes_are_both_applied(self):
+        """When both schemaFilterPattern and tableFilterPattern carry includes
+        and excludes, the schema excludes and table excludes are each
+        re-applied client-side."""
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": [".*"], "excludes": ["hr"]},
+                "tableFilterPattern": {"includes": [".*"], "excludes": ["sensitive_.*"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, SENSITIVE_TABLE, EMPLOYEES_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["databaseSchemaRegex"] == ".*"
+        assert call_params["tableRegex"] == ".*"
+        assert call_params["regexMode"] == "include"
+        # excluded table dropped even though it matched the include
+        assert SENSITIVE_TABLE not in result
+        # table in excluded schema dropped
+        assert EMPLOYEES_TABLE not in result
+        assert result == [ORDERS_TABLE]
+
 
 class TestFetch:
     """Validate end-to-end fetch() pipeline across multiple databases"""
@@ -727,6 +928,29 @@ class TestFetch:
         assert REVENUE_VIEW not in entities
         assert SALARY_TABLE not in entities
         assert entities == [ORDERS_TABLE, CUSTOMERS_TABLE, UNTAGGED_TABLE]
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_fetch_excludes_tables_with_combined_include_exclude_pattern(self, mock_factory):
+        """End-to-end: with tableFilterPattern includes=['.*'] excludes=['sensitive_.*'],
+        the includes go server-side and the excludes are re-applied client-side
+        so the sensitive table is never profiled (exclude-wins)."""
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = _make_fetcher(
+            {
+                "tableFilterPattern": {"includes": [".*"], "excludes": ["sensitive_.*"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.side_effect = [
+            iter([PROD_DB]),
+            iter([ORDERS_TABLE, SENSITIVE_TABLE, CUSTOMERS_TABLE]),
+        ]
+
+        results = list(fetcher.fetch())
+
+        entities = [r.right.entity for r in results if r.right]
+        assert SENSITIVE_TABLE not in entities
+        assert entities == [ORDERS_TABLE, CUSTOMERS_TABLE]
 
     @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
     def test_fetch_handles_profiler_source_error_per_database(self, mock_factory):
