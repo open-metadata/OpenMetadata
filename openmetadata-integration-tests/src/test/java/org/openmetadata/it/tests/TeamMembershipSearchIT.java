@@ -80,6 +80,30 @@ public class TeamMembershipSearchIT {
     assertTrue(refOf(doc.path("owners"), owner.getId()).isObject(), doc.path("owners").toString());
   }
 
+  @Test
+  void teamCreatedWithAUserKeepsItsUserCountThroughAPlainEdit(TestNamespace ns) {
+    Team department = TeamHierarchyTestFactory.departmentUnderDivision(ns, "counted", null);
+    User member = UserTestFactory.createUser(ns, "countedmember");
+    Team group =
+        TeamHierarchyTestFactory.team(
+            new CreateTeam()
+                .withName(ns.prefix("countedgroup"))
+                .withTeamType(CreateTeam.TeamType.GROUP)
+                .withParents(List.of(department.getId()))
+                .withUsers(List.of(member.getId())));
+    awaitDoc(TEAM_INDEX, group.getId(), doc -> doc.path("userCount").asInt() == 1);
+
+    Team edited = client().teams().get(group.getId().toString());
+    edited.setDescription("Edited description");
+    client().teams().update(group.getId().toString(), edited);
+    awaitDoc(
+        TEAM_INDEX,
+        group.getId(),
+        doc ->
+            "Edited description".equals(doc.path("description").asText())
+                && doc.path("userCount").asInt() == 1);
+  }
+
   private static OpenMetadataClient client() {
     return SdkClients.adminClient();
   }

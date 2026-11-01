@@ -93,10 +93,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   @Override
   protected void postDelete(Classification entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    PolicyConditionUpdater.updateAllPolicyConditions(
-        condition ->
-            PolicyConditionUpdater.removeByPrefixFromCondition(
-                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    // A soft delete cascades to the child tags without removing their labels from assets, so a
+    // condition naming them still matches; rewriting it to false would switch off Deny rules that
+    // still apply. A hard delete removes the labels, after which false is exactly what it matches.
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeByPrefixFromCondition(
+                  condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    }
   }
 
   @Override
