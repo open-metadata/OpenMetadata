@@ -15,6 +15,7 @@ These cover the branches that translate a provider exception into a
 DBTConfigException message shown to the user.
 """
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -46,6 +47,7 @@ def _dbt_cloud_config():
     config.dbtCloudAccountId = "12345"
     config.dbtCloudProjectId = None
     config.dbtCloudJobId = None
+    config.dbtCloudIngestAllJobs = False
     config.dbtCloudUrl = "https://cloud.getdbt.com"
     config.dbtCloudAuthToken.get_secret_value.return_value = "tok"
     return config
@@ -150,7 +152,18 @@ class TestDbtCloudErrorClassification:
         with pytest.raises(DBTConfigException) as exc_info:
             list(get_dbt_details(_dbt_cloud_config()))
 
-        assert "no completed dbt runs" in str(exc_info.value).lower()
+        assert "no completed dbt runs found for account '12345'" in str(exc_info.value).lower()
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_no_jobs_in_account_reports_no_jobs_found(self, tracked_rest):
+        tracked_rest.return_value.get.return_value = {"data": []}
+        config = _dbt_cloud_config()
+        config.dbtCloudIngestAllJobs = True
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(config))
+
+        assert "no dbt cloud jobs found for account '12345'" in str(exc_info.value).lower()
 
 
 def _dbt_cloud_artifacts(run_steps, run_results_by_step):
@@ -209,6 +222,429 @@ class TestDbtCloudRunResultsSteps:
         (dbt_files,) = get_dbt_details(_dbt_cloud_config())
 
         assert dbt_files.dbt_run_results is None
+
+
+def _model(name, compiled=True):
+    node = {"name": name, "resource_type": "model"}
+    if compiled:
+        node["compiled_code"] = f"select * from {name}_src"
+    return node
+
+
+def _dbt_cloud_jobs_api(runs_by_job, artifacts_by_run=None, jobs_pages=()):
+    """Stand-in for the dbt Cloud API: a paginated job list and, per job, its latest run.
+    A job absent from ``runs_by_job`` has no completed run, a run absent from
+    ``artifacts_by_run`` has a manifest with no nodes, an artifact set to None is missing
+    (404) and one set to an int fails with that status; a ``runs_by_job`` value of None
+    makes the runs call itself unusable."""
+    artifacts_by_run = artifacts_by_run or {}
+    total_count = sum(len(page) for page in jobs_pages)
+    requested = []
+
+    def get(path, data=None):
+        requested.append((path, dict(data or {})))
+        if path.endswith("/jobs/"):
+            page = jobs_pages[data["offset"] // data["limit"]]
+            return {"data": page, "extra": {"pagination": {"count": len(page), "total_count": total_count}}}
+        if path.endswith("/runs"):
+            job_id = data.get("job_definition_id")
+            if job_id in runs_by_job and runs_by_job[job_id] is None:
+                return None
+            run = runs_by_job.get(job_id)
+            if run is None:
+                return {"data": []}
+            return {"data": [{"finished_at_humanized": "now", "duration_humanized": "1m", **run}]}
+        run_id = int(path.split("/runs/")[1].split("/")[0])
+        artifacts = artifacts_by_run.get(run_id, {"manifest": {"nodes": {}}})
+        for name in ("manifest", "catalog", "run_results"):
+            if path.endswith(f"{name}.json"):
+                artifact = artifacts.get(name)
+                return None if isinstance(artifact, int) else artifact
+        raise _http_error(404)
+
+    def get_raw(path, data=None):
+        """Like the REST client's get_raw: the response after retries, whatever its status."""
+        artifact = get(path, data)
+        name = path.rsplit("/", 1)[-1].removesuffix(".json")
+        failed_status = (artifacts_by_run.get(int(path.split("/runs/")[1].split("/")[0])) or {}).get(name)
+        response = requests.Response()
+        response.status_code = failed_status if isinstance(failed_status, int) else 200 if artifact else 404
+        response._content = json.dumps(artifact).encode()
+        return response
+
+    get.raw = get_raw
+    return get, requested
+
+
+def _serve(tracked_rest, get):
+    tracked_rest.return_value.get.side_effect = get
+    tracked_rest.return_value.get_raw.side_effect = get.raw
+
+
+def _cloud_config(job_ids=None, ingest_all_jobs=False, project_id=None):
+    config = _dbt_cloud_config()
+    config.dbtCloudJobId = job_ids
+    config.dbtCloudIngestAllJobs = ingest_all_jobs
+    config.dbtCloudProjectId = project_id
+    return config
+
+
+def _runs_requested(requested):
+    return [params.get("job_definition_id") for path, params in requested if path.endswith("/runs")]
+
+
+class TestDbtCloudMultipleJobs:
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_empty_job_id_reads_only_the_latest_run_of_any_job(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(runs_by_job={None: {"id": 1}})
+        _serve(tracked_rest, get)
+
+        assert len(list(get_dbt_details(_cloud_config()))) == 1
+        assert _runs_requested(requested) == [None]
+        assert not any(path.endswith("/jobs/") for path, _ in requested)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_existing_config_without_the_flag_keeps_reading_one_run(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(runs_by_job={None: {"id": 1}})
+        _serve(tracked_rest, get)
+        config = DbtCloudConfig.model_validate(
+            {
+                "dbtConfigType": "cloud",
+                "dbtCloudAuthToken": "tok",
+                "dbtCloudAccountId": "12345",
+                "dbtCloudUrl": "https://cloud.getdbt.com",
+            }
+        )
+
+        assert len(list(get_dbt_details(config))) == 1
+        assert _runs_requested(requested) == [None]
+
+    @pytest.mark.parametrize("job_ids", ["70,71", "71,70"])
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_partial_job_does_not_blank_models_a_full_job_compiled(self, tracked_rest, job_ids):
+        """Job 70 builds everything and generates docs; job 71 runs one model. Both manifests
+        list every model, but only 70's carries orders' SQL and only 70 has a catalog."""
+        full_test = {"results": [{"unique_id": "test.p.not_null_orders"}]}
+        hourly_test = {"results": [{"unique_id": "test.p.not_null_events"}]}
+        catalog = {"nodes": {"model.p.orders": {"columns": {"id": {"type": "int"}}}}, "sources": {}}
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={"70": {"id": 1, "environment_id": 5}, "71": {"id": 2, "environment_id": 5}},
+            artifacts_by_run={
+                1: {
+                    "manifest": {"nodes": {"model.p.orders": _model("orders"), "model.p.events": _model("events")}},
+                    "catalog": catalog,
+                    "run_results": full_test,
+                },
+                2: {
+                    "manifest": {
+                        "nodes": {
+                            "model.p.orders": _model("orders", compiled=False),
+                            "model.p.events": _model("events"),
+                        }
+                    },
+                    "run_results": hourly_test,
+                },
+            },
+        )
+        _serve(tracked_rest, get)
+
+        (dbt_files,) = get_dbt_details(_cloud_config(job_ids=job_ids))
+
+        assert dbt_files.dbt_manifest["nodes"]["model.p.orders"]["compiled_code"] == "select * from orders_src"
+        assert dbt_files.dbt_catalog == catalog
+        assert sorted(map(str, dbt_files.dbt_run_results)) == sorted(map(str, [hourly_test, full_test]))
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_jobs_of_different_environments_stay_apart(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={
+                "70": {"id": 1, "environment_id": 5},
+                "71": {"id": 2, "environment_id": 6},
+                "72": {"id": 3, "environment_id": 5},
+            },
+            artifacts_by_run={
+                1: {"manifest": {"nodes": {"model.p.orders": _model("orders")}}},
+                2: {"manifest": {"nodes": {"model.p.orders": _model("orders_staging")}}},
+                3: {"manifest": {"nodes": {"model.p.orders": _model("orders", compiled=False)}}},
+            },
+        )
+        _serve(tracked_rest, get)
+
+        prod, staging = get_dbt_details(_cloud_config(job_ids=" 70, 71 ,72"))
+
+        assert prod.dbt_manifest["nodes"]["model.p.orders"]["name"] == "orders"
+        assert staging.dbt_manifest["nodes"]["model.p.orders"]["name"] == "orders_staging"
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_ingest_all_jobs_scans_every_page_of_jobs_except_ci(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(
+            jobs_pages=[
+                [{"id": job_id, "job_type": "scheduled"} for job_id in range(100)],
+                [{"id": 100, "job_type": "ci"}, {"id": 101, "job_type": "other"}],
+            ],
+            runs_by_job={"0": {"id": 1}, "101": {"id": 2}},
+        )
+        _serve(tracked_rest, get)
+
+        assert len(list(get_dbt_details(_cloud_config(ingest_all_jobs=True, project_id="9")))) == 1
+
+        run_job_ids = _runs_requested(requested)
+        assert "100" not in run_job_ids
+        assert len(run_job_ids) == 101
+        assert all(params["project_id"] == "9" for path, params in requested if path.endswith("/jobs/"))
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_job_ids_take_precedence_over_ingest_all_jobs(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(runs_by_job={"70": {"id": 1}})
+        _serve(tracked_rest, get)
+
+        assert len(list(get_dbt_details(_cloud_config(job_ids="70", ingest_all_jobs=True)))) == 1
+        assert _runs_requested(requested) == ["70"]
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_job_without_a_completed_run_is_skipped(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(
+            runs_by_job={"71": {"id": 1}}, artifacts_by_run={1: {"manifest": {"nodes": {"model.p.m": _model("m")}}}}
+        )
+        _serve(tracked_rest, get)
+
+        (dbt_files,) = get_dbt_details(_cloud_config(job_ids="70,71"))
+
+        assert list(dbt_files.dbt_manifest["nodes"]) == ["model.p.m"]
+        assert _runs_requested(requested) == ["70", "71"]
+
+    @pytest.mark.parametrize(
+        ("runs_by_job", "artifacts_by_run"),
+        [
+            # the client returns None after exhausting 429 retries, and for dbt Cloud's 401 body
+            ({"70": {"id": 1}, "71": None}, {}),
+            ({"70": {"id": 1}, "71": {"id": 2}}, {2: {"manifest": None}}),
+            ({"70": {"id": 1}, "71": {"id": 2}}, {2: {"manifest": {"nodes": {}}, "catalog": 429}}),
+            ({"70": {"id": 1}, "71": {"id": 2}}, {2: {"manifest": {"nodes": {}}, "run_results": 503}}),
+        ],
+        ids=["unusable_runs_response", "missing_manifest", "catalog_out_of_retries", "run_results_out_of_retries"],
+    )
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_other_job_failures_fail_the_run_instead_of_merging_without_it(
+        self, tracked_rest, runs_by_job, artifacts_by_run
+    ):
+        get, _ = _dbt_cloud_jobs_api(runs_by_job=runs_by_job, artifacts_by_run=artifacts_by_run)
+        _serve(tracked_rest, get)
+
+        with pytest.raises(DBTConfigException):
+            list(get_dbt_details(_cloud_config(job_ids="70,71")))
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_a_broken_job_skips_only_its_environment_then_fails_the_run(self, tracked_rest):
+        """An abandoned job whose latest run died before compiling must not block other environments."""
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={
+                "70": {"id": 1, "environment_id": 5, "job_definition_id": 70},
+                "71": {"id": 2, "environment_id": 6, "job_definition_id": 71},
+                "72": {"id": 3, "environment_id": 7},
+            },
+            artifacts_by_run={
+                1: {"manifest": {"nodes": {"model.p.a": _model("a")}}},
+                2: {"manifest": None},
+                3: {"manifest": {"nodes": {"model.p.c": _model("c")}}},
+            },
+        )
+        _serve(tracked_rest, get)
+        yielded = []
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            yielded.extend(
+                list(files.dbt_manifest["nodes"]) for files in get_dbt_details(_cloud_config(job_ids="70,71,72"))
+            )
+
+        assert yielded == [["model.p.a"], ["model.p.c"]]
+        assert "1 dbt Cloud environment(s) were not ingested: [6]" in str(exc_info.value)
+        assert "run [2] of job [71]" in str(exc_info.value)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_no_job_with_a_completed_run_fails(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(runs_by_job={})
+        _serve(tracked_rest, get)
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_cloud_config(job_ids="70,71")))
+
+        assert "no completed dbt runs found for any of the dbt cloud jobs" in str(exc_info.value).lower()
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_catalogs_of_an_environment_are_unioned_first_entry_wins(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={"70": {"id": 1}, "71": {"id": 2}},
+            artifacts_by_run={
+                1: {"manifest": {"nodes": {}}, "catalog": {"nodes": {"model.p.a": {"v": 1}}, "sources": {}}},
+                2: {
+                    "manifest": {"nodes": {}},
+                    "catalog": {"nodes": {"model.p.a": {"v": 2}, "model.p.b": {"v": 2}}, "sources": {"source.p.s": {}}},
+                },
+            },
+        )
+        _serve(tracked_rest, get)
+
+        (dbt_files,) = get_dbt_details(_cloud_config(job_ids="70,71"))
+
+        assert dbt_files.dbt_catalog == {
+            "nodes": {"model.p.a": {"v": 1}, "model.p.b": {"v": 2}},
+            "sources": {"source.p.s": {}},
+        }
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_newest_run_wins_when_two_jobs_compiled_the_same_model(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={
+                "70": {"id": 1, "finished_at": "2026-04-01 02:00:00.000000+00:00"},
+                "71": {"id": 2, "finished_at": "2026-10-28 02:00:00.000000+00:00"},
+            },
+            artifacts_by_run={
+                1: {"manifest": {"nodes": {"model.p.orders": _model("orders_old")}}},
+                2: {"manifest": {"nodes": {"model.p.orders": _model("orders_new")}}},
+            },
+        )
+        _serve(tracked_rest, get)
+
+        (dbt_files,) = get_dbt_details(_cloud_config(job_ids="70,71"))
+
+        assert dbt_files.dbt_manifest["nodes"]["model.p.orders"]["name"] == "orders_new"
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_jobs_of_one_environment_on_different_dbt_versions_fail_naming_both(self, tracked_rest):
+        """A job-level dbt version override: one manifest schema cannot validate the other's nodes."""
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={"70": {"id": 1, "job_definition_id": 70}, "71": {"id": 2, "job_definition_id": 71}},
+            artifacts_by_run={
+                1: {"manifest": {"metadata": {"dbt_schema_version": "v12"}, "nodes": {}}},
+                2: {"manifest": {"metadata": {"dbt_schema_version": "v8"}, "nodes": {}}},
+            },
+        )
+        _serve(tracked_rest, get)
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_cloud_config(job_ids="70,71")))
+
+        message = str(exc_info.value)
+        assert "[70]" in message and "[71]" in message and "v12" in message and "v8" in message
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_missing_manifest_in_a_merge_names_the_job_and_run(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={"70": {"id": 1, "job_definition_id": 70}, "71": {"id": 2, "job_definition_id": 71}},
+            artifacts_by_run={2: {"manifest": None}},
+        )
+        _serve(tracked_rest, get)
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_cloud_config(job_ids="70,71")))
+
+        assert "run [2] of job [71]" in str(exc_info.value)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_newest_manifest_decides_the_nodes_and_their_config(self, tracked_rest):
+        """A paused job's months-old run still lists a model renamed since, and an old alias."""
+        old_orders = {**_model("orders"), "config": {"alias": "orders_old"}}
+        new_orders = {**_model("orders", compiled=False), "config": {"alias": "orders"}}
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={
+                "70": {"id": 1, "finished_at": "2026-04-01 02:00:00.000000+00:00"},
+                "71": {"id": 2, "finished_at": "2026-10-28 02:00:00.000000+00:00"},
+            },
+            artifacts_by_run={
+                1: {
+                    "manifest": {
+                        "metadata": {"dbt_schema_version": "v12"},
+                        "nodes": {"model.p.orders": old_orders, "model.p.orders_v1": _model("orders_v1")},
+                    }
+                },
+                2: {"manifest": {"metadata": {"dbt_schema_version": "v12"}, "nodes": {"model.p.orders": new_orders}}},
+            },
+        )
+        _serve(tracked_rest, get)
+
+        (dbt_files,) = get_dbt_details(_cloud_config(job_ids="70,71"))
+
+        assert dbt_files.dbt_manifest == {
+            "metadata": {"dbt_schema_version": "v12"},
+            "nodes": {
+                "model.p.orders": {**new_orders, "compiled_code": "select * from orders_src"},
+            },
+        }
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_duplicate_job_ids_read_the_job_once(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(runs_by_job={"70": {"id": 1}})
+        _serve(tracked_rest, get)
+
+        list(get_dbt_details(_cloud_config(job_ids="70, 70")))
+
+        assert _runs_requested(requested) == ["70"]
+        assert not tracked_rest.return_value.get_raw.called
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_an_environment_is_yielded_before_the_next_is_downloaded(self, tracked_rest):
+        get, requested = _dbt_cloud_jobs_api(
+            runs_by_job={"70": {"id": 1, "environment_id": 5}, "71": {"id": 2, "environment_id": 6}}
+        )
+        _serve(tracked_rest, get)
+
+        next(get_dbt_details(_cloud_config(job_ids="70,71")))
+
+        assert not any("/runs/2/" in path for path, _ in requested)
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_auth_error_on_a_job_is_not_skipped(self, tracked_rest):
+        tracked_rest.return_value.get.side_effect = APIError({"code": 401, "message": "unauthorized"})
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_cloud_config(job_ids="70,71")))
+
+        assert "auth token" in str(exc_info.value).lower()
+        assert tracked_rest.return_value.get.call_count == 1
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_default_path_keeps_its_missing_manifest_message(self, tracked_rest):
+        get, _ = _dbt_cloud_jobs_api(runs_by_job={None: {"id": 1}}, artifacts_by_run={1: {"manifest": None}})
+        _serve(tracked_rest, get)
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_cloud_config()))
+
+        assert str(exc_info.value) == (
+            "Manifest file not found in dbt Cloud. Please ensure your dbt job generates artifacts."
+        )
+
+
+class TestDbtCloudRateLimit:
+    @patch("metadata.ingestion.ometa.client.time.sleep")
+    @patch.object(requests.Session, "request")
+    def test_429_is_retried_rather_than_failing_the_run(self, session_request, _sleep):
+        """Drives the real REST client: by default it turns a 429 into a final LimitsException."""
+
+        def respond(method, url, **kwargs):
+            response = requests.Response()
+            response.url = str(url)
+            if url.endswith("/runs") and session_request.call_count == 1:
+                response.status_code = 429
+                response._content = b'{"status": {"code": 429}}'
+            elif url.endswith("/runs"):
+                response.status_code = 200
+                run = {"id": 1, "finished_at_humanized": "now", "duration_humanized": "1m"}
+                response._content = json.dumps({"data": [run]}).encode()
+            elif url.endswith("manifest.json"):
+                response.status_code = 200
+                response._content = b'{"nodes": {}}'
+            else:
+                response.status_code = 404
+                response._content = b'{"status": {"code": 404}}'
+            return response
+
+        session_request.side_effect = respond
+
+        (dbt_files,) = get_dbt_details(_dbt_cloud_config())
+
+        assert dbt_files.dbt_manifest == {"nodes": {}}
 
 
 def _s3_config():
