@@ -1,7 +1,7 @@
 # MCP SSO sign-in asks the user to approve the client after the IdP round trip, before any code exists
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-30 (direct ID token entry removed)
 - **Deciders:** Vishnu Jain
 - **Guard:** `UserSSOOAuthProviderTest`
   (`handleSSOCallbackWithDbState_servesConsentPageInsteadOfIssuingCode`)
@@ -45,3 +45,9 @@ for the named client; that page does not show the redirect host yet.
   MySQL adds them from the 2.0.7 Java migration, which checks `information_schema` first
   (ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration), and again from 2.1.0, since
   a database already at 2.1.0 reprocesses 2.0.7 for its SQL only.
+
+## Amendment: the direct ID token entry is removed
+
+The MCP SSO entries are now the OIDC code flow and SAML; the direct ID token entry no longer
+exists (ADR:2026-10-30-the-mcp-callback-needs-the-state-of-a-pending-login). Both remaining
+entries still end in `handleSSOCallbackWithDbState` and ask for consent as decided above.

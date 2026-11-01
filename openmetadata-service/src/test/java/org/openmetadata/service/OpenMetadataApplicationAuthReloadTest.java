@@ -13,6 +13,10 @@
 package org.openmetadata.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -21,6 +25,7 @@ import static org.mockito.Mockito.verify;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /** Which auth handlers a security reload closes, whether or not the reload itself succeeded. */
 class OpenMetadataApplicationAuthReloadTest {
@@ -60,5 +65,51 @@ class OpenMetadataApplicationAuthReloadTest {
                 previousHandler, currentHandler, previousAuthenticator, currentAuthenticator));
 
     verify(previousAuthenticator).close();
+  }
+
+  @Test
+  void aReloadedAuthenticatorIsRegisteredOnlyOnceItIsInitialized() {
+    SecurityConfigurationManager registry = SecurityConfigurationManager.getInstance();
+    AuthenticatorHandler registeredBefore = registry.getAuthenticatorHandler();
+    registry.setAuthenticatorHandler(previousAuthenticator);
+    try {
+      doAnswer(
+              init -> {
+                assertSame(previousAuthenticator, registry.getAuthenticatorHandler());
+                return null;
+              })
+          .when(currentAuthenticator)
+          .init(any());
+
+      OpenMetadataApplication.initializeThenPublish(
+          currentAuthenticator, mock(OpenMetadataApplicationConfig.class));
+
+      assertSame(currentAuthenticator, registry.getAuthenticatorHandler());
+    } finally {
+      registry.setAuthenticatorHandler(registeredBefore);
+    }
+  }
+
+  @Test
+  void aReloadedAuthenticatorThatFailsToStartIsClosedAndNeverRegistered() {
+    SecurityConfigurationManager registry = SecurityConfigurationManager.getInstance();
+    AuthenticatorHandler registeredBefore = registry.getAuthenticatorHandler();
+    registry.setAuthenticatorHandler(previousAuthenticator);
+    try {
+      doThrow(new IllegalStateException("directory unreachable"))
+          .when(currentAuthenticator)
+          .init(any());
+
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              OpenMetadataApplication.initializeThenPublish(
+                  currentAuthenticator, mock(OpenMetadataApplicationConfig.class)));
+
+      verify(currentAuthenticator).close();
+      assertSame(previousAuthenticator, registry.getAuthenticatorHandler());
+    } finally {
+      registry.setAuthenticatorHandler(registeredBefore);
+    }
   }
 }

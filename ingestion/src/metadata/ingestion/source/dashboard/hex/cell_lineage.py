@@ -169,11 +169,13 @@ class ChainedCells:
     The queries of a project's cells so far, by result variable, for the SQL cells
     chained to them. A cell over MAX_INLINED_NODES, or past MAX_STORED_NODES for the
     project, is kept as None: the cells reading it are left unresolved rather than
-    reading its name as a warehouse table.
+    reading its name as a warehouse table. A cell whose SQL failed is kept apart: the
+    cells reading it can't be built either.
     """
 
     def __init__(self) -> None:
         self._cells: dict[str, tuple[str | None, exp.Query | None]] = {}
+        self._failed: dict[str, str | None] = {}
         self._stored_nodes = 0
 
     def add(self, name: str, connection_id: str | None, expression: exp.Query) -> None:
@@ -182,12 +184,23 @@ class ChainedCells:
         if fits:
             self._stored_nodes += nodes
         self._cells[name.lower()] = (connection_id, expression.copy() if fits else None)
+        self._failed.pop(name.lower(), None)
+
+    def fail(self, name: str, connection_id: str | None) -> None:
+        self._failed[name.lower()] = connection_id
 
     def readable_by(self, connection_id: str | None) -> dict[str, exp.Query | None]:
         """Hex chains a warehouse cell only to cells on its own connection; SQL on dataframes reads any"""
         return {
             name: query
             for name, (cell_connection_id, query) in self._cells.items()
+            if not connection_id or cell_connection_id == connection_id
+        }
+
+    def failed_readable_by(self, connection_id: str | None) -> set[str]:
+        return {
+            name
+            for name, cell_connection_id in self._failed.items()
             if not connection_id or cell_connection_id == connection_id
         }
 

@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.core.Response;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,6 +57,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -1278,6 +1281,68 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void list_includeAllResolvesASoftDeletedParent(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("soft_del_parent"), ns));
+    Metric child = createChild(ns, "soft_del_child", parent);
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    params.put("hardDelete", "false");
+    SdkClients.adminClient().metrics().delete(parent.getId().toString(), params);
+
+    // The list endpoint, not GET /{id}: only the list's batch parent hydration used to 404 here.
+    JsonNode row = findListedMetric("fields=parent&include=all", child.getId());
+
+    assertNotNull(row, "A child whose parent was soft-deleted must be listed with include=all");
+    assertEquals(parent.getId().toString(), row.get("parent").get("id").asText());
+    assertTrue(row.get("parent").get("deleted").asBoolean());
+  }
+
+  @Test
+  void list_childrenOmitsASoftDeletedChild(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("live_children_parent"), ns));
+    Metric liveChild = createChild(ns, "live_child", parent);
+    Metric deletedChild = createChild(ns, "deleted_child", parent);
+    deleteEntity(deletedChild.getId().toString());
+
+    JsonNode row = findListedMetric("fields=children", parent.getId());
+
+    assertNotNull(row, "A parent with a soft-deleted child must still be listed");
+    JsonNode children = row.get("children");
+    assertEquals(1, children.size(), "Only the live child is returned");
+    assertEquals(liveChild.getId().toString(), children.get(0).get("id").asText());
+  }
+
+  /**
+   * Pages through GET /v1/metrics, which runs the batch field hydration that GET /{id} skips. The
+   * `parent` filter can't narrow it: it rejects deleted parents.
+   */
+  private static JsonNode findListedMetric(String query, UUID id) {
+    String after = null;
+    do {
+      JsonNode page =
+          JSON.valueToTree(
+              SdkClients.adminClient()
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.GET,
+                      "/v1/metrics?limit=1000&"
+                          + query
+                          + (after == null
+                              ? ""
+                              : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8)),
+                      null,
+                      Object.class));
+      for (JsonNode metric : page.get("data")) {
+        if (id.toString().equals(metric.get("id").asText())) {
+          return metric;
+        }
+      }
+      after = page.get("paging").path("after").asText(null);
+    } while (after != null);
+    return null;
+  }
+
+  @Test
   void get_softDeletedChildExcludedFromChildrenCount(TestNamespace ns) {
     Metric parent = createEntity(createRequest(ns.prefix("soft_parent"), ns));
     Metric child = createChild(ns, "soft_child", parent);
@@ -2146,7 +2211,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         .create(
             new CreateEventSubscription()
                 .withName(ns.prefix("metric_approval_notification"))
-                .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+                .withAlertType(AlertType.NOTIFICATION)
                 .withResources(List.of("task"))
                 .withEnabled(true)
                 .withBatchSize(10)

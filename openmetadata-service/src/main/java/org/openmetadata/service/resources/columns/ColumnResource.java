@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.jdbi3.ColumnRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.ColumnAggregator;
@@ -592,6 +593,9 @@ public class ColumnResource {
       @Parameter(description = "Filter by domain ID") @QueryParam("domainId") String domainId,
       String csv) {
 
+    // Refuse oversized payloads before queueing; the repository re-validates inside the job.
+    CsvAsyncJobManager.validateImportPayload(csv);
+
     String jobId = UUID.randomUUID().toString();
     CSVImportResponse responseEntity =
         new CSVImportResponse(jobId, "CSV column import is in progress.");
@@ -616,7 +620,8 @@ public class ColumnResource {
                         serviceName,
                         databaseName,
                         schemaName,
-                        domainId);
+                        domainId,
+                        Integer.MAX_VALUE);
                 WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                     jobId, securityContext, result);
               } catch (Exception e) {

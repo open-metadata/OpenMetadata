@@ -77,7 +77,6 @@ const ontology: Ontology = {
 const renderDefinitions = () =>
   renderWithQueryClient(
     <OntologyStudioWorkspace
-      canCreate
       mode="definitions"
       ontology={ontology}
       viewSurface="graph"

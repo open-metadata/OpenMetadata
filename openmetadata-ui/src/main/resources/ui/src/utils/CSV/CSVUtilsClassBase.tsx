@@ -178,8 +178,10 @@ type CustomPropertyDefinition = NonNullable<Type['customProperties']>[number];
 
 interface InlineDescriptionEditorProps {
   value: string;
+  rowIdx: number;
   onCancel: () => void;
   onComplete: (value: string) => void;
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void;
 }
 
 interface InlineTextCellEditorProps {
@@ -1892,10 +1894,15 @@ const getInlineCustomPropertiesEditor =
 
 const InlineDescriptionEditor = ({
   value,
+  rowIdx,
   onCancel,
   onComplete,
+  onEditCellHeightChange,
 }: InlineDescriptionEditorProps) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  // The editor is taller than a grid row; growing the row keeps it from covering the next one.
+  useEditCellHeightReporter(containerRef, rowIdx, onEditCellHeightChange);
   const [draft, setDraft] = useState(value);
 
   useEffect(() => {
@@ -2010,6 +2017,7 @@ const InlineDescriptionEditor = ({
         className="bulk-edit-description-editor tw:z-10 tw:gap-2.5 tw:px-3.5 tw:pt-2.5 tw:pb-3"
         data-testid="bulk-edit-description-editor"
         direction="col"
+        ref={containerRef}
         role="presentation"
         onBlur={handleBlur}>
         <Box
@@ -2125,10 +2133,12 @@ const renderGridEnumSelect = ({
     autoFocus
     defaultOpen
     aria-label={ariaLabel}
-    className="react-grid-select-dropdown"
+    className="react-grid-select-dropdown tw:w-full"
     data-testid={testId}
     items={options.map((option) => ({ id: option.value, label: option.label }))}
-    popoverClassName="react-grid-select-dropdown"
+    // The list portals to <body>; it takes the cell's width (core default) with a floor, never
+    // the page's width.
+    popoverClassName="react-grid-select-dropdown tw:min-w-48"
     size="sm"
     value={value || null}
     // A cleared selection reports null; keep the cell empty rather than "null".
@@ -2217,6 +2227,7 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   if (options.usePlainTextEditor) {
     return ({
       row,
+      rowIdx,
       onRowChange,
       onClose,
       column,
@@ -2235,9 +2246,11 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
 
       return (
         <InlineDescriptionEditor
+          rowIdx={rowIdx}
           value={value}
           onCancel={() => onClose(false)}
           onComplete={handleComplete}
+          onEditCellHeightChange={options.onEditCellHeightChange}
         />
       );
     };
@@ -2801,7 +2814,7 @@ const getCsvMultiSelectEditor: CSVEditorFactory = ({
             hideDropdown
             multiple
             aria-label={startCase(column.key)}
-            className="react-grid-select-dropdown"
+            className="react-grid-select-dropdown tw:w-full tw:min-w-48"
             icon={null}
             items={[]}
             placeholder={t('label.add-entity', {
