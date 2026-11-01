@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-28 (initial)
 - **Deciders:** Platform
-- **Guard:** `StorageGuardTest` (docker/rdf-store), `StorageGuardRefusalTest`, `StorageFactsTest`,
+- **Guard:** `StorageGuardTest` (open-metadata/jena), `StorageGuardRefusalTest`, `StorageFactsTest`,
   `RdfStorageMaintenanceServiceTest`
 - **Related:** #36437, ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule
 
@@ -19,8 +19,7 @@ mid-commit; only OpenMetadata knows when compacting is safe.
 
 ## Decision
 
-- OpenMetadata's Fuseki images (`docker/rdf-store` and the `openmetadata/fuseki` image built from
-  `open-metadata/jena`) carry the same storage extension.
+- The `openmetadata/fuseki` image, built from `open-metadata/jena`, carries a storage extension.
 - **The write guard.** While the data volume has less usable space than
   `OPENMETADATA_STORAGE_MIN_FREE` (default `10%`; a percentage of the volume, or a size such as
   `20g`), every SPARQL update and Graph Store write gets HTTP 507 Insufficient Storage, the status
@@ -39,15 +38,18 @@ mid-commit; only OpenMetadata knows when compacting is safe.
   remove fills the volume, such as the live graph or other datasets on it, so urgent compactions
   stop for one interval, while the scheduled compaction still runs, and the server logs, at ERROR,
   that the volume needs expanding.
-- The images start the JVM with `-XX:-CreateCoredumpOnCrash`: a crash core dump is as large as the
+- The image starts the JVM with `-XX:-CreateCoredumpOnCrash`: a crash core dump is as large as the
   heap and, in production, filled the node's disk and got the pod evicted.
 
 ## Consequences
 
 - A full volume no longer crashes Fuseki: writes wait in OpenMetadata's durable queue until a
   compaction frees space, and resume on their own.
-- The 507 contract and the report's JSON shape are shared by both images and the server. Changing
-  either needs all three changed together.
+- The 507 contract and the report's JSON shape are shared by the image and the server. Changing
+  either needs both changed together.
+- The image with the guard ships with or after the OpenMetadata release that handles 507. A server
+  without that handling, on a volume below the reserve, sends refused live writes to the dead
+  letter table and fails a reindex at its start.
 - A store without the extension reports nothing: OpenMetadata falls back to the scheduled
   compaction alone, and a full volume still crashes it.
 - The reserve only keeps the JVM alive. A compaction needs free space about the size of the live

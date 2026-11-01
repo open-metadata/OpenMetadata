@@ -237,8 +237,8 @@ public interface RdfStorageInterface extends AutoCloseable {
   }
 
   /**
-   * The data volume's size and free space, when the store reports them (OpenMetadata's Fuseki
-   * images do at {@code /$/openmetadata/storage}). Empty when the store cannot tell.
+   * The data volume's size and free space, when the store reports them (the {@code
+   * openmetadata/fuseki} image's storage extension does at {@code /$/openmetadata/storage}). Empty when the store cannot tell.
    */
   default Optional<StorageFacts> storageFacts() {
     return Optional.empty();

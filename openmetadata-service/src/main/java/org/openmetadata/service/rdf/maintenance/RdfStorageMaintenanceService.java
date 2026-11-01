@@ -56,7 +56,8 @@ import org.openmetadata.service.rdf.storage.StorageFacts;
  * projection reads as degraded until one does. See
  * ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule.
  *
- * <p>A store that reports its volume, as OpenMetadata's Fuseki images do, is also compacted without
+ * <p>A store that reports its volume, as the {@code openmetadata/fuseki} image's storage extension
+ * does, is also compacted without
  * waiting for the interval once its free space falls below {@code urgentFreeSpacePercent} or its
  * write guard is refusing writes: a burst of writes can fill the volume well within one interval.
  * An urgent compaction that brings the store back above the threshold frees the urgent slot at

@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 /**
- * The storage report as OpenMetadata's Fuseki images (docker/rdf-store and open-metadata/jena)
- * write it, read into the volume's facts.
+ * The storage report as the {@code openmetadata/fuseki} image's storage extension writes it, read
+ * into the volume's facts.
  */
 class StorageFactsTest {
   private static final String REPORT =

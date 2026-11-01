@@ -1913,7 +1913,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   /**
-   * Reads the storage report of OpenMetadata's Fuseki images. Stock Fuseki has no such endpoint,
+   * Reads the storage report of the {@code openmetadata/fuseki} image's storage extension. Stock
+   * Fuseki has no such endpoint,
    * and a report that cannot be read is treated the same way: maintenance then runs on its
    * schedule only.
    */

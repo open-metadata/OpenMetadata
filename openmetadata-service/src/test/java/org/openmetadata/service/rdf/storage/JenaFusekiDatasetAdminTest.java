@@ -331,7 +331,7 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
-  @DisplayName("the storage report is read where OpenMetadata's Fuseki images serve it")
+  @DisplayName("the storage report is read where the openmetadata/fuseki image serves it")
   void storageReportIsReadFromTheImage() {
     JenaFusekiStorage storage = storage();
     bodyForPath =
