@@ -293,20 +293,23 @@ final class PolicyEvaluator {
    * map to the named policy. Used by the Policies & Drift page to populate
    * the recent-violations panel. v1 backed by a live re-evaluation over the
    * AI assets table; a real time-series store can replace this later without
-   * changing the response shape.
+   * changing the response shape. Every page is narrowed through {@link
+   * AIAssetVisibility} before the rules run, so breach rows never name an
+   * asset the caller may not view.
    */
-  static List<AIGovernancePolicyViolation> recentViolations(UUID policyId, Long since, int limit) {
+  static List<AIGovernancePolicyViolation> recentViolations(
+      UUID policyId, Long since, int limit, AIAssetVisibility visibility) {
     String ruleNamePattern = ruleNameForPolicy(policyId);
     long sinceMs = since == null ? 0 : since;
     int effectiveLimit = Math.max(1, Math.min(limit, 500));
 
     List<AIGovernancePolicyViolation> rows = new ArrayList<>();
-    scanAssets(Entity.AI_APPLICATION, ruleNamePattern, sinceMs, effectiveLimit, rows);
+    scanAssets(Entity.AI_APPLICATION, ruleNamePattern, sinceMs, effectiveLimit, visibility, rows);
     if (rows.size() < effectiveLimit) {
-      scanAssets(Entity.LLM_MODEL, ruleNamePattern, sinceMs, effectiveLimit, rows);
+      scanAssets(Entity.LLM_MODEL, ruleNamePattern, sinceMs, effectiveLimit, visibility, rows);
     }
     if (rows.size() < effectiveLimit) {
-      scanAssets(Entity.MCP_SERVER, ruleNamePattern, sinceMs, effectiveLimit, rows);
+      scanAssets(Entity.MCP_SERVER, ruleNamePattern, sinceMs, effectiveLimit, visibility, rows);
     }
 
     return rows;
@@ -317,8 +320,9 @@ final class PolicyEvaluator {
       String ruleNamePattern,
       long sinceMs,
       int limit,
+      AIAssetVisibility visibility,
       List<AIGovernancePolicyViolation> rows) {
-    List<? extends EntityInterface<?>> entities = listEntities(entityType, limit);
+    List<? extends EntityInterface<?>> entities = listEntities(entityType, limit, visibility);
     for (EntityInterface<?> entity : entities) {
       if (rows.size() >= limit) {
         return;
@@ -354,7 +358,12 @@ final class PolicyEvaluator {
     }
   }
 
-  private static List<? extends EntityInterface<?>> listEntities(String entityType, int limit) {
+  /**
+   * Pages until {@code limit} assets the visibility admits are collected, so a caller who may view
+   * only a slice of the estate still gets up to {@code limit} candidates.
+   */
+  private static List<? extends EntityInterface<?>> listEntities(
+      String entityType, int limit, AIAssetVisibility visibility) {
     List<EntityInterface<?>> result = new ArrayList<>();
     try {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
@@ -364,7 +373,7 @@ final class PolicyEvaluator {
         int pageSize = Math.min(PAGE_SIZE, Math.max(1, limit - result.size()));
         ResultList<? extends EntityInterface<?>> page =
             repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, pageSize, after);
-        result.addAll(page.getData());
+        result.addAll(visibility.filter(page.getData()));
         after = page.getPaging() == null ? null : page.getPaging().getAfter();
       } while (after != null && result.size() < limit);
     } catch (Exception ignored) {

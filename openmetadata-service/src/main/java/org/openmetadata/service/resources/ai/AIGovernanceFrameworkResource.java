@@ -174,7 +174,10 @@ public class AIGovernanceFrameworkResource
       @PathParam("id") UUID id) {
     AIGovernanceFramework framework =
         getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
-    return Response.ok(repository.getCoverage(uriInfo, framework)).build();
+    return Response.ok(
+            repository.getCoverage(
+                uriInfo, framework, AIAssetVisibility.forCaller(securityContext, authorizer)))
+        .build();
   }
 
   @POST

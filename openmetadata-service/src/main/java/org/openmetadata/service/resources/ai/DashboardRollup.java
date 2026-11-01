@@ -57,6 +57,10 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  * {@link org.openmetadata.service.search.indexes.AIGovernanceIndexProjection}
  * already produces. The paginated in-memory path keeps Phase 3 testable without a
  * search backend running.
+ *
+ * <p>Every page is narrowed through {@link AIAssetVisibility} before it enters the
+ * rollup, so the stats, matrices and top-N lists reflect the caller's view of the
+ * estate rather than the whole estate.
  */
 @Slf4j
 final class DashboardRollup {
@@ -68,11 +72,12 @@ final class DashboardRollup {
 
   private DashboardRollup() {}
 
-  static AIGovernanceDashboardResponse compute() {
+  static AIGovernanceDashboardResponse compute(AIAssetVisibility visibility) {
     List<RolledAsset> assets = new ArrayList<>();
-    collectAssets(Entity.AI_APPLICATION, "owners,domains,governanceMetadata", assets);
-    collectAssets(Entity.MCP_SERVER, "owners,domains,governanceMetadata", assets);
-    collectAssets(Entity.LLM_MODEL, "owners,domains,governanceStatus,detection", assets);
+    collectAssets(Entity.AI_APPLICATION, "owners,domains,governanceMetadata", visibility, assets);
+    collectAssets(Entity.MCP_SERVER, "owners,domains,governanceMetadata", visibility, assets);
+    collectAssets(
+        Entity.LLM_MODEL, "owners,domains,governanceStatus,detection", visibility, assets);
 
     return new AIGovernanceDashboardResponse()
         .withEstateStats(estateStats(assets))
@@ -83,7 +88,8 @@ final class DashboardRollup {
         .withGeneratedAt(System.currentTimeMillis());
   }
 
-  private static void collectAssets(String entityType, String fields, List<RolledAsset> out) {
+  private static void collectAssets(
+      String entityType, String fields, AIAssetVisibility visibility, List<RolledAsset> out) {
     try {
       EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getEntityRepository(entityType);
@@ -93,7 +99,7 @@ final class DashboardRollup {
       do {
         ResultList<? extends EntityInterface<?>> page =
             repository.listAfter(null, parsedFields, filter, PAGE_SIZE, after);
-        for (EntityInterface<?> entity : page.getData()) {
+        for (EntityInterface<?> entity : visibility.filter(page.getData())) {
           out.add(RolledAsset.from(entityType, entity));
         }
         after = page.getPaging() == null ? null : page.getPaging().getAfter();

@@ -86,19 +86,23 @@ final class AIGovernanceWorkflowService {
 
   AIGovernanceActivityResponse getActivity(
       SecurityContext securityContext, String entityType, String entityId, int limit) {
+    AIAssetVisibility visibility = AIAssetVisibility.unrestricted();
     if (entityType != null && entityId != null) {
       authorizeViewById(securityContext, entityType, entityId);
-    } else if (entityType != null) {
-      authorizeViewResourceType(securityContext, entityType);
     } else {
-      authorizeViewAcrossSupportedTypes(securityContext);
+      if (entityType != null) {
+        authorizeViewResourceType(securityContext, entityType);
+      } else {
+        authorizeViewAcrossSupportedTypes(securityContext);
+      }
+      visibility = callerVisibility(securityContext);
     }
-    return GovernanceActivity.compute(entityType, entityId, limit);
+    return GovernanceActivity.compute(entityType, entityId, limit, visibility);
   }
 
   AIGovernanceDashboardResponse getDashboard(SecurityContext securityContext) {
     authorizeViewAcrossSupportedTypes(securityContext);
-    return DashboardRollup.compute();
+    return DashboardRollup.compute(callerVisibility(securityContext));
   }
 
   AIGovernancePolicyStatusResponse getPolicyStatus(
@@ -116,7 +120,9 @@ final class AIGovernanceWorkflowService {
         new ResourceContext<>(Entity.AI_GOVERNANCE_POLICY, policyId, null));
     authorizeViewAcrossSupportedTypes(securityContext);
     return new AIGovernancePolicyViolationsResponse()
-        .withData(PolicyEvaluator.recentViolations(policyId, since, limit));
+        .withData(
+            PolicyEvaluator.recentViolations(
+                policyId, since, limit, callerVisibility(securityContext)));
   }
 
   AIGovernanceBulkTriageResponse bulkTriage(
@@ -218,6 +224,16 @@ final class AIGovernanceWorkflowService {
     for (String entityType : SUPPORTED_TYPES) {
       authorizeViewResourceType(securityContext, entityType);
     }
+  }
+
+  /**
+   * The caller's view of the AI estate for the estate-wide reads. The type-level {@code VIEW_ALL}
+   * checks above pass for any resource the policy does not conditionally deny; the per-asset {@code
+   * ViewBasic} filter here is what confines a domain-restricted caller to the assets the by-id read
+   * would also allow.
+   */
+  private AIAssetVisibility callerVisibility(SecurityContext securityContext) {
+    return AIAssetVisibility.forCaller(securityContext, authorizer);
   }
 
   private void authorizeViewResourceType(SecurityContext securityContext, String entityType) {
