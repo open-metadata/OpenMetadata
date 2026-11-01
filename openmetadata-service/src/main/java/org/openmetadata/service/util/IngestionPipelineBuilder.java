@@ -13,10 +13,8 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.DBT;
-
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 
@@ -28,13 +26,11 @@ public final class IngestionPipelineBuilder {
 
   /** Build `IngestionPipeline` object with concrete class for the config which by definition it is a `Object`. */
   public static void addDefinedConfig(IngestionPipeline ingestionPipeline) {
-    if (DBT.equals(ingestionPipeline.getPipelineType())
-        && ingestionPipeline.getSourceConfig() != null) {
-      ingestionPipeline
-          .getSourceConfig()
-          .setConfig(
-              ClassConverterFactory.getConverter(DbtPipeline.class)
-                  .convert(ingestionPipeline.getSourceConfig().getConfig()));
+    SourceConfig sourceConfig = ingestionPipeline.getSourceConfig();
+    if (sourceConfig != null && sourceConfig.getConfig() != null) {
+      sourceConfig.setConfig(
+          ClassConverterFactory.convertProperty(
+              SourceConfig.class, "config", sourceConfig.getConfig()));
     }
     if (ingestionPipeline.getOpenMetadataServerConnection() != null) {
       ingestionPipeline.setOpenMetadataServerConnection(
