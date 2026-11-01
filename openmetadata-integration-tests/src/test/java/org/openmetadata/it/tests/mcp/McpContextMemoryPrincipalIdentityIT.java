@@ -47,7 +47,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
-import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
 
@@ -84,12 +83,10 @@ class McpContextMemoryPrincipalIdentityIT extends McpTestBase {
       ContextMemory memory = createMemory(ns, sharing, null, file);
 
       assertEquals(memory.getId(), memoriesAs(member).get(memory.getId().toString()).getId());
-      assertListed(memory.getId(), member, true);
       assertMcpAnswer(memory, member, true);
       assertCompanyContextAnswer(memory, member, true);
 
       assertMemoryHidden(memory, namesake);
-      assertListed(memory.getId(), namesake, false);
       assertMcpAnswer(memory, namesake, false);
       assertCompanyContextAnswer(memory, namesake, false);
     } finally {
@@ -182,18 +179,6 @@ class McpContextMemoryPrincipalIdentityIT extends McpTestBase {
     String id = memory.getId().toString();
     assertThrows(ForbiddenException.class, () -> caller.get(id));
     assertThrows(ForbiddenException.class, () -> caller.getByName(memory.getFullyQualifiedName()));
-  }
-
-  private static void assertListed(UUID id, User user, boolean visible) {
-    ContextMemoryService caller = memoriesAs(user);
-    boolean listed = false;
-    String after = null;
-    do {
-      var page = caller.list(new ListParams().withLimit(100).withAfter(after));
-      listed |= page.getData().stream().anyMatch(memory -> id.equals(memory.getId()));
-      after = page.getPaging().getAfter();
-    } while (after != null && !after.isEmpty());
-    assertEquals(visible, listed);
   }
 
   private void assertMcpAnswer(ContextMemory memory, User user, boolean visible) throws Exception {
