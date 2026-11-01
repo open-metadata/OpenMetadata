@@ -229,7 +229,7 @@ class NestedSecretConverterCoverageTest {
     if (branches.isEmpty()) {
       return new LinkedHashMap<>();
     }
-    Ref branch = branches.getFirst();
+    Ref branch = branches.get(0);
     return secretPayload(branch.node(), branch.path(), schemas);
   }
 
