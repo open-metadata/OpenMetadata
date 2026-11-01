@@ -100,6 +100,13 @@ export interface RDFConfiguration {
      */
     requestTimeoutMs?: number;
     /**
+     * Automatic maintenance of the RDF store. Apache Jena TDB2 keeps every page a write
+     * transaction replaces until the dataset is compacted, so a store that only receives live
+     * writes grows until its disk is full. Maintenance compacts the serving dataset on a
+     * schedule, with writes to it paused so none is lost or dead-lettered.
+     */
+    storageMaintenance?: StorageMaintenance;
+    /**
      * Type of RDF storage backend
      */
     storageType: StorageType;
@@ -141,6 +148,29 @@ export enum ReasoningLevel {
     OwlDL = "OWL_DL",
     OwlLite = "OWL_LITE",
     Rdfs = "RDFS",
+}
+
+/**
+ * Automatic maintenance of the RDF store. Apache Jena TDB2 keeps every page a write
+ * transaction replaces until the dataset is compacted, so a store that only receives live
+ * writes grows until its disk is full. Maintenance compacts the serving dataset on a
+ * schedule, with writes to it paused so none is lost or dead-lettered.
+ */
+export interface StorageMaintenance {
+    /**
+     * Longest time between compactions of a dataset that receives writes. Fuseki blocks writers
+     * for the whole compaction, which copies only the live data.
+     */
+    compactionIntervalHours?: number;
+    /**
+     * Compact the serving dataset automatically.
+     */
+    enabled?: boolean;
+    /**
+     * Longest a compaction or the clear that starts an in-place rebuild may take before the run
+     * reports it as unfinished. Writes to the dataset stay paused meanwhile.
+     */
+    maxDurationMinutes?: number;
 }
 
 /**

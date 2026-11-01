@@ -22,7 +22,7 @@ generateType() {
     tmp_schema_file=$1
     output_file=$2
     echo "Generating $output_file from specification at $tmp_schema_file"
-    ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1
+    "$QUICKTYPE" -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1 || return 1
 }
 
 processFile() {
@@ -41,7 +41,7 @@ processFile() {
     output_file="$output_dir/$(basename "$schema_file" .json).ts"
 
     # Generate temporary schema and TypeScript file
-    generateType "$schema_file" "$output_file"
+    generateType "$schema_file" "$output_file" || return 1
 }
 
 getTypes() {
@@ -50,7 +50,7 @@ getTypes() {
 
     for schema_file in "$@"; do
         echo "Processing file $current_file of $total_files: $schema_file"
-        processFile "$schema_file"
+        processFile "$schema_file" || return 1
         current_file=$((current_file + 1))
     done
 }
@@ -65,7 +65,13 @@ if [ "$#" -eq 0 ]; then
     exit 1
 fi
 
+# Keep this pin identical to json2ts-generate-all.sh.
+QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
+    echo "Failed to resolve quicktype via npx" >&2
+    exit 1
+}
+
 # Process the schema files passed as arguments
-getTypes "$@"
+getTypes "$@" || exit 1
 
 echo "TypeScript generation completed."
