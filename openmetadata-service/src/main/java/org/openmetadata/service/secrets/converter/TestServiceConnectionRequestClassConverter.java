@@ -64,12 +64,22 @@ public class TestServiceConnectionRequestClassConverter extends ClassConverter {
     Class<?> configClass =
         ReflectionUtil.createConnectionConfigClass(
             request.getConnectionType(), request.getServiceType());
-    tryToConvertOrFail(request.getConnection(), CONNECTION_CLASSES)
-        .ifPresent(request::setConnection);
+    request.setConnection(convertWrapper(request.getConnection()));
     ServiceConnectionEntityInterface connection =
         (ServiceConnectionEntityInterface) request.getConnection();
     connection.setConfig(
         ClassConverterFactory.getConverter(configClass).convert(connection.getConfig()));
+  }
+
+  private Object convertWrapper(Object object) {
+    for (Class<?> candidate : CONNECTION_CLASSES) {
+      try {
+        return JsonUtils.convertValue(object, candidate);
+      } catch (RuntimeException ignored) {
+        // Try the next service wrapper.
+      }
+    }
+    throw new IllegalArgumentException("Cannot convert the service connection wrapper.");
   }
 
   /**

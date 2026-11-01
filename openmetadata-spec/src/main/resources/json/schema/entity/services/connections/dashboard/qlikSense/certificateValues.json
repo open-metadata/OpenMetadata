@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/qlikSense/certificateValues.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QlikCertificateValues",
+  "description": "Qlik Authentication Certificate By Values",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
+  "properties": {
+    "sslConfig": {
+      "$ref": "../../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    }
+  },
+  "required": ["sslConfig"]
+}

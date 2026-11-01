@@ -14,12 +14,15 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.ReflectionException;
+import org.openmetadata.service.util.ReflectionUtil;
 
 /**
  * Currently when an object is converted into a specific class using `JsonUtils.convertValue` there`Object` fields that
@@ -74,51 +77,98 @@ public abstract class ClassConverter {
    * Reads {@code property} off {@code target}, converts it against {@code candidates} and writes it
    * back.
    *
-   * <p>Mostly for {@code Object}-typed properties, i.e. the ones jsonschema2pojo emits for a JSON
+   * <p>Only for {@code Object}-typed properties, i.e. the ones jsonschema2pojo emits for a JSON
    * Schema {@code oneOf}. Jackson leaves a {@code LinkedHashMap} in such a field, and neither the
    * password masker nor the secrets manager descends into a non-{@code org.openmetadata} value, so
    * every {@code format: password} leaf below it stays in the clear until it is typed again here.
-   *
-   * <p>A typed property works too: it is run through its own registered converter, which is how a
-   * {@code oneOf} nested inside it (e.g. {@code GCPCredentials.gcpConfig}) gets typed.
-   *
-   * <p>An empty map is left as it is: choosing "None" for an optional {@code oneOf} submits {@code
-   * {}}, and since Jackson does not enforce JSON Schema {@code required} it would convert to the
-   * first candidate, filled with schema defaults. An empty map holds no secret to mask.
    */
   protected void convertProperty(Object target, String property, List<Class<?>> candidates) {
     String accessorSuffix = Character.toUpperCase(property.charAt(0)) + property.substring(1);
     try {
       Method getter = target.getClass().getMethod("get" + accessorSuffix);
       Object value = getter.invoke(target);
-      Optional<Object> converted =
-          isEmptyMap(value) ? Optional.empty() : tryToConvert(value, candidates);
-      converted.ifPresent(
-          typed -> {
-            try {
-              target
-                  .getClass()
-                  .getMethod("set" + accessorSuffix, getter.getReturnType())
-                  .invoke(target, typed);
-            } catch (ReflectiveOperationException e) {
-              throw new ReflectionException(
-                  String.format(
-                      "Failed to set property [%s] on [%s]: %s",
-                      property, target.getClass().getSimpleName(), e.getMessage()),
-                  e);
-            }
-          });
+      if (!(value instanceof Map<?, ?> map && map.isEmpty())) {
+        tryToConvert(value, candidates)
+            .ifPresent(converted -> setConvertedValue(target, getter, converted));
+      }
     } catch (ReflectiveOperationException e) {
-      throw new ReflectionException(
-          String.format(
-              "Failed to convert property [%s] on [%s]: %s",
-              property, target.getClass().getSimpleName(), e.getMessage()),
-          e);
+      throw conversionFailure(property, target, e);
     }
   }
 
-  private static boolean isEmptyMap(Object value) {
-    return value instanceof Map<?, ?> map && map.isEmpty();
+  protected static Object convertChildren(Object target) {
+    if (target == null) {
+      return null;
+    }
+    for (Method getter : target.getClass().getMethods()) {
+      if (isConvertibleGetter(getter)) {
+        convertChild(target, getter);
+      }
+    }
+    return target;
+  }
+
+  private static boolean isConvertibleGetter(Method getter) {
+    return ReflectionUtil.isGetMethodOfObject(getter)
+        && getter.getParameterCount() == 0
+        && !"getClass".equals(getter.getName());
+  }
+
+  private static void convertChild(Object target, Method getter) {
+    if (!hasSetter(target, getter)) {
+      return;
+    }
+    Object value = ReflectionUtil.getObjectFromMethod(getter, target);
+    if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(value))) {
+      Object converted = ClassConverterFactory.getConverter(value.getClass()).convert(value);
+      setConvertedValue(target, getter, converted);
+    } else if (value instanceof List<?> list) {
+      convertListChildren(target, getter, list);
+    }
+  }
+
+  private static boolean hasSetter(Object target, Method getter) {
+    String setterName = getter.getName().replaceFirst("get", "set");
+    try {
+      target.getClass().getMethod(setterName, getter.getReturnType());
+      return true;
+    } catch (NoSuchMethodException e) {
+      return false;
+    }
+  }
+
+  private static void convertListChildren(Object target, Method getter, List<?> values) {
+    List<Object> converted = new ArrayList<>(values.size());
+    boolean hasOpenMetadataChild = false;
+    for (Object value : values) {
+      boolean isOpenMetadataChild = Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(value));
+      converted.add(
+          isOpenMetadataChild
+              ? ClassConverterFactory.getConverter(value.getClass()).convert(value)
+              : value);
+      hasOpenMetadataChild |= isOpenMetadataChild;
+    }
+    if (hasOpenMetadataChild) {
+      setConvertedValue(target, getter, converted);
+    }
+  }
+
+  static void setConvertedValue(Object target, Method getter, Object value) {
+    String setterName = getter.getName().replaceFirst("get", "set");
+    try {
+      target.getClass().getMethod(setterName, getter.getReturnType()).invoke(target, value);
+    } catch (ReflectiveOperationException e) {
+      throw conversionFailure(getter.getName(), target, e);
+    }
+  }
+
+  private static ReflectionException conversionFailure(
+      String property, Object target, ReflectiveOperationException cause) {
+    return new ReflectionException(
+        String.format(
+            "Failed to convert property [%s] on [%s]: %s",
+            property, target.getClass().getSimpleName(), cause.getMessage()),
+        cause);
   }
 
   protected Optional<Object> tryToConvert(Object object, List<Class<?>> candidateClasses) {

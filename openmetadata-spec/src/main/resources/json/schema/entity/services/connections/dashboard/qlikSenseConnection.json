@@ -13,46 +13,6 @@
                 "QlikSense"
             ],
             "default": "QlikSense"
-        },
-        "qlikCertificatePath": {
-            "description": "Qlik Authentication Certificate File Path",
-            "title": "Qlik Certificates By File Path",
-            "type": "object",
-            "properties": {
-                "clientCertificate": {
-                    "title": "Client Certificate Path",
-                    "description": "Client Certificate",
-                    "type": "string"
-                },
-                "clientKeyCertificate": {
-                    "title": "Client Key Certificate",
-                    "description": "Client Key Certificate.",
-                    "type": "string"
-                },
-                "rootCertificate": {
-                    "title": "Root Certificate",
-                    "description": "Root Certificate.",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "clientCertificate",
-                "clientKeyCertificate",
-                "rootCertificate"
-            ]
-        },
-        "qlikCertificateValues": {
-            "description": "Qlik Authentication Certificate By Values",
-            "title": "Qlik Certificates By Values",
-            "type": "object",
-            "properties": {
-                "sslConfig": {
-                    "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
-                }
-            },
-            "required": [
-                "sslConfig"
-            ]
         }
     },
     "properties": {
@@ -77,12 +37,13 @@
             "format": "uri"
         },
         "certificates": {
+            "mask": true,
             "oneOf": [
                 {
-                    "$ref": "#/definitions/qlikCertificateValues"
+                    "$ref": "./qlikSense/certificateValues.json"
                 },
                 {
-                    "$ref": "#/definitions/qlikCertificatePath"
+                    "$ref": "./qlikSense/certificatePath.json"
                 }
             ]
         },

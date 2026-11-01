@@ -2,7 +2,11 @@ package org.openmetadata.service.secrets.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -23,7 +27,9 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
 import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
@@ -74,5 +80,57 @@ public class ClassConverterFactoryTest {
     ClassConverterFactory.getConverter(AirflowConnection.class);
     ClassConverterFactory.getConverter(BigQueryConnection.class);
     assertEquals(originalSize, ClassConverterFactory.getConverterMap().size());
+  }
+
+  @Test
+  void testNonOneOfPropertyIsReturnedUnchanged() {
+    assertEquals(
+        "user", ClassConverterFactory.convertProperty(MysqlConnection.class, "username", "user"));
+  }
+
+  @Test
+  void testUnconvertibleSecretOneOfFailsClosed() {
+    Map<String, Object> invalidAuth =
+        Map.of("username", "user", "password", "secret", "unrecognized", true);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClassConverterFactory.convertProperty(NatsConnection.class, "authType", invalidAuth));
+  }
+
+  @Test
+  void testFailedCandidateConversionIsReported() {
+    MysqlConnectionClassConverter converter = new MysqlConnectionClassConverter();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> converter.tryToConvertOrFail(Map.of("unrecognized", true), List.of(basicAuth.class)));
+  }
+
+  @Test
+  void testMissingPropertyIsReported() {
+    MysqlConnectionClassConverter converter = new MysqlConnectionClassConverter();
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            converter.convertProperty(new MysqlConnection(), "missing", List.of(basicAuth.class)));
+  }
+
+  @Test
+  void testNullChildrenAreIgnored() {
+    assertNull(ClassConverter.convertChildren(null));
+    assertNull(SchemaClassConverter.convert(null));
+  }
+
+  @Test
+  void testReadOnlyPropertyIsNotWritten() throws Exception {
+    Workflow workflow = new Workflow();
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            ClassConverter.setConvertedValue(
+                workflow, Workflow.class.getMethod("getEntityReference"), null));
   }
 }
