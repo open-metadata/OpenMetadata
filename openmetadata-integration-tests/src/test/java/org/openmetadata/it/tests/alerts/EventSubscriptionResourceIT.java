@@ -43,9 +43,12 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.PrefixCondition;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
@@ -111,7 +114,7 @@ public class EventSubscriptionResourceIT
     return new CreateEventSubscription()
         .withName(ns.prefix("eventsub"))
         .withDescription("Test event subscription created by integration test")
-        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withAlertType(AlertType.NOTIFICATION)
         .withResources(List.of("all"))
         .withEnabled(false)
         .withDestinations(getWebhookDestination(ns));
@@ -122,7 +125,7 @@ public class EventSubscriptionResourceIT
     return new CreateEventSubscription()
         .withName(name)
         .withDescription("Test event subscription")
-        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withAlertType(AlertType.NOTIFICATION)
         .withResources(List.of("all"))
         .withEnabled(false)
         .withDestinations(getWebhookDestination(ns));
@@ -134,7 +137,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_loopback"))
             .withDescription("Endpoint written as a loopback address")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(
@@ -283,7 +286,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_disabled"))
             .withDescription("Disabled subscription")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -301,7 +304,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_update_desc"))
             .withDescription("Initial description")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -324,7 +327,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(subName)
             .withDescription("First subscription")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -337,7 +340,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(subName)
             .withDescription("Duplicate subscription")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -356,7 +359,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_filter"))
             .withDescription("Subscription with filtering")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -435,7 +438,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("slack_sub"))
             .withDescription("Slack subscription")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getSlackDestination(ns));
@@ -456,7 +459,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("msteams_sub"))
             .withDescription("MS Teams subscription")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getMSTeamsDestination(ns));
@@ -477,7 +480,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("email_sub"))
             .withDescription("Email subscription")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getEmailDestination(ns));
@@ -499,14 +502,14 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("observability_sub"))
             .withDescription("Observability subscription")
-            .withAlertType(CreateEventSubscription.AlertType.OBSERVABILITY)
+            .withAlertType(AlertType.OBSERVABILITY)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
 
     EventSubscription subscription = createEntity(request);
     assertNotNull(subscription);
-    assertEquals(CreateEventSubscription.AlertType.OBSERVABILITY, subscription.getAlertType());
+    assertEquals(AlertType.OBSERVABILITY, subscription.getAlertType());
   }
 
   @Test
@@ -517,14 +520,14 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("activityfeed_sub"))
             .withDescription("Activity Feed subscription")
-            .withAlertType(CreateEventSubscription.AlertType.ACTIVITY_FEED)
+            .withAlertType(AlertType.ACTIVITY_FEED)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
 
     EventSubscription subscription = createEntity(request);
     assertNotNull(subscription);
-    assertEquals(CreateEventSubscription.AlertType.ACTIVITY_FEED, subscription.getAlertType());
+    assertEquals(AlertType.ACTIVITY_FEED, subscription.getAlertType());
   }
 
   @Test
@@ -544,7 +547,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("event_filter_sub"))
             .withDescription("Subscription with event type filtering")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -565,7 +568,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("batch_sub"))
             .withDescription("Subscription with batch size")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withBatchSize(50)
@@ -584,7 +587,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("poll_sub"))
             .withDescription("Subscription with poll interval")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withPollInterval(5)
@@ -603,7 +606,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("retry_sub"))
             .withDescription("Subscription with retries")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withRetries(3)
@@ -619,13 +622,13 @@ public class EventSubscriptionResourceIT
     OpenMetadataClient client = SdkClients.adminClient();
 
     ArgumentsInput filterByOwner =
-        createFilterByOwnerArgumentsInput(List.of("admin"), ArgumentsInput.Effect.INCLUDE);
+        createFilterByOwnerArgumentsInput(List.of("admin"), Effect.INCLUDE);
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("owner_filter_sub"))
             .withDescription("Subscription with owner filtering")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -643,13 +646,13 @@ public class EventSubscriptionResourceIT
     OpenMetadataClient client = SdkClients.adminClient();
 
     ArgumentsInput filterByDomain =
-        createFilterByDomainArgumentsInput(List.of("Engineering"), ArgumentsInput.Effect.INCLUDE);
+        createFilterByDomainArgumentsInput(List.of("Engineering"), Effect.INCLUDE);
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("domain_filter_sub"))
             .withDescription("Subscription with domain filtering")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -668,14 +671,13 @@ public class EventSubscriptionResourceIT
 
     ArgumentsInput filterByFqn =
         createFilterByFqnArgumentsInput(
-            List.of("sample_data.ecommerce_db.shopify.dim_customer"),
-            ArgumentsInput.Effect.INCLUDE);
+            List.of("sample_data.ecommerce_db.shopify.dim_customer"), Effect.INCLUDE);
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("fqn_filter_sub"))
             .withDescription("Subscription with FQN filtering")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -694,14 +696,13 @@ public class EventSubscriptionResourceIT
 
     ArgumentsInput excludeFilter =
         createFilterByFqnArgumentsInput(
-            List.of("sample_data.ecommerce_db.shopify.dim_customer"),
-            ArgumentsInput.Effect.EXCLUDE);
+            List.of("sample_data.ecommerce_db.shopify.dim_customer"), Effect.EXCLUDE);
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("exclude_filter_sub"))
             .withDescription("Subscription with exclude filtering")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -711,8 +712,7 @@ public class EventSubscriptionResourceIT
     assertNotNull(subscription);
     assertNotNull(subscription.getInput());
     assertNotNull(subscription.getInput().getFilters());
-    assertEquals(
-        ArgumentsInput.Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
+    assertEquals(Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
   }
 
   @Test
@@ -720,15 +720,15 @@ public class EventSubscriptionResourceIT
     OpenMetadataClient client = SdkClients.adminClient();
 
     ArgumentsInput filterByOwner =
-        createFilterByOwnerArgumentsInput(List.of("admin"), ArgumentsInput.Effect.INCLUDE);
+        createFilterByOwnerArgumentsInput(List.of("admin"), Effect.INCLUDE);
     ArgumentsInput filterByDomain =
-        createFilterByDomainArgumentsInput(List.of("Engineering"), ArgumentsInput.Effect.INCLUDE);
+        createFilterByDomainArgumentsInput(List.of("Engineering"), Effect.INCLUDE);
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("multi_filter_sub"))
             .withDescription("Subscription with multiple filters")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -750,7 +750,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("table_resource_sub"))
             .withDescription("Subscription for table resource")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -769,7 +769,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("topic_resource_sub"))
             .withDescription("Subscription for topic resource")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("topic"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -788,7 +788,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("pipeline_resource_sub"))
             .withDescription("Subscription for ingestion pipeline resource")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("ingestionPipeline"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -807,7 +807,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("update_batch_sub"))
             .withDescription("Subscription to update batch size")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withBatchSize(10)
@@ -829,7 +829,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("update_retry_sub"))
             .withDescription("Subscription to update retries")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withRetries(0)
@@ -851,7 +851,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("update_dest_sub"))
             .withDescription("Subscription to update destination")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -875,7 +875,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("enable_disable_sub"))
             .withDescription("Subscription to test enable/disable")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -905,7 +905,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("concurrent_toggle_sub"))
             .withDescription("Subscription toggled from several threads at once")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -970,7 +970,7 @@ public class EventSubscriptionResourceIT
             new CreateEventSubscription()
                 .withName(ns.prefix("toggle_ordering_sub"))
                 .withDescription("Subscription toggled from both directions at once")
-                .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+                .withAlertType(AlertType.NOTIFICATION)
                 .withResources(List.of("all"))
                 .withEnabled(true)
                 .withDestinations(getWebhookDestination(ns)));
@@ -1076,7 +1076,7 @@ public class EventSubscriptionResourceIT
               new CreateEventSubscription()
                   .withName("") // Empty name should fail
                   .withDescription("Invalid - empty name")
-                  .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+                  .withAlertType(AlertType.NOTIFICATION)
                   .withResources(List.of("table"))
                   .withEnabled(false)
                   .withDestinations(getWebhookDestination(ns));
@@ -1093,7 +1093,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("list_sub_1"))
             .withDescription("List test 1")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1102,7 +1102,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("list_sub_2"))
             .withDescription("List test 2")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1130,7 +1130,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("update_endpoint_sub"))
             .withDescription("Subscription to update endpoint")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1173,7 +1173,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("update_filter_sub"))
             .withDescription("Subscription to update filters")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1208,7 +1208,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("fetch_test_sub"))
             .withDescription("Subscription for fetch testing")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withBatchSize(10)
@@ -1237,7 +1237,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("delete_test_sub"))
             .withDescription("Subscription for delete testing")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1255,13 +1255,13 @@ public class EventSubscriptionResourceIT
     OpenMetadataClient client = SdkClients.adminClient();
 
     ArgumentsInput excludeOwner =
-        createFilterByOwnerArgumentsInput(List.of("admin"), ArgumentsInput.Effect.EXCLUDE);
+        createFilterByOwnerArgumentsInput(List.of("admin"), Effect.EXCLUDE);
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("exclude_owner_sub"))
             .withDescription("Subscription with owner exclude filter")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1269,8 +1269,7 @@ public class EventSubscriptionResourceIT
 
     EventSubscription subscription = createEntity(request);
     assertNotNull(subscription);
-    assertEquals(
-        ArgumentsInput.Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
+    assertEquals(Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
   }
 
   @Test
@@ -1278,13 +1277,13 @@ public class EventSubscriptionResourceIT
     OpenMetadataClient client = SdkClients.adminClient();
 
     ArgumentsInput excludeDomain =
-        createFilterByDomainArgumentsInput(List.of("Engineering"), ArgumentsInput.Effect.EXCLUDE);
+        createFilterByDomainArgumentsInput(List.of("Engineering"), Effect.EXCLUDE);
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("exclude_domain_sub"))
             .withDescription("Subscription with domain exclude filter")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1292,8 +1291,7 @@ public class EventSubscriptionResourceIT
 
     EventSubscription subscription = createEntity(request);
     assertNotNull(subscription);
-    assertEquals(
-        ArgumentsInput.Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
+    assertEquals(Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
   }
 
   @Test
@@ -1302,7 +1300,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("multi_resource_sub"))
             .withDescription("Subscription for multiple resource types")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table", "topic", "dashboard"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1318,14 +1316,14 @@ public class EventSubscriptionResourceIT
     CreateEventSubscription entityPlusActivity =
         new CreateEventSubscription()
             .withName(ns.prefix("two_kinds_sub"))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table", "conversation"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
     CreateEventSubscription wildcardPlusOne =
         new CreateEventSubscription()
             .withName(ns.prefix("wildcard_plus_sub"))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all", "table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1348,7 +1346,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("update_poll_sub"))
             .withDescription("Subscription to update poll interval")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withPollInterval(1)
@@ -1367,15 +1365,15 @@ public class EventSubscriptionResourceIT
     OpenMetadataClient client = SdkClients.adminClient();
 
     ArgumentsInput filterByOwner =
-        createFilterByOwnerArgumentsInput(List.of("admin"), ArgumentsInput.Effect.INCLUDE);
+        createFilterByOwnerArgumentsInput(List.of("admin"), Effect.INCLUDE);
     ArgumentsInput filterByDomain =
-        createFilterByDomainArgumentsInput(List.of("Engineering"), ArgumentsInput.Effect.INCLUDE);
+        createFilterByDomainArgumentsInput(List.of("Engineering"), Effect.INCLUDE);
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("combined_filter_sub"))
             .withDescription("Subscription with combined owner and domain filters")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1396,13 +1394,13 @@ public class EventSubscriptionResourceIT
             List.of(
                 "sample_data.ecommerce_db.shopify.dim_customer",
                 "sample_data.ecommerce_db.shopify.fact_order"),
-            ArgumentsInput.Effect.INCLUDE);
+            Effect.INCLUDE);
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("multi_fqn_filter_sub"))
             .withDescription("Subscription with multiple FQN filters")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1422,7 +1420,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("delete_restore_sub"))
             .withDescription("Test delete and restore")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1462,7 +1460,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_with_template"))
             .withDescription("Subscription with notification template")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1489,7 +1487,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_without_template"))
             .withDescription("Subscription without template")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1523,7 +1521,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_system_template"))
             .withDescription("Subscription with system template - should fail")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1543,7 +1541,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_add_template"))
             .withDescription("Subscription to add template")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1613,7 +1611,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_change_template"))
             .withDescription("Subscription to change template")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1660,7 +1658,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_remove_template"))
             .withDescription("Subscription to remove template")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1686,7 +1684,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_system_update"))
             .withDescription("Subscription for system template update test")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1740,7 +1738,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("sub_to_delete"))
             .withDescription("Subscription to delete")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1800,7 +1798,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("query_sub1"))
             .withDescription("Query subscription 1")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1812,7 +1810,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("query_sub2"))
             .withDescription("Query subscription 2")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1824,7 +1822,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("query_sub3"))
             .withDescription("Query subscription 3")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns))
@@ -1836,7 +1834,7 @@ public class EventSubscriptionResourceIT
         new CreateEventSubscription()
             .withName(ns.prefix("query_sub4"))
             .withDescription("Query subscription 4")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
@@ -1925,37 +1923,35 @@ public class EventSubscriptionResourceIT
             .withConfig(emailConfig));
   }
 
-  private ArgumentsInput createFilterByOwnerArgumentsInput(
-      List<String> ownerName, ArgumentsInput.Effect effect) {
+  private ArgumentsInput createFilterByOwnerArgumentsInput(List<String> ownerName, Effect effect) {
     Argument ownerArgument = new Argument().withName("ownerNameList").withInput(ownerName);
 
     return new ArgumentsInput()
         .withName(NotificationFilterOperation.FILTER_BY_OWNER_NAME.value())
         .withEffect(effect)
         .withArguments(List.of(ownerArgument))
-        .withPrefixCondition(ArgumentsInput.PrefixCondition.AND);
+        .withPrefixCondition(PrefixCondition.AND);
   }
 
   private ArgumentsInput createFilterByDomainArgumentsInput(
-      List<String> domainName, ArgumentsInput.Effect effect) {
+      List<String> domainName, Effect effect) {
     Argument domainArgument = new Argument().withName("domainList").withInput(domainName);
 
     return new ArgumentsInput()
         .withName(NotificationFilterOperation.FILTER_BY_DOMAIN.value())
         .withEffect(effect)
         .withArguments(List.of(domainArgument))
-        .withPrefixCondition(ArgumentsInput.PrefixCondition.AND);
+        .withPrefixCondition(PrefixCondition.AND);
   }
 
-  private ArgumentsInput createFilterByFqnArgumentsInput(
-      List<String> fqnList, ArgumentsInput.Effect effect) {
+  private ArgumentsInput createFilterByFqnArgumentsInput(List<String> fqnList, Effect effect) {
     Argument fqnArgument = new Argument().withName("fqnList").withInput(fqnList);
 
     return new ArgumentsInput()
         .withName(NotificationFilterOperation.FILTER_BY_FQN.value())
         .withEffect(effect)
         .withArguments(List.of(fqnArgument))
-        .withPrefixCondition(ArgumentsInput.PrefixCondition.AND);
+        .withPrefixCondition(PrefixCondition.AND);
   }
 
   // ===================================================================
@@ -2055,7 +2051,7 @@ public class EventSubscriptionResourceIT
     return new CreateEventSubscription()
         .withName(ns.prefix(nameSuffix))
         .withDescription("OAuth2 webhook test")
-        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withAlertType(AlertType.NOTIFICATION)
         .withResources(List.of("all"))
         .withEnabled(false)
         .withDestinations(

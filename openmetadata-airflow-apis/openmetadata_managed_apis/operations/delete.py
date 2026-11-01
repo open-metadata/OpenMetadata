@@ -16,7 +16,9 @@ import os
 from pathlib import Path
 
 from airflow import settings
-from airflow.exceptions import DagNotFound
+from airflow.exceptions import AirflowException, DagNotFound
+from airflow.models import TaskInstance
+from airflow.utils.state import TaskInstanceState
 from flask import Response
 
 try:
@@ -29,6 +31,10 @@ from openmetadata_managed_apis.api.config import (
     DAG_GENERATED_CONFIGS,
 )
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.operations.kill_all import (
+    fail_unfinished_runs,
+    fail_unfinished_task_instances,
+)
 from openmetadata_managed_apis.utils.logger import operations_logger
 
 logger = operations_logger()
@@ -43,11 +49,9 @@ def delete_dag_id(dag_id: str) -> Response:
     - DAG metadata, versions, runs and task history in airflow db
 
     Order matters: run Airflow's own delete FIRST so that its FK ordering
-    (a task instance pins the DAG version it ran, so deleting the DAG first
-    is refused when a task is still running) is enforced BEFORE the files
-    are removed. When Airflow refuses (raises AirflowException / RuntimeError
-    on running task instances), the files stay on disk and Airflow's next
-    parse can restore the DAG rather than leaving an orphan.
+    (a task instance pins the DAG version it ran) is enforced BEFORE the
+    files are removed. If that delete still fails, the files stay on disk
+    and Airflow's next parse can restore the DAG rather than leaving an orphan.
     :param dag_id: DAG to delete
     :return: API Response
     """
@@ -56,10 +60,7 @@ def delete_dag_id(dag_id: str) -> Response:
     config_file = Path(DAG_GENERATED_CONFIGS) / f"{dag_id}.json"
 
     with settings.Session() as session:
-        try:
-            deleted_dags = airflow_delete_dag(dag_id, session=session)
-        except DagNotFound:
-            deleted_dags = 0
+        deleted_dags = _delete_dag_records(dag_id, session)
         session.commit()
 
     deleted_file = False
@@ -83,3 +84,27 @@ def delete_dag_id(dag_id: str) -> Response:
         deleted_config,
     )
     return ApiResponse.server_error()
+
+
+def _delete_dag_records(dag_id: str, session) -> int:
+    try:
+        return airflow_delete_dag(dag_id, session=session)
+    except DagNotFound:
+        return 0
+    except AirflowException:
+        # Airflow refuses while a task is running (e.g. a scheduled run); the caller is deleting
+        # the pipeline for good, so stop the run the same way kill does and delete again
+        # (ADR:2026-10-29-deleting-a-pipeline-dag-stops-its-active-run)
+        if not _has_running_task_instances(dag_id, session):
+            raise
+        logger.info("Stopping the active run of DAG %s before deleting it", dag_id)
+        if not fail_unfinished_runs(dag_id, session):
+            fail_unfinished_task_instances(dag_id, session)
+        return airflow_delete_dag(dag_id, session=session)
+
+
+def _has_running_task_instances(dag_id: str, session) -> bool:
+    running = session.query(TaskInstance).filter(
+        TaskInstance.dag_id == dag_id, TaskInstance.state == TaskInstanceState.RUNNING
+    )
+    return session.query(running.exists()).scalar()

@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import java.net.URI;
 import java.util.HashMap;
@@ -116,10 +115,8 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
   }
 
   @Override
-  protected String serializeForVersionHistory(final OntologyConcept entity) {
-    final ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
-    node.remove(DERIVED_FIELDS);
-    return node.toString();
+  protected List<String> getFieldsHiddenFromHistory() {
+    return DERIVED_FIELDS;
   }
 
   private void fetchLifecycleStatus(final List<OntologyConcept> concepts, final Fields fields) {

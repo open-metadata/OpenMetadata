@@ -279,7 +279,6 @@ class Data360Source(DatabaseServiceSource):
                 client=self.client,
                 entity_type=metadata_type,
                 dataspace_name=dataspace_name,
-                pagination_limit=self.pagination_limit,
                 log_warning=self.log_warning,
             )
         except Exception as exc:

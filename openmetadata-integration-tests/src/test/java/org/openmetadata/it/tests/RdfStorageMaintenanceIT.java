@@ -40,6 +40,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
@@ -55,14 +56,11 @@ import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /**
  * Storage maintenance against real MySQL/PostgreSQL and Fuseki: a compaction or clear pauses
  * writes to the serving dataset, queued writes wait without using a delivery attempt or reading as
- * degraded, and they are all applied once the pause ends. Run against the production image with
- * {@code -DrdfContainerImage=openmetadata/fuseki:6.2.0}.
+ * degraded, and they are all applied once the pause ends.
  */
 @Tag("rdf")
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
@@ -81,28 +79,12 @@ public class RdfStorageMaintenanceIT {
 
   @BeforeAll
   static void startServices() {
-    fuseki = fusekiContainer().withExposedPorts(3030).waitingFor(Wait.forHttp("/$/ping"));
+    fuseki = FusekiTestImage.forOpenMetadata("-Xms512m -Xmx1g");
     fuseki.start();
-    endpoint = "http://" + fuseki.getHost() + ":" + fuseki.getMappedPort(3030);
+    endpoint = FusekiTestImage.serverUrl(fuseki);
     for (RdfTestDatabase.Backend backend : RdfTestDatabase.Backend.values()) {
       DATABASES.put(backend, new RdfTestDatabase(backend));
     }
-  }
-
-  private static GenericContainer<?> fusekiContainer() {
-    final String image = System.getProperty("rdfContainerImage");
-    return image == null
-        ? new GenericContainer<>(
-                new ImageFromDockerfile()
-                    .withFileFromPath(
-                        ".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")))
-            .withEnv("JVM_ARGS", "-Xms512m -Xmx1g")
-        : new GenericContainer<>(image)
-            .withEnv("ADMIN_PASSWORD", "admin")
-            .withEnv("FUSEKI_HEAP", "1g")
-            .withEnv("FUSEKI_DATASETS", DATASET + "," + DATASET + "_a," + DATASET + "_b")
-            .withEnv("FUSEKI_UNION_DEFAULT_GRAPH", "true")
-            .withEnv("OPENMETADATA_EXTENSION_ENABLED", "true");
   }
 
   @AfterAll
@@ -309,8 +291,8 @@ public class RdfStorageMaintenanceIT {
               .withStorageType(RdfConfiguration.StorageType.FUSEKI)
               .withBaseUri(URI.create(BASE))
               .withRemoteEndpoint(URI.create(endpoint + "/" + DATASET))
-              .withUsername("admin")
-              .withPassword("admin")
+              .withUsername(FusekiTestImage.ADMIN_USER)
+              .withPassword(FusekiTestImage.ADMIN_PASSWORD)
               .withWriteMaxRetries(0));
     }
 

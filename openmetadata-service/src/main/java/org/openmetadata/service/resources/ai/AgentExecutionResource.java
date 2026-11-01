@@ -19,10 +19,14 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AgentExecution;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -31,8 +35,10 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.AgentExecutionContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Slf4j
@@ -48,8 +54,11 @@ public class AgentExecutionResource
     extends EntityTimeSeriesResource<AgentExecution, AgentExecutionRepository> {
   public static final String COLLECTION_PATH = "/v1/agentExecutions/";
 
+  private final ViewPermissionFilter viewPermissionFilter;
+
   public AgentExecutionResource(Authorizer authorizer) {
     super(Entity.AGENT_EXECUTION, authorizer);
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
   }
 
   public static class AgentExecutionList extends ResultList<AgentExecution> {
@@ -92,17 +101,20 @@ public class AgentExecutionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (agentId != null) {
+      authorizeAgent(securityContext, MetadataOperation.VIEW_BASIC, agentId);
+    }
 
     ListFilter filter = new ListFilter(org.openmetadata.schema.type.Include.ALL);
     if (agentId != null) {
       filter.addQueryParam("agentId", agentId.toString());
     }
 
-    if (startTs != null && endTs != null) {
-      return repository.listWithOffset(null, filter, limitParam, startTs, endTs, false, false);
-    } else {
-      return repository.listWithOffset(null, filter, limitParam, false);
-    }
+    ResultList<AgentExecution> result =
+        (startTs != null && endTs != null)
+            ? repository.listWithOffset(null, filter, limitParam, startTs, endTs, false, false)
+            : repository.listWithOffset(null, filter, limitParam, false);
+    return viewableOnly(securityContext, result);
   }
 
   @GET
@@ -126,11 +138,13 @@ public class AgentExecutionResource
       @Parameter(description = "Id of the Agent Execution", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    AgentExecution execution = repository.getByIdOrNotFound(id);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getById(id);
+    authorizeAgent(securityContext, MetadataOperation.VIEW_BASIC, execution.getAgentId());
+    return execution;
   }
 
   @POST
@@ -153,6 +167,7 @@ public class AgentExecutionResource
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeAgent(securityContext, MetadataOperation.EDIT_ALL, agentExecution.getAgentId());
     return create(agentExecution, agentExecution.getAgentId().toString());
   }
 
@@ -182,6 +197,7 @@ public class AgentExecutionResource
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeAgent(securityContext, MetadataOperation.EDIT_ALL, agentId);
     repository.deleteExecutionData(agentId, timestamp);
     return Response.ok().build();
   }
@@ -207,7 +223,47 @@ public class AgentExecutionResource
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    AgentExecution execution = repository.getByIdOrNotFound(id);
+    authorizeAgent(securityContext, MetadataOperation.EDIT_ALL, execution.getAgentId());
     repository.deleteById(id, hardDelete);
     return Response.ok().build();
+  }
+
+  /**
+   * An execution record carries what was asked of the agent and what it answered, so every handler
+   * authorizes the AI application the record belongs to. The type-level context used above has no
+   * entity, owners, tags or domains, so a policy denying the application itself — by domain or by
+   * tag — could never fire on it.
+   */
+  private void authorizeAgent(
+      SecurityContext securityContext, MetadataOperation operation, UUID agentId) {
+    OperationContext operationContext = new OperationContext(Entity.AI_APPLICATION, operation);
+    ResourceContextInterface resourceContext =
+        new ResourceContext<>(Entity.AI_APPLICATION, agentId, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+  }
+
+  /**
+   * A listing answers 200 rather than refusing the page, so each record is kept only if the caller
+   * may view its AI application. Dropped records shorten the page while {@code paging.total} still
+   * counts them — the same post-filter trade-off {@code ActivityResource} accepts — and paging
+   * cursors are kept because they point at the last row of the unfiltered page. A record whose
+   * application no longer resolves is dropped for every caller.
+   */
+  private ResultList<AgentExecution> viewableOnly(
+      SecurityContext securityContext, ResultList<AgentExecution> executions) {
+    List<EntityReference> agents =
+        executions.getData().stream()
+            .map(AgentExecution::getAgentId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .map(id -> new EntityReference().withId(id).withType(Entity.AI_APPLICATION))
+            .toList();
+    Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, agents);
+    executions.setData(
+        executions.getData().stream()
+            .filter(record -> viewable.contains(record.getAgentId()))
+            .toList());
+    return executions;
   }
 }

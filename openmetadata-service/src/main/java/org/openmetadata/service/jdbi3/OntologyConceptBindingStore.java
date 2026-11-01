@@ -14,6 +14,7 @@ import java.util.function.Function;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.OntologyAssetBinding;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyConceptBindings;
@@ -113,6 +114,31 @@ public final class OntologyConceptBindingStore {
                 after == null ? FIRST_PAGE : after.conceptId().toString(),
                 after == null ? FIRST_PAGE : after.assetId().toString(),
                 limit);
+  }
+
+  /** The live properties of one ontology declared with these IRIs, in one statement. */
+  public List<OntologyProperty> liveProperties(final UUID ontologyId, final Collection<URI> iris) {
+    final var properties = dao.ontologyPropertyDAO();
+    return iris.isEmpty()
+        ? List.of()
+        : properties
+            .findDeclarations(
+                properties.getTableName(),
+                ontologyId,
+                iris.stream().map(iri -> DigestUtils.md5Hex(iri.toString())).toList(),
+                iris.size(),
+                "")
+            .stream()
+            .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
+            .toList();
+  }
+
+  public List<BindingRow> firstTables(final Collection<UUID> conceptIds, final int perConcept) {
+    return conceptIds.isEmpty()
+        ? List.of()
+        : dao.ontologyConceptBindingDAO()
+            .listFirstTablesForConcepts(
+                conceptIds.stream().map(UUID::toString).toList(), perConcept);
   }
 
   public List<ConceptAssetCount> boundConcepts(

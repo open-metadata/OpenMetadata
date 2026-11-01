@@ -22,6 +22,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { getEntityFqn } from '../../utils/entityPanel';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { navigateToGlossaryTermAssetsAndOpenPanel } from '../../utils/rightPanelNavigation';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
@@ -63,6 +64,28 @@ test.describe('Glossary Term Assets Tab - Right Panel', () => {
           },
         ],
       });
+      // The Assets tab queries search once on mount; an unindexed tag leaves it empty for good.
+      await waitForSearchIndexed(
+        apiContext,
+        tableEntity.entityResponseData.fullyQualifiedName,
+        'table_search_index',
+        {
+          queryFilter: JSON.stringify({
+            query: {
+              bool: {
+                must: [
+                  {
+                    term: {
+                      'tags.tagFQN':
+                        testGlossaryTerm.responseData.fullyQualifiedName,
+                    },
+                  },
+                ],
+              },
+            },
+          }),
+        }
+      );
     } finally {
       await afterAction();
     }

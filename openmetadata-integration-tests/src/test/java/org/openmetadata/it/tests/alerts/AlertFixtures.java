@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -50,7 +51,7 @@ final class AlertFixtures {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix(name))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of(Entity.TABLE))
             .withClassName(consumerClassName)
             .withEnabled(true)

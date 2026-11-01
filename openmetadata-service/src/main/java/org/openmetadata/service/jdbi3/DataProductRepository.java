@@ -300,10 +300,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     fieldDeleted(change, FIELD_DOMAINS, JsonUtils.pojoToJson(removedDomains));
     updated.setChangeDescription(change);
 
-    String versionExtension = EntityUtil.getVersionExtension(DATA_PRODUCT, original.getVersion());
-    daoCollection
-        .entityExtensionDAO()
-        .insert(original.getId(), versionExtension, DATA_PRODUCT, JsonUtils.pojoToJson(original));
+    storeVersions(List.of(original));
     storeEntity(updated, true);
     invalidate(updated);
     createAndInsertChangeEvent(original, updated, change, ENTITY_UPDATED);
