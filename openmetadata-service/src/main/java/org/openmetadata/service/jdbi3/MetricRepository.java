@@ -65,6 +65,7 @@ import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -85,6 +86,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.metrics.MetricResource;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
+import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -633,7 +639,12 @@ public class MetricRepository extends EntityRepository<Metric> {
         "*".equals(name)
             ? listAll(getFields("*"), new ListFilter(NON_DELETED))
             : List.of(getByName(null, name, getFields("*")));
-    return new MetricCsv(user).exportCsv(metrics, callback);
+    // The resource layer authorizes ViewAll on the path name only; for "*" that resolves no
+    // entity and the domain policy allows the request on the promise of this post-filter, the
+    // same narrowing GET /metrics applies through the domain query parameter.
+    List<Metric> visibleMetrics =
+        DomainAccessFilter.retainAccessible(metrics, SubjectContext.getSubjectContext(user));
+    return new MetricCsv(user).exportCsv(visibleMetrics, callback);
   }
 
   @Override
@@ -684,6 +695,69 @@ public class MetricRepository extends EntityRepository<Metric> {
 
     MetricCsv(String user) {
       super(METRIC, HEADERS, user);
+    }
+
+    /**
+     * A row may name any metric, not just the one the import path was authorized against, so each
+     * row takes the checks a direct write of its target faces: EditAll on the stored metric for an
+     * update, Create for a new one, and — when the row moves the metric in the hierarchy — EditAll
+     * on the subtree being moved and on each new parent/metric group destination, exactly what
+     * POST, PUT and PATCH authorize. Without this, an owner of one metric could rewrite every other
+     * metric, and a domain-confined user could write metrics outside their domains, through an
+     * import that PATCH and POST would refuse.
+     */
+    @Override
+    protected void authorizeRow(Metric original, Metric entity) {
+      MetricRepository repository = (MetricRepository) Entity.getEntityRepository(METRIC);
+      if (original == null) {
+        DefaultAuthorizer.authorizeUser(
+            importedBy,
+            new OperationContext(METRIC, MetadataOperation.CREATE),
+            new CreateResourceContext<>(METRIC, entity));
+      } else {
+        // By id, not by the pre-resolved match: findMatchForImport returns the entity without
+        // relationship fields, and a pre-resolved ResourceContext never re-loads them, so
+        // domain-conditioned rules would see no domains and fail open. The id-based context
+        // resolves itself with the bounded security attributes the policy engine expects.
+        DefaultAuthorizer.authorizeUser(
+            importedBy,
+            new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
+            new ResourceContext<>(METRIC, original.getId(), original.getFullyQualifiedName()));
+      }
+      authorizeHierarchyChange(repository, original, entity);
+    }
+
+    private void authorizeHierarchyChange(
+        MetricRepository repository, Metric original, Metric entity) {
+      // The stored match carries no relationship fields (findMatchForImport returns the storage
+      // JSON without parent/metricGroup), so comparing against it would treat every membership as
+      // changed: a row clearing an existing parent would skip the subtree checks a PATCH move
+      // faces, and re-importing an unchanged export of a parented metric would demand EditAll on
+      // its whole subtree. Load the real membership first.
+      Metric stored =
+          original == null
+              ? null
+              : repository.get(
+                  null, original.getId(), repository.getFields("parent,metricGroup"), ALL, false);
+      boolean changed = stored == null || hierarchyMembershipChanged(stored, entity);
+      if (!changed) {
+        return;
+      }
+      if (stored != null) {
+        for (EntityReference metric : repository.hierarchySubtree(stored.getId())) {
+          DefaultAuthorizer.authorizeUser(
+              importedBy,
+              new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
+              new ResourceContext<>(METRIC, metric.getId(), metric.getFullyQualifiedName()));
+        }
+      }
+      for (EntityReference destination : hierarchyDestinations(stored, entity)) {
+        DefaultAuthorizer.authorizeUser(
+            importedBy,
+            new OperationContext(destination.getType(), MetadataOperation.EDIT_ALL),
+            new ResourceContext<>(
+                destination.getType(), destination.getId(), destination.getFullyQualifiedName()));
+      }
     }
 
     @Override
@@ -1484,6 +1558,34 @@ public class MetricRepository extends EntityRepository<Metric> {
       }
     }
     return Entity.getEntityReferencesByIds(METRIC, new ArrayList<>(metricIds), NON_DELETED);
+  }
+
+  /**
+   * The parent and metric group a write lands in — the destinations {@code MetricResource}
+   * authorizes EditAll on for direct creates, updates and moves. Static and repository-side so
+   * {@code MetricCsv} can apply the same check to import rows.
+   */
+  public static List<EntityReference> hierarchyDestinations(Metric original, Metric updated) {
+    List<EntityReference> destinations = new ArrayList<>();
+    if (original == null || hierarchyMembershipChanged(original, updated)) {
+      if (updated.getParent() != null) {
+        destinations.add(updated.getParent());
+      }
+      if (updated.getMetricGroup() != null) {
+        destinations.add(updated.getMetricGroup());
+      }
+    }
+    return destinations;
+  }
+
+  public static boolean hierarchyMembershipChanged(Metric original, Metric updated) {
+    return !sameReference(original.getParent(), updated.getParent())
+        || !sameReference(original.getMetricGroup(), updated.getMetricGroup());
+  }
+
+  private static boolean sameReference(EntityReference left, EntityReference right) {
+    return left == right
+        || (left != null && right != null && Objects.equals(left.getId(), right.getId()));
   }
 
   static int countVisibleReferences(

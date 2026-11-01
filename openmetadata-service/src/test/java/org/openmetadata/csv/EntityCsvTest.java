@@ -83,6 +83,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
@@ -1447,6 +1448,54 @@ public class EntityCsvTest {
   }
 
   @Test
+  void test_authorizeRowRefusalFailsRowsWithoutReachingRulesOrPreparation() throws Exception {
+    TestCsv testCsv = new TestCsv();
+    testCsv.enableProcessing();
+    testCsv.setDryRun(true);
+    testCsv.refuseRows();
+
+    Table originalEntity =
+        tableEntity("updated_table", "service.db.schema.updated_table", "Original");
+    originalEntity.setId(UUID.randomUUID());
+    Table updatedEntity =
+        tableEntity("updated_table", "service.db.schema.updated_table", "Updated");
+    Table createdEntity =
+        tableEntity("created_table", "service.db.schema.created_table", "Created");
+    CSVRecord updateRecord = singleRecord(testCsv, updatedEntity.getFullyQualifiedName(), "", "");
+    CSVRecord createRecord = singleRecord(testCsv, createdEntity.getFullyQualifiedName(), "", "");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
+    RuleEngine ruleEngine = mock(RuleEngine.class);
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
+        MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
+        MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      ruleEngineStatic.when(RuleEngine::getInstance).thenReturn(ruleEngine);
+      validatorUtil.when(() -> ValidatorUtil.validate(updatedEntity)).thenReturn(null);
+      validatorUtil.when(() -> ValidatorUtil.validate(createdEntity)).thenReturn(null);
+      Mockito.<EntityInterface<?>>when(repository.findMatchForImport(updatedEntity))
+          .thenReturn(originalEntity);
+      Mockito.when(repository.findMatchForImport(createdEntity)).thenReturn(null);
+
+      testCsv.queueEntity(updateRecord, updatedEntity);
+      testCsv.queueEntity(createRecord, createdEntity);
+
+      assertEquals(2, testCsv.importResult.getNumberOfRowsFailed());
+      assertEquals(0, testCsv.importResult.getNumberOfRowsPassed());
+      assertEquals(ApiStatus.FAILURE, testCsv.importResult.getStatus());
+      assertEquals("row denied by test policy", testCsv.pendingCsvResults.get(updateRecord));
+      assertEquals("row denied by test policy", testCsv.pendingCsvResults.get(createRecord));
+      assertTrue(testCsv.pendingEntityOperations.isEmpty());
+      Mockito.verify(ruleEngine, Mockito.never()).evaluateUpdate(Mockito.any(), Mockito.any());
+      Mockito.verify(ruleEngine, Mockito.never()).evaluate(Mockito.any());
+      Mockito.verify(repository, Mockito.never())
+          .prepareInternal(Mockito.any(), Mockito.anyBoolean());
+    }
+  }
+
+  @Test
   void test_createEntityWithTypeValidationAndUnexpectedFailuresRecordImportErrors()
       throws Exception {
     TestCsv validationCsv = new TestCsv();
@@ -2678,9 +2727,21 @@ public class EntityCsvTest {
 
   private static class TestCsv extends EntityCsv<EntityInterface<?>> {
     private final Map<String, EntityInterface<?>> entitiesByTypeAndName = new HashMap<>();
+    private boolean refuseRows;
 
     protected TestCsv() {
       super(Entity.TABLE, CSV_HEADERS, "admin");
+    }
+
+    @Override
+    protected void authorizeRow(EntityInterface<?> original, EntityInterface<?> entity) {
+      if (refuseRows) {
+        throw new AuthorizationException("row denied by test policy");
+      }
+    }
+
+    private void refuseRows() {
+      this.refuseRows = true;
     }
 
     private void addEntity(String entityType, String fqn, EntityInterface<?> entity) {

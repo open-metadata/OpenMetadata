@@ -53,7 +53,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
@@ -767,7 +766,8 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
 
   private void authorizeHierarchyChange(
       SecurityContext securityContext, Metric original, Metric updated) {
-    boolean changed = original == null || hierarchyMembershipChanged(original, updated);
+    boolean changed =
+        original == null || MetricRepository.hierarchyMembershipChanged(original, updated);
     if (changed) {
       if (original != null) {
         authorizeHierarchyMutation(securityContext, original.getId());
@@ -778,26 +778,13 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
 
   void authorizeHierarchyDestinations(
       SecurityContext securityContext, Metric original, Metric updated) {
-    for (EntityReference destination : hierarchyDestinations(original, updated)) {
+    for (EntityReference destination : MetricRepository.hierarchyDestinations(original, updated)) {
       authorizer.authorize(
           securityContext,
           new OperationContext(destination.getType(), MetadataOperation.EDIT_ALL),
           new ResourceContext<>(
               destination.getType(), destination.getId(), destination.getFullyQualifiedName()));
     }
-  }
-
-  static List<EntityReference> hierarchyDestinations(Metric original, Metric updated) {
-    List<EntityReference> destinations = new ArrayList<>();
-    if (original == null || hierarchyMembershipChanged(original, updated)) {
-      if (updated.getParent() != null) {
-        destinations.add(updated.getParent());
-      }
-      if (updated.getMetricGroup() != null) {
-        destinations.add(updated.getMetricGroup());
-      }
-    }
-    return destinations;
   }
 
   private void authorizeHierarchyMutation(SecurityContext securityContext, UUID metricId) {
@@ -807,16 +794,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
           new OperationContext(Entity.METRIC, MetadataOperation.EDIT_ALL),
           new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
     }
-  }
-
-  static boolean hierarchyMembershipChanged(Metric original, Metric updated) {
-    return !sameReference(original.getParent(), updated.getParent())
-        || !sameReference(original.getMetricGroup(), updated.getMetricGroup());
-  }
-
-  private static boolean sameReference(EntityReference left, EntityReference right) {
-    return left == right
-        || (left != null && right != null && Objects.equals(left.getId(), right.getId()));
   }
 
   static boolean patchMutatesHierarchy(JsonPatch patch) {
