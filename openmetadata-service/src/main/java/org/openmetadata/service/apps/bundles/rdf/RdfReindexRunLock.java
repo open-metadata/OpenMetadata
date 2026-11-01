@@ -42,7 +42,11 @@ public final class RdfReindexRunLock {
     this.serverId = serverId;
   }
 
-  static RdfReindexRunLock forRun(
+  /**
+   * The lock for one reindex run, or for storage maintenance, which takes it so it never compacts a
+   * dataset a reindex is writing and a reindex started meanwhile is skipped with the holder named.
+   */
+  public static RdfReindexRunLock forRun(
       final RdfReindexLockDAO locks, final String runId, final String serverId) {
     return new RdfReindexRunLock(locks, LOCK_KEY, runId, serverId);
   }

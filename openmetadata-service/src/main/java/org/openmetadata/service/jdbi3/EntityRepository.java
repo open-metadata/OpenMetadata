@@ -2842,6 +2842,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     setFieldsInBulk(fields, entities);
   }
 
+  /**
+   * Loads {@code fieldNames} onto {@code entities} with the field fetchers and leaves every other
+   * field as it is, unlike {@link #setFieldsInBulk}, which clears what it was not asked for. For
+   * search documents built from entities that never carried those computed fields. A field with no
+   * registered fetcher would load nothing and be indexed as 0, so it fails the write instead.
+   */
+  @SuppressWarnings("unchecked")
+  public final void loadFieldsForSearchIndex(
+      List<? extends EntityInterface<?>> entities, Set<String> fieldNames) {
+    List<String> unfetchable =
+        fieldNames.stream().filter(field -> !fieldFetchers.containsKey(field)).toList();
+    if (!unfetchable.isEmpty()) {
+      throw new IllegalStateException(
+          String.format("%s has no field fetcher for %s", entityType, unfetchable));
+    }
+    // Only the asked-for fetchers: fetchAndSetFields would also run fetchers that ignore `fields`.
+    Fields fields = getFields(String.join(",", fieldNames));
+    fieldNames.forEach(field -> fieldFetchers.get(field).accept((List<T>) entities, fields));
+  }
+
   public void setFieldsInBulk(Fields fields, List<T> entities) {
     if (entities == null || entities.isEmpty()) {
       return;
@@ -4587,6 +4607,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updatedEntities.add(updated);
     }
 
+    // The batch path never runs postUpdate, so it checks for moves itself, reading the counting
+    // parents before the flush rewrites their edges.
+    List<List<EntityReference>> previousParents =
+        originals.stream().map(this::getCountingParents).toList();
+
     // Store the row, extension, and relationship rewrites in one atomic transaction. The cache
     // invalidations issued here are recorded and drained once the transaction ends so no Redis
     // round trip runs while the handle is held.
@@ -4603,6 +4628,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           }
         });
 
+    refreshCountingParentsMovedInBatch(previousParents, updatedEntities);
     return updatedEntities;
   }
 
@@ -4612,6 +4638,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
     }
     RdfUpdater.updateEntity(entity);
+    getCountingParents(entity).forEach(this::refreshCountingParent);
     ListCountCache.invalidate(entityType);
     // Drop any negative-cache markers (P2.4) for this just-created entity. Without this, a
     // create-then-immediately-read flow would 404 for up to notFoundTtlSeconds because a
@@ -4713,9 +4740,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           .onEntitiesCreated(new ArrayList<>(uniqueEntities), null);
     }
 
+    Set<String> refreshedParents = new HashSet<>();
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
       CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+      getCountingParents(entity).stream()
+          .filter(parent -> refreshedParents.add(countingKey(parent)))
+          .forEach(this::refreshCountingParent);
     }
     ListCountCache.invalidate(entityType);
   }
@@ -4728,6 +4759,73 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
     invalidateListCountsOnStageChange(original, updated);
+    refreshCountingParentsOnMove(original, updated);
+  }
+
+  /**
+   * The entities whose search documents count this one, such as a parent metric, every ancestor
+   * glossary term, or a folder. They are re-indexed whenever this one is created, deleted, restored
+   * or moved, or their counts go stale until the next reindex. A reference needs a type and either
+   * an id or a fully qualified name. Empty, the default, for entities nothing counts.
+   *
+   * <p>ADR:2026-10-29-counted-parents-are-reindexed-when-a-child-changes
+   */
+  protected List<EntityReference> getCountingParents(T entity) {
+    return List.of();
+  }
+
+  private void refreshCountingParentsOnMove(T original, T updated) {
+    refreshIfCountingParentsMoved(
+        getCountingParents(original), getCountingParents(updated), new HashSet<>());
+  }
+
+  private void refreshCountingParentsMovedInBatch(
+      List<List<EntityReference>> previousParents, List<T> updated) {
+    Set<String> refreshed = new HashSet<>();
+    for (int i = 0; i < updated.size(); i++) {
+      refreshIfCountingParentsMoved(
+          previousParents.get(i), getCountingParents(updated.get(i)), refreshed);
+    }
+  }
+
+  private void refreshIfCountingParentsMoved(
+      List<EntityReference> before, List<EntityReference> after, Set<String> refreshed) {
+    if (!countingKeys(before).equals(countingKeys(after))) {
+      Stream.concat(before.stream(), after.stream())
+          .filter(parent -> refreshed.add(countingKey(parent)))
+          .forEach(this::refreshCountingParent);
+    }
+  }
+
+  private static Set<String> countingKeys(List<EntityReference> parents) {
+    return parents.stream().map(EntityRepository::countingKey).collect(Collectors.toSet());
+  }
+
+  private static String countingKey(EntityReference parent) {
+    return parent.getId() != null
+        ? parent.getId().toString()
+        : parent.getType() + ":" + parent.getFullyQualifiedName();
+  }
+
+  /**
+   * Re-reads the parent rather than trusting the reference: a reference kept in stored JSON can
+   * call a deleted parent live. A deleted or missing parent is skipped, since the refresh could not
+   * load it, and so is every child of a hard-delete cascade, whose parent goes with it.
+   */
+  protected final void refreshCountingParent(EntityReference parent) {
+    if (parent != null && !isInHardDeleteCascade()) {
+      EntityInterface current = currentCountingParent(parent);
+      if (current != null && !Boolean.TRUE.equals(current.getDeleted())) {
+        EntityLifecycleEventDispatcher.getInstance()
+            .onEntityUpdated(current.getEntityReference(), null);
+      }
+    }
+  }
+
+  private static EntityInterface currentCountingParent(EntityReference parent) {
+    return parent.getId() != null
+        ? Entity.getEntityOrNull(parent.getType(), parent.getId(), "", ALL)
+        : Entity.findByNameOrNull(parent.getType(), parent.getFullyQualifiedName(), ALL);
   }
 
   // Listing totals are cached per filter and dropped only on create or delete, but a stage change
@@ -5461,9 +5559,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     // Both hard and soft delete change the count of non-deleted entities returned by listings.
     ListCountCache.invalidate(entityType);
+    getCountingParents(entity).forEach(this::refreshCountingParent);
   }
 
-  protected void postRestore(T entity) {}
+  protected void postRestore(T entity) {
+    getCountingParents(entity).forEach(this::refreshCountingParent);
+  }
 
   @FunctionalInterface
   protected interface DeleteLifecycle extends AutoCloseable {
@@ -11073,9 +11174,21 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateInternal();
 
         // Finally, go from previous to the latest updated entity to consolidate changes
+        deferMoveCheckAgainstRequestOriginal();
         original = previous;
         entityChanged = false;
       }
+    }
+
+    /**
+     * After a consolidation, postUpdate compares the pre-session version with the update, which
+     * misses a counting parent this request moved the entity away from. So the move is also checked
+     * against the request's own original.
+     */
+    private void deferMoveCheckAgainstRequestOriginal() {
+      T requestOriginal = original;
+      T requestUpdated = updated;
+      deferReactOperation(() -> refreshCountingParentsOnMove(requestOriginal, requestUpdated));
     }
 
     @Transaction
@@ -11100,6 +11213,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateInternalForImport();
 
         // Finally, go from previous to the latest updated entity to consolidate changes
+        deferMoveCheckAgainstRequestOriginal();
         original = previous;
         entityChanged = false;
       }
@@ -15320,6 +15434,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  /**
+   * The entity as a change event this repository writes records it. A response filter records the
+   * change event of a synchronous write from the response, which a resource may mask; an
+   * asynchronous or bulk write has no response, so a repository whose entity carries values that
+   * must not be served returns the copy its responses would show.
+   */
+  protected T forChangeEvent(T entity) {
+    return entity;
+  }
+
   private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
     buildChangeEventJsonForBulkOperation(entity, eventType, userName)
         .ifPresent(this::insertChangeEvent);
@@ -15346,7 +15470,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       ChangeEvent changeEvent =
-          ChangeEvents.createChangeEventForEntity(userName, eventType, entity);
+          ChangeEvents.createChangeEventForEntity(userName, eventType, forChangeEvent(entity));
 
       if (changeEvent.getEntity() != null) {
         Object entityObject = changeEvent.getEntity();

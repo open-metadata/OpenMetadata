@@ -56,6 +56,7 @@ import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfStorageLowDiskException;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 
 /**
@@ -412,6 +413,23 @@ class RdfBatchProcessorTest {
     assertTrue(
         result.lastError().contains("table batch"),
         "lastError prefix should identify the failed entity-type batch");
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+  }
+
+  @Test
+  @DisplayName(
+      "bulk failure the store refused for low disk: not bisected, batch marked failed once")
+  void bulkFailureRefusedForLowDiskIsNotBisected() {
+    List<EntityInterface<?>> entities = List.of(mockEntity(), mockEntity(), mockEntity());
+    doThrow(new RdfStorageLowDiskException("bulkStoreEntities"))
+        .when(rdfRepository)
+        .bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+
+    RdfBatchProcessor.BatchProcessingResult result =
+        processor.processEntities("table", entities, null);
+
+    assertEquals(0, result.successCount());
+    assertEquals(3, result.failedCount(), "whole batch should be marked failed");
     verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
   }
 
