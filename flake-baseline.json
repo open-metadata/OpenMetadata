@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-31T03:10:26Z",
+  "generatedAt": "2026-11-01T03:09:39Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "39713219915",
-      "sourceSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
-      "recordedAt": "2026-10-22T03:22:50Z"
-    },
     {
       "runId": "39891471813",
       "sourceSha": "db2643864be8a6a12403d264c69cc3f1301b16df",
@@ -53,19 +48,14 @@
       "runId": "41160686405",
       "sourceSha": "3b46123b0a544308e0cb4bb5039aff42a4a8f3c4",
       "recordedAt": "2026-10-31T03:10:26Z"
+    },
+    {
+      "runId": "41265802007",
+      "sourceSha": "ae5963d0f5a4f5ab00e896b745842d332105cbfd",
+      "recordedAt": "2026-11-01T03:09:39Z"
     }
   ],
   "entries": {
-    "Basic :: Features/LandingPageWidgets/LandingPageContextCenter.spec.ts :: Landing page Context Center \u203a says how many pages changed this week": {
-      "observations": [
-        "39713219915"
-      ],
-      "project": "Basic",
-      "file": "Features/LandingPageWidgets/LandingPageContextCenter.spec.ts",
-      "title": "Landing page Context Center \u203a says how many pages changed this week",
-      "lastSeenSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
-      "hardFailure": false
-    },
     "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges": {
       "observations": [
         "40055442895",
@@ -98,16 +88,6 @@
       "lastSeenSha": "3e14a88747128ecb043e28f981530cb415f55b51",
       "hardFailure": false
     },
-    "chromium :: Features/ClassificationTagUsage.spec.ts :: Classification tag usage counts \u203a opens the tagged assets from the usage count": {
-      "observations": [
-        "39713219915"
-      ],
-      "project": "chromium",
-      "file": "Features/ClassificationTagUsage.spec.ts",
-      "title": "Classification tag usage counts \u203a opens the tagged assets from the usage count",
-      "lastSeenSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
-      "hardFailure": false
-    },
     "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Draft Persistence \u203a multiple articles hold independent drafts simultaneously": {
       "observations": [
         "39891471813"
@@ -131,7 +111,6 @@
     },
     "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly": {
       "observations": [
-        "39713219915",
         "40155676742"
       ],
       "project": "chromium",
@@ -232,6 +211,16 @@
       "title": "Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
       "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": true
+    },
+    "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Add and update Security and SLA tabs": {
+      "observations": [
+        "41265802007"
+      ],
+      "project": "chromium",
+      "file": "Pages/DataContracts.spec.ts",
+      "title": "Data Contracts \u203a Add and update Security and SLA tabs",
+      "lastSeenSha": "ae5963d0f5a4f5ab00e896b745842d332105cbfd",
+      "hardFailure": false
     },
     "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Change glossary term hierarchy using menu options across glossary": {
       "observations": [
@@ -335,7 +324,6 @@
   "stableIds": [
     "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges",
     "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card",
-    "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly",
     "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain",
     "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association",
     "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
