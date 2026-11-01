@@ -1,0 +1,194 @@
+[
+  {
+    "abbreviation": "EPCIS",
+    "bundled": true,
+    "description": "A compact OpenMetadata starter subset of GS1 EPCIS supply-chain event concepts.",
+    "id": "epcis",
+    "license": "MIT",
+    "licenseUrl": "https://www.gs1.org/standards/epcis",
+    "modules": [
+      {
+        "conceptCount": 10,
+        "dependencies": [],
+        "description": "EPCIS event types and the core event dimensions (what, when, where, why).",
+        "format": "turtle",
+        "id": "event-model",
+        "name": "Event model",
+        "relationshipCount": 8,
+        "resourcePath": "rdf/ontology-packs/epcis/event-model.ttl",
+        "selectedByDefault": true,
+        "sha256": "88647daab7673008fb8d20dd0e792496779b15b40bb7e06c4cd58140a1d932d5"
+      }
+    ],
+    "name": "EPCIS",
+    "sourceUrl": "https://www.gs1.org/standards/epcis",
+    "standard": "GS1 EPCIS",
+    "version": "2025Q1-om1"
+  },
+  {
+    "abbreviation": "FHIR",
+    "bundled": true,
+    "description": "A terminology-safe HL7 FHIR R5 starter subset without third-party terminologies.",
+    "id": "fhir",
+    "license": "CC0 1.0; excludes third-party terminologies",
+    "licenseUrl": "https://fhir.hl7.org/fhir/license.html",
+    "modules": [
+      {
+        "conceptCount": 4,
+        "dependencies": [],
+        "description": "Core FHIR resource and reference concepts.",
+        "format": "turtle",
+        "id": "core",
+        "name": "Core resources",
+        "relationshipCount": 3,
+        "resourcePath": "rdf/ontology-packs/fhir/core.ttl",
+        "selectedByDefault": true,
+        "sha256": "3b296bd1c87d2045f9f892334c08c776494adb0b4bfa2a75cebc0180cd56bcd3"
+      },
+      {
+        "conceptCount": 4,
+        "dependencies": ["core"],
+        "description": "Clinical record concepts with no externally licensed codes.",
+        "format": "turtle",
+        "id": "clinical",
+        "name": "Clinical records",
+        "relationshipCount": 3,
+        "resourcePath": "rdf/ontology-packs/fhir/clinical.ttl",
+        "selectedByDefault": true,
+        "sha256": "df01964095283156add90820ac53a3cb26e4538df3f46048e724d7b9f39feaea"
+      },
+      {
+        "conceptCount": 4,
+        "dependencies": ["core"],
+        "description": "FHIR workflow request, event, and definition concepts.",
+        "format": "turtle",
+        "id": "workflow",
+        "name": "Workflow",
+        "relationshipCount": 3,
+        "resourcePath": "rdf/ontology-packs/fhir/workflow.ttl",
+        "selectedByDefault": false,
+        "sha256": "a768dbb3e5493d98587324789e48b7e701d472e3ddc5e88047f5c523787696aa"
+      }
+    ],
+    "name": "HL7 FHIR Starter",
+    "sourceUrl": "https://hl7.org/fhir/",
+    "standard": "HL7 FHIR R5",
+    "version": "5.0.0-om1"
+  },
+  {
+    "abbreviation": "FIBO",
+    "bundled": true,
+    "description": "A compact OpenMetadata starter subset aligned to the Financial Industry Business Ontology.",
+    "id": "fibo",
+    "license": "MIT",
+    "licenseUrl": "https://spec.edmcouncil.org/fibo/page/how-to-contribute",
+    "modules": [
+      {
+        "conceptCount": 4,
+        "dependencies": [],
+        "description": "Foundational financial concepts, instruments, contracts, and markets.",
+        "format": "turtle",
+        "id": "foundations",
+        "name": "Foundations",
+        "relationshipCount": 3,
+        "resourcePath": "rdf/ontology-packs/fibo/foundations.ttl",
+        "selectedByDefault": true,
+        "sha256": "ef63c4aefed09c66a2b8c35172a20b47758d4b8f7ba372c3463b912c50f839d2"
+      },
+      {
+        "conceptCount": 4,
+        "dependencies": ["foundations"],
+        "description": "Business and legal entity concepts used in financial models.",
+        "format": "turtle",
+        "id": "business-entities",
+        "name": "Business entities",
+        "relationshipCount": 3,
+        "resourcePath": "rdf/ontology-packs/fibo/business-entities.ttl",
+        "selectedByDefault": true,
+        "sha256": "db9f978224c768373d47a9ab853c78c6d2eb8a82d4af604c2b923b5111cfa6c6"
+      }
+    ],
+    "name": "FIBO Starter",
+    "sourceUrl": "https://spec.edmcouncil.org/fibo/",
+    "standard": "Financial Industry Business Ontology",
+    "version": "2025Q1-om1"
+  },
+  {
+    "abbreviation": "GS1",
+    "bundled": true,
+    "description": "A compact OpenMetadata starter subset of GS1 Web Vocabulary core classes.",
+    "id": "gs1",
+    "license": "MIT",
+    "licenseUrl": "https://www.gs1.org/standards",
+    "modules": [
+      {
+        "conceptCount": 8,
+        "dependencies": [],
+        "description": "Core GS1 classes for products, organizations, places, and offers.",
+        "format": "turtle",
+        "id": "core-vocabulary",
+        "name": "Core vocabulary",
+        "relationshipCount": 4,
+        "resourcePath": "rdf/ontology-packs/gs1/core-vocabulary.ttl",
+        "selectedByDefault": true,
+        "sha256": "c11f0f3747249ca7ba77e6eccce66861f938763de9fee111c5069b0547b8ed9d"
+      }
+    ],
+    "name": "GS1 Vocabulary",
+    "sourceUrl": "https://www.gs1.org/voc/",
+    "standard": "GS1 Web Vocabulary",
+    "version": "2025Q1-om1"
+  },
+  {
+    "abbreviation": "HR Open",
+    "bundled": true,
+    "description": "A compact OpenMetadata starter subset of HR Open Standards workforce concepts.",
+    "id": "hr-open",
+    "license": "MIT",
+    "licenseUrl": "https://www.hropenstandards.org/",
+    "modules": [
+      {
+        "conceptCount": 9,
+        "dependencies": [],
+        "description": "Workers, positions, organizations, and compensation concepts.",
+        "format": "turtle",
+        "id": "workforce",
+        "name": "Workforce",
+        "relationshipCount": 5,
+        "resourcePath": "rdf/ontology-packs/hr-open/workforce.ttl",
+        "selectedByDefault": true,
+        "sha256": "ef532604d3b0adfa6bc53c6d217283e5bf9937238c5d6d55c569610f5994599f"
+      }
+    ],
+    "name": "HR Open Standards",
+    "sourceUrl": "https://www.hropenstandards.org/",
+    "standard": "HR Open Standards",
+    "version": "2025Q1-om1"
+  },
+  {
+    "abbreviation": "ISA-95",
+    "bundled": true,
+    "description": "A compact OpenMetadata starter subset of ANSI/ISA-95 manufacturing operations concepts.",
+    "id": "isa-95",
+    "license": "MIT",
+    "licenseUrl": "https://www.isa.org/standards-and-publications/isa-standards/isa-95-standard",
+    "modules": [
+      {
+        "conceptCount": 9,
+        "dependencies": [],
+        "description": "The ISA-95 role-based equipment hierarchy and resource model.",
+        "format": "turtle",
+        "id": "manufacturing-operations",
+        "name": "Manufacturing operations",
+        "relationshipCount": 7,
+        "resourcePath": "rdf/ontology-packs/isa-95/manufacturing-operations.ttl",
+        "selectedByDefault": true,
+        "sha256": "fa7329eb8fc629b07d02cab1ef5256ddc48626c93dfcc4f5684d3ab05ef600bc"
+      }
+    ],
+    "name": "ISA-95",
+    "sourceUrl": "https://www.isa.org/standards-and-publications/isa-standards/isa-95-standard",
+    "standard": "ANSI/ISA-95",
+    "version": "2025Q1-om1"
+  }
+]

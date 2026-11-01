@@ -11,146 +11,79 @@
  *  limitations under the License.
  */
 import { expect, test } from '../../support/fixtures/base';
+import { installVisualData } from '../../utils/visualData';
 import {
+  expectVisualScreenshot,
   gotoForScreenshot,
-  SCREENSHOT_OPTS,
+  prepareVisualTheme,
 } from '../../utils/visualRegression';
 
-/**
- * Static routes that render deterministically from seeded data.
- * `mask` lists locators whose content varies per environment/run
- * (activity feeds, counts, relative timestamps).
- *
- * Testid corrections vs. the original draft (verified against the running
- * app and the current UI source, see task-5-report.md):
- * - landing-page: `activity-feed-widget` does not exist; the real testid on
- *   the feed widget's grid cell is `KnowledgePanel.ActivityFeed`
- *   (src/components/MyData/HomeLandingPage/HomeLandingPage.tsx).
- * - explore: `search-summary` does not exist. The volatile regions are the
- *   result-count text (`search-results-count`,
- *   src/components/SearchedData/SearchedData.tsx) and the facet-count tree
- *   in the left sidebar (`explore-tree`,
- *   src/components/Explore/ExploreTree/ExploreTree.tsx). Both are masked.
- */
-/**
- * The landing dashboard's run-dependent content: the activity digest, the
- * Context Center article list (other specs create pages), the estate's asset
- * counts and connector breakdown, and the release toast. Masking these replaces the 3% diff allowance the page used
- * to carry, so the widget chrome stays under test at the suite's default 1% gate.
- */
-const LANDING_PAGE_MASKS = [
-  '[data-testid="KnowledgePanel.ActivityFeed"]',
-  '[data-testid="KnowledgePanel.KnowledgeCenter"]',
-  '[data-testid="KnowledgePanel.DataEstate"] [data-testid="data-estate-total"]',
-  '[data-testid="KnowledgePanel.DataEstate"] [data-testid="connector-breakdown"]',
-  '[data-testid="whats-new-alert-card"]',
-];
+// Classic mode is intentionally light-only. Its native counterpart is covered
+// by the two-theme page catalog rather than forcing an unsupported appearance.
+const PAGES = [
+  ['landing-page', '/my-data', 'topic-card-platformHealth'],
+  ['explore', '/explore', 'entity-summary-panel-container'],
+  ['glossary', '/glossary/VisualBusinessGlossary', 'Customer'],
+  ['settings', '/settings', 'preferences'],
+  [
+    'database-services',
+    '/settings/services/databases',
+    'service-name-visual_warehouse',
+  ],
+  ['data-quality', '/data-quality', 'dq-dashboard-container'],
+  ['incident-manager', '/incident-manager', 'test-case-incident-manager-table'],
+  ['users', '/settings/members/users', 'visual_steward'],
+  ['teams', '/settings/members/teams', 'team-name-visual_analytics'],
+  ['roles', '/settings/access/roles', 'role-name'],
+  ['bots', '/settings/bots', 'bot-link-Ingestion bot'],
+  ['applications', '/marketplace', 'auto-pilot-application-card'],
+] as const;
 
-const PAGES: {
-  name: string;
-  route: string;
-  mask?: string[];
-  maskColor?: string;
-  maxDiffPixelRatio?: number;
-}[] = [
-  {
-    name: 'landing-page',
-    route: '/my-data',
-    mask: LANDING_PAGE_MASKS,
-  },
-  {
-    name: 'explore',
-    route: '/explore',
-    mask: [
-      '[data-testid="search-results-count"]',
-      '[data-testid="explore-tree"]',
-    ],
-    // Search cards and the summary panel settled with the same content but a repeatable 2%
-    // raster/layout delta in CI, so use the suite's established narrow variance allowance.
-    maxDiffPixelRatio: 0.03,
-  },
-  { name: 'glossary', route: '/glossary' },
-  { name: 'settings', route: '/settings' },
-  {
-    name: 'database-services',
-    route: '/settings/services/databases',
-    // The services list contains playwright-seeded services with random name
-    // suffixes (pw-database-service-<hex>), so the table body is
-    // non-deterministic run-to-run. Mask the row body; the page chrome, search,
-    // and column headers stay under test.
-    mask: ['[data-testid="services-container"] tbody'],
-  },
-  {
-    name: 'data-quality',
-    route: '/data-quality',
-    // The Data Health cards count whatever assets the environment happens to
-    // hold — 322 tables in CI, 486 on a dev box — so the donut and its legend
-    // counts cannot be baselined. Mask those two and nothing else: the cards,
-    // their icons and headings, and the legend's dots and labels stay under
-    // test, as do the page chrome, tabs, filter row and Data Dimensions.
-    //
-    // A mask is sized to the element it covers, and these counts are inline, so
-    // the baseline does still encode their digit *width* — 322 and 486 both
-    // being three digits is why this holds across environments. If the seeded
-    // totals ever cross a digit boundary the text after them shifts and this
-    // goes red; mask the legend container then, at the cost of its labels.
-    mask: [
-      '[data-testid$="-pie-chart-widget"] [id$="-pie-chart"]',
-      '[data-testid$="-pie-chart-widget"] [data-testid^="legend-count-"]',
-    ],
-  },
-  {
-    name: 'incident-manager',
-    route: '/incident-manager',
-    // Sample-data incidents carry run-specific timestamps and can change
-    // ordering as indexing completes. Keep the surrounding page under test.
-    mask: ['[data-testid="test-case-incident-manager-table"]'],
-    maskColor: '#ffffff',
-  },
-  { name: 'users', route: '/settings/members/users' },
-  {
-    name: 'teams',
-    route: '/settings/members/teams',
-    // The Organization team list includes playwright-seeded teams with random
-    // name suffixes (PW Data Consumer Team <hex>), so the table body is
-    // non-deterministic run-to-run. Mask the row body; the org header (owners,
-    // description), tabs, search, and column headers stay under test.
-    mask: ['[data-testid="team-hierarchy-table"] tbody'],
-  },
-  {
-    name: 'roles',
-    route: '/settings/access/roles',
-    // Seeded roles carry per-run random names, so mask the row body and the
-    // pagination that counts them, as for teams; the header, description,
-    // search and column headers stay under test.
-    mask: [
-      '[data-testid="roles-list-table"] tbody',
-      '[data-testid="roles-list-container"] [data-testid="pagination"]',
-    ],
-  },
-  { name: 'bots', route: '/settings/bots' },
-  { name: 'applications', route: '/marketplace' },
-];
+test.beforeEach(async ({ page }) => {
+  await prepareVisualTheme(page, 'light', 'classic');
+  await installVisualData(page, 'populated', 'classic');
+});
 
-for (const { name, route, mask, maskColor, maxDiffPixelRatio } of PAGES) {
+for (const [name, route, readyTestId] of PAGES) {
   test(`${name} matches baseline`, async ({ page }) => {
-    await gotoForScreenshot(page, route);
-    await expect(page).toHaveScreenshot(`${name}.png`, {
-      ...SCREENSHOT_OPTS,
-      ...(maxDiffPixelRatio !== undefined && { maxDiffPixelRatio }),
-      mask: (mask ?? []).map((selector) => page.locator(selector)),
-      ...(maskColor !== undefined && { maskColor }),
-    });
+    await gotoForScreenshot(page, route, { readyTestId });
+    await expect(page.getByTestId('app-shell')).toHaveCount(0);
+    if (name === 'glossary')
+      await expect(
+        page.getByTestId('activity_feed').getByTestId('count')
+      ).toHaveText('5');
+    if (name === 'landing-page')
+      await expect(
+        page.getByTestId('topic-card-platformHealth').getByText(/^Updated /)
+      ).toBeVisible();
+    if (name === 'data-quality') {
+      for (const widget of [
+        'data-assets-coverage-pie-chart-widget',
+        'entity-health-pie-chart-widget',
+        'test-case-status-pie-chart-widget',
+      ])
+        await expect(page.getByTestId(widget)).toBeVisible();
+    }
+    await expectVisualScreenshot(page, name, 'light', { maxDiffPixelRatio: 0 });
   });
 }
 
 test('landing page with collapsed sidebar matches baseline', async ({
   page,
 }) => {
-  await gotoForScreenshot(page, '/my-data');
-  await page.getByTestId('sidebar-toggle').click();
-  await expect(page).toHaveScreenshot('landing-page-sidebar-collapsed.png', {
-    ...SCREENSHOT_OPTS,
-    mask: LANDING_PAGE_MASKS.map((selector) => page.locator(selector)),
+  await gotoForScreenshot(page, '/my-data', {
+    readyTestId: 'topic-card-platformHealth',
   });
+  await page.getByTestId('sidebar-toggle').click();
+  await expect(
+    page.getByTestId('topic-card-platformHealth').getByText(/^Updated /)
+  ).toBeVisible();
+  await expectVisualScreenshot(
+    page,
+    'landing-page-sidebar-collapsed',
+    'light',
+    {
+      maxDiffPixelRatio: 0,
+    }
+  );
 });

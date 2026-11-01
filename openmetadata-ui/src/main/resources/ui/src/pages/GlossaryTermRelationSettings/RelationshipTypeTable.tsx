@@ -293,7 +293,11 @@ const RelationshipTypeTable = ({
         data-testid="relation-types-table">
         <Table.Header>
           {getColumnLabels(t).map((label) => (
-            <Table.Head id={label} key={label}>
+            // Relation names identify rows for React Aria's keyboard navigation.
+            <Table.Head
+              id={label}
+              isRowHeader={label === t('label.name')}
+              key={label}>
               <Typography as="span" className="tw:text-tertiary" size="text-sm">
                 {label}
               </Typography>

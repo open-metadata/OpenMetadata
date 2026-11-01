@@ -1,0 +1,65 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, test } from '../../support/fixtures/base';
+import { installVisualData } from '../../utils/visualData';
+import {
+  expectVisualScreenshot,
+  gotoForScreenshot,
+  prepareVisualTheme,
+  VISUAL_THEMES,
+} from '../../utils/visualRegression';
+
+for (const theme of VISUAL_THEMES) {
+  test.describe(`Glossary interactions ${theme}`, { tag: '@Platform' }, () => {
+    test('glossary-late-activity-count', async ({ page }) => {
+      await prepareVisualTheme(page, theme);
+      await installVisualData(page);
+      let releaseActivity = () => {};
+      const activityGate = new Promise<void>((resolve) => {
+        releaseActivity = resolve;
+      });
+      // Resolve the independent reads in the order that previously left the
+      // memoized badge stale; no delay or shared backend state is involved.
+      await page.route(
+        '**/api/v1/activity/entity/glossary/name/**',
+        async (route) => {
+          await activityGate;
+          await route.fallback();
+        }
+      );
+      try {
+        await gotoForScreenshot(page, '/glossary/VisualBusinessGlossary', {
+          readyTestId: 'glossary-terms-table',
+        });
+        const badge = page.getByTestId('activity_feed').getByTestId('count');
+        await expect(badge).toHaveText('4');
+        const activityResponse = page.waitForResponse((response) =>
+          response.url().includes('/activity/entity/glossary/name/')
+        );
+        releaseActivity();
+        expect((await activityResponse).ok()).toBe(true);
+        await expect(badge).toHaveText('5');
+        await expectVisualScreenshot(
+          page,
+          'glossary-late-activity-count',
+          theme,
+          {
+            maxDiffPixelRatio: 0,
+          }
+        );
+      } finally {
+        releaseActivity();
+      }
+    });
+  });
+}

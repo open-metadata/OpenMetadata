@@ -219,9 +219,9 @@ const GlossaryDetails = ({
   }, [
     customizedPage?.tabs,
     glossary.fullyQualifiedName,
-    feedCount.conversationCount,
-    feedCount.totalTasksCount,
-    feedCount.openTaskCount,
+    // Activity and task reads resolve separately, and the tab body consumes
+    // the complete count object as well as the total shown in its label.
+    feedCount,
     fetchTaskCounts,
     activeTab,
     isVersionView,
