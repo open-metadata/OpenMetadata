@@ -720,6 +720,8 @@ public class RdfRepository {
     try {
       bulkStoreEntityRequests(translateEntities(entities), writeMode);
       LOG.debug("Bulk created/updated {} entities in RDF store", entities.size());
+    } catch (RdfStorageMaintenanceException heldBack) {
+      throw heldBack;
     } catch (Exception e) {
       LOG.error("Failed to bulk create/update {} entities in RDF", entities.size(), e);
       throw new RuntimeException("Failed to bulk create/update entities in RDF", e);
@@ -772,6 +774,8 @@ public class RdfRepository {
     }
     try {
       bulkStoreEntityRequests(requests, writeMode);
+    } catch (RdfStorageMaintenanceException heldBack) {
+      throw heldBack;
     } catch (Exception e) {
       LOG.error("Failed to bulk store {} pre-translated entities in RDF", requests.size(), e);
       throw new RuntimeException("Failed to bulk create/update entities in RDF", e);

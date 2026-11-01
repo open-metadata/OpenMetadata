@@ -26,16 +26,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 
 /**
@@ -251,6 +256,22 @@ class JenaFusekiDatasetAdminTest {
       statusByPath.put("POST /build_a", 507);
 
       assertDoesNotThrow(() -> storage.createDatasetIfMissing("build_a"));
+    }
+  }
+
+  @Test
+  @DisplayName("a reconcile batch the disk guard refuses reaches the caller as a low-disk refusal")
+  void aReconcileBatchTheGuardRefusesIsALowDiskRefusal() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST " + DATASET_PATH, 507);
+      final Model model = ModelFactory.createDefaultModel();
+      model.add(model.createResource("urn:test:table"), RDFS.label, "table");
+      final List<RdfStorageInterface.EntityWriteRequest> batch =
+          List.of(new RdfStorageInterface.EntityWriteRequest("table", UUID.randomUUID(), model));
+
+      assertThrows(
+          RdfStorageLowDiskException.class,
+          () -> storage.bulkStoreEntities(batch, RdfWriteMode.RECONCILE));
     }
   }
 
