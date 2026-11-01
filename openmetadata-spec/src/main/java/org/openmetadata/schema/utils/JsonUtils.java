@@ -492,14 +492,14 @@ public final class JsonUtils {
    * Message for a patch that names a real field but supplies a value the field cannot hold - a stale
    * enum constant or the wrong JSON type. Enumerating the accepted constants matters more than the
    * raw Jackson text here, because the caller that just guessed a field name will guess the value
-   * next.
+   * next. The rejected value is never quoted: a patch can copy it from anywhere in the entity.
    */
   private static String invalidValueMessage(JsonMappingException e, Class<?> clz) {
     String field = mappingFieldPath(e);
     List<String> allowed = allowedValuesFor(e);
     String detail =
         allowed.isEmpty()
-            ? String.format(": %s", rootReason(e))
+            ? String.format(": must be %s%s", expectedValue(e), uriSyntaxReason(e))
             : String.format(". Allowed values are: %s", String.join(", ", allowed));
     return String.format(
         "Invalid value for field '%s' on %s%s", field, clz.getSimpleName(), detail);
@@ -542,12 +542,6 @@ public final class JsonUtils {
       result = mismatch.getTargetType();
     }
     return result;
-  }
-
-  /** Jackson's own reason, minus the "at [Source: UNKNOWN...]" location noise it appends. */
-  private static String rootReason(JsonMappingException e) {
-    String message = e.getOriginalMessage();
-    return message == null ? e.toString() : message;
   }
 
   /**

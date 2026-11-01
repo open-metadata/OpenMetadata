@@ -915,6 +915,30 @@ PREPARE rdf_projection_health_watermark_stmt FROM @rdf_projection_health_waterma
 EXECUTE rdf_projection_health_watermark_stmt;
 DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
 
+-- When storage maintenance last compacted the serving dataset, so a compaction that stops
+-- happening, for any reason, shows as a degraded projection instead of going unnoticed.
+SET @rdf_projection_health_compaction_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_projection_health'
+        AND column_name = 'lastCompactedAt'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_projection_health ADD COLUMN lastCompactedAt bigint NOT NULL DEFAULT 0'
+  )
+);
+PREPARE rdf_projection_health_compaction_stmt FROM @rdf_projection_health_compaction_ddl;
+EXECUTE rdf_projection_health_compaction_stmt;
+DEALLOCATE PREPARE rdf_projection_health_compaction_stmt;
+
+-- Transfer RDF delivery to pause-aware consumers before producing pipelineExecution payloads.
+-- Deleting first waits for an old in-flight delivery; old producers still use the enqueue guard.
+DELETE FROM rdf_live_write_guard WHERE id = 'drain';
+INSERT IGNORE INTO rdf_live_write_guard (id) VALUES ('drain-v2');
+
 -- Credential verification joins user_entity to user_tokens on (userId, tokenType) and reads token.
 -- user_tokens had only PRIMARY KEY (token), so that predicate scanned every row, refresh and
 -- email-verification tokens included. Including token makes the fingerprint read index-only.
