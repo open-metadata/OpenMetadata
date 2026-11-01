@@ -63,13 +63,17 @@ class CapabilitiesIT {
     assertEquals("Update is Bot", filter(capabilities, "filterByUpdaterIsBot").getDisplayName());
   }
 
-  // Offered in the form, never enforced on save. A task has no owners, so they are not offered.
+  // Offered in the form, never enforced on save. A task's owners are its creator and the owners of
+  // the entity it is about.
   @Test
   void offersTheRecipientsInsideThePlatformTheSourcesReach() {
     AlertCapabilities capabilities = ask(AlertType.NOTIFICATION, List.of("task"));
 
     assertEquals(
-        List.of(SubscriptionCategory.ASSIGNEES, SubscriptionCategory.MENTIONS),
+        List.of(
+            SubscriptionCategory.ASSIGNEES,
+            SubscriptionCategory.OWNERS,
+            SubscriptionCategory.MENTIONS),
         capabilities.getRecipientCategories());
   }
 
