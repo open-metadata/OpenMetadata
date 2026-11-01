@@ -520,13 +520,16 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(result, expected)
 
     @staticmethod
-    def _mock_table_with_columns(*column_names):
-        """Build a lightweight stand-in for a Table entity with the given real column names."""
+    def _mock_table_with_columns(table_fqn, fqn_segment_by_name):
+        """Build a lightweight stand-in for a Table entity with the given real columns.
+
+        Keyed by the name a fetched column carries, with the spelling its FQN stores."""
         table = Mock()
         columns = []
-        for column_name in column_names:
+        for column_name, fqn_segment in fqn_segment_by_name.items():
             column = Mock()
             column.name.root = column_name
+            column.fullyQualifiedName = FullyQualifiedEntityName(f"{table_fqn}.{fqn_segment}")
             columns.append(column)
         table.columns = columns
         return table
@@ -548,8 +551,12 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_build_map.return_value = {
             "sqlserver://host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
         }
-        source_table = self._mock_table_with_columns("first_name", "last_name")
-        target_table = self._mock_table_with_columns("FIRST_NAME", "LAST_NAME")
+        source_table = self._mock_table_with_columns(
+            "database.schema.case_test_source", {"first_name": "first_name", "last_name": "last_name"}
+        )
+        target_table = self._mock_table_with_columns(
+            "database.schema.case_test_target", {"FIRST_NAME": "FIRST_NAME", "LAST_NAME": "LAST_NAME"}
+        )
         mock_get_by_name_cached.side_effect = lambda entity_class, fqn_str, **kwargs: (
             target_table if fqn_str == "database.schema.case_test_target" else source_table
         )
@@ -603,6 +610,64 @@ class OpenLineageUnitTest(unittest.TestCase):
                         toColumn="database.schema.case_test_target.LAST_NAME",
                         fromColumns=["database.schema.case_test_source.last_name"],
                     ),
+                ],
+            }
+        }
+        self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_uses_stored_fqn_of_special_column_names(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """A column name with a reserved character or a dot is not its FQN segment, so
+        column lineage has to carry the stored FQN. An entry built as "<table>.<name>"
+        matches no real column and the server silently drops it."""
+        fqn_segment_by_name = {
+            "a>b": "a__reserved__arrow__b",
+            "c.d": '"c.d"',
+            "e.>f": '"e.__reserved__arrow__f"',
+            ".>": '".__reserved__arrow__"',
+        }
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {"postgres://host:5432/db.schema.source": "database.schema.source"}
+        mock_get_by_name_cached.side_effect = lambda entity_class, fqn_str, **kwargs: self._mock_table_with_columns(
+            fqn_str, fqn_segment_by_name
+        )
+
+        outputs = [
+            {
+                "name": "db.schema.target",
+                "namespace": "postgres://host:5432",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            column_name: {
+                                "inputFields": [
+                                    {
+                                        "field": column_name,
+                                        "namespace": "postgres://host:5432",
+                                        "name": "db.schema.source",
+                                    }
+                                ]
+                            }
+                            for column_name in fqn_segment_by_name
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage([], outputs)
+
+        expected = {
+            "database.schema.target": {
+                "database.schema.source": [
+                    ColumnLineage(
+                        toColumn=f"database.schema.target.{fqn_segment}",
+                        fromColumns=[f"database.schema.source.{fqn_segment}"],
+                    )
+                    for fqn_segment in fqn_segment_by_name.values()
                 ],
             }
         }
@@ -669,7 +734,7 @@ class OpenLineageUnitTest(unittest.TestCase):
     def test_get_column_lineage_requests_columns_field(
         self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
     ):
-        """_match_column_name only works if the fetched Table entity actually
+        """_match_column_fqn only works if the fetched Table entity actually
         has its columns populated. Table lookups must explicitly request the
         'columns' field rather than relying on whatever the default response
         happens to include."""
