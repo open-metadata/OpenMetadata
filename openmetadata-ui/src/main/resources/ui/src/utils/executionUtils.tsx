@@ -154,58 +154,145 @@ const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>
     taskData.downstreamTasks?.includes(currentTask.name)
   );
 
-// Function to build a tree for all nodes
-export const buildCompleteTree = (
-  data: Task[],
-  viewElements: {
-    key: string;
-    value: React.ReactNode;
-  }[],
-  icon: React.ReactNode | null,
-  key: string,
-  parentKey: string
-) => {
-  let node: TreeNode;
+// Upper bound on the number of tree nodes a single root expansion can
+// produce. The backtracking `visited` set in `buildCompleteTree` is what
+// keeps cycles terminating, but it also lets a branching cycle expand every
+// distinct path through it (e.g. a complete graph of 10 tasks yields ~10!
+// nodes per root). Real pipeline task graphs are far smaller than this, so
+// the cap is invisible to them while preventing Tree View from freezing or
+// exhausting memory on a pathological cyclic graph.
+const MAX_TREE_NODES = 10000;
 
-  const nodeKey: string = parentKey + '-' + key;
+type ViewElement = { key: string; value: React.ReactNode };
+type Budget = { remaining: number };
 
+const createNode = (
+  nodeKey: string,
+  title: React.ReactNode,
+  icon: React.ReactNode | null
+): TreeNode => {
   if (icon != null) {
-    node = {
-      key: nodeKey,
-      title: viewElements.find((item) => item.key === key)?.value ?? null,
-      children: [],
-      icon,
-    };
-  } else {
-    node = {
-      key: nodeKey,
-      title: viewElements.find((item) => item.key === key)?.value ?? null,
-      children: [],
-    };
+    return { key: nodeKey, title, children: [], icon };
   }
-  const entry = data.find((item) => item.name === key);
 
-  if (entry) {
-    const childrenKeys = entry.downstreamTasks ?? [];
+  return { key: nodeKey, title, children: [] };
+};
 
+// Render a child as a leaf (no recursion) without charging the budget.
+// Used when the node budget is exhausted so tasks still appear in Tree
+// View instead of being silently dropped. Leaf creation is bounded by
+// the input graph (no recursion), so it can't blow up the way a
+// branching cycle does.
+const makeLeafNode = (
+  parentNodeKey: string,
+  childKey: string,
+  viewElements: ViewElement[],
+  icon: React.ReactNode | null
+): TreeNode => {
+  const leaf: TreeNode = {
+    key: parentNodeKey + '-' + childKey,
+    title: viewElements.find((item) => item.key === childKey)?.value ?? null,
+  };
+  if (icon != null) {
+    leaf.icon = icon;
+  }
+
+  return leaf;
+};
+
+// Expand the children of a node. While the budget remains, children are
+// expanded recursively; once the budget is exhausted, remaining children
+// (and children of a node whose own expansion was stopped) are rendered
+// as leaves so no task silently disappears from Tree View.
+function expandNodeChildren(
+  node: TreeNode,
+  entry: Task | undefined,
+  data: Task[],
+  viewElements: ViewElement[],
+  icon: React.ReactNode | null,
+  nodeKey: string,
+  parentKey: string,
+  visited: Set<string>,
+  budget: Budget
+): void {
+  if (!entry || visited.has(entry.name)) {
+    return;
+  }
+
+  const childParentKey = parentKey + '-' + entry.name;
+  const childrenKeys = entry.downstreamTasks ?? [];
+
+  if (budget.remaining > 0) {
+    visited.add(entry.name);
     for (const childKey of childrenKeys) {
-      const childNode = buildCompleteTree(
-        data,
-        viewElements,
-        icon,
-        childKey,
-        parentKey + '-' + entry.name
-      );
-      node.children?.push(childNode);
+      if (budget.remaining > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutual recursion with buildCompleteTree
+        const childNode = buildCompleteTree(
+          data,
+          viewElements,
+          icon,
+          childKey,
+          childParentKey,
+          visited,
+          budget
+        );
+        node.children?.push(childNode);
+      } else {
+        node.children?.push(
+          makeLeafNode(nodeKey, childKey, viewElements, icon)
+        );
+      }
+    }
+    // Backtrack so a shared task (e.g. a diamond merge node) is still
+    // expanded under a different parent branch. This keeps cycle
+    // termination (a node is only visited once per path) while not
+    // pruning valid acyclic paths that converge on the same task.
+    visited.delete(entry.name);
+  } else {
+    for (const childKey of childrenKeys) {
+      node.children?.push(makeLeafNode(nodeKey, childKey, viewElements, icon));
     }
   }
+}
+
+// Function to build a tree for all nodes
+export function buildCompleteTree(
+  data: Task[],
+  viewElements: ViewElement[],
+  icon: React.ReactNode | null,
+  key: string,
+  parentKey: string,
+  visited: Set<string> = new Set(),
+  budget: Budget = { remaining: MAX_TREE_NODES }
+) {
+  const nodeKey: string = parentKey + '-' + key;
+
+  // Charge every created node against the shared budget so the total
+  // expansion is bounded regardless of graph shape.
+  budget.remaining -= 1;
+
+  const title = viewElements.find((item) => item.key === key)?.value ?? null;
+  const node = createNode(nodeKey, title, icon);
+  const entry = data.find((item) => item.name === key);
+
+  expandNodeChildren(
+    node,
+    entry,
+    data,
+    viewElements,
+    icon,
+    nodeKey,
+    parentKey,
+    visited,
+    budget
+  );
 
   if (node.children?.length === 0) {
     delete node.children;
   }
 
   return node;
-};
+}
 
 export const getTreeData = (
   tasks: Task[],
@@ -289,7 +376,35 @@ export const getTreeData = (
     }
   }
 
-  roots.forEach((taskName) => {
+  // Compute the set of tasks reachable from the detected roots so that
+  // disconnected components (e.g. a cycle C<->D alongside A->B) are still
+  // shown. When roots is empty (a pure cycle), nothing is reachable yet and
+  // every task becomes a root — matching the previous fallback behaviour.
+  const reached = new Set<string>();
+  const reachQueue: string[] = [...roots];
+  while (reachQueue.length > 0) {
+    const name = reachQueue.shift() as string;
+    if (reached.has(name)) {
+      continue;
+    }
+    reached.add(name);
+    const task = tasks.find((t) => t.name === name);
+    for (const child of task?.downstreamTasks ?? []) {
+      if (!reached.has(child)) {
+        reachQueue.push(child);
+      }
+    }
+  }
+
+  // Any task not reached from the detected roots (a disconnected cycle or
+  // any other disconnected component) gets its own root so it is visible.
+  const unreachedRoots = tasks
+    .map((task) => task.name)
+    .filter((name) => !reached.has(name));
+
+  const effectiveRoots = [...roots, ...unreachedRoots];
+
+  effectiveRoots.forEach((taskName) => {
     treeDataList.push(
       buildCompleteTree(tasks, viewElements, null, taskName, 'root')
     );
