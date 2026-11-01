@@ -319,11 +319,13 @@ jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
 
 jest.mock('../ODCSImportModal', () => {
   return function MockContractImportModal({
+    existingContract,
     format,
     visible,
     onSuccess,
     onClose,
   }: {
+    existingContract?: { id?: string } | null;
     format: string;
     visible: boolean;
     onSuccess: () => void;
@@ -331,6 +333,9 @@ jest.mock('../ODCSImportModal', () => {
   }) {
     return (
       <div data-testid="contract-import-modal">
+        <span data-testid="import-modal-existing-contract">
+          {existingContract?.id ?? 'none'}
+        </span>
         <span data-testid="import-modal-format">{format}</span>
         <span data-testid="import-modal-visible">
           {visible ? 'true' : 'false'}
@@ -677,6 +682,39 @@ describe('ContractDetail', () => {
       // Note: The actual click prevention is handled by antd's Menu disabled prop,
       // but we verify the disabled class is applied
       expect(deleteButton.closest('[class*="disabled"]')).toBeTruthy();
+    });
+
+    it('should import over an own contract, but create a new one over an inherited contract', () => {
+      const { rerender } = render(
+        <ContractDetail
+          hasEditPermission
+          contract={{ ...mockContract, inherited: false }}
+          entityId="test-entity-id"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(
+        screen.getByTestId('import-modal-existing-contract')
+      ).toHaveTextContent(mockContract.id ?? '');
+
+      rerender(
+        <ContractDetail
+          hasEditPermission
+          contract={{ ...mockContract, inherited: true }}
+          entityId="test-entity-id"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />
+      );
+
+      expect(
+        screen.getByTestId('import-modal-existing-contract')
+      ).toHaveTextContent('none');
     });
 
     it('should not disable delete button for non-inherited contracts', () => {
