@@ -50,6 +50,8 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
 
   {
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
     supportsDataContract = true;

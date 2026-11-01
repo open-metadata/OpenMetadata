@@ -78,6 +78,8 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
 
   {
     supportsSearchIndex = false;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsDomains = false;
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;

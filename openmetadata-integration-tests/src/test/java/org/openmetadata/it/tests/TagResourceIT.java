@@ -2483,4 +2483,28 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                       + tagFqns);
             });
   }
+
+  /** Rename, then edit the description in the same session: the rename survives consolidation. */
+  @Test
+  void test_renameAndUpdateDescriptionConsolidation(final TestNamespace ns) {
+    final Tag entity = createEntity(createMinimalRequest(ns));
+    final Tag updated = renameThenUpdateDescription(entity, "renamed_" + ns.uniqueShortId(), 1);
+    assertEquals(
+        updated.getFullyQualifiedName(),
+        getEntityByName(updated.getFullyQualifiedName()).getFullyQualifiedName());
+  }
+
+  /** Three rename + description cycles in one session each resolve by the latest FQN. */
+  @Test
+  void test_multipleRenamesWithUpdatesConsolidation(final TestNamespace ns) {
+    Tag entity = createEntity(createMinimalRequest(ns));
+    for (int cycle = 1; cycle <= 3; cycle++) {
+      final String previousFqn = entity.getFullyQualifiedName();
+      entity =
+          renameThenUpdateDescription(entity, "renamed_" + cycle + "_" + ns.uniqueShortId(), cycle);
+      assertEquals(entity.getName(), getEntityByName(entity.getFullyQualifiedName()).getName());
+      assertThrows(
+          Exception.class, () -> getEntityByName(previousFqn), "Old FQN no longer resolves");
+    }
+  }
 }
