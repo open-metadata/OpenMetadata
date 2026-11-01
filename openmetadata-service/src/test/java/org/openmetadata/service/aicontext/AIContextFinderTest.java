@@ -16,6 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -36,6 +40,9 @@ import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
+import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 
 /**
  * Unit tests for {@link AIContextFinder}'s pure hit-mapping helpers and the Mode-B markdown that
@@ -231,5 +238,26 @@ class AIContextFinderTest {
     assertTrue(
         markdown.contains("- `svc.db.sch.orders` (table) — via `Business.Order`"),
         "missing routed candidate asset");
+  }
+
+  @Test
+  void findSearchesTheConfiguredVectorServiceOnElasticsearch() {
+    // On Elasticsearch the OpenSearchVectorService singleton is never created, so the finder must
+    // use the backend-neutral service the SearchRepository holds (issue #36463).
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    when(vectorService.search(
+            eq("bounce rate"), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(0L, List.of()));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      assertTrue(new AIContextFinder().find("bounce rate", 5).isEmpty());
+    }
+
+    verify(vectorService)
+        .search(eq("bounce rate"), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble());
   }
 }
