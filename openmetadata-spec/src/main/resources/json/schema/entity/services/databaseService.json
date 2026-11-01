@@ -267,6 +267,7 @@
     "databaseConnection": {
       "type": "object",
       "description": "Database Connection.",
+      "javaType": "org.openmetadata.schema.api.services.DatabaseConnection",
       "javaInterfaces": [
         "org.openmetadata.schema.ServiceConnectionEntityInterface"
       ],

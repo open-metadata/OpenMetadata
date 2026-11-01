@@ -4,6 +4,7 @@
   "title": "Service Connection",
   "description": "Groups source connection configurations.",
   "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.connections.ServiceConnection",
   "definitions": {
     "serviceConnection": {
       "description": "Supported services",

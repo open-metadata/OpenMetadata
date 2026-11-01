@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/qlikSense/certificatePath.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QlikCertificatePath",
+  "description": "Qlik Authentication Certificate File Path",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",
+  "properties": {
+    "clientCertificate": {
+      "title": "Client Certificate Path",
+      "description": "Client Certificate",
+      "type": "string"
+    },
+    "clientKeyCertificate": {
+      "title": "Client Key Certificate",
+      "description": "Client Key Certificate.",
+      "type": "string"
+    },
+    "rootCertificate": {
+      "title": "Root Certificate",
+      "description": "Root Certificate.",
+      "type": "string"
+    }
+  },
+  "required": ["clientCertificate", "clientKeyCertificate", "rootCertificate"]
+}

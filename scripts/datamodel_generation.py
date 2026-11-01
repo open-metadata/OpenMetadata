@@ -215,4 +215,26 @@ if applied != 1:
 with Path(UNION_MODE_FILE).open("w", encoding=UTF_8) as f:
     f.write(content)
 
+# Preserve imports that were available when these branches were inline definitions.
+COMPATIBILITY_ALIASES = {
+    "entity/services/connections/messaging/natsConnection.py": (
+        "BasicAuth = basicAuth.NatsBasicAuth",
+        "NkeyAuth = nkeyAuth.NatsNkeyAuth",
+        "TokenAuth = tokenAuth.NatsTokenAuth",
+    ),
+    "entity/services/connections/dashboard/qlikSenseConnection.py": (
+        "QlikCertificatePath = certificatePath.QlikCertificatePath",
+        "QlikCertificateValues = certificateValues.QlikCertificateValues",
+    ),
+    "entity/services/connections/dashboard/powerBIConnection.py": (
+        "LocalConfig = localConfig.PowerBILocalConfig",
+    ),
+    "metadataIngestion/storageServiceMetadataPipeline.py": (
+        "NoMetadataConfigurationSource = storageMetadataNoConfig.StorageMetadataNoConfig",
+    ),
+}
+for relative_path, aliases in COMPATIBILITY_ALIASES.items():
+    with (output_root / relative_path).open("a", encoding=UTF_8) as generated_file:
+        generated_file.write("\n\n" + "\n".join(aliases) + "\n")
+
 sys.stdout.write("Model generation and post-processing completed successfully.\n")

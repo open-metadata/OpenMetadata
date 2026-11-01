@@ -2617,7 +2617,7 @@ export interface Connection {
      * provided when identityType is `ANONYMOUS` )
      */
     namespace?:    string;
-    certificates?: QlikCertificatesBy;
+    certificates?: QlikCertificate;
     /**
      * User Directory.
      */
@@ -4153,7 +4153,7 @@ export enum KafkaSecurityProtocol {
  *
  * Qlik Authentication Certificate File Path
  */
-export interface QlikCertificatesBy {
+export interface QlikCertificate {
     sslConfig?: ConsumerConfigSSLClass;
     /**
      * Client Certificate

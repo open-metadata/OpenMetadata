@@ -89,6 +89,7 @@
     "source": {
       "description": "Configuration for Source component in OpenMetadata Ingestion Framework.",
       "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.Source",
       "properties": {
         "type": {
           "description": "Type of the source connector ex: mysql, snowflake, tableau etc..",

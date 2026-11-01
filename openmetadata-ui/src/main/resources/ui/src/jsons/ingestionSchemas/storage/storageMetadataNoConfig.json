@@ -1,0 +1,7 @@
+{
+  "title": "StorageMetadataNoConfig",
+  "description": "No manifest file available. Ingestion would look for bucket-level metadata file instead",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataNoConfig",
+  "additionalProperties": false
+}

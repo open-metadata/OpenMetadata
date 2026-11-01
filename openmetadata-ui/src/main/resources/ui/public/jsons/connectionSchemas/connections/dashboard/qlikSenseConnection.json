@@ -11,96 +11,6 @@
         "QlikSense"
       ],
       "default": "QlikSense"
-    },
-    "qlikCertificatePath": {
-      "description": "Qlik Authentication Certificate File Path",
-      "title": "Qlik Certificates By File Path",
-      "type": "object",
-      "properties": {
-        "clientCertificate": {
-          "title": "Client Certificate Path",
-          "description": "Client Certificate",
-          "type": "string"
-        },
-        "clientKeyCertificate": {
-          "title": "Client Key Certificate",
-          "description": "Client Key Certificate.",
-          "type": "string"
-        },
-        "rootCertificate": {
-          "title": "Root Certificate",
-          "description": "Root Certificate.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "clientCertificate",
-        "clientKeyCertificate",
-        "rootCertificate"
-      ]
-    },
-    "qlikCertificateValues": {
-      "description": "Qlik Authentication Certificate By Values",
-      "title": "Qlik Certificates By Values",
-      "type": "object",
-      "properties": {
-        "sslConfig": {
-          "title": "SSL Config",
-          "description": "Client SSL configuration",
-          "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
-          "mask": true,
-          "oneOf": [
-            {
-              "title": "Validate SSL Client Config",
-              "description": "OpenMetadata Client configured to validate SSL certificates.",
-              "type": "object",
-              "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
-              "additionalProperties": false,
-              "properties": {
-                "caCertificate": {
-                  "title": "CA Certificate",
-                  "description": "The CA certificate used for SSL validation.",
-                  "type": "string",
-                  "format": "password",
-                  "accept": [
-                    ".pem",
-                    ".crt",
-                    ".cer"
-                  ],
-                  "uiFieldType": "fileOrInput"
-                },
-                "sslCertificate": {
-                  "title": "SSL Certificate",
-                  "description": "The SSL certificate used for client authentication.",
-                  "type": "string",
-                  "format": "password",
-                  "accept": [
-                    ".pem",
-                    ".crt",
-                    ".cer"
-                  ],
-                  "uiFieldType": "fileOrInput"
-                },
-                "sslKey": {
-                  "title": "SSL Key",
-                  "description": "The private key associated with the SSL certificate.",
-                  "type": "string",
-                  "format": "password",
-                  "accept": [
-                    ".pem",
-                    ".crt",
-                    ".cer"
-                  ],
-                  "uiFieldType": "fileOrInput"
-                }
-              }
-            }
-          ]
-        }
-      },
-      "required": [
-        "sslConfig"
-      ]
     }
   },
   "properties": {
@@ -128,11 +38,13 @@
       "format": "uri"
     },
     "certificates": {
+      "mask": true,
       "oneOf": [
         {
+          "title": "QlikCertificateValues",
           "description": "Qlik Authentication Certificate By Values",
-          "title": "Qlik Certificates By Values",
           "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
           "properties": {
             "sslConfig": {
               "title": "SSL Config",
@@ -193,9 +105,10 @@
           ]
         },
         {
+          "title": "QlikCertificatePath",
           "description": "Qlik Authentication Certificate File Path",
-          "title": "Qlik Certificates By File Path",
           "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",
           "properties": {
             "clientCertificate": {
               "title": "Client Certificate Path",
