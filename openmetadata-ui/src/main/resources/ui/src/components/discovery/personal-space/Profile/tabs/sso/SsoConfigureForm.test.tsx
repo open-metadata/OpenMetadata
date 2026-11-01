@@ -45,6 +45,19 @@ jest.mock('../../../../../../rest/rolesAPIV1', () => ({
   searchRoles: jest.fn().mockResolvedValue([]),
 }));
 
+const mockRunTestLogin = jest.fn().mockResolvedValue(undefined);
+
+// Test Login signs in through an IdP popup; only the page it opens is under test here.
+jest.mock('../../../../../SettingsSso/SsoTestLogin/useSsoTestLogin', () => ({
+  useSsoTestLogin: () => ({
+    isTesting: false,
+    isAwaitingCredentials: false,
+    runTestLogin: mockRunTestLogin,
+    submitCredentials: jest.fn(),
+    reset: jest.fn(),
+  }),
+}));
+
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -226,18 +239,64 @@ describe('SsoConfigureForm', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the LDAP role fields with FormBuilderV1 renderers', async () => {
+  it('renders the LDAP role mapping editor and role picker', async () => {
     renderForm({ selectedProvider: AuthProvider.LDAP });
 
-    const mapping = await screen.findByRole('textbox', {
-      name: /Auth Roles Mapping/,
+    expect(await screen.findByTestId('add-mapping-btn')).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Auth Roles Mapping' })
+    ).toContainElement(screen.getByTestId('add-mapping-btn'));
+    expect(
+      screen.getByTestId(
+        'sso-configuration-form-array-field-template-authReassignRoles'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText('Auth Reassign Roles')).toBeInTheDocument();
+  });
+
+  it('titles the cards with the classic group names', async () => {
+    renderForm({ securityConfig: OKTA_CONFIG });
+
+    expect(
+      await screen.findByRole('heading', { name: 'label.basic-configuration' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('heading', { name: 'label.advanced-configuration' })
+    ).not.toHaveLength(0);
+  });
+
+  it('opens Test Login as a sub page and keeps the edits on Back', async () => {
+    const onSubPageChange = jest.fn();
+    renderForm({ securityConfig: OKTA_CONFIG, onSubPageChange });
+    await waitFor(() =>
+      expect(field('authenticationConfiguration/clientId')).toBeInTheDocument()
+    );
+    fireEvent.change(field('authenticationConfiguration/clientId'), {
+      target: { value: 'edited-client-id' },
     });
 
-    expect(mapping.tagName).toBe('TEXTAREA');
-    expect(screen.getByText('Auth Reassign Roles')).toBeInTheDocument();
-    expect(
-      field('authenticationConfiguration/ldapConfiguration/authReassignRoles')
-    ).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
+    });
+
+    expect(mockRunTestLogin).toHaveBeenCalled();
+    expect(screen.getByTestId('sso-test-login-content')).toBeInTheDocument();
+    expect(screen.getByTestId('sso-configure-form-body')).toHaveClass(
+      'tw:hidden'
+    );
+    expect(screen.getByTestId('sso-configure-footer')).toHaveClass('tw:hidden');
+    expect(onSubPageChange).toHaveBeenLastCalledWith({
+      label: 'label.test-login',
+      onBack: expect.any(Function),
+    });
+
+    fireEvent.click(screen.getByTestId('sso-test-login-back'));
+
+    expect(screen.queryByTestId('sso-test-login-page')).not.toBeInTheDocument();
+    expect(onSubPageChange).toHaveBeenLastCalledWith(undefined);
+    expect(field('authenticationConfiguration/clientId')).toHaveValue(
+      'edited-client-id'
+    );
   });
 
   it('shows the SAML metadata drop zone only for SAML', async () => {

@@ -85,6 +85,30 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+const mockSetHashPage = jest.fn();
+
+// Stateful stand-in for the settings-hash pager: jsdom has no settings hash, so
+// record what would be written to the URL and keep the page in state.
+jest.mock('../../../../../../hooks/useSettingsHash', () => {
+  const { useState } = jest.requireActual('react');
+
+  return {
+    useSettingsHash: () => ({ goTo: jest.fn() }),
+    useHashPagingParams: () => {
+      const [page, setPage] = useState(1);
+
+      return {
+        page,
+        pageSize: undefined,
+        setPage: (...args: [number, ...unknown[]]) => {
+          mockSetHashPage(...args);
+          setPage(args[0]);
+        },
+      };
+    },
+  };
+});
+
 import MembersUsersPanel from './MembersUsersPanel';
 
 const renderComponent = (isAdmin = false) =>
@@ -176,6 +200,50 @@ describe('MembersUsersPanel', () => {
 
     expect(mockRestoreUser).toHaveBeenCalledWith('1');
     expect(screen.getByTestId('restore-user-popover')).toBeInTheDocument();
+  });
+
+  it('pages forward with the next cursor from the Next button', async () => {
+    const page = (paging: Record<string, unknown>) => ({
+      data: [
+        {
+          id: '1',
+          name: 'user1',
+          displayName: 'User One',
+          fullyQualifiedName: 'user1',
+          teams: [],
+          roles: [],
+        },
+      ],
+      paging,
+    });
+    mockGetUsers
+      .mockResolvedValueOnce(page({ after: 'cursor-2', total: 100 }))
+      .mockResolvedValueOnce(page({ before: 'cursor-1', total: 100 }));
+    renderComponent(true);
+
+    const next = await screen.findByTestId('next');
+
+    await waitFor(() => expect(next).toBeEnabled());
+
+    fireEvent.click(next);
+
+    await waitFor(() =>
+      expect(mockGetUsers).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'cursor-2', isAdmin: true })
+      )
+    );
+
+    expect(await screen.findByTestId('page-indicator')).toHaveTextContent(
+      'label.page 2'
+    );
+    expect(screen.getByTestId('previous')).toBeEnabled();
+    // Only the page and size reach the URL; the cursor stays in state.
+    expect(mockSetHashPage).toHaveBeenLastCalledWith(
+      2,
+      undefined,
+      undefined,
+      15
+    );
   });
 
   it('renders the users list container', async () => {

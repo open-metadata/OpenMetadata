@@ -37,7 +37,7 @@ import {
   waitForRecentEventsToFinishExecution,
   watchPerSourceListRequests,
 } from '../../../utils/alert';
-import { deleteFixtureEntity } from '../../../utils/apiResponse';
+import { deleteFixtureEntity, okJson } from '../../../utils/apiResponse';
 import { getApiContext } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -56,6 +56,7 @@ import {
   navigateToEditAlert,
   saveNewAlertAndVerify,
 } from '../../../utils/profileNotificationAlert';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import {
   startWebhookReceiver,
   stopWebhookReceiver,
@@ -628,6 +629,104 @@ test('System alert is read-only', async ({ page }) => {
 
   await expect(page.getByTestId('edit-alert-btn')).not.toBeAttached();
   await expect(page.getByTestId('delete-alert-btn')).not.toBeAttached();
+});
+
+test('Edit cancel returns to the detail and the owner picker takes two users', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const alert = await okJson<AlertDetails>(
+    await apiContext.post('/api/v1/events/subscriptions', {
+      data: {
+        name: generateAlertName(),
+        alertType: 'Notification',
+        resources: [SOURCE_NAME_1],
+        enabled: true,
+        destinations: [{ category: 'Admins', type: 'Email' }],
+      },
+    }),
+    'Create notification alert'
+  );
+
+  try {
+    await navigateToAlertsList(page);
+
+    await test.step('Cancel while editing returns to the alert detail', async () => {
+      await navigateToEditAlert(page, alert);
+      await expect(page.getByTestId('alert-name-input')).toBeVisible();
+
+      const detailResponse = waitForResponseWithStatus(
+        page,
+        (res) =>
+          res.url().includes(`/api/v1/events/subscriptions/name/`) &&
+          res.request().method() === 'GET',
+        200
+      );
+      await page.getByTestId('cancel-btn').click();
+      await detailResponse;
+
+      await expect(page.getByTestId('edit-alert-btn')).toBeVisible();
+      await expect(
+        page.getByTestId('alerts-list-container')
+      ).not.toBeAttached();
+    });
+
+    await test.step('Header owner picker accepts two users', async () => {
+      await page.getByTestId('edit-owner').click();
+      await page
+        .getByTestId('select-owner-tabs')
+        .getByRole('tab', { name: 'Users' })
+        .click();
+      const usersPanel = page.getByTestId('owner-select-users-panel');
+
+      for (const user of [user1, user2]) {
+        // Match the typed text: the empty query fired on focus would satisfy a looser predicate.
+        const searchUser = waitForResponseWithStatus(
+          page,
+          (res) => {
+            const url = new URL(res.url());
+
+            return (
+              url.pathname === '/api/v1/search/query' &&
+              (url.searchParams.get('index') ?? '').startsWith('user') &&
+              (url.searchParams.get('q') ?? '').includes(
+                user.getUserDisplayName()
+              )
+            );
+          },
+          200
+        );
+        await usersPanel
+          .getByTestId('owner-select-users-search-bar')
+          .fill(user.getUserDisplayName());
+        await searchUser;
+        await usersPanel
+          .getByTestId('owner-option')
+          .filter({ hasText: user.getUserDisplayName() })
+          .click();
+      }
+
+      const patchAlert = waitForResponseWithStatus(
+        page,
+        (res) =>
+          res.url().includes(`/api/v1/events/subscriptions/${alert.id}`) &&
+          res.request().method() === 'PATCH',
+        200
+      );
+      await usersPanel.getByTestId('selectable-list-update-btn').click();
+      const patchResponse = await patchAlert;
+
+      const patchBody = JSON.stringify(patchResponse.request().postDataJSON());
+      expect(patchBody).toContain(user1.responseData.id);
+      expect(patchBody).toContain(user2.responseData.id);
+    });
+  } finally {
+    await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/events/subscriptions/${alert.id}?hardDelete=true`
+    );
+    await afterAction();
+  }
 });
 
 test('Breadcrumb navigation', async ({ page }) => {

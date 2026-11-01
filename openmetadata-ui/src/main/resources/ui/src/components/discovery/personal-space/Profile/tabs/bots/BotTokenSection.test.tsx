@@ -70,20 +70,41 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children,
     onPress,
     'data-testid': testId,
+    isDisabled,
     isLoading,
   }: {
     children: React.ReactNode;
     onPress?: () => void;
     'data-testid'?: string;
+    isDisabled?: boolean;
     isLoading?: boolean;
   }) => (
     <button
       data-loading={isLoading}
       data-testid={testId}
+      disabled={isDisabled}
       type="button"
       onClick={onPress}>
       {children}
     </button>
+  ),
+  ConfirmPopover: ({
+    children,
+    onConfirm,
+    'data-testid': testId,
+  }: React.PropsWithChildren<{
+    onConfirm: () => void;
+    'data-testid'?: string;
+  }>) => (
+    <div data-testid={testId}>
+      {children}
+      <button
+        aria-label="confirm"
+        data-testid={`${testId}-confirm`}
+        type="button"
+        onClick={onConfirm}
+      />
+    </div>
   ),
   Input: ({
     value,
@@ -166,6 +187,28 @@ describe('BotTokenSection', () => {
     expect(screen.getByTestId('auth-mechanism')).toBeInTheDocument();
   });
 
+  it('disables generate and revoke when the section is disabled', () => {
+    const { rerender } = render(
+      <BotTokenSection
+        isDisabled
+        botUserData={mockBotUserDataWithoutToken}
+        onTokenUpdate={mockOnTokenUpdate}
+      />
+    );
+
+    expect(screen.getByTestId('auth-mechanism')).toBeDisabled();
+
+    rerender(
+      <BotTokenSection
+        isDisabled
+        botUserData={mockBotUserDataWithToken}
+        onTokenUpdate={mockOnTokenUpdate}
+      />
+    );
+
+    expect(screen.getByTestId('revoke-button')).toBeDisabled();
+  });
+
   it('should show no-token message when no token', () => {
     render(
       <BotTokenSection
@@ -203,7 +246,7 @@ describe('BotTokenSection', () => {
     );
   });
 
-  it('should revoke the token and refresh on revoke click', async () => {
+  it('should revoke the token only after confirmation and refresh', async () => {
     render(
       <BotTokenSection
         botUserData={mockBotUserDataWithToken}
@@ -212,6 +255,10 @@ describe('BotTokenSection', () => {
     );
 
     fireEvent.click(screen.getByTestId('revoke-button'));
+
+    expect(revokeUserToken).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('revoke-token-popover-confirm'));
 
     await waitFor(() => expect(revokeUserToken).toHaveBeenCalledWith('user-1'));
 

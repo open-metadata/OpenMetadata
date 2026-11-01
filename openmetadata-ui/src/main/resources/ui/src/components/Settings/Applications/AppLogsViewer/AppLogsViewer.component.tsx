@@ -429,6 +429,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
           pagination={false}
           rowKey="name"
           size="small"
+          variant="muted"
         />
       );
     },
@@ -593,6 +594,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
           pagination={false}
           rowKey="name"
           size="small"
+          variant="muted"
         />
       </Card>
     );

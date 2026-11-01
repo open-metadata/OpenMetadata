@@ -16,11 +16,14 @@ import {
   Button,
   ButtonUtility,
   ConfirmPopover,
-  PaginationCardWithControls,
   TableCard,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  RefreshCcw01,
+  Trash01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
@@ -37,6 +40,7 @@ import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
+  pagingObject,
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -45,14 +49,16 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../../../../enums/entity.enum';
-import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { Include } from '../../../../../../generated/type/include';
+import { Paging } from '../../../../../../generated/type/paging';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { usePaging } from '../../../../../../hooks/paging/usePaging';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getUsers, restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -64,6 +70,8 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
+import type { PagingHandlerParams } from '../../../../../common/NextPrevious/NextPrevious.interface';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
@@ -92,15 +100,29 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const [searchValue, setSearchValue] = useState('');
   const latestSearchIdRef = useRef(0);
 
+  // Only page + size go to the settings hash; cursors stay in state, so a
+  // reloaded page > 1 has no cursor to resume from and restarts at page 1.
   const {
-    currentPage,
-    handlePageChange,
-    handlePageSizeChange,
-    handlePagingChange,
-    pageSize,
-    paging,
-    showPagination,
-  } = usePaging();
+    page: currentPage,
+    pageSize: hashPageSize,
+    setPage: setHashPage,
+  } = useHashPagingParams();
+  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const showPagination =
+    Boolean(paging.before || paging.after) ||
+    paging.total > pageSize ||
+    pageSize !== PAGE_SIZE_BASE;
+
+  const handlePageChange = useCallback(
+    (page: number) => setHashPage(page, undefined, undefined, pageSize),
+    [setHashPage, pageSize]
+  );
+  const handlePageSizeChange = useCallback(
+    (size: number) =>
+      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size),
+    [setHashPage]
+  );
 
   const canCreateUser = useMemo(
     () =>
@@ -123,7 +145,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           ...params,
         });
         setUsers(response.data);
-        handlePagingChange(response.paging);
+        setPaging(response.paging);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -134,7 +156,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setIsLoading(false);
       }
     },
-    [pageSize, isAdmin, showDeleted, handlePagingChange, t]
+    [pageSize, isAdmin, showDeleted, setPaging, t]
   );
 
   const searchUsers = useCallback(
@@ -158,7 +180,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         }
         const data = response.hits.hits.map(({ _source }) => _source as User);
         setUsers(data);
-        handlePagingChange({ total: response.hits.total.value });
+        setPaging({ total: response.hits.total.value });
       } catch (error) {
         showErrorToast(error as AxiosError);
         setUsers([]);
@@ -166,7 +188,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setIsLoading(false);
       }
     },
-    [pageSize, isAdmin, showDeleted, handlePagingChange]
+    [pageSize, isAdmin, showDeleted, setPaging]
   );
 
   const handleSearch = useCallback(
@@ -191,11 +213,10 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [handlePageChange]
   );
 
-  const handlePageNavigation = (newPage: number) => {
-    if (newPage === currentPage) {
-      return;
-    }
-
+  const handlePageNavigation = ({
+    currentPage: newPage,
+    cursorType,
+  }: PagingHandlerParams) => {
     if (searchValue) {
       handlePageChange(newPage);
       void searchUsers(searchValue, newPage);
@@ -203,12 +224,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       return;
     }
 
-    // ponytail: cursor paging only supports ±1 steps; numbered/jump beyond adjacent no-ops.
-    const cursorType =
-      newPage > currentPage ? CursorType.AFTER : CursorType.BEFORE;
-    const cursor = paging[cursorType];
+    const cursor = cursorType && paging[cursorType];
 
-    if (Math.abs(newPage - currentPage) !== 1 || !cursor) {
+    if (!cursorType || !cursor) {
       return;
     }
 
@@ -249,7 +267,11 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   };
 
   useEffect(() => {
+    if (currentPage !== INITIAL_PAGING_VALUE) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+    }
     refetchUsers.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on size/deleted only
   }, [pageSize, showDeleted]);
 
   useEffect(() => {
@@ -406,8 +428,6 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     handleSearch,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
-
   return (
     <Box
       className="tw:pt-1 tw:h-full tw:px-8 tw:pb-8"
@@ -442,6 +462,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
                   className="tw:min-h-32 tw:relative"
                   justify="center">
                   <NoDataPlaceholder
+                    icon={<User01 />}
                     title={t('label.no-entity-found', {
                       entity: t('label.user-plural'),
                     })}
@@ -465,18 +486,20 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           />
         </div>
         {showPagination && (
-          <PaginationCardWithControls
-            minimal
-            page={currentPage}
+          <NextPrevious
+            className="tw:py-3"
+            currentPage={currentPage}
+            isLoading={isLoading}
+            isNumberBased={Boolean(searchValue)}
             pageSize={pageSize}
             pageSizeOptions={[
               PAGE_SIZE_BASE,
               PAGE_SIZE_MEDIUM,
               PAGE_SIZE_LARGE,
             ]}
-            total={totalPages}
-            onPageChange={handlePageNavigation}
-            onPageSizeChange={handlePageSizeChange}
+            paging={paging}
+            pagingHandler={handlePageNavigation}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>

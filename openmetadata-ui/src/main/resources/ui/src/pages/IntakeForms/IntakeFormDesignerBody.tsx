@@ -76,7 +76,7 @@ const IntakeFormDesignerBody = forwardRef<
   >({});
   const [description, setDescription] = useState<string>('');
   const [enabled, setEnabled] = useState<boolean>(true);
-  const [loadingProps, setLoadingProps] = useState(false);
+  const [loadingProps, setLoadingProps] = useState(true);
 
   useEffect(() => {
     if (!open) {

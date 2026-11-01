@@ -35,7 +35,7 @@ export const openAiProfile = async (
 
   await page.getByTestId('ask-ai-user-menu-trigger').click();
   await page.getByTestId('ai-user-menu-profile').click();
-  await page.getByTestId('ai-profile-page').waitFor();
+  await expect(page.getByTestId('ai-profile-page')).toBeVisible();
 
   if (navId) {
     await page.getByTestId(navId).click();
@@ -163,10 +163,12 @@ export const openCreatedTeam = async (
 
 /** Wait for the PATCH that updates a given team. */
 export const waitForTeamPatch = (page: Page, teamId: string) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes(`/api/v1/teams/${teamId}`) &&
-      response.request().method() === 'PATCH'
+      response.request().method() === 'PATCH',
+    'ok'
   );
 
 /** Wait for the PATCH that updates a given user (entity-id scoped for parallel safety). */

@@ -163,6 +163,15 @@ test.describe(
           // No search in the list — verify via success toast
           await toastNotification(page, /successfully/i);
         });
+
+        await test.step('Lands on the new role detail', async () => {
+          const detail = page.getByTestId('role-detail-container');
+
+          await expect(detail).toBeVisible();
+          await expect(
+            detail.getByTestId(DEFAULT_POLICIES.dataConsumerPolicy)
+          ).toBeVisible();
+        });
       } finally {
         // Cleanup via API (the role was just created)
         if (roleId) {
@@ -786,6 +795,13 @@ test.describe(
           // No search in the list — verify via success toast
           await toastNotification(page, /successfully/i);
         });
+
+        await test.step('Lands on the new policy detail', async () => {
+          await expect(
+            page.getByTestId('policy-detail-container')
+          ).toBeVisible();
+          await expect(page.getByTestId(`rule-${ruleName}`)).toBeVisible();
+        });
       } finally {
         if (createdPolicyId) {
           await apiContext.delete(
@@ -1230,13 +1246,23 @@ test.describe(
       await navigateToPolicyDetail(page, policy.responseData.displayName);
 
       try {
+        await test.step('Cancelling the confirmation keeps the rule', async () => {
+          await page.getByTestId(`delete-rule-${extraRuleName}`).click();
+          await expect(page.getByTestId('delete-rule-popover')).toBeVisible();
+          await page.getByTestId('delete-rule-popover-cancel').click();
+          await expect(page.getByTestId('delete-rule-popover')).toBeHidden();
+          await expect(page.getByTestId(`rule-${extraRuleName}`)).toBeVisible();
+        });
+
         await test.step('Click delete rule button and confirm', async () => {
+          await page.getByTestId(`delete-rule-${extraRuleName}`).click();
+          await expect(page.getByTestId('delete-rule-popover')).toBeVisible();
           const patchPromise = page.waitForResponse(
             (r) =>
               r.url().includes('/api/v1/policies') &&
               r.request().method() === 'PATCH'
           );
-          await page.getByTestId(`delete-rule-${extraRuleName}`).click();
+          await page.getByTestId('delete-rule-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
@@ -1691,23 +1717,22 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await test.step('Export modal opens with required elements', async () => {
+      await test.step('Export opens a popover with required elements', async () => {
         const exportBtn = page.getByTestId('export-audit-logs-button');
         await exportBtn.waitFor({ state: 'visible' });
         await exportBtn.click();
-        await page
-          .getByTestId('export-audit-logs-modal')
-          .waitFor({ state: 'visible' });
+        await expect(
+          page.getByTestId('export-audit-logs-popover')
+        ).toBeVisible();
 
         // Date range picker must be present
         await expect(
           page.getByTestId('export-date-range-picker')
         ).toBeVisible();
 
-        // Export (OK) button must be disabled until a date range is selected
-        const modalFooter = page.getByTestId('export-audit-logs-modal');
+        // Export (confirm) button must be disabled until a date range is selected
         await expect(
-          modalFooter.getByRole('button', { name: 'Export' })
+          page.getByTestId('export-audit-logs-popover-confirm')
         ).toBeDisabled();
       });
 
@@ -1724,16 +1749,16 @@ test.describe(
         await page.getByRole('button', { name: 'Apply' }).click();
 
         // Export button should now be enabled
-        const modalFooter = page.getByTestId('export-audit-logs-modal');
-        await expect(
-          modalFooter.getByRole('button', { name: 'Export' })
-        ).toBeEnabled();
+        const exportConfirm = page.getByTestId(
+          'export-audit-logs-popover-confirm'
+        );
+        await expect(exportConfirm).toBeEnabled();
 
         // Click export and wait for the export-job creation API call
         const exportPromise = page.waitForResponse((r) =>
           r.url().includes('/api/v1/audit/logs/export')
         );
-        await modalFooter.getByRole('button', { name: 'Export' }).click();
+        await exportConfirm.click();
         await exportPromise;
       });
     });

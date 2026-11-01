@@ -17,7 +17,11 @@ import {
   Dropdown,
   PaginationCardWithControls,
 } from '@openmetadata/ui-core-components';
-import { Download01, Upload01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Upload01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -60,7 +64,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
         dataSource={filteredTeamUsers}
         extraTableFilters={
           <Box align="center" direction="row" gap={2}>
-            {canEditAll && !team.deleted && (
+            {isGroupType && canEditAll && !team.deleted && (
               <UserTeamSelectableList
                 hasPermission
                 multiple={{ user: true, team: false }}
@@ -117,6 +121,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
                   'message.adding-new-entity-is-easy-just-give-it-a-spin',
                   { entity: t('label.user') }
                 )}
+                icon={<User01 />}
                 title={t('label.no-entity-found', {
                   entity: t('label.user-plural'),
                 })}

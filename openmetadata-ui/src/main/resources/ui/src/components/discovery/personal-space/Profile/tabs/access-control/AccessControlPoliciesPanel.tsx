@@ -97,7 +97,11 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   const fetchRequestIdRef = useRef(0);
 
   const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
+    () =>
+      Boolean(paging.before || paging.after) ||
+      paging.total > pageSize ||
+      // ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
+      pageSize !== PAGE_SIZE_BASE,
     [paging, pageSize]
   );
 

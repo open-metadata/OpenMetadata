@@ -56,7 +56,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
 }) => {
   const { t } = useTranslation();
   const [forms, setForms] = useState<IntakeForm[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const {
     target: deleteTarget,
     open: openDeleteConfirm,

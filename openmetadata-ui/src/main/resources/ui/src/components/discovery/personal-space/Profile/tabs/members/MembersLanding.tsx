@@ -67,7 +67,7 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
             size="md"
             variant="muted"
             onClick={() => onNavigate(card.view)}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box
                 align="start"
                 data-testid={`members-card-${card.id}`}

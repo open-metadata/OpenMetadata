@@ -52,7 +52,7 @@ export const MarketplaceOverviewHeader: FC<MarketplaceOverviewHeaderProps> = ({
               label: '',
               ariaLabel: t('label.data-marketplace'),
               icon: MarketplaceIcon,
-              href: ROUTES.DATA_MARKETPLACE,
+              href: isCustomizeView ? undefined : ROUTES.DATA_MARKETPLACE,
             },
             { label: t('label.data-marketplace') },
           ]}

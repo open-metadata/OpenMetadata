@@ -621,64 +621,39 @@ test.describe(
       await openPersonaSettings(page, persona.data.name, '?tab=users');
       await expect(page.getByTestId('persona-users-tab')).toBeVisible();
 
-      await test.step('add', async () => {
+      await test.step('add through the user picker popover', async () => {
         await page.getByTestId('add-persona-user').click();
-        const picker = page
-          .getByTestId('add-persona-users-select')
-          .getByRole('combobox');
 
-        // The picker re-queries the user search index on a 250ms debounce and
-        // replaces its whole option list with the result, so an option found
-        // from the previous result set is torn out mid-click ("element was
-        // detached from the DOM"). Wait for the search that this text triggers
-        // to land before touching the list.
-        //
-        // Match on `q`, not just the index: `onFocus` fires its own
-        // *undebounced* search with an empty query, and `fill()` focuses the
-        // input first. Waiting on the index alone would resolve on that
-        // unfiltered page and leave the assertions racing the debounced
-        // result exactly as before.
-        const searchText = user.responseData.name ?? '';
-        const userSearch = page.waitForResponse((response) => {
-          const params = new URL(response.url()).searchParams;
+        const userSearch = waitForResponseWithStatus(
+          page,
+          (response) => {
+            const params = new URL(response.url()).searchParams;
 
-          return (
-            response.url().includes('/api/v1/search/query') &&
-            params.get('index') === 'user' &&
-            (params.get('q') ?? '').includes(searchText) &&
-            response.status() === 200
-          );
-        });
-        await picker.fill(searchText);
+            return (
+              response.url().includes('/api/v1/search/query') &&
+              params.get('index') === 'user' &&
+              (params.get('q') ?? '').includes(userName)
+            );
+          },
+          200
+        );
+        await page.getByTestId('owner-select-users-search-bar').fill(userName);
         await userSearch;
 
-        // Commit with Enter rather than a click: Autocomplete drops a
-        // selection whenever `isLeavingRef` is set, and `onBlurCapture` arms
-        // that ref for a microtask, so a click whose actionability scroll
-        // blurs the input is silently ignored and Save stays disabled.
-        //
-        // ArrowDown highlights the list's *first* option, so wait for the
-        // list to actually be the filtered one before pressing it. The
-        // response landing is not enough: React still has to re-render, and
-        // until it does the listbox is the 25-row unfiltered page that
-        // `onFocus` fetched, whose first row is some other user.
-        const options = page.getByRole('option');
-        await expect(options.filter({ hasText: userName })).toHaveCount(1);
-        await expect(options).toHaveCount(1);
-        await picker.press('ArrowDown');
-        await picker.press('Enter');
-
-        // Prove the value committed before relying on Save.
-        await expect(
-          page.getByTestId('add-persona-users-select').getByText(userName)
-        ).toBeVisible();
+        await page
+          .getByTestId('owner-option')
+          .filter({ hasText: userName })
+          .click();
 
         const addResponse = waitForResponseWithStatus(
           page,
           isPersonaPatch(persona.responseData.id ?? ''),
           200
         );
-        await page.getByTestId('save-persona-users').click();
+        await page
+          .getByTestId('owner-select-users-panel')
+          .getByTestId('selectable-list-update-btn')
+          .click();
         const response = await addResponse;
 
         expect(response.request().postData()).toContain(
@@ -689,13 +664,34 @@ test.describe(
         );
       });
 
-      await test.step('remove', async () => {
+      await test.step('cancelling the remove confirmation keeps the user', async () => {
+        await page.getByTestId(`remove-user-${userName}`).click();
+        await expect(
+          page.getByTestId('remove-persona-user-popover')
+        ).toBeVisible();
+
+        await page.getByTestId('remove-persona-user-popover-cancel').click();
+
+        await expect(
+          page.getByTestId('remove-persona-user-popover')
+        ).not.toBeVisible();
+        await expect(page.getByTestId('persona-users-table')).toContainText(
+          userName
+        );
+      });
+
+      await test.step('confirming the remove removes the user', async () => {
+        await page.getByTestId(`remove-user-${userName}`).click();
+        await expect(
+          page.getByTestId('remove-persona-user-popover')
+        ).toBeVisible();
+
         const removeResponse = waitForResponseWithStatus(
           page,
           isPersonaPatch(persona.responseData.id ?? ''),
           200
         );
-        await page.getByTestId(`remove-user-${userName}`).click();
+        await page.getByTestId('remove-persona-user-popover-confirm').click();
         await removeResponse;
 
         await expect(page.getByTestId('persona-users-table')).not.toContainText(

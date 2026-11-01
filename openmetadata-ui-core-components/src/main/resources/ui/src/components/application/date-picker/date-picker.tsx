@@ -137,9 +137,10 @@ export const DatePicker = ({
         }
         offset={4}
         placement="bottom right">
-        {/* outline-[3px] ports the bare `tw:ring` faithfully (3px in Tailwind v4, almost
-            certainly unintended vs the ring-1 used elsewhere — tracked as a follow-up). */}
-        <AriaDialog className="tw:rounded-2xl tw:bg-overlay-surface tw:shadow-xl tw:outline-[3px] tw:outline-secondary_alt">
+        {/* The outline ported from the bare `tw:ring` was removed: the popover's
+            overflow clip cut it along the straight edges but not around the rounded
+            corners, so it rendered as corner artefacts. The shadow alone defines the edge. */}
+        <AriaDialog className="tw:rounded-2xl tw:bg-overlay-surface tw:shadow-xl">
           {({ close }) => (
             <>
               <div className="tw:flex tw:px-6 tw:py-5">

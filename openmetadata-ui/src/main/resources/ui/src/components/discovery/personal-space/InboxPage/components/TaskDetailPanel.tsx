@@ -867,7 +867,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       </Box>
 
       <Box
-        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4 tw:dark:bg-secondary"
+        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         direction="col"
         gap={2}>
         {/* A soft fade into the card above the footer, so the activity reads
