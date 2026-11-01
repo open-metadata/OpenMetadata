@@ -1663,6 +1663,9 @@ public class UserRepository extends EntityRepository<User> {
       return () -> {
         try (parentLifecycle) {
           finishCredentialDelete.run();
+          // MCP grants are keyed by user name, so a later account with the same name would take
+          // them over.
+          daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(entity.getName());
         }
       };
     } catch (RuntimeException | Error failure) {

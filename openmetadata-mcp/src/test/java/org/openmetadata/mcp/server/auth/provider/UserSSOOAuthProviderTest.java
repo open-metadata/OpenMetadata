@@ -676,6 +676,37 @@ class UserSSOOAuthProviderTest {
   }
 
   @Test
+  void handleSSOCallbackWithDbState_keepsTheGrantUnderTheAccountsOwnName() throws Exception {
+    // A SAML NameID keeps the provider's casing; the account it resolves to is lowercase.
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
+    when(pendingRepo.storeConsent(eq(AUTH_REQUEST_ID), anyString(), anyString())).thenReturn(true);
+    UserSSOOAuthProvider provider =
+        newProvider(pendingRepo, clientRepositoryWithRegisteredClient(), ISSUER);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    captureHtmlResponse(response);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<SecurityConfigurationManager> config =
+            mockStatic(SecurityConfigurationManager.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.USER, "Alice", "", Include.NON_DELETED))
+          .thenReturn(new User().withName(USER_NAME));
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withBaseUrl(MCP_BASE_URL));
+      provider.handleSSOCallbackWithDbState(
+          mock(HttpServletRequest.class),
+          response,
+          "Alice",
+          "alice@corp.example",
+          "mcp:" + AUTH_REQUEST_ID);
+    }
+
+    verify(pendingRepo).storeConsent(eq(AUTH_REQUEST_ID), anyString(), eq(USER_NAME));
+  }
+
+  @Test
   void handleSSOCallbackWithDbState_secondSignInForTheSameRequest_isRefused() throws Exception {
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
     when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());

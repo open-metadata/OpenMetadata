@@ -511,8 +511,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // Without this check, non-OM users who authenticate via SSO see the success page
     // but then fail silently at token exchange with a confusing "invalid_grant" error.
     // getEntityByName throws EntityNotFoundException (never returns null).
+    final User user;
     try {
-      Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
+      user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
     } catch (EntityNotFoundException e) {
       LOG.warn("SSO-authenticated user not found in OpenMetadata. Denying access.");
       LOG.debug("Denied user details: {}", userName);
@@ -564,9 +565,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // pending request row, not in the HttpSession, so any server can answer the POST.
     // ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
     // The id is read back from the stored row, so the page never echoes the request's RelayState.
+    // The grant is kept under the account's own name, not the provider's spelling of it, so
+    // revoking the user's grants finds it.
     final PendingConsent consent =
-        new PendingConsent(generateSecureToken(32), pendingRequest.authRequestId(), userName);
-    if (pendingAuthRepository.storeConsent(consent.authRequestId(), consent.token(), userName)) {
+        new PendingConsent(generateSecureToken(32), pendingRequest.authRequestId(), user.getName());
+    if (pendingAuthRepository.storeConsent(
+        consent.authRequestId(), consent.token(), user.getName())) {
       serveConsentPage(response, client, URI.create(pendingRequest.redirectUri()), consent);
     } else {
       LOG.warn("MCP authorization request {} already has a sign-in waiting", authRequestId);
