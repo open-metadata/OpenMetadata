@@ -1482,6 +1482,10 @@
                           "href": {
                             "description": "Link to the entity resource.",
                             "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/properties/tier/properties/href"
+                          },
+                          "style": {
+                            "description": "Style (color and icon) of the referenced entity. Set only on domain references, from the domain's own style, so a client can render the domain without fetching it.",
+                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/properties/tier/properties/style"
                           }
                         },
                         "required": [

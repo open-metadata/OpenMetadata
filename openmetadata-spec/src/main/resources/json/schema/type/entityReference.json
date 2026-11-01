@@ -41,6 +41,10 @@
     "href": {
       "description": "Link to the entity resource.",
       "$ref": "basic.json#/definitions/href"
+    },
+    "style": {
+      "description": "Style (color and icon) of the referenced entity. Set only on domain references, from the domain's own style, so a client can render the domain without fetching it.",
+      "$ref": "basic.json#/definitions/style"
     }
   },
   "required": ["id", "type"],

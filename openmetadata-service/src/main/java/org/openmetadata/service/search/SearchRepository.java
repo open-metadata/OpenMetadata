@@ -3511,7 +3511,8 @@ public class SearchRepository {
    * Documents copy the name and display name of the users, teams, domains and data products they
    * reference, and only the id identifies those copies, so a rename or a display-name change has to
    * overwrite them wherever the reference is held. The display name falls back to the name, as the
-   * index builder writes it.
+   * index builder writes it. A domain's copies also carry its colour and icon, so a restyle rewrites
+   * them too. ADR:2026-10-28-domain-references-carry-the-domain-style
    */
   private void relabelReferenceCopies(
       String entityType, ChangeDescription changeDescription, EntityInterface<?> entity) {
@@ -3520,7 +3521,11 @@ public class SearchRepository {
       return;
     }
     Set<String> changedFields = getChangedFieldNames(changeDescription);
-    if (!changedFields.contains(FIELD_NAME) && !changedFields.contains(FIELD_DISPLAY_NAME)) {
+    boolean domainStyleChanged =
+        Entity.DOMAIN.equals(entityType) && changedFields.contains(FIELD_STYLE);
+    if (!changedFields.contains(FIELD_NAME)
+        && !changedFields.contains(FIELD_DISPLAY_NAME)
+        && !domainStyleChanged) {
       return;
     }
     String id = entity.getId().toString();
@@ -3530,6 +3535,9 @@ public class SearchRepository {
     label.put(
         FIELD_DISPLAY_NAME,
         nullOrEmpty(entity.getDisplayName()) ? entity.getName() : entity.getDisplayName());
+    if (Entity.DOMAIN.equals(entityType)) {
+      label.put(FIELD_STYLE, getReferenceStyle(entity.getStyle()));
+    }
     // owners is mapped nested in every index that has it; the other reference lists are objects.
     List<String> nestedPaths = fields.contains(FIELD_OWNERS) ? List.of(FIELD_OWNERS) : List.of();
     List<String> objectPaths =
@@ -3547,6 +3555,21 @@ public class SearchRepository {
       enqueueEntityRetry(entity, "relabelReferenceCopies", e);
       LOG.error("Failed to relabel the copies of {} {} in search", entityType, id, e);
     }
+  }
+
+  /** The colour and icon a reference copy carries; the cover image stays on the entity. */
+  private static Map<String, Object> getReferenceStyle(Style style) {
+    if (style == null || (style.getColor() == null && style.getIconURL() == null)) {
+      return null;
+    }
+    Map<String, Object> referenceStyle = new HashMap<>();
+    if (style.getColor() != null) {
+      referenceStyle.put("color", style.getColor());
+    }
+    if (style.getIconURL() != null) {
+      referenceStyle.put("iconURL", style.getIconURL());
+    }
+    return referenceStyle;
   }
 
   public void propagateToRelatedEntities(

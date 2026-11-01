@@ -61,12 +61,14 @@ const DomainTags: FC<DomainTagsProps> = ({
         {visibleDomains.map((domain, index) => (
           <DomainTag
             closeButtonTestId={`remove-domain-${domain.fullyQualifiedName}`}
+            color={domain.style?.color}
             data-testid={`domain-tag-${domain.fullyQualifiedName}`}
             href={
               onRemove || !domain.fullyQualifiedName
                 ? undefined
                 : getDomainPath(domain.fullyQualifiedName)
             }
+            icon={domain.style?.iconURL}
             inherited={showInheritedIcon && domain.inherited}
             inheritedLabel={inheritedLabel}
             key={domain.id ?? domain.fullyQualifiedName}
