@@ -223,9 +223,16 @@ test.describe('Data Products', () => {
   });
 
   test('Search Data Products', async ({ page }) => {
-    // Names share no token: n-gram matching pulled a shared `catalog` in.
+    // The compound analyzer splits `revenue<hex>` into single-char fragments
+    // that fuzzy-match any other hex id, so dataProduct2's name and display
+    // name use only letters absent from `revenue` and from hex.
+    const noHexId = uuid().replace(
+      /[0-9a-f]/g,
+      (c) => 'ghijklmopqstwxyz'[parseInt(c, 16)]
+    );
     const dataProduct1 = new DataProduct([domain], `revenue${uuid()}`);
-    const dataProduct2 = new DataProduct([domain], `shipyard${uuid()}`);
+    const dataProduct2 = new DataProduct([domain], `glitzy${noHexId}`);
+    dataProduct2.data.displayName = `PW Glitzy ${noHexId}`;
 
     await test.step('Create test data products', async () => {
       const { apiContext, afterAction } = await performAdminLogin(
