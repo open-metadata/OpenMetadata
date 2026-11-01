@@ -55,7 +55,7 @@ test = [
     "es-core-news-md @ https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl#sha256=478b8bb3f3e8eb149192f7d80e7cd64f990b7e9bccbc5329df41a57e86326be2",
     "it-core-news-md @ https://github.com/explosion/spacy-models/releases/download/it_core_news_md-3.8.0/it_core_news_md-3.8.0-py3-none-any.whl#sha256=a731d2d8e7c5a7093ac42f88774ea2a2ad3d5809959eedee65632b3533f804ec",
     "pl-core-news-md @ https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl#sha256=4f433a556880c0b7ef01970e7c612c0e30103b893e6d26ed54672d8e056ad9b1",
-    "pytest==7.0.1",
+    "pytest==9.0.3",
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",
@@ -94,6 +94,9 @@ dialect-compat = ["sqlalchemy-ibmi==0.9.3"]
 [tool.uv]
 required-version = "==0.13.4"
 default-groups = []
+# datamodel-code-generator requires black, but codegen formats with ruff. black >= 26.3.1
+# (GHSA-3936-cmfr-pm3m, GHSA-cg8m-r9f2-5wm2) needs pathspec >= 1.0, which dbt-core 1.11 rejects.
+exclude-dependencies = ["black"]
 required-environments = [
     "sys_platform == 'linux' and platform_machine == 'x86_64' and python_version >= '3.10' and python_version < '3.13'",
     "sys_platform == 'linux' and platform_machine == 'aarch64' and python_version >= '3.10' and python_version < '3.13'",
