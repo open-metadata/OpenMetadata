@@ -109,6 +109,9 @@ final class SchemaClassConverter {
       Object value,
       JsonSchemaRepository.Ref oneOf,
       RuntimeException failure) {
+    if (SCHEMAS.hasOpenObjectBranch(oneOf)) {
+      return value;
+    }
     if (SCHEMAS.containsPasswordFormat(oneOf)) {
       if (failure != null) {
         throw failure;
