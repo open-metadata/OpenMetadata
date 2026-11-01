@@ -211,13 +211,15 @@ class BulkCircuitBreakerTest {
     BulkCircuitBreaker twoBulks = new BulkCircuitBreaker(2, 5000, 1000);
     RuntimeException rejected = new RuntimeException("es_rejected_execution_exception");
 
-    twoBulks.recordBulkFailure(rejected, 0);
-    twoBulks.recordBulkFailure(rejected, 1);
-    twoBulks.recordBulkFailure(rejected, 2);
-    twoBulks.recordBulkFailure(rejected, 3);
+    // One bulk: attempt 0 reaches the cluster and fails (counted); every real retry is suppressed.
+    twoBulks.recordBulkFailure(rejected, false);
+    twoBulks.recordBulkFailure(rejected, true);
+    twoBulks.recordBulkFailure(rejected, true);
+    twoBulks.recordBulkFailure(rejected, true);
     assertEquals(BulkCircuitBreaker.State.CLOSED, twoBulks.getState());
 
-    twoBulks.recordBulkFailure(rejected, 0);
+    // A second bulk's first real failure trips the threshold.
+    twoBulks.recordBulkFailure(rejected, false);
     assertEquals(BulkCircuitBreaker.State.OPEN, twoBulks.getState());
   }
 
@@ -227,10 +229,65 @@ class BulkCircuitBreakerTest {
     BulkCircuitBreaker sensitive = new BulkCircuitBreaker(1, 5000, 1000);
 
     for (int attempt = 0; attempt < 5; attempt++) {
-      sensitive.recordBulkFailure(poolWaitTimeout(), 0);
+      sensitive.recordBulkFailure(poolWaitTimeout(), false);
     }
 
     assertEquals(BulkCircuitBreaker.State.CLOSED, sensitive.getState());
+  }
+
+  @Test
+  @DisplayName(
+      "a real cluster error on a retry after a pool-wait first attempt counts while CLOSED")
+  void realFailureOnRetryAfterPoolWaitCountsWhileClosed() {
+    BulkCircuitBreaker twoBulks = new BulkCircuitBreaker(2, 5000, 1000);
+    RuntimeException rejected = new RuntimeException("es_rejected_execution_exception");
+
+    // Bulk A: attempt 0 timed out waiting for a pooled connection (ignored, bulk still uncounted),
+    // then the retry reached the cluster and failed for real — the bulk's one verdict counts.
+    twoBulks.recordBulkFailure(poolWaitTimeout(), false);
+    twoBulks.recordBulkFailure(rejected, false);
+    assertEquals(BulkCircuitBreaker.State.CLOSED, twoBulks.getState());
+
+    // Bulk B: the same mixed profile contributes its one verdict and trips the threshold.
+    twoBulks.recordBulkFailure(poolWaitTimeout(), false);
+    twoBulks.recordBulkFailure(rejected, false);
+    assertEquals(BulkCircuitBreaker.State.OPEN, twoBulks.getState());
+  }
+
+  @Test
+  @DisplayName("a bulk counts at most once across pool-wait attempts and real-error retries")
+  void aBulkCountsAtMostOnceAcrossPoolWaitThenRealRetries() {
+    BulkCircuitBreaker twoBulks = new BulkCircuitBreaker(2, 5000, 1000);
+    RuntimeException rejected = new RuntimeException("es_rejected_execution_exception");
+
+    // pool-waits never count and never mark the bulk; the first real failure is the one verdict,
+    // and later real retries stay suppressed.
+    twoBulks.recordBulkFailure(poolWaitTimeout(), false);
+    twoBulks.recordBulkFailure(poolWaitTimeout(), false);
+    twoBulks.recordBulkFailure(rejected, false);
+    twoBulks.recordBulkFailure(rejected, true);
+    twoBulks.recordBulkFailure(rejected, true);
+    assertEquals(BulkCircuitBreaker.State.CLOSED, twoBulks.getState());
+
+    twoBulks.recordBulkFailure(rejected, false);
+    assertEquals(BulkCircuitBreaker.State.OPEN, twoBulks.getState());
+  }
+
+  @Test
+  @DisplayName("a pool-wait after a real failure does not reset the bulk's one-count memory")
+  void poolWaitAfterRealFailureDoesNotResetTheBulkCount() {
+    BulkCircuitBreaker twoBulks = new BulkCircuitBreaker(2, 5000, 1000);
+    RuntimeException rejected = new RuntimeException("es_rejected_execution_exception");
+
+    // attempt 0 real (counted), attempt 1 pool-wait (ignored, memory kept), attempt 2 real
+    // (suppressed).
+    twoBulks.recordBulkFailure(rejected, false);
+    twoBulks.recordBulkFailure(poolWaitTimeout(), true);
+    twoBulks.recordBulkFailure(rejected, true);
+    assertEquals(BulkCircuitBreaker.State.CLOSED, twoBulks.getState());
+
+    twoBulks.recordBulkFailure(rejected, false);
+    assertEquals(BulkCircuitBreaker.State.OPEN, twoBulks.getState());
   }
 
   @Test
@@ -240,7 +297,7 @@ class BulkCircuitBreakerTest {
     fastBreaker.recordFailure();
     await().atMost(Duration.ofSeconds(2)).until(fastBreaker::allowRequest);
 
-    fastBreaker.recordBulkFailure(poolWaitTimeout(), 3);
+    fastBreaker.recordBulkFailure(poolWaitTimeout(), false);
 
     assertEquals(BulkCircuitBreaker.State.HALF_OPEN, fastBreaker.getState());
     assertTrue(fastBreaker.allowRequest(), "another request may probe straight away");
@@ -253,7 +310,9 @@ class BulkCircuitBreakerTest {
     fastBreaker.recordFailure();
     await().atMost(Duration.ofSeconds(2)).until(fastBreaker::allowRequest);
 
-    fastBreaker.recordBulkFailure(new RuntimeException("es_rejected_execution_exception"), 3);
+    // The probe always counts even though this bulk already opened the circuit once (counted):
+    // the half-open verdict overrides the per-bulk "already counted" memory.
+    fastBreaker.recordBulkFailure(new RuntimeException("es_rejected_execution_exception"), true);
 
     assertEquals(BulkCircuitBreaker.State.OPEN, fastBreaker.getState());
   }
