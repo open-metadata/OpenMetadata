@@ -60,6 +60,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     EventType,
@@ -556,13 +557,19 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     @staticmethod
-    def _match_column_name(table, field_name: str) -> str:
-        """Resolve an OpenLineage field name to the real stored column name, case-insensitively."""
+    def _match_column_fqn(table, table_fqn: str, field_name: str) -> str:
+        """
+        Resolve an OpenLineage field name to the FQN of the real stored column, case-insensitively.
+
+        The stored FQN cannot be rebuilt from the column name: a fetched name has its reserved
+        characters decoded (`a>b` is stored as `a__reserved__arrow__b`), and a dot in it is quoted
+        in the FQN (`"c.d"`). The server silently drops an entry that matches no real column.
+        """
         lower = field_name.lower()
         for column in getattr(table, "columns", None) or []:
             if column.name.root.lower() == lower:
-                return column.name.root
-        return lower
+                return model_str(column.fullyQualifiedName)
+        return f"{table_fqn}.{lower}"
 
     def _build_db_service_type_map(self):
         """Build a map of {service_name: DatabaseServiceType} filtered to configured dbServiceNames."""
@@ -884,8 +891,8 @@ class OpenlineageSource(PipelineServiceSource):
                         (
                             output_table_fqn,
                             input_table_fqn,
-                            f"{output_table_fqn}.{self._match_column_name(output_table_entity, field_name)}",
-                            f"{input_table_fqn}.{self._match_column_name(input_table_entity, input_field.get('field', ''))}",
+                            self._match_column_fqn(output_table_entity, output_table_fqn, field_name),
+                            self._match_column_fqn(input_table_entity, input_table_fqn, input_field.get("field", "")),
                         )
                     )
 
