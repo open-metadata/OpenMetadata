@@ -29,8 +29,8 @@ import {
   RegistryWidgetsType,
   WidgetProps,
 } from '@rjsf/utils';
-import { useEffect, useMemo, useRef } from 'react';
 import classNames from 'classnames';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../../../../constants/Services.constant';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
