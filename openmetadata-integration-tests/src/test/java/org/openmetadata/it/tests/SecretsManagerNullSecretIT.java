@@ -3,6 +3,8 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Locale;
@@ -12,6 +14,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -19,10 +23,14 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.ExternalSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -117,6 +125,146 @@ public class SecretsManagerNullSecretIT {
     assertNull(
         vault.getSecretValue(SecretsManager.SECRET_FIELD_PREFIX + secretId),
         "A service stored before the fix must read back no credential, not the string \"null\"");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"replacement-password", ""})
+  void aDeniedServiceUpdateLeavesStoredCredentialsUntouched(String password, TestNamespace ns) {
+    String serviceName = ns.prefix("denied_secret_update");
+    SnowflakeConnection connection =
+        new SnowflakeConnection()
+            .withAccount("test-account")
+            .withUsername("test_user")
+            .withPassword(PASSWORD)
+            .withPrivateKey(PRIVATE_KEY);
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(serviceName)
+            .withServiceType(DatabaseServiceType.Snowflake)
+            .withConnection(new DatabaseConnection().withConfig(connection));
+    DatabaseService service = SdkClients.adminClient().databaseServices().create(request);
+    ns.trackRoot(Entity.DATABASE_SERVICE, service);
+
+    connection.withPassword(password);
+    ForbiddenException denied =
+        assertThrows(
+            ForbiddenException.class,
+            () ->
+                SdkClients.dataConsumerClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT, DATABASE_SERVICES_PATH, request, DatabaseService.class));
+
+    assertEquals(403, denied.getStatusCode());
+    assertEquals(PASSWORD, vault.getSecretsMap().get(secretId(serviceName, "password")));
+    assertEquals(PRIVATE_KEY, vault.getSecretsMap().get(secretId(serviceName, "privatekey")));
+    DatabaseService unchanged =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                DATABASE_SERVICES_PATH + "/" + service.getId(),
+                null,
+                DatabaseService.class);
+    assertEquals(service.getVersion(), unchanged.getVersion());
+  }
+
+  @Test
+  void anExternalPlaintextReplacementIsRecordedButAReferenceRoundTripIsNot(TestNamespace ns) {
+    String serviceName = ns.prefix("external_replacement");
+    CreateDatabaseService request = request(serviceName);
+    DatabaseService original = SdkClients.adminClient().databaseServices().create(request);
+    ns.trackRoot(Entity.DATABASE_SERVICE, original);
+
+    DatabaseService replaced = put(request);
+    assertTrue(
+        replaced.getChangeDescription().getFieldsUpdated().stream()
+            .anyMatch(field -> "connection".equals(field.getName())));
+    assertEquals(PASSWORD, vault.getSecretsMap().get(secretId(serviceName, "password")));
+
+    SnowflakeConnection referenceConfig =
+        connectionOf(original)
+            .withPassword(SecretsManager.SECRET_FIELD_PREFIX + secretId(serviceName, "password"))
+            .withPrivateKey(
+                SecretsManager.SECRET_FIELD_PREFIX + secretId(serviceName, "privatekey"));
+    request.setConnection(new DatabaseConnection().withConfig(referenceConfig));
+    assertEquals(replaced.getVersion(), put(request).getVersion());
+  }
+
+  @Test
+  void identicalDatabaseCredentialsRemainANoOp(TestNamespace ns) {
+    SecretsManagerFactory.setSecretsManager(originalSecretsManager);
+    try {
+      CreateDatabaseService request = request(ns.prefix("db_secret_noop"));
+      DatabaseService original = SdkClients.adminClient().databaseServices().create(request);
+      ns.trackRoot(Entity.DATABASE_SERVICE, original);
+
+      assertEquals(original.getVersion(), put(request).getVersion());
+    } finally {
+      SecretsManagerFactory.setSecretsManager(vault);
+    }
+  }
+
+  @Test
+  void aPendingApprovalKeepsSecretsEncryptedAndLeavesTheVaultUntouched(TestNamespace ns) {
+    String serviceName = ns.prefix("pending_secret_update");
+    CreateDatabaseService request = request(serviceName);
+    DatabaseService original = SdkClients.adminClient().databaseServices().create(request);
+    ns.trackRoot(Entity.DATABASE_SERVICE, original);
+    ChangeRequestITSupport.deployHookWorkflowFor(
+        ns,
+        Entity.DATABASE_SERVICE,
+        "\"description\"",
+        "",
+        ChangeRequestITSupport.filterScopedTo(
+            Entity.DATABASE_SERVICE, original.getFullyQualifiedName()));
+    request.withDescription("proposed description");
+    request.setConnection(
+        new DatabaseConnection()
+            .withConfig(connectionOf(original).withPassword("proposed-password")));
+
+    DatabaseService held = put(request);
+    assertEquals(original.getVersion(), held.getVersion());
+    assertEquals(PASSWORD, vault.getSecretsMap().get(secretId(serviceName, "password")));
+    ChangeRequest pending = ChangeRequestITSupport.onlyPendingRequest(original.getId());
+    ChangeRequest response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET, "/v1/changeRequests/" + pending.getId(), null, ChangeRequest.class);
+    MutationOp connection =
+        response.getActiveRevision().getOps().stream()
+            .filter(op -> "connection".equals(op.getField()))
+            .findFirst()
+            .orElseThrow();
+    SnowflakeConnection proposed =
+        JsonUtils.convertValue(
+            JsonUtils.readValue(connection.getValue(), DatabaseConnection.class).getConfig(),
+            SnowflakeConnection.class);
+    assertTrue(Fernet.isTokenized(proposed.getPassword()));
+    assertEquals("proposed-password", Fernet.getInstance().decrypt(proposed.getPassword()));
+    assertFalse(JsonUtils.pojoToJson(response).contains("proposed-password"));
+  }
+
+  private static CreateDatabaseService request(String serviceName) {
+    return new CreateDatabaseService()
+        .withName(serviceName)
+        .withServiceType(DatabaseServiceType.Snowflake)
+        .withConnection(
+            new DatabaseConnection()
+                .withConfig(
+                    new SnowflakeConnection()
+                        .withAccount("test-account")
+                        .withUsername("test_user")
+                        .withWarehouse("test_warehouse")
+                        .withPassword(PASSWORD)
+                        .withPrivateKey(PRIVATE_KEY)));
+  }
+
+  private static DatabaseService put(CreateDatabaseService request) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, DATABASE_SERVICES_PATH, request, DatabaseService.class);
   }
 
   private static String secretId(String serviceName, String fieldName) {
