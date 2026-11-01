@@ -25,6 +25,7 @@ import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDe
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import type {
@@ -39,6 +40,7 @@ import {
   type Webhook,
 } from '../../generated/events/eventSubscription';
 import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
 import { t } from '../i18next/LocalUtil';
 
 export const getFunctionDisplayName = (func: string): string => {
@@ -438,3 +440,41 @@ export const formatEventCount = (
   count: number | undefined,
   isLowerBound?: boolean
 ): string => `${count ?? 0}${isLowerBound ? '+' : ''}`;
+
+const SECRET_AUTH_FIELDS = ['secretKey', 'clientId', 'clientSecret'];
+
+const withoutMask = (value: unknown) =>
+  value === MASKED_PASSWORD_VALUE ? '' : value;
+
+/**
+ * The webhook settings with every secret that still shows the mask emptied. A destination whose
+ * URL or token URL changes sends its secrets somewhere new, so each one must be entered again;
+ * the form then asks for every emptied field before it saves.
+ */
+export const clearMaskedSecrets = (
+  config?: ModifiedWebhookConfig
+): ModifiedWebhookConfig | undefined => {
+  if (!config) {
+    return config;
+  }
+  const authType = (config.authType ?? {}) as Record<string, unknown>;
+  const clearedAuth = Object.fromEntries(
+    SECRET_AUTH_FIELDS.filter((key) => key in authType).map((key) => [
+      key,
+      withoutMask(authType[key]),
+    ])
+  );
+
+  return {
+    ...config,
+    ...(config.headers && {
+      headers: config.headers.map((header) => ({
+        ...header,
+        value: withoutMask(header.value) as string,
+      })),
+    }),
+    ...(config.authType && {
+      authType: { ...config.authType, ...clearedAuth },
+    }),
+  };
+};

@@ -217,6 +217,38 @@ function renderWebhookField() {
   return render(<Wrapper />);
 }
 
+function renderSavedWebhookField(onConfigExpandedChange: jest.Mock) {
+  function Wrapper() {
+    const methods = useForm({
+      defaultValues: {
+        destinations: [
+          {
+            config: {
+              endpoint: '*********',
+              headers: [
+                { key: 'Authorization', value: '*********' },
+                { key: 'Content-Type', value: 'application/json' },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    return (
+      <FormProvider {...methods}>
+        <DestinationConfigField
+          fieldName={0}
+          type={SubscriptionType.Webhook}
+          onConfigExpandedChange={onConfigExpandedChange}
+        />
+      </FormProvider>
+    );
+  }
+
+  return render(<Wrapper />);
+}
+
 function renderMultipleWebhookFields() {
   function Wrapper() {
     const methods = useForm({
@@ -341,6 +373,21 @@ describe('DestinationConfigField', () => {
     expect(
       screen.getByTestId('header-key-input-field-0-1')
     ).toBeInTheDocument();
+  });
+
+  it('asks again for the hidden headers once the URL changes', () => {
+    const onConfigExpandedChange = jest.fn();
+    renderSavedWebhookField(onConfigExpandedChange);
+
+    fireEvent.change(screen.getByTestId('endpoint-input-field-0'), {
+      target: { value: 'https://new.example.com/hook' },
+    });
+
+    expect(screen.getByTestId('header-value-input-field-0-0')).toHaveValue('');
+    expect(screen.getByTestId('header-value-input-field-0-1')).toHaveValue(
+      'application/json'
+    );
+    expect(onConfigExpandedChange).toHaveBeenCalledWith(true);
   });
 
   it('namespaces key/value controls by destination', () => {

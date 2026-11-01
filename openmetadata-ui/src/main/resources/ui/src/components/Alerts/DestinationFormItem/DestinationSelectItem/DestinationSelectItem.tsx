@@ -23,7 +23,7 @@ import { XClose } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import {
   Status,
@@ -188,15 +188,18 @@ function DestinationSelectItem({
       showSelectionWarning: Boolean(
         destinationType && subscriptionType && !isSelectionWarningDismissed
       ),
-      selectionWarningTitle: isOwnerNonEmailSelection
-        ? t('message.destination-owner-selection-warning', {
-            subscriptionCategory: destinationType,
-            subscriptionType,
-          })
-        : t('message.destination-selection-warning', {
-            subscriptionCategory: destinationType,
-            subscriptionType,
-          }),
+      selectionWarningTitle: isOwnerNonEmailSelection ? (
+        <Trans
+          components={[<strong key="team" />]}
+          i18nKey="message.destination-owner-selection-warning"
+          values={{ subscriptionType }}
+        />
+      ) : (
+        t('message.destination-selection-warning', {
+          subscriptionCategory: destinationType,
+          subscriptionType,
+        })
+      ),
     };
   })();
 

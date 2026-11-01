@@ -17,7 +17,9 @@ import {
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { Status } from '../../generated/events/testDestinationStatus';
+import { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
 import {
+  clearMaskedSecrets,
   formatDiagnosticValue,
   formatEventCount,
   getDestinationsWithTestStatus,
@@ -117,5 +119,55 @@ describe('formatEventCount', () => {
 
   it('shows a missing count as zero', () => {
     expect(formatEventCount(undefined)).toBe('0');
+  });
+});
+
+describe('clearMaskedSecrets', () => {
+  it('empties every secret that still shows the mask', () => {
+    expect(
+      clearMaskedSecrets({
+        endpoint: 'https://new.example.com/hook',
+        headers: [
+          { key: 'Authorization', value: '*********' },
+          { key: 'Content-Type', value: 'application/json' },
+        ],
+        authType: {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/token',
+          clientId: '*********',
+          clientSecret: '*********',
+          scope: 'read',
+        },
+      } as ModifiedWebhookConfig)
+    ).toEqual({
+      endpoint: 'https://new.example.com/hook',
+      headers: [
+        { key: 'Authorization', value: '' },
+        { key: 'Content-Type', value: 'application/json' },
+      ],
+      authType: {
+        type: 'oauth2',
+        tokenUrl: 'https://auth.example.com/token',
+        clientId: '',
+        clientSecret: '',
+        scope: 'read',
+      },
+    });
+  });
+
+  it('keeps secrets the user has already typed', () => {
+    const config = {
+      endpoint: 'https://new.example.com/hook',
+      headers: [{ key: 'Authorization', value: 'Bearer new' }],
+      authType: { type: 'bearer', secretKey: 'new-key' },
+    } as ModifiedWebhookConfig;
+
+    expect(clearMaskedSecrets(config)).toStrictEqual(config);
+  });
+
+  it('adds nothing to a destination without headers or authentication', () => {
+    const config = { endpoint: 'https://new.example.com/hook' };
+
+    expect(clearMaskedSecrets(config)).toStrictEqual(config);
   });
 });

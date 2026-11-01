@@ -263,16 +263,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
             fieldDocDisplay="popover"
             fieldDocVariant="muted"
             formId={ALERT_AI_FORM_MODAL_ID}
-            inlineAlert={
-              inlineAlertDetails
-                ? {
-                    heading: inlineAlertDetails.heading,
-                    description: inlineAlertDetails.description,
-                    type: inlineAlertDetails.type,
-                    onClose: inlineAlertDetails.onClose,
-                  }
-                : undefined
-            }
+            inlineAlert={inlineAlertDetails}
             mode={isEditMode ? 'edit' : 'add'}
             selection={selection}
             shouldShowActionsSection={false}
