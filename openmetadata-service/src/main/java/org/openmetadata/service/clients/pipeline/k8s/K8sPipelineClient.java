@@ -1340,7 +1340,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
             new V1ObjectMeta()
                 .name(name)
                 .namespace(k8sConfig.getNamespace())
-                .labels(buildLabels(pipeline, null)))
+                .labels(buildLabels(pipeline, null))
+                .annotations(podAnnotations()))
         .data(Map.of(CONFIG_MAP_KEY_CONFIG, workflowConfig));
   }
 
@@ -1361,7 +1362,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
             new V1ObjectMeta()
                 .name(name)
                 .namespace(k8sConfig.getNamespace())
-                .labels(buildLabels(pipeline, null)))
+                .labels(buildLabels(pipeline, null))
+                .annotations(podAnnotations()))
         .data(secretData);
   }
 
@@ -1374,7 +1376,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
             new V1ObjectMeta()
                 .name(name)
                 .namespace(k8sConfig.getNamespace())
-                .labels(buildLabels(pipeline, null)))
+                .labels(buildLabels(pipeline, null))
+                .annotations(podAnnotations()))
         .spec(
             new V1CronJobSpec()
                 .schedule(schedule)
@@ -1386,7 +1389,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
                 .suspend(!Boolean.TRUE.equals(pipeline.getEnabled()))
                 .jobTemplate(
                     new V1JobTemplateSpec()
-                        .metadata(new V1ObjectMeta().labels(buildLabels(pipeline, null)))
+                        .metadata(
+                            new V1ObjectMeta()
+                                .labels(buildLabels(pipeline, null))
+                                .annotations(podAnnotations()))
                         .spec(buildJobSpecForCronJob(pipeline))));
   }
 
@@ -1607,7 +1613,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
             new V1ObjectMeta()
                 .name(jobName)
                 .namespace(k8sConfig.getNamespace())
-                .labels(buildLabels(pipeline, runId)))
+                .labels(buildLabels(pipeline, runId))
+                .annotations(podAnnotations()))
         .spec(buildJobSpec(pipeline, runId, configOverride, service));
   }
 
@@ -1801,6 +1808,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1Job buildAutomationJob(Workflow workflow, String runId, String jobName) {
+    Map<String, String> labels = buildAutomationLabels(runId);
     List<V1EnvVar> envVars = new ArrayList<>();
     envVars.add(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(workflow)));
     addExtraEnvVars(envVars);
@@ -1810,12 +1818,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
             new V1ObjectMeta()
                 .name(jobName)
                 .namespace(k8sConfig.getNamespace())
-                .labels(
-                    Map.of(
-                        LABEL_APP, LABEL_VALUE_OPENMETADATA,
-                        LABEL_COMPONENT, LABEL_VALUE_AUTOMATION,
-                        LABEL_MANAGED_BY, LABEL_VALUE_OPENMETADATA,
-                        LABEL_RUN_ID, runId)))
+                .labels(labels)
+                .annotations(podAnnotations()))
         .spec(
             new V1JobSpec()
                 .backoffLimit(k8sConfig.getBackoffLimit())
@@ -1823,6 +1827,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                 .ttlSecondsAfterFinished(k8sConfig.getTtlSecondsAfterFinished())
                 .template(
                     new V1PodTemplateSpec()
+                        .metadata(new V1ObjectMeta().labels(labels).annotations(podAnnotations()))
                         .spec(
                             new V1PodSpec()
                                 .serviceAccountName(k8sConfig.getServiceAccountName())
@@ -1853,7 +1858,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     return new V1Job()
         .metadata(
-            new V1ObjectMeta().name(jobName).namespace(k8sConfig.getNamespace()).labels(labels))
+            new V1ObjectMeta()
+                .name(jobName)
+                .namespace(k8sConfig.getNamespace())
+                .labels(labels)
+                .annotations(podAnnotations()))
         .spec(
             new V1JobSpec()
                 .backoffLimit(k8sConfig.getBackoffLimit())
@@ -1861,6 +1870,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                 .ttlSecondsAfterFinished(k8sConfig.getTtlSecondsAfterFinished())
                 .template(
                     new V1PodTemplateSpec()
+                        .metadata(new V1ObjectMeta().labels(labels).annotations(podAnnotations()))
                         .spec(
                             new V1PodSpec()
                                 .serviceAccountName(k8sConfig.getServiceAccountName())
@@ -1958,17 +1968,26 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private Map<String, String> buildApplicationLabels(App application, String runId) {
-    return Map.of(
-        LABEL_APP,
-        LABEL_VALUE_OPENMETADATA,
-        LABEL_COMPONENT,
-        LABEL_VALUE_APPLICATION,
-        LABEL_MANAGED_BY,
-        LABEL_VALUE_OPENMETADATA,
-        LABEL_APP_NAME,
-        sanitizeName(application.getName()),
-        LABEL_RUN_ID,
-        runId);
+    Map<String, String> labels = new HashMap<>(k8sConfig.getPodLabels());
+    labels.put(LABEL_APP, LABEL_VALUE_OPENMETADATA);
+    labels.put(LABEL_COMPONENT, LABEL_VALUE_APPLICATION);
+    labels.put(LABEL_MANAGED_BY, LABEL_VALUE_OPENMETADATA);
+    labels.put(LABEL_APP_NAME, sanitizeName(application.getName()));
+    labels.put(LABEL_RUN_ID, runId);
+    return labels;
+  }
+
+  private Map<String, String> buildAutomationLabels(String runId) {
+    Map<String, String> labels = new HashMap<>(k8sConfig.getPodLabels());
+    labels.put(LABEL_APP, LABEL_VALUE_OPENMETADATA);
+    labels.put(LABEL_COMPONENT, LABEL_VALUE_AUTOMATION);
+    labels.put(LABEL_MANAGED_BY, LABEL_VALUE_OPENMETADATA);
+    labels.put(LABEL_RUN_ID, runId);
+    return labels;
+  }
+
+  private Map<String, String> podAnnotations() {
+    return k8sConfig.getPodAnnotations().isEmpty() ? null : k8sConfig.getPodAnnotations();
   }
 
   private String buildWorkflowConfig(IngestionPipeline pipeline, ServiceEntityInterface service) {
@@ -2130,7 +2149,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private Map<String, String> buildLabels(IngestionPipeline pipeline, String runId) {
-    Map<String, String> labels = new HashMap<>();
+    // Configured labels go first so they can never shadow the labels used in selectors.
+    // ADR:2026-10-27-pod-labels-and-annotations-cover-every-spawned-resource
+    Map<String, String> labels = new HashMap<>(k8sConfig.getPodLabels());
     labels.put(LABEL_APP, LABEL_VALUE_OPENMETADATA);
     labels.put(LABEL_COMPONENT, LABEL_VALUE_INGESTION);
     labels.put(LABEL_MANAGED_BY, LABEL_VALUE_OPENMETADATA);
