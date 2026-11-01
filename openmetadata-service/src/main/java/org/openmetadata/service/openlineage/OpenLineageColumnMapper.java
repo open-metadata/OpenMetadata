@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.openlineage;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
@@ -34,13 +35,22 @@ import org.openmetadata.schema.type.ColumnDataType;
  * Turns OpenLineage schema-facet fields into columns that pass the same validation as a REST table
  * create. Sized types that arrive without a size fall back to their unsized family, arrays carry an
  * element type, and structs carry empty children because the facet does not describe nesting. The
- * raw type is kept as the display type, so nothing the producer sent is lost.
+ * raw type is kept as the display type, so nothing the producer sent is lost. Names are stored the
+ * way connectors store them, so a later metadata ingestion updates these columns instead of adding
+ * new ones.
  */
 final class OpenLineageColumnMapper {
 
   private static final Pattern TYPE_SIZE = Pattern.compile("\\(\\s*(\\d+)");
   private static final Pattern ARRAY_ELEMENT = Pattern.compile("^array\\s*<\\s*([a-z0-9_ ]+)");
   private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+
+  private static final String RESERVED_COLON_KEYWORD = "__reserved__colon__";
+  private static final String RESERVED_ARROW_KEYWORD = "__reserved__arrow__";
+  private static final String RESERVED_QUOTE_KEYWORD = "__reserved__quote__";
+  private static final String RESERVED_NEWLINE_KEYWORD = "__reserved__newline__";
+  private static final String RESERVED_CARRIAGE_RETURN_KEYWORD = "__reserved__carriage_return__";
+  private static final String RESERVED_TAB_KEYWORD = "__reserved__tab__";
 
   /** Spellings that Spark, Postgres and other producers emit for an OpenMetadata type. */
   private static final Map<String, ColumnDataType> PRODUCER_TYPE_ALIASES =
@@ -87,12 +97,50 @@ final class OpenLineageColumnMapper {
 
   static Column toColumn(SchemaField field) {
     String rawType = field.getType() == null ? "" : field.getType().trim();
-    Column column = new Column().withName(field.getName()).withDescription(field.getDescription());
+    Column column =
+        new Column()
+            .withName(toStoredName(field.getName()))
+            .withDescription(field.getDescription());
     if (!rawType.isEmpty()) {
       column.setDataTypeDisplay(rawType);
     }
     applyDataType(column, rawType.toLowerCase(Locale.ROOT));
     return column;
+  }
+
+  /**
+   * The table schema refuses these sequences in a column name, so ingestion stores keywords in their
+   * place. Must stay in step with {@code replace_separators} in {@code
+   * custom_basemodel_validation.py}, which writes the names this has to match.
+   */
+  static String toStoredName(String fieldName) {
+    return fieldName
+        .replace("::", RESERVED_COLON_KEYWORD)
+        .replace(">", RESERVED_ARROW_KEYWORD)
+        .replace("\"", RESERVED_QUOTE_KEYWORD)
+        .replace("\n", RESERVED_NEWLINE_KEYWORD)
+        .replace("\r", RESERVED_CARRIAGE_RETURN_KEYWORD)
+        .replace("\t", RESERVED_TAB_KEYWORD);
+  }
+
+  /**
+   * Column FQNs by the dotted path a field names them with. An FQN cannot be built from that path:
+   * a column literally named {@code c.d} is {@code "c.d"} in its FQN, while the child {@code d} of
+   * a struct {@code c} is {@code c.d}.
+   */
+  static Map<String, String> fqnsByFieldPath(List<Column> columns) {
+    Map<String, String> fqnsByFieldPath = new HashMap<>();
+    addFqnsByFieldPath(columns, "", fqnsByFieldPath);
+    return fqnsByFieldPath;
+  }
+
+  private static void addFqnsByFieldPath(
+      List<Column> columns, String parentPath, Map<String, String> fqnsByFieldPath) {
+    for (Column column : listOrEmpty(columns)) {
+      String path = parentPath + column.getName();
+      fqnsByFieldPath.put(path, column.getFullyQualifiedName());
+      addFqnsByFieldPath(column.getChildren(), path + ".", fqnsByFieldPath);
+    }
   }
 
   static ColumnDataType toDataType(String lowerCaseType) {

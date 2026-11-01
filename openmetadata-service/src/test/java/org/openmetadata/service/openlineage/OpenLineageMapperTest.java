@@ -47,6 +47,7 @@ import org.openmetadata.schema.api.lineage.openlineage.UnresolvedEntity;
 import org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason;
 import org.openmetadata.schema.configuration.OpenLineageEventType;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
@@ -58,6 +59,8 @@ class OpenLineageMapperTest {
 
   private OpenLineageMapper mapper;
   private static final String UPDATED_BY = "test_user";
+  private static final String INPUT_FQN = "service.db.schema.input_table";
+  private static final String OUTPUT_FQN = "service.db.schema.output_table";
 
   @BeforeEach
   void setUp() {
@@ -756,6 +759,76 @@ class OpenLineageMapperTest {
   }
 
   @Test
+  void mapRunEvent_fieldWithReservedCharacter_reachesTheStoredColumn() {
+    ColumnLineage columnLineage =
+        columnLineageBetween(
+            "a>b",
+            List.of(storedColumn("a__reserved__arrow__b", INPUT_FQN + ".a__reserved__arrow__b")),
+            "a>b",
+            List.of(storedColumn("a__reserved__arrow__b", OUTPUT_FQN + ".a__reserved__arrow__b")));
+
+    assertEquals(OUTPUT_FQN + ".a__reserved__arrow__b", columnLineage.getToColumn());
+    assertEquals(List.of(INPUT_FQN + ".a__reserved__arrow__b"), columnLineage.getFromColumns());
+  }
+
+  @Test
+  void mapRunEvent_fieldWithDot_reachesTheQuotedColumn() {
+    ColumnLineage columnLineage =
+        columnLineageBetween(
+            "c.d",
+            List.of(storedColumn("c.d", INPUT_FQN + ".\"c.d\"")),
+            "c.d",
+            List.of(storedColumn("c.d", OUTPUT_FQN + ".\"c.d\"")));
+
+    assertEquals(OUTPUT_FQN + ".\"c.d\"", columnLineage.getToColumn());
+    assertEquals(List.of(INPUT_FQN + ".\"c.d\""), columnLineage.getFromColumns());
+  }
+
+  @Test
+  void mapRunEvent_fieldWithDotAndReservedCharacter_reachesTheQuotedStoredColumn() {
+    String stored = "e.__reserved__arrow__f";
+
+    ColumnLineage columnLineage =
+        columnLineageBetween(
+            "e.>f",
+            List.of(storedColumn(stored, INPUT_FQN + ".\"" + stored + "\"")),
+            "e.>f",
+            List.of(storedColumn(stored, OUTPUT_FQN + ".\"" + stored + "\"")));
+
+    assertEquals(OUTPUT_FQN + ".\"" + stored + "\"", columnLineage.getToColumn());
+    assertEquals(List.of(INPUT_FQN + ".\"" + stored + "\""), columnLineage.getFromColumns());
+  }
+
+  @Test
+  void mapRunEvent_dottedPathOfNestedColumn_reachesTheChild() {
+    Column struct =
+        storedColumn("s", INPUT_FQN + ".s")
+            .withChildren(List.of(storedColumn("x", INPUT_FQN + ".s.x")));
+
+    ColumnLineage columnLineage = columnLineageBetween("s.x", List.of(struct), "target", List.of());
+
+    assertEquals(List.of(INPUT_FQN + ".s.x"), columnLineage.getFromColumns());
+  }
+
+  @Test
+  void mapRunEvent_columnStoredWithReservedCharacter_keepsItsName() {
+    ColumnLineage columnLineage =
+        columnLineageBetween(
+            "a>b", List.of(storedColumn("a>b", INPUT_FQN + ".a>b")), "target", List.of());
+
+    assertEquals(List.of(INPUT_FQN + ".a>b"), columnLineage.getFromColumns());
+  }
+
+  @Test
+  void mapRunEvent_fieldWithoutStoredColumn_keepsItsSpelling() {
+    ColumnLineage columnLineage =
+        columnLineageBetween("missing.col", List.of(), "target", List.of());
+
+    assertEquals(OUTPUT_FQN + ".target", columnLineage.getToColumn());
+    assertEquals(List.of(INPUT_FQN + ".missing.col"), columnLineage.getFromColumns());
+  }
+
+  @Test
   void mapRunEvent_noColumnLineageFacet_noColumnLineageInResult() {
     OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
     OpenLineageInputDataset input = createInputDataset("ns", "input_table");
@@ -786,6 +859,47 @@ class OpenLineageMapperTest {
         .withEventType(eventType)
         .withRun(new OpenLineageRun().withRunId(UUID.randomUUID()))
         .withJob(new OpenLineageJob().withNamespace("test-namespace").withName("test-job"));
+  }
+
+  /** Maps an event with one column-lineage entry over tables holding the given stored columns. */
+  private ColumnLineage columnLineageBetween(
+      String inputField,
+      List<Column> inputColumns,
+      String outputField,
+      List<Column> outputColumns) {
+    OpenLineageInputDataset input = createInputDataset("ns", "schema.input_table");
+    Fields fields = new Fields();
+    fields.setAdditionalProperty(
+        outputField,
+        new ColumnLineageField()
+            .withInputFields(
+                List.of(
+                    new InputField()
+                        .withNamespace("ns")
+                        .withName("schema.input_table")
+                        .withField(inputField))));
+    OpenLineageOutputDataset output = createOutputDataset("ns", "schema.output_table");
+    output.setOutputFacets(
+        new OutputDatasetFacets().withColumnLineage(new ColumnLineageFacet().withFields(fields)));
+    OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
+    event.setInputs(List.of(input));
+    event.setOutputs(List.of(output));
+
+    EntityReference inputRef = createEntityReference("i1", INPUT_FQN);
+    EntityReference outputRef = createEntityReference("o1", OUTPUT_FQN);
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
+    when(entityResolver.storedColumns(inputRef)).thenReturn(inputColumns);
+    when(entityResolver.storedColumns(outputRef)).thenReturn(outputColumns);
+
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
+
+    return result.getFirst().getEdge().getLineageDetails().getColumnsLineage().getFirst();
+  }
+
+  private static Column storedColumn(String name, String fullyQualifiedName) {
+    return new Column().withName(name).withFullyQualifiedName(fullyQualifiedName);
   }
 
   private OpenLineageInputDataset createInputDataset(String namespace, String name) {
