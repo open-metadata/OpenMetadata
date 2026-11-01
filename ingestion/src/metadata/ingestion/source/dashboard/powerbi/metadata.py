@@ -2046,6 +2046,13 @@ class PowerbiSource(DashboardServiceSource):
             cleaned_sql = sql_query.replace("#(lf)", "\n")
             cleaned_sql = cleaned_sql.replace("#(tab)", "\t")
             cleaned_sql = cleaned_sql.replace('""', '"')
+            # Drop `--` line comments while the newlines are still there, otherwise
+            # collapsing the whitespace turns them into comments of the whole query
+            cleaned_sql = re.sub(
+                r"('(?:[^']|'')*')|--[^\n]*",
+                lambda match: match.group(1) or "",
+                cleaned_sql,
+            )
             cleaned_sql = re.sub(r"\s+", " ", cleaned_sql).strip()
 
             if not cleaned_sql:
