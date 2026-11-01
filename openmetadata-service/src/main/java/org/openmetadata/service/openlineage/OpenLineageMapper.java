@@ -163,11 +163,12 @@ public class OpenLineageMapper {
       Map<OpenLineageInputDataset, EntityReference> inputs,
       Map<OpenLineageOutputDataset, EntityReference> outputs) {
     Map<String, EntityReference> inputsByName = indexInputsByName(inputs);
+    Map<String, DatasetColumns> inputColumns = new HashMap<>();
     List<AddLineage> lineageRequests = new ArrayList<>();
     outputs.forEach(
         (output, outputRef) -> {
           List<ColumnLineage> columnLineages =
-              extractColumnLineage(output, inputsByName, outputRef);
+              extractColumnLineage(output, inputsByName, inputColumns, outputRef);
           for (EntityReference inputRef : inputs.values()) {
             List<ColumnLineage> relevantColumnLineage =
                 filterColumnLineageForInput(columnLineages, inputRef.getFullyQualifiedName());
@@ -325,6 +326,7 @@ public class OpenLineageMapper {
   private List<ColumnLineage> extractColumnLineage(
       OpenLineageOutputDataset output,
       Map<String, EntityReference> inputsByName,
+      Map<String, DatasetColumns> inputColumns,
       EntityReference outputRef) {
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
@@ -343,8 +345,6 @@ public class OpenLineageMapper {
     }
 
     DatasetColumns outputColumns = readColumns(outputRef);
-    Map<String, DatasetColumns> inputColumns = new HashMap<>();
-    inputsByName.forEach((name, ref) -> inputColumns.put(name, readColumns(ref)));
 
     Fields fieldsWrapper = columnLineageFacet.getFields();
     Map<String, ColumnLineageField> fields = fieldsWrapper.getAdditionalProperties();
@@ -360,8 +360,10 @@ public class OpenLineageMapper {
       for (InputField inputField : fieldInfo.getInputFields()) {
         String inputOlName =
             buildOpenLineageDatasetName(inputField.getNamespace(), inputField.getName());
-        DatasetColumns input = inputColumns.get(inputOlName);
-        if (input != null) {
+        EntityReference inputRef = inputsByName.get(inputOlName);
+        if (inputRef != null) {
+          DatasetColumns input =
+              inputColumns.computeIfAbsent(inputOlName, name -> readColumns(inputRef));
           fromColumns.add(input.columnFqn(inputField.getField()));
         }
       }

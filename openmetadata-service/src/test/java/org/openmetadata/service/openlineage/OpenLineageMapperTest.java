@@ -829,6 +829,34 @@ class OpenLineageMapperTest {
   }
 
   @Test
+  void mapRunEvent_severalOutputs_readEachReferencedInputOnce() {
+    OpenLineageInputDataset referenced = createInputDataset("ns", "schema.referenced");
+    OpenLineageInputDataset unreferenced = createInputDataset("ns", "schema.unreferenced");
+    OpenLineageOutputDataset first = outputFedBy("schema.first", "schema.referenced", "a", "a");
+    OpenLineageOutputDataset second = outputFedBy("schema.second", "schema.referenced", "b", "b");
+    OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
+    event.setInputs(List.of(referenced, unreferenced));
+    event.setOutputs(List.of(first, second));
+
+    EntityReference referencedRef = createEntityReference("i1", "svc.db.schema.referenced");
+    EntityReference unreferencedRef = createEntityReference("i2", "svc.db.schema.unreferenced");
+    when(entityResolver.resolveDataset(eq(referenced), eq(UPDATED_BY)))
+        .thenReturn(dataset(referencedRef));
+    when(entityResolver.resolveDataset(eq(unreferenced), eq(UPDATED_BY)))
+        .thenReturn(dataset(unreferencedRef));
+    when(entityResolver.resolveDataset(eq(first), eq(UPDATED_BY)))
+        .thenReturn(dataset(createEntityReference("o1", "svc.db.schema.first")));
+    when(entityResolver.resolveDataset(eq(second), eq(UPDATED_BY)))
+        .thenReturn(dataset(createEntityReference("o2", "svc.db.schema.second")));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
+
+    mapper.mapRunEvent(event, UPDATED_BY);
+
+    verify(entityResolver, times(1)).storedColumns(referencedRef);
+    verify(entityResolver, never()).storedColumns(unreferencedRef);
+  }
+
+  @Test
   void mapRunEvent_noColumnLineageFacet_noColumnLineageInResult() {
     OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
     OpenLineageInputDataset input = createInputDataset("ns", "input_table");
@@ -868,19 +896,8 @@ class OpenLineageMapperTest {
       String outputField,
       List<Column> outputColumns) {
     OpenLineageInputDataset input = createInputDataset("ns", "schema.input_table");
-    Fields fields = new Fields();
-    fields.setAdditionalProperty(
-        outputField,
-        new ColumnLineageField()
-            .withInputFields(
-                List.of(
-                    new InputField()
-                        .withNamespace("ns")
-                        .withName("schema.input_table")
-                        .withField(inputField))));
-    OpenLineageOutputDataset output = createOutputDataset("ns", "schema.output_table");
-    output.setOutputFacets(
-        new OutputDatasetFacets().withColumnLineage(new ColumnLineageFacet().withFields(fields)));
+    OpenLineageOutputDataset output =
+        outputFedBy("schema.output_table", "schema.input_table", inputField, outputField);
     OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
     event.setInputs(List.of(input));
     event.setOutputs(List.of(output));
@@ -896,6 +913,24 @@ class OpenLineageMapperTest {
     List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     return result.getFirst().getEdge().getLineageDetails().getColumnsLineage().getFirst();
+  }
+
+  private OpenLineageOutputDataset outputFedBy(
+      String outputName, String inputName, String inputField, String outputField) {
+    Fields fields = new Fields();
+    fields.setAdditionalProperty(
+        outputField,
+        new ColumnLineageField()
+            .withInputFields(
+                List.of(
+                    new InputField()
+                        .withNamespace("ns")
+                        .withName(inputName)
+                        .withField(inputField))));
+    OpenLineageOutputDataset output = createOutputDataset("ns", outputName);
+    output.setOutputFacets(
+        new OutputDatasetFacets().withColumnLineage(new ColumnLineageFacet().withFields(fields)));
+    return output;
   }
 
   private static Column storedColumn(String name, String fullyQualifiedName) {

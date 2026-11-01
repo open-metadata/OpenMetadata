@@ -111,7 +111,8 @@ final class OpenLineageColumnMapper {
   /**
    * The table schema refuses these sequences in a column name, so ingestion stores keywords in their
    * place. Must stay in step with {@code replace_separators} in {@code
-   * custom_basemodel_validation.py}, which writes the names this has to match.
+   * custom_basemodel_validation.py}, which writes the names this has to match:
+   * ADR:2026-11-01-openlineage-fields-resolve-against-stored-columns.
    */
   static String toStoredName(String fieldName) {
     return fieldName
