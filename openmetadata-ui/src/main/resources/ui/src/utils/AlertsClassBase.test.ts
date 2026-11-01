@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { Operation } from 'fast-json-patch';
 import { compare } from 'fast-json-patch';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -721,7 +722,7 @@ describe('AlertsClassBase', () => {
 
   describe('destinationsAsAWholeListReplace', () => {
     it('keeps a patch with no destination operation as it is', () => {
-      const jsonPatch = [
+      const jsonPatch: Operation[] = [
         { op: 'replace', path: '/displayName', value: 'New Name' },
       ];
 
@@ -731,7 +732,7 @@ describe('AlertsClassBase', () => {
     });
 
     it('replaces a changed destination list in one move', () => {
-      const jsonPatch = [
+      const jsonPatch: Operation[] = [
         { op: 'remove', path: '/destinations/1' },
         { op: 'replace', path: '/destinations/0/id', value: '' },
         { op: 'replace', path: '/description', value: 'New' },

@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -122,8 +123,38 @@ class TemplateTestSendIT {
     return alert.getDestinations().getFirst();
   }
 
+  /** An alert's stored secrets are sent only by a caller allowed to edit that alert. */
+  @Test
+  void aCallerWhoCannotEditTheAlertCannotSendWithItsSecrets() throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      SubscriptionDestination masked = maskedDestinationOf(receiver, "header-token");
+      OpenMetadataClient creator = AlertFixtures.alertCreatorClient();
+
+      OpenMetadataException refused =
+          assertThrows(
+              OpenMetadataException.class, () -> send(creator, "<p>Not theirs</p>", masked));
+      int status =
+          refused.getCause() instanceof OpenMetadataException cause
+              ? cause.getStatusCode()
+              : refused.getStatusCode();
+      assertEquals(403, status, refused.getMessage());
+      assertTrue(receiver.received().isEmpty(), "a refused send sends nothing");
+
+      NotificationTemplateValidationResponse answer =
+          send(creator, "<p>Entered</p>", AlertFixtures.external(SLACK, receiver.url(HOOK)));
+      assertTrue(answer.getIsValid(), String.valueOf(answer.getBodyError()));
+      assertEquals(1, receiver.received().size(), "values the caller enters are sent");
+    }
+  }
+
   private static NotificationTemplateValidationResponse send(
       String body, SubscriptionDestination destination) throws Exception {
+    return send(SdkClients.adminClient(), body, destination);
+  }
+
+  private static NotificationTemplateValidationResponse send(
+      OpenMetadataClient client, String body, SubscriptionDestination destination)
+      throws Exception {
     NotificationTemplateSendRequest request =
         new NotificationTemplateSendRequest()
             .withRenderRequest(
@@ -132,7 +163,7 @@ class TemplateTestSendIT {
                     .withTemplateBody(body)
                     .withResource(Entity.TABLE))
             .withDestinations(List.of(destination));
-    return SdkClients.adminClient()
+    return client
         .getHttpClient()
         .execute(HttpMethod.POST, SEND_PATH, request, NotificationTemplateValidationResponse.class);
   }

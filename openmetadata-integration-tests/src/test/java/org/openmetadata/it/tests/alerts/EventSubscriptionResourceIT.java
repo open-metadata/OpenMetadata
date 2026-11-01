@@ -21,6 +21,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -35,6 +36,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.StreamSupport;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -66,6 +68,8 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
@@ -2670,6 +2674,98 @@ public class EventSubscriptionResourceIT
       assertEquals(400, postTestDestination(List.of(unknown)).statusCode());
       assertEquals(1, receiver.received().size(), "a refused test sends nothing");
     }
+  }
+
+  /** Stored secrets are tested only by a caller allowed to edit the alert that holds them. */
+  @Test
+  void test_testDestinationWithStoredSecretsNeedsEditOnTheirAlert(TestNamespace ns)
+      throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription created =
+          createEntity(
+              secretRequest(ns, "guarded_sub", receiver.url("/hook"), ns.prefix("token"), null));
+      OpenMetadataClient creator = AlertFixtures.alertCreatorClient();
+
+      OpenMetadataException refused =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> testDestinationAs(creator, created.getDestinations().getFirst()));
+      assertEquals(403, statusOf(refused), refused.getMessage());
+      assertTrue(receiver.received().isEmpty(), "a refused test sends nothing");
+
+      testDestinationAs(creator, webhookDestination(receiver.url("/entered"), null, null));
+      assertEquals(1, receiver.received().size(), "values the caller enters are tested");
+    }
+  }
+
+  /** An alert deleted in the background is recorded as every read shows it. */
+  @Test
+  void test_asyncDeleteRecordsTheAlertMasked(TestNamespace ns) throws Exception {
+    String endpoint = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("async");
+    String headerValue = ns.prefix("header-token");
+    EventSubscription created =
+        createEntity(secretRequest(ns, "async_deleted", endpoint, headerValue, null));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.DELETE,
+            "/v1/events/subscriptions/async/" + created.getId() + "?hardDelete=true",
+            null,
+            Object.class);
+
+    String recorded =
+        Awaitility.await("the deleted event of " + created.getName())
+            .atMost(Duration.ofSeconds(30))
+            .pollInterval(Duration.ofMillis(500))
+            .until(() -> deletedEventOf(created), Optional::isPresent)
+            .orElseThrow();
+    assertFalse(recorded.contains(endpoint), recorded);
+    assertFalse(recorded.contains(headerValue), recorded);
+    assertFalse(recorded.contains(FERNET_TOKEN_PREFIX), "no stored ciphertext either");
+    assertTrue(recorded.contains(PasswordEntityMasker.PASSWORD_MASK), recorded);
+  }
+
+  private static final String FERNET_TOKEN_PREFIX = "gAAAAA";
+
+  private static Optional<String> deletedEventOf(EventSubscription alert) throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParams(
+                Map.of(
+                    "entityDeleted",
+                    Entity.EVENT_SUBSCRIPTION,
+                    "timestamp",
+                    String.valueOf(alert.getUpdatedAt())))
+            .build();
+    String events =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/events", null, options);
+    Optional<String> found = Optional.empty();
+    for (JsonNode event : JsonUtils.readTree(events).path("data")) {
+      if (alert.getId().toString().equals(event.path("entityId").asText())) {
+        found = Optional.of(event.toString());
+      }
+    }
+    return found;
+  }
+
+  private static void testDestinationAs(
+      OpenMetadataClient client, SubscriptionDestination destination) {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/events/subscriptions/testDestination",
+            Map.of("destinations", List.of(destination)),
+            Object.class);
+  }
+
+  private static int statusOf(OpenMetadataException refused) {
+    return refused.getCause() instanceof OpenMetadataException cause
+        ? cause.getStatusCode()
+        : refused.getStatusCode();
   }
 
   /** A request may set a destination's id; a masked one is tested only when one alert holds it. */

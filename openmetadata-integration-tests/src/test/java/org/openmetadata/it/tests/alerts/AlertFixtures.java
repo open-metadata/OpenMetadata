@@ -8,12 +8,20 @@ import java.util.UUID;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.consumer.AlertRows;
 import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
@@ -34,6 +42,37 @@ final class AlertFixtures {
   private static final int ONE_DAY_SECONDS = 86400;
 
   private AlertFixtures() {}
+
+  /**
+   * A user who may create alerts and try notification templates, and may edit no alert it did not
+   * create.
+   */
+  static OpenMetadataClient alertCreatorClient() {
+    String name = "alertcreator" + UUID.randomUUID().toString().substring(0, 8);
+    String email = name + "@open-metadata.org";
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Rule create =
+        new Rule()
+            .withName(name + "Create")
+            .withOperations(List.of(MetadataOperation.CREATE))
+            .withResources(List.of(Entity.EVENT_SUBSCRIPTION, Entity.NOTIFICATION_TEMPLATE))
+            .withEffect(Rule.Effect.ALLOW);
+    Policy policy =
+        admin
+            .policies()
+            .create(new CreatePolicy().withName(name + "Policy").withRules(List.of(create)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(name + "Role")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    admin
+        .users()
+        .create(new CreateUser().withName(name).withEmail(email).withRoles(List.of(role.getId())));
+    return SdkClients.createClient(name, email, new String[] {});
+  }
 
   static SubscriptionDestination external(
       SubscriptionDestination.SubscriptionType type, String endpoint) {

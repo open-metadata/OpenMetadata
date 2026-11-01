@@ -283,6 +283,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
+  @Override
+  protected EventSubscription forChangeEvent(EventSubscription entity) {
+    return DestinationSecrets.mask(entity);
+  }
+
   /** A destination as stored, and the alert it belongs to. */
   public record StoredDestination(UUID alertId, SubscriptionDestination destination) {}
 

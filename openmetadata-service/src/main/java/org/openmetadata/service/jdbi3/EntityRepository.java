@@ -15434,6 +15434,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  /**
+   * The entity as a change event this repository writes records it. A response filter records the
+   * change event of a synchronous write from the response, which a resource may mask; an
+   * asynchronous or bulk write has no response, so a repository whose entity carries values that
+   * must not be served returns the copy its responses would show.
+   */
+  protected T forChangeEvent(T entity) {
+    return entity;
+  }
+
   private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
     buildChangeEventJsonForBulkOperation(entity, eventType, userName)
         .ifPresent(this::insertChangeEvent);
@@ -15460,7 +15470,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       ChangeEvent changeEvent =
-          ChangeEvents.createChangeEventForEntity(userName, eventType, entity);
+          ChangeEvents.createChangeEventForEntity(userName, eventType, forChangeEvent(entity));
 
       if (changeEvent.getEntity() != null) {
         Object entityObject = changeEvent.getEntity();
