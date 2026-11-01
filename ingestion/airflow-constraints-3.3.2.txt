@@ -246,7 +246,7 @@ bcrypt==5.0.0
 beautifulsoup4==4.15.0
 billiard==4.2.4
 bitarray==3.11.0
-black==26.5.1
+black==26.10.1
 bleach==6.4.0
 blinker==1.9.0
 boto3==1.43.75
@@ -310,7 +310,7 @@ fastavro==1.12.2
 fastcore==2.2.23
 fastjsonschema==2.22.2
 fastuuid==0.14.0
-filelock==3.32.6
+filelock==4.1.0
 flask-appbuilder==5.2.2
 flask-babel==4.0.0
 flower==2.1.0
@@ -707,7 +707,7 @@ uvloop==0.22.1
 validators==0.35.0
 vertica-python==1.4.0
 vine==5.1.0
-virtualenv==21.14.12
+virtualenv==21.14.13
 watchfiles==1.2.0
 watchtower==3.4.0
 wcwidth==0.8.3
