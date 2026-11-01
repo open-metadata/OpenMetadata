@@ -563,6 +563,53 @@ class DefaultAuthorizerTest {
     }
   }
 
+  /**
+   * In ANY mode an explicit Deny on one request refuses the whole thing, even if another request
+   * would allow it: a resource a Deny rule names must not be reachable through a sibling check.
+   */
+  @Test
+  void authorizeRequestsAnyRefusesWhenOneRequestIsDenied() {
+    SecurityContext securityContext = securityContext("analyst");
+    SubjectContext analystContext = subjectContext("analyst", false, false, null);
+    AuthRequest deniedRequest =
+        new AuthRequest(
+            new OperationContext(Entity.TABLE, MetadataOperation.VIEW_ALL),
+            mock(ResourceContextInterface.class));
+    AuthRequest allowedRequest =
+        new AuthRequest(
+            new OperationContext(Entity.QUERY, MetadataOperation.VIEW_ALL),
+            mock(ResourceContextInterface.class));
+
+    try (MockedStatic<DefaultAuthorizer> mockedAuthorizer = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+      mockedAuthorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(analystContext);
+      mockedPolicyEvaluator
+          .when(
+              () ->
+                  PolicyEvaluator.hasPermission(
+                      analystContext,
+                      deniedRequest.resourceContext(),
+                      deniedRequest.operationContext()))
+          .thenThrow(new PolicyDeniedException("denied by rule"));
+      // allowedRequest passes (the default mock returns normally).
+
+      // The Deny must win in either order: [allowed, denied] must refuse too, so an early success
+      // cannot let the loop return before the later Deny is seen.
+      assertThrows(
+          PolicyDeniedException.class,
+          () ->
+              authorizer.authorizeRequests(
+                  securityContext, List.of(deniedRequest, allowedRequest), AuthorizationLogic.ANY));
+      assertThrows(
+          PolicyDeniedException.class,
+          () ->
+              authorizer.authorizeRequests(
+                  securityContext, List.of(allowedRequest, deniedRequest), AuthorizationLogic.ANY));
+    }
+  }
+
   @Test
   void adminAndBotGuardsBehaveAsExpected() {
     SecurityContext userSecurityContext = securityContext("analyst");
