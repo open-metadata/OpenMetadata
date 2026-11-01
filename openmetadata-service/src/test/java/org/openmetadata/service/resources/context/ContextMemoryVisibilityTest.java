@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.eq;
 
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
@@ -63,7 +64,8 @@ class ContextMemoryVisibilityTest {
             () ->
                 Entity.getEntityByName(
                     eq(Entity.USER), any(String.class), eq("teams,domains"), any()))
-        .thenAnswer(inv -> new User().withName(inv.getArgument(1)));
+        .thenAnswer(
+            inv -> new User().withId(userId(inv.getArgument(1))).withName(inv.getArgument(1)));
   }
 
   @AfterEach
@@ -143,6 +145,80 @@ class ContextMemoryVisibilityTest {
   }
 
   @Test
+  void testSharedMemory_visibleToMembersOfAListedTeamOrDomain() {
+    EntityReference team = ref(Entity.TEAM, "treasury", "treasury");
+    EntityReference domain = ref(Entity.DOMAIN, "legal", "corp.legal");
+    userBelongsTo(BOB, List.of(team), List.of());
+    userBelongsTo("charlie", List.of(), List.of(domain));
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(sharedWith(team), BOB, false));
+    assertFalse(ContextMemoryVisibility.isVisibleToUser(sharedWith(domain), BOB, false));
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(sharedWith(domain), "charlie", false));
+    assertFalse(ContextMemoryVisibility.isVisibleToUser(sharedWith(team), "charlie", false));
+  }
+
+  @Test
+  void testSharedMemory_aPrincipalOfTheSameNameIsNotTheListedPrincipal() {
+    EntityReference team = ref(Entity.TEAM, "legal", "legal");
+    userBelongsTo(BOB, List.of(team), List.of(ref(Entity.DOMAIN, "legal", "emea.legal")));
+
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(sharedWith(team), "legal", false),
+        "a user named like the team is not a member of it");
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(
+            sharedWith(ref(Entity.DOMAIN, "legal", "legal")), BOB, false),
+        "a member of the team is not in the domain named like it");
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(
+            sharedWith(ref(Entity.DOMAIN, "legal", "apac.legal")), BOB, false),
+        "sub-domains of different parents share a name");
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(sharedWith(ref(Entity.USER, BOB, BOB)), BOB, false),
+        "a user who took the name of a deleted one does not inherit what that one was shared");
+  }
+
+  @Test
+  void testSharedMemory_hiddenFromAUserThatCannotBeResolved() {
+    entityStaticMock
+        .when(() -> Entity.getEntityByName(eq(Entity.USER), eq(BOB), eq("teams,domains"), any()))
+        .thenThrow(new IllegalStateException("no such user"));
+
+    ContextMemory shared = sharedWith(principalRef(BOB));
+    assertFalse(ContextMemoryVisibility.isVisibleToUser(shared, BOB, false));
+    ForbiddenException denied =
+        assertThrows(
+            ForbiddenException.class,
+            () -> ContextMemoryVisibility.enforceVisibility(shared, BOB, false));
+    assertEquals(
+        "Memory with visibility SHARED is only accessible to explicitly shared users.",
+        denied.getMessage());
+  }
+
+  @Test
+  void testSharedMemory_missingIdsAndAnonymousCallersAreDenied() {
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(
+            sharedWith(principalRef(BOB).withId(null)), BOB, false));
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(sharedWith(principalRef(BOB)), null, false));
+  }
+
+  @Test
+  void testSharedMemory_idsStillMatchAfterAPrincipalIsRenamed() {
+    EntityReference team = ref(Entity.TEAM, "old-name", "old-name");
+    userBelongsTo(
+        BOB, List.of(ref(Entity.TEAM, "new-name", "new-name").withId(team.getId())), List.of());
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(sharedWith(team), BOB, false));
+    assertTrue(
+        ContextMemoryVisibility.isVisibleToUser(
+            sharedWith(principalRef(BOB).withName("old-user").withFullyQualifiedName("old-user")),
+            BOB,
+            false));
+  }
+
+  @Test
   void testFilterByVisibility_stripsOtherUsersPrivateMemories() {
     ContextMemory alicePrivate = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     ContextMemory bobPrivate = memoryOwnedBy(BOB, MemoryVisibility.PRIVATE);
@@ -187,6 +263,15 @@ class ContextMemoryVisibilityTest {
 
     assertTrue(ContextMemoryVisibility.isOwnedBy(memory, ALICE));
     assertFalse(ContextMemoryVisibility.isOwnedBy(memory, BOB));
+  }
+
+  @Test
+  void testIsOwnedBy_aUserNamedLikeTheOwningTeamIsNotAnOwner() {
+    ContextMemory memory =
+        new ContextMemory().withOwners(List.of(ref(Entity.TEAM, "treasury", "treasury")));
+
+    assertFalse(ContextMemoryVisibility.isOwnedBy(memory, "treasury"));
+    assertFalse(ContextMemoryVisibility.isVisibleToUser(memory, "treasury", false));
   }
 
   @Test
@@ -315,11 +400,41 @@ class ContextMemoryVisibilityTest {
     return memory;
   }
 
+  private ContextMemory sharedWith(EntityReference principal) {
+    return memoryOwnedBy(ALICE, MemoryVisibility.SHARED)
+        .withShareConfig(
+            new MemoryShareConfig()
+                .withVisibility(MemoryVisibility.SHARED)
+                .withSharedWith(List.of(new MemorySharedPrincipal().withPrincipal(principal))));
+  }
+
+  private void userBelongsTo(
+      String userName, List<EntityReference> teams, List<EntityReference> domains) {
+    entityStaticMock
+        .when(
+            () -> Entity.getEntityByName(eq(Entity.USER), eq(userName), eq("teams,domains"), any()))
+        .thenReturn(
+            new User()
+                .withId(userId(userName))
+                .withName(userName)
+                .withTeams(teams)
+                .withDomains(domains));
+  }
+
   private EntityReference principalRef(String userName) {
+    return ref("user", userName, userName).withId(userId(userName));
+  }
+
+  private static EntityReference ref(String type, String name, String fqn) {
     return new EntityReference()
         .withId(UUID.randomUUID())
-        .withType("user")
-        .withName(userName)
-        .withFullyQualifiedName(userName);
+        .withType(type)
+        .withName(name)
+        .withFullyQualifiedName(fqn);
+  }
+
+  /** The id the mocked user lookup resolves {@code userName} to. */
+  private static UUID userId(String userName) {
+    return UUID.nameUUIDFromBytes(userName.getBytes(StandardCharsets.UTF_8));
   }
 }
