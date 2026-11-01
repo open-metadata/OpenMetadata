@@ -2,6 +2,7 @@ package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMCompletionException;
@@ -195,10 +197,73 @@ class PageContextProcessingEngineTest {
     assertEquals("LLM exploded", stamped.getProcessingError());
   }
 
+  @Test
+  void statsContentionQueuesAnotherJobWithoutRepeatingDerivation() {
+    pageReturns(page("body", "stale-hash"));
+    when(extractor.derive(eq("body"), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.of(), 1, 1));
+    when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(0, 0, 0, 0));
+    when(pageRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              Page updated = invocation.getArgument(2);
+              if (updated.getProcessingStatus() == PageProcessingStatus.Processed) {
+                throw new PreconditionFailedException("Concurrent edit");
+              }
+              return null;
+            });
+
+    engine().runQueued(pageId);
+
+    verify(jobDao)
+        .enqueuePageMemoryJob(
+            eq(pageId.toString()),
+            eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
+            anyString(),
+            eq(Entity.ADMIN_USER_NAME),
+            anyLong(),
+            anyLong());
+    verify(extractor).derive(eq("body"), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION));
+    assertEquals(
+        ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS + 1, capturedUpdates().size());
+  }
+
+  @Test
+  void failureStatusContentionQueuesAnotherJobAndKeepsTheOriginalFailure() {
+    pageReturns(page("body", "stale-hash"));
+    LLMCompletionException failure = new LLMCompletionException("Model unavailable");
+    when(extractor.derive(eq("body"), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenThrow(failure);
+    when(pageRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              Page updated = invocation.getArgument(2);
+              if (updated.getProcessingStatus() == PageProcessingStatus.Failed) {
+                throw new PreconditionFailedException("Concurrent edit");
+              }
+              return null;
+            });
+
+    assertSame(
+        failure, assertThrows(LLMCompletionException.class, () -> engine().runQueued(pageId)));
+
+    verify(jobDao)
+        .enqueuePageMemoryJob(
+            eq(pageId.toString()),
+            eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
+            anyString(),
+            eq(Entity.ADMIN_USER_NAME),
+            anyLong(),
+            anyLong());
+    assertEquals(
+        ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS + 1, capturedUpdates().size());
+  }
+
   private List<Page> capturedUpdates() {
     ArgumentCaptor<Page> captor = ArgumentCaptor.forClass(Page.class);
     verify(pageRepository, atLeastOnce())
-        .update(isNull(), any(), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+        .updateIfCurrent(isNull(), any(), captor.capture(), eq(Entity.ADMIN_USER_NAME));
     return captor.getAllValues();
   }
 }
