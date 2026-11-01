@@ -239,12 +239,8 @@ public class BasicAuthLoginServlet extends HttpServlet {
       } catch (AuthenticationException e) {
         // Wrong password for an existing account. A rejected credential is an expected outcome of
         // this endpoint, so it is logged as an event and never as a stack trace.
+        // validatePassword already counted the failed attempt, as for the REST login.
         LOG.warn("Basic Auth login failed: invalid credentials");
-        try {
-          authenticator.recordFailedLoginAttempt(email, email);
-        } catch (Exception recordEx) {
-          LOG.error("Failed to record login attempt for security tracking", recordEx);
-        }
         renderLoginFormWithError(request, response, pending, "Invalid username or password");
       } catch (CustomExceptionMessage e) {
         // Both authenticators report an unknown account as CustomExceptionMessage, and LDAP uses
