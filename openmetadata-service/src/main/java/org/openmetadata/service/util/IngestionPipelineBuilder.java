@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.DBT;
 import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.METADATA;
 
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline.StorageMetadataConfigType;
@@ -58,7 +60,10 @@ public final class IngestionPipelineBuilder {
     SourceConfig sourceConfig = ingestionPipeline.getSourceConfig();
     if (sourceConfig != null && isStorageMetadata(ingestionPipeline)) {
       typeStorageMetadata(ingestionPipeline, forRead);
-    } else if (sourceConfig != null && sourceConfig.getConfig() != null) {
+    } else if (sourceConfig != null && DBT.equals(ingestionPipeline.getPipelineType())) {
+      sourceConfig.setConfig(
+          ClassConverterFactory.getConverter(DbtPipeline.class).convert(sourceConfig.getConfig()));
+    } else if (sourceConfig != null && hasDeclaredConfigType(sourceConfig.getConfig())) {
       sourceConfig.setConfig(
           ClassConverterFactory.convertProperty(
               SourceConfig.class, "config", sourceConfig.getConfig()));
@@ -116,5 +121,12 @@ public final class IngestionPipelineBuilder {
       kept.remove(MANIFEST_SOURCE_FIELD);
       sourceConfig.setConfig(kept);
     }
+  }
+
+  private static boolean hasDeclaredConfigType(Object config) {
+    if (!(config instanceof Map<?, ?> map)) {
+      return config != null;
+    }
+    return map.get(CONFIG_TYPE_FIELD) instanceof String type && !type.isBlank();
   }
 }

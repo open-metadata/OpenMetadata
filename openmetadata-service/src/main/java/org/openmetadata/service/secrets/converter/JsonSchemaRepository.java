@@ -148,6 +148,15 @@ final class JsonSchemaRepository {
     }
   }
 
+  boolean hasOpenObjectBranch(Ref oneOf) {
+    return branches(oneOf).stream()
+        .anyMatch(
+            branch ->
+                "object".equals(branch.node().path("type").asText(""))
+                    && branch.node().path("additionalProperties").asBoolean(false)
+                    && !branch.node().has("properties"));
+  }
+
   boolean containsPasswordFormat(Ref schema) {
     Deque<Ref> queue = new ArrayDeque<>();
     Set<String> visited = new HashSet<>();
