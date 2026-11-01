@@ -2,7 +2,7 @@ package org.openmetadata.service.rdf.storage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.base.Throwables;
 import com.google.common.base.Utf8;
 import io.micrometer.core.instrument.Metrics;
 import java.io.ByteArrayOutputStream;
@@ -65,6 +65,7 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
+import org.apache.jena.web.HttpSC;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.monitoring.OntologyMetrics;
@@ -979,15 +980,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   /** Fuseki's storage guard answers 507 Insufficient Storage before the write reaches TDB2. */
   static boolean isStorageGuardRefusal(final Throwable failure) {
-    Throwable cause = failure;
-    boolean refused = false;
-    while (cause != null && !refused) {
-      refused =
-          cause instanceof HttpException http
-              && http.getStatusCode() == RdfStorageLowDiskException.INSUFFICIENT_STORAGE;
-      cause = cause.getCause() == cause ? null : cause.getCause();
-    }
-    return refused;
+    return Throwables.getCausalChain(failure).stream()
+        .anyMatch(
+            cause ->
+                cause instanceof HttpException http
+                    && http.getStatusCode() == HttpSC.INSUFFICIENT_STORAGE_507);
   }
 
   private boolean isCompacting() {
@@ -1940,11 +1937,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   static StorageFacts parseStorageFacts(final String body) {
-    final JsonNode report = JsonUtils.readTree(body);
-    return new StorageFacts(
-        report.path("totalBytes").asLong(),
-        report.path("usableBytes").asLong(),
-        report.path("lowOnSpace").asBoolean());
+    return JsonUtils.readValueLenient(body, StorageFacts.class);
   }
 
   @Override
