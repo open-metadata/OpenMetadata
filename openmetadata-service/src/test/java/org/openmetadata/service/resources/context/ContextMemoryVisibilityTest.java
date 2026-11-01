@@ -184,7 +184,15 @@ class ContextMemoryVisibilityTest {
         .when(() -> Entity.getEntityByName(eq(Entity.USER), eq(BOB), eq("teams,domains"), any()))
         .thenThrow(new IllegalStateException("no such user"));
 
-    assertFalse(ContextMemoryVisibility.isVisibleToUser(sharedWith(principalRef(BOB)), BOB, false));
+    ContextMemory shared = sharedWith(principalRef(BOB));
+    assertFalse(ContextMemoryVisibility.isVisibleToUser(shared, BOB, false));
+    ForbiddenException denied =
+        assertThrows(
+            ForbiddenException.class,
+            () -> ContextMemoryVisibility.enforceVisibility(shared, BOB, false));
+    assertEquals(
+        "Memory with visibility SHARED is only accessible to explicitly shared users.",
+        denied.getMessage());
   }
 
   @Test
