@@ -274,16 +274,46 @@ class FieldPathUtilsTest {
   }
 
   @Test
-  void testParseFieldPath_dotSeparator_threeSegments_propertyLast() throws Exception {
-    // "columns.profile.personal" is ambiguous (nested column with implied description vs.
-    // flat column + property). Property-last wins — this pins the pre-existing behavior for
-    // three-segment paths; every real producer appends an explicit ".description"/".tags".
+  void testParseFieldPath_dotSeparator_threeSegments_bareNestedColumnResolvesAsNested()
+      throws Exception {
+    // "columns.profile.personal" has no explicit ".description": the v2.0.0 suggestion→task
+    // migration emits exactly this shape for a nested-column description suggestion whose stored
+    // entity link was an unquoted "columns::profile.personal" (no "::description"). The last
+    // segment is not a known property, so it folds into the field name and the path resolves to
+    // the nested column "profile.personal" with an implied description property — instead of the
+    // old behavior of treating "personal" as a property and writing onto the parent column
+    // "profile".
     FieldPathComponents result = invokeParseFieldPath("columns.profile.personal");
 
     assertNotNull(result);
     assertEquals("columns", result.containerName());
-    assertEquals("profile", result.fieldName());
-    assertEquals("personal", result.property());
+    assertEquals("profile.personal", result.fieldName());
+    assertEquals("description", result.property());
+  }
+
+  @Test
+  void testParseFieldPath_dotSeparator_bareNestedColumnDepth2_resolvesAsNested() throws Exception {
+    // The exact poisonous shape from the bug report: a migrated nested-column description
+    // suggestion carries "columns.profile.child" (bare 3-segment). It must resolve to the nested
+    // child column "profile.child", not to the parent column "profile".
+    FieldPathComponents result = invokeParseFieldPath("columns.profile.child");
+
+    assertNotNull(result);
+    assertEquals("columns", result.containerName());
+    assertEquals("profile.child", result.fieldName());
+    assertEquals("description", result.property());
+  }
+
+  @Test
+  void testParseFieldPath_dotSeparator_tagsPropertyStillRecognized() throws Exception {
+    // A trailing ".tags" is still a property, not part of the field name, so the known-property
+    // set does not over-fold tags into nested column names.
+    FieldPathComponents result = invokeParseFieldPath("columns.profile.child.tags");
+
+    assertNotNull(result);
+    assertEquals("columns", result.containerName());
+    assertEquals("profile.child", result.fieldName());
+    assertEquals("tags", result.property());
   }
 
   @Test
@@ -349,6 +379,155 @@ class FieldPathUtilsTest {
         FieldPathUtils.getFieldDescription(table, "columns.profile.personal.full_name.description");
 
     assertEquals(Optional.of("name"), description);
+  }
+
+  // ==================== Bare nested-column paths (v2.0.0 migration output) ====================
+  // The suggestion→task migration emits property-less paths like "columns.profile.child" for a
+  // nested-column description suggestion whose stored entity link was unquoted
+  // (columns::profile.child). Such a path must resolve to the nested child column, not be
+  // mis-parsed as {field=profile, property=child} and silently written onto the parent.
+
+  @Test
+  void updateFieldDescription_bareNestedColumnPath_writesNestedChildNotParent() {
+    // Repro for the silent parent-overwrite bug: a bare "columns.profile.child" fieldPath must
+    // write onto the nested child column, leaving the parent column's description untouched.
+    Column child = new Column().withName("child").withDescription("child-old");
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDescription("parent-desc")
+            .withChildren(new ArrayList<>(List.of(child)));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withColumns(new ArrayList<>(List.of(profile)));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    boolean updated =
+        FieldPathUtils.updateFieldDescription(
+            table, repository, "admin", "columns.profile.child", "NEW-TEXT");
+
+    assertTrue(updated, "the nested child description must be updated");
+    assertEquals("NEW-TEXT", child.getDescription(), "the nested child column is the target");
+    assertEquals(
+        "parent-desc", profile.getDescription(), "the parent column must NOT be overwritten");
+    verify(repository)
+        .patch(isNull(), eq(table.getId()), eq("admin"), any(JsonPatch.class), isNull(), isNull());
+  }
+
+  @Test
+  void getFieldDescription_bareNestedColumnPath_readsNestedChildNotParent() {
+    // The read path had the identical defect: "columns.profile.child" returned the parent's
+    // description, so the no-op comparison before the write compared against the wrong column.
+    Column child = new Column().withName("child").withDescription("child-desc");
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDescription("parent-desc")
+            .withChildren(new ArrayList<>(List.of(child)));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withColumns(new ArrayList<>(List.of(profile)));
+
+    Optional<String> description =
+        FieldPathUtils.getFieldDescription(table, "columns.profile.child");
+
+    assertEquals(Optional.of("child-desc"), description);
+  }
+
+  @Test
+  void updateFieldDescription_bareNestedColumnDepth3_writesNestedLeafOnly() {
+    // A deeper bare nested path "columns.profile.personal.full_name" (no ".description") must
+    // resolve to the nested leaf, not to any ancestor along the way.
+    Column fullName = new Column().withName("full_name").withDescription("leaf-old");
+    Column personal =
+        new Column().withName("personal").withChildren(new ArrayList<>(List.of(fullName)));
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDescription("parent-desc")
+            .withChildren(new ArrayList<>(List.of(personal)));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withColumns(new ArrayList<>(List.of(profile)));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    boolean updated =
+        FieldPathUtils.updateFieldDescription(
+            table, repository, "admin", "columns.profile.personal.full_name", "leaf-new");
+
+    assertTrue(updated);
+    assertEquals("leaf-new", fullName.getDescription());
+    assertNull(personal.getDescription());
+    assertEquals("parent-desc", profile.getDescription());
+  }
+
+  @Test
+  void updateFieldDescription_bareNestedColumnMissingChild_failsLoudlyWithoutParentOverwrite() {
+    // If the nested child does not exist, the bare path must refuse (fail loud) rather than
+    // fall back to writing the parent column.
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDescription("parent-desc")
+            .withChildren(new ArrayList<>(List.of()));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withColumns(new ArrayList<>(List.of(profile)));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    boolean updated =
+        FieldPathUtils.updateFieldDescription(
+            table, repository, "admin", "columns.profile.nonexistent", "text");
+
+    assertFalse(updated);
+    assertEquals("parent-desc", profile.getDescription());
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void updateFieldDescription_tagsPropertyRefusedForDescriptionFlow() {
+    // Defense in depth: the description walkers ignore `property`, so a path whose parsed
+    // property is "tags" must be refused for the description flow rather than silently writing
+    // a description onto the named column.
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withColumns(
+                new ArrayList<>(List.of(new Column().withName("id").withDescription("orig"))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    boolean updated =
+        FieldPathUtils.updateFieldDescription(
+            table, repository, "admin", "columns.id.tags", "sneaky-description");
+
+    assertFalse(updated);
+    assertEquals("orig", table.getColumns().get(0).getDescription());
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void getFieldDescription_tagsPropertyRefusedForDescriptionFlow() {
+    // The property check is applied at parse time, before any walker, so the column never has
+    // to carry tags for the refusal to fire.
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withColumns(
+                new ArrayList<>(List.of(new Column().withName("id").withDescription("orig"))));
+
+    Optional<String> description = FieldPathUtils.getFieldDescription(table, "columns.id.tags");
+
+    assertTrue(description.isEmpty());
   }
 
   private Table nestedTable() {
