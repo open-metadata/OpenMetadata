@@ -160,6 +160,21 @@ worktree, or symlink the main repo's: `ln -s /path/to/main-repo/env env`.
 The user may not have sudo. Report exactly which packages are missing and the one-line
 install command for their manager; do not attempt privileged installs they did not approve.
 
+**Docker dev database is empty after a reboot (Docker Desktop on WSL2)**
+Services, tables and users are gone and login bounces back to the sign-in screen — the schema was
+recreated from scratch. Docker Desktop resolves bind mounts inside its own VM. A container with
+`restart: always` that starts at boot, before the WSL filesystem share is ready, gets a bind that
+silently resolves to an auto-created directory on the VM's tmpfs root, so the database is
+initialised in RAM and lost on the next restart. Nothing errors, and the UI still looks populated
+because search reads Elasticsearch, which is on a named volume and survives. Confirm with
+`docker exec openmetadata_mysql grep ' /var/lib/mysql ' /proc/mounts`: `tmpfs` means RAM, a real
+device (`/dev/sdX ... ext4`) is healthy. Same exposure in the Postgres composes
+(`docker-volume/db-data-postgres`) and `docker-compose-quickstart`. Fix locally with a
+`docker-compose.override.yml` beside the compose file swapping the bind for a named volume, using
+`volumes: !override` — Compose appends volume lists otherwise and you get two mounts on one target.
+Note `docker compose -f <file>` disables override auto-discovery: run from `docker/development/`,
+or pass both files with two `-f` flags.
+
 ## Guardrails
 
 - Never run the script with `sudo`. It escalates only for the specific package-manager
