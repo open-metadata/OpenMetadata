@@ -46,12 +46,20 @@ const baseProps = {
   searchTerm: '',
   canCreateTeam: true,
   movedTeam: undefined,
+  teamsPage: 1,
+  teamsPageSize: 10,
+  teamsTotal: 0,
   onShowDeletedTeamChange: jest.fn(),
   onSearchTermChange: jest.fn(),
   onNavigate: jest.fn(),
   onSetMovedTeam: jest.fn(),
   onMoveConfirm: jest.fn(),
+  onTeamsPageChange: jest.fn(),
+  onTeamsPageSizeChange: jest.fn(),
 } as unknown as React.ComponentProps<typeof MembersTeamsTab>;
+
+const pageInput = () =>
+  screen.queryByRole('textbox', { name: /current page|label.current-page/i });
 
 describe('MembersTeamsTab', () => {
   it('navigates to the add-team form scoped to the parent team', () => {
@@ -105,5 +113,36 @@ describe('MembersTeamsTab', () => {
     fireEvent.click(screen.getByTestId('cancel-button'));
 
     expect(onSetMovedTeam).toHaveBeenCalledWith(undefined);
+  });
+
+  it('hides the pager when every sub-team fits on one page', () => {
+    render(<MembersTeamsTab {...baseProps} teamsTotal={8} />);
+
+    expect(screen.queryByTestId('next')).not.toBeInTheDocument();
+  });
+
+  it('steps through pages with a minimal pager while browsing', () => {
+    const onTeamsPageChange = jest.fn();
+    render(
+      <MembersTeamsTab
+        {...baseProps}
+        teamsTotal={25}
+        onTeamsPageChange={onTeamsPageChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('next'));
+
+    expect(onTeamsPageChange).toHaveBeenCalledWith(2);
+    // Cursor paging can only step, so no page number is offered to jump to.
+    expect(pageInput()).not.toBeInTheDocument();
+  });
+
+  it('offers page jumps while searching', () => {
+    render(
+      <MembersTeamsTab {...baseProps} searchTerm="sales" teamsTotal={25} />
+    );
+
+    expect(pageInput()).toBeInTheDocument();
   });
 });

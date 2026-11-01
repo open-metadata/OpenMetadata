@@ -299,6 +299,8 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
         color="link-color"
         key={key}
         size="sm"
+        tooltip={getEntityName(role)}
+        tooltipPlacement="top"
         onPress={() =>
           onNavigate({
             type: 'roles-detail',
