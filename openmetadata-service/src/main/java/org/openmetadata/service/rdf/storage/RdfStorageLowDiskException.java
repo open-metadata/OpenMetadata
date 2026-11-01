@@ -22,7 +22,6 @@ import java.time.Duration;
  * ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume.
  */
 public final class RdfStorageLowDiskException extends RdfStorageMaintenanceException {
-  static final int INSUFFICIENT_STORAGE = 507;
   static final Duration RETRY_AFTER = Duration.ofSeconds(30);
 
   public RdfStorageLowDiskException(final String operation) {
