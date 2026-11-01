@@ -167,4 +167,37 @@ public class ClassConverterFactoryTest {
     assertEquals(
         List.of("#0"), ReflectionUtil.getCollectionElementKeys(Collections.singletonList(null)));
   }
+
+  @Test
+  void testNonSecretPipelineConfigRemainsUntyped() {
+    Map<String, Object> config = Map.of("type", "DatabaseMetadata");
+
+    assertSame(config, ClassConverterFactory.convertProperty(SourceConfig.class, "config", config));
+  }
+
+  @Test
+  void testDynamicPrivateConfigIsNotMisclassified() {
+    Map<String, Object> privateConfig = Map.of("token", "secret");
+    Map<String, Object> config = Map.of("type", "Application", "appPrivateConfig", privateConfig);
+
+    Object converted = ClassConverterFactory.convertProperty(SourceConfig.class, "config", config);
+
+    assertEquals(privateConfig, ((ApplicationPipeline) converted).getAppPrivateConfig());
+  }
+
+  @Test
+  void testClosedSecretBranchFailureFailsClosed() {
+    Map<String, Object> privateConfig =
+        Map.of(
+            "waiiInstance", "https://waii.example.com",
+            "collateURL", "https://collate.example.com",
+            "token", "secret",
+            "limits", Map.of("actions", Map.of()),
+            "unrecognized", true);
+    Map<String, Object> config = Map.of("type", "Application", "appPrivateConfig", privateConfig);
+
+    assertThrows(
+        RuntimeException.class,
+        () -> ClassConverterFactory.convertProperty(SourceConfig.class, "config", config));
+  }
 }

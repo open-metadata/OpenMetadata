@@ -48,7 +48,10 @@ final class SchemaClassConverter {
     RuntimeException failure = null;
     for (JsonSchemaRepository.Ref branch : SCHEMAS.branches(oneOf)) {
       Class<?> candidate = SCHEMAS.javaClass(branch);
-      if (candidate != null && SCHEMAS.matchesDiscriminator(branch, value)) {
+      if (candidate != null && SCHEMAS.isCandidate(oneOf, branch, value)) {
+        if (!SCHEMAS.containsPasswordFormat(branch)) {
+          return value;
+        }
         try {
           return ClassConverterFactory.getConverter(candidate).convert(value);
         } catch (RuntimeException e) {
@@ -90,7 +93,7 @@ final class SchemaClassConverter {
     RuntimeException failure = null;
     for (JsonSchemaRepository.Ref branch : SCHEMAS.branches(oneOf)) {
       Class<?> candidate = SCHEMAS.javaClass(branch);
-      if (candidate != null && SCHEMAS.matchesDiscriminator(branch, value)) {
+      if (candidate != null && SCHEMAS.isCandidate(oneOf, branch, value)) {
         try {
           Object converted = ClassConverterFactory.getConverter(candidate).convert(value);
           ClassConverter.setConvertedValue(target, getter, converted);
@@ -109,7 +112,7 @@ final class SchemaClassConverter {
       Object value,
       JsonSchemaRepository.Ref oneOf,
       RuntimeException failure) {
-    if (SCHEMAS.hasOpenObjectBranch(oneOf)) {
+    if (SCHEMAS.hasOpenObjectBranch(oneOf) && !SCHEMAS.hasMatchingClosedBranch(oneOf, value)) {
       return value;
     }
     if (SCHEMAS.containsPasswordFormat(oneOf)) {

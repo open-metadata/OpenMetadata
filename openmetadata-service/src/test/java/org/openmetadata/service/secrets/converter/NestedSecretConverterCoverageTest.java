@@ -179,7 +179,38 @@ class NestedSecretConverterCoverageTest {
         payload.put(name, nestedSecretPayload(property, schemas));
       }
     }
+    for (JsonNode required : branch.path("required")) {
+      String name = required.asText();
+      if (!payload.containsKey(name)) {
+        Ref property = resolve(new Ref(properties.get(name), path), schemas);
+        payload.put(name, requiredValue(property, schemas));
+      }
+    }
     return payload;
+  }
+
+  private Object requiredValue(Ref property, JsonSchemas schemas) {
+    JsonNode node = property.node();
+    if (!node.path("enum").isEmpty()) {
+      return node.get("enum").get(0).asText();
+    }
+    if (node.has("const")) {
+      return node.get("const").asText();
+    }
+    String type = node.path("type").asText("");
+    return switch (type) {
+      case "string" -> node.path("format").asText("").equalsIgnoreCase("uri")
+          ? "https://example.com"
+          : "required-value";
+      case "boolean" -> true;
+      case "integer", "number" -> 1;
+      case "array" -> List.of(
+          requiredValue(resolve(new Ref(node.get("items"), property.path()), schemas), schemas));
+      case "object" -> node.has("properties")
+          ? secretPayload(node, property.path(), schemas)
+          : new LinkedHashMap<>();
+      default -> "required-value";
+    };
   }
 
   private Object nestedSecretPayload(Ref property, JsonSchemas schemas) {
