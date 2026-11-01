@@ -35,7 +35,6 @@ public class McpServiceResourceIT extends BaseServiceIT<McpService, CreateMcpSer
   private static final String SERVER_API_KEY = "mcp-test-api-key";
 
   {
-    supportsEntityStatus = false;
     supportsListHistoryByTimestamp = true;
   }
 
