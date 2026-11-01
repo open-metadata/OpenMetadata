@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -43,7 +44,9 @@ import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -472,6 +475,146 @@ class MetricGroupRepositoryTest {
       updater.runDeferredReactOperations();
 
       verify(dispatcher).onEntityUpdated(updated.getEntityReference(), null);
+    }
+  }
+
+  @Test
+  void sanitizeMembershipFiltersMembersChangeDescriptionsAndRecountsMetricCount() {
+    MetricGroup group = group("profitability");
+    Metric visible = metric("visible_metric");
+    Metric hidden = metric("restricted_metric");
+    group.setMetrics(
+        new ArrayList<>(List.of(visible.getEntityReference(), hidden.getEntityReference())));
+    group.setMetricCount(2);
+    group.setChangeDescription(
+        new ChangeDescription()
+            .withFieldsAdded(
+                List.of(
+                    new FieldChange()
+                        .withName("metrics")
+                        .withNewValue(JsonUtils.pojoToJson(List.of(hidden.getEntityReference()))),
+                    new FieldChange().withName("description").withNewValue("a description"))));
+    when(groupDAO.listMemberJsons(group.getId(), Relationship.HAS.ordinal(), "%", 500, 0))
+        .thenReturn(List.of(JsonUtils.pojoToJson(visible), JsonUtils.pojoToJson(hidden)));
+
+    MetricGroup sanitized =
+        repository.sanitizeMembership(
+            group, reference -> visible.getId().equals(reference.getId()));
+
+    assertEquals(List.of(visible.getEntityReference()), sanitized.getMetrics());
+    assertEquals(1, sanitized.getMetricCount());
+    assertEquals(
+        List.of("description"),
+        sanitized.getChangeDescription().getFieldsAdded().stream()
+            .map(FieldChange::getName)
+            .toList());
+    // the source group is left untouched
+    assertEquals(2, group.getMetrics().size());
+    assertEquals(2, (int) group.getMetricCount());
+    assertEquals(
+        List.of("metrics", "description"),
+        group.getChangeDescription().getFieldsAdded().stream().map(FieldChange::getName).toList());
+  }
+
+  @Test
+  void pageSanitizationRecountsMetricCountsWithOneBatchQuery() {
+    MetricGroup first = group("first_group");
+    MetricGroup second = group("second_group");
+    Metric visible = metric("visible_member");
+    Metric hidden = metric("restricted_member");
+    Metric secondMember = metric("second_member");
+    first.setMetricCount(2);
+    second.setMetricCount(1);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(relationshipDAO.findToBatch(
+              List.of(first.getId().toString(), second.getId().toString()),
+              Relationship.HAS.ordinal(),
+              Entity.METRIC_GROUP,
+              Entity.METRIC))
+          .thenReturn(
+              List.of(
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(first.getId().toString())
+                      .toId(visible.getId().toString())
+                      .build(),
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(first.getId().toString())
+                      .toId(hidden.getId().toString())
+                      .build(),
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(second.getId().toString())
+                      .toId(secondMember.getId().toString())
+                      .build()));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      eq(Entity.METRIC),
+                      argThat(
+                          ids ->
+                              ids.containsAll(
+                                  List.of(visible.getId(), hidden.getId(), secondMember.getId()))),
+                      eq(NON_DELETED)))
+          .thenReturn(
+              List.of(
+                  visible.getEntityReference(),
+                  hidden.getEntityReference(),
+                  secondMember.getEntityReference()));
+
+      List<MetricGroup> sanitized =
+          repository.sanitizeMembership(
+              List.of(first, second), reference -> !hidden.getId().equals(reference.getId()));
+
+      assertEquals(1, (int) sanitized.get(0).getMetricCount());
+      assertEquals(1, (int) sanitized.get(1).getMetricCount());
+      verify(relationshipDAO, times(1))
+          .findToBatch(
+              anyList(),
+              eq(Relationship.HAS.ordinal()),
+              eq(Entity.METRIC_GROUP),
+              eq(Entity.METRIC));
+    }
+  }
+
+  @Test
+  void pageSanitizationStopsAtTheScanCapPerGroup() {
+    MetricGroup group = group("oversized_group");
+    int cap = MetricGroupRepository.MAX_PERMISSION_FILTER_SCAN_SIZE;
+    group.setMetricCount(cap + 1);
+    List<CollectionDAO.EntityRelationshipObject> records = new ArrayList<>();
+    List<UUID> firstCapIds = new ArrayList<>();
+    for (int index = 0; index < cap + 1; index++) {
+      UUID memberId = UUID.randomUUID();
+      if (index < cap) {
+        firstCapIds.add(memberId);
+      }
+      records.add(
+          CollectionDAO.EntityRelationshipObject.builder()
+              .fromId(group.getId().toString())
+              .toId(memberId.toString())
+              .build());
+    }
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(relationshipDAO.findToBatch(
+              List.of(group.getId().toString()),
+              Relationship.HAS.ordinal(),
+              Entity.METRIC_GROUP,
+              Entity.METRIC))
+          .thenReturn(records);
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      eq(Entity.METRIC), argThat(ids -> ids.size() == cap), eq(NON_DELETED)))
+          .thenReturn(
+              firstCapIds.stream()
+                  .map(id -> new EntityReference().withId(id).withType(Entity.METRIC))
+                  .toList());
+
+      List<MetricGroup> sanitized =
+          repository.sanitizeMembership(List.of(group), reference -> true);
+
+      assertEquals(cap, (int) sanitized.getFirst().getMetricCount());
     }
   }
 

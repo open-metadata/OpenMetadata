@@ -21,9 +21,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -31,19 +35,24 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.api.data.MetricHierarchyItem;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -309,6 +318,193 @@ class MetricRepositoryTest {
     assertNull(sanitized.getMetricGroup());
     assertNotNull(source.getParent());
     assertNotNull(source.getMetricGroup());
+  }
+
+  @Test
+  void relationSanitizationFiltersChildrenRelatedMetricsAndStoredChangeDescriptions() {
+    EntityReference hiddenParent = metricReference(UUID.randomUUID(), "restricted_parent");
+    EntityReference visibleChild = metricReference(UUID.randomUUID(), "visible_child");
+    EntityReference hiddenChild = metricReference(UUID.randomUUID(), "restricted_child");
+    EntityReference visibleRelated = metricReference(UUID.randomUUID(), "visible_related");
+    EntityReference hiddenRelated = metricReference(UUID.randomUUID(), "restricted_related");
+    EntityReference visibleGroup = groupReference(UUID.randomUUID(), "visible_group");
+    Metric source =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("visible_metric")
+            .withParent(hiddenParent)
+            .withMetricGroup(visibleGroup)
+            .withChildren(new ArrayList<>(List.of(visibleChild, hiddenChild)))
+            .withRelatedMetrics(new ArrayList<>(List.of(visibleRelated, hiddenRelated)))
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsAdded(
+                        List.of(
+                            new FieldChange()
+                                .withName("parent")
+                                .withNewValue(JsonUtils.pojoToJson(hiddenParent)),
+                            new FieldChange()
+                                .withName("relatedMetrics")
+                                .withNewValue(JsonUtils.pojoToJson(List.of(visibleRelated))),
+                            new FieldChange()
+                                .withName("description")
+                                .withNewValue("a description"))))
+            .withIncrementalChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("parent")
+                                .withOldValue(JsonUtils.pojoToJson(hiddenParent))
+                                .withNewValue(JsonUtils.pojoToJson(visibleChild)))));
+
+    Set<UUID> hidden = Set.of(hiddenParent.getId(), hiddenChild.getId(), hiddenRelated.getId());
+    Metric sanitized =
+        MetricRepository.sanitizeHierarchyMetric(
+            source,
+            reference -> !hidden.contains(reference.getId()),
+            reference -> !hidden.contains(reference.getId()));
+
+    assertNull(sanitized.getParent());
+    assertEquals(visibleGroup, sanitized.getMetricGroup());
+    assertEquals(List.of(visibleChild), sanitized.getChildren());
+    assertEquals(List.of(visibleRelated), sanitized.getRelatedMetrics());
+    assertEquals(
+        List.of("relatedMetrics", "description"),
+        sanitized.getChangeDescription().getFieldsAdded().stream()
+            .map(FieldChange::getName)
+            .toList());
+    assertEquals(List.of(), sanitized.getIncrementalChangeDescription().getFieldsUpdated());
+    // the source entity is left untouched
+    assertEquals(hiddenParent, source.getParent());
+    assertEquals(
+        List.of("parent", "relatedMetrics", "description"),
+        source.getChangeDescription().getFieldsAdded().stream().map(FieldChange::getName).toList());
+  }
+
+  @Test
+  void storedChangeValuesAreVisibleOnlyWhenEveryReferencedEntityIsVisible() {
+    EntityReference visible = metricReference(UUID.randomUUID(), "visible_metric");
+    EntityReference hidden = metricReference(UUID.randomUUID(), "restricted_metric");
+    Predicate<EntityReference> canView = reference -> visible.getId().equals(reference.getId());
+
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities(null, canView));
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities("", canView));
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities("plain text", canView));
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities(42, canView));
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities("[unclosed", canView));
+    assertTrue(
+        MetricRepository.referencesOnlyVisibleEntities(JsonUtils.pojoToJson(visible), canView));
+    assertFalse(
+        MetricRepository.referencesOnlyVisibleEntities(JsonUtils.pojoToJson(hidden), canView));
+    assertTrue(
+        MetricRepository.referencesOnlyVisibleEntities(
+            JsonUtils.pojoToJson(List.of(visible)), canView));
+    assertFalse(
+        MetricRepository.referencesOnlyVisibleEntities(
+            JsonUtils.pojoToJson(List.of(visible, hidden)), canView));
+  }
+
+  @Test
+  void relationSanitizationRecountsChildrenCountWithOnlyVisibleChildren() {
+    Metric metric = new Metric().withId(UUID.randomUUID()).withName("parent").withChildrenCount(2);
+    UUID visibleChildId = UUID.randomUUID();
+    UUID hiddenChildId = UUID.randomUUID();
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(fixture
+              .metricDAO()
+              .listChildIds(metric.getId(), Relationship.CONTAINS.ordinal(), 200, 0))
+          .thenReturn(List.of(visibleChildId.toString(), hiddenChildId.toString()));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      Entity.METRIC, List.of(visibleChildId, hiddenChildId), NON_DELETED))
+          .thenReturn(
+              List.of(
+                  metricReference(visibleChildId, "visible_child"),
+                  metricReference(hiddenChildId, "restricted_child")));
+
+      Metric sanitized =
+          fixture
+              .repository()
+              .sanitizeMetricRelations(
+                  metric, reference -> visibleChildId.equals(reference.getId()), ignored -> true);
+
+      assertEquals(1, sanitized.getChildrenCount());
+      assertEquals(2, metric.getChildrenCount());
+    }
+  }
+
+  @Test
+  void pageSanitizationRecountsChildrenCountsWithOneBatchQuery() {
+    Metric first = new Metric().withId(UUID.randomUUID()).withName("first").withChildrenCount(2);
+    Metric second = new Metric().withId(UUID.randomUUID()).withName("second").withChildrenCount(1);
+    UUID visibleChildId = UUID.randomUUID();
+    UUID hiddenChildId = UUID.randomUUID();
+    UUID secondChildId = UUID.randomUUID();
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(fixture
+              .relationshipDAO()
+              .findToBatch(
+                  List.of(first.getId().toString(), second.getId().toString()),
+                  Relationship.CONTAINS.ordinal(),
+                  Entity.METRIC,
+                  Entity.METRIC))
+          .thenReturn(
+              List.of(
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(first.getId().toString())
+                      .toId(visibleChildId.toString())
+                      .build(),
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(first.getId().toString())
+                      .toId(hiddenChildId.toString())
+                      .build(),
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(second.getId().toString())
+                      .toId(secondChildId.toString())
+                      .build()));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      eq(Entity.METRIC),
+                      argThat(
+                          ids ->
+                              ids.containsAll(
+                                  List.of(visibleChildId, hiddenChildId, secondChildId))),
+                      eq(NON_DELETED)))
+          .thenReturn(
+              List.of(
+                  metricReference(visibleChildId, "visible_child"),
+                  metricReference(hiddenChildId, "restricted_child"),
+                  metricReference(secondChildId, "second_child")));
+
+      List<Metric> sanitized =
+          fixture
+              .repository()
+              .sanitizeMetricRelations(
+                  List.of(first, second),
+                  reference -> !hiddenChildId.equals(reference.getId()),
+                  ignored -> true);
+
+      assertEquals(1, sanitized.get(0).getChildrenCount());
+      assertEquals(1, sanitized.get(1).getChildrenCount());
+      verify(fixture.relationshipDAO(), times(1))
+          .findToBatch(
+              anyList(), eq(Relationship.CONTAINS.ordinal()), eq(Entity.METRIC), eq(Entity.METRIC));
+    }
+  }
+
+  private static EntityReference metricReference(UUID id, String name) {
+    return new EntityReference().withId(id).withType(Entity.METRIC).withName(name);
+  }
+
+  private static EntityReference groupReference(UUID id, String name) {
+    return new EntityReference().withId(id).withType(Entity.METRIC_GROUP).withName(name);
   }
 
   @Test

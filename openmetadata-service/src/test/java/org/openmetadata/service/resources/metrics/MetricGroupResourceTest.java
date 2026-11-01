@@ -16,6 +16,8 @@ package org.openmetadata.service.resources.metrics;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -27,6 +29,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.json.Json;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -58,7 +61,10 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.MetricGroupRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 class MetricGroupResourceTest {
@@ -192,6 +198,93 @@ class MetricGroupResourceTest {
 
     assertEquals(response, sanitized);
     assertNull(((MetricGroup) sanitized.getEntity()).getMetrics());
+  }
+
+  @Test
+  void genericGroupReadSanitizesMembershipWhenMetricViewIsConditional() {
+    UUID groupId = UUID.randomUUID();
+    MetricGroup stored = new MetricGroup().withId(groupId).withName("profitability");
+    MetricGroup sanitized = new MetricGroup().withId(groupId).withName("profitability");
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(metricViewPermission(Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture
+              .repository()
+              .get(any(), eq(groupId), any(Fields.class), any(RelationIncludes.class), eq(false)))
+          .thenReturn(stored);
+      when(fixture.repository().sanitizeMembership(eq(stored), any())).thenReturn(sanitized);
+
+      MetricGroup actual =
+          fixture
+              .resource()
+              .get(null, securityContext, groupId, "metricCount", Include.NON_DELETED);
+
+      assertEquals(sanitized, actual);
+      verify(fixture.repository()).sanitizeMembership(eq(stored), any());
+    }
+  }
+
+  @Test
+  void genericGroupReadSkipsSanitizationWhenMetricViewIsUnconditional() {
+    UUID groupId = UUID.randomUUID();
+    MetricGroup stored = new MetricGroup().withId(groupId).withName("profitability");
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(metricViewPermission(Permission.Access.ALLOW));
+      when(fixture
+              .repository()
+              .get(any(), eq(groupId), any(Fields.class), any(RelationIncludes.class), eq(false)))
+          .thenReturn(stored);
+
+      MetricGroup actual =
+          fixture
+              .resource()
+              .get(null, securityContext, groupId, "metricCount", Include.NON_DELETED);
+
+      assertSame(stored, actual);
+      verify(fixture.repository(), never()).sanitizeMembership(any(MetricGroup.class), any());
+    }
+  }
+
+  @Test
+  void groupVersionSnapshotsRedactMembershipOnlyWhenMetricViewIsConditional() {
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(metricViewPermission(Permission.Access.CONDITIONAL_ALLOW));
+      assertTrue(fixture.resource().snapshotRedaction(securityContext).isPresent());
+
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(metricViewPermission(Permission.Access.ALLOW));
+      assertTrue(fixture.resource().snapshotRedaction(securityContext).isEmpty());
+    }
+  }
+
+  @Test
+  void patchResponseSanitizesMembershipAndStillHidesMembers() {
+    UUID groupId = UUID.randomUUID();
+    MetricGroup original = groupWithMember(groupId, "profitability");
+    MetricGroup patched = groupWithMember(groupId, "profitability");
+    MetricGroup sanitized = groupWithMember(groupId, "profitability");
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(metricViewPermission(Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture.repository().getWithMembers(groupId, Include.NON_DELETED)).thenReturn(original);
+      when(fixture.repository().patch(any(), eq(groupId), anyString(), any(), any(), any(), any()))
+          .thenReturn(new PatchResponse<>(Response.Status.OK, patched, EventType.ENTITY_UPDATED));
+      when(fixture.repository().sanitizeMembership(eq(patched), any())).thenReturn(sanitized);
+
+      jakarta.json.JsonPatch patch =
+          Json.createPatchBuilder().replace("/description", "updated").build();
+      Response response = fixture.resource().patch(null, securityContext, groupId, patch);
+
+      assertEquals(sanitized, response.getEntity());
+      assertNull(((MetricGroup) response.getEntity()).getMetrics());
+      verify(fixture.repository()).sanitizeMembership(eq(patched), any());
+    }
   }
 
   @Test

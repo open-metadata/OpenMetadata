@@ -28,6 +28,7 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.USER;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -63,8 +64,10 @@ import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.api.data.MetricObservability;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -1055,8 +1058,7 @@ public class MetricRepository extends EntityRepository<Metric> {
     List<CollectionDAO.MetricDAO.HierarchyRow> rows = scan.rows();
     Map<UUID, Metric> metrics = loadMetricsById(hierarchyIds(rows, METRIC));
     metrics.replaceAll(
-        (id, metric) ->
-            sanitizeHierarchyMetricWithVisibleCount(metric, canViewMetric, canViewGroup));
+        (id, metric) -> sanitizeMetricRelations(metric, canViewMetric, canViewGroup));
     Map<UUID, MetricGroup> groups =
         loadGroupsById(hierarchyIds(rows, Entity.METRIC_GROUP), canViewMetric);
     return buildHierarchyResult(scan, limit, offset, metrics, groups);
@@ -1207,11 +1209,7 @@ public class MetricRepository extends EntityRepository<Metric> {
       List<UUID> ids, Predicate<EntityReference> canViewMetric) {
     Map<UUID, MetricGroup> groups = loadGroupsById(ids);
     MetricGroupRepository repository = metricGroupRepository();
-    groups
-        .values()
-        .forEach(
-            group ->
-                group.setMetricCount(repository.visibleMetricCount(group.getId(), canViewMetric)));
+    groups.replaceAll((id, group) -> repository.sanitizeMembership(group, canViewMetric));
     return groups;
   }
 
@@ -1280,8 +1278,7 @@ public class MetricRepository extends EntityRepository<Metric> {
     while (parent != null && visited.add(parent.getId())) {
       Metric ancestor = get(null, parent.getId(), getFields(HIERARCHY_FIELDS));
       if (canViewMetric.test(ancestor.getEntityReference())) {
-        ancestors.add(
-            sanitizeHierarchyMetricWithVisibleCount(ancestor, canViewMetric, canViewGroup));
+        ancestors.add(sanitizeMetricRelations(ancestor, canViewMetric, canViewGroup));
       }
       parent = ancestor.getParent();
     }
@@ -1300,9 +1297,8 @@ public class MetricRepository extends EntityRepository<Metric> {
       result =
           repository.get(
               null, reference.getId(), repository.getFields("owners,domains,tags,metricCount"));
-      result = JsonUtils.deepCopy(result, MetricGroup.class);
+      result = repository.sanitizeMembership(result, canViewMetric);
       result.setMetrics(null);
-      result.setMetricCount(repository.visibleMetricCount(result.getId(), canViewMetric));
     }
     return result;
   }
@@ -1409,9 +1405,7 @@ public class MetricRepository extends EntityRepository<Metric> {
         ids.stream()
             .map(metrics::get)
             .filter(Objects::nonNull)
-            .map(
-                metric ->
-                    sanitizeHierarchyMetricWithVisibleCount(metric, canViewMetric, canViewGroup))
+            .map(metric -> sanitizeMetricRelations(metric, canViewMetric, canViewGroup))
             .toList();
     Paging paging = new Paging().withOffset(offset).withLimit(limit).withTotal(total);
     return new MetricPage(ordered, paging);
@@ -1437,16 +1431,177 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (sanitized.getMetricGroup() != null && !canViewGroup.test(sanitized.getMetricGroup())) {
       sanitized.setMetricGroup(null);
     }
+    if (sanitized.getChildren() != null) {
+      sanitized.setChildren(
+          sanitized.getChildren().stream()
+              .filter(canViewMetric)
+              .collect(Collectors.toCollection(ArrayList::new)));
+    }
+    if (sanitized.getRelatedMetrics() != null) {
+      sanitized.setRelatedMetrics(
+          sanitized.getRelatedMetrics().stream()
+              .filter(canViewMetric)
+              .collect(Collectors.toCollection(ArrayList::new)));
+    }
+    sanitizeRelationChanges(sanitized.getChangeDescription(), canViewMetric, canViewGroup);
+    sanitizeRelationChanges(
+        sanitized.getIncrementalChangeDescription(), canViewMetric, canViewGroup);
     return sanitized;
   }
 
-  private Metric sanitizeHierarchyMetricWithVisibleCount(
+  /**
+   * Every relation a metric response carries answers the caller's view permission: the reference
+   * fields, the derived children count, and the relation entries of the stored change
+   * descriptions. The hierarchy endpoints have always applied this; the generic reads and stored
+   * snapshots apply it here.
+   */
+  public Metric sanitizeMetricRelations(
       Metric metric,
       Predicate<EntityReference> canViewMetric,
       Predicate<EntityReference> canViewGroup) {
     Metric sanitized = sanitizeHierarchyMetric(metric, canViewMetric, canViewGroup);
-    sanitized.setChildrenCount(visibleChildCount(metric.getId(), canViewMetric));
+    if (metric.getChildrenCount() != null) {
+      sanitized.setChildrenCount(visibleChildCount(metric.getId(), canViewMetric));
+    }
     return sanitized;
+  }
+
+  /**
+   * Page-sized variant of {@link #sanitizeMetricRelations} for list responses: relation filtering
+   * is per row, and the visible children counts are computed with one relationship query and one
+   * reference load for the whole page instead of the per-metric scan {@link #visibleChildCount}
+   * runs.
+   */
+  public List<Metric> sanitizeMetricRelations(
+      List<Metric> metrics,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    List<Metric> sanitized =
+        metrics.stream()
+            .map(metric -> sanitizeHierarchyMetric(metric, canViewMetric, canViewGroup))
+            .collect(Collectors.toCollection(ArrayList::new));
+    Map<UUID, Integer> visibleCounts =
+        visibleChildrenCounts(
+            metrics.stream()
+                .filter(metric -> metric.getChildrenCount() != null)
+                .map(Metric::getId)
+                .toList(),
+            canViewMetric);
+    for (Metric metric : sanitized) {
+      if (metric.getChildrenCount() != null) {
+        metric.setChildrenCount(visibleCounts.getOrDefault(metric.getId(), 0));
+      }
+    }
+    return sanitized;
+  }
+
+  /**
+   * Visible children counts for a page of metrics: one chunked relationship query and one
+   * reference load for all parents, then one cached visibility test per child.
+   */
+  private Map<UUID, Integer> visibleChildrenCounts(
+      Collection<UUID> parentIds, Predicate<EntityReference> canViewMetric) {
+    Map<UUID, Integer> counts = new HashMap<>();
+    if (nullOrEmpty(parentIds)) {
+      return counts;
+    }
+    Map<UUID, List<UUID>> childIdsByParent = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record :
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                parentIds.stream().map(UUID::toString).toList(),
+                Relationship.CONTAINS.ordinal(),
+                METRIC,
+                METRIC)) {
+      childIdsByParent
+          .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+          .add(UUID.fromString(record.getToId()));
+    }
+    Set<UUID> childIds =
+        childIdsByParent.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+    Map<UUID, EntityReference> referencesById = loadReferences(new ArrayList<>(childIds), METRIC);
+    for (UUID parentId : parentIds) {
+      int visible =
+          countVisibleReferences(
+              childIdsByParent.getOrDefault(parentId, List.of()).stream()
+                  .map(referencesById::get)
+                  .filter(Objects::nonNull)
+                  .toList(),
+              canViewMetric);
+      counts.put(parentId, visible);
+    }
+    return counts;
+  }
+
+  private static void sanitizeRelationChanges(
+      ChangeDescription changeDescription,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    if (changeDescription == null) {
+      return;
+    }
+    changeDescription.setFieldsAdded(
+        visibleRelationChanges(changeDescription.getFieldsAdded(), canViewMetric, canViewGroup));
+    changeDescription.setFieldsUpdated(
+        visibleRelationChanges(changeDescription.getFieldsUpdated(), canViewMetric, canViewGroup));
+    changeDescription.setFieldsDeleted(
+        visibleRelationChanges(changeDescription.getFieldsDeleted(), canViewMetric, canViewGroup));
+  }
+
+  private static List<FieldChange> visibleRelationChanges(
+      List<FieldChange> changes,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    List<FieldChange> visible = new ArrayList<>();
+    for (FieldChange change : listOrEmpty(changes)) {
+      Predicate<EntityReference> visibility =
+          relationVisibility(change.getName(), canViewMetric, canViewGroup);
+      if (visibility == null
+          || (referencesOnlyVisibleEntities(change.getOldValue(), visibility)
+              && referencesOnlyVisibleEntities(change.getNewValue(), visibility))) {
+        visible.add(change);
+      }
+    }
+    return visible;
+  }
+
+  private static Predicate<EntityReference> relationVisibility(
+      String fieldName,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    return switch (fieldName) {
+      case FIELD_PARENT, "relatedMetrics" -> canViewMetric;
+      case FIELD_METRIC_GROUP -> canViewGroup;
+      default -> null;
+    };
+  }
+
+  /**
+   * Whether a stored change value names only entities the caller may view. Relation field values
+   * are JSON-encoded references — one object for a single-valued field, an array for a list. A
+   * change entry naming an entity the caller may not view is dropped whole, so no part of the
+   * reference (id, name, description) leaves. Anything else — nulls, plain strings, payloads that
+   * are not references — names no entity and passes.
+   */
+  static boolean referencesOnlyVisibleEntities(
+      Object value, Predicate<EntityReference> visibility) {
+    if (!(value instanceof String json) || json.isBlank()) {
+      return true;
+    }
+    try {
+      if (json.stripLeading().startsWith("[")) {
+        List<EntityReference> references =
+            JsonUtils.readValue(json, new TypeReference<List<EntityReference>>() {});
+        return references.stream().allMatch(visibility);
+      }
+      if (json.stripLeading().startsWith("{")) {
+        return visibility.test(JsonUtils.readValue(json, EntityReference.class));
+      }
+      return true;
+    } catch (RuntimeException parseFailure) {
+      return true;
+    }
   }
 
   int visibleChildCount(UUID metricId, Predicate<EntityReference> canViewMetric) {

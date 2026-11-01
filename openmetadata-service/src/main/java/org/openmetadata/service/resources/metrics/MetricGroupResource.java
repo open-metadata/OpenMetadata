@@ -43,10 +43,14 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import org.openmetadata.schema.api.data.CreateMetricGroup;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Metric;
@@ -60,6 +64,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -96,6 +101,68 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     return Collections.emptyList();
+  }
+
+  /**
+   * The view permission a group response's membership answers to, resolved once per request. A
+   * caller with an unconditional view on metrics pays no per-member check and no copy; any other
+   * caller's decisions are cached per referenced metric for the request.
+   */
+  private record MembershipVisibility(
+      boolean unrestricted, Predicate<EntityReference> canViewMetric) {}
+
+  private MembershipVisibility membershipVisibility(SecurityContext securityContext) {
+    String user = securityContext.getUserPrincipal().getName();
+    if (MetricResource.hasUnconditionalView(
+        authorizer.getPermission(securityContext, user, Entity.METRIC))) {
+      return new MembershipVisibility(true, ignored -> true);
+    }
+    Map<UUID, Boolean> decisions = new HashMap<>();
+    return new MembershipVisibility(
+        false,
+        MetricResource.cachedDecisions(
+            decisions,
+            reference ->
+                canAccessMetric(securityContext, reference, MetadataOperation.VIEW_BASIC)));
+  }
+
+  private MetricGroup sanitizeMembership(SecurityContext securityContext, MetricGroup group) {
+    MembershipVisibility visibility = membershipVisibility(securityContext);
+    return visibility.unrestricted()
+        ? group
+        : repository.sanitizeMembership(group, visibility.canViewMetric());
+  }
+
+  private ResultList<MetricGroup> sanitizeMembership(
+      SecurityContext securityContext, ResultList<MetricGroup> resultList) {
+    MembershipVisibility visibility = membershipVisibility(securityContext);
+    if (!visibility.unrestricted()) {
+      resultList.setData(
+          repository.sanitizeMembership(
+              listOrEmpty(resultList.getData()), visibility.canViewMetric()));
+    }
+    return resultList;
+  }
+
+  private Response sanitizeMembership(SecurityContext securityContext, Response response) {
+    MembershipVisibility visibility = membershipVisibility(securityContext);
+    return visibility.unrestricted()
+        ? response
+        : withRedactedEntity(
+            response, group -> repository.sanitizeMembership(group, visibility.canViewMetric()));
+  }
+
+  /**
+   * Stored snapshots carry the membership the group had at each version, so a version history
+   * answers the same per-member check as the members endpoint.
+   */
+  @Override
+  protected Optional<UnaryOperator<MetricGroup>> snapshotRedaction(
+      SecurityContext securityContext) {
+    MembershipVisibility visibility = membershipVisibility(securityContext);
+    return visibility.unrestricted()
+        ? Optional.empty()
+        : Optional.of(group -> repository.sanitizeMembership(group, visibility.canViewMetric()));
   }
 
   public static class MetricGroupList extends ResultList<MetricGroup> {
@@ -146,8 +213,10 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return sanitizeMembership(
+        securityContext,
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -184,7 +253,8 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return sanitizeMembership(
+        securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
   @GET
@@ -258,7 +328,8 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return sanitizeMembership(
+        securityContext, getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include));
   }
 
   @GET
@@ -331,7 +402,8 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.prepareInternal(metricGroup, false);
     authorizeMembershipMutation(securityContext, null, metricGroup);
-    return withoutMembers(create(uriInfo, securityContext, metricGroup));
+    return withoutMembers(
+        sanitizeMembership(securityContext, create(uriInfo, securityContext, metricGroup)));
   }
 
   @PUT
@@ -360,7 +432,8 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
       original = repository.getWithMembers(original.getId(), Include.NON_DELETED);
     }
     authorizeMembershipMutation(securityContext, original, metricGroup);
-    return withoutMembers(createOrUpdate(uriInfo, securityContext, metricGroup));
+    return withoutMembers(
+        sanitizeMembership(securityContext, createOrUpdate(uriInfo, securityContext, metricGroup)));
   }
 
   @PATCH
@@ -379,6 +452,21 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     repository.prepareInternal(updated, true);
     authorizeMembershipMutation(securityContext, original, updated);
     return withoutMembers(patchInternal(uriInfo, securityContext, id, patch));
+  }
+
+  // The PATCH response answers with the same membership-derived fields as a read, so it answers
+  // the same per-member check.
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    return sanitizeMembership(
+        securityContext,
+        super.patchInternal(uriInfo, securityContext, id, patch, changeSource, ifMatchHeader));
   }
 
   @PUT
@@ -474,7 +562,7 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     MetricGroup membershipSnapshot = membershipSnapshot(id);
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     repository.refreshMembersAfterGroupLifecycle(membershipSnapshot);
-    return withoutMembers(response);
+    return withoutMembers(sanitizeMembership(securityContext, response));
   }
 
   @DELETE
@@ -500,7 +588,7 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     MetricGroup membershipSnapshot = membershipSnapshot(fqn);
     Response response = deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
     repository.refreshMembersAfterGroupLifecycle(membershipSnapshot);
-    return withoutMembers(response);
+    return withoutMembers(sanitizeMembership(securityContext, response));
   }
 
   @PUT
@@ -521,7 +609,9 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return withoutMembers(restoreEntity(uriInfo, securityContext, restore.getId()));
+    return withoutMembers(
+        sanitizeMembership(
+            securityContext, restoreEntity(uriInfo, securityContext, restore.getId())));
   }
 
   private MetricGroup membershipSnapshot(UUID id) {
