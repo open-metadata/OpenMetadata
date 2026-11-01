@@ -19,10 +19,10 @@ mvn test -pl :openmetadata-integration-tests -Dtest="TableResourceIT"
 
 | Profile | Database | Search Engine |
 |---------|----------|---------------|
-| `mysql-elasticsearch` (default) | MySQL 8.3.0 | Elasticsearch 8.11.4 |
+| `mysql-elasticsearch` (default) | MySQL 8.4.0 | Elasticsearch 8.11.4 |
 | `postgres-opensearch` | PostgreSQL 15 | OpenSearch 2.19.0 |
 | `postgres-elasticsearch` | PostgreSQL 15 | Elasticsearch 8.11.4 |
-| `mysql-opensearch` | MySQL 8.3.0 | OpenSearch 2.19.0 |
+| `mysql-opensearch` | MySQL 8.4.0 | OpenSearch 2.19.0 |
 
 ## RDF Tests
 

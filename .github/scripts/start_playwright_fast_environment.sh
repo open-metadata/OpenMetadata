@@ -158,7 +158,7 @@ export PW_SEARCH_IMAGE
 PW_DATABASE_IMAGE=$(jq -r .databaseImage "$manifest")
 PW_SEARCH_IMAGE=$(jq -r .searchImage "$manifest")
 # Read by start_playwright_autopilot_mysql.sh.
-export PW_AUTOPILOT_MYSQL_IMAGE=mysql:8.0.42
+export PW_AUTOPILOT_MYSQL_IMAGE=mysql:8.4
 
 if [[ -n "$ingestion_image_path" ]]; then
   ingestion_manifest_path="${ingestion_image_path%.tar.zst}.manifest.json"
