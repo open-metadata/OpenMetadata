@@ -1,6 +1,8 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
 
@@ -10,8 +12,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
@@ -242,5 +246,87 @@ class CompiledRuleTest {
         new PolicyContext(
             Entity.ROLE, "botRole", "botRole", "BotNonAdminImpersonationPolicy", null);
     denyRule.evaluateDenyRule(operationContext, botSubject, targetResource, policyContext);
+  }
+
+  @Test
+  void ownershipDenyDefersOnCollectionButFiresPerEntity() {
+    CompiledRule denyNonOwner =
+        new CompiledRule(
+            new Rule()
+                .withName("glossary-deny-non-owner")
+                .withResources(List.of(Entity.GLOSSARY))
+                .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                .withEffect(Rule.Effect.DENY)
+                .withCondition("!isOwner()"));
+    SubjectContext caller =
+        new SubjectContext(new User().withId(UUID.randomUUID()).withName("caller"), null);
+    PolicyContext pc = new PolicyContext(Entity.ROLE, "role", "role", "policy", null);
+
+    // Collection request (no entity): the ownership deny is deferred - it must not block the owner.
+    ResourceContextInterface noEntity = mock(ResourceContextInterface.class);
+    when(noEntity.getResource()).thenReturn(Entity.GLOSSARY);
+    when(noEntity.getEntity()).thenReturn(null);
+    when(noEntity.getOwners()).thenReturn(null);
+    assertDoesNotThrow(
+        () ->
+            denyNonOwner.evaluateDenyRule(
+                new OperationContext(Entity.GLOSSARY, MetadataOperation.VIEW_ALL),
+                caller,
+                noEntity,
+                pc),
+        "ownership deny must defer on a no-entity (list) request");
+
+    // Per-entity request, caller is not the owner: the deny still fires.
+    Glossary ownedByOther =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("g")
+            .withOwners(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType(Entity.USER)
+                        .withName("other-owner")
+                        .withFullyQualifiedName("other-owner")));
+    ResourceContextInterface resolved = mock(ResourceContextInterface.class);
+    when(resolved.getResource()).thenReturn(Entity.GLOSSARY);
+    when(resolved.getEntity()).thenReturn(ownedByOther);
+    when(resolved.getOwners()).thenReturn(ownedByOther.getOwners());
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            denyNonOwner.evaluateDenyRule(
+                new OperationContext(Entity.GLOSSARY, MetadataOperation.VIEW_ALL),
+                caller,
+                resolved,
+                pc),
+        "ownership deny must still fire per-entity for a non-owner");
+  }
+
+  @Test
+  void isOwnerAllowDoesNotGrantOnCollection() {
+    CompiledRule allowOwner =
+        new CompiledRule(
+            new Rule()
+                .withName("allow-owner")
+                .withResources(List.of(Entity.GLOSSARY))
+                .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                .withEffect(Rule.Effect.ALLOW)
+                .withCondition("isOwner()"));
+    SubjectContext caller =
+        new SubjectContext(new User().withId(UUID.randomUUID()).withName("caller"), null);
+    PolicyContext pc = new PolicyContext(Entity.ROLE, "role", "role", "policy", null);
+    OperationContext listOp = new OperationContext(Entity.GLOSSARY, MetadataOperation.VIEW_ALL);
+    ResourceContextInterface noEntity = mock(ResourceContextInterface.class);
+    when(noEntity.getResource()).thenReturn(Entity.GLOSSARY);
+    when(noEntity.getEntity()).thenReturn(null);
+    when(noEntity.getOwners()).thenReturn(null);
+
+    // ALLOW rules are untouched by deferral: isOwner() is false with no entity, so nothing is
+    // granted on a collection request - the isOwner()-gated bypass is not reintroduced.
+    allowOwner.evaluateAllowRule(listOp, caller, noEntity, pc);
+    assertTrue(
+        listOp.getOperations(noEntity).contains(MetadataOperation.VIEW_ALL),
+        "isOwner() allow must not grant on a no-entity request (no bypass)");
   }
 }
