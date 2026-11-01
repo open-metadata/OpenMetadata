@@ -1224,6 +1224,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       // Keep INFO reserved for events ops actually want to grep for.
       LOG.debug("Bulk-reconciled {} entities in {}", requests.size(), KNOWLEDGE_GRAPH);
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to bulk-store {} entities in Fuseki", requests.size(), e);
       throw new RuntimeException("Failed to bulk-store entities in RDF", e);
     }
