@@ -117,8 +117,8 @@ class MetricResourceTest {
             .withParent(new EntityReference().withId(UUID.randomUUID()))
             .withMetricGroup(new EntityReference().withId(groupId));
 
-    assertFalse(MetricResource.hierarchyMembershipChanged(original, same));
-    assertTrue(MetricResource.hierarchyMembershipChanged(original, moved));
+    assertFalse(MetricRepository.hierarchyMembershipChanged(original, same));
+    assertTrue(MetricRepository.hierarchyMembershipChanged(original, moved));
   }
 
   @Test
@@ -135,12 +135,12 @@ class MetricResourceTest {
             .withFullyQualifiedName("profitability");
     Metric updated = new Metric().withParent(parent).withMetricGroup(group);
 
-    assertEquals(List.of(parent, group), MetricResource.hierarchyDestinations(null, updated));
+    assertEquals(List.of(parent, group), MetricRepository.hierarchyDestinations(null, updated));
     assertEquals(
         List.of(),
-        MetricResource.hierarchyDestinations(
+        MetricRepository.hierarchyDestinations(
             new Metric().withParent(parent).withMetricGroup(group), updated));
-    assertEquals(List.of(), MetricResource.hierarchyDestinations(null, new Metric()));
+    assertEquals(List.of(), MetricRepository.hierarchyDestinations(null, new Metric()));
 
     try (ResourceFixture fixture = resourceFixture()) {
       ArgumentCaptor<OperationContext> operations = ArgumentCaptor.forClass(OperationContext.class);

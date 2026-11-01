@@ -299,6 +299,16 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   protected abstract void createEntity(CSVPrinter resultsPrinter, List<CSVRecord> csvRecords)
       throws IOException;
 
+  /**
+   * Authorizes one imported row against the entity it targets, with the check a direct create or
+   * update of that entity faces. Called by both {@code createEntity} overloads once the stored
+   * match has been resolved and before rules and preparation run, so an unauthorized row fails like
+   * any other row error. Entity types whose import needs no per-row authorization keep the default
+   * no-op; entity types whose rows can name entities beyond the one the import endpoint was
+   * authorized against must override it.
+   */
+  protected void authorizeRow(T original, T entity) {}
+
   public final String exportCsv(T entity) throws IOException {
     CsvFile csvFile = new CsvFile().withHeaders(csvHeaders);
     addRecord(csvFile, entity);
@@ -1130,6 +1140,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       repository.setFullyQualifiedName(entity);
       // In case of updating entity, prepareInternal as update=True
       T original = repository.findMatchForImport(entity);
+      authorizeRow(original, entity);
       boolean isUpdate = original != null;
 
       // Validate entity against platform rules (for BOTH dry run and actual import)
@@ -1231,6 +1242,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       repository.setFullyQualifiedName(entity);
       // In case of updating entity, prepareInternal as update=True
       T original = (T) repository.findMatchForImport(entity);
+      authorizeRow(original, (T) entity);
       boolean isUpdate = original != null;
 
       // Validate entity against platform rules (for BOTH dry run and actual import)
