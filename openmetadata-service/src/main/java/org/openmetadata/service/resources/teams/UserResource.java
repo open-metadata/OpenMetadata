@@ -138,6 +138,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -242,10 +243,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return listOf(MetadataOperation.EDIT_TEAMS, MetadataOperation.IMPERSONATE);
   }
 
-  /** A stored user carries its password hash, or for a bot its token, which no snapshot shows. */
+  /**
+   * A stored user carries its password hash, or for a bot its token, and its profile webhooks carry
+   * their secrets encrypted, which no snapshot shows.
+   */
   @Override
   protected Optional<UnaryOperator<User>> snapshotRedaction(SecurityContext securityContext) {
-    return Optional.of(user -> user.withAuthenticationMechanism(null));
+    return Optional.of(user -> ProfileWebhookSecrets.mask(user.withAuthenticationMechanism(null)));
   }
 
   @Override
@@ -605,7 +609,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           getRolesFromAuthorizationToken(catalogSecurityContext),
           SecurityConfigurationManager.getCurrentAuthzConfig());
     }
-    return addHref(uriInfo, user);
+    return addHref(uriInfo, ProfileWebhookSecrets.mask(user));
   }
 
   @GET
@@ -909,8 +913,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     PutResponse<User> response =
         repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
-    addHref(uriInfo, response.getEntity());
-    withoutPersonsAuthenticationMechanism(response.getEntity());
+    addHref(uriInfo, redacted(response.getEntity()));
     return response.toResponse();
   }
 
@@ -1053,7 +1056,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (waitForPropagation) {
       Credentials.awaitPropagation();
     }
-    addHref(uriInfo, response.getEntity());
+    addHref(uriInfo, ProfileWebhookSecrets.mask(response.getEntity()));
     return response.toResponse();
   }
 
@@ -1204,8 +1207,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         }
       }
     }
-    return withPersonsAuthenticationMechanismRedacted(
-        patchInternal(uriInfo, securityContext, id, patch));
+    return withSecretsRedacted(patchInternal(uriInfo, securityContext, id, patch));
   }
 
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
@@ -1552,8 +1554,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return withPersonsAuthenticationMechanismRedacted(
-        deleteByName(uriInfo, securityContext, name, false, hardDelete));
+    return withSecretsRedacted(deleteByName(uriInfo, securityContext, name, false, hardDelete));
   }
 
   @PUT
@@ -1576,8 +1577,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return withPersonsAuthenticationMechanismRedacted(
-        restoreEntity(uriInfo, securityContext, restore.getId()));
+    return withSecretsRedacted(restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   @GET
@@ -1685,7 +1685,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .getAuthenticatorHandler()
         .sendEmailVerification(uriInfo, registeredUser);
     return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
-        .entity(registeredUser)
+        .entity(ProfileWebhookSecrets.mask(registeredUser))
         .build();
   }
 
@@ -2403,8 +2403,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
             "Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
   }
 
-  private Response withPersonsAuthenticationMechanismRedacted(Response response) {
-    return withRedactedEntity(response, UserResource::withoutPersonsAuthenticationMechanism);
+  private Response withSecretsRedacted(Response response) {
+    return withRedactedEntity(response, UserResource::redacted);
+  }
+
+  /** A user as a response shows it: no person's mechanism, and profile webhook secrets masked. */
+  private static User redacted(User user) {
+    return ProfileWebhookSecrets.mask(withoutPersonsAuthenticationMechanism(user));
   }
 
   /**
@@ -2441,6 +2446,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // Remove mails for non-admin users
     PIIMasker.maskUser(authorizer, securityContext, user);
+    ProfileWebhookSecrets.mask(user);
   }
 
   private CatalogSecurityContext createSecurityContext(String userName, String email) {

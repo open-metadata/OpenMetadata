@@ -15,31 +15,26 @@ package org.openmetadata.service.alerting.channel;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.macasaet.fernet.TokenValidationException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.UnaryOperator;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.fernet.Fernet;
 
 /**
  * What a destination's configuration holds that must not be stored or read back in the clear: the
@@ -47,7 +42,6 @@ import org.openmetadata.service.fernet.Fernet;
  * message is sent, and masked in every response. A response sent back as it was read carries the
  * mask, which stands for the stored value.
  */
-@Slf4j
 public final class DestinationSecrets {
   private static final String DESTINATIONS = "destinations";
   private static final String CONFIG = "config";
@@ -57,17 +51,6 @@ public final class DestinationSecrets {
   private static final List<String> FIELD_CHANGE_LISTS =
       List.of("fieldsAdded", "fieldsUpdated", "fieldsDeleted");
   private static final List<String> FIELD_CHANGE_VALUES = List.of("oldValue", "newValue");
-  private static final UnaryOperator<String> MASK = secret -> PASSWORD_MASK;
-
-  // Where a destination delivers what it carries: the endpoint it posts to, and, for OAuth
-  // credentials, the token URL they are shown to. A secret restored beside a moved target would
-  // be delivered to an address the request chose, which a caller who only ever read the mask
-  // cannot be allowed to pick, so a target that moved gets every secret entered again.
-  private static final List<JsonPointer> SECRET_TARGETS =
-      List.of(JsonPointer.compile("/endpoint"), JsonPointer.compile("/authType/tokenUrl"));
-  // Each receiver replaces the endpoint at send time and is sent the same headers and
-  // credentials, so a receivers list is a target too.
-  private static final JsonPointer RECEIVERS = JsonPointer.compile("/receivers");
 
   private DestinationSecrets() {}
 
@@ -94,7 +77,7 @@ public final class DestinationSecrets {
               if (nullOrEmpty(destination.getId())) {
                 destination.withId(UUID.randomUUID());
               }
-              transform(destination, DestinationSecrets::encrypted);
+              transform(destination, ConfigSecrets::encrypt);
               result.add(destination);
             });
     return result;
@@ -103,7 +86,7 @@ public final class DestinationSecrets {
   /** A copy of the destination with its secrets decrypted: the configuration as it is used. */
   public static SubscriptionDestination decrypted(SubscriptionDestination destination) {
     SubscriptionDestination copy = JsonUtils.deepCopy(destination, SubscriptionDestination.class);
-    transform(copy, DestinationSecrets::decryptedValue);
+    transform(copy, ConfigSecrets::decrypt);
     return copy;
   }
 
@@ -128,14 +111,14 @@ public final class DestinationSecrets {
   /** Copies of the destinations with their secrets masked. */
   public static List<SubscriptionDestination> mask(List<SubscriptionDestination> destinations) {
     ArrayNode tree = (ArrayNode) JsonUtils.valueToTree(listOrEmpty(destinations));
-    maskDestinations(tree);
+    transformDestinations(tree, ConfigSecrets::mask);
     return JsonUtils.readObjects(JsonUtils.pojoToJson(tree), SubscriptionDestination.class);
   }
 
   public static boolean hasMaskedSecrets(SubscriptionDestination destination) {
     JsonNode config = JsonUtils.valueToTree(destination.getConfig());
     return secretFieldsOf(destination, config).stream()
-        .anyMatch(field -> PASSWORD_MASK.equals(config.at(field).asText(null)));
+        .anyMatch(field -> ConfigSecrets.isMask(config.at(field).asText(null)));
   }
 
   /**
@@ -176,16 +159,8 @@ public final class DestinationSecrets {
     }
     JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
     JsonNode updatedConfig = JsonUtils.valueToTree(updated.getConfig());
-    boolean changed = false;
-    for (JsonPointer field : secretFieldsOf(updated, updatedConfig)) {
-      String storedValue = storedConfig.at(field).asText(null);
-      if (storedValue != null
-          && standsForStored(updatedConfig.at(field).asText(null), storedValue)) {
-        set(updatedConfig, field, storedValue);
-        changed = true;
-      }
-    }
-    if (changed) {
+    if (ConfigSecrets.restore(
+        storedConfig, updatedConfig, secretFieldsOf(updated, updatedConfig))) {
       updated.withConfig(JsonUtils.treeToValue(updatedConfig, Object.class));
     }
   }
@@ -226,7 +201,7 @@ public final class DestinationSecrets {
   }
 
   static void set(JsonNode config, JsonPointer field, String value) {
-    ((ObjectNode) config.at(field.head())).put(field.last().getMatchingProperty(), value);
+    ConfigSecrets.set(config, field, value);
   }
 
   private static boolean sameKind(SubscriptionDestination stored, SubscriptionDestination sent) {
@@ -234,127 +209,85 @@ public final class DestinationSecrets {
         && Objects.equals(stored.getChannel(), sent.getChannel());
   }
 
-  /**
-   * Whether a target stands for what is stored: the same secret in plain text, the mask standing
-   * for the stored one, or plain text the stored ciphertext decrypts to. A plain text beside a
-   * plain text (a configuration stored before this model) is kept as it reads.
-   */
-  private static boolean targetUnchanged(String sent, String stored) {
-    if (stored == null) {
-      return sent == null;
-    }
-    return sent != null
-        && (sent.equals(stored) || PASSWORD_MASK.equals(sent) || isCiphertextOf(sent, stored));
-  }
-
   /** Whether {@code sent} would deliver what {@code stored} carries somewhere it is not stored. */
   static boolean targetMoved(SubscriptionDestination stored, SubscriptionDestination sent) {
-    JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
-    JsonNode sentConfig = JsonUtils.valueToTree(sent.getConfig());
-    return SECRET_TARGETS.stream()
-            .anyMatch(
-                target ->
-                    !targetUnchanged(
-                        sentConfig.at(target).asText(null), storedConfig.at(target).asText(null)))
-        || !receiverTexts(storedConfig).equals(receiverTexts(sentConfig));
-  }
-
-  private static Set<String> receiverTexts(JsonNode config) {
-    Set<String> receivers = new HashSet<>();
-    config.at(RECEIVERS).forEach(receiver -> receivers.add(receiver.asText()));
-    return receivers;
-  }
-
-  private static boolean standsForStored(String incoming, String stored) {
-    return PASSWORD_MASK.equals(incoming) || isCiphertextOf(incoming, stored);
-  }
-
-  // Ciphertext the primary key cannot decrypt, one of an older key of a rotation list included,
-  // matches nothing, so sending the secret again encrypts it with the primary key.
-  private static boolean isCiphertextOf(String incoming, String stored) {
-    return incoming != null
-        && !Fernet.isTokenized(incoming)
-        && Fernet.isTokenized(stored)
-        && Fernet.getInstance().isKeyDefined()
-        && incoming.equals(decryptOrNull(stored));
-  }
-
-  private static String decryptOrNull(String ciphertext) {
-    String plaintext = null;
-    try {
-      plaintext = Fernet.getInstance().decryptWithPrimaryKey(ciphertext);
-    } catch (TokenValidationException | IllegalArgumentException e) {
-      LOG.debug("A stored destination secret does not decrypt with the primary Fernet key", e);
-    }
-    return plaintext;
+    return ConfigSecrets.targetMoved(
+        JsonUtils.valueToTree(stored.getConfig()), JsonUtils.valueToTree(sent.getConfig()));
   }
 
   private static void transform(
-      SubscriptionDestination destination, UnaryOperator<String> transform) {
+      SubscriptionDestination destination, BiPredicate<JsonNode, List<JsonPointer>> transform) {
     JsonNode config = JsonUtils.valueToTree(destination.getConfig());
-    if (transform(config, secretFieldsOf(destination, config), transform)) {
+    if (transform.test(config, secretFieldsOf(destination, config))) {
       destination.withConfig(JsonUtils.treeToValue(config, Object.class));
     }
   }
 
-  private static boolean transform(
-      JsonNode config, List<JsonPointer> fields, UnaryOperator<String> transform) {
+  /**
+   * Encrypts, in place, the secrets of an alert as JSON: a stored row or one of its versions, in its
+   * destinations and in the destination lists its change descriptions record. Ciphertext is kept as
+   * it is, so running it again changes nothing. Returns whether anything changed.
+   */
+  public static boolean encryptAlertTree(JsonNode alert) {
+    return transformAlert(alert, ConfigSecrets::encrypt);
+  }
+
+  private static void maskAlert(JsonNode alert) {
+    transformAlert(alert, ConfigSecrets::mask);
+  }
+
+  private static boolean transformAlert(
+      JsonNode alert, BiPredicate<JsonNode, List<JsonPointer>> transform) {
+    boolean changed = transformDestinations(alert.path(DESTINATIONS), transform);
+    for (String name : CHANGE_DESCRIPTIONS) {
+      changed |= transformChangeDescription(alert.path(name), transform);
+    }
+    return changed;
+  }
+
+  private static boolean transformDestinations(
+      JsonNode destinations, BiPredicate<JsonNode, List<JsonPointer>> transform) {
     boolean changed = false;
-    for (JsonPointer field : fields) {
-      String value = config.at(field).asText();
-      String transformed = transform.apply(value);
-      if (!transformed.equals(value)) {
-        set(config, field, transformed);
-        changed = true;
+    for (JsonNode destination : destinations) {
+      SubscriptionDestination typed =
+          JsonUtils.treeToValue(destination, SubscriptionDestination.class);
+      JsonNode config = destination.path(CONFIG);
+      changed |= transform.test(config, secretFieldsOf(typed, config));
+    }
+    return changed;
+  }
+
+  // The updater records a destination list as a JSON array string, and a FieldChange is an object.
+  private static boolean transformChangeDescription(
+      JsonNode changeDescription, BiPredicate<JsonNode, List<JsonPointer>> transform) {
+    boolean changed = false;
+    for (String list : FIELD_CHANGE_LISTS) {
+      for (JsonNode fieldChange : changeDescription.path(list)) {
+        if (DESTINATIONS.equals(fieldChange.path(FIELD_CHANGE_NAME).asText())
+            && fieldChange instanceof ObjectNode holder) {
+          for (String valueField : FIELD_CHANGE_VALUES) {
+            changed |= transformDestinationsJson(holder, valueField, transform);
+          }
+        }
       }
     }
     return changed;
   }
 
-  private static String encrypted(String value) {
-    boolean keptAsIs = value.isEmpty() || !Fernet.getInstance().isKeyDefined();
-    return keptAsIs ? value : Fernet.getInstance().encryptIfApplies(value);
-  }
-
-  private static String decryptedValue(String value) {
-    return Fernet.getInstance().isKeyDefined()
-        ? Fernet.getInstance().decryptIfApplies(value)
-        : value;
-  }
-
-  private static void maskAlert(JsonNode alert) {
-    maskDestinations(alert.path(DESTINATIONS));
-    CHANGE_DESCRIPTIONS.forEach(name -> maskChangeDescription(alert.path(name)));
-  }
-
-  private static void maskDestinations(JsonNode destinations) {
-    for (JsonNode destination : destinations) {
-      SubscriptionDestination typed =
-          JsonUtils.treeToValue(destination, SubscriptionDestination.class);
-      JsonNode config = destination.path(CONFIG);
-      transform(config, secretFieldsOf(typed, config), MASK);
-    }
-  }
-
-  // The updater records a destination list as a JSON array string, and a FieldChange is an object.
-  private static void maskChangeDescription(JsonNode changeDescription) {
-    for (String list : FIELD_CHANGE_LISTS) {
-      for (JsonNode fieldChange : changeDescription.path(list)) {
-        if (DESTINATIONS.equals(fieldChange.path(FIELD_CHANGE_NAME).asText())
-            && fieldChange instanceof ObjectNode holder) {
-          FIELD_CHANGE_VALUES.forEach(valueField -> maskDestinationsJson(holder, valueField));
-        }
-      }
-    }
-  }
-
-  private static void maskDestinationsJson(ObjectNode fieldChange, String valueField) {
+  private static boolean transformDestinationsJson(
+      ObjectNode fieldChange,
+      String valueField,
+      BiPredicate<JsonNode, List<JsonPointer>> transform) {
     JsonNode value = fieldChange.path(valueField);
+    boolean changed = false;
     if (value.isTextual()
         && JsonUtils.readTree(value.textValue()) instanceof ArrayNode destinations) {
-      maskDestinations(destinations);
-      fieldChange.put(valueField, JsonUtils.pojoToJson(destinations));
+      changed = transformDestinations(destinations, transform);
+      if (changed) {
+        fieldChange.put(valueField, JsonUtils.pojoToJson(destinations));
+      }
     }
+    return changed;
   }
 
   // EntityHistory.versions is an untyped List<Object> holding each version's entity JSON.

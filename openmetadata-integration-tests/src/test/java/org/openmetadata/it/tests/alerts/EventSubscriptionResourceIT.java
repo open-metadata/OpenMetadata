@@ -2505,6 +2505,41 @@ public class EventSubscriptionResourceIT
     }
   }
 
+  /** A destination that holds no secret moves to another channel, as the alert form sends it. */
+  @Test
+  void test_ownersDestinationMovesFromEmailToSlack(TestNamespace ns) {
+    EventSubscription created =
+        createEntity(
+            new CreateEventSubscription()
+                .withName(ns.prefix("owners_channel"))
+                .withAlertType(AlertType.NOTIFICATION)
+                .withResources(List.of("all"))
+                .withEnabled(false)
+                .withDestinations(
+                    List.of(
+                        new SubscriptionDestination()
+                            .withCategory(SubscriptionDestination.SubscriptionCategory.OWNERS)
+                            .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+                            .withConfig(Map.of("sendToOwners", true)))));
+    SubscriptionDestination owners = created.getDestinations().getFirst();
+    SubscriptionDestination bySlack =
+        JsonUtils.deepCopy(owners, SubscriptionDestination.class)
+            .withType(SubscriptionDestination.SubscriptionType.SLACK);
+    JsonNode wholeListReplace =
+        JsonUtils.valueToTree(
+            List.of(Map.of("op", "replace", "path", "/destinations", "value", List.of(bySlack))));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/events/subscriptions/" + created.getId(), wholeListReplace);
+
+    SubscriptionDestination saved =
+        getEntity(created.getId().toString()).getDestinations().getFirst();
+    assertEquals(SubscriptionDestination.SubscriptionType.SLACK, saved.getType());
+    assertEquals(owners.getId(), saved.getId(), "it stays the same destination");
+  }
+
   /** Gives the first destination a fresh id and a channel whose rules do not name its secrets. */
   private static void patchDestinationIdentity(UUID alertId) {
     JsonNode patch =

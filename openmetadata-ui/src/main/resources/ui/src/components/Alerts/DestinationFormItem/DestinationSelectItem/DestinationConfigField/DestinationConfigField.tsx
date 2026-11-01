@@ -28,7 +28,7 @@ import {
   Select,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { useCallback, useState } from 'react';
 import {
   Controller,
@@ -48,6 +48,7 @@ import {
   Type,
 } from '../../../../../generated/events/eventSubscription';
 import { searchEntity } from '../../../../../utils/Alerts/AlertsUtil';
+import { clearMaskedSecrets } from '../../../../../utils/Alerts/AlertsUtilPure';
 import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import TeamAndUserSelectItem from '../../TeamAndUserSelectItem/TeamAndUserSelectItem';
 import {
@@ -303,7 +304,7 @@ function DestinationConfigField({
   onConfigExpandedChange,
 }: Readonly<DestinationConfigFieldProps>) {
   const { t } = useTranslation();
-  const { control } = useFormContext();
+  const { control, getValues, setValue } = useFormContext();
 
   const selectedAuthType: string | undefined = useWatch({
     name: `destinations.${fieldName}.config.authType.type`,
@@ -315,6 +316,25 @@ function DestinationConfigField({
     type === SubscriptionType.MSTeams ||
     type === SubscriptionType.GChat ||
     type === SubscriptionType.Webhook;
+
+  // A new URL or token URL sends the secrets somewhere else, so the hidden ones are emptied
+  // and the advanced configuration opens on them, where the form asks for each one again.
+  const changeWhereItSends =
+    (onChange: (value: string) => void) => (value: string) => {
+      onChange(value);
+      const configPath = `destinations.${fieldName}.config`;
+      const config = getValues(configPath);
+      const cleared = clearMaskedSecrets(config);
+      if (!isEqual(cleared, config)) {
+        cleared?.headers?.forEach((header, index) => {
+          setValue(`${configPath}.headers.${index}.value`, header.value);
+        });
+        Object.entries(cleared?.authType ?? {}).forEach(([key, secret]) => {
+          setValue(`${configPath}.authType.${key}`, secret);
+        });
+        onConfigExpandedChange?.(true);
+      }
+    };
 
   if (isWebhookType) {
     const advancedConfigId = `advanced-config-${fieldName}`;
@@ -335,7 +355,7 @@ function DestinationConfigField({
                   ref={field.ref}
                   value={field.value ?? ''}
                   onBlur={() => field.onBlur()}
-                  onChange={(val) => field.onChange(val)}
+                  onChange={changeWhereItSends(field.onChange)}
                 />
                 <FieldError message={fieldState.error?.message} />
               </div>
@@ -438,7 +458,7 @@ function DestinationConfigField({
                                 ref={field.ref}
                                 value={field.value ?? ''}
                                 onBlur={() => field.onBlur()}
-                                onChange={(val) => field.onChange(val)}
+                                onChange={changeWhereItSends(field.onChange)}
                               />
                               <FieldError message={fieldState.error?.message} />
                             </div>

@@ -53,6 +53,7 @@ import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -110,6 +111,19 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         AuthenticationSecretsEncryptionMigration.STEP_NAME,
         () -> encryptAuthenticationSecrets(collectionDAO));
+    // Webhook endpoints, header values and credentials were stored as written on user and team
+    // profiles, and on alert destinations saved before they were encrypted; new writes encrypt
+    // them, this encrypts what is already stored. Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WebhookSecretsMigration.PROFILE_STEP_NAME,
+        () -> WebhookSecretsMigration.encryptProfileWebhookSecrets(handle, MYSQL));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WebhookSecretsMigration.ALERT_STEP_NAME,
+        () -> WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, MYSQL));
     runOnce(
         migrationDAO,
         getVersion(),
