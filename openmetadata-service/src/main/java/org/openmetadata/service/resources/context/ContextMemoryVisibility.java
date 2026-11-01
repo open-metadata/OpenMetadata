@@ -13,12 +13,10 @@
 
 package org.openmetadata.service.resources.context;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,9 +24,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
@@ -157,11 +155,16 @@ public final class ContextMemoryVisibility {
     return admin;
   }
 
+  /**
+   * Whether {@code userName} is among the owners. Only an owner of type user can be the caller: a
+   * team owner named like the caller is a different principal.
+   */
   public static boolean isOwnedBy(ContextMemory memory, String userName) {
-    if (memory.getOwners() == null || memory.getOwners().isEmpty() || userName == null) {
+    if (nullOrEmpty(memory.getOwners()) || userName == null) {
       return false;
     }
     return memory.getOwners().stream()
+        .filter(o -> Entity.USER.equals(o.getType()))
         .anyMatch(o -> userName.equals(o.getName()) || userName.equals(o.getFullyQualifiedName()));
   }
 
@@ -174,33 +177,26 @@ public final class ContextMemoryVisibility {
         .anyMatch(
             sp ->
                 sp.getPrincipal() != null
-                    && (principalIds.contains(sp.getPrincipal().getName())
-                        || principalIds.contains(sp.getPrincipal().getFullyQualifiedName())));
+                    && sp.getPrincipal().getId() != null
+                    && principalIds.contains(sp.getPrincipal().getId().toString()));
   }
 
+  /**
+   * The ids a sharing list may name to reach {@code userName}: their own, their teams' and their
+   * domains'. A user that cannot be resolved is shared nothing.
+   */
   private static Set<String> resolvePrincipalIdentifiers(String userName) {
-    Set<String> ids = new HashSet<>();
-    ids.add(userName);
-    try {
-      User user =
-          Entity.getEntityByName(Entity.USER, userName, "teams,domains", Include.NON_DELETED);
-      addRefNames(ids, user.getTeams());
-      addRefNames(ids, user.getDomains());
-    } catch (Exception e) {
-      LOG.debug("Could not resolve teams/domains for user '{}'", userName, e);
+    Set<String> ids = Set.of();
+    if (!nullOrEmpty(userName)) {
+      try {
+        User user =
+            Entity.getEntityByName(Entity.USER, userName, "teams,domains", Include.NON_DELETED);
+        ids = Set.copyOf(ContextMemorySearchVisibility.sharedPrincipalIds(user));
+      } catch (RuntimeException e) {
+        LOG.debug("Could not resolve shared principal ids for user '{}'", userName, e);
+      }
     }
     return ids;
-  }
-
-  private static void addRefNames(Set<String> ids, List<EntityReference> refs) {
-    for (EntityReference ref : listOrEmpty(refs)) {
-      if (ref.getName() != null) {
-        ids.add(ref.getName());
-      }
-      if (ref.getFullyQualifiedName() != null) {
-        ids.add(ref.getFullyQualifiedName());
-      }
-    }
   }
 
   private static String getVisibilityDeniedMessage(ContextMemory memory) {
