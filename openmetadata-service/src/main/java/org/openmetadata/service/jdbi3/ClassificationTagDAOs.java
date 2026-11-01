@@ -386,7 +386,11 @@ public interface ClassificationTagDAOs {
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
-                + "END as json "
+                + "END as json, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.deleted "
+                + "  WHEN tu.source = 0 THEN ta.deleted "
+                + "END as entityDeleted "
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
@@ -398,7 +402,11 @@ public interface ClassificationTagDAOs {
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
-                + "END as json "
+                + "END as json, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.deleted "
+                + "  WHEN tu.source = 0 THEN ta.deleted "
+                + "END as entityDeleted "
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
@@ -416,7 +424,11 @@ public interface ClassificationTagDAOs {
             + "CASE "
             + "  WHEN tu.source = 1 THEN gterm.json "
             + "  WHEN tu.source = 0 THEN ta.json "
-            + "END as json "
+            + "END as json, "
+            + "CASE "
+            + "  WHEN tu.source = 1 THEN gterm.deleted "
+            + "  WHEN tu.source = 0 THEN ta.deleted "
+            + "END as entityDeleted "
             + "FROM tag_usage tu "
             + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
             + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
@@ -735,6 +747,19 @@ public interface ClassificationTagDAOs {
               source,
               label.getTagFQN(),
               r.getString("targetFQNHash"));
+          return Pair.of(r.getString("targetFQNHash"), label);
+        }
+        // MySQL stores BOOLEAN as TINYINT(1) (getObject returns Integer), Postgres as true/false
+        // (getObject returns Boolean). Handle both to avoid PSQLException on getInt(Boolean).
+        Object entityDeletedValue = r.getObject("entityDeleted");
+        boolean entityDeleted =
+            entityDeletedValue instanceof Boolean
+                ? (Boolean) entityDeletedValue
+                : entityDeletedValue instanceof Number
+                    && ((Number) entityDeletedValue).intValue() != 0;
+        if (entityDeleted) {
+          // The tag or glossary term is soft-deleted. Return the label unenriched (without the
+          // orphan warning) so normal deletes do not produce spurious broken-reference warnings.
           return Pair.of(r.getString("targetFQNHash"), label);
         }
         if (source == TagLabel.TagSource.CLASSIFICATION) {
