@@ -12,6 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import teradataSchema from '../../public/jsons/connectionSchemas/connections/database/teradataConnection.json';
+import mlflowSchema from '../../public/jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json';
 import {
   getKeyValues,
   getSchemaProperties,
@@ -116,6 +118,41 @@ describe('getSchemaProperties', () => {
 });
 
 describe('getKeyValues', () => {
+  it.each([
+    {
+      schema: mlflowSchema,
+      field: 'registryUri',
+      value: 'http://localhost:5000',
+      serviceCategory: 'mlmodelServices',
+    },
+    {
+      schema: teradataSchema,
+      field: 'logdata',
+      value: 'EXAMPLE.REALM',
+      serviceCategory: 'databaseServices',
+    },
+  ])(
+    'renders $field as a password input using the generated schema',
+    ({ schema, field, value, serviceCategory }) => {
+      render(
+        <>
+          {getKeyValues({
+            obj: { [field]: value },
+            schemaPropertyObject: schema.properties,
+            schema,
+            serviceCategory,
+          })}
+        </>
+      );
+
+      expect(screen.getByTestId('input-field')).toHaveAttribute(
+        'type',
+        'password'
+      );
+      expect(screen.getByTestId('input-field')).toHaveValue(value);
+    }
+  );
+
   const renderConnection = (connection: Record<string, unknown>) =>
     render(
       <div>
