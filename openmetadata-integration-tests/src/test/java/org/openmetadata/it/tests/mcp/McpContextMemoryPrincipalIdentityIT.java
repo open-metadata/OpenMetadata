@@ -27,6 +27,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -211,6 +212,7 @@ class McpContextMemoryPrincipalIdentityIT extends McpTestBase {
   }
 
   private static String bearerFor(User user) {
-    return "Bearer " + tokenFor(user.getName());
+    return "Bearer "
+        + JwtAuthProvider.tokenFor(user.getEmail(), user.getEmail(), new String[] {}, 3_600);
   }
 }
