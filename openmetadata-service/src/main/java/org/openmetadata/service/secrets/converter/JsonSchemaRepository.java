@@ -125,6 +125,29 @@ final class JsonSchemaRepository {
     return true;
   }
 
+  boolean isCandidate(Ref oneOf, Ref schema, Object value) {
+    return javaClass(schema) != null
+        && matchesDiscriminator(schema, value)
+        && (!hasOpenObjectBranch(oneOf) || matchesRequiredProperties(schema, value));
+  }
+
+  boolean hasMatchingClosedBranch(Ref oneOf, Object value) {
+    return branches(oneOf).stream()
+        .anyMatch(branch -> containsPasswordFormat(branch) && isCandidate(oneOf, branch, value));
+  }
+
+  private boolean matchesRequiredProperties(Ref schema, Object value) {
+    if (!(value instanceof Map<?, ?> map)) {
+      return true;
+    }
+    for (JsonNode required : schema.node().path("required")) {
+      if (!map.containsKey(required.asText())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private JsonNode discriminatorValue(JsonNode definition) {
     if (definition.has("const")) {
       return definition.get("const");
