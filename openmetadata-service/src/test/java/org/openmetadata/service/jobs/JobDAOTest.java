@@ -53,6 +53,37 @@ class JobDAOTest {
   }
 
   @Test
+  void ontologyBulkListQuerySupportsGlossaryFilterForBothConnectionTypes()
+      throws NoSuchMethodException {
+    final ConnectionAwareSqlQuery[] queries =
+        JobDAO.class
+            .getMethod("listOntologyBulkJobsByUser", String.class, String.class, int.class)
+            .getAnnotationsByType(ConnectionAwareSqlQuery.class);
+
+    assertEquals(2, queries.length);
+    for (ConnectionAwareSqlQuery query : queries) {
+      assertTrue(query.value().contains("jobType = 'ONTOLOGY_BULK'"));
+      assertTrue(query.value().contains(":glossaryId IS NULL"));
+      assertTrue(query.value().contains(":glossaryId"));
+      assertTrue(query.value().contains("ORDER BY createdAt DESC LIMIT :limit"));
+    }
+    // MySQL variant uses JSON_EXTRACT; Postgres variant uses ->>'glossaryId'
+    boolean hasMysqlVariant = false;
+    boolean hasPostgresVariant = false;
+    for (ConnectionAwareSqlQuery query : queries) {
+      if (query.value().contains("JSON_UNQUOTE(JSON_EXTRACT")) {
+        hasMysqlVariant = true;
+        assertTrue(query.value().contains("$.request.glossaryId"));
+      }
+      if (query.value().contains("->>'glossaryId'")) {
+        hasPostgresVariant = true;
+      }
+    }
+    assertTrue(hasMysqlVariant, "Missing MySQL JSON_EXTRACT variant");
+    assertTrue(hasPostgresVariant, "Missing PostgreSQL ->> variant");
+  }
+
+  @Test
   void staleWorkerRecoveryIsHeartbeatScopedAndIncludesOntologyJobs() throws NoSuchMethodException {
     final Method method =
         JobDAO.class.getMethod("markStaleRunningJobsFailed", long.class, long.class);
