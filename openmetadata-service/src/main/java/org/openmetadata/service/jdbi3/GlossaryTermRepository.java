@@ -43,6 +43,10 @@ import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import jakarta.json.Json;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
@@ -118,6 +122,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.OntologyRelationshipRow;
 import org.openmetadata.service.jdbi3.OntologyDAO.OntologyLineageRow;
@@ -137,6 +142,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -3062,30 +3068,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             "id,name,fullyQualifiedName,parent,glossary,tags,reviewers,entityStatus",
             Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
-
-    EntityReference parent = moveRequest.getParent();
-    if (parent.getType().equalsIgnoreCase("glossary")) {
-      // Move to root of the glossary
-      Glossary glossary =
-          Entity.getEntity(GLOSSARY, parent.getId(), "id,name,fullyQualifiedName", Include.ALL);
-      updated.setParent(null);
-      updated.setGlossary(glossary.getEntityReference());
-    } else if (parent.getType().equalsIgnoreCase("glossaryTerm")) {
-      // Can be of same glossary or a different glossary
-      GlossaryTerm parentTerm =
-          Entity.getEntity(
-              GLOSSARY_TERM, parent.getId(), "id,name,fullyQualifiedName,glossary", Include.ALL);
-      updated.setParent(parentTerm.getEntityReference());
-      Glossary glossary =
-          Entity.getEntity(
-              GLOSSARY,
-              parentTerm.getGlossary().getId(),
-              "id,name,fullyQualifiedName",
-              Include.ALL);
-      updated.setGlossary(glossary.getEntityReference());
-    } else {
-      throw new IllegalArgumentException("Invalid parent type: " + parent.getType());
-    }
+    placeUnder(updated, moveRequest.getParent());
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
     GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
@@ -3111,6 +3094,80 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
     }
     return updated;
+  }
+
+  /**
+   * A move as the PATCH it amounts to: the {@code parent} and {@code glossary} the term takes, the
+   * same edit dragging the term in the terms table sends. Authorizing and admitting the move as
+   * that PATCH keeps the two ways of moving a term under the same policies and approval workflows.
+   */
+  public MovePlan planMove(UUID id, MoveGlossaryTermRequest moveRequest) {
+    GlossaryTerm original = get(null, id, getPatchFields(), ALL, false);
+    GlossaryTerm moved = JsonUtils.deepCopy(original, GlossaryTerm.class);
+    placeUnder(moved, moveRequest.getParent());
+    return new MovePlan(original, movePatch(original, moved));
+  }
+
+  // Whole-field operations on parent and glossary, the shape dragging a term sends, so the
+  // operations a policy checks are those of the fields that move.
+  private static JsonPatch movePatch(GlossaryTerm original, GlossaryTerm moved) {
+    JsonArrayBuilder ops = Json.createArrayBuilder().add(addOp("/glossary", moved.getGlossary()));
+    if (moved.getParent() != null) {
+      ops.add(addOp("/parent", moved.getParent()));
+    } else if (original.getParent() != null) {
+      ops.add(Json.createObjectBuilder().add("op", "remove").add("path", "/parent"));
+    }
+    return Json.createPatch(ops.build());
+  }
+
+  private static JsonObjectBuilder addOp(String path, EntityReference value) {
+    return Json.createObjectBuilder()
+        .add("op", "add")
+        .add("path", path)
+        .add("value", JsonUtils.getJsonStructure(value));
+  }
+
+  /**
+   * Submits the planned move as a change request when an approval workflow holds it, judged and
+   * staged exactly as the equivalent PATCH. Returns the change request's id; empty when nothing
+   * holds the move, which is then applied by {@link #moveGlossaryTerm}.
+   */
+  public Optional<UUID> submitHeldMove(MovePlan plan, ChangeActor actor) {
+    Optional<UUID> changeRequestId = Optional.empty();
+    if (ApprovalGate.mayHold(GLOSSARY_TERM, actor.userName())
+        && previewPatch(plan.original(), plan.patch(), actor).isPresent()) {
+      changeRequestId =
+          Optional.ofNullable(patch(plan.original(), plan.patch(), actor).pendingChangeRequestId());
+    }
+    return changeRequestId;
+  }
+
+  /** A move of {@code original} expressed as the JSON patch that makes it. */
+  public record MovePlan(GlossaryTerm original, JsonPatch patch) {}
+
+  // Sets the parent and glossary a term takes when it moves under {@code parent}: the root of a
+  // glossary, or a term of the same or another glossary.
+  private static void placeUnder(GlossaryTerm term, EntityReference parent) {
+    if (parent.getType().equalsIgnoreCase(GLOSSARY)) {
+      Glossary glossary =
+          Entity.getEntity(GLOSSARY, parent.getId(), "id,name,fullyQualifiedName", Include.ALL);
+      term.setParent(null);
+      term.setGlossary(glossary.getEntityReference());
+    } else if (parent.getType().equalsIgnoreCase(GLOSSARY_TERM)) {
+      GlossaryTerm parentTerm =
+          Entity.getEntity(
+              GLOSSARY_TERM, parent.getId(), "id,name,fullyQualifiedName,glossary", Include.ALL);
+      Glossary glossary =
+          Entity.getEntity(
+              GLOSSARY,
+              parentTerm.getGlossary().getId(),
+              "id,name,fullyQualifiedName",
+              Include.ALL);
+      term.setParent(parentTerm.getEntityReference());
+      term.setGlossary(glossary.getEntityReference());
+    } else {
+      throw new IllegalArgumentException("Invalid parent type: %s".formatted(parent.getType()));
+    }
   }
 
   @Override

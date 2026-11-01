@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.util.RestUtil.PENDING_CHANGE_HEADER;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -6401,6 +6402,79 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  void test_glossaryTermMoveIsHeldForApproval(TestNamespace ns) throws Exception {
+    MoveFixture fixture = moveFixture(ns, "moveHeld");
+    String workflowId = deployTermGateWorkflow(fixture.moved(), List.of("parent", "glossary"));
+
+    HttpResponse<String> response = moveTerm(fixture.moved(), "glossaryTerm", fixture.costs());
+
+    assertEquals(202, response.statusCode(), response.body());
+    assertFalse(MAPPER.readTree(response.body()).hasNonNull("jobId"), "A held move starts no job");
+    String requestId = response.headers().firstValue(PENDING_CHANGE_HEADER).orElseThrow();
+    JsonNode request = changeRequest(requestId);
+    assertEquals("Pending", request.get("status").asText());
+    assertEquals(workflowId, request.get("workflowDefinitionId").asText());
+    assertEquals(List.of("parent"), changedFields(request));
+    assertEquals(
+        fixture.moved().getFullyQualifiedName(), termById(fixture.moved()).getFullyQualifiedName());
+
+    approve(awaitRequestTask(requestId, fixture.moved().getFullyQualifiedName()));
+
+    awaitRequestStatus(requestId, "Applied");
+    String movedFqn =
+        "%s.%s".formatted(fixture.costs().getFullyQualifiedName(), fixture.moved().getName());
+    assertEquals(movedFqn, termById(fixture.moved()).getFullyQualifiedName());
+    assertEquals(
+        "%s.%s".formatted(movedFqn, fixture.grandchild().getName()),
+        termById(fixture.grandchild()).getFullyQualifiedName());
+  }
+
+  @Test
+  void test_rejectedGlossaryTermMoveLeavesTheTermInPlace(TestNamespace ns) throws Exception {
+    MoveFixture fixture = moveFixture(ns, "moveRejected");
+    Glossary target = createReviewedGlossary(ns, "moveTarget");
+    deployTermGateWorkflow(fixture.moved(), List.of("parent", "glossary"));
+
+    HttpResponse<String> response = moveTerm(fixture.moved(), "glossary", target);
+
+    assertEquals(202, response.statusCode(), response.body());
+    String requestId = response.headers().firstValue(PENDING_CHANGE_HEADER).orElseThrow();
+    assertEquals(List.of("glossary", "parent"), changedFields(changeRequest(requestId)));
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            awaitRequestTask(requestId, fixture.moved().getFullyQualifiedName()).getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Rejected));
+
+    awaitRequestStatus(requestId, "Rejected");
+    assertEquals(
+        fixture.moved().getFullyQualifiedName(), termById(fixture.moved()).getFullyQualifiedName());
+    assertEquals(
+        fixture.grandchild().getFullyQualifiedName(),
+        termById(fixture.grandchild()).getFullyQualifiedName());
+  }
+
+  @Test
+  void test_glossaryTermMoveOutsideTheGatedFieldsRunsAsAJob(TestNamespace ns) throws Exception {
+    MoveFixture fixture = moveFixture(ns, "moveUngated");
+    deployTermGateWorkflow(fixture.moved(), List.of("description"));
+
+    HttpResponse<String> response = moveTerm(fixture.moved(), "glossaryTerm", fixture.costs());
+
+    assertEquals(202, response.statusCode(), response.body());
+    assertTrue(response.headers().firstValue(PENDING_CHANGE_HEADER).isEmpty());
+    assertTrue(MAPPER.readTree(response.body()).hasNonNull("jobId"));
+    String movedFqn =
+        "%s.%s".formatted(fixture.costs().getFullyQualifiedName(), fixture.moved().getName());
+    await("move of " + fixture.moved().getName())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> assertEquals(movedFqn, termById(fixture.moved()).getFullyQualifiedName()));
+    assertEquals(0, changeRequestsFor(fixture.moved().getId()).size());
+  }
+
+  @Test
   void test_customPropertyChangeIsHeldForApproval(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String property = "wfGate" + UUID.randomUUID().toString().substring(0, 8);
@@ -8414,6 +8488,85 @@ public class WorkflowDefinitionResourceIT {
 
   // The open review task linked to the request's active revision.
   private Task awaitRequestTask(String requestId, Glossary glossary) {
+    return awaitRequestTask(requestId, glossary.getFullyQualifiedName());
+  }
+
+  // A reviewed glossary (owners USER2 and USER3, reviewer USER1) holding Revenue > NetRevenue >
+  // Recognized and Costs. NetRevenue is the term the tests move; Recognized moves with it.
+  private record MoveFixture(GlossaryTerm costs, GlossaryTerm moved, GlossaryTerm grandchild) {}
+
+  private MoveFixture moveFixture(TestNamespace ns, String tag) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary = createReviewedGlossary(ns, tag);
+    GlossaryTerm revenue = createTerm(glossary, null, "Revenue");
+    GlossaryTerm costs = createTerm(glossary, null, "Costs");
+    GlossaryTerm moved = createTerm(glossary, revenue, "NetRevenue");
+    GlossaryTerm grandchild = createTerm(glossary, moved, "Recognized");
+    // The seeded glossary approval moves each new term to In Review asynchronously; a move staged
+    // before that write lands is refused as a concurrent change.
+    Stream.of(revenue, costs, moved, grandchild)
+        .forEach(term -> awaitGlossaryTermStatus(admin, term, EntityStatus.IN_REVIEW));
+    return new MoveFixture(costs, moved, grandchild);
+  }
+
+  private static GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String name) {
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .create(
+            new CreateGlossaryTerm()
+                .withName(name)
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(parent == null ? null : parent.getFullyQualifiedName())
+                .withDescription("%s definition".formatted(name)));
+  }
+
+  private static GlossaryTerm termById(GlossaryTerm term) {
+    return SdkClients.adminClient().glossaryTerms().get(term.getId().toString(), "");
+  }
+
+  /** Calls moveAsync as admin directly, since the SDK client does not expose response headers. */
+  private static HttpResponse<String> moveTerm(
+      GlossaryTerm term, String parentType, EntityInterface parent)
+      throws IOException, InterruptedException {
+    String body =
+        "{\"parent\":{\"id\":\"%s\",\"type\":\"%s\"}}".formatted(parent.getId(), parentType);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    "%s/v1/glossaryTerms/%s/moveAsync"
+                        .formatted(SdkClients.baseUrl(), term.getId())))
+            .header("Authorization", "Bearer %s".formatted(SdkClients.getAdminToken()))
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    try (HttpClient http = HttpClient.newHttpClient()) {
+      return http.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+  }
+
+  // The fields a change request's active revision changes, in name order.
+  private static List<String> changedFields(JsonNode request) {
+    List<String> fields = new ArrayList<>();
+    request.get("activeRevision").get("ops").forEach(op -> fields.add(op.get("field").asText()));
+    return fields.stream().sorted().toList();
+  }
+
+  private JsonNode changeRequestsFor(UUID entityId) throws Exception {
+    return MAPPER
+        .readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests?entityId=" + entityId,
+                    null,
+                    RequestOptions.builder().build()))
+        .get("data");
+  }
+
+  // The open review task of the request's active revision, on any entity.
+  private Task awaitRequestTask(String requestId, String entityFqn) {
     AtomicReference<Task> found = new AtomicReference<>();
     await("review task for change request " + requestId)
         .atMost(Duration.ofMinutes(2))
@@ -8423,9 +8576,7 @@ public class WorkflowDefinitionResourceIT {
             () -> {
               String taskId = changeRequest(requestId).get("taskId").asText();
               Task task =
-                  listOpenApprovalTasks(SdkClients.adminClient(), glossary.getFullyQualifiedName())
-                      .getData()
-                      .stream()
+                  listOpenApprovalTasks(SdkClients.adminClient(), entityFqn).getData().stream()
                       .filter(t -> t.getId().toString().equals(taskId))
                       .findFirst()
                       .orElse(null);
@@ -8521,6 +8672,26 @@ public class WorkflowDefinitionResourceIT {
             MAPPER.readTree(
                 hookWorkflowJson(
                     workflowName, entityType, entityFqn, include, exclude, extraExclusion));
+    return createWorkflow(client, workflowName, workflow);
+  }
+
+  // A gate on one glossary term matched by id: a move rewrites the fully qualified name, and the
+  // gate judges its filter on the proposed term.
+  private String deployTermGateWorkflow(GlossaryTerm term, List<String> include) throws Exception {
+    String workflowName = "termGate" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName, "glossaryTerm", term.getFullyQualifiedName(), include));
+    ((ObjectNode) workflow.path("trigger").path("config"))
+        .putObject("filter")
+        .put("glossaryTerm", "{\"!=\":[{\"var\":\"id\"},\"%s\"]}".formatted(term.getId()));
+    return createWorkflow(SdkClients.adminClient(), workflowName, workflow);
+  }
+
+  private String createWorkflow(OpenMetadataClient client, String workflowName, ObjectNode workflow)
+      throws Exception {
     String createResponse =
         client
             .getHttpClient()

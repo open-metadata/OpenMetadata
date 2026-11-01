@@ -43,6 +43,7 @@ import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CreateConversation;
 import org.openmetadata.schema.api.policies.CreatePolicy;
@@ -2144,6 +2145,35 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     // FQN should have changed to include parent
     assertNotEquals(originalFqn, movedTerm.getFullyQualifiedName());
     assertTrue(movedTerm.getFullyQualifiedName().contains(parent.getName()));
+  }
+
+  @Test
+  void test_moveTermNeedsTheAccessChangingItsParentNeeds(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "mvAuthGls");
+    GlossaryTerm parent = createChildTerm(glossary, null, "parent");
+    GlossaryTerm term = createChildTerm(glossary, null, "child");
+
+    // USER3 holds only the default role and owns nothing here: it may tag assets with glossary
+    // terms but not restructure a glossary.
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.user3Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/glossaryTerms/%s/moveAsync".formatted(term.getId()),
+                        new MoveGlossaryTermRequest().withParent(parent.getEntityReference()),
+                        RequestOptions.builder().build()));
+
+    assertEquals(403, error.getStatusCode());
+    assertEquals(
+        term.getFullyQualifiedName(),
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .get(term.getId().toString(), "")
+            .getFullyQualifiedName());
   }
 
   // task_entity.aboutFqnHash stores one 32-char hash per FQN level, so eight levels (263 chars)
