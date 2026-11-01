@@ -188,6 +188,7 @@ class GlossaryTermRelationsMockTest {
     when(httpClient.executeForString(
             eq(HttpMethod.GET),
             eq("/v1/glossaryTerms/" + termId + "/assets"),
+            isNull(),
             any(RequestOptions.class)))
         .thenReturn("{\"data\":[],\"paging\":{\"total\":0}}");
 
@@ -203,6 +204,15 @@ class GlossaryTermRelationsMockTest {
     assertEquals("Commerce", options.getAllValues().getFirst().getQueryParams().get("parent"));
     assertEquals("4", options.getAllValues().getLast().getQueryParams().get("assetPreviewSize"));
     assertEquals(0, assets.getData().size());
+    ArgumentCaptor<RequestOptions> assetOptions = ArgumentCaptor.forClass(RequestOptions.class);
+    verify(httpClient)
+        .executeForString(
+            eq(HttpMethod.GET),
+            eq("/v1/glossaryTerms/" + termId + "/assets"),
+            isNull(),
+            assetOptions.capture());
+    assertEquals("6", assetOptions.getValue().getQueryParams().get("limit"));
+    assertEquals("12", assetOptions.getValue().getQueryParams().get("offset"));
   }
 
   @Test
