@@ -101,6 +101,44 @@ describe('LineageSettingsForm', () => {
     });
   });
 
+  it('keeps the settings the form does not edit', async () => {
+    const stored = {
+      ...STORED,
+      graphPerformanceConfig: { enableCaching: false, cacheTTLSeconds: 300 },
+    };
+    (getSettingsByType as jest.Mock).mockResolvedValue(stored);
+
+    render(<LineageSettingsForm showHint={false} onNavigate={onNavigate} />);
+    await waitFor(() => expect(inputOf('field-upstream')).toHaveValue(2));
+
+    fireEvent.change(inputOf('field-upstream'), { target: { value: '1' } });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: SettingType.LineageSettings,
+      config_value: { ...stored, upstreamDepth: 1 },
+    });
+  });
+
+  it('does not offer saving until the settings load', async () => {
+    (getSettingsByType as jest.Mock)
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValueOnce(STORED);
+
+    render(<LineageSettingsForm showHint={false} onNavigate={onNavigate} />);
+    const reload = await screen.findByRole('button', { name: 'label.reload' });
+
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
+
+    fireEvent.click(reload);
+
+    await waitFor(() => expect(inputOf('field-upstream')).toHaveValue(2));
+
+    expect(screen.getByTestId('save-button')).toBeInTheDocument();
+  });
+
   it('requires both depths', async () => {
     render(<LineageSettingsForm showHint={false} onNavigate={onNavigate} />);
     await waitFor(() => expect(inputOf('field-downstream')).toHaveValue(3));

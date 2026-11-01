@@ -172,7 +172,8 @@ const capturePNGImageFromElement = async (exportData: ExportData) => {
   const {
     name,
     documentSelector = '',
-    viewport,
+    viewport: presetViewport,
+    getViewport,
     renderEdgesOverlay,
   } = exportData;
 
@@ -193,6 +194,7 @@ const capturePNGImageFromElement = async (exportData: ExportData) => {
 
   const imageWidth = Math.max(minWidth, exportElement.scrollWidth);
   const imageHeight = Math.max(minHeight, exportElement.scrollHeight);
+  const viewport = getViewport?.(imageWidth, imageHeight) ?? presetViewport;
   const fullLogicalWidth = imageWidth + padding * 2;
   const fullLogicalHeight = imageHeight + padding * 2;
 
@@ -260,7 +262,8 @@ const capturePNGImageFromElement = async (exportData: ExportData) => {
         imageWidth,
         imageHeight,
         padding,
-        pixelRatio
+        pixelRatio,
+        viewport
       );
 
       // Layer order: white background → edges (if available) → nodes.

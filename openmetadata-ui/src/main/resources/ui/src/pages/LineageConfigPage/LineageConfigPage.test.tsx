@@ -85,6 +85,49 @@ describe('LineageConfigPage', () => {
     });
   });
 
+  it('keeps the settings the form does not edit', async () => {
+    const storedConfig = {
+      ...savedConfig,
+      graphPerformanceConfig: { enableCaching: false, cacheTTLSeconds: 300 },
+    };
+    (getSettingsByType as jest.Mock).mockResolvedValue(storedConfig);
+
+    await act(async () => {
+      render(<LineageConfigPage pageTitle="lineage" />);
+    });
+
+    fireEvent.change(screen.getByTestId('field-upstream'), {
+      target: { value: '1' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: 'lineageSettings',
+      config_value: { ...storedConfig, upstreamDepth: 1 },
+    });
+  });
+
+  it('does not offer saving until the settings load', async () => {
+    (getSettingsByType as jest.Mock)
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValueOnce(savedConfig);
+
+    await act(async () => {
+      render(<LineageConfigPage pageTitle="lineage" />);
+    });
+
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+    });
+
+    expect(screen.getByTestId('field-upstream')).toHaveValue(2);
+    expect(screen.getByTestId('save-button')).toBeInTheDocument();
+  });
+
   it('rejects a negative depth', async () => {
     await act(async () => {
       render(<LineageConfigPage pageTitle="lineage" />);
