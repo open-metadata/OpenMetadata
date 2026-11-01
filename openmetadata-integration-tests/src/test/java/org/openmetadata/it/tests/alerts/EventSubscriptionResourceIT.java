@@ -3,6 +3,7 @@ package org.openmetadata.it.tests.alerts;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -164,6 +165,54 @@ public class EventSubscriptionResourceIT
             () -> createEntity(request),
             "A webhook endpoint written as a loopback address should be rejected");
     assertEquals(400, rejected.getStatusCode());
+  }
+
+  /** A destination's id is the server's: an id it did not issue for the alert names nothing. */
+  @Test
+  void test_destinationIdsAreTheServers(TestNamespace ns) {
+    UUID sent = UUID.randomUUID();
+    String hook = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("ids");
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_ids"))
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    webhookDestination(hook + "/a", null, null).withId(sent),
+                    webhookDestination(hook + "/b", null, null).withId(sent)));
+    EventSubscription created = createEntity(request);
+    UUID first = created.getDestinations().get(0).getId();
+    UUID second = created.getDestinations().get(1).getId();
+    assertNotEquals(sent, first);
+    assertNotEquals(sent, second);
+    assertNotEquals(first, second);
+
+    assertEquals(List.of(first, second), destinationIds(putSubscription(request)), "a PUT again");
+
+    EventSubscription unknown = JsonUtils.deepCopy(created, EventSubscription.class);
+    unknown.getDestinations().get(1).withId(UUID.randomUUID());
+    assertEquals(List.of(first, second), destinationIds(patchEntity(idOf(created), unknown)));
+
+    EventSubscription repeated = JsonUtils.deepCopy(created, EventSubscription.class);
+    repeated.getDestinations().get(1).withId(first);
+    assertEquals(List.of(first, second), destinationIds(patchEntity(idOf(created), repeated)));
+
+    EventSubscription added = JsonUtils.deepCopy(created, EventSubscription.class);
+    added.getDestinations().add(webhookDestination(hook + "/c", null, null).withId(null));
+    List<UUID> ids = destinationIds(patchEntity(idOf(created), added));
+    assertEquals(List.of(first, second), ids.subList(0, 2));
+    assertNotNull(ids.get(2));
+    assertEquals(3, new HashSet<>(ids).size(), "the added destination has an id of its own");
+  }
+
+  private static List<UUID> destinationIds(EventSubscription alert) {
+    return alert.getDestinations().stream().map(SubscriptionDestination::getId).toList();
+  }
+
+  private static String idOf(EventSubscription alert) {
+    return alert.getId().toString();
   }
 
   @Test
@@ -2451,7 +2500,12 @@ public class EventSubscriptionResourceIT
                     null)));
 
     EventSubscription unmatched = getEntity(created.getId().toString());
-    unmatched.getDestinations().getFirst().withId(UUID.randomUUID());
+    unmatched
+        .getDestinations()
+        .add(
+            JsonUtils.deepCopy(
+                    unmatched.getDestinations().getFirst(), SubscriptionDestination.class)
+                .withId(null));
     assertRefused(() -> patchEntity(created.getId().toString(), unmatched));
 
     JsonNode copyOut =
@@ -2766,24 +2820,6 @@ public class EventSubscriptionResourceIT
     return refused.getCause() instanceof OpenMetadataException cause
         ? cause.getStatusCode()
         : refused.getStatusCode();
-  }
-
-  /** A request may set a destination's id; a masked one is tested only when one alert holds it. */
-  @Test
-  void test_testDestinationRefusesAnIdTwoAlertsHold(TestNamespace ns) throws Exception {
-    try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription first =
-          createEntity(
-              secretRequest(ns, "first_holder", receiver.url("/first"), ns.prefix("one"), null));
-      SubscriptionDestination masked = first.getDestinations().getFirst();
-      CreateEventSubscription second =
-          secretRequest(ns, "second_holder", receiver.url("/second"), ns.prefix("two"), null);
-      second.getDestinations().getFirst().withId(masked.getId());
-      createEntity(second);
-
-      assertEquals(400, postTestDestination(List.of(masked)).statusCode());
-      assertTrue(receiver.received().isEmpty(), "a refused test sends nothing");
-    }
   }
 
   private static EventSubscription putSubscription(CreateEventSubscription request) {
