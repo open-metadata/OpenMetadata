@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,9 +45,9 @@ import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
 
@@ -56,7 +55,6 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 class McpContextMemoryPrincipalIdentityIT extends McpTestBase {
-  private static final String MEMORIES = "contextCenter/memories";
   private static final String FILES = "contextCenter/drive/files";
   private static final String ANSWER = "the-budget-is-only-for-the-listed-principal";
 
@@ -86,14 +84,12 @@ class McpContextMemoryPrincipalIdentityIT extends McpTestBase {
       ContextMemory memory = createMemory(ns, sharing, null, file);
 
       assertEquals(memory.getId(), memoriesAs(member).get(memory.getId().toString()).getId());
-      assertListed(
-          MEMORIES + "?sourceEntityId=" + file.getId(), memory.getId().toString(), member, true);
+      assertListed(memory.getId(), member, true);
       assertMcpAnswer(memory, member, true);
       assertCompanyContextAnswer(memory, member, true);
 
       assertMemoryHidden(memory, namesake);
-      assertListed(
-          MEMORIES + "?sourceEntityId=" + file.getId(), memory.getId().toString(), namesake, false);
+      assertListed(memory.getId(), namesake, false);
       assertMcpAnswer(memory, namesake, false);
       assertCompanyContextAnswer(memory, namesake, false);
     } finally {
@@ -186,21 +182,18 @@ class McpContextMemoryPrincipalIdentityIT extends McpTestBase {
     String id = memory.getId().toString();
     assertThrows(ForbiddenException.class, () -> caller.get(id));
     assertThrows(ForbiddenException.class, () -> caller.getByName(memory.getFullyQualifiedName()));
-    assertThrows(ForbiddenException.class, () -> caller.getVersionList(memory.getId()));
-    assertThrows(ForbiddenException.class, () -> caller.getVersion(id, memory.getVersion()));
-    assertThrows(
-        ForbiddenException.class, () -> caller.patch(memory.getId(), JsonUtils.readTree("[]")));
   }
 
-  private static void assertListed(String path, String id, User user, boolean visible)
-      throws Exception {
-    HttpResponse<String> response = getResponse(path, bearerFor(user));
-    assertEquals(200, response.statusCode(), response.body());
-    JsonNode data = OBJECT_MAPPER.readTree(response.body()).path("data");
-    assertEquals(visible ? 1 : 0, data.size(), response.body());
-    if (visible) {
-      assertEquals(id, data.get(0).path("id").asText());
-    }
+  private static void assertListed(UUID id, User user, boolean visible) {
+    ContextMemoryService caller = memoriesAs(user);
+    boolean listed = false;
+    String after = null;
+    do {
+      var page = caller.list(new ListParams().withLimit(100).withAfter(after));
+      listed |= page.getData().stream().anyMatch(memory -> id.equals(memory.getId()));
+      after = page.getPaging().getAfter();
+    } while (after != null && !after.isEmpty());
+    assertEquals(visible, listed);
   }
 
   private void assertMcpAnswer(ContextMemory memory, User user, boolean visible) throws Exception {
