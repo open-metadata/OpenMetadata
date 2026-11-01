@@ -444,36 +444,6 @@ class DestinationSecretsTest {
     return new ChangeDescription().withFieldsUpdated(List.of(change));
   }
 
-  // No rules name the secrets of a channel this server does not have, so every text is served
-  // masked
-  // and a save sending the masks back keeps the stored configuration.
-  @Test
-  void aDestinationWhoseChannelIsNotAvailableIsServedWithEveryTextMasked() {
-    SubscriptionDestination stored =
-        incomingWebhook(SubscriptionType.WEBHOOK).withChannel("not.registered.here");
-    Map<String, Object> config = new LinkedHashMap<>(configOf(stored));
-    config.put("receivers", List.of("https://receiver.example.com"));
-    stored.withConfig(config);
-    Map<String, Object> asStored = configOf(stored);
-
-    DestinationSecrets.encrypt(List.of(stored));
-    assertEquals(asStored, configOf(stored), "only a channel's own secret fields are encrypted");
-
-    SubscriptionDestination served = DestinationSecrets.mask(List.of(stored)).getFirst();
-    assertEquals(PASSWORD_MASK, configOf(served).get("endpoint"));
-    assertEquals(PASSWORD_MASK, headersOf(served).get("Authorization"));
-    assertEquals(List.of(PASSWORD_MASK), configOf(served).get("receivers"));
-    assertTrue(DestinationSecrets.hasMaskedSecrets(served));
-
-    EventSubscription saved =
-        new EventSubscription()
-            .withName("alert")
-            .withDestinations(List.of(JsonUtils.deepCopy(served, SubscriptionDestination.class)));
-    DestinationSecrets.restore(
-        new EventSubscription().withName("alert").withDestinations(List.of(stored)), saved);
-    assertEquals(asStored, configOf(saved.getDestinations().getFirst()));
-  }
-
   @SuppressWarnings("unchecked")
   static Map<String, Object> configOf(SubscriptionDestination destination) {
     return JsonUtils.convertValue(destination.getConfig(), Map.class);

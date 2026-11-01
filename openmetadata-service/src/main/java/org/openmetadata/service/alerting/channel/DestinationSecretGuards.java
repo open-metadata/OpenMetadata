@@ -70,7 +70,7 @@ public final class DestinationSecretGuards {
     listOrEmpty(destinations)
         .forEach(
             destination ->
-                DestinationSecrets.firstMaskedField(destination)
+                firstSecret(destination, value -> PASSWORD_MASK.equals(value))
                     .ifPresent(field -> refuse(MASKED_MESSAGE, destination, field)));
   }
 

@@ -21,7 +21,6 @@ import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import com.macasaet.fernet.TokenValidationException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -134,15 +133,9 @@ public final class DestinationSecrets {
   }
 
   public static boolean hasMaskedSecrets(SubscriptionDestination destination) {
-    return firstMaskedField(destination).isPresent();
-  }
-
-  /** The first field of this destination that still holds the mask instead of a value. */
-  static Optional<JsonPointer> firstMaskedField(SubscriptionDestination destination) {
     JsonNode config = JsonUtils.valueToTree(destination.getConfig());
-    return maskedFieldsOf(destination, config).stream()
-        .filter(field -> PASSWORD_MASK.equals(config.at(field).asText(null)))
-        .findFirst();
+    return secretFieldsOf(destination, config).stream()
+        .anyMatch(field -> PASSWORD_MASK.equals(config.at(field).asText(null)));
   }
 
   /**
@@ -184,7 +177,7 @@ public final class DestinationSecrets {
     JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
     JsonNode updatedConfig = JsonUtils.valueToTree(updated.getConfig());
     boolean changed = false;
-    for (JsonPointer field : maskedFieldsOf(updated, updatedConfig)) {
+    for (JsonPointer field : secretFieldsOf(updated, updatedConfig)) {
       String storedValue = storedConfig.at(field).asText(null);
       if (storedValue != null
           && standsForStored(updatedConfig.at(field).asText(null), storedValue)) {
@@ -232,49 +225,8 @@ public final class DestinationSecrets {
         .orElse(List.of());
   }
 
-  /**
-   * The fields a response masks and a save restores: the secret fields, or, for a destination whose
-   * channel this server does not have, every text of its configuration, as no rules name its
-   * secrets. Only the channel's own secret fields are encrypted, so a configuration stays readable
-   * when its channel is available again.
-   */
-  static List<JsonPointer> maskedFieldsOf(SubscriptionDestination destination, JsonNode config) {
-    return ChannelResolution.of(destination)
-        .channel()
-        .map(channel -> channel.configRules().secretFields(config))
-        .orElseGet(() -> textFieldsOf(config));
-  }
-
-  private static List<JsonPointer> textFieldsOf(JsonNode config) {
-    List<JsonPointer> fields = new ArrayList<>();
-    collectTextFields(config, JsonPointer.empty(), fields);
-    return fields;
-  }
-
-  private static void collectTextFields(
-      JsonNode node, JsonPointer pointer, List<JsonPointer> fields) {
-    if (node.isTextual() && !pointer.matches()) {
-      fields.add(pointer);
-    } else if (node.isArray()) {
-      for (int i = 0; i < node.size(); i++) {
-        collectTextFields(node.get(i), pointer.appendIndex(i), fields);
-      }
-    } else if (node.isObject()) {
-      node.properties()
-          .forEach(
-              field ->
-                  collectTextFields(
-                      field.getValue(), pointer.appendProperty(field.getKey()), fields));
-    }
-  }
-
   static void set(JsonNode config, JsonPointer field, String value) {
-    JsonNode parent = config.at(field.head());
-    if (parent instanceof ArrayNode array) {
-      array.set(field.last().getMatchingIndex(), TextNode.valueOf(value));
-    } else {
-      ((ObjectNode) parent).put(field.last().getMatchingProperty(), value);
-    }
+    ((ObjectNode) config.at(field.head())).put(field.last().getMatchingProperty(), value);
   }
 
   private static boolean sameKind(SubscriptionDestination stored, SubscriptionDestination sent) {
@@ -304,22 +256,11 @@ public final class DestinationSecrets {
                 target ->
                     !targetUnchanged(
                         sentConfig.at(target).asText(null), storedConfig.at(target).asText(null)))
-        || !receiversUnchanged(storedConfig, sentConfig);
+        || !receiverTexts(storedConfig).equals(receiverTexts(sentConfig));
   }
 
-  // A list sent back as read, every receiver masked, stands for the stored one.
-  private static boolean receiversUnchanged(JsonNode storedConfig, JsonNode sentConfig) {
-    List<String> stored = receiverTexts(storedConfig);
-    List<String> sent = receiverTexts(sentConfig);
-    boolean sentAsRead =
-        !sent.isEmpty()
-            && sent.size() == stored.size()
-            && sent.stream().allMatch(PASSWORD_MASK::equals);
-    return sentAsRead || new HashSet<>(stored).equals(new HashSet<>(sent));
-  }
-
-  private static List<String> receiverTexts(JsonNode config) {
-    List<String> receivers = new ArrayList<>();
+  private static Set<String> receiverTexts(JsonNode config) {
+    Set<String> receivers = new HashSet<>();
     config.at(RECEIVERS).forEach(receiver -> receivers.add(receiver.asText()));
     return receivers;
   }
@@ -391,7 +332,7 @@ public final class DestinationSecrets {
       SubscriptionDestination typed =
           JsonUtils.treeToValue(destination, SubscriptionDestination.class);
       JsonNode config = destination.path(CONFIG);
-      transform(config, maskedFieldsOf(typed, config), MASK);
+      transform(config, secretFieldsOf(typed, config), MASK);
     }
   }
 
