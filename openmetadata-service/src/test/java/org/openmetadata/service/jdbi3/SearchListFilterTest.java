@@ -329,14 +329,31 @@ public class SearchListFilterTest {
 
   @Test
   void testResolutionStatusCondition_noTimestamp() {
-    // When no timestamp params are supplied and no other filters are active the query falls
-    // back to match_all. TestCaseResolutionStatus is a time-series entity with no 'deleted'
-    // field, so the usual deleted:false term is NOT injected into the filter.
-    SearchListFilter filter = new SearchListFilter();
+    // With include=all and no other filters the query falls back to match_all. TestCaseResolution
+    // Status is a time-series entity with no 'deleted' field, so the usual deleted:false term is
+    // NOT injected into the filter.
+    SearchListFilter filter = new SearchListFilter(Include.ALL);
     String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"match_all\": {}}}";
     assertEquals(expected, actual);
+  }
+
+  // An incident has no deleted flag of its own; it is scoped by its embedded test case's flag.
+  @Test
+  void testResolutionStatusCondition_scopesByTestCaseDeleted() {
+    String nonDeleted =
+        new SearchListFilter(Include.NON_DELETED).getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    String deleted =
+        new SearchListFilter(Include.DELETED).getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    String all = new SearchListFilter(Include.ALL).getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+
+    assertTrue(
+        nonDeleted.contains("{\"bool\":{\"must_not\":[{\"term\":{\"testCase.deleted\":true}}]}}"),
+        nonDeleted);
+    assertTrue(deleted.contains("{\"term\": {\"testCase.deleted\": true}}"), deleted);
+    assertFalse(all.contains("testCase.deleted"), all);
+    assertFalse(nonDeleted.contains("{\"term\": {\"deleted\""), nonDeleted);
   }
 
   @Test

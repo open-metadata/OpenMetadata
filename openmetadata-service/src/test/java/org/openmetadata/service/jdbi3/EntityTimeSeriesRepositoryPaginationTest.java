@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.SearchAggregationNode;
 import org.openmetadata.service.search.SearchListFilter;
@@ -97,6 +98,17 @@ class EntityTimeSeriesRepositoryPaginationTest {
     assertNull(scope.getQueryParam("testCaseStatus"), "status belongs to the latest record");
     assertNull(scope.getQueryParam("testSuiteId"), "suite membership can change between results");
     assertFalse(scope.getQueryParams().containsKey("testCaseFQN"), "null params are skipped");
+  }
+
+  // A default (non-deleted) scope would contradict an include=deleted content filter and match
+  // nothing.
+  @Test
+  void testScopeFilterCarriesTheInclude() {
+    SearchListFilter content = new SearchListFilter(Include.DELETED);
+
+    assertEquals(
+        Include.DELETED,
+        EntityTimeSeriesRepository.groupScopeFilter(content, Set.of()).getInclude());
   }
 
   @Test
