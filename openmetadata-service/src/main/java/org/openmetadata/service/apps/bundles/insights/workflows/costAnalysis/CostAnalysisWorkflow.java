@@ -204,12 +204,14 @@ public class CostAnalysisWorkflow {
       }
 
       Optional<String> processRawCostAnalysisError =
-          processRawCostAnalysisReportData(rawCostAnalysisReportDataList, contextData);
+          processRawCostAnalysisReportData(
+              rawCostAnalysisReportDataList, contextData, source.getName());
 
       processRawCostAnalysisError.ifPresent(LOG::debug);
 
       Optional<String> processAggregatedCostAnalysisError =
-          processAggregatedCostAnalysisReportData(aggregatedCostAnalysisDataMap, contextData);
+          processAggregatedCostAnalysisReportData(
+              aggregatedCostAnalysisDataMap, contextData, source.getName());
 
       processAggregatedCostAnalysisError.ifPresent(LOG::debug);
     }
@@ -217,7 +219,8 @@ public class CostAnalysisWorkflow {
 
   private Optional<String> processRawCostAnalysisReportData(
       List<RawCostAnalysisReportData> rawCostAnalysisReportDataList,
-      Map<String, Object> contextData) {
+      Map<String, Object> contextData,
+      String stepKeyQualifier) {
     Optional<String> error = Optional.empty();
 
     CreateReportDataProcessor createReportdataProcessor =
@@ -240,7 +243,8 @@ public class CostAnalysisWorkflow {
       workflowStats.addFailure(error.get());
     } finally {
       updateWorkflowStats(
-          createReportdataProcessor.getName(), createReportdataProcessor.getStats());
+          stepName(createReportdataProcessor.getName(), stepKeyQualifier),
+          createReportdataProcessor.getStats());
     }
 
     if (rawCostAnalysisReportData.isPresent()) {
@@ -257,7 +261,8 @@ public class CostAnalysisWorkflow {
                 String.format("Failed Sinking Raw Cost Analysis Report Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
+        updateWorkflowStats(
+            stepName(reportDataSink.getName(), stepKeyQualifier), reportDataSink.getStats());
       }
     }
 
@@ -267,7 +272,8 @@ public class CostAnalysisWorkflow {
   private Optional<String> processAggregatedCostAnalysisReportData(
       Map<String, Map<String, Map<String, AggregatedCostAnalysisData>>>
           aggregatedCostAnalysisDataMap,
-      Map<String, Object> contextData) {
+      Map<String, Object> contextData,
+      String stepKeyQualifier) {
     Optional<String> error = Optional.empty();
 
     AggregatedCostAnalysisReportDataAggregator aggregatedCostAnalysisReportDataAggregator =
@@ -288,7 +294,7 @@ public class CostAnalysisWorkflow {
       workflowStats.addFailure(error.get());
     } finally {
       updateWorkflowStats(
-          aggregatedCostAnalysisReportDataAggregator.getName(),
+          stepName(aggregatedCostAnalysisReportDataAggregator.getName(), stepKeyQualifier),
           aggregatedCostAnalysisReportDataAggregator.getStats());
     }
 
@@ -313,7 +319,8 @@ public class CostAnalysisWorkflow {
         workflowStats.addFailure(error.get());
       } finally {
         updateWorkflowStats(
-            createReportdataProcessor.getName(), createReportdataProcessor.getStats());
+            stepName(createReportdataProcessor.getName(), stepKeyQualifier),
+            createReportdataProcessor.getStats());
       }
 
       if (aggregatedCostAnalysisReportData.isPresent()) {
@@ -331,7 +338,8 @@ public class CostAnalysisWorkflow {
                       "Failed Sinking Aggregated Cost Analysis Report Data: %s", ex.getMessage()));
           workflowStats.addFailure(error.get());
         } finally {
-          updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
+          updateWorkflowStats(
+              stepName(reportDataSink.getName(), stepKeyQualifier), reportDataSink.getStats());
         }
       }
     }
@@ -366,6 +374,10 @@ public class CostAnalysisWorkflow {
   private void deleteReportDataRecords(ReportData.ReportDataType reportDataType) {
     ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
         .deleteReportData(reportDataType);
+  }
+
+  private static String stepName(String baseName, String stepKeyQualifier) {
+    return String.format("%s (%s)", baseName, stepKeyQualifier);
   }
 
   private void updateWorkflowStats(String stepName, StepStats newStepStats) {
