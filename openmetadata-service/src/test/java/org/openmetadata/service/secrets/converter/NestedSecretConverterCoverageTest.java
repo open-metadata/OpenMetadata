@@ -3,200 +3,275 @@ package org.openmetadata.service.secrets.converter;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.secrets.JsonSchemas;
 import org.openmetadata.service.secrets.JsonSchemas.Ref;
+import org.openmetadata.service.util.ReflectionUtil;
 
-/**
- * Secrets that live behind a JSON-Schema {@code oneOf} are generated as a bare {@code Object} field
- * (jsonschema2pojo ignores {@code oneOf}), so at runtime they hold a {@code LinkedHashMap}. Both
- * {@code PasswordEntityMasker} and {@code SecretsManager} only recurse into values whose package is
- * {@code org.openmetadata.*}, so such a map is skipped entirely: its {@code format: password}
- * leaves are never Fernet-encrypted, never handed to the secrets manager, and never masked on read.
- *
- * <p>The {@link ClassConverter} registered for the connection is what turns that map back into a
- * typed object. This test walks every connection schema on the classpath and fails when a
- * secret-bearing {@code oneOf} property has no converter that converts it, so a new connector
- * cannot reintroduce the leak.
- */
 class NestedSecretConverterCoverageTest {
 
   private static final String SECRET = "openmetadata-nested-secret";
-  private static final String CONNECTIONS_PATH = "json/schema/entity/services/connections";
+  private static final String SCHEMA_ROOT = "json/schema/";
+  private static final List<String> SCAN_ROOTS =
+      List.of("json/schema/entity/services/connections", "json/schema/metadataIngestion");
 
-  /**
-   * Secret-bearing {@code oneOf} branches that jsonschema2pojo never materialised into a class, so
-   * no converter can be written until the branch is extracted into its own schema file. Shrink this
-   * set; never grow it.
-   */
-  private static final Set<String> KNOWN_UNCONVERTIBLE =
-      Set.of(
-          "NatsConnection.authType",
-          "QlikSenseConnection.certificates",
-          "SapS4HanaConnection.authType");
+  private record SecretOneOf(Ref owner, String property, Ref oneOf) {}
 
   @Test
-  void everySecretBearingOneOfPropertyHasAConverter() {
+  void everySecretBearingOneOfBranchIsConvertedRecursively() {
     JsonSchemas schemas = JsonSchemas.load();
     assertTrue(
         schemas.all().size() > 100,
         "No JSON schemas found on the classpath, found " + schemas.all().size());
 
     List<String> uncovered = new ArrayList<>();
-    List<String> staleAllowlist = new ArrayList<>(KNOWN_UNCONVERTIBLE);
-
     for (Map.Entry<String, JsonNode> entry : schemas.all().entrySet()) {
-      String path = entry.getKey();
-      // serviceConnection.json is the union of every connection config; covered via its members.
-      if (!path.startsWith(CONNECTIONS_PATH) || path.endsWith("serviceConnection.json")) {
+      if (SCAN_ROOTS.stream().noneMatch(root -> entry.getKey().startsWith(root))) {
         continue;
       }
-      JsonNode schema = entry.getValue();
-      String connection = simpleJavaName(schema, path);
-      JsonNode properties = schema.path("properties");
-      for (String property : iterable(properties.fieldNames())) {
-        Ref oneOf = resolveToOneOfNode(properties.get(property), path, schemas);
-        if (oneOf == null || !containsPasswordFormat(oneOf.node(), oneOf.path(), schemas)) {
-          continue;
-        }
-        String id = connection + "." + property;
-        if (staleAllowlist.remove(id)) {
-          continue;
-        }
-        if (leavesSecretsInAMap(schema, property, oneOf, schemas)) {
-          uncovered.add(id);
+      List<SecretOneOf> properties = new ArrayList<>();
+      collectSecretOneOfProperties(
+          new Ref(entry.getValue(), entry.getKey()), schemas, new HashSet<>(), properties);
+      for (SecretOneOf property : properties) {
+        for (Ref branch : secretBearingBranches(property.oneOf(), schemas)) {
+          if (leavesSecretsInAMap(property, branch, schemas)) {
+            uncovered.add(describe(property) + " via " + branch.path());
+          }
         }
       }
     }
 
     assertTrue(
         uncovered.isEmpty(),
-        "These connection properties hold secrets behind a oneOf but no ClassConverter converts "
-            + "them, so the secrets are stored unencrypted and returned unmasked: "
+        "These oneOf branches still hold secrets in a Map after conversion, so encryption and "
+            + "masking would skip them: "
             + uncovered);
-    assertTrue(
-        staleAllowlist.isEmpty(),
-        "KNOWN_UNCONVERTIBLE lists properties that are no longer secret-bearing oneOf properties; "
-            + "remove them: "
-            + staleAllowlist);
   }
 
-  /**
-   * Runs the registered converter over a payload built from the secret-bearing branch and reports
-   * whether the property is still a {@link Map} afterwards. A map is exactly what the password
-   * walkers skip, so a map here means the secrets below it stay in the clear.
-   */
-  private boolean leavesSecretsInAMap(
-      JsonNode schema, String property, Ref oneOf, JsonSchemas schemas) {
-    Class<?> connectionClass;
-    try {
-      connectionClass = Class.forName(schema.path("javaType").asText(""));
-    } catch (ClassNotFoundException e) {
-      return false; // Not a generated class, so nothing walks it either.
+  private void collectSecretOneOfProperties(
+      Ref owner, JsonSchemas schemas, Set<String> visited, List<SecretOneOf> properties) {
+    if (!visited.add(owner.path() + "@" + System.identityHashCode(owner.node()))) {
+      return;
     }
-    Ref branch = secretBearingBranch(oneOf.node(), oneOf.path(), schemas);
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put(property, secretPayload(branch.node(), branch.path(), schemas));
+    JsonNode fields = owner.node().path("properties");
+    for (String name : iterable(fields.fieldNames())) {
+      Ref property = resolve(new Ref(fields.get(name), owner.path()), schemas);
+      if (property == null) {
+        continue;
+      }
+      Ref oneOf = resolveToOneOfNode(new Ref(fields.get(name), owner.path()), schemas);
+      if (oneOf != null && containsPasswordFormat(oneOf.node(), oneOf.path(), schemas)) {
+        properties.add(new SecretOneOf(owner, name, oneOf));
+      }
+      if (oneOf != null) {
+        for (Ref branch : branches(oneOf, schemas)) {
+          collectSecretOneOfProperties(branch, schemas, visited, properties);
+        }
+      } else {
+        collectSecretOneOfProperties(property, schemas, visited, properties);
+      }
+      collectArrayItemProperties(property, schemas, visited, properties);
+    }
+  }
+
+  private void collectArrayItemProperties(
+      Ref property, JsonSchemas schemas, Set<String> visited, List<SecretOneOf> properties) {
+    if (property.node().path("items").isObject()) {
+      Ref items = resolve(new Ref(property.node().get("items"), property.path()), schemas);
+      if (items != null) {
+        collectSecretOneOfProperties(items, schemas, visited, properties);
+      }
+    }
+  }
+
+  private boolean leavesSecretsInAMap(SecretOneOf property, Ref branch, JsonSchemas schemas) {
+    String javaType = javaType(property.owner(), schemas);
+    if (javaType.isEmpty()) {
+      return true;
+    }
     try {
-      Object converted = ClassConverterFactory.getConverter(connectionClass).convert(payload);
-      String suffix = Character.toUpperCase(property.charAt(0)) + property.substring(1);
-      return connectionClass.getMethod("get" + suffix).invoke(converted) instanceof Map;
+      Class<?> ownerClass = Class.forName(javaType);
+      Map<String, Object> payload = new LinkedHashMap<>();
+      payload.put(property.property(), secretPayload(branch.node(), branch.path(), schemas));
+      Object converted = ClassConverterFactory.getConverter(ownerClass).convert(payload);
+      return containsSecretInAMap(converted, new IdentityHashMap<>());
     } catch (ReflectiveOperationException | RuntimeException e) {
-      return true; // Cannot be converted at all, so it is certainly not typed.
+      return true;
     }
   }
 
-  private Ref secretBearingBranch(JsonNode oneOf, String path, JsonSchemas schemas) {
-    JsonNode branches = oneOf.has("oneOf") ? oneOf.get("oneOf") : oneOf.get("anyOf");
+  private boolean containsSecretInAMap(Object value, Map<Object, Boolean> visited) {
+    if (value instanceof Map<?, ?> map) {
+      return map.values().stream()
+          .anyMatch(child -> SECRET.equals(child) || containsSecretInAMap(child, visited));
+    }
+    if (value instanceof Collection<?> collection) {
+      return collection.stream().anyMatch(child -> containsSecretInAMap(child, visited));
+    }
+    if (!Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(value))
+        || visited.put(value, Boolean.TRUE) != null) {
+      return false;
+    }
+    for (Method method : value.getClass().getMethods()) {
+      if (isInstanceGetter(method)) {
+        Object child = ReflectionUtil.getObjectFromMethod(method, value);
+        if (containsSecretInAMap(child, visited)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private boolean isInstanceGetter(Method method) {
+    return ReflectionUtil.isGetMethodOfObject(method)
+        && method.getParameterCount() == 0
+        && !"getClass".equals(method.getName());
+  }
+
+  private List<Ref> secretBearingBranches(Ref oneOf, JsonSchemas schemas) {
+    return branches(oneOf, schemas).stream()
+        .filter(branch -> containsPasswordFormat(branch.node(), branch.path(), schemas))
+        .toList();
+  }
+
+  private List<Ref> branches(Ref oneOf, JsonSchemas schemas) {
+    JsonNode branches =
+        oneOf.node().has("oneOf") ? oneOf.node().get("oneOf") : oneOf.node().get("anyOf");
+    List<Ref> resolved = new ArrayList<>();
     for (JsonNode branch : branches) {
-      Ref resolved = new Ref(branch, path);
-      String ref = branch.path("$ref").asText("");
-      if (!ref.isEmpty()) {
-        resolved = schemas.resolve(ref, path);
-      }
-      if (resolved != null && containsPasswordFormat(resolved.node(), resolved.path(), schemas)) {
-        return resolved;
+      Ref resolvedBranch = resolve(new Ref(branch, oneOf.path()), schemas);
+      if (resolvedBranch != null) {
+        resolved.add(resolvedBranch);
       }
     }
-    throw new IllegalStateException("No secret-bearing branch under " + path);
+    return resolved;
   }
 
-  /**
-   * The smallest payload that reaches every {@code format: password} leaf of {@code branch}, with
-   * each level's single-valued enum carried along so a converter candidate list can discriminate.
-   */
   private Object secretPayload(JsonNode branch, String path, JsonSchemas schemas) {
     Map<String, Object> payload = new LinkedHashMap<>();
     JsonNode properties = branch.path("properties");
     for (String name : iterable(properties.fieldNames())) {
-      JsonNode property = properties.get(name);
-      String ref = property.path("$ref").asText("");
-      Ref resolved = ref.isEmpty() ? new Ref(property, path) : schemas.resolve(ref, path);
-      if (resolved == null) {
+      Ref property = resolve(new Ref(properties.get(name), path), schemas);
+      if (property == null) {
         continue;
       }
-      JsonNode node = resolved.node();
+      JsonNode node = property.node();
       if ("password".equals(node.path("format").asText(""))) {
         payload.put(name, SECRET);
       } else if (node.path("enum").size() == 1) {
         payload.put(name, node.get("enum").get(0).asText());
-      } else if (containsPasswordFormat(node, resolved.path(), schemas)) {
-        payload.put(
-            name,
-            node.has("properties")
-                ? secretPayload(node, resolved.path(), schemas)
-                : secretPayload(
-                    secretBearingBranch(node, resolved.path(), schemas).node(),
-                    resolved.path(),
-                    schemas));
+      } else if (node.has("const")) {
+        payload.put(name, node.get("const").asText());
+      } else if (containsPasswordFormat(node, property.path(), schemas)) {
+        payload.put(name, nestedSecretPayload(property, schemas));
+      }
+    }
+    for (JsonNode required : branch.path("required")) {
+      String name = required.asText();
+      if (!payload.containsKey(name)) {
+        Ref property = resolve(new Ref(properties.get(name), path), schemas);
+        payload.put(name, requiredValue(property, schemas));
       }
     }
     return payload;
   }
 
-  private String simpleJavaName(JsonNode schema, String path) {
-    String javaType = schema.path("javaType").asText("");
-    if (!javaType.isEmpty()) {
-      return javaType.substring(javaType.lastIndexOf('.') + 1);
+  private Object requiredValue(Ref property, JsonSchemas schemas) {
+    JsonNode node = property.node();
+    if (!node.path("enum").isEmpty()) {
+      return node.get("enum").get(0).asText();
     }
-    String file = path.substring(path.lastIndexOf('/') + 1);
-    return file.substring(0, file.length() - ".json".length());
+    if (node.has("const")) {
+      return node.get("const").asText();
+    }
+    String type = node.path("type").asText("");
+    return switch (type) {
+      case "string" -> node.path("format").asText("").equalsIgnoreCase("uri")
+          ? "https://example.com"
+          : "required-value";
+      case "boolean" -> true;
+      case "integer", "number" -> 1;
+      case "array" -> List.of(
+          requiredValue(resolve(new Ref(node.get("items"), property.path()), schemas), schemas));
+      case "object" -> node.has("properties")
+          ? secretPayload(node, property.path(), schemas)
+          : new LinkedHashMap<>();
+      default -> "required-value";
+    };
   }
 
-  /**
-   * Returns the {@code oneOf}/{@code anyOf} node a property resolves to, or {@code null} when the
-   * property is not generated as a bare {@code Object} because it declares its own properties.
-   */
-  private Ref resolveToOneOfNode(JsonNode property, String path, JsonSchemas schemas) {
-    JsonNode node = property;
-    String base = path;
-    for (int depth = 0; depth < 8 && node != null; depth++) {
-      if (node.has("properties")) {
+  private Object nestedSecretPayload(Ref property, JsonSchemas schemas) {
+    if (property.node().has("properties")) {
+      return secretPayload(property.node(), property.path(), schemas);
+    }
+    if ("array".equals(property.node().path("type").asText(""))) {
+      Ref items = resolve(new Ref(property.node().get("items"), property.path()), schemas);
+      return List.of(nestedSecretPayload(items, schemas));
+    }
+    Ref oneOf = resolveToOneOfNode(property, schemas);
+    if (oneOf == null) {
+      return new LinkedHashMap<>();
+    }
+    List<Ref> branches = secretBearingBranches(oneOf, schemas);
+    if (branches.isEmpty()) {
+      return new LinkedHashMap<>();
+    }
+    Ref branch = branches.get(0);
+    return secretPayload(branch.node(), branch.path(), schemas);
+  }
+
+  private Ref resolve(Ref ref, JsonSchemas schemas) {
+    String reference = ref.node().path("$ref").asText("");
+    return reference.isEmpty() ? ref : schemas.resolve(reference, ref.path());
+  }
+
+  private Ref resolveToOneOfNode(Ref property, JsonSchemas schemas) {
+    Ref current = property;
+    for (int depth = 0; depth < 16 && current != null; depth++) {
+      if (current.node().has("properties")) {
         return null;
       }
-      if (node.has("oneOf") || node.has("anyOf")) {
-        return new Ref(node, base);
+      if (current.node().has("oneOf") || current.node().has("anyOf")) {
+        return current;
       }
-      String ref = node.path("$ref").asText("");
-      if (ref.isEmpty()) {
+      if (current.node().path("$ref").asText("").isEmpty()) {
         return null;
       }
-      Ref resolved = schemas.resolve(ref, base);
-      if (resolved == null) {
-        return null;
-      }
-      node = resolved.node();
-      base = resolved.path();
+      current = resolve(current, schemas);
     }
     return null;
+  }
+
+  private String javaType(Ref owner, JsonSchemas schemas) {
+    String javaType = owner.node().path("javaType").asText("");
+    if (!javaType.isEmpty() || schemas.all().get(owner.path()) != owner.node()) {
+      return javaType;
+    }
+    String title = owner.node().path("title").asText("");
+    if (title.isEmpty()) {
+      return "";
+    }
+    String directory = owner.path().substring(SCHEMA_ROOT.length(), owner.path().lastIndexOf('/'));
+    String className = Character.toUpperCase(title.charAt(0)) + title.substring(1);
+    return "org.openmetadata.schema." + directory.replace('/', '.') + "." + className;
+  }
+
+  private String describe(SecretOneOf property) {
+    String owner = property.owner().node().path("javaType").asText(property.owner().path());
+    return owner + "." + property.property();
   }
 
   private boolean containsPasswordFormat(JsonNode node, String path, JsonSchemas schemas) {

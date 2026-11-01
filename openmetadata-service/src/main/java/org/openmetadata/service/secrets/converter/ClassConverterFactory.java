@@ -350,10 +350,15 @@ public final class ClassConverterFactory {
                 Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
                 Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter())));
     converters.putAll(NESTED_CONFIG_CONVERTERS);
+    converters.replaceAll((clazz, converter) -> new RecursiveClassConverter(clazz, converter));
     converterMap = Map.copyOf(converters);
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
     return converterMap.getOrDefault(clazz, new DefaultConnectionClassConverter(clazz));
+  }
+
+  public static Object convertProperty(Class<?> ownerClass, String propertyName, Object value) {
+    return SchemaClassConverter.convertProperty(ownerClass, propertyName, value);
   }
 }

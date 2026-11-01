@@ -2,14 +2,23 @@ package org.openmetadata.service.secrets.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
@@ -23,7 +32,9 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
 import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
@@ -31,6 +42,8 @@ import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnecti
 import org.openmetadata.schema.services.connections.pipeline.PrefectConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
+import org.openmetadata.service.util.IngestionPipelineBuilder;
+import org.openmetadata.service.util.ReflectionUtil;
 
 public class ClassConverterFactoryTest {
 
@@ -74,5 +87,117 @@ public class ClassConverterFactoryTest {
     ClassConverterFactory.getConverter(AirflowConnection.class);
     ClassConverterFactory.getConverter(BigQueryConnection.class);
     assertEquals(originalSize, ClassConverterFactory.getConverterMap().size());
+  }
+
+  @Test
+  void testNonOneOfPropertyIsReturnedUnchanged() {
+    assertEquals(
+        "user", ClassConverterFactory.convertProperty(MysqlConnection.class, "username", "user"));
+  }
+
+  @Test
+  void testUnconvertibleSecretOneOfFailsClosed() {
+    Map<String, Object> invalidAuth =
+        Map.of("username", "user", "password", "secret", "unrecognized", true);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ClassConverterFactory.convertProperty(NatsConnection.class, "authType", invalidAuth));
+  }
+
+  @Test
+  void testFailedCandidateConversionIsReported() {
+    MysqlConnectionClassConverter converter = new MysqlConnectionClassConverter();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> converter.tryToConvertOrFail(Map.of("unrecognized", true), List.of(basicAuth.class)));
+  }
+
+  @Test
+  void testMissingPropertyIsReported() {
+    MysqlConnectionClassConverter converter = new MysqlConnectionClassConverter();
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            converter.convertProperty(new MysqlConnection(), "missing", List.of(basicAuth.class)));
+  }
+
+  @Test
+  void testNullChildrenAreIgnored() {
+    assertNull(ClassConverter.convertChildren(null));
+    assertNull(SchemaClassConverter.convert(null));
+  }
+
+  @Test
+  void testReadOnlyPropertyIsNotWritten() throws Exception {
+    Workflow workflow = new Workflow();
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            ClassConverter.setConvertedValue(
+                workflow, Workflow.class.getMethod("getEntityReference"), null));
+  }
+
+  @Test
+  void testMissingPipelineTypeIsLeftForValidation() {
+    Map<String, Object> config = Map.of("database", "db");
+    IngestionPipeline pipeline =
+        new IngestionPipeline().withSourceConfig(new SourceConfig().withConfig(config));
+
+    IngestionPipelineBuilder.addDefinedConfig(pipeline);
+
+    assertSame(config, pipeline.getSourceConfig().getConfig());
+  }
+
+  @Test
+  void testOpenApplicationConfigRemainsDynamic() {
+    Map<String, Object> appConfig = Map.of("type", "AgentTypeTestApp");
+    Map<String, Object> config = Map.of("type", "Application", "appConfig", appConfig);
+
+    Object converted = ClassConverterFactory.convertProperty(SourceConfig.class, "config", config);
+
+    assertEquals(appConfig, ((ApplicationPipeline) converted).getAppConfig());
+  }
+
+  @Test
+  void testNullCollectionElementsUsePositionalKeys() {
+    assertEquals(
+        List.of("#0"), ReflectionUtil.getCollectionElementKeys(Collections.singletonList(null)));
+  }
+
+  @Test
+  void testNonSecretPipelineConfigRemainsUntyped() {
+    Map<String, Object> config = Map.of("type", "DatabaseMetadata");
+
+    assertSame(config, ClassConverterFactory.convertProperty(SourceConfig.class, "config", config));
+  }
+
+  @Test
+  void testDynamicPrivateConfigIsNotMisclassified() {
+    Map<String, Object> privateConfig = Map.of("token", "secret");
+    Map<String, Object> config = Map.of("type", "Application", "appPrivateConfig", privateConfig);
+
+    Object converted = ClassConverterFactory.convertProperty(SourceConfig.class, "config", config);
+
+    assertEquals(privateConfig, ((ApplicationPipeline) converted).getAppPrivateConfig());
+  }
+
+  @Test
+  void testClosedSecretBranchFailureFailsClosed() {
+    Map<String, Object> privateConfig =
+        Map.of(
+            "waiiInstance", "https://waii.example.com",
+            "collateURL", "https://collate.example.com",
+            "token", "secret",
+            "limits", Map.of("actions", Map.of()),
+            "unrecognized", true);
+    Map<String, Object> config = Map.of("type", "Application", "appPrivateConfig", privateConfig);
+
+    assertThrows(
+        RuntimeException.class,
+        () -> ClassConverterFactory.convertProperty(SourceConfig.class, "config", config));
   }
 }

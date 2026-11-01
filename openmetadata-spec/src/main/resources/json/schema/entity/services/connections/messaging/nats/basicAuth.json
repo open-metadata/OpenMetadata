@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/messaging/nats/basicAuth.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NatsBasicAuth",
+  "description": "Username and password authentication for NATS.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
+  "properties": {
+    "username": {
+      "title": "Username",
+      "description": "Username for NATS authentication.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password for NATS authentication.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "required": ["username", "password"],
+  "additionalProperties": false
+}

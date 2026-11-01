@@ -2,6 +2,7 @@
   "title": "Service Connection",
   "description": "Groups source connection configurations.",
   "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.connections.ServiceConnection",
   "definitions": {
     "serviceConnection": {
       "description": "Supported services",
@@ -847,33 +848,6 @@
                         "PowerBI"
                       ],
                       "default": "PowerBI"
-                    },
-                    "localConfig": {
-                      "title": "Local Config",
-                      "description": "Local config source where no extra information needs to be sent.",
-                      "type": "object",
-                      "properties": {
-                        "pbitFileConfigType": {
-                          "description": "pbit File Configuration type",
-                          "type": "string",
-                          "enum": [
-                            "local"
-                          ],
-                          "default": "local"
-                        },
-                        "path": {
-                          "title": "Path",
-                          "description": "Directory path for the pbit files",
-                          "type": "string"
-                        },
-                        "pbitFilesExtractDir": {
-                          "title": "pbit Files Extraction Directory",
-                          "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
-                          "type": "string",
-                          "default": "/tmp/pbitFiles"
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -952,13 +926,15 @@
                       "default": false
                     },
                     "pbitFilesSource": {
+                      "mask": true,
                       "title": "PowerBI .pbit Files Source",
                       "description": "Source to get the .pbit files to extract lineage information",
                       "oneOf": [
                         {
-                          "title": "Local Config",
+                          "title": "PowerBILocalConfig",
                           "description": "Local config source where no extra information needs to be sent.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.PowerBILocalConfig",
                           "properties": {
                             "pbitFileConfigType": {
                               "description": "pbit File Configuration type",
@@ -4494,96 +4470,6 @@
                         "QlikSense"
                       ],
                       "default": "QlikSense"
-                    },
-                    "qlikCertificatePath": {
-                      "description": "Qlik Authentication Certificate File Path",
-                      "title": "Qlik Certificates By File Path",
-                      "type": "object",
-                      "properties": {
-                        "clientCertificate": {
-                          "title": "Client Certificate Path",
-                          "description": "Client Certificate",
-                          "type": "string"
-                        },
-                        "clientKeyCertificate": {
-                          "title": "Client Key Certificate",
-                          "description": "Client Key Certificate.",
-                          "type": "string"
-                        },
-                        "rootCertificate": {
-                          "title": "Root Certificate",
-                          "description": "Root Certificate.",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "clientCertificate",
-                        "clientKeyCertificate",
-                        "rootCertificate"
-                      ]
-                    },
-                    "qlikCertificateValues": {
-                      "description": "Qlik Authentication Certificate By Values",
-                      "title": "Qlik Certificates By Values",
-                      "type": "object",
-                      "properties": {
-                        "sslConfig": {
-                          "title": "SSL Config",
-                          "description": "Client SSL configuration",
-                          "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
-                          "mask": true,
-                          "oneOf": [
-                            {
-                              "title": "Validate SSL Client Config",
-                              "description": "OpenMetadata Client configured to validate SSL certificates.",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
-                              "additionalProperties": false,
-                              "properties": {
-                                "caCertificate": {
-                                  "title": "CA Certificate",
-                                  "description": "The CA certificate used for SSL validation.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                },
-                                "sslCertificate": {
-                                  "title": "SSL Certificate",
-                                  "description": "The SSL certificate used for client authentication.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                },
-                                "sslKey": {
-                                  "title": "SSL Key",
-                                  "description": "The private key associated with the SSL certificate.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "sslConfig"
-                      ]
                     }
                   },
                   "properties": {
@@ -4611,11 +4497,13 @@
                       "format": "uri"
                     },
                     "certificates": {
+                      "mask": true,
                       "oneOf": [
                         {
+                          "title": "QlikCertificateValues",
                           "description": "Qlik Authentication Certificate By Values",
-                          "title": "Qlik Certificates By Values",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
                           "properties": {
                             "sslConfig": {
                               "title": "SSL Config",
@@ -4676,9 +4564,10 @@
                           ]
                         },
                         {
+                          "title": "QlikCertificatePath",
                           "description": "Qlik Authentication Certificate File Path",
-                          "title": "Qlik Certificates By File Path",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",
                           "properties": {
                             "clientCertificate": {
                               "title": "Client Certificate Path",
@@ -6037,79 +5926,6 @@
                         "SapS4Hana"
                       ],
                       "default": "SapS4Hana"
-                    },
-                    "sapS4HanaBasicAuthType": {
-                      "title": "Basic Auth",
-                      "description": "Username and password credentials for SAP S/4HANA.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
-                      "properties": {
-                        "authType": {
-                          "title": "Auth Type",
-                          "description": "Authentication type identifier.",
-                          "type": "string",
-                          "enum": [
-                            "basic"
-                          ],
-                          "default": "basic"
-                        },
-                        "username": {
-                          "title": "Username",
-                          "description": "Username to authenticate with SAP S/4HANA.",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "Password to authenticate with SAP S/4HANA.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "sapS4HanaOAuthType": {
-                      "title": "OAuth 2.0 Client Credentials",
-                      "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
-                      "properties": {
-                        "authType": {
-                          "title": "Auth Type",
-                          "description": "Authentication type identifier.",
-                          "type": "string",
-                          "enum": [
-                            "oauth2"
-                          ],
-                          "default": "oauth2"
-                        },
-                        "clientId": {
-                          "title": "Client ID",
-                          "description": "OAuth 2.0 client ID registered in SAP.",
-                          "type": "string"
-                        },
-                        "clientSecret": {
-                          "title": "Client Secret",
-                          "description": "OAuth 2.0 client secret.",
-                          "type": "string",
-                          "format": "password"
-                        },
-                        "tokenEndpoint": {
-                          "title": "Token Endpoint",
-                          "description": "OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).",
-                          "type": "string",
-                          "format": "uri"
-                        }
-                      },
-                      "required": [
-                        "clientId",
-                        "clientSecret",
-                        "tokenEndpoint"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -6130,11 +5946,12 @@
                       "format": "uri"
                     },
                     "authType": {
+                      "mask": true,
                       "title": "Authentication Type",
                       "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
                       "oneOf": [
                         {
-                          "title": "Basic Auth",
+                          "title": "SapS4HanaBasicAuth",
                           "description": "Username and password credentials for SAP S/4HANA.",
                           "type": "object",
                           "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
@@ -6167,7 +5984,7 @@
                           "additionalProperties": false
                         },
                         {
-                          "title": "OAuth 2.0 Client Credentials",
+                          "title": "SapS4HanaOAuthCredentials",
                           "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
                           "type": "object",
                           "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
@@ -6584,6 +6401,7 @@
         {
           "type": "object",
           "description": "Database Connection.",
+          "javaType": "org.openmetadata.schema.api.services.DatabaseConnection",
           "javaInterfaces": [
             "org.openmetadata.schema.ServiceConnectionEntityInterface"
           ],
@@ -24034,63 +23852,6 @@
                         "Nats"
                       ],
                       "default": "Nats"
-                    },
-                    "basicAuth": {
-                      "title": "Username and Password",
-                      "description": "Username and password authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "Username for NATS authentication.",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "Password for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "tokenAuth": {
-                      "title": "Token",
-                      "description": "Token-based authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "token": {
-                          "title": "Token",
-                          "description": "Token for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "token"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "nkeyAuth": {
-                      "title": "NKey Seed",
-                      "description": "NKey seed authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "nkeySeed": {
-                          "title": "NKey Seed",
-                          "description": "NKey seed for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "nkeySeed"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -24109,13 +23870,15 @@
                       "type": "string"
                     },
                     "authType": {
+                      "mask": true,
                       "title": "Authentication Type",
                       "description": "NATS authentication method. Leave empty for anonymous authentication.",
                       "oneOf": [
                         {
-                          "title": "Username and Password",
+                          "title": "NatsBasicAuth",
                           "description": "Username and password authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -24136,9 +23899,10 @@
                           "additionalProperties": false
                         },
                         {
-                          "title": "Token",
+                          "title": "NatsTokenAuth",
                           "description": "Token-based authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
                           "properties": {
                             "token": {
                               "title": "Token",
@@ -24153,9 +23917,10 @@
                           "additionalProperties": false
                         },
                         {
-                          "title": "NKey Seed",
+                          "title": "NatsNkeyAuth",
                           "description": "NKey seed authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth",
                           "properties": {
                             "nkeySeed": {
                               "title": "NKey Seed",
@@ -38551,33 +38316,6 @@
                         "PowerBI"
                       ],
                       "default": "PowerBI"
-                    },
-                    "localConfig": {
-                      "title": "Local Config",
-                      "description": "Local config source where no extra information needs to be sent.",
-                      "type": "object",
-                      "properties": {
-                        "pbitFileConfigType": {
-                          "description": "pbit File Configuration type",
-                          "type": "string",
-                          "enum": [
-                            "local"
-                          ],
-                          "default": "local"
-                        },
-                        "path": {
-                          "title": "Path",
-                          "description": "Directory path for the pbit files",
-                          "type": "string"
-                        },
-                        "pbitFilesExtractDir": {
-                          "title": "pbit Files Extraction Directory",
-                          "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
-                          "type": "string",
-                          "default": "/tmp/pbitFiles"
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -38656,13 +38394,15 @@
                       "default": false
                     },
                     "pbitFilesSource": {
+                      "mask": true,
                       "title": "PowerBI .pbit Files Source",
                       "description": "Source to get the .pbit files to extract lineage information",
                       "oneOf": [
                         {
-                          "title": "Local Config",
+                          "title": "PowerBILocalConfig",
                           "description": "Local config source where no extra information needs to be sent.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.PowerBILocalConfig",
                           "properties": {
                             "pbitFileConfigType": {
                               "description": "pbit File Configuration type",
@@ -42198,96 +41938,6 @@
                         "QlikSense"
                       ],
                       "default": "QlikSense"
-                    },
-                    "qlikCertificatePath": {
-                      "description": "Qlik Authentication Certificate File Path",
-                      "title": "Qlik Certificates By File Path",
-                      "type": "object",
-                      "properties": {
-                        "clientCertificate": {
-                          "title": "Client Certificate Path",
-                          "description": "Client Certificate",
-                          "type": "string"
-                        },
-                        "clientKeyCertificate": {
-                          "title": "Client Key Certificate",
-                          "description": "Client Key Certificate.",
-                          "type": "string"
-                        },
-                        "rootCertificate": {
-                          "title": "Root Certificate",
-                          "description": "Root Certificate.",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "clientCertificate",
-                        "clientKeyCertificate",
-                        "rootCertificate"
-                      ]
-                    },
-                    "qlikCertificateValues": {
-                      "description": "Qlik Authentication Certificate By Values",
-                      "title": "Qlik Certificates By Values",
-                      "type": "object",
-                      "properties": {
-                        "sslConfig": {
-                          "title": "SSL Config",
-                          "description": "Client SSL configuration",
-                          "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
-                          "mask": true,
-                          "oneOf": [
-                            {
-                              "title": "Validate SSL Client Config",
-                              "description": "OpenMetadata Client configured to validate SSL certificates.",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
-                              "additionalProperties": false,
-                              "properties": {
-                                "caCertificate": {
-                                  "title": "CA Certificate",
-                                  "description": "The CA certificate used for SSL validation.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                },
-                                "sslCertificate": {
-                                  "title": "SSL Certificate",
-                                  "description": "The SSL certificate used for client authentication.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                },
-                                "sslKey": {
-                                  "title": "SSL Key",
-                                  "description": "The private key associated with the SSL certificate.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "sslConfig"
-                      ]
                     }
                   },
                   "properties": {
@@ -42315,11 +41965,13 @@
                       "format": "uri"
                     },
                     "certificates": {
+                      "mask": true,
                       "oneOf": [
                         {
+                          "title": "QlikCertificateValues",
                           "description": "Qlik Authentication Certificate By Values",
-                          "title": "Qlik Certificates By Values",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
                           "properties": {
                             "sslConfig": {
                               "title": "SSL Config",
@@ -42380,9 +42032,10 @@
                           ]
                         },
                         {
+                          "title": "QlikCertificatePath",
                           "description": "Qlik Authentication Certificate File Path",
-                          "title": "Qlik Certificates By File Path",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",
                           "properties": {
                             "clientCertificate": {
                               "title": "Client Certificate Path",
@@ -43741,79 +43394,6 @@
                         "SapS4Hana"
                       ],
                       "default": "SapS4Hana"
-                    },
-                    "sapS4HanaBasicAuthType": {
-                      "title": "Basic Auth",
-                      "description": "Username and password credentials for SAP S/4HANA.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
-                      "properties": {
-                        "authType": {
-                          "title": "Auth Type",
-                          "description": "Authentication type identifier.",
-                          "type": "string",
-                          "enum": [
-                            "basic"
-                          ],
-                          "default": "basic"
-                        },
-                        "username": {
-                          "title": "Username",
-                          "description": "Username to authenticate with SAP S/4HANA.",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "Password to authenticate with SAP S/4HANA.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "sapS4HanaOAuthType": {
-                      "title": "OAuth 2.0 Client Credentials",
-                      "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
-                      "properties": {
-                        "authType": {
-                          "title": "Auth Type",
-                          "description": "Authentication type identifier.",
-                          "type": "string",
-                          "enum": [
-                            "oauth2"
-                          ],
-                          "default": "oauth2"
-                        },
-                        "clientId": {
-                          "title": "Client ID",
-                          "description": "OAuth 2.0 client ID registered in SAP.",
-                          "type": "string"
-                        },
-                        "clientSecret": {
-                          "title": "Client Secret",
-                          "description": "OAuth 2.0 client secret.",
-                          "type": "string",
-                          "format": "password"
-                        },
-                        "tokenEndpoint": {
-                          "title": "Token Endpoint",
-                          "description": "OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).",
-                          "type": "string",
-                          "format": "uri"
-                        }
-                      },
-                      "required": [
-                        "clientId",
-                        "clientSecret",
-                        "tokenEndpoint"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -43834,11 +43414,12 @@
                       "format": "uri"
                     },
                     "authType": {
+                      "mask": true,
                       "title": "Authentication Type",
                       "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
                       "oneOf": [
                         {
-                          "title": "Basic Auth",
+                          "title": "SapS4HanaBasicAuth",
                           "description": "Username and password credentials for SAP S/4HANA.",
                           "type": "object",
                           "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
@@ -43871,7 +43452,7 @@
                           "additionalProperties": false
                         },
                         {
-                          "title": "OAuth 2.0 Client Credentials",
+                          "title": "SapS4HanaOAuthCredentials",
                           "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
                           "type": "object",
                           "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
@@ -44288,6 +43869,7 @@
         {
           "type": "object",
           "description": "Database Connection.",
+          "javaType": "org.openmetadata.schema.api.services.DatabaseConnection",
           "javaInterfaces": [
             "org.openmetadata.schema.ServiceConnectionEntityInterface"
           ],
@@ -61738,63 +61320,6 @@
                         "Nats"
                       ],
                       "default": "Nats"
-                    },
-                    "basicAuth": {
-                      "title": "Username and Password",
-                      "description": "Username and password authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "Username for NATS authentication.",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "Password for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "tokenAuth": {
-                      "title": "Token",
-                      "description": "Token-based authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "token": {
-                          "title": "Token",
-                          "description": "Token for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "token"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "nkeyAuth": {
-                      "title": "NKey Seed",
-                      "description": "NKey seed authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "nkeySeed": {
-                          "title": "NKey Seed",
-                          "description": "NKey seed for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "nkeySeed"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -61813,13 +61338,15 @@
                       "type": "string"
                     },
                     "authType": {
+                      "mask": true,
                       "title": "Authentication Type",
                       "description": "NATS authentication method. Leave empty for anonymous authentication.",
                       "oneOf": [
                         {
-                          "title": "Username and Password",
+                          "title": "NatsBasicAuth",
                           "description": "Username and password authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -61840,9 +61367,10 @@
                           "additionalProperties": false
                         },
                         {
-                          "title": "Token",
+                          "title": "NatsTokenAuth",
                           "description": "Token-based authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
                           "properties": {
                             "token": {
                               "title": "Token",
@@ -61857,9 +61385,10 @@
                           "additionalProperties": false
                         },
                         {
-                          "title": "NKey Seed",
+                          "title": "NatsNkeyAuth",
                           "description": "NKey seed authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth",
                           "properties": {
                             "nkeySeed": {
                               "title": "NKey Seed",

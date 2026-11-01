@@ -1,0 +1,9 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/storage/storageMetadataNoConfig.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StorageMetadataNoConfig",
+  "description": "No manifest file available. Ingestion would look for bucket-level metadata file instead",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataNoConfig",
+  "additionalProperties": false
+}

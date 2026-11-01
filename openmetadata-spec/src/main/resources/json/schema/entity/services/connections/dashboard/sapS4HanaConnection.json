@@ -11,68 +11,6 @@
       "type": "string",
       "enum": ["SapS4Hana"],
       "default": "SapS4Hana"
-    },
-    "sapS4HanaBasicAuthType": {
-      "title": "Basic Auth",
-      "description": "Username and password credentials for SAP S/4HANA.",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
-      "properties": {
-        "authType": {
-          "title": "Auth Type",
-          "description": "Authentication type identifier.",
-          "type": "string",
-          "enum": ["basic"],
-          "default": "basic"
-        },
-        "username": {
-          "title": "Username",
-          "description": "Username to authenticate with SAP S/4HANA.",
-          "type": "string"
-        },
-        "password": {
-          "title": "Password",
-          "description": "Password to authenticate with SAP S/4HANA.",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "required": ["username", "password"],
-      "additionalProperties": false
-    },
-    "sapS4HanaOAuthType": {
-      "title": "OAuth 2.0 Client Credentials",
-      "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
-      "properties": {
-        "authType": {
-          "title": "Auth Type",
-          "description": "Authentication type identifier.",
-          "type": "string",
-          "enum": ["oauth2"],
-          "default": "oauth2"
-        },
-        "clientId": {
-          "title": "Client ID",
-          "description": "OAuth 2.0 client ID registered in SAP.",
-          "type": "string"
-        },
-        "clientSecret": {
-          "title": "Client Secret",
-          "description": "OAuth 2.0 client secret.",
-          "type": "string",
-          "format": "password"
-        },
-        "tokenEndpoint": {
-          "title": "Token Endpoint",
-          "description": "OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).",
-          "type": "string",
-          "format": "uri"
-        }
-      },
-      "required": ["clientId", "clientSecret", "tokenEndpoint"],
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -90,14 +28,15 @@
       "format": "uri"
     },
     "authType": {
+      "mask": true,
       "title": "Authentication Type",
       "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
       "oneOf": [
         {
-          "$ref": "#/definitions/sapS4HanaBasicAuthType"
+          "$ref": "./sapS4Hana/basicAuth.json"
         },
         {
-          "$ref": "#/definitions/sapS4HanaOAuthType"
+          "$ref": "./sapS4Hana/oAuth.json"
         }
       ]
     },

@@ -18,4 +18,9 @@ public class DefaultConnectionClassConverter extends ClassConverter {
   public DefaultConnectionClassConverter(Class<?> clazz) {
     super(clazz);
   }
+
+  @Override
+  public Object convert(Object object) {
+    return SchemaClassConverter.convert(super.convert(object));
+  }
 }

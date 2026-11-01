@@ -1,0 +1,40 @@
+{
+  "title": "SapS4HanaOAuthCredentials",
+  "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
+  "properties": {
+    "authType": {
+      "title": "Auth Type",
+      "description": "Authentication type identifier.",
+      "type": "string",
+      "enum": [
+        "oauth2"
+      ],
+      "default": "oauth2"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "OAuth 2.0 client ID registered in SAP.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "OAuth 2.0 client secret.",
+      "type": "string",
+      "format": "password"
+    },
+    "tokenEndpoint": {
+      "title": "Token Endpoint",
+      "description": "OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": [
+    "clientId",
+    "clientSecret",
+    "tokenEndpoint"
+  ],
+  "additionalProperties": false
+}

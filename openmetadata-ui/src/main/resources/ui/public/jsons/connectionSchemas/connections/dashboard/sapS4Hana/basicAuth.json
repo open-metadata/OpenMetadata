@@ -1,0 +1,33 @@
+{
+  "title": "SapS4HanaBasicAuth",
+  "description": "Username and password credentials for SAP S/4HANA.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
+  "properties": {
+    "authType": {
+      "title": "Auth Type",
+      "description": "Authentication type identifier.",
+      "type": "string",
+      "enum": [
+        "basic"
+      ],
+      "default": "basic"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to authenticate with SAP S/4HANA.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to authenticate with SAP S/4HANA.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "required": [
+    "username",
+    "password"
+  ],
+  "additionalProperties": false
+}
