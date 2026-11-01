@@ -686,6 +686,38 @@ it('keeps the reviewer list closed after a pick while the addition saves', async
   expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 });
 
+it('shows reviewers that arrive after the search text was typed', async () => {
+  configureReviewerSearch();
+  const search = get.getMockImplementation();
+  let releaseSearch: () => void = () => undefined;
+  const searchGate = new Promise<void>((resolve) => {
+    releaseSearch = resolve;
+  });
+  get.mockImplementation(async (url, config) => {
+    if (!search) {
+      throw new Error('Missing fixture');
+    }
+    if (url.startsWith('/search/query')) {
+      await searchGate;
+    }
+
+    return search(url, config);
+  });
+  await renderPanel();
+  const input = screen.getByRole('combobox', { name: /label.add-reviewer/ });
+  await act(async () => {
+    input.focus();
+  });
+  fireEvent.change(input, { target: { value: 'new' } });
+  await act(async () => {
+    releaseSearch();
+  });
+
+  expect(
+    await screen.findByRole('option', { name: /New reviewer/ })
+  ).toBeInTheDocument();
+});
+
 it('allows one group team with All and disables adding another entry', async () => {
   ontology.reviewers = [];
   configureReviewerSearch();

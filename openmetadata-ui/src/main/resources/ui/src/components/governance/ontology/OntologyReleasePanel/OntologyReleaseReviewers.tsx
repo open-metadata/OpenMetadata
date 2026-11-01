@@ -215,6 +215,10 @@ const OntologyReleaseReviewers = ({
   const renderReviewerSearch = () => (
     <>
       <Select.ComboBox
+        // React Aria opens on a text change only if it may show an empty list,
+        // so text typed before the search returns would leave it closed. Only
+        // for typed text: clearing the input after a pick must not reopen it.
+        allowsEmptyCollection={searchText !== ''}
         disabledKeys={
           searchUnavailable ? options.map((option) => option.id) : []
         }
