@@ -1127,27 +1127,17 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         return;
       }
 
-      revocationHandler.revokeToken(token, tokenTypeHint).join();
+      revocationHandler.revokeToken(token, tokenTypeHint, credentials.clientId()).join();
 
       setCorsHeaders(request, response);
       response.setStatus(200);
       LOG.info("Token revocation completed successfully");
 
     } catch (CompletionException ex) {
-      // Per RFC 7009, return 200 for "token not found" to prevent token guessing
-      // But return 500 for actual server errors
-      Throwable cause = ex.getCause();
-      if (cause instanceof IllegalArgumentException) {
-        // Token not found or invalid - this is OK per RFC 7009
-        LOG.debug("Token revocation: token not found or invalid", ex);
-        setCorsHeaders(request, response);
-        response.setStatus(200);
-      } else {
-        // Actual server error
-        LOG.error("Token revocation failed with server error", ex);
-        sendOAuthError(
-            request, response, 500, "server_error", "Token revocation failed due to server error");
-      }
+      // RevocationHandler answers an unknown token 200 (RFC 7009); only server errors get here.
+      LOG.error("Token revocation failed with server error", ex);
+      sendOAuthError(
+          request, response, 500, "server_error", "Token revocation failed due to server error");
     } catch (Exception ex) {
       LOG.error("Unexpected error during token revocation", ex);
       sendOAuthError(
