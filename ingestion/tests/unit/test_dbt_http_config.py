@@ -126,6 +126,31 @@ class TestDbtHttpConfigCustomHeaders:
             _, kwargs = actual_call
             assert kwargs["headers"] == {"Authorization": "Bearer tok"}
 
+    def test_secret_reference_header_is_resolved_via_secrets_manager(self):
+        """Header values arrive as `secret:` references when an external secrets manager
+        is configured; they must be resolved before the request is made."""
+        config = _base_config(
+            dbtHttpHeaders={
+                "PRIVATE-TOKEN": "secret:/om/pipeline/dbt-http/dbthttpheaders/additionalproperties/private_token"
+            }
+        )
+        manifest_resp = _make_json_response(MANIFEST_JSON)
+        secrets_manager = MagicMock()
+        secrets_manager.get_string_value.return_value = "glpat-resolved"
+
+        with (
+            patch(
+                "metadata.ingestion.source.database.dbt.dbt_config.requests.get",
+                return_value=manifest_resp,
+            ) as mock_get,
+            patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as mock_factory,
+        ):
+            mock_factory.return_value.get_secrets_manager.return_value = secrets_manager
+            list(get_dbt_details(config))
+
+        _, kwargs = mock_get.call_args
+        assert kwargs["headers"] == {"PRIVATE-TOKEN": "glpat-resolved"}
+
 
 class TestDbtHttpConfigSSLVerify:
     """verifySSL enum values produce correct verify= argument to requests.get()."""

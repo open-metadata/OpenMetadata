@@ -25,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.service.fernet.Fernet;
 
 /**
  * A caller who sees a connection's secrets masked keeps them while the connection points where it
@@ -33,9 +34,13 @@ import org.openmetadata.schema.entity.services.ServiceType;
 class ConnectionSecretsGuardTest {
   private static final String STORED_TOKEN = "fernet:stored-password-token";
   private static final Map<String, Object> STORED = mysql("db.internal:3306", STORED_TOKEN);
+  private static final String FERNET_KEY = "-uvd2sz2yfe3XoJZnBk3Aw9o_CjL36hHv_yFJlZL3-g=";
+  private static final String IDP_URL = "https://idp.corp.example/token";
+  private static final String ATTACKER_URL = "https://attacker.example/token";
 
   @BeforeEach
   void createMasker() {
+    Fernet.getInstance().setFernetKey(FERNET_KEY);
     EntityMaskerFactory.setEntityMasker(null);
     EntityMaskerFactory.createEntityMasker();
   }
@@ -179,6 +184,137 @@ class ConnectionSecretsGuardTest {
     Map<String, Object> stored = with(STORED, "connectionArguments", Map.of());
 
     assertDoesNotThrow(() -> guard(mysql("db.internal:3306", PASSWORD_MASK), stored));
+  }
+
+  /**
+   * Every string entry of a password-valued map masks to the same placeholder, so an edit to a
+   * non-secret entry - the OAuth token endpoint URL next to the client secret - no longer shows
+   * in the masked comparison. Typing over a masked map entry must still count as a retarget.
+   */
+  @Test
+  void editingAStringEntryInsideAMaskedConfigMapCannotKeepTheMaskedSecret() {
+    Map<String, Object> stored = storedKafka(IDP_URL);
+    Map<String, Object> incoming = kafka(ATTACKER_URL, PASSWORD_MASK);
+
+    assertThrows(BadRequestException.class, () -> guardKafka(incoming, stored));
+  }
+
+  /** A caller echoing the masked config it read changes nothing and keeps the masked secrets. */
+  @Test
+  void aFullyMaskedEchoOfTheConfigMapKeepsItsSecrets() {
+    Map<String, Object> stored = storedKafka(IDP_URL);
+
+    assertDoesNotThrow(() -> guardKafka(kafka(PASSWORD_MASK, PASSWORD_MASK), stored));
+  }
+
+  /** A plaintext entry that still equals the stored one is a replay, not an edit. */
+  @Test
+  void anUnchangedPlaintextEntryKeepsTheMaskedSecrets() {
+    Map<String, Object> stored = storedKafka(IDP_URL);
+
+    assertDoesNotThrow(() -> guardKafka(kafka(IDP_URL, PASSWORD_MASK), stored));
+  }
+
+  @Test
+  void editingAConfigMapEntryIsAcceptedWithFreshSecrets() {
+    Map<String, Object> stored = storedKafka(IDP_URL);
+
+    assertDoesNotThrow(() -> guardKafka(kafka(ATTACKER_URL, "re-entered-secret"), stored));
+  }
+
+  /** Rows saved before maps were encrypted hold plaintext entries; the same rules apply. */
+  @Test
+  void aLegacyPlaintextStoredMapKeepsAnUnchangedEntry() {
+    Map<String, Object> stored = kafka(IDP_URL, "legacy-plain-secret");
+
+    assertDoesNotThrow(() -> guardKafka(kafka(IDP_URL, PASSWORD_MASK), stored));
+  }
+
+  @Test
+  void aLegacyPlaintextStoredMapCannotBeRedirectedEither() {
+    Map<String, Object> stored = kafka(IDP_URL, "legacy-plain-secret");
+
+    assertThrows(
+        BadRequestException.class, () -> guardKafka(kafka(ATTACKER_URL, PASSWORD_MASK), stored));
+  }
+
+  /** A typed value at a scalar password field is a re-entered secret, not a retarget. */
+  @Test
+  void rotatingAScalarSecretInsideAConnectionIsNotARetarget() {
+    Map<String, Object> stored = storedKafka(IDP_URL);
+    Map<String, Object> rotated =
+        Map.of(
+            "type", "Kafka",
+            "bootstrapServers", "broker:9092",
+            "saslPassword", "new-password",
+            "consumerConfig",
+                Map.of(
+                    "sasl.oauthbearer.token.endpoint.url", PASSWORD_MASK,
+                    "sasl.oauthbearer.client.secret", PASSWORD_MASK));
+
+    assertDoesNotThrow(() -> guardKafka(rotated, stored));
+  }
+
+  /**
+   * Rotating one secret inside the map is indistinguishable from retargeting a setting: both are
+   * typed values at a masked map entry. The guard fails closed and asks for every secret again -
+   * the same rule the unmasked maps produced before they were declared secret.
+   */
+  @Test
+  void rotatingOneSecretInsideTheConfigMapRequiresReenteringTheOthers() {
+    Map<String, Object> stored = storedKafka(IDP_URL);
+    Map<String, Object> rotated =
+        Map.of(
+            "type",
+            "Kafka",
+            "bootstrapServers",
+            "broker:9092",
+            "saslPassword",
+            PASSWORD_MASK,
+            "consumerConfig",
+            Map.of(
+                "sasl.oauthbearer.token.endpoint.url",
+                PASSWORD_MASK,
+                "sasl.oauthbearer.client.secret",
+                "rotated-secret"));
+
+    assertThrows(BadRequestException.class, () -> guardKafka(rotated, stored));
+  }
+
+  private static void guardKafka(Map<String, Object> incoming, Map<String, Object> stored) {
+    ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+        incoming, stored, "Kafka", ServiceType.MESSAGING);
+  }
+
+  /** A stored Kafka config as written since maps were encrypted: every string entry is a Fernet token. */
+  private static Map<String, Object> storedKafka(String tokenEndpointUrl) {
+    return Map.of(
+        "type",
+        "Kafka",
+        "bootstrapServers",
+        "broker:9092",
+        "saslPassword",
+        "fernet:stored-sasl-password",
+        "consumerConfig",
+        Map.of(
+            "sasl.oauthbearer.token.endpoint.url",
+            Fernet.getInstance().encrypt(tokenEndpointUrl),
+            "sasl.oauthbearer.client.secret",
+            "fernet:stored-oauth-secret"));
+  }
+
+  private static Map<String, Object> kafka(String tokenEndpointUrl, String secret) {
+    return Map.of(
+        "type",
+        "Kafka",
+        "bootstrapServers",
+        "broker:9092",
+        "saslPassword",
+        secret,
+        "consumerConfig",
+        Map.of(
+            "sasl.oauthbearer.token.endpoint.url", tokenEndpointUrl,
+            "sasl.oauthbearer.client.secret", secret));
   }
 
   private static void guard(Map<String, Object> incoming) {
