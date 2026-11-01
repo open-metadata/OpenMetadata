@@ -3,6 +3,7 @@ package org.openmetadata.service.rdf.storage;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
@@ -233,6 +234,14 @@ public interface RdfStorageInterface extends AutoCloseable {
    */
   default CompactionResult compact(Duration maxWait) {
     return CompactionResult.unsupported();
+  }
+
+  /**
+   * The data volume's size and free space, when the store reports them (the {@code
+   * openmetadata/fuseki} image's storage extension does at {@code /$/openmetadata/storage}). Empty when the store cannot tell.
+   */
+  default Optional<StorageFacts> storageFacts() {
+    return Optional.empty();
   }
 
   /**
