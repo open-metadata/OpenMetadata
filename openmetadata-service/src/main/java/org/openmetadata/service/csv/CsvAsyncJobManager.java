@@ -356,7 +356,7 @@ public final class CsvAsyncJobManager {
     return log;
   }
 
-  private void validateImportPayload(String csv) {
+  public static void validateImportPayload(String csv) {
     if (csv != null) {
       int payloadBytes = csv.getBytes(StandardCharsets.UTF_8).length;
       if (payloadBytes > MAX_IMPORT_CSV_BYTES) {

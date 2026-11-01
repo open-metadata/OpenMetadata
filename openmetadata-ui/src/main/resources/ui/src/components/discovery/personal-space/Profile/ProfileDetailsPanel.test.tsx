@@ -133,6 +133,7 @@ const user: User = {
   name: 'harsh',
   displayName: 'harsh vador',
   email: 'harsh@example.com',
+  isEmailVerified: true,
 };
 
 const renderPanel = (
@@ -276,6 +277,29 @@ describe('ProfileDetailsPanel', () => {
     expect(screen.queryByText('********@masked.com')).not.toBeInTheDocument();
     expect(screen.queryByText('label.verified-status')).not.toBeInTheDocument();
   });
+
+  it('shows the verified email badge only when the backend marks the email verified', () => {
+    renderPanel({ isEmailVerified: true });
+
+    expect(screen.getByText('harsh@example.com')).toBeInTheDocument();
+    expect(screen.getByText('label.verified-status')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['explicitly false', false],
+    ['omitted (admin-created, CSV-imported, password-reset invite)', undefined],
+  ])(
+    'hides the verified email badge when isEmailVerified is %s',
+    (_label, isEmailVerified) => {
+      renderPanel({ isEmailVerified });
+
+      // The email itself is still shown; only the verification claim is dropped.
+      expect(screen.getByText('harsh@example.com')).toBeInTheDocument();
+      expect(
+        screen.queryByText('label.verified-status')
+      ).not.toBeInTheDocument();
+    }
+  );
 
   it('lists custom properties only when asked (own Profile tab)', () => {
     renderPanel();

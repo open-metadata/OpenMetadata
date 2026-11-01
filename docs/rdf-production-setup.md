@@ -373,12 +373,13 @@ server stops mid-run (a rolling deploy, an OOM kill, a node drain), the graph st
 enough to overlap a deploy; an interrupted blue/green run leaves the previous graph serving. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
 (alongside *Recreate RDF Store*) changes the shape of a rebuild:
 the run builds into an idle second dataset and switches to it only after the build succeeds, so the
-previous graph keeps serving until cutover, and its dataset is retained until the next rebuild
-reuses it.
+previous graph keeps serving until cutover. Once the new dataset serves, the run empties and
+compacts the previous one, which nothing reads again. A run that fails or is stopped leaves its
+half-built dataset in place for inspection; the next rebuild clears it.
 
 Builds alternate between the fixed `openmetadata_a` and `openmetadata_b` names derived from the
-configured endpoint. The original `openmetadata` directory remains present too: allow space for
-up to three dataset copies plus compaction headroom until an operator retires the unused original.
+configured endpoint. The original `openmetadata` dataset is emptied the same way once a promotion
+retires it, so between runs only the serving dataset holds a full copy.
 Custom endpoint names need matching base, `_a`, and `_b` assembler declarations.
 
 The run records the selected dataset, rebuild generation, and payload budget on the job, and
@@ -414,26 +415,66 @@ idle dataset's disk entirely, stop Fuseki and remove the unused
 
 ## Compaction and disk growth
 
-OpenMetadata requests Fuseki compaction after clearing a recreate run and after indexing its
-records. Blue/green runs compact the target before promotion so live writers can continue using
-the serving dataset. In-place runs compact after reporting completion. TDB2 copies index pages
-even during insert-only writes; clearing and compacting an
-empty target does not reclaim the obsolete pages created during its subsequent rebuild. Larger
-bounded batches reduce transaction churn, but the volume must still accommodate peak usage before
-compaction. See the [scale validation](rdf-scale-validation.md) for measurements and workload settings.
-Compaction is best-effort: an indexing run can succeed even if disk reclamation fails.
+TDB2 never reuses space on its own. Every write transaction copies the index pages it touches,
+and the old pages stay on disk until the dataset is compacted. A store that only receives live
+writes therefore grows with every entity change: a full rewrite of one entity costs several
+hundred kilobytes, so a nightly ingestion that changes tens of thousands of entities adds tens of
+gigabytes. Only compaction returns that space, and it needs free space about the size of the live
+data to copy it into.
 
-To compact manually:
+OpenMetadata compacts the serving dataset itself:
+
+- **On a schedule.** One server compacts every `RDF_COMPACTION_INTERVAL_HOURS`, while the RDF
+  reindex lock keeps it from overlapping an indexing run.
+- **When the store runs low.** The `openmetadata/fuseki` image's storage extension reports the
+  volume at `GET /$/openmetadata/storage`. A store without it reports nothing, and maintenance runs
+  on the schedule only. When free space falls below `RDF_URGENT_COMPACTION_FREE_PERCENT`,
+  or the image's write guard is refusing writes, the next check (every 15 minutes) compacts without
+  waiting for the interval. If a compaction cannot bring the store back above that threshold, the
+  live graph or other datasets fill the volume: urgent compactions then stop for one interval,
+  while the scheduled compaction still runs, and the server logs that the volume needs expanding.
+- **During indexing.** A recreate run clears the dataset, compacts it while it is empty, and
+  compacts again after loading. When the image's write guard refuses the clear, the run compacts
+  to free the old pages and clears again once, so a reindex also recovers a full volume. Blue/green
+  runs compact the target before promotion and empty the dataset the promotion retires.
+
+Fuseki blocks every writer to a dataset for the whole compaction, so OpenMetadata pauses its own
+writes to the serving dataset first, on every server. Queued live writes wait in SQL and are
+applied once the pause ends; waiting does not count as a failed delivery attempt and does not mark
+the projection degraded. Other writes wait for the pause for up to `RDF_REQUEST_TIMEOUT_MS`, then
+get HTTP 503 with `Retry-After`. A write that times out while Fuseki compacts, whoever started the
+compaction, is retried the same way. Maintenance never overlaps a reindex or an inference run, and a
+server's first check runs five minutes after it starts.
+`RDF_MAINTENANCE_MAX_DURATION_MINUTES` bounds how long a compaction, or the clear that starts a
+recreate run, may hold that pause. Both run under this budget rather than the per-request timeout:
+Fuseki cannot cancel a `CLEAR`, so a shorter budget would only abandon a clear that still completes.
+
+The same extension also refuses writes, with HTTP 507 Insufficient Storage, once the
+volume has less free space than `OPENMETADATA_STORAGE_MIN_FREE` (10% by default). TDB2 memory-maps
+its files, so a write on a full volume does not fail cleanly: the JVM gets SIGBUS and exits on every
+restart. The guard keeps the volume from filling and leaves room to compact, as long as the reserve
+is at least the size of the live data, which is what a compaction copies. OpenMetadata treats its
+refusal like the maintenance pause.
+
+Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
+`ontology.rdf.compaction.last.success` falling behind the interval. Every server reports the
+cluster's last successful maintenance compaction there. Once none has succeeded for two intervals,
+whatever the reason, each check logs an error and `GET /api/v1/rdf/status` reports
+`projectionState: DEGRADED` until the next one succeeds. A compaction Fuseki could not start is
+retried at the next check. One it started and that did not succeed is logged as an error
+and waits for the next interval: when the volume has less free space than the live data, the copy
+fails or restarts Fuseki, and a retry would only do the same. A copy that failed stays allocated
+until Fuseki restarts, so expand the volume, then restart Fuseki. To compact by hand:
 
 ```bash
 curl -u admin:<password> -X POST \
   'http://localhost:3030/$/compact/openmetadata?deleteOld=true'
 ```
 
-Fuseki returns an asynchronous task identifier. Inspect active and completed tasks at `/$/tasks`
-and confirm the data volume has enough space for both the old and replacement datasets. TDB2 index
-growth can reflect small transactions, failed or skipped compaction, or a volume that filled before
-compaction completed. [Jena storage FAQ](https://jena.apache.org/documentation/tdb/faqs.html).
+Fuseki returns an asynchronous task identifier; `/$/tasks/<id>` reports `success` once it has
+finished. Writes to the dataset wait until it does. See the
+[Jena storage FAQ](https://jena.apache.org/documentation/tdb/faqs.html) and the
+[scale validation](rdf-scale-validation.md) for measurements.
 
 ## Configuration reference
 
@@ -472,6 +513,10 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_STRICT_OWL_PROFILE` | `true` |
 | `RDF_AI_ENABLED` | `false` |
 | `RDF_FEDERATION_ENABLED` | `false` |
+| `RDF_STORAGE_MAINTENANCE_ENABLED` | `true` |
+| `RDF_COMPACTION_INTERVAL_HOURS` | `24` |
+| `RDF_MAINTENANCE_MAX_DURATION_MINUTES` | `240` |
+| `RDF_URGENT_COMPACTION_FREE_PERCENT` | `50` |
 
 Use `RDF_ENDPOINT` for new deployments. `RDF_REMOTE_ENDPOINT` remains a deprecated fallback for
 backward compatibility, and `RDF_ENDPOINT` takes precedence when both are set. Override the

@@ -46,7 +46,6 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -528,6 +527,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public List<Metric> updateManyEntitiesForImport(
       List<Metric> originals, List<Metric> updates, String updatedBy, String impersonatedBy) {
+    // The parent lives only in the CONTAINS edge, which the originals are read without. Load it so
+    // the base batch path can tell which parents a CSV moved metrics away from.
+    fetchAndSetParents(originals, getFields(FIELD_PARENT));
     List<Metric> updated =
         super.updateManyEntitiesForImport(originals, updates, updatedBy, impersonatedBy);
     reconcileImportedHierarchyGroups(updated);
@@ -1001,10 +1003,6 @@ public class MetricRepository extends EntityRepository<Metric> {
       }
       recordChange(
           FIELD_PARENT, originalParent, updatedParent, true, MetricRepository::sameReferenceById);
-      // Both parents' search documents carry children/childrenCount, so refresh them or the counts
-      // drift until the next full reindex.
-      refreshSearchDocument(originalParent);
-      refreshSearchDocument(updatedParent);
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
@@ -1879,18 +1877,17 @@ public class MetricRepository extends EntityRepository<Metric> {
   protected void postCreate(Metric metric) {
     super.postCreate(metric);
     refreshSearchDocument(metric.getMetricGroup());
-    refreshSearchDocument(metric.getParent());
   }
 
-  // The batch path (bulk API, CSV import) never calls postCreate(Metric), so refresh each parent
-  // and group the new metrics landed under, once each.
+  // The batch path (bulk API, CSV import) never calls postCreate(Metric), so refresh each group
+  // the new metrics landed in, once each. Their parents are refreshed by the base batch hook.
   @Override
   protected void postCreate(List<Metric> metrics) {
     super.postCreate(metrics);
     Set<UUID> refreshed = new HashSet<>();
     listOrEmpty(metrics).stream()
-        .flatMap(metric -> Stream.of(metric.getParent(), metric.getMetricGroup()))
-        .filter(container -> container != null && refreshed.add(container.getId()))
+        .map(Metric::getMetricGroup)
+        .filter(group -> group != null && refreshed.add(group.getId()))
         .forEach(this::refreshSearchDocument);
   }
 
@@ -1898,20 +1895,23 @@ public class MetricRepository extends EntityRepository<Metric> {
   protected void postDelete(Metric metric, boolean hardDelete) {
     super.postDelete(metric, hardDelete);
     refreshSearchDocument(metric.getMetricGroup());
-    refreshSearchDocument(metric.getParent());
   }
 
   @Override
   protected void postRestore(Metric metric) {
     super.postRestore(metric);
     refreshSearchDocument(metric.getMetricGroup());
-    refreshSearchDocument(metric.getParent());
   }
 
-  // A parent's and a group's search documents carry childrenCount and metricCount, so they are
-  // refreshed whenever a metric appears, moves or goes away, or the counts drift until the next
-  // full reindex. A cascade restore brings children back before their parent, so a container that
-  // is still deleted is skipped: the refresh could not load it and would only log an error.
+  @Override
+  protected List<EntityReference> getCountingParents(Metric metric) {
+    return metric.getParent() == null ? List.of() : List.of(metric.getParent());
+  }
+
+  // A group's search document carries metricCount, so it is refreshed whenever a metric joins,
+  // moves or leaves it, or the count drifts until the next full reindex. A cascade restore brings
+  // children back before their parent, so a group that is still deleted is skipped: the refresh
+  // could not load it and would only log an error.
   private void refreshSearchDocument(EntityReference container) {
     if (container != null && !Boolean.TRUE.equals(container.getDeleted())) {
       EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(container, null);
@@ -1925,9 +1925,6 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void postUpdate(Metric original, Metric updated) {
-    // childrenCount is computed on read and the update never loads it, so without this the
-    // search document re-indexes it as 0.
-    updated.setChildrenCount(getChildrenCount(updated));
     super.postUpdate(original, updated);
     refreshSearchDocument(original.getMetricGroup());
     if (!sameReferenceById(original.getMetricGroup(), updated.getMetricGroup())) {

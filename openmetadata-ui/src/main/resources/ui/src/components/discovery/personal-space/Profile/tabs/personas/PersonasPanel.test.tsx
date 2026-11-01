@@ -42,9 +42,15 @@ jest.mock('./PersonaAddForm', () => ({
 
 const mockDeletedCallbacks: Array<() => void> = [];
 
-jest.mock('./PersonaDetail', () => ({
-  __esModule: true,
-  default: (props: {
+jest.mock('./PersonaDetail', () => {
+  const { useRef } = require('react');
+
+  // A capitalized component name satisfies react-hooks/rules-of-hooks for the
+  // ref below. `useRef` captures the first fqn this mounted instance saw: a
+  // real remount (parent keys by fqn) starts a fresh ref, so `firstFqn`
+  // follows the new fqn; a reused instance keeps the original, surfacing a
+  // missing key.
+  const MockPersonaDetail = (props: {
     activeTab: PersonaDetailTab;
     fqn: string;
     subCategory?: string;
@@ -53,11 +59,13 @@ jest.mock('./PersonaDetail', () => ({
     onSelectCategory: (category: string) => void;
     onTabChange: (tab: PersonaDetailTab) => void;
   }) => {
+    const firstFqnRef = useRef(props.fqn);
     mockDeletedCallbacks.push(props.onDeleted);
 
     return (
       <div
         data-active-tab={props.activeTab}
+        data-first-fqn={firstFqnRef.current}
         data-fqn={props.fqn}
         data-sub-category={props.subCategory ?? ''}
         data-testid="persona-detail">
@@ -81,8 +89,10 @@ jest.mock('./PersonaDetail', () => ({
         </button>
       </div>
     );
-  },
-}));
+  };
+
+  return { __esModule: true, default: MockPersonaDetail };
+});
 
 const mockEditorSave = jest.fn();
 
@@ -250,6 +260,36 @@ describe('PersonasPanel', () => {
 
     expect(mockDeletedCallbacks.length).toBeGreaterThan(1);
     expect(new Set(mockDeletedCallbacks).size).toBe(1);
+  });
+
+  it('re-mounts PersonaDetail with fresh state when the persona fqn changes via a hash navigation', () => {
+    renderAt('#personas/p1');
+
+    const detail = screen.getByTestId('persona-detail');
+
+    expect(detail).toHaveAttribute('data-fqn', 'p1');
+    // `data-first-fqn` is captured on mount via useRef; it only follows a new
+    // fqn when the instance is re-mounted (key={fqn}).
+    expect(detail).toHaveAttribute('data-first-fqn', 'p1');
+
+    // A browser-driven hash change (Back/Forward, address-bar edit, or a pasted
+    // `#personas/<fqn>` deep link) is adopted back into the open modal without
+    // unmounting the panel tree. `replaceState` avoids pushing a stray history
+    // entry that would leak into later tests.
+    act(() => {
+      window.history.replaceState(null, '', '/#personas/p2');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(screen.getByTestId('hash-probe')).toHaveTextContent('personas|p2|');
+
+    const nextDetail = screen.getByTestId('persona-detail');
+
+    expect(nextDetail).toHaveAttribute('data-fqn', 'p2');
+    // A fresh ref proves the instance was re-mounted; without key={fqn} the
+    // same instance would keep `data-first-fqn` = 'p1' under persona B's title.
+    expect(nextDetail).toHaveAttribute('data-first-fqn', 'p2');
+    expect(screen.getByTestId('header-title')).toHaveTextContent('p2');
   });
 
   it('reads the active tab from the hash', () => {
