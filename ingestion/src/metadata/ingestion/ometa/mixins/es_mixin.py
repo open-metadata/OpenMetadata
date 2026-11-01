@@ -691,7 +691,12 @@ class ESMixin(Generic[T]):
             include_fields=["schemaDefinition", "fullyQualifiedName"],
         ):
             for hit in response.hits.hits:
-                _, database_name, schema_name, table_name = fqn.split(hit.source["fullyQualifiedName"])
+                # split() keeps the quotes around a name that contains a dot. Unquote the
+                # parts so they are raw names, as the connectors pass them, and fqn.build()
+                # can quote them again instead of encoding the quotes.
+                _, database_name, schema_name, table_name = (
+                    fqn.unquote_name(part) for part in fqn.split(hit.source["fullyQualifiedName"])
+                )
                 if hit.source.get("schemaDefinition"):
                     yield TableView(
                         view_definition=hit.source["schemaDefinition"],
