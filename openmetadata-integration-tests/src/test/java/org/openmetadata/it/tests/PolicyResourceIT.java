@@ -16,7 +16,6 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -844,7 +843,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   }
 
   @Test
-  void test_deletingAllTagsRemovesCondition(TestNamespace ns) {
+  void test_deletingTheOnlyTagLeavesAConditionThatMatchesNothing(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Classification classification =
@@ -883,7 +882,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     client.tags().delete(tag.getId().toString(), Map.of("hardDelete", "true"));
 
     Policy fetched = getEntity(policyId);
-    assertNull(fetched.getRules().get(0).getCondition());
+    assertEquals("false", fetched.getRules().get(0).getCondition());
   }
 
   @Test
@@ -1077,8 +1076,9 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     assertEquals("hasAnyRole('" + role2.getName() + "')", updatedCondition);
   }
 
+  /** Once the team is gone nobody is in it, so the call naming it becomes false. */
   @Test
-  void test_deletedTeamIsRemovedFromPolicyCondition(TestNamespace ns) {
+  void test_deletedTeamMakesItsPolicyConditionMatchNothing(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     String teamName = ns.prefix("CleanupTeam");
@@ -1133,7 +1133,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
 
     Policy fetched = getEntity(policyId);
     String updatedCondition = fetched.getRules().get(0).getCondition();
-    assertEquals("hasAnyRole('" + dsSteward.getName() + "')", updatedCondition);
+    assertEquals("false && hasAnyRole('" + dsSteward.getName() + "')", updatedCondition);
   }
 
   @Test
@@ -1192,7 +1192,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
             classification.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
 
     Policy fetched = getEntity(policyId);
-    assertNull(fetched.getRules().get(0).getCondition());
+    assertEquals("false", fetched.getRules().get(0).getCondition());
   }
 
   @Test
@@ -1237,7 +1237,90 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
         .delete(glossary.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
 
     Policy fetched = getEntity(policyId);
-    assertNull(fetched.getRules().get(0).getCondition());
+    assertEquals("false", fetched.getRules().get(0).getCondition());
+  }
+
+  /**
+   * A soft-deleted classification keeps its child tags' labels on assets, so a condition naming
+   * them still matches and must be left as written. Rewriting it would switch off a Deny rule that
+   * still applies, and would not come back on restore.
+   */
+  @Test
+  void test_softDeletedClassificationLeavesPolicyConditionAsWritten(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix("SoftDeleteClassification"))
+                    .withDescription("Classification that will be soft deleted"));
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.prefix("SoftTag"))
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Child tag"));
+
+    String condition = "matchAnyTag(" + spelLiteral(tag.getFullyQualifiedName()) + ")";
+    String policyId =
+        createEntity(conditionPolicy(ns, "softDeleteClassification", condition)).getId().toString();
+
+    client.classifications().delete(classification.getId().toString(), Map.of("recursive", "true"));
+
+    assertEquals(condition, getEntity(policyId).getRules().get(0).getCondition());
+  }
+
+  /** A tag name with punctuation stays one argument of the condition through later renames. */
+  @Test
+  void test_tagNameWithPunctuationStaysOneArgumentThroughLaterRenames(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix("PunctuationNameClassification"))
+                    .withDescription("Classification for the punctuation-name rename test"));
+    Tag guarded = createChildTag(client, classification, ns.prefix("Guarded"));
+    Tag unrelated = createChildTag(client, classification, ns.prefix("Unrelated"));
+
+    String policyId =
+        createEntity(
+                conditionPolicy(
+                    ns,
+                    "punctuationNameRename",
+                    "matchAnyTag(" + spelLiteral(guarded.getFullyQualifiedName()) + ")"))
+            .getId()
+            .toString();
+
+    guarded.setName(ns.prefix("Retail") + " (EU), Men's Wear");
+    Tag renamed = client.tags().update(guarded.getId().toString(), guarded);
+    String expected = "matchAnyTag(" + spelLiteral(renamed.getFullyQualifiedName()) + ")";
+    assertEquals(expected, getEntity(policyId).getRules().get(0).getCondition());
+
+    unrelated.setName(ns.prefix("UnrelatedRenamed"));
+    client.tags().update(unrelated.getId().toString(), unrelated);
+    assertEquals(expected, getEntity(policyId).getRules().get(0).getCondition());
+  }
+
+  private static Tag createChildTag(
+      OpenMetadataClient client, Classification classification, String name) {
+    return client
+        .tags()
+        .create(
+            new CreateTag()
+                .withName(name)
+                .withClassification(classification.getFullyQualifiedName())
+                .withDescription("Child tag"));
+  }
+
+  private static String spelLiteral(String value) {
+    return "'" + value.replace("'", "''") + "'";
   }
 
   // ===================================================================
