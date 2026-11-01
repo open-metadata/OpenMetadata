@@ -1414,7 +1414,8 @@ public class SearchRepository {
     }
     try {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
-      SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+      SearchIndex index =
+          searchIndexFactory.buildIndex(entityType, withFieldsLoadedOnWrite(entityType, entity));
       String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
       searchClient.createEntity(getWriteIndexName(indexMapping), entityId, doc);
 
@@ -1788,9 +1789,13 @@ public class SearchRepository {
           }
           return;
         }
+        List<EntityInterface<?>> indexed = new ArrayList<>(entities);
+        if (!loadFieldsOnWriteOrRetry(entityType, indexed, "createEntitiesIndex")) {
+          return;
+        }
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
-        for (EntityInterface<?> entity : entities) {
+        for (EntityInterface<?> entity : indexed) {
           try {
             if (!Entity.isSearchIndexable(entity)) {
               continue;
@@ -2045,7 +2050,9 @@ public class SearchRepository {
                 entityId,
                 getChangedFieldNames(changeDescription));
           }
-          SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+          SearchIndex searchIndex =
+              searchIndexFactory.buildIndex(
+                  entityType, withFieldsLoadedOnWrite(entityType, entity));
           doc = searchIndex.buildSearchIndexDoc();
           doc =
               SearchIndexUtils.stripDocMapIfOversized(
@@ -2360,6 +2367,9 @@ public class SearchRepository {
         for (EntityInterface<?> entity : typeEntities) {
           enqueueEntityRetry(entity, "updateEntitiesBulk: Search client unavailable");
         }
+        continue;
+      }
+      if (!loadFieldsOnWriteOrRetry(entityType, typeEntities, "updateEntitiesBulk")) {
         continue;
       }
 
@@ -2710,6 +2720,60 @@ public class SearchRepository {
       return;
     }
     SearchIndexRetryQueue.enqueue(entity, operation, failure);
+  }
+
+  /**
+   * Copies of {@code entities} carrying the fields their index loads on write, so a count computed
+   * on read is not indexed as 0. The callers' entities, and so the API responses, are untouched. A
+   * type that declares none gets the same list back, with no copy and no read.
+   *
+   * <p>ADR:2026-10-29-search-documents-load-computed-counts-on-every-write
+   */
+  private <E extends EntityInterface<?>> List<E> withFieldsLoadedOnWrite(
+      String entityType, List<E> entities) {
+    Set<String> fields = searchIndexFactory.getFieldsLoadedOnWriteFor(entityType);
+    List<E> result = entities;
+    if (!fields.isEmpty() && !entities.isEmpty()) {
+      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+      result = entities.stream().map(SearchRepository::copyOf).toList();
+      repository.loadFieldsForSearchIndex(result, fields);
+    }
+    return result;
+  }
+
+  private EntityInterface<?> withFieldsLoadedOnWrite(String entityType, EntityInterface<?> entity) {
+    return withFieldsLoadedOnWrite(entityType, List.of(entity)).getFirst();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <E extends EntityInterface<?>> E copyOf(E entity) {
+    return (E) JsonUtils.deepCopy(entity, entity.getClass());
+  }
+
+  /**
+   * Swaps each entity for its copy with the fields loaded on write, in one batched read. When the
+   * load fails the batch is queued for retry, which re-reads every reindex field, instead of being
+   * written with zeros or not written at all.
+   */
+  private boolean loadFieldsOnWriteOrRetry(
+      String entityType, List<EntityInterface<?>> entities, String operation) {
+    boolean loaded = true;
+    try {
+      List<EntityInterface<?>> copies = withFieldsLoadedOnWrite(entityType, entities);
+      for (int i = 0; i < copies.size(); i++) {
+        entities.set(i, copies.get(i));
+      }
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "{}: loading fields on write failed for {} {} entities",
+          operation,
+          entities.size(),
+          entityType,
+          e);
+      entities.forEach(entity -> enqueueEntityRetry(entity, operation, e));
+      loaded = false;
+    }
+    return loaded;
   }
 
   public void updateEntitiesBulk(List<? extends EntityInterface<?>> entities) {
