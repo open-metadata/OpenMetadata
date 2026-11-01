@@ -190,7 +190,11 @@ const OntologyReleasePanel = ({
       currentUser?.id,
     ],
     queryFn: ({ signal }) =>
-      getOntologyWorkingDiff(ontology.id, { limit: 25, after }, signal),
+      getOntologyWorkingDiff(
+        ontology.id,
+        { limit: 25, after, groupBy: 'concept' },
+        signal
+      ),
     enabled: [
       view === 'changes',
       cursors.length > 1,
@@ -419,18 +423,30 @@ const OntologyReleasePanel = ({
         nextSemanticVersion(baseVersion, bump)
       : t('label.loading');
 
+  const getChangeCountText = (total: number, isGrouped: boolean) =>
+    isGrouped
+      ? t('label.changed-class-plural') + ': ' + total
+      : total + ' ' + t('label.pending-changes');
+
   const renderAiFooter = () => (
-    <div className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4">
+    <Box
+      className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
+      direction="col"
+      gap={3}>
       <Typography color="secondary" size="text-sm">
         <span data-testid="ontology-version-preview">
           {getVersionPreview()}
         </span>
         {working.data
-          ? ` · ${working.data.paging.total} ${t('label.pending-changes')}`
+          ? ' · ' +
+            getChangeCountText(
+              working.data.paging.total,
+              Boolean(working.data.groups)
+            )
           : null}
       </Typography>
-      {renderPublicationButtons()}
-    </div>
+      {currentStage && renderFooter()}
+    </Box>
   );
 
   const renderChangesHeading = () => (
@@ -440,7 +456,10 @@ const OntologyReleasePanel = ({
       </Typography>
       {working.data && (
         <Typography color="secondary" size="text-sm">
-          {working.data.paging.total} {t('label.pending-changes')}
+          {getChangeCountText(
+            working.data.paging.total,
+            Boolean(working.data.groups)
+          )}
         </Typography>
       )}
     </Box>
@@ -498,12 +517,47 @@ const OntologyReleasePanel = ({
       />
     );
 
+  const renderConceptGroups = () =>
+    changes.data?.groups?.map((group, index) => (
+      <li data-testid="ontology-working-concept-group" key={group.iri ?? index}>
+        <Card size="sm">
+          <Card.Content>
+            <Box gap={2} justify="between">
+              <Typography
+                data-testid="ontology-working-concept-summary"
+                size="text-sm"
+                weight="semibold">
+                {group.concept
+                  ? t('message.ontology-class-change-summary', {
+                      concept: group.iri
+                        ? group.iri.split(/[#/:]/).pop()
+                        : group.concept,
+                      parents: group.parents.length
+                        ? ' ⊑ ' + group.parents.join(', ')
+                        : '',
+                      count: group.propertyCount,
+                    })
+                  : group.changes
+                      .map((change) => getEntityName(change.entity))
+                      .join(', ')}
+              </Typography>
+              <Badge
+                color={group.changeType === 'DEPRECATED' ? 'warning' : 'gray'}>
+                {t('label.' + group.changeType.toLowerCase())}
+              </Badge>
+            </Box>
+          </Card.Content>
+        </Card>
+      </li>
+    ));
+
   const renderChanges = () => (
     <Box direction="col" gap={4}>
       {renderChangesHeading()}
       {renderChangeStatus()}
       {hasCoherentPreview && changes.data && (
         <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
+          {renderConceptGroups()}
           {changes.data.data.map((change) => (
             <li key={change.entity.id + ':' + change.memberKind}>
               <Card size="sm">
@@ -557,6 +611,11 @@ const OntologyReleasePanel = ({
         <Box className="tw:min-w-0" direction="col" gap={4}>
           {renderChangesHeading()}
           {renderChangeStatus()}
+          {hasCoherentPreview && Boolean(changes.data?.groups?.length) && (
+            <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
+              {renderConceptGroups()}
+            </ul>
+          )}
           {hasCoherentPreview && changes.data && (
             <AiChangeGroups changes={changes.data.data} />
           )}
@@ -564,6 +623,13 @@ const OntologyReleasePanel = ({
           {renderVersionError()}
         </Box>
         <Box className="tw:min-w-0" direction="col" gap={4}>
+          <OntologyReleaseReviewers
+            key={scopeKey}
+            scopeKey={scopeKey}
+            view={panelView}
+            onChange={updateReviewSettings}
+            onRefresh={refresh}
+          />
           {renderValidation()}
           {renderVersionEditor()}
         </Box>
@@ -675,7 +741,7 @@ const OntologyReleasePanel = ({
         {renderStorageStatus()}
         {renderRecovery()}
         {currentStage || state.isError ? null : renderStageStatus()}
-        {isChanges ? renderAiFooter() : null}
+        {isChanges ? renderAiFooter() : currentStage && renderFooter()}
       </Box>
     );
   };

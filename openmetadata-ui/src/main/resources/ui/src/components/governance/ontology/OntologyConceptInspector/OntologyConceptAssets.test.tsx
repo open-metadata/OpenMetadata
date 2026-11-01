@@ -295,6 +295,10 @@ it('keeps a successful removal confirmed and restores the list using GET only', 
   );
   await waitFor(() => expect(remove).toBeEnabled());
   fireEvent.click(remove);
+
+  expect(http.delete).not.toHaveBeenCalled();
+
+  fireEvent.click(await screen.findByTestId('ontology-unlink-confirm'));
   await waitFor(() =>
     expect(showSuccessToast).toHaveBeenCalledWith(
       'message.ontology-binding-saved-read-unavailable'
@@ -434,6 +438,22 @@ it('adds selected assets serially at each re-read revision and removes a linked 
   const remove = screen.getByTestId('ontology-native-asset-remove-new-one');
   await waitFor(() => expect(remove).toBeEnabled());
   fireEvent.click(remove);
+
+  expect(http.delete).not.toHaveBeenCalled();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'label.cancel' }));
+
+  expect(http.delete).not.toHaveBeenCalled();
+  expect(screen.getByRole('link', { name: 'new-one' })).toBeInTheDocument();
+
+  fireEvent.click(remove);
+  fireEvent.click(await screen.findByTestId('ontology-unlink-confirm'));
+  await waitFor(() =>
+    expect(http.delete).toHaveBeenCalledWith(
+      '/ontologyConcepts/customer/bindings/table/new-one',
+      { params: { expectedRevision: 2 } }
+    )
+  );
   await waitFor(() =>
     expect(
       screen.queryByRole('link', { name: 'new-one' })

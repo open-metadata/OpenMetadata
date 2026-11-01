@@ -228,7 +228,8 @@ test.describe('Context Center - Archive Page', () => {
     // ── 14. Soft delete restored document again ───────────────────────────────
 
     await test.step('soft delete the restored document', async () => {
-      await navigateToDocuments(page);
+      // Stay on step 12's search result: the unfiltered list is paged, and
+      // files from parallel workers can push this one off the first page.
       await softDeleteDocument(page, `document-row-${documentId}`);
     });
 

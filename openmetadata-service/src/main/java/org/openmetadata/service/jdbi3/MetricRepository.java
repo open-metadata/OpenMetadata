@@ -42,9 +42,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -106,7 +106,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   private static final int ASSET_SCAN_BATCH_SIZE = 200;
   private static final int HIERARCHY_SCAN_BATCH_SIZE = 200;
   static final int MAX_OBSERVABILITY_ASSET_DETAILS = 1_000;
-  private static final String HIERARCHY_FIELDS =
+  // Fields every hierarchy row carries (tree roots, group members, detail context), so the list
+  // renders the same columns whichever endpoint a row came from.
+  static final String HIERARCHY_FIELDS =
       "owners,experts,reviewers,parent,childrenCount,metricGroup,domains,tags";
 
   private final MetricObservabilityBuilder observabilityBuilder =
@@ -365,22 +367,35 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (!fields.contains(FIELD_PARENT) || nullOrEmpty(metrics)) {
       return;
     }
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(
-                entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED);
-    Map<UUID, EntityReference> parents = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      // ALL, like the single-entity getParent: a cascade restore re-reads each child while its
-      // parent is still deleted, and a NON_DELETED lookup failed the whole restore.
-      parents.put(
-          UUID.fromString(record.getToId()),
-          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getFromId()), ALL));
-    }
+    Map<UUID, UUID> parentIdByChildId = new HashMap<>();
+    daoCollection
+        .relationshipDAO()
+        .findFromBatch(
+            entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED)
+        .forEach(
+            record ->
+                parentIdByChildId.put(
+                    UUID.fromString(record.getToId()), UUID.fromString(record.getFromId())));
+    Map<UUID, EntityReference> parentsById = loadParentReferences(parentIdByChildId.values());
     for (Metric metric : metrics) {
-      metric.setParent(parents.get(metric.getId()));
+      UUID parentId = parentIdByChildId.get(metric.getId());
+      metric.setParent(parentId == null ? null : parentsById.get(parentId));
     }
+  }
+
+  /**
+   * Resolved with ALL: a soft-deleted parent keeps its relationship rows, so a NON_DELETED lookup
+   * threw "not found" and failed the whole page (e.g. listing with include=all after a recursive
+   * soft delete). The reference carries deleted=true instead.
+   */
+  private static Map<UUID, EntityReference> loadParentReferences(Collection<UUID> parentIds) {
+    if (parentIds.isEmpty()) {
+      return Map.of();
+    }
+    return Entity.getEntityReferencesByIds(METRIC, List.copyOf(new HashSet<>(parentIds)), ALL)
+        .stream()
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (left, right) -> left));
   }
 
   @Override
@@ -388,24 +403,40 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (!fields.contains(FIELD_CHILDREN) || nullOrEmpty(metrics)) {
       return;
     }
-    Map<UUID, List<EntityReference>> children = new HashMap<>();
+    Map<UUID, List<UUID>> childIdsByParentId = new HashMap<>();
+    daoCollection
+        .relationshipDAO()
+        .findToBatch(entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, METRIC)
+        .forEach(
+            record ->
+                childIdsByParentId
+                    .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+                    .add(UUID.fromString(record.getToId())));
+    Map<UUID, EntityReference> liveChildrenById =
+        loadLiveChildReferences(childIdsByParentId.values());
     for (Metric metric : metrics) {
-      children.put(metric.getId(), new ArrayList<>());
+      metric.setChildren(
+          childIdsByParentId.getOrDefault(metric.getId(), List.of()).stream()
+              .map(liveChildrenById::get)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toCollection(ArrayList::new)));
     }
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(
-                entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, METRIC);
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID parentId = UUID.fromString(record.getFromId());
-      EntityReference child =
-          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getToId()), NON_DELETED);
-      children.get(parentId).add(child);
+  }
+
+  /**
+   * Soft delete keeps a child's CONTAINS row live, so a per-child NON_DELETED lookup threw "not
+   * found" and failed the whole page. A batch NON_DELETED lookup just omits deleted children,
+   * matching the single-entity {@link #getChildren}.
+   */
+  private static Map<UUID, EntityReference> loadLiveChildReferences(
+      Collection<List<UUID>> childIdLists) {
+    List<UUID> childIds = childIdLists.stream().flatMap(List::stream).distinct().toList();
+    if (childIds.isEmpty()) {
+      return Map.of();
     }
-    for (Metric metric : metrics) {
-      metric.setChildren(children.get(metric.getId()));
-    }
+    return Entity.getEntityReferencesByIds(METRIC, childIds, NON_DELETED).stream()
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (left, right) -> left));
   }
 
   private void fetchAndSetMetricGroups(List<Metric> metrics, EntityUtil.Fields fields) {
@@ -493,6 +524,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public List<Metric> updateManyEntitiesForImport(
       List<Metric> originals, List<Metric> updates, String updatedBy, String impersonatedBy) {
+    // The parent lives only in the CONTAINS edge, which the originals are read without. Load it so
+    // the base batch path can tell which parents a CSV moved metrics away from.
+    fetchAndSetParents(originals, getFields(FIELD_PARENT));
     List<Metric> updated =
         super.updateManyEntitiesForImport(originals, updates, updatedBy, impersonatedBy);
     reconcileImportedHierarchyGroups(updated);
@@ -966,10 +1000,6 @@ public class MetricRepository extends EntityRepository<Metric> {
       }
       recordChange(
           FIELD_PARENT, originalParent, updatedParent, true, MetricRepository::sameReferenceById);
-      // Both parents' search documents carry children/childrenCount, so refresh them or the counts
-      // drift until the next full reindex.
-      refreshSearchDocument(originalParent);
-      refreshSearchDocument(updatedParent);
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
@@ -1692,18 +1722,17 @@ public class MetricRepository extends EntityRepository<Metric> {
   protected void postCreate(Metric metric) {
     super.postCreate(metric);
     refreshSearchDocument(metric.getMetricGroup());
-    refreshSearchDocument(metric.getParent());
   }
 
-  // The batch path (bulk API, CSV import) never calls postCreate(Metric), so refresh each parent
-  // and group the new metrics landed under, once each.
+  // The batch path (bulk API, CSV import) never calls postCreate(Metric), so refresh each group
+  // the new metrics landed in, once each. Their parents are refreshed by the base batch hook.
   @Override
   protected void postCreate(List<Metric> metrics) {
     super.postCreate(metrics);
     Set<UUID> refreshed = new HashSet<>();
     listOrEmpty(metrics).stream()
-        .flatMap(metric -> Stream.of(metric.getParent(), metric.getMetricGroup()))
-        .filter(container -> container != null && refreshed.add(container.getId()))
+        .map(Metric::getMetricGroup)
+        .filter(group -> group != null && refreshed.add(group.getId()))
         .forEach(this::refreshSearchDocument);
   }
 
@@ -1711,20 +1740,23 @@ public class MetricRepository extends EntityRepository<Metric> {
   protected void postDelete(Metric metric, boolean hardDelete) {
     super.postDelete(metric, hardDelete);
     refreshSearchDocument(metric.getMetricGroup());
-    refreshSearchDocument(metric.getParent());
   }
 
   @Override
   protected void postRestore(Metric metric) {
     super.postRestore(metric);
     refreshSearchDocument(metric.getMetricGroup());
-    refreshSearchDocument(metric.getParent());
   }
 
-  // A parent's and a group's search documents carry childrenCount and metricCount, so they are
-  // refreshed whenever a metric appears, moves or goes away, or the counts drift until the next
-  // full reindex. A cascade restore brings children back before their parent, so a container that
-  // is still deleted is skipped: the refresh could not load it and would only log an error.
+  @Override
+  protected List<EntityReference> getCountingParents(Metric metric) {
+    return metric.getParent() == null ? List.of() : List.of(metric.getParent());
+  }
+
+  // A group's search document carries metricCount, so it is refreshed whenever a metric joins,
+  // moves or leaves it, or the count drifts until the next full reindex. A cascade restore brings
+  // children back before their parent, so a group that is still deleted is skipped: the refresh
+  // could not load it and would only log an error.
   private void refreshSearchDocument(EntityReference container) {
     if (container != null && !Boolean.TRUE.equals(container.getDeleted())) {
       EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(container, null);
@@ -1738,9 +1770,6 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void postUpdate(Metric original, Metric updated) {
-    // childrenCount is computed on read and the update never loads it, so without this the
-    // search document re-indexes it as 0.
-    updated.setChildrenCount(getChildrenCount(updated));
     super.postUpdate(original, updated);
     refreshSearchDocument(original.getMetricGroup());
     if (!sameReferenceById(original.getMetricGroup(), updated.getMetricGroup())) {

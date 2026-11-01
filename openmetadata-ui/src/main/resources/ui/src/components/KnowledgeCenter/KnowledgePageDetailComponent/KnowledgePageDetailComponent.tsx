@@ -972,9 +972,17 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   useEffect(() => {
-    return () => {
+    const flushDrafts = () => {
       saveDraftContent.flush();
       saveDraftDisplayName.flush();
+    };
+    // A reload or tab close never unmounts, so the last 300ms of edits would
+    // otherwise miss the draft stash and a stale draft gets synced on return.
+    window.addEventListener('pagehide', flushDrafts);
+
+    return () => {
+      window.removeEventListener('pagehide', flushDrafts);
+      flushDrafts();
     };
   }, [saveDraftContent, saveDraftDisplayName]);
 

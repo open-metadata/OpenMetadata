@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1990 endpoints** across 75 resource packages · 1980 carry a summary.
+**1991 endpoints** across 75 resource packages · 1981 carry a summary.
 
 ## (root)
 
@@ -1422,6 +1422,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyConcepts/{id}/bindings` | Get one page of the catalog bindings of a concept the caller may view |
 | `PUT` | `/v1/ontologyConcepts/{id}/bindings` | Replace one concept catalog association |
 | `DELETE` | `/v1/ontologyConcepts/{id}/bindings/{assetType}/{assetId}` | Remove one concept catalog association |
+| `POST` | `/v1/ontologyConcepts/{id}/query` | Generate SQL over the concept's bound tables, joined along search-around hops |
 | `GET` | `/v1/ontologyConcepts/{id}/versions` | List ontology concept versions |
 | `GET` | `/v1/ontologyConcepts/{id}/versions/{version}` | Get an ontology concept version |
 | `POST` | `/v1/ontologyEditLocks/acquire` | Acquire an authoring lease |
@@ -2265,7 +2266,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/users/exportAsync` | Export users in a team in CSV format |
 | `POST` | `/v1/users/generatePasswordResetLink` | Generate Password Reset Link |
 | `GET` | `/v1/users/generateRandomPwd` | Generate a random password |
-| `POST` | `/v1/users/generateToken` | Generate JWT Token for a User |
+| `POST` | `/v1/users/generateToken` | Generate JWT Token for a Bot User |
 | `PUT` | `/v1/users/generateToken/{id}` | Generate JWT Token for a Bot User |
 | `PUT` | `/v1/users/import` | Import from CSV to create, and update teams. |
 | `PUT` | `/v1/users/importAsync` | Import from CSV to create, and update teams asynchronously. |

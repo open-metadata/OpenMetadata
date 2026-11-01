@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,17 +13,25 @@ import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -70,6 +80,126 @@ class ContextFileVisibilityTest {
 
     assertFalse(ContextFileVisibility.isVisibleToUser(file, BOB, false));
     assertTrue(ContextFileVisibility.isVisibleToUser(file, ALICE, false));
+  }
+
+  @Test
+  void aUserNamedLikeTheOwningTeamIsNotAnOwner() {
+    ContextFile file =
+        fileOwnedBy(ALICE, MemoryVisibility.PRIVATE)
+            .withOwners(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType(Entity.TEAM)
+                        .withName(BOB)));
+
+    assertFalse(ContextFileVisibility.isOwnedBy(file, BOB));
+    assertFalse(ContextFileVisibility.isVisibleToUser(file, BOB, false));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.TEAM, Entity.DOMAIN})
+  void aSharedPrincipalMustMatchById(String principalType) {
+    EntityReference principal =
+        new EntityReference().withId(UUID.randomUUID()).withType(principalType).withName(BOB);
+    User caller = new User().withId(UUID.randomUUID()).withName(BOB);
+    ContextFile file =
+        fileOwnedBy(ALICE, MemoryVisibility.SHARED)
+            .withShareConfig(
+                new MemoryShareConfig()
+                    .withVisibility(MemoryVisibility.SHARED)
+                    .withSharedWith(List.of(new MemorySharedPrincipal().withPrincipal(principal))));
+
+    try (MockedStatic<Entity> entities = Mockito.mockStatic(Entity.class)) {
+      entities
+          .when(
+              () -> Entity.getEntityByName(Entity.USER, BOB, "teams,domains", Include.NON_DELETED))
+          .thenReturn(caller);
+      assertFalse(ContextFileVisibility.isVisibleToUser(file, BOB, false));
+
+      if (Entity.TEAM.equals(principalType)) {
+        caller.withTeams(List.of(principal));
+      } else {
+        caller.withDomains(List.of(principal));
+      }
+      assertTrue(ContextFileVisibility.isVisibleToUser(file, BOB, false));
+    }
+  }
+
+  @Test
+  void aUserNamedLikeTheOwningTeamCannotRestrictTheFile() {
+    ContextFile open = fileOwnedBy(BOB, MemoryVisibility.ENTITY);
+    open.getOwners().getFirst().withType(Entity.TEAM).withId(UUID.randomUUID());
+    ContextFile restricted =
+        fileOwnedBy(BOB, MemoryVisibility.PRIVATE).withOwners(open.getOwners());
+
+    assertThrows(ForbiddenException.class, () -> restrictAs(BOB, false, open, restricted));
+    assertDoesNotThrow(() -> restrictAs(BOB, true, open, restricted));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = MemoryVisibility.class,
+      names = {"PRIVATE", "SHARED"})
+  void enforcementDeniesATeamNamesakeAndAdmitsAUserOwner(MemoryVisibility visibility) {
+    ContextFile teamOwned = fileOwnedBy(BOB, visibility);
+    teamOwned.getOwners().getFirst().withType(Entity.TEAM).withId(UUID.randomUUID());
+    SecurityContext caller = securityContextFor(BOB);
+    try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class)) {
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(caller))
+          .thenReturn(new SubjectContext(new User().withName(BOB), null, null));
+
+      assertThrows(
+          ForbiddenException.class,
+          () -> ContextFileVisibility.enforceVisibility(teamOwned, caller));
+      assertDoesNotThrow(
+          () -> ContextFileVisibility.enforceVisibility(fileOwnedBy(BOB, visibility), caller));
+    }
+  }
+
+  @Test
+  void folderChildrenExcludeATeamOwnersNamesake() {
+    ContextFile teamOwned = fileOwnedBy(BOB, MemoryVisibility.PRIVATE);
+    teamOwned.getOwners().getFirst().withType(Entity.TEAM).withId(UUID.randomUUID());
+    ContextFile own = fileOwnedBy(BOB, MemoryVisibility.PRIVATE);
+    ContextFile orgWide = fileOwnedBy(ALICE, MemoryVisibility.ENTITY);
+    SecurityContext caller = securityContextFor(BOB);
+    try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class)) {
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(caller))
+          .thenReturn(new SubjectContext(new User().withName(BOB), null, null));
+
+      assertEquals(
+          List.of(own, orgWide),
+          ContextFileVisibility.filterVisible(List.of(teamOwned, own, orgWide), caller));
+    }
+  }
+
+  @Test
+  void anAnonymousReaderCannotReadAPrivateFile() {
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            ContextFileVisibility.enforceVisibility(
+                fileOwnedBy(BOB, MemoryVisibility.PRIVATE), null));
+  }
+
+  @Test
+  void emptyPagesKeepTheirPagingWithoutLookingUpACaller() {
+    ResultList<ContextFile> empty = new ResultList<>(List.of(), BEFORE, AFTER, 0);
+
+    assertSame(empty, ContextFileVisibility.filterByVisibility(empty, null));
+    assertNull(ContextFileVisibility.filterByVisibility(null, null));
+  }
+
+  @Test
+  void readsRequestOwnersEvenWhenTheCallerOmitsThem() {
+    assertEquals("owners", ContextFileVisibility.guardFields(null));
+    assertEquals("owners", ContextFileVisibility.guardFields(""));
+    assertEquals("description,owners", ContextFileVisibility.guardFields("description"));
+    assertEquals("owners", ContextFileVisibility.guardFields("owners"));
+    assertEquals("*", ContextFileVisibility.guardFields("*"));
   }
 
   @Test
@@ -147,7 +277,14 @@ class ContextFileVisibilityTest {
   }
 
   private static ContextFile fileOwnedBy(String owner, MemoryVisibility visibility) {
-    ContextFile file = new ContextFile().withOwners(List.of(new EntityReference().withName(owner)));
+    ContextFile file =
+        new ContextFile()
+            .withOwners(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.nameUUIDFromBytes(owner.getBytes(StandardCharsets.UTF_8)))
+                        .withType(Entity.USER)
+                        .withName(owner)));
     return visibility == null
         ? file
         : file.withShareConfig(new MemoryShareConfig().withVisibility(visibility));

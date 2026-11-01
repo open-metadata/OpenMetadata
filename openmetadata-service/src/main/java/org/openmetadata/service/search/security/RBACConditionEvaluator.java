@@ -25,6 +25,7 @@ import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolve
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.SpelNode;
+import org.springframework.expression.spel.ast.BooleanLiteral;
 import org.springframework.expression.spel.ast.MethodReference;
 import org.springframework.expression.spel.ast.OpAnd;
 import org.springframework.expression.spel.ast.OpOr;
@@ -237,6 +238,19 @@ public class RBACConditionEvaluator {
       }
     } else if (node instanceof MethodReference) {
       handleMethodReference(node, collector);
+    } else if (node instanceof BooleanLiteral literal) {
+      handleBooleanLiteral(literal, collector);
+    }
+  }
+
+  /**
+   * {@code true} adds no clause, which the collector reads as match-all. {@code false} sets
+   * match-nothing explicitly, so a condition such as {@code isOwner() && false} matches no
+   * document, as it does when evaluated in memory.
+   */
+  private void handleBooleanLiteral(BooleanLiteral literal, ConditionCollector collector) {
+    if (!Boolean.TRUE.equals(literal.getLiteralValue().getValue())) {
+      collector.setMatchNothing(true);
     }
   }
 
