@@ -51,6 +51,39 @@ class DefaultToolContextTest {
   }
 
   @Test
+  void configuredAllowlistRejectsWriteToolsBeforeDispatch() {
+    DefaultToolContext.CallToolOutcome outcome =
+        invokeWithToolName("create_entity", "search_metadata, get_entity_details");
+
+    assertThat(outcome.result().isError()).isTrue();
+    assertThat(outcome.errorCategory()).isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
+    assertThat(asMap(outcome.result().structuredContent()))
+        .containsEntry("statusCode", 403)
+        .containsEntry("error", "MCP tool disabled: create_entity");
+  }
+
+  @Test
+  void emptyAllowlistRejectsAllTools() {
+    DefaultToolContext.CallToolOutcome outcome = invokeWithToolName("search_metadata", " ");
+
+    assertThat(outcome.result().isError()).isTrue();
+    assertThat(outcome.errorCategory()).isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
+  }
+
+  @Test
+  void allowedReadToolReachesItsParameterValidation() {
+    DefaultToolContext.CallToolOutcome outcome =
+        invokeWithToolName("get_entity_details", "search_metadata, get_entity_details");
+
+    assertThat(outcome.result().isError()).isTrue();
+    assertThat(asMap(outcome.result().structuredContent()))
+        .containsEntry("statusCode", 400)
+        .hasEntrySatisfying(
+            "error",
+            error -> assertThat(error.toString()).contains("Parameter 'entityType' is required"));
+  }
+
+  @Test
   void classifyAuthorizationExceptionAsAuth() {
     assertThat(DefaultToolContext.classifyException(new AuthorizationException("forbidden")))
         .isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
@@ -428,6 +461,11 @@ class DefaultToolContextTest {
   }
 
   private static DefaultToolContext.CallToolOutcome invokeWithToolName(String toolName) {
+    return invokeWithToolName(toolName, null);
+  }
+
+  private static DefaultToolContext.CallToolOutcome invokeWithToolName(
+      String toolName, String configuredTools) {
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
     Principal principal = mock(Principal.class);
     org.mockito.Mockito.when(principal.getName()).thenReturn("alice");
@@ -436,7 +474,7 @@ class DefaultToolContextTest {
     McpSchema.CallToolRequest request = mock(McpSchema.CallToolRequest.class);
     org.mockito.Mockito.when(request.arguments()).thenReturn(Map.of());
 
-    return new DefaultToolContext()
+    return new DefaultToolContext(configuredTools)
         .callToolWithMetadata(
             mock(Authorizer.class), mock(Limits.class), toolName, securityContext, request);
   }

@@ -121,7 +121,9 @@ public class McpServer implements McpServerProvider {
    */
   protected List<McpSchema.Tool> getTools() {
     List<McpSchema.Tool> tools =
-        toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
+        toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json").stream()
+            .filter(tool -> toolContext.isToolAllowed(tool.name()))
+            .toList();
     if (rdfEnabled()) {
       return tools;
     }
