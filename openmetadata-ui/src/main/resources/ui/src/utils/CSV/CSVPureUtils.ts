@@ -315,7 +315,8 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
 };
 
 // Mirrors CsvUtil.java: a formula trigger, possibly behind leading quotes (e.g. "=x", "'=x").
-const isFormulaLike = (value: string) => /^'*[=+\-@\t\r]/.test(value);
+export const FORMULA_LIKE = /^'*[=+\-@\t\r]/;
+const isFormulaLike = (value: string) => FORMULA_LIKE.test(value);
 
 // Prefix cells a spreadsheet would evaluate (e.g. "=HYPERLINK(..)") the way the server export does.
 export const neutralizeFormula = (value: string) =>

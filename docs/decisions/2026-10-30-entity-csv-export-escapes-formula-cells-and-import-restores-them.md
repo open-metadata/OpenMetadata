@@ -27,6 +27,8 @@ escape has to be reversible or every round trip would change data.
   each cell first (the recursive database- and drive-service exports), so a cell is escaped once.
 - The UI bulk-edit grid restores cells when it loads a CSV and escapes them again when it builds the
   CSV for import, with the same rule (`restoreFormula` / `neutralizeFormula` in `CSVPureUtils.ts`).
+- The UI sample data download escapes the same cells with the same rule (`FORMULA_LIKE` in
+  `CSVPureUtils.ts`); it is not re-imported.
 
 ## Consequences
 Exports are safe to open in a spreadsheet, and a value survives any number of export and import
