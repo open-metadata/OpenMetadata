@@ -128,8 +128,8 @@ import {
   MetricTreeNode,
   VisibleMetricTableRow,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
-import { getViewPageSizeOptions } from '../../../utils/PaginationUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { getViewPageSizeOptions } from '../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {

@@ -61,11 +61,11 @@ import {
   deleteLearningResource,
   LearningResource,
 } from '../../../../../../rest/learningResourceAPI';
+import { getViewPageSizeOptions } from '../../../../../../utils/PaginationUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import { getViewPageSizeOptions } from '../../../../../../utils/PaginationUtils';
 import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
 import ViewToggle from '../../../../../common/ViewToggle/ViewToggle';
 import {
