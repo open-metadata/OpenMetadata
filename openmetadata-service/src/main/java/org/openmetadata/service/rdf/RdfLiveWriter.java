@@ -110,8 +110,7 @@ public final class RdfLiveWriter implements AutoCloseable {
     PerRequestContextCleaner.clear();
     final Timer.Sample sample = RequestLatencyContext.startRdfOperation();
     try {
-      RdfProjectionHealth.withDurableRecovery(
-          () -> write.accept(JsonUtils.readValue(payload, RdfLiveWrite.class)));
+      write.accept(JsonUtils.readValue(payload, RdfLiveWrite.class));
     } finally {
       RequestLatencyContext.endRdfOperation(sample);
       PerRequestContextCleaner.clear();

@@ -42,6 +42,7 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -51,58 +52,52 @@ import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 class TestCaseResolutionStatusRepositoryTest {
 
   @Test
-  void testAddOriginEntityFQNJoin_withOriginEntityFQN() {
+  void testIncidentCondition_withOriginEntityFQN() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("originEntityFQN", "test.table");
 
-    String result =
-        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
-            filter, "WHERE 1=1");
+    var shaped = CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.incidentCondition(filter);
 
-    assertTrue(result.contains("INNER JOIN"));
-    assertTrue(result.contains("test_case"));
-    assertTrue(result.contains("WHERE 1=1"));
+    // The join is added when the originEntityFQN predicate needs its testCaseEntityFQN alias,
+    // and the default non-deleted deletion scoping rides it as a qualified predicate.
+    assertTrue(shaped.condition().contains("INNER JOIN"));
+    assertTrue(shaped.condition().contains("test_case"));
+    assertTrue(
+        shaped.condition().contains("tc.deleted = FALSE"), "include defaults to non-deleted");
+    assertTrue(
+        shaped.condition().contains("ON entityFQNHash = testCaseHash WHERE"),
+        "the join must end with a separator before the condition it is concatenated with");
+    assertTrue(
+        shaped.params().containsKey("originEntityFQN"),
+        "the predicate's binds travel with the condition");
   }
 
   @Test
-  void testAddOriginEntityFQNJoin_withInclude() {
+  void testIncidentCondition_withoutOriginPaysAnExistsNotAJoin() {
+    // ListFilter() defaults to include = NON_DELETED, and with no originEntityFQN predicate the
+    // query pays an indexed EXISTS instead of a join nothing else needs.
     ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", "non-deleted");
 
-    String result =
-        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
-            filter, "WHERE 1=1");
+    var shaped = CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.incidentCondition(filter);
 
-    assertTrue(result.contains("INNER JOIN"));
-    assertTrue(result.contains("test_case"));
+    assertFalse(shaped.condition().contains("INNER JOIN"));
+    assertTrue(shaped.condition().contains("EXISTS (SELECT 1 FROM test_case"));
+    assertTrue(shaped.condition().contains("tcScope.deleted = FALSE"));
   }
 
   @Test
-  void testAddOriginEntityFQNJoin_withDefaultFilter() {
-    // ListFilter() default constructor sets include = Include.NON_DELETED
-    // The addOriginEntityFQNJoin method adds JOIN when either originEntityFQN OR include is present
-    // Since include is always set by default, the JOIN is always added
-    ListFilter filter = new ListFilter();
-
-    String result =
-        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
-            filter, "WHERE 1=1");
-
-    // With default ListFilter, JOIN is added because include is set to NON_DELETED
-    assertTrue(result.contains("INNER JOIN"));
-    assertTrue(result.contains("WHERE 1=1"));
-  }
-
-  @Test
-  void testAddOriginEntityFQNJoin_preservesCondition() {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("originEntityFQN", "test.table");
-
-    String result =
-        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
-            filter, "WHERE status = 'Open'");
-
-    assertTrue(result.contains("WHERE status = 'Open'"));
+  void testIncidentCondition_honorsIncludeDeletedAndAll() {
+    var deletedScoped =
+        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.incidentCondition(
+            new ListFilter(Include.DELETED));
+    assertTrue(
+        deletedScoped.condition().contains("tcScope.deleted = TRUE"),
+        "include=deleted scopes on the test case's deletion state");
+    var unscoped =
+        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.incidentCondition(
+            new ListFilter(Include.ALL));
+    assertFalse(unscoped.condition().contains("EXISTS (SELECT 1 FROM test_case"));
+    assertFalse(unscoped.condition().contains("INNER JOIN"));
   }
 
   @Test

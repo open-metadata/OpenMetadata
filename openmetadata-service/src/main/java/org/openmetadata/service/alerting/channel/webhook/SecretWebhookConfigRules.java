@@ -13,62 +13,14 @@
 
 package org.openmetadata.service.alerting.channel.webhook;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import com.fasterxml.jackson.core.JsonPointer;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 
-import java.util.Map;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
-import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
-import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.fernet.Fernet;
-
-/** A webhook whose authentication carries secrets, which are stored encrypted. */
+/** A webhook whose configuration carries secrets, which are stored encrypted and read back masked. */
 public final class SecretWebhookConfigRules extends WebhookConfigRules {
-  private static final String AUTH_TYPE = "authType";
-
   @Override
-  public void encryptSecrets(SubscriptionDestination destination) {
-    Webhook webhook = stored(destination);
-    if (webhook != null && webhook.getAuthType() instanceof Map<?, ?> authMap) {
-      Object type = authMap.get("type");
-      if (WebhookBearerAuth.Type.BEARER.value().equals(type)) {
-        store(destination, encryptedBearer(webhook));
-      } else if (WebhookOAuth2Config.Type.OAUTH_2.value().equals(type)) {
-        store(destination, encryptedOAuth2(webhook));
-      }
-    }
-  }
-
-  private static Object encryptedBearer(Webhook webhook) {
-    WebhookBearerAuth bearer =
-        JsonUtils.convertValue(webhook.getAuthType(), WebhookBearerAuth.class);
-    boolean hasSecret = bearer != null && !nullOrEmpty(bearer.getSecretKey());
-    return hasSecret ? bearer.withSecretKey(encrypted(bearer.getSecretKey())) : null;
-  }
-
-  private static Object encryptedOAuth2(Webhook webhook) {
-    WebhookOAuth2Config oauth2 =
-        JsonUtils.convertValue(webhook.getAuthType(), WebhookOAuth2Config.class);
-    if (oauth2 != null && !nullOrEmpty(oauth2.getClientId())) {
-      oauth2.withClientId(encrypted(oauth2.getClientId()));
-    }
-    if (oauth2 != null && !nullOrEmpty(oauth2.getClientSecret())) {
-      oauth2.withClientSecret(encrypted(oauth2.getClientSecret()));
-    }
-    return oauth2;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static void store(SubscriptionDestination destination, Object authentication) {
-    Map<String, Object> config = (Map<String, Object>) destination.getConfig();
-    if (authentication != null && config != null) {
-      config.put(AUTH_TYPE, JsonUtils.convertValue(authentication, Map.class));
-      destination.withConfig(config);
-    }
-  }
-
-  private static String encrypted(String value) {
-    return Fernet.getInstance().encryptIfApplies(value);
+  public List<JsonPointer> secretFields(JsonNode config) {
+    return WebhookSecrets.fieldsIn(config);
   }
 }

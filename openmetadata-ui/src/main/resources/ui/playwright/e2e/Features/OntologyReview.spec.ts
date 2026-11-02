@@ -23,6 +23,7 @@ import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { TeamClass } from '../../support/team/TeamClass';
+import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { fillCodeEditor } from '../../utils/codeEditor';
 import {
@@ -348,9 +349,10 @@ test.describe(
     test('manages reviewers with reload persistence and locks settings during an open review', async ({
       isolatedUserPage: author,
       isolatedUser,
-      freshUserPage: { user: reviewer },
     }) => {
       const api = await getWorkerAdminAPIContext();
+      // Only needs to exist as a pickable user, so skip a browser sign-in.
+      const reviewer = new UserClass();
       const teamName = `pw_review_team_${uuid()}`;
       const team = new TeamClass({
         name: teamName,
@@ -364,6 +366,7 @@ test.describe(
       const tasks: string[] = [];
       let ontology: Ontology | undefined;
       try {
+        await reviewer.create(api);
         await team.create(api);
         await waitForSearchIndexed(
           api,
@@ -606,6 +609,7 @@ test.describe(
           );
         }
         await team.delete(api);
+        await reviewer.delete(api);
       }
     });
 
@@ -904,36 +908,36 @@ test.describe(
         await expect(
           author.getByTestId('ontology-publication-modal')
         ).not.toBeVisible();
-        for (const [format, extension] of [
-          ['turtle', 'ttl'],
-          ['rdfxml', 'rdf'],
-          ['ntriples', 'nt'],
-          ['jsonld', 'jsonld'],
+        for (const [card, previewFormat, extension] of [
+          ['rdfxml', 'turtle', 'rdf'],
+          ['jsonld', 'turtle', 'jsonld'],
+          ['skos', 'skos', 'ttl'],
+          ['csv', 'csv', 'csv'],
         ]) {
-          const exported = author.waitForResponse((response) => {
+          const exportPath = `/api/v1/ontologyReleases/${firstRelease.id}/export`;
+          const previewed = author.waitForResponse((response) => {
             const url = new URL(response.url());
 
             return (
-              url.pathname ===
-                `/api/v1/ontologyReleases/${firstRelease.id}/export` &&
-              url.searchParams.get('format') === format
+              url.pathname === exportPath &&
+              url.searchParams.get('format') === previewFormat
             );
           });
           await author.getByTestId('ontology-import-export-trigger').click();
           const formatButton = author.getByTestId(
-            `ontology-release-format-${format}`
+            `ontology-release-format-${card}`
           );
           await expect(formatButton).toBeVisible();
-          if (format !== 'rdfxml') {
+          if (card !== 'rdfxml') {
             await formatButton.click();
           }
-          const response = await exported;
-          expect(response.ok()).toBeTruthy();
-          expect(await response.text()).toContain('First published definition');
+          const preview = await previewed;
+          expect(preview.ok()).toBeTruthy();
+          expect(await preview.text()).toContain('First published definition');
           await expect(
             author.getByTestId('ontology-release-export-preview')
           ).not.toBeEmpty();
-          if (format === 'turtle') {
+          if (card === 'rdfxml') {
             await testInfo.attach('native-release-export', {
               body: await author
                 .getByRole('dialog')
@@ -941,6 +945,15 @@ test.describe(
               contentType: 'image/png',
             });
           }
+          const fetched = author.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === exportPath &&
+              url.searchParams.get('format') === card &&
+              url.searchParams.get('shaclGate') === 'false'
+            );
+          });
           const downloaded = author.waitForEvent('download');
           await clickIgnoringToasts(
             author.getByTestId('ontology-run-release-export')
@@ -952,7 +965,7 @@ test.describe(
           const path = testInfo.outputPath(download.suggestedFilename());
           await download.saveAs(path);
           const content = await readFile(path, 'utf8');
-          expect(content).toBe(await response.text());
+          expect(content).toBe(await (await fetched).text());
           expect(content).toContain(concept.iri);
           expect(content).toContain('First published definition');
           expect(content).not.toContain('Second published definition');
@@ -1072,6 +1085,7 @@ test(
         page.getByTestId(`ontology-memory-draft-${draft.id}`)
       ).toBeHidden();
       await selectOntology(page, ontology);
+      await page.getByTestId('fit-view').click();
       const positions = await readNodePositions(page);
       await page.mouse.click(positions[conceptId].x, positions[conceptId].y);
       await expect(

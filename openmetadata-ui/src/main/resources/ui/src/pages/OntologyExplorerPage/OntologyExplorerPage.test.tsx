@@ -21,6 +21,8 @@ import { OntologyConceptType } from '../../generated/entity/data/ontologyConcept
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
+  createOntology,
+  getNativeOntologyDataGraphPage,
   getOntology,
   getOntologyConceptBindings,
   getOntologyWorkingDiff,
@@ -29,7 +31,9 @@ import {
   listOntologyConcepts,
   listOntologyProperties,
 } from '../../rest/ontologyAPI';
+import { fetchRdfConfig } from '../../rest/rdfAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { pageFixture } from '../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import { showInfoToast } from '../../utils/ToastUtils';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
@@ -119,9 +123,11 @@ jest.mock('../../rest/tasksAPI', () => ({
 
 jest.mock('../../rest/ontologyAPI', () => ({
   ...jest.requireActual('../../rest/ontologyAPI'),
+  createOntology: jest.fn(),
   getOntologyConceptBindings: jest
     .fn()
     .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
+  getNativeOntologyDataGraphPage: jest.fn(),
   getOntology: jest.fn(),
   getOntologyReleaseReviews: jest
     .fn()
@@ -131,6 +137,11 @@ jest.mock('../../rest/ontologyAPI', () => ({
   listOntologies: jest.fn(),
   listOntologyConcepts: jest.fn(),
   listOntologyProperties: jest.fn(),
+}));
+
+jest.mock('../../rest/rdfAPI', () => ({
+  ...jest.requireActual('../../rest/rdfAPI'),
+  fetchRdfConfig: jest.fn(),
 }));
 
 jest.mock('../../rest/permissionAPI', () => ({
@@ -198,6 +209,7 @@ interface PageLayoutMockProps {
 }
 
 interface LibraryMockProps {
+  native?: { onCreated?: () => void };
   onClose?: () => void;
   onOpenGlossary?: (glossaryName: string) => void;
 }
@@ -320,10 +332,13 @@ jest.mock('../../components/OntologyExplorer/OntologyExplorer', () => ({
 
 jest.mock('../../components/OntologyExplorer/OntologyLibrary', () => ({
   __esModule: true,
-  default: jest.fn(({ onClose, onOpenGlossary }: LibraryMockProps) => (
+  default: jest.fn(({ native, onClose, onOpenGlossary }: LibraryMockProps) => (
     <div data-testid="ontology-library">
       <button type="button" onClick={onClose}>
         Close library
+      </button>
+      <button type="button" onClick={() => native?.onCreated?.()}>
+        Library created an ontology
       </button>
       <button
         type="button"
@@ -501,15 +516,17 @@ describe('OntologyExplorerPage', () => {
 
   const renderNativeStudio = (
     search: string,
-    ontology: Ontology = nativeOntology
+    ontology: Ontology = nativeOntology,
+    permissions: Record<string, { Create: boolean }> = {
+      ontologyConcept: { Create: true },
+      ontologyChangeSet: { Create: true },
+      ontologyProperty: { Create: true },
+      ontologyAxiom: { Create: true },
+    },
+    conceptNames: string[] = ['Party', 'Customer'],
+    ontologies: Ontology[] = [ontology]
   ) => {
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      permissions: {
-        ontologyConcept: { Create: true },
-        ontologyProperty: { Create: true },
-        ontologyAxiom: { Create: true },
-      },
-    });
+    (usePermissionProvider as jest.Mock).mockReturnValue({ permissions });
     mockUseRealRouter = true;
     (getOntology as jest.Mock).mockResolvedValue(ontology);
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
@@ -523,8 +540,8 @@ describe('OntologyExplorerPage', () => {
       paging: { total: 0 },
     });
     (listOntologies as jest.Mock).mockResolvedValue({
-      data: [ontology],
-      paging: { total: 1 },
+      data: ontologies,
+      paging: { total: ontologies.length },
     });
     mockUseOntologyStudioScopes.mockReturnValue({
       glossaries: [],
@@ -533,21 +550,33 @@ describe('OntologyExplorerPage', () => {
       isOntologyError: false,
       isOntologyLoading: false,
       refetchOntologies: jest.fn(),
-      ontologies: [ontology],
+      ontologies,
       refetch: jest.fn(),
     });
-    (listOntologyConcepts as jest.Mock).mockResolvedValue({
-      data: ['Party', 'Customer'].map((name) => ({
-        id: name,
-        name,
-        iri: `urn:${name}`,
-        fullyQualifiedName: `NativeSales.${name}`,
-        ontology: { id: nativeOntology.id, type: 'ontology' },
-        conceptType: OntologyConceptType.OwlClass,
-        superClasses: name === 'Customer' ? ['urn:Party'] : [],
-      })),
-      paging: { total: 2 },
-    });
+    (listOntologyConcepts as jest.Mock).mockImplementation(
+      async ({ ontology: ontologyFqn }: { ontology?: string }) => {
+        const owner =
+          ontologies.find((item) => item.fullyQualifiedName === ontologyFqn) ??
+          ontology;
+        const names =
+          owner.id === ontology.id
+            ? conceptNames
+            : [`${owner.fullyQualifiedName}Concept`];
+
+        return {
+          data: names.map((name) => ({
+            id: name,
+            name,
+            iri: `urn:${name}`,
+            fullyQualifiedName: `${owner.fullyQualifiedName}.${name}`,
+            ontology: { id: owner.id, type: 'ontology' },
+            conceptType: OntologyConceptType.OwlClass,
+            superClasses: name === 'Customer' ? ['urn:Party'] : [],
+          })),
+          paging: { total: names.length },
+        };
+      }
+    );
     (listOntologyProperties as jest.Mock).mockResolvedValue({
       data: [],
       paging: { total: 0 },
@@ -699,19 +728,229 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
-  it('shows the empty native catalog without glossary controls', async () => {
+  it('replaces the canvas with the first-run empty state and keeps only Library, Import/export and Tasks', async () => {
     mockSearchParams = new URLSearchParams();
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
-    expect(await screen.findByTestId('all-ontologies-empty')).toBeVisible();
+    expect(await screen.findByTestId('ontology-empty-state')).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'label.no-ontologies-yet' })
+    ).toBeVisible();
+    expect(
+      screen
+        .getAllByRole('button', {
+          name: /^label\.(install|import-a|create-from)/,
+        })
+        .map((button) => button.textContent)
+    ).toEqual([
+      'label.install-from-library',
+      'label.import-a-file',
+      'label.create-from-scratch',
+    ]);
+
+    ['view', 'edit', 'query'].forEach((mode) =>
+      expect(screen.queryByTestId(`mode-tab-${mode}`)).not.toBeInTheDocument()
+    );
+
+    expect(
+      screen.queryByTestId('ontology-publication-trigger')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('submode-tab-graph')).not.toBeInTheDocument();
     expect(mockOntologyExplorer).not.toHaveBeenCalled();
     expect(screen.getByTestId('ontology-library-trigger')).toBeVisible();
+    expect(screen.getByTestId('ontology-import-export')).toBeVisible();
+    expect(screen.getByTestId('ontology-tasks-trigger')).toBeVisible();
+  });
 
-    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
-
-    expect(screen.getByTestId('ontology-publication-picker')).toHaveTextContent(
-      'message.no-data-available'
+  it('does not flash the empty state while the first ontology list loads', async () => {
+    mockUseRealScopes = true;
+    mockSearchParams = new URLSearchParams();
+    let resolveList:
+      | ((page: { data: Ontology[]; paging: object }) => void)
+      | undefined;
+    (listOntologies as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve;
+      })
     );
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId('ontology-studio-shell')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-empty-state')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveList?.({ data: [], paging: { total: 0 } });
+    });
+
+    expect(await screen.findByTestId('ontology-empty-state')).toBeVisible();
+  });
+
+  it('holds back the mode switch and Publish while the first ontology list loads', async () => {
+    mockUseRealScopes = true;
+    mockSearchParams = new URLSearchParams();
+    (listOntologies as jest.Mock).mockReturnValue(new Promise(() => undefined));
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId('ontology-studio-shell')).toBeVisible();
+
+    ['view', 'edit', 'query'].forEach((mode) =>
+      expect(screen.queryByTestId(`mode-tab-${mode}`)).not.toBeInTheDocument()
+    );
+
+    expect(
+      screen.queryByTestId('ontology-publication-trigger')
+    ).not.toBeInTheDocument();
+  });
+
+  it('leaves the empty state when the Library installs an ontology, without a reload', async () => {
+    mockUseRealScopes = true;
+    mockSearchParams = new URLSearchParams();
+    (listOntologies as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.install-from-library' })
+    );
+    (listOntologies as jest.Mock).mockResolvedValue({
+      data: [nativeOntology],
+      paging: { total: 1 },
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Library created an ontology' })
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-empty-state')
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it('opens the Library from the highlighted first-run option', async () => {
+    mockSearchParams = new URLSearchParams();
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.install-from-library' })
+    );
+
+    expect(screen.getByTestId('ontology-library')).toBeVisible();
+  });
+
+  it('opens the create dialog from the first-run option', async () => {
+    mockSearchParams = new URLSearchParams();
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.create-from-scratch' })
+    );
+
+    expect(await screen.findByTestId('ontology-create-dialog')).toBeVisible();
+  });
+
+  it('opens Import with a new-ontology target from the first-run option', async () => {
+    mockSearchParams = new URLSearchParams();
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.import-a-file' })
+    );
+
+    expect(
+      await screen.findByTestId('ontology-native-import-file')
+    ).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-native-import-target')
+    ).toHaveTextContent('label.new-ontology');
+  });
+
+  it('offers the first-run options without permission to create but disables them', async () => {
+    mockSearchParams = new URLSearchParams();
+    mockUseAuth.mockReturnValue({ isAdminUser: false, isFirstTimeUser: false });
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'label.create-from-scratch' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'label.install-from-library' })
+    ).toBeDisabled();
+  });
+
+  it('shows the no-concepts card only while the ontology has zero classes', async () => {
+    renderNativeStudio('?ontology=native-sales', nativeOntology, undefined, []);
+
+    expect(await screen.findByTestId('ontology-empty-card')).toBeVisible();
+    expect(screen.getByText('label.ontology-has-no-concepts')).toBeVisible();
+  });
+
+  it('hides the no-concepts card when the ontology has classes', async () => {
+    renderNativeStudio('?ontology=native-sales');
+
+    await screen.findByRole('button', { name: 'Customer' });
+
+    expect(screen.queryByTestId('ontology-empty-card')).not.toBeInTheDocument();
+  });
+
+  it('opens the New class panel from the card and from the sub-tab Add concept', async () => {
+    renderNativeStudio('?ontology=native-sales', nativeOntology, undefined, []);
+    fireEvent.click(
+      await screen.findByTestId('ontology-empty-card-add-concept')
+    );
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-new-class-close'));
+
+    expect(
+      screen.queryByTestId('ontology-new-class-panel')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-empty-card')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-add-concept'));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
   it('opens Releases from the version chip and Changes from Publish', async () => {
@@ -804,7 +1043,41 @@ describe('OntologyExplorerPage', () => {
 
     fireEvent.click(screen.getByTestId('all-ontologies-new-ontology'));
 
-    expect(await screen.findByTestId('ontology-create-form')).toBeVisible();
+    expect(await screen.findByTestId('ontology-create-dialog')).toBeVisible();
+  });
+
+  it('creates an ontology from the empty catalog and opens the New class panel in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockUseRealScopes = true;
+    (listOntologies as jest.Mock).mockResolvedValueOnce({
+      data: [],
+      paging: { total: 0 },
+    });
+    (fetchRdfConfig as jest.Mock).mockResolvedValue({
+      baseUri: 'https://open-metadata.org/',
+    });
+    (createOntology as jest.Mock).mockResolvedValue(nativeOntology);
+    renderNativeStudio('', nativeOntology, undefined, []);
+    fireEvent.click(await screen.findByTestId('all-ontologies-new-ontology'));
+
+    expect(await screen.findByTestId('ontology-create-dialog')).toBeVisible();
+
+    fireEvent.change(screen.getByTestId('ontology-create-name'), {
+      target: { value: 'Native sales' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-create-submit')).toBeEnabled()
+    );
+    fireEvent.click(screen.getByTestId('ontology-create-submit'));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(createOntology).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Native sales' })
+    );
   });
 
   it('opens Releases from the version chip in AI mode', async () => {
@@ -872,6 +1145,52 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
+  it("asks for a concept in the AI aggregate Data mode, then loads that concept's ontology", async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({
+        clusters: [
+          {
+            id: 'Customer',
+            name: 'Customer',
+            count: 1,
+            assets: [{ id: 't1', name: 'customers' }],
+          },
+        ],
+      })
+    );
+    const financeOntology: Ontology = {
+      ...nativeOntology,
+      id: 'native-finance',
+      name: 'Native finance',
+      fullyQualifiedName: 'NativeFinance',
+      iri: 'urn:NativeFinance',
+      namespace: 'urn:NativeFinance:',
+    };
+    renderNativeStudio('?source=review', nativeOntology, undefined, undefined, [
+      financeOntology,
+      nativeOntology,
+    ]);
+    await screen.findByTestId('native-canvas');
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(screen.getByTestId('ontology-data-empty-state')).toBeVisible();
+    expect(getNativeOntologyDataGraphPage).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
+    fireEvent.click(screen.getByRole('button', { name: 'Customer' }));
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(
+      await screen.findByTestId('ontology-data-cluster-Customer')
+    ).toBeVisible();
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledWith(
+      'native-sales',
+      { loaded: [], page: { kind: 'clusters', limit: 12, offset: 0 } },
+      expect.any(AbortSignal)
+    );
+  });
+
   it('shows native list failure without falling back to glossary data', async () => {
     mockSearchParams = new URLSearchParams();
     mockUseOntologyStudioScopes.mockReturnValue({
@@ -884,7 +1203,11 @@ describe('OntologyExplorerPage', () => {
       refetch: jest.fn(),
       refetchOntologies: jest.fn(),
     });
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByTestId('all-ontologies-load-error')).toBeVisible();
     expect(mockOntologyExplorer).not.toHaveBeenCalled();
@@ -1101,7 +1424,44 @@ describe('OntologyExplorerPage', () => {
 
     fireEvent.click(screen.getByTestId('ontology-add-concept'));
 
-    expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+  });
+
+  it('offers the sub-tab Add concept to a user who holds all three class-creation rights', async () => {
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(screen.getByTestId('ontology-add-concept')).toBeVisible();
+  });
+
+  it('hides the sub-tab Add concept from a user who cannot edit the ontology', async () => {
+    (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: false });
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides the sub-tab Add concept from a user who cannot create a change set', async () => {
+    renderNativeStudio('?ontology=native-sales', nativeOntology, {
+      ontologyConcept: { Create: true },
+      ontologyChangeSet: { Create: false },
+      ontologyProperty: { Create: true },
+      ontologyAxiom: { Create: true },
+    });
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
   });
 
   it('starts a new query in the selected native ontology', async () => {
@@ -1185,7 +1545,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('renders the dedicated Studio shell and graph by default', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(
       screen.getByRole('heading', { name: 'label.ontology-studio' })
@@ -1215,7 +1579,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('renders the SPARQL query console when Query mode is selected', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-query'));
 
@@ -1230,7 +1598,11 @@ describe('OntologyExplorerPage', () => {
       isRdfEnabled: false,
     });
 
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-query'));
 
@@ -1243,7 +1615,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('renders the graph with edit mode enabled when Edit is selected', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
 
@@ -1261,7 +1637,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('switches View to the glossary-grouped tree surface', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('submode-tab-tree'));
 
@@ -1271,7 +1651,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('keeps glossary editing on the relations graph without ontology modeling', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
 
@@ -1282,7 +1666,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('starts an inline concept draft without selecting a glossary first', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
 
@@ -1309,7 +1697,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('prefills the inline draft with the selected Edit graph glossary', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
 
@@ -1337,7 +1729,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('switches the graph and its drawers to Edit when a drawer asks to edit', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
       expect.objectContaining({ isAuthoringMode: false, isEditMode: false })
@@ -1369,7 +1765,11 @@ describe('OntologyExplorerPage', () => {
       retry,
       state: 'contended' as never,
     });
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
     const explorerProps = mockOntologyExplorer.mock.calls.at(-1)?.[0];
@@ -1394,7 +1794,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('prefills the inline draft from a selected node in all-glossaries mode', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
 
@@ -1422,7 +1826,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('switches Query to the visual builder surface', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-query'));
     fireEvent.click(screen.getByTestId('submode-tab-builder'));
@@ -1434,7 +1842,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('returns to the graph when View mode is reselected', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-query'));
     fireEvent.click(screen.getByTestId('mode-tab-view'));
@@ -1458,7 +1870,11 @@ describe('OntologyExplorerPage', () => {
       isLoading: false,
       isRdfEnabled: true,
     });
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
     const explorer = screen.getByTestId('ontology-explorer');
     const search = screen.getByRole('textbox', { name: 'Concept search' });
     fireEvent.change(search, { target: { value: 'Account' } });
@@ -1475,7 +1891,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('opens the ontology library from the dedicated header action', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.queryByTestId('mode-tab-library')).not.toBeInTheDocument();
 
@@ -1489,7 +1909,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('refreshes the explorer and selects a glossary opened from the library', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     const originalExplorer = screen.getByTestId('ontology-explorer');
 
@@ -1521,7 +1945,11 @@ describe('OntologyExplorerPage', () => {
       isFirstTimeUser: false,
     });
 
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
@@ -1536,7 +1964,11 @@ describe('OntologyExplorerPage', () => {
       permissions: { glossary: { EditAll: true } },
     });
 
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -1550,7 +1982,11 @@ describe('OntologyExplorerPage', () => {
         ontologyChangeSet: { EditAll: true },
       },
     });
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -1562,7 +1998,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('hides the Needs review tab from the Studio mode bar', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
     expect(
@@ -1573,7 +2013,11 @@ describe('OntologyExplorerPage', () => {
   it('still opens a linked draft in Studio review without a tab', () => {
     mockSearchParams = new URLSearchParams('draft=draft-16');
 
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
     expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
@@ -1582,7 +2026,11 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('does not expose an AI affordance when the effective flag is disabled', () => {
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.queryByTestId('mode-tab-ai')).not.toBeInTheDocument();
     expect(
@@ -1597,7 +2045,11 @@ describe('OntologyExplorerPage', () => {
       isRdfEnabled: true,
     });
 
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-ai'));
 
@@ -1612,7 +2064,11 @@ describe('OntologyExplorerPage', () => {
       isRdfEnabled: true,
     });
 
-    render(<OntologyExplorerPage />);
+    render(
+      <MemoryRouter>
+        <OntologyExplorerPage />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByTestId('mode-tab-ai'));
     fireEvent.click(
@@ -1756,6 +2212,48 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('source=review');
   });
 
+  it("loads the data graph of the selected concept's ontology in the aggregate Data mode", async () => {
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({
+        clusters: [
+          {
+            id: 'Customer',
+            name: 'Customer',
+            count: 1,
+            assets: [{ id: 't1', name: 'customers' }],
+          },
+        ],
+      })
+    );
+    const financeOntology: Ontology = {
+      ...nativeOntology,
+      id: 'native-finance',
+      name: 'Native finance',
+      fullyQualifiedName: 'NativeFinance',
+      iri: 'urn:NativeFinance',
+      namespace: 'urn:NativeFinance:',
+    };
+    renderNativeStudio(
+      '?concept=Customer&source=review',
+      nativeOntology,
+      undefined,
+      undefined,
+      [financeOntology, nativeOntology]
+    );
+    await screen.findByTestId('ontology-concept-inspector');
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(
+      await screen.findByTestId('ontology-data-cluster-Customer')
+    ).toBeVisible();
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
+    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledWith(
+      'native-sales',
+      { loaded: [], page: { kind: 'clusters', limit: 12, offset: 0 } },
+      expect.any(AbortSignal)
+    );
+  });
+
   it('controls the aggregate viewport and clears selection while retaining its route context', async () => {
     renderNativeStudio('?source=review');
     await screen.findByTestId('native-canvas');
@@ -1777,7 +2275,10 @@ describe('OntologyExplorerPage', () => {
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 
-    expect(screen.getByTestId('ontology-native-data-graph')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-native-data-graph')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('label.select-entity')).toBeVisible();
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
 

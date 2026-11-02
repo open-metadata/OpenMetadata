@@ -116,7 +116,7 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
   /** Resolves `false` when the delete failed, keeping the confirmation open. */
   const handleDelete = async (relationshipType: RelationshipType) => {
     try {
-      await deleteRelationshipType(relationshipType.id);
+      await deleteRelationshipType(relationshipType.id, true);
       const updated = items.filter((item) => item.id !== relationshipType.id);
       setItems(updated);
       setCurrentPage((p) =>
