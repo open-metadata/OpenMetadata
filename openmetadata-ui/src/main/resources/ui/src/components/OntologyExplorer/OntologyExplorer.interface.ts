@@ -87,7 +87,18 @@ export interface OntologyNode {
   isDraft?: boolean;
   isOptimistic?: boolean;
   isDataModeSeed?: boolean;
+  lineageNotes?: LineageNote[];
   proposal?: OntologyProposalRef;
+}
+
+export interface LineageNote {
+  direction: 'upstream' | 'downstream';
+  label: string;
+}
+
+export interface LineageEnd {
+  nodeId: string;
+  label: string;
 }
 
 export interface OntologyEdge {
@@ -104,12 +115,14 @@ export interface OntologyEdge {
   createdAt?: number;
   relationshipType?: EntityReference;
   proposal?: OntologyProposalRef;
+  lineage?: { from: LineageEnd; to: LineageEnd };
 }
 
 export type OntologyEdgeKind =
   | 'ontology'
   | 'assetBinding'
-  | 'semanticProjection';
+  | 'semanticProjection'
+  | 'observedLineage';
 
 export interface OntologyGraphData {
   nodes: OntologyNode[];

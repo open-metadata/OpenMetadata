@@ -41,6 +41,8 @@ export interface DateRangeFilterProps {
   onApply: (range: { startTs: number; endTs: number }) => void;
   /** Shows a clear button while a range is set; called when it is pressed. */
   onClear?: () => void;
+  /** Trigger text while no range is set. */
+  placeholder?: string;
 }
 
 const toPickerRange = (startTs?: number, endTs?: number): PickerRange => {
@@ -64,6 +66,7 @@ export const DateRangeFilter = ({
   onOpenChange,
   onApply,
   onClear,
+  placeholder,
 }: DateRangeFilterProps) => {
   const { t } = useTranslation();
   const [value, setValue] = useState<PickerRange>(() =>
@@ -115,6 +118,7 @@ export const DateRangeFilter = ({
     <DateRangePicker
       fullWidth={fullWidth}
       isOpen={isOpen}
+      placeholder={placeholder}
       size={size}
       value={value}
       onApply={handleApply}

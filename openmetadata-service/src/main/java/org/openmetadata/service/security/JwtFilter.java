@@ -587,8 +587,8 @@ public class JwtFilter implements ContainerRequestFilter {
         tokenFromHeader,
         jwt,
         tokenClaims,
-        () -> resolveIdentity(tokenClaims, isBot(tokenClaims)).userName());
-    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBot(claims));
+        () -> resolveIdentity(tokenClaims, isBot(tokenClaims), jwt.getKeyId()).userName());
+    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBot(claims), jwt.getKeyId());
     checkValidationsForToken(
         claims,
         tokenFromHeader,
@@ -630,7 +630,8 @@ public class JwtFilter implements ContainerRequestFilter {
     validateSessionBoundToken(claims, userName);
   }
 
-  private ResolvedIdentity resolveIdentity(Map<String, Claim> claims, boolean isBotUser) {
+  private ResolvedIdentity resolveIdentity(
+      Map<String, Claim> claims, boolean isBotUser, String tokenKeyId) {
     JwtIdentityResolver.ResolvedIdentity resolvedIdentity =
         new JwtIdentityResolver(
                 emailClaim,
@@ -638,7 +639,7 @@ public class JwtFilter implements ContainerRequestFilter {
                 jwtPrincipalClaims,
                 principalDomain,
                 this::resolveUserNameForEmail)
-            .resolve(claims, isBotUser);
+            .resolve(claims, isBotUser, isOpenMetadataKeyId(tokenKeyId));
     return new ResolvedIdentity(
         resolvedIdentity.userName(), resolvedIdentity.email(), resolvedIdentity.emailFirstFlow());
   }
@@ -651,7 +652,12 @@ public class JwtFilter implements ContainerRequestFilter {
    * loses the socket.
    */
   public String resolveUserName(Map<String, Claim> claims) {
-    return resolveIdentity(claims, isBot(claims)).userName();
+    return resolveIdentity(claims, isBot(claims), null).userName();
+  }
+
+  /** Resolves claims from the same token already accepted by {@link #verifySignatureOnly}. */
+  public String resolveUserName(Map<String, Claim> claims, String verifiedToken) {
+    return resolveIdentity(claims, isBot(claims), decode(verifiedToken).getKeyId()).userName();
   }
 
   /** Caching wrapper around {@link UserUtil#resolveUserName}; this runs on every request. */
@@ -704,7 +710,10 @@ public class JwtFilter implements ContainerRequestFilter {
     DecodedJWT jwt = decodeAndVerify(token);
     Map<String, Claim> claims = extractClaims(jwt);
     requireCurrentCredential(
-        token, jwt, claims, () -> resolveIdentity(claims, isBot(claims)).userName());
+        token,
+        jwt,
+        claims,
+        () -> resolveIdentity(claims, isBot(claims), jwt.getKeyId()).userName());
     return claims;
   }
 
@@ -727,7 +736,7 @@ public class JwtFilter implements ContainerRequestFilter {
     DecodedJWT jwt = decodeAndVerify(token);
     Map<String, Claim> claims = extractClaims(jwt);
     boolean isBotUser = isBot(claims);
-    ResolvedIdentity identity = resolveIdentity(claims, isBotUser);
+    ResolvedIdentity identity = resolveIdentity(claims, isBotUser, jwt.getKeyId());
     requireCurrentCredential(token, jwt, claims, identity::userName);
     return new AuthenticatedToken(jwt, claims, identity, isBotUser);
   }

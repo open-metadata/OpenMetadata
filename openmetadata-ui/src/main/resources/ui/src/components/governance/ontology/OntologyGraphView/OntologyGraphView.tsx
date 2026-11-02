@@ -31,6 +31,7 @@ import {
   lazy,
   Suspense,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -38,10 +39,12 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { OntologyDraftContext } from '../../../../context/OntologyDraft/OntologyDraftContext';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
+import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
@@ -78,6 +81,7 @@ import {
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
   LayoutType,
@@ -95,7 +99,8 @@ import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/Relationship
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
-import OntologyConceptDataGraph from '../OntologyGraphView/OntologyConceptDataGraph';
+import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
+import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
@@ -358,12 +363,33 @@ const OntologyGraphView = ({
 
   const [search, setSearch] = useState('');
   const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
+  const [hasOpenedData, setHasOpenedData] = useState(false);
+  const [dataRevision, setDataRevision] = useState(0);
+  const noteWorkingChange = useCallback(() => {
+    setDataRevision((revision) => revision + 1);
+    onWorkingChange?.();
+  }, [onWorkingChange]);
+  const changeGraphMode = useCallback((mode: 'model' | 'data') => {
+    setGraphMode(mode);
+    if (mode === 'data') {
+      setHasOpenedData(true);
+    }
+  }, []);
   const [localSelectedId, setLocalSelectedId] = useState<string>();
   const selectedId = onSelectedConceptChange
     ? selectedConceptId
     : localSelectedId;
-  const setSelectedId = onSelectedConceptChange ?? setLocalSelectedId;
   const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
+  const guard = useOntologyDraftGuard();
+  const { runConfirmed } = useContext(OntologyDraftContext);
+  const setSelectedId = useCallback(
+    (id?: string) =>
+      guard(() => {
+        setConceptEditor(undefined);
+        (onSelectedConceptChange ?? setLocalSelectedId)(id);
+      }),
+    [guard, onSelectedConceptChange]
+  );
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology);
   const treeIndex = useMemo(
@@ -606,7 +632,6 @@ const OntologyGraphView = ({
         for (const step of steps) {
           written = true;
           await writeStep(step);
-          onWorkingChange?.();
         }
 
         return true;
@@ -616,6 +641,7 @@ const OntologyGraphView = ({
         return false;
       } finally {
         if (written) {
+          noteWorkingChange();
           await refetch();
         }
       }
@@ -625,7 +651,7 @@ const OntologyGraphView = ({
       catalog,
       createType,
       model,
-      onWorkingChange,
+      noteWorkingChange,
       refetch,
       showWriteError,
       t,
@@ -642,7 +668,7 @@ const OntologyGraphView = ({
         await createOntologyProperty(
           buildDataPropertyRequest(model, concept, input)
         );
-        onWorkingChange?.();
+        noteWorkingChange();
         await refetch();
 
         return true;
@@ -652,7 +678,7 @@ const OntologyGraphView = ({
         return false;
       }
     },
-    [canCreateProperty, model, onWorkingChange, refetch, showWriteError]
+    [canCreateProperty, model, noteWorkingChange, refetch, showWriteError]
   );
 
   useEffect(() => {
@@ -679,7 +705,9 @@ const OntologyGraphView = ({
       handledCreateConceptRequest.current !== createConceptRequestKey
     ) {
       handledCreateConceptRequest.current = createConceptRequestKey;
-      setSelectedId(undefined);
+      runConfirmed(() =>
+        (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
+      );
       setConceptEditor({});
       setGraphMode('model');
       onRequestGraphSurface();
@@ -688,7 +716,8 @@ const OntologyGraphView = ({
     createConceptRequestKey,
     isEditing,
     onRequestGraphSurface,
-    setSelectedId,
+    onSelectedConceptChange,
+    runConfirmed,
   ]);
 
   if ([isError, !model].every(Boolean)) {
@@ -702,7 +731,7 @@ const OntologyGraphView = ({
     );
   }
   if (isLoading || !model || !graph) {
-    return <Typography role="status">{t('label.loading')}</Typography>;
+    return <Loader />;
   }
 
   const selectNode = ({ id }: { id: string }) => setSelectedId(id);
@@ -728,7 +757,7 @@ const OntologyGraphView = ({
             creationPositions.current =
               graphRef.current?.getNodePositions() ?? {};
           }}
-          onClose={() => setConceptEditor(undefined)}
+          onClose={() => guard(() => setConceptEditor(undefined))}
           onCreated={async (iri) => {
             const refreshed = await refetch();
             if (refreshed.error || !refreshed.data) {
@@ -749,9 +778,11 @@ const OntologyGraphView = ({
               created.id
             );
             setNodePositions(positions);
-            setSelectedId(created.id);
+            runConfirmed(() =>
+              (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
+            );
             setConceptEditor(undefined);
-            onWorkingChange?.();
+            noteWorkingChange();
 
             return true;
           }}
@@ -779,7 +810,7 @@ const OntologyGraphView = ({
             icon={XClose}
             size="sm"
             tooltip={t('label.close')}
-            onClick={() => setConceptEditor(undefined)}
+            onClick={() => guard(() => setConceptEditor(undefined))}
           />
         </Box>
         <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-5">
@@ -791,7 +822,7 @@ const OntologyGraphView = ({
             onSaved={(saved) => {
               setSelectedId(saved.id);
               setConceptEditor(undefined);
-              onWorkingChange?.();
+              noteWorkingChange();
               void refetch();
             }}
           />
@@ -837,7 +868,7 @@ const OntologyGraphView = ({
           }
           onOpenData={() => {
             onRequestGraphSurface();
-            setGraphMode('data');
+            changeGraphMode('data');
           }}
           onSelectConcept={(concept) => setSelectedId(concept.id)}
         />
@@ -852,6 +883,25 @@ const OntologyGraphView = ({
       />
     );
   };
+
+  const renderDataSurface = () =>
+    hasOpenedData ? (
+      <div
+        className={
+          graphMode === 'data'
+            ? 'tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col'
+            : undefined
+        }
+        hidden={graphMode !== 'data'}>
+        <OntologyNativeDataMode
+          isActive={graphMode === 'data'}
+          ontologyId={ontology.id}
+          revision={dataRevision}
+          selectedConceptId={selectedId}
+          onSelectConcept={setSelectedId}
+        />
+      </div>
+    ) : null;
 
   const renderGraphControls = () => {
     const controls = (
@@ -897,27 +947,17 @@ const OntologyGraphView = ({
       );
     }
     if (graphMode === 'data') {
-      return (
-        <OntologyConceptDataGraph
-          concept={selected}
-          concepts={model.concepts}
-          key={selected?.id}
-          model={model}
-          onSelectConcept={setSelectedId}
-        />
-      );
+      return <>{renderDataSurface()}</>;
     }
 
     return (
       <>
+        {renderDataSurface()}
         <div
           aria-hidden="true"
           className={isAiMode ? AI_GRAPH_BACKDROP_CLASS : GRAPH_BACKDROP_CLASS}
         />
-        <Suspense
-          fallback={
-            <Typography role="status">{t('label.loading')}</Typography>
-          }>
+        <Suspense fallback={<Loader />}>
           <OntologyGraphG6
             keepCanvasOnAdd
             studioMode
@@ -954,7 +994,7 @@ const OntologyGraphView = ({
     }
 
     return isAiMode ? (
-      <OntologyGraphModeTabs mode={graphMode} onChange={setGraphMode} />
+      <OntologyGraphModeTabs mode={graphMode} onChange={changeGraphMode} />
     ) : (
       <Box
         className="tw:absolute tw:top-3.5 tw:right-4 tw:z-10 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1"
@@ -966,7 +1006,7 @@ const OntologyGraphView = ({
             data-testid={`ontology-graph-mode-${mode}`}
             key={mode}
             size="xs"
-            onPress={() => setGraphMode(mode)}>
+            onPress={() => changeGraphMode(mode)}>
             {t(`label.${mode}`)}
           </Button>
         ))}
@@ -984,8 +1024,36 @@ const OntologyGraphView = ({
       />
     ) : null;
 
+  const isEmptyModel = model.concepts.length === 0;
+  const canAddFirstConcept = [
+    Boolean(onRequestCreateConcept),
+    canEditOntology,
+    !ontology.deleted,
+    ...[
+      ResourceEntity.ONTOLOGY_CONCEPT,
+      ResourceEntity.ONTOLOGY_CHANGE_SET,
+    ].map((resource) => flagsOf(resource).canCreate),
+  ].every(Boolean);
+
+  const renderEmptyCard = () =>
+    [isEmptyModel, surface === 'graph', graphMode === 'model'].every(
+      Boolean
+    ) ? (
+      <OntologyEmptyCard
+        canAdd={canAddFirstConcept}
+        onAdd={() => {
+          if (!isEditing) {
+            onRequestEdit?.();
+          }
+          onRequestCreateConcept?.();
+        }}
+      />
+    ) : null;
+
   const renderAddConcept = () =>
-    [canCreateNewClass, Boolean(onRequestCreateConcept)].every(Boolean) ? (
+    [canCreateNewClass, Boolean(onRequestCreateConcept), !isEmptyModel].every(
+      Boolean
+    ) ? (
       <Button
         className="tw:absolute tw:bottom-4 tw:right-4 tw:z-6"
         data-testid="ontology-canvas-add-concept"
@@ -1039,6 +1107,7 @@ const OntologyGraphView = ({
         {renderAddConcept()}
         {renderGraphMode()}
         {renderSurface()}
+        {renderEmptyCard()}
       </div>
       {renderSidebar()}
       {renderTypeDialog()}

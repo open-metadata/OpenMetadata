@@ -13,6 +13,8 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useState } from 'react';
+import { Link, MemoryRouter } from 'react-router-dom';
+import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import { Layer, Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
@@ -193,6 +195,11 @@ it('retains a completed atomic plan and only retries model reconciliation after 
     post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
 
   expect(creates()).toHaveLength(1);
+
+  const owners = [{ id: 'u', type: 'user', name: 'editor' }];
+
+  expect(creates()[0][1].owners).toEqual(owners);
+  expect(creates()[0][1].operations[0].concept.owners).toEqual(owners);
   expect(creates()[0][1]).toMatchObject({
     baseWorkingRevision: 7,
     operations: [
@@ -304,7 +311,24 @@ it('locks the panel through uncertain apply and retries the retained draft befor
 
     return { data: { ...retained, state: uncertain ? 'APPLIED' : 'DRAFT' } };
   });
-  setup({ onLockChange: lockChanged });
+  render(
+    <MemoryRouter>
+      <OntologyDraftProvider>
+        <Link to="/explore">Explore</Link>
+        <OntologyNewClassPanel
+          canCreate
+          canCreateAxiom
+          canCreateProperty
+          model={model}
+          ontology={ontology}
+          onBeforeCreate={jest.fn()}
+          onClose={jest.fn()}
+          onCreated={reconcile}
+          onLockChange={lockChanged}
+        />
+      </OntologyDraftProvider>
+    </MemoryRouter>
+  );
   fill('new-class-label', 'Funds Transfer');
   await act(async () => {
     fireEvent.click(screen.getByTestId('new-class-create'));
@@ -319,6 +343,13 @@ it('locks the panel through uncertain apply and retries the retained draft befor
   expect(reconcile).not.toHaveBeenCalled();
   expect(screen.getByTestId('ontology-new-class-close')).toBeDisabled();
   expect(lockChanged).toHaveBeenLastCalledWith(true);
+
+  fireEvent.click(screen.getByRole('link', { name: 'Explore' }));
+
+  expect(screen.getByRole('button', { name: 'label.discard' })).toBeDisabled();
+  expect(screen.getByTestId('new-class-label')).toHaveValue('Funds Transfer');
+
+  fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
   readable = true;
   await act(async () => {

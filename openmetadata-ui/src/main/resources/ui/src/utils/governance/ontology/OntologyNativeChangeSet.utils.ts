@@ -135,9 +135,7 @@ export const buildNewClassChangeSet = (
           ontology: owner,
           axiomType,
           subjectIri: iri,
-          targetIri,
           expressions: [
-            { kind: ExpressionKind.NamedClass, classIri: iri },
             { kind: ExpressionKind.NamedClass, classIri: targetIri },
           ],
           provenance: Provenance.Manual,
