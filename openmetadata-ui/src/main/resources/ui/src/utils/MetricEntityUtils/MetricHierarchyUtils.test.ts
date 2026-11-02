@@ -19,6 +19,7 @@ import {
   flattenMetricRows,
   flattenVisibleMetricRows,
   getTopmostSelectedMetrics,
+  getUnloadedMetricAncestorIds,
   hasMetricChildren,
   isLoadMoreRow,
   MetricTableRow,
@@ -174,6 +175,30 @@ describe('getTopmostSelectedMetrics', () => {
     expect(
       getTopmostSelectedMetrics(flatRows, ['3', '2']).map((m) => m.id)
     ).toEqual(['2']);
+  });
+
+  it('finds the unloaded middle ancestor and uses its fetched parent link', () => {
+    // A status filter hid '2', the parent of '3' and child of '1'.
+    const flatRows: MetricTableRow[] = [
+      metric('1', 'revenue') as MetricTreeNode,
+      metric('3', 'revenue_apac_jp', '2') as MetricTreeNode,
+    ];
+
+    expect(getUnloadedMetricAncestorIds(flatRows, ['1', '3'])).toEqual(['2']);
+    expect(
+      getTopmostSelectedMetrics(flatRows, ['1', '3']).map((m) => m.id)
+    ).toEqual(['1', '3']);
+    expect(
+      getTopmostSelectedMetrics(
+        flatRows,
+        ['1', '3'],
+        new Map([['2', '1']])
+      ).map((m) => m.id)
+    ).toEqual(['1']);
+  });
+
+  it('reports no unloaded ancestors when every chain is on the page', () => {
+    expect(getUnloadedMetricAncestorIds(tree, ['3', '1'])).toEqual([]);
   });
 
   it('keeps a selected child when its parent is not selected', () => {

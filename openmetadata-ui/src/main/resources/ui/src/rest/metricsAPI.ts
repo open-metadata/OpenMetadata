@@ -348,3 +348,30 @@ export const getMetricSearchPaths = async (query: string) => {
       level.length === 0,
   };
 };
+
+/**
+ * Parent links for metrics that are not loaded on the page, walked up from `ids` a bounded number
+ * of levels with one search per level. The index stores only each metric's direct parent.
+ */
+export const getMetricParentIds = async (ids: string[]) => {
+  const parentIdById = new Map<string, string>();
+  let level = ids;
+  let depth = 0;
+
+  while (level.length && depth < METRIC_SEARCH_PATH_MAX_DEPTH) {
+    const { docs } = await searchMetricDocs(
+      '',
+      getTermQuery({ 'id.keyword': level }, 'should', 1)
+    );
+    level = [];
+    docs.forEach(({ id, parent }) => {
+      if (parent?.id && !parentIdById.has(id)) {
+        parentIdById.set(id, parent.id);
+        level.push(parent.id);
+      }
+    });
+    depth += 1;
+  }
+
+  return parentIdById;
+};

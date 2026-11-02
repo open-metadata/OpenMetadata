@@ -101,6 +101,7 @@ import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
   exportMetricDetailsInCSV,
+  getMetricParentIds,
 } from '../../../rest/metricsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
@@ -119,6 +120,7 @@ import {
   flattenMetricRows,
   flattenVisibleMetricRows,
   getTopmostSelectedMetrics,
+  getUnloadedMetricAncestorIds,
   hasMetricChildren,
   isGroupRow,
   isLoadMoreRow,
@@ -595,9 +597,16 @@ const MetricListPage = () => {
       // Recursive so a parent's variants are deleted with it; a non-recursive job fails with
       // "metric is not empty" once the parent has variants. Never a hard delete, so the hierarchy
       // stays restorable (ADR:2026-10-28-metric-bulk-delete-is-a-recursive-soft-delete).
+      const unloadedAncestorIds = getUnloadedMetricAncestorIds(
+        rows,
+        selectedMetricIds
+      );
+      const extraParentIds = unloadedAncestorIds.length
+        ? await getMetricParentIds(unloadedAncestorIds).catch(() => undefined)
+        : undefined;
       const deleteJobs = await Promise.all(
-        getTopmostSelectedMetrics(rows, selectedMetricIds).map(({ id }) =>
-          deleteMetricAsync(id, true)
+        getTopmostSelectedMetrics(rows, selectedMetricIds, extraParentIds).map(
+          ({ id }) => deleteMetricAsync(id, true)
         )
       );
       setPendingDeleteJobIds((ids) => [
