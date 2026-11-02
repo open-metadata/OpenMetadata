@@ -5680,6 +5680,7 @@
     "ontology-concept-label-taken": "A concept labeled {{label}} already exists in this ontology.",
     "ontology-concept-list-hint": "Use the arrow keys to move through the concepts and press Enter to open one.",
     "ontology-concept-mappings-hint": "Link to equivalent terms in other vocabularies.",
+    "ontology-concept-name-deleted": "A deleted concept named {{name}} exists in this ontology.",
     "ontology-concept-name-invalid": "Use letters, digits, underscores, or hyphens, starting with a letter or underscore. Spaces are not allowed.",
     "ontology-concept-name-required": "Enter a name.",
     "ontology-concept-name-taken": "A definition named {{name}} already exists in this ontology.",
