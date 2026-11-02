@@ -4750,6 +4750,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
+        "playwright/e2e/Features/MetricGovernance.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts"
       ]
     },
@@ -7924,7 +7925,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricHierarchyCard/MetricHierarchyCard.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/MetricGovernance.spec.ts",
         "playwright/e2e/Features/MetricHierarchy.spec.ts"
       ]
     },
