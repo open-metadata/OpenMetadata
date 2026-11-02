@@ -17,7 +17,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Hint, Settings02 } from '@openmetadata/ui-core-components/icons';
+import { Customize, Hint } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import type { Key, ReactNode } from 'react';
 import React, {
@@ -266,7 +266,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
         <FeaturedIcon
           className="tw:rounded-xl"
           color="brand"
-          icon={Settings02}
+          icon={Customize}
           shape="square"
           size="md"
           theme="dark"

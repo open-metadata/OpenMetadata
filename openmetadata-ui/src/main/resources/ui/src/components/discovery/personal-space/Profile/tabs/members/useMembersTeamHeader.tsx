@@ -27,16 +27,15 @@ import {
   Trash01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
+import type { TFunction } from 'i18next';
 import { ReactNode, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Team } from '../../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import type { UseMembersTeamHeaderParams } from './MembersTeamDetail.types';
 
-type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
-
 const buildTitleSuffix = (
-  t: TranslateFn,
+  t: TFunction,
   team: Team,
   canEdit: boolean,
   isEditingName: boolean,
@@ -72,7 +71,7 @@ const buildTitleSuffix = (
 };
 
 const buildTitleInput = (
-  t: TranslateFn,
+  t: TFunction,
   isEditingName: boolean,
   editNameValue: string,
   onEditNameValueChange: (value: string) => void,
@@ -111,7 +110,7 @@ const buildTitleInput = (
     </Box>
   ) : undefined;
 
-const getJoinableLabel = (t: TranslateFn, team: Team): string =>
+const getJoinableLabel = (t: TFunction, team: Team): string =>
   team.isJoinable ? t('label.make-private') : t('label.make-public');
 
 interface TeamMenuItems {
@@ -153,7 +152,7 @@ const getTeamMenuItems = (
 
 // Renders only the items getTeamMenuItems allows, in menu order.
 const buildTeamActionsMenu = (
-  t: TranslateFn,
+  t: TFunction,
   items: TeamMenuItems,
   team: Team,
   params: UseMembersTeamHeaderParams
@@ -229,11 +228,12 @@ const canJoinOrLeave = (
   Boolean(isCurrentUserMember || team.isJoinable || canEditAll);
 
 const buildHeaderActions = (
-  t: TranslateFn,
+  t: TFunction,
   team: Team,
   params: UseMembersTeamHeaderParams
 ): ReactNode => {
-  const { isCurrentUserMember, onJoinTeam, onLeaveTeam } = params;
+  const { isCurrentUserMember, menuTriggerRef, onJoinTeam, onLeaveTeam } =
+    params;
   const showJoinLeave = canJoinOrLeave(team, params);
   const menuItems = getTeamMenuItems(team, params);
   const hasMenu = Object.values(menuItems).some(Boolean);
@@ -253,7 +253,7 @@ const buildHeaderActions = (
       )}
       {hasMenu && (
         <Dropdown.Root>
-          <Dropdown.DotsButton />
+          <Dropdown.DotsButton ref={menuTriggerRef} />
           <Dropdown.Popover className="tw:w-min">
             {buildTeamActionsMenu(t, menuItems, team, params)}
           </Dropdown.Popover>

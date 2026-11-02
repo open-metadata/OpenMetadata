@@ -2551,13 +2551,16 @@ public class TableRepository extends EntityRepository<Table> {
         CSVRecord csvRecord = getNextRecord(printer, csvRecords);
         if (csvRecord != null) {
           updateColumnsFromCsv(printer, csvRecord);
-          String violations = ValidatorUtil.validate(table);
-          if (violations != null) {
-            // JSON schema based validation failed for the entity
-            importFailure(printer, violations, csvRecord);
-            return;
-          }
         }
+      }
+
+      // Validate the whole table once, after every row is applied, rather than re-walking all of
+      // its
+      // columns on each row — which made a large import quadratic in the number of columns.
+      String violations = ValidatorUtil.validate(table);
+      if (violations != null) {
+        importFailure(printer, violations, csvRecords.get(csvRecords.size() - 1));
+        return;
       }
 
       if (processRecord) {
@@ -2663,6 +2666,9 @@ public class TableRepository extends EntityRepository<Table> {
                 printer,
                 "Parent Column not found. Check the order of the columns in the CSV file.",
                 csvRecord);
+            // Without the parent there is nowhere to attach the column; going on would dereference
+            // a null parent below.
+            return;
           }
 
           // Update Name And Ordinal position in the parent column
@@ -2998,17 +3004,54 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);
-      if (!fieldsParam.contains("tags")) {
-        populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
-      }
-      if (piiOwners != null) {
-        PIIMasker.getTableProfile(piiOwners, singleton, authorizer, securityContext);
-      } else {
-        PIIMasker.getTableProfile(
-            table.getFullyQualifiedName(), singleton, authorizer, securityContext);
-      }
+      maskSingleColumnProfile(table, column, singleton, piiOwners, authorizer, securityContext);
     }
     return column;
+  }
+
+  /**
+   * Masking walks only the columns it is handed: a nested child alone cannot carry the
+   * {@code PII.Sensitive} tag an ancestor column above it holds, so the ancestors are resolved out
+   * of the table's columns and their tags hydrated for the decision.
+   */
+  private void maskSingleColumnProfile(
+      Table table,
+      Column column,
+      List<Column> singleton,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    List<Column> ancestors = columnAncestors(table, column);
+    // Hydrating the ancestors flattens to the child's own subtree, so no second pass is needed;
+    // with none resolved, only the column itself has to be hydrated before the masker decides.
+    populateEntityFieldTags(
+        entityType,
+        nullOrEmpty(ancestors) ? singleton : ancestors,
+        table.getFullyQualifiedName(),
+        true);
+    if (piiOwners != null) {
+      PIIMasker.getSingleColumnProfile(piiOwners, ancestors, column, authorizer, securityContext);
+    } else {
+      PIIMasker.getSingleColumnProfile(
+          table.getFullyQualifiedName(), ancestors, column, authorizer, securityContext);
+    }
+  }
+
+  /** The columns a nested child hangs beneath, resolved out of the table's columns. */
+  private List<Column> columnAncestors(Table table, Column column) {
+    String tableFqn = FullyQualifiedName.getTableFQN(column.getFullyQualifiedName());
+    if (tableFqn.equals(column.getFullyQualifiedName())) {
+      return List.of();
+    }
+    List<Column> columnChain =
+        ColumnUtil.resolveColumnChainByPath(
+            table.getColumns(), column.getFullyQualifiedName().substring(tableFqn.length() + 1));
+    if (columnChain.size() > 1 && columnChain.getLast() == column) {
+      return new ArrayList<>(columnChain.subList(0, columnChain.size() - 1));
+    }
+    // A single-element resolution names the column itself (no chain above it); anything whose leaf
+    // is not the requested column matched a different node, and both leave no ancestor context.
+    return List.of();
   }
 
   private static void validateTableColumns(List<Column> columns) {

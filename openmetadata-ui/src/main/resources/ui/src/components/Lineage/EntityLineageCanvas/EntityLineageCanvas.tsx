@@ -137,30 +137,41 @@ const EntityLineageCanvas = ({
 
   const requestNodeDelete = useCallback(
     (node: { id: string }) =>
-      setNodePendingDelete(nodes.find((item) => item.id === node.id)),
-    [nodes]
+      setNodePendingDelete(
+        useLineageStore.getState().nodes.find((item) => item.id === node.id)
+      ),
+    []
   );
 
   // The node ⋮ menu and column menu read their edit callbacks from node data.
+  // The extended data is cached per source data, so a drag frame, which only
+  // moves nodes, does not re-render every node.
+  const [editableDataCache] = useState(
+    () => new WeakMap<Node['data'], Node['data']>()
+  );
   const flowNodes = useMemo(
     () =>
       canEdit
-        ? nodes.map((node) =>
+        ? nodes.map((node) => {
             // Temp tables are plain hops in the graph: no menu, no edits.
-            node.data?.node?.isTempTable
-              ? node
-              : {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    isNodeEditable: true,
-                    onSceneLineageEdit: setEditRequest,
-                    onSceneNodeRemove: requestNodeDelete,
-                  },
-                }
-          )
+            if (node.data?.node?.isTempTable) {
+              return node;
+            }
+            let data = editableDataCache.get(node.data);
+            if (!data) {
+              data = {
+                ...node.data,
+                isNodeEditable: true,
+                onSceneLineageEdit: setEditRequest,
+                onSceneNodeRemove: requestNodeDelete,
+              };
+              editableDataCache.set(node.data, data);
+            }
+
+            return { ...node, data };
+          })
         : nodes,
-    [canEdit, nodes, requestNodeDelete]
+    [canEdit, editableDataCache, nodes, requestNodeDelete]
   );
 
   // Delete / Backspace removes the selected node or edge, as on the platform map.

@@ -27,7 +27,9 @@ const MAX_STEPS = 20;
 const API_BASE_PATH = '/api/v1';
 const SERVICES_PAGE = /\/settings\/services\/databases/;
 
-const popover = (page: Page) => page.locator('.product-tour-helper');
+const POPOVER = '.product-tour-helper';
+
+const popover = (page: Page) => page.locator(POPOVER);
 
 const readStep = (page: Page) =>
   popover(page)
@@ -45,7 +47,10 @@ const expectStep = async (page: Page, text: string) => {
 };
 
 // react-tour waits before showing the next step and ignores clicks meanwhile,
-// so each Next waits for the step it opens.
+// so each Next waits for the step it opens. Crossing pages, the outgoing
+// react-tour can show the next step on the old page before it unmounts and the
+// page waits behind the loading mask, so the step has settled only once that
+// mask is gone.
 const goNext = async (page: Page) => {
   const next = page.locator(NEXT_BUTTON);
   await expect(next).toBeVisible({ timeout: STEP_TIMEOUT });
@@ -62,14 +67,51 @@ const goNext = async (page: Page) => {
     )
     .toBe(true);
   await expectNoFallback(page);
+  await expect(page.getByTestId('tour-step-loading')).toHaveCount(0, {
+    timeout: STEP_TIMEOUT,
+  });
 };
+
+type StepKind = 'none' | 'step' | 'last';
+
+const readStepKind = (page: Page) =>
+  page.evaluate(
+    ({ helper, lastStepButton }): StepKind => {
+      const shown = document.querySelector(helper);
+      if (!shown) {
+        return 'none';
+      }
+
+      return shown.querySelector(lastStepButton) ? 'last' : 'step';
+    },
+    {
+      helper: POPOVER,
+      lastStepButton: '[data-testid="last-step-button"]',
+    }
+  );
 
 // On the last step react-tour renders the finish button inside its Next arrow,
 // so one Next too many ends the tour. The button renders with the step's text,
 // but is not visible until react-tour places the popover, after a page change's
 // view transition ends: check that it is rendered, not that it is visible.
-const isLastStep = async (page: Page) =>
-  (await page.getByTestId('last-step-button').count()) > 0;
+// Between pages react-tour is unmounted, so there is no step to read: wait for
+// one, reading the popover and its button together, as react-tour can unmount
+// between two separate reads.
+const isLastStep = async (page: Page) => {
+  const step: { kind: StepKind } = { kind: 'none' };
+  await expect
+    .poll(
+      async () => {
+        step.kind = await readStepKind(page);
+
+        return step.kind;
+      },
+      { timeout: STEP_TIMEOUT }
+    )
+    .not.toBe('none');
+
+  return step.kind === 'last';
+};
 
 interface PageStep {
   path: string;

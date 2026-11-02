@@ -157,6 +157,7 @@ public final class ContextFileVisibility {
       return false;
     }
     return file.getOwners().stream()
+        .filter(owner -> Entity.USER.equals(owner.getType()))
         .anyMatch(
             owner ->
                 userName.equals(owner.getName()) || userName.equals(owner.getFullyQualifiedName()));

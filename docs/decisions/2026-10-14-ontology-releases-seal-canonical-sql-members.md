@@ -1,9 +1,9 @@
 # Ontology releases seal canonical SQL members
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v10 2026-10-15 (single-ontology releases, captured comparison baseline, active-only projection)
+- **Revisions:** v1 2026-10-14 (initial); v10 2026-10-15 (single-ontology releases, captured comparison baseline, active-only projection); v11 2026-10-30 (SKOS, SKOS-XL and CSV export, export options and the SHACL gate)
 - **Deciders:** Harsha
-- **Guard:** `OntologyReleaseManifestTest`, `OntologyReleaseDAOTest`, `OntologyReleaseCaptureTest`, `OntologyWorkingStateTest`, `OntologyReleaseProjectionTest`, `OntologyStructureValidatorTest`, `OntologyReleaseComparisonTest`, `OntologyReleaseComparisonStorageTest`, `IndependentOntologyReleaseDiffIT`, `IndependentOntologyReleaseIT`, `IndependentOntologyReleaseExportIT`, `IndependentOntologyRetentionIT`
+- **Guard:** `OntologyReleaseManifestTest`, `OntologyReleaseDAOTest`, `OntologyReleaseCaptureTest`, `OntologyWorkingStateTest`, `OntologyReleaseProjectionTest`, `OntologyStructureValidatorTest`, `OntologyReleaseComparisonTest`, `OntologyReleaseComparisonStorageTest`, `IndependentOntologyReleaseDiffIT`, `IndependentOntologyReleaseIT`, `IndependentOntologyReleaseExportIT`, `IndependentOntologyRetentionIT`, `OntologySkosProjectionTest`, `OntologyReleaseExporterTest`, `OntologyBoundAssetLinksTest`, `OntologyExportGateTest`, `IndependentOntologyReleaseExportFormatsIT`, `IndependentOntologyReleaseExportAssetsIT`, `IndependentOntologyReleaseExportGateIT`
 - **Related:** [Organizational ontology design](../plans/2026-10-14-organizational-ontology-design.md)
 
 ## Context
@@ -87,3 +87,38 @@ No new object store, cache, broker or approval engine is required. Releases cons
 space within explicit bounds. This is an unreleased storage contract: development databases created
 with the earlier per-definition/import manifests must be reset before validating this version; do
 not reinterpret an old sealed digest under the revised contract. Business glossaries are not converted.
+
+## Amendment
+
+v11, 2026-10-30: export also writes SKOS, SKOS-XL and the native CSV from SQL. With
+`includeInverses` on, the default, the four RDF serializations still carry the whole release, and
+they still fail on unsupported members. CSV writes the release through `NativeOntologyCsvCodec`, in
+the columns `docs/native-ontology-csv.md` lists.
+
+SKOS and SKOS-XL are concept projections, written as Turtle. Each concept becomes a `skos:Concept`
+in the release's concept scheme, named parents become `skos:broader`, and mappings keep their match
+predicates. Properties and axioms other than named subclass parents have no SKOS form, so these two
+formats leave them out by design and are not a full copy of the release. SKOS-XL also gives each
+concept label its own `skosxl:Label` resource.
+
+`GET /v1/ontologyReleases/{id}/export` takes the options in `ontologyReleaseExportOptions.json`.
+
+- `includeInverses`, on by default, writes the `owl:inverseOf` pairs the properties state. Off
+  leaves them out.
+- `includeBoundAssets`, off by default, writes one link per binding from a concept to its asset's
+  IRI in the RDF store. Links come from the caller's current authorized bindings, not from the
+  sealed release, so they are opt-in. A concept deleted since the capture or hidden from the caller
+  has no links, and the export does not fail on it. CSV does not offer links.
+- One export holds at most 100,000 links, and more is a 400. The reason for 100,000 was not written
+  down when it was chosen. It bounds the links one export holds in memory and writes into one
+  response, and it allows ten links for each of the 10,000 members a release may hold.
+  `OntologyBoundAssetLinksTest` checks the 400 with a smaller budget, and no test pins the value
+  100,000.
+- `shaclGate`, off by default, validates the release first. Unless the release validates, the
+  export returns 422 with the validation report and no file. The validation runs only when the gate
+  is on, so an ungated export costs nothing extra.
+
+`OntologySkosProjectionTest`, `OntologyReleaseExporterTest`, `OntologyBoundAssetLinksTest`,
+`OntologyExportGateTest`, `IndependentOntologyReleaseExportFormatsIT`,
+`IndependentOntologyReleaseExportAssetsIT` and `IndependentOntologyReleaseExportGateIT` guard this
+amendment.

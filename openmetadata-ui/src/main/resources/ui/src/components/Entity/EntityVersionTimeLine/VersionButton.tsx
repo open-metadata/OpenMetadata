@@ -89,7 +89,7 @@ export const VersionButton = forwardRef<
             ) : null}
           </Typography>
           <div
-            className={classNames('text-xs font-normal break-all', {
+            className={classNames('text-xs font-normal tw:wrap-break-word', {
               'diff-description': selected,
             })}
             data-testid="version-change-description">

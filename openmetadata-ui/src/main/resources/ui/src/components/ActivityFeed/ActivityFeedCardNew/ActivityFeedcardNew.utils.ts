@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
+import { Conversation } from '../../../generated/entity/feed/conversation';
+import { canManageFeedPost } from '../../../utils/FeedUtilsPure';
 import {
   DEFAULT_HEADER_LAYOUT,
   HEADER_ITEM_CLASS_NAME,
@@ -79,10 +81,6 @@ export const handleCardContainerKeyDown =
 export const CARD_CONTAINER_CLASS_NAME =
   'tw:select-none tw:border tw:border-transparent tw:outline-focus-ring tw:overflow-visible';
 
-// The thread panel's menu sits in the card's top corner.
-export const getActionsClassName = (isThreadPanel?: boolean) =>
-  isThreadPanel ? 'tw:absolute tw:end-2.5 tw:top-4.5' : undefined;
-
 export const getHeaderTagsClassName = (
   showThread: boolean | undefined,
   isThreadPanel?: boolean
@@ -149,3 +147,12 @@ export const getFullCardBaseClassName = (isThreadPanel?: boolean): string =>
     'relative activity-feed-card-new activity-feed-card-new-surface tw:overflow-visible tw:border-primary tw:text-primary',
     isThreadPanel ? 'tw:rounded-xl' : 'tw:rounded-none'
   );
+
+// A root conversation's menu, and the header room kept clear for it, show only
+// when ActivityFeedActions' own rule would render the menu.
+export const canManageConversation = (
+  currentUser: Parameters<typeof canManageFeedPost>[0],
+  feed: Conversation | undefined,
+  isRoot: boolean
+): feed is Conversation =>
+  Boolean(feed) && isRoot && canManageFeedPost(currentUser, feed?.createdBy);

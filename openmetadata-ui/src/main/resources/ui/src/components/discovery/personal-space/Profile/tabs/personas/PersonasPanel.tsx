@@ -77,6 +77,12 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     },
     [setHash]
   );
+  // Stable: PersonaDetail builds its header actions from it, and a new
+  // callback each render would re-push the header in a render loop.
+  const onPersonaDeleted = useCallback(
+    () => onNavigate({ type: 'landing' }),
+    [onNavigate]
+  );
 
   const [editorActions, setEditorActions] = useState<CustomizeEditorActions>();
   const [pendingExit, setPendingExit] = useState<() => void>();
@@ -371,8 +377,9 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
         <PersonaDetail
           activeTab={activeTab}
           fqn={view.fqn}
+          key={view.fqn}
           subCategory={subCategory}
-          onDeleted={() => onNavigate({ type: 'landing' })}
+          onDeleted={onPersonaDeleted}
           onRename={setResolvedName}
           onSelectCategory={(category) =>
             onNavigate({

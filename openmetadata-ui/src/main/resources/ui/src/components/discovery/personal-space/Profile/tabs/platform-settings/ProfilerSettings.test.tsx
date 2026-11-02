@@ -123,9 +123,10 @@ describe('Profiler configuration settings', () => {
       'label.enabled'
     );
     expect(screen.getByTestId('spark-config')).toBeInTheDocument();
-    // The contributed section navigates to its own sub-pages with the page's props.
+    // The contributed section navigates to its own sub-pages with the page's
+    // props, and its deletes confirm in a popover inside the settings modal.
     expect(Section).toHaveBeenCalledWith(
-      expect.objectContaining({ onNavigate }),
+      expect.objectContaining({ onNavigate, confirmation: 'popover' }),
       expect.anything()
     );
   });

@@ -27,6 +27,7 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
+import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Category,
@@ -65,7 +66,8 @@ interface RelationshipTypeTableProps {
   isAdminUser: boolean;
   relationshipTypes: RelationshipType[];
   usageCounts: Record<string, number>;
-  onDelete: (relationshipType: RelationshipType) => void;
+  /** `trigger` is the pressed delete button, to anchor a confirmation to. */
+  onDelete: (relationshipType: RelationshipType, trigger?: HTMLElement) => void;
   onEdit: (relationshipType: RelationshipType) => void;
   variant?: TableCardVariant;
 }
@@ -176,7 +178,8 @@ interface RelationshipTypeRowProps {
   isAdminUser: boolean;
   relationshipType: RelationshipType;
   usageCount: number;
-  onDelete: (relationshipType: RelationshipType) => void;
+  /** `trigger` is the pressed delete button, to anchor a confirmation to. */
+  onDelete: (relationshipType: RelationshipType, trigger?: HTMLElement) => void;
   onEdit: (relationshipType: RelationshipType) => void;
 }
 
@@ -263,7 +266,9 @@ const RelationshipTypeRow = ({
             isDisabled={!canDelete}
             size="sm"
             tooltip={getDeleteTooltip(usageCount, t)}
-            onClick={() => onDelete(relationshipType)}
+            onClick={(event: MouseEvent<HTMLElement>) =>
+              onDelete(relationshipType, event.currentTarget)
+            }
           />
         </div>
       </Table.Cell>

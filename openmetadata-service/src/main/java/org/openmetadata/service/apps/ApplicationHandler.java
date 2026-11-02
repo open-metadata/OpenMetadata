@@ -12,15 +12,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -29,14 +25,11 @@ import org.openmetadata.service.apps.bundles.rdf.RdfIndexRunRecovery;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
-import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
-import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobDataMap;
@@ -56,14 +49,12 @@ public class ApplicationHandler {
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
   private final AppRepository appRepository;
-  private final AppMarketPlaceRepository appMarketPlaceRepository;
   private final EventSubscriptionRepository eventSubscriptionRepository;
   private final ConfigurationReader configReader = new ConfigurationReader();
 
   private ApplicationHandler(OpenMetadataApplicationConfig config) {
     this.config = config;
     this.appRepository = new AppRepository();
-    this.appMarketPlaceRepository = new AppMarketPlaceRepository();
     this.eventSubscriptionRepository = new EventSubscriptionRepository();
   }
 
@@ -191,7 +182,6 @@ public class ApplicationHandler {
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String installedBy) {
     try {
       runAppInit(app, daoCollection, searchRepository).install(installedBy);
-      installEventSubscriptions(app, installedBy);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -258,34 +248,6 @@ public class ApplicationHandler {
           e.getMessage(),
           Response.Status.INTERNAL_SERVER_ERROR);
     }
-  }
-
-  private void installEventSubscriptions(App app, String installedBy) {
-    AppMarketPlaceDefinition definition = appMarketPlaceRepository.getDefinition(app);
-    Map<String, EntityReference> eventSubscriptionsReferences =
-        listOrEmpty(app.getEventSubscriptions()).stream()
-            .collect(Collectors.toMap(EntityReference::getName, e -> e));
-    definition.getEventSubscriptions().stream()
-        .map(
-            request ->
-                Optional.ofNullable(eventSubscriptionsReferences.get(request.getName()))
-                    .flatMap(
-                        sub ->
-                            Optional.ofNullable(
-                                eventSubscriptionRepository.findByNameOrNull(
-                                    sub.getName(), Include.ALL)))
-                    .orElseGet(
-                        () -> {
-                          EventSubscription createdEventSub =
-                              eventSubscriptionRepository.create(
-                                  null,
-                                  // TODO need to get the actual user
-                                  new EventSubscriptionMapper()
-                                      .createToEntity(request, installedBy));
-                          appRepository.addEventSubscription(app, createdEventSub);
-                          return createdEventSub;
-                        }))
-        .forEach(eventSub -> AlertJobs.convergeAfterCommit(eventSub.getId()));
   }
 
   public void configureApplication(

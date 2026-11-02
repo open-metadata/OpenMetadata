@@ -24,7 +24,7 @@ public final class OntologyConceptService extends EntityServiceBase<OntologyConc
   @Override
   protected void normalizePatchNodes(
       final JsonNode original, final JsonNode updated, final OntologyConcept entity) {
-    for (final String field : List.of("superClasses", "subClasses")) {
+    for (final String field : List.of("superClasses", "subClasses", "lifecycleStatus")) {
       removeField(original, field);
       removeField(updated, field);
     }
