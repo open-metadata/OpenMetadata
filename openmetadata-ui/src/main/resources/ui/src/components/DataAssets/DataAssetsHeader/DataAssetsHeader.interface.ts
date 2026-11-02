@@ -145,6 +145,8 @@ export type DataAssetsHeaderProps = {
   headerActions?: React.ReactNode;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
+  /** Called when an async delete job reports failure, to undo optimistic UI. */
+  onDeleteFailure?: () => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference[]) => Promise<void>;
   onVersionClick?: () => void;

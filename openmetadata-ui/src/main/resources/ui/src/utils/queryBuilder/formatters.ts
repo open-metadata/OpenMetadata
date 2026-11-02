@@ -21,6 +21,7 @@ import {
   hasUnfinishedRule,
 } from '../QueryBuilderElasticsearchFormatUtils';
 import { toEngineJsonLogic } from './jsonLogicNegation';
+import { rewriteTierVarToTags } from './jsonLogicTierVar';
 
 // What a formatted tree produces, for both output types.
 interface FormattedQuery {
@@ -57,7 +58,9 @@ export const toJsonLogicQuery = (
 
     return {
       value: JSON.stringify(
-        jsonLogic.logic ? toEngineJsonLogic(jsonLogic.logic) : ''
+        jsonLogic.logic
+          ? rewriteTierVarToTags(toEngineJsonLogic(jsonLogic.logic))
+          : ''
       ),
     };
   } catch {

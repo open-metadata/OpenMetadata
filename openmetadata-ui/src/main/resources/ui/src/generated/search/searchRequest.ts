@@ -57,6 +57,11 @@ export interface SearchRequest {
      */
     includeAggregations?: boolean;
     /**
+     * Include highlights in the search response. Defaults to true. Set to false to skip
+     * highlighting when the caller does not read it.
+     */
+    includeHighlights?: boolean;
+    /**
      * Get only selected fields of the document body for each hit. Empty value will return all
      * fields
      */

@@ -1,9 +1,5 @@
 package org.openmetadata.mcp.server.auth.repository;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.auth.AccessToken;
@@ -12,6 +8,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OAuthDAOs;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthRefreshTokenRecord;
 
@@ -84,12 +81,33 @@ public class OAuthTokenRepository {
   }
 
   /**
-   * Delete access token.
+   * Deletes an access token if it was issued to this client, and says whether it was. Reads the
+   * stored row rather than decrypting it, so a row that no longer decrypts is still revocable.
    */
-  public void deleteAccessToken(String tokenValue) {
+  public boolean revokeAccessTokenIssuedTo(String tokenValue, String clientId) {
     String tokenHash = hashToken(tokenValue);
-    accessTokenDAO.delete(tokenHash);
-    LOG.debug("Deleted access token");
+    OAuthAccessTokenRecord record = accessTokenDAO.findByTokenHash(tokenHash);
+    boolean issuedToClient = record != null && record.clientId().equals(clientId);
+    if (issuedToClient) {
+      accessTokenDAO.delete(tokenHash);
+    }
+    return issuedToClient;
+  }
+
+  /**
+   * Revokes a live refresh token if it was issued to this client, and says whether it was. The
+   * access tokens of the same grant go with it (RFC 7009 section 2.1); like the rotation's cleanup,
+   * the grant is the client and user pair.
+   */
+  public boolean revokeRefreshTokenIssuedTo(String tokenValue, String clientId) {
+    String tokenHash = hashToken(tokenValue);
+    OAuthRefreshTokenRecord record = refreshTokenDAO.findByTokenHash(tokenHash);
+    boolean issuedToClient =
+        record != null && !record.revoked() && record.clientId().equals(clientId);
+    if (issuedToClient) {
+      refreshTokenDAO.revokeWithAccessTokens(tokenHash, record.clientId(), record.userName());
+    }
+    return issuedToClient;
   }
 
   /**
@@ -225,12 +243,6 @@ public class OAuthTokenRepository {
    * Hash token using SHA-256 for secure lookups.
    */
   static String hashToken(String token) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-      return Base64.getEncoder().encodeToString(hash);
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("SHA-256 algorithm not available", e);
-    }
+    return OAuthDAOs.hashToken(token);
   }
 }
