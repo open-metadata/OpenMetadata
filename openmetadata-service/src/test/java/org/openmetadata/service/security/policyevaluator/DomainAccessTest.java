@@ -300,6 +300,31 @@ public class DomainAccessTest {
         "User should NOT access resource when no domains match between multiple domains");
   }
 
+  @Test
+  @DisplayName("inUserDomains matches own-domain resources and listings, not domainless ones")
+  void testInUserDomains() {
+    EntityReference userDomain =
+        createDomain("team1-domain", "12345678-1234-1234-1234-123456789012");
+    when(user.getDomains()).thenReturn(List.of(userDomain));
+    when(subjectContext.hasDomains(anyList())).thenReturn(true);
+
+    when(resourceContext.getDomains()).thenReturn(List.of(userDomain));
+    assertTrue(ruleEvaluator.inUserDomains(), "Resource in the user's domain must match");
+
+    when(resourceContext.getDomains()).thenReturn(null);
+    assertTrue(ruleEvaluator.hasDomain(), "hasDomain() lets a domainless resource through");
+    assertFalse(ruleEvaluator.inUserDomains(), "A domainless resource must not match");
+
+    when(resourceContext.getEntity()).thenReturn(null);
+    assertTrue(ruleEvaluator.inUserDomains(), "A listing is filtered per item, so it matches");
+
+    when(subjectContext.hasDomains(anyList())).thenReturn(false);
+    Mockito.<EntityInterface<?>>when(resourceContext.getEntity()).thenReturn(entity);
+    when(resourceContext.getDomains())
+        .thenReturn(List.of(createDomain("hr-domain", "44444444-4444-4444-4444-444444444444")));
+    assertFalse(ruleEvaluator.inUserDomains(), "A resource in another domain must not match");
+  }
+
   /**
    * Helper method to create an EntityReference for a domain
    */

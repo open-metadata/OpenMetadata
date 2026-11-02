@@ -17,10 +17,18 @@
     },
     {
       "name": "DomainAccessAllowRule",
-      "description": "Allow access when domain check passes",
+      "description": "Allow access to resources in the user's domains",
       "effect": "allow",
       "resources": ["All"],
       "operations": ["All"],
+      "condition": "inUserDomains()"
+    },
+    {
+      "name": "DomainAccessViewRule",
+      "description": "Allow viewing resources that are in no domain, such as policies, bots and settings",
+      "effect": "allow",
+      "resources": ["All"],
+      "operations": ["ViewAll"],
       "condition": "hasDomain()"
     }
   ]

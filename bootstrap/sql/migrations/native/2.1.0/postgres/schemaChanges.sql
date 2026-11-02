@@ -900,3 +900,24 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   PRIMARY KEY (conceptId, assetId)
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
+
+-- DomainOnlyAccessPolicy granted every operation on resources in no domain (policies, bots,
+-- settings); it now grants only viewing them. Rewritten only while it still has the shipped rules.
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', '[
+    {"name": "DomainAccessDenyRule", "description": "Deny access when domain check fails",
+     "effect": "deny", "resources": ["All"], "operations": ["All"], "condition": "!hasDomain()"},
+    {"name": "DomainAccessAllowRule", "description": "Allow access to resources in the user''s domains",
+     "effect": "allow", "resources": ["All"], "operations": ["All"],
+     "condition": "inUserDomains()"},
+    {"name": "DomainAccessViewRule",
+     "description": "Allow viewing resources that are in no domain, such as policies, bots and settings",
+     "effect": "allow", "resources": ["All"], "operations": ["ViewAll"], "condition": "hasDomain()"}
+  ]'::jsonb)
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND json->'rules' = '[
+    {"name": "DomainAccessDenyRule", "description": "Deny access when domain check fails",
+     "effect": "deny", "resources": ["All"], "operations": ["All"], "condition": "!hasDomain()"},
+    {"name": "DomainAccessAllowRule", "description": "Allow access when domain check passes",
+     "effect": "allow", "resources": ["All"], "operations": ["All"], "condition": "hasDomain()"}
+  ]'::jsonb;

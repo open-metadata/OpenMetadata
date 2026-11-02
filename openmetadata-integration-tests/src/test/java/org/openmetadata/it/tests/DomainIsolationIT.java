@@ -595,6 +595,43 @@ public class DomainIsolationIT {
     }
   }
 
+  @Test
+  void test_domainOnlyUser_cannotEditPoliciesOrMintBotTokens(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_gd", cleanup);
+      Table ownTable = createTable(admin, p + "_gt", createSchema(ns, cleanup), domain, cleanup);
+      createResourceDenyRole(admin, p, "chart", cleanup);
+      Policy policy = admin.policies().getByName(p + "_chartDenyPolicy");
+      createBotClient(admin, p + "_tok", null, List.of(), cleanup);
+      User bot = admin.users().getByName(p + "_tok_bot");
+      OpenMetadataClient client = createRestrictedUserClient(admin, p, domain, cleanup);
+      // Every user may edit descriptions (DataConsumer), so change fields only EditAll covers
+      JsonNode allowRule =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/rules/0/effect\",\"value\":\"allow\"}]");
+      JsonNode rename =
+          MAPPER.readTree("[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"changed\"}]");
+
+      // Policies and bots have no domain: the role still lets the user read them, not change them
+      assertEquals(policy.getId(), client.policies().get(policy.getId().toString()).getId());
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.policies().patch(policy.getId().toString(), allowRule));
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.users().generateToken(bot.getId(), JWTTokenExpiry.OneHour));
+
+      // Assets in the user's own domain stay fully editable
+      Table patched = client.tables().patch(ownTable.getId().toString(), rename);
+      assertEquals("changed", patched.getDisplayName());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
   // Task /v1/tasks domain isolation is covered comprehensively by
   // TaskResourceIT.testDomainOnlyUserCanOnlyListTasksFromAllowedDomains (a domain-only user there
   // also carries a baseline role, which the bare DomainOnlyAccessRole strips). The UI task list is
