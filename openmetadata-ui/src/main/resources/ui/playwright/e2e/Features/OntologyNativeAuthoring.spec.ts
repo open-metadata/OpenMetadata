@@ -121,6 +121,7 @@ test.describe(
           await page
             .getByTestId('new-class-description')
             .fill('Transfers funds between accounts.');
+          await page.getByTestId('new-class-advanced-toggle').click();
           await page
             .getByTestId('new-class-source')
             .fill('https://example.org/standard');
@@ -142,7 +143,10 @@ test.describe(
           ).toBeChecked();
           await page.getByTestId('new-class-property-name').press('Enter');
           await page.getByTestId('new-class-property-name').fill('status');
-          await page.getByRole('button', { name: /Type/ }).click();
+          await page
+            .getByTestId('new-class-advanced')
+            .getByRole('button', { name: /Type/ })
+            .click();
           await page.getByRole('option', { name: 'Enum', exact: true }).click();
           await page.getByTestId('new-class-enum-values').fill('Pending,');
           await expect(
@@ -152,7 +156,10 @@ test.describe(
           await page.getByTestId('new-class-enum-values').press('Enter');
           await clickIgnoringToasts(page.getByTestId('new-class-add-property'));
           await page.getByTestId('new-class-property-name').fill('customer');
-          await page.getByRole('button', { name: /Type/ }).click();
+          await page
+            .getByTestId('new-class-advanced')
+            .getByRole('button', { name: /Type/ })
+            .click();
           await page
             .getByRole('option', { name: 'Object', exact: true })
             .click();
