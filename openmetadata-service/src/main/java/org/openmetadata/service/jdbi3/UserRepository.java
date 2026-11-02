@@ -1382,6 +1382,17 @@ public class UserRepository extends EntityRepository<User> {
     testCaseResolutionStatusRepository.cleanUpAssignees(user.getFullyQualifiedName());
   }
 
+  /**
+   * Every delete path runs this, including the bulk soft delete of a deleted bot's user that skips
+   * {@link #postDelete}, so the user's MCP grants end here. They are keyed by user name, so a later
+   * account with the same name would otherwise take them over.
+   */
+  @Override
+  protected void preDelete(User entity, String deletedBy) {
+    super.preDelete(entity, deletedBy);
+    daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(entity.getName());
+  }
+
   @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);

@@ -29,11 +29,15 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -15512,6 +15516,20 @@ public interface CollectionDAO {
   }
 
   interface OAuthAccessTokenDAO {
+    /**
+     * The SHA-256 key the OAuth token tables store a token under. One definition, shared by the MCP
+     * repository that writes rows and JwtFilter that looks access tokens up.
+     */
+    static String hashToken(String token) {
+      try {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(hash);
+      } catch (NoSuchAlgorithmException e) {
+        throw new IllegalStateException("SHA-256 algorithm not available", e);
+      }
+    }
+
     @SqlQuery(
         "SELECT id, token_hash, access_token_encrypted, client_id, user_name, scopes, expires_at FROM oauth_access_tokens WHERE token_hash = :tokenHash")
     @RegisterRowMapper(OAuthAccessTokenRowMapper.class)
@@ -15578,6 +15596,46 @@ public interface CollectionDAO {
     @SqlUpdate(
         "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE client_id = :clientId AND user_name = :userName AND revoked = FALSE")
     void revokeAllForUser(@Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    @SqlUpdate(
+        "DELETE FROM oauth_access_tokens WHERE client_id = :clientId AND user_name = :userName")
+    void deleteAccessTokensForUser(
+        @Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    /**
+     * Revokes a refresh token and deletes the access tokens of its grant in one transaction. Apart, a
+     * failure after the first write would leave the access tokens valid, and a retry would find the
+     * refresh token already revoked and nothing left to do. The revoke goes first so a refresh racing
+     * it fails its rotation.
+     */
+    @Transaction
+    default void revokeWithAccessTokens(String tokenHash, String clientId, String userName) {
+      revoke(tokenHash);
+      deleteAccessTokensForUser(clientId, userName);
+    }
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)")
+    void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
+
+    @SqlUpdate(
+        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE")
+    void revokeRefreshTokensOfUser(@Bind("userName") String userName);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)")
+    void deleteAccessTokensOfUser(@Bind("userName") String userName);
+
+    /**
+     * Ends every grant held under a user name, on all clients. Grants are keyed by name only, so a
+     * later account with the same name would otherwise take them over. Names compare ignoring case:
+     * rows written before grants were stored under the account's own name may hold the provider's
+     * spelling of it. Codes go first, so none can start a new grant.
+     */
+    @Transaction
+    default void revokeAllGrantsOfUser(String userName) {
+      deleteAuthorizationCodesOfUser(userName);
+      revokeRefreshTokensOfUser(userName);
+      deleteAccessTokensOfUser(userName);
+    }
   }
 
   interface McpPendingAuthRequestDAO {
