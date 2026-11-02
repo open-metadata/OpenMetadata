@@ -44,13 +44,6 @@
             "errorMessage": "Unable to connect to storage service",
             "shortCircuit": false,
             "mandatory": false
-        },
-        {
-            "name": "CheckAzureAccess",
-            "description": "Check that the Azure Blob container is reachable with the configured credentials. Only applies when packageConnection is an Azure Blob (ADLS) container.",
-            "errorMessage": "Unable to list blobs in the Azure container. Check the container name and that the service principal has the Storage Blob Data Reader role on it.",
-            "shortCircuit": false,
-            "mandatory": false
         }
     ]
 }
