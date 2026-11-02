@@ -1154,8 +1154,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         response, validatedRedirectUri, accessToken, user.getEmail(), user.getName());
   }
 
-  private OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(
-      Map<String, Object> claims) {
+  /** Public so the MCP callback resolves the same identity as the web login it wraps. */
+  public OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(Map<String, Object> claims) {
     return new OidcIdentityResolver(
             authenticationConfiguration,
             authorizerConfiguration,
