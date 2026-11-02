@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Page } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/base';
 import { installVisualData } from '../../utils/visualData';
 import {
@@ -39,6 +40,21 @@ const PAGES = [
   ['applications', '/marketplace', 'auto-pilot-application-card'],
 ] as const;
 
+const setSidebarExpanded = async (page: Page, expanded: boolean) => {
+  const sidebar = page.getByTestId('left-sidebar');
+  await expect(sidebar).toBeVisible();
+  // Saved preferences can differ between local storage and fresh CI accounts.
+  const isExpanded = await sidebar.evaluate((element) =>
+    element.classList.contains('sidebar-open')
+  );
+  if (isExpanded !== expanded) {
+    await page.getByTestId('sidebar-toggle').click();
+  }
+  await expect(sidebar).toHaveClass(
+    expanded ? /sidebar-open/ : /sidebar-collapsed/
+  );
+};
+
 test.beforeEach(async ({ page }) => {
   await prepareVisualTheme(page, 'light', 'classic');
   await installVisualData(page, 'populated', 'classic');
@@ -52,10 +68,12 @@ for (const [name, route, readyTestId] of PAGES) {
       await expect(
         page.getByTestId('activity_feed').getByTestId('count')
       ).toHaveText('5');
-    if (name === 'landing-page')
+    if (name === 'landing-page') {
+      await setSidebarExpanded(page, false);
       await expect(
         page.getByTestId('topic-card-platformHealth').getByText(/^Updated /)
       ).toBeVisible();
+    }
     if (name === 'data-quality') {
       for (const widget of [
         'data-assets-coverage-pie-chart-widget',
@@ -68,22 +86,17 @@ for (const [name, route, readyTestId] of PAGES) {
   });
 }
 
-test('landing page with collapsed sidebar matches baseline', async ({
+test('landing page with expanded sidebar matches baseline', async ({
   page,
 }) => {
   await gotoForScreenshot(page, '/my-data', {
     readyTestId: 'topic-card-platformHealth',
   });
-  await page.getByTestId('sidebar-toggle').click();
+  await setSidebarExpanded(page, true);
   await expect(
     page.getByTestId('topic-card-platformHealth').getByText(/^Updated /)
   ).toBeVisible();
-  await expectVisualScreenshot(
-    page,
-    'landing-page-sidebar-collapsed',
-    'light',
-    {
-      maxDiffPixelRatio: 0,
-    }
-  );
+  await expectVisualScreenshot(page, 'landing-page-sidebar-expanded', 'light', {
+    maxDiffPixelRatio: 0,
+  });
 });
