@@ -80,6 +80,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ApiStatus;
@@ -113,6 +114,7 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
@@ -1411,54 +1413,88 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
             });
   }
 
-  // Entities this import created after authorizing them; a new row under one is part of the subtree
-  // that check already allowed (e.g. a schema under a database created a few rows earlier).
-  private final Set<String> authorizedCreates = new HashSet<>();
+  // Entities this import created, as their child rows see them: the parent may not be stored yet
+  // (writes are batched, and a dry run stores nothing), so the same record serves both runs.
+  private final Map<String, EntityInterface<?>> createdEntities = new HashMap<>();
 
   /**
    * The import endpoint authorizes only its root, but a row can name any entity by FQN, so each row
    * is authorized as its own write: EDIT_ALL on an existing entity, CREATE for a new one.
    */
   protected void authorizeRow(String type, EntityInterface<?> original, EntityInterface<?> entity) {
+    ChangeActor actor = ChangeActor.recorded(importedBy, null);
+    if (original != null) {
+      importAuthorizer()
+          .authorizeActor(
+              actor,
+              new OperationContext(type, MetadataOperation.EDIT_ALL),
+              new ResourceContext<>(type, original.getId(), null, Include.ALL));
+      return;
+    }
+    EntityInterface<?> pendingParent = pendingParent(entity);
+    CreateResourceContext<?> context =
+        pendingParent == null
+            ? new CreateResourceContext<>(type, entity)
+            : new CreateResourceContext<>(type, entity, pendingParent);
+    importAuthorizer()
+        .authorizeActor(actor, new OperationContext(type, MetadataOperation.CREATE), context);
+    createdEntities.put(createdKey(entity.getFullyQualifiedName()), asParent(entity, context));
+  }
+
+  /** Authorizes the importer for any one of the requests, as AuthorizationLogic.ANY does. */
+  protected void authorizeRowForAny(List<AuthRequest> requests) {
+    ChangeActor actor = ChangeActor.recorded(importedBy, null);
+    AuthorizationException denied = null;
+    for (AuthRequest request : requests) {
+      try {
+        importAuthorizer()
+            .authorizeActor(actor, request.operationContext(), request.resourceContext());
+        return;
+      } catch (AuthorizationException e) {
+        denied = e;
+      }
+    }
+    throw denied;
+  }
+
+  private Authorizer importAuthorizer() {
     Authorizer authorizer = Entity.getAuthorizer();
     if (authorizer == null) {
       throw new IllegalStateException(
           "No authorizer is registered to check the import by " + importedBy);
     }
-    ChangeActor actor = ChangeActor.recorded(importedBy, null);
-    if (original != null) {
-      authorizer.authorizeActor(
-          actor,
-          new OperationContext(type, MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(type, original.getId(), null, Include.ALL));
-      return;
-    }
-    if (!createdUnderImportedParent(type, entity)) {
-      authorizer.authorizeActor(
-          actor,
-          new OperationContext(type, MetadataOperation.CREATE),
-          new CreateResourceContext<>(type, entity));
-    }
-    authorizedCreates.add(entity.getFullyQualifiedName());
+    return authorizer;
   }
 
-  // A dry run persists nothing, so a parent made by an earlier row exists only as a simulation;
-  // that
-  // row was checked, and the real run fails this one anyway if it was refused.
-  private boolean createdUnderImportedParent(String type, EntityInterface<?> entity) {
-    return authorizedCreates.contains(parentFqn(entity))
-        || (Boolean.TRUE.equals(importResult.getDryRun()) && !parentPersisted(type, entity));
+  // Teams name their parents rather than nesting under them in the FQN
+  private EntityInterface<?> pendingParent(EntityInterface<?> entity) {
+    if (entity instanceof Team team) {
+      return listOrEmpty(team.getParents()).stream()
+          .map(parent -> createdEntities.get(createdKey(parent.getName())))
+          .filter(Objects::nonNull)
+          .findFirst()
+          .orElse(null);
+    }
+    return createdEntities.get(createdKey(parentFqn(entity)));
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private static boolean parentPersisted(String type, EntityInterface<?> entity) {
-    EntityRepository repository = Entity.getEntityRepository(type);
-    try {
-      repository.getParentEntity(entity, "id");
-      return true;
-    } catch (EntityNotFoundException e) {
-      return false;
+  // A row may quote its parent's FQN as one part (e.g. "svc.db".schema), so compare without quotes
+  private static String createdKey(String fqn) {
+    return fqn == null ? null : fqn.replace("\"", "");
+  }
+
+  // A created entity as a child row sees it: with its parent's owners and domains where the row set
+  // none (e.g. a table under a new schema). The importer created it and could have named itself
+  // owner over REST, so this grants nothing REST would refuse. Teams never inherit owners.
+  private static EntityInterface<?> asParent(
+      EntityInterface<?> entity, CreateResourceContext<?> context) {
+    EntityInterface<?> parent =
+        JsonUtils.readValue(JsonUtils.pojoToJson(entity), entity.getClass());
+    if (!(entity instanceof Team) && nullOrEmpty(parent.getOwners())) {
+      parent.setOwners(context.getOwners());
     }
+    parent.setDomains(context.getDomains());
+    return parent;
   }
 
   private static String parentFqn(EntityInterface<?> entity) {
