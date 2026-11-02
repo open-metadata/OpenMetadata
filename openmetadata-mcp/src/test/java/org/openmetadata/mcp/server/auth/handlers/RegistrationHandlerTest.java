@@ -190,6 +190,17 @@ class RegistrationHandlerTest {
   }
 
   @Test
+  void testLoopbackIpv6Http_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setRedirectUris(List.of(URI.create("http://[::1]:8080/callback")));
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientId()).isNotNull();
+    verify(clientRepository).register(any());
+  }
+
+  @Test
   void testPrivateUseScheme_accepted() {
     OAuthClientMetadata metadata = validMetadata();
     metadata.setRedirectUris(List.of(URI.create("cursor://callback")));
