@@ -35,8 +35,11 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.data.OntologyConceptDeleteImpact;
 import org.openmetadata.schema.api.data.OntologyConceptQuery;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateOntologyConceptBinding;
@@ -58,6 +61,8 @@ import org.openmetadata.service.ontology.OntologyConceptQueryService;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/ontologyConcepts")
 @Tag(
@@ -134,6 +139,30 @@ public class OntologyConceptResource
       @QueryParam("limit") @DefaultValue("100") @Min(1) @Max(100) final int limit,
       @QueryParam("after") final String after) {
     return bindings.get(new Access(uriInfo, securityContext), id, limit, after);
+  }
+
+  @GET
+  @Path("/{id}/deleteImpact")
+  @Operation(
+      operationId = "getOntologyConceptDeleteImpact",
+      summary =
+          "List the children, relationships, rules and blockers that deleting a concept touches")
+  public OntologyConceptDeleteImpact getDeleteImpact(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id) {
+    final OntologyConcept concept =
+        getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final OntologyConceptDeleteImpact impact = repository.deleteImpact(concept);
+    Stream.of(impact.getRelationships(), impact.getRules(), impact.getBlockers())
+        .flatMap(List::stream)
+        .forEach(
+            source ->
+                authorizer.authorize(
+                    securityContext,
+                    new OperationContext(source.getType(), MetadataOperation.VIEW_ALL),
+                    new ResourceContext<>(source.getType(), source.getId(), null)));
+    return impact;
   }
 
   @PUT

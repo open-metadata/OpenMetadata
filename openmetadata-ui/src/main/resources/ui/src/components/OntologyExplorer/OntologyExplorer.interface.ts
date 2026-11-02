@@ -198,6 +198,12 @@ export interface OntologyGraphProps {
     toId: string,
     relationType: string
   ) => Promise<void>;
+  /** The reason a relation cannot be written, or undefined; asked before any write. */
+  checkRelation?: (
+    fromId: string,
+    toId: string,
+    relationType: string
+  ) => string | undefined;
   onEdgeClick?: (edge: MergedEdge | null) => void;
   onNodeClick: (
     node: OntologyNode,
@@ -209,6 +215,8 @@ export interface OntologyGraphProps {
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
   onPaneClick: () => void;
+  /** Canvas-space point of a double-click on empty canvas while the studio is being edited. */
+  onCanvasDoubleClick?: (point: { x: number; y: number }) => void;
   onScrollNearEdge?: () => void;
 }
 

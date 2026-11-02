@@ -128,6 +128,99 @@ export async function readNodePositions(
     );
 }
 
+export type GraphPoints = Record<string, { x: number; y: number }>;
+
+/**
+ * Client-space points the studio graph publishes for specs: node centres,
+ * edge midpoints and the Edit-mode connect handles.
+ */
+export async function readGraphPoints(
+  page: Page,
+  kind: 'node' | 'edge' | 'port'
+): Promise<GraphPoints> {
+  return page
+    .locator('.ontology-g6-container')
+    .first()
+    .evaluate((el: HTMLElement, key) => {
+      const raw = {
+        node: el.dataset.nodePositions,
+        edge: el.dataset.edgePositions,
+        port: el.dataset.portPositions,
+      }[key];
+
+      return JSON.parse(raw ?? '{}') as Record<
+        string,
+        { x: number; y: number }
+      >;
+    }, kind);
+}
+
+/** Waits until the graph publishes a point for every id, then returns them. */
+export async function waitForGraphPoints(
+  page: Page,
+  kind: 'node' | 'edge' | 'port',
+  ids: string[]
+): Promise<GraphPoints> {
+  let points: GraphPoints = {};
+  await expect
+    .poll(async () => {
+      points = await readGraphPoints(page, kind);
+
+      return ids.every(
+        (id) => Number.isFinite(points[id]?.x) && Number.isFinite(points[id]?.y)
+      );
+    })
+    .toBe(true);
+
+  return points;
+}
+
+/** A canvas point at least `clearance` px from every node, inside the graph area. */
+export async function findEmptyCanvasPoint(
+  page: Page,
+  clearance = 160
+): Promise<{ x: number; y: number }> {
+  const box = await page
+    .locator('.ontology-g6-container')
+    .first()
+    .boundingBox();
+  if (!box) {
+    throw new Error('The graph canvas is not rendered');
+  }
+  // The graph re-fits when a side panel opens or closes, so measure only once
+  // two reads agree.
+  let previous = '';
+  let positions = await readNodePositions(page);
+  for (
+    let attempt = 0;
+    attempt < 20 && JSON.stringify(positions) !== previous;
+    attempt++
+  ) {
+    previous = JSON.stringify(positions);
+    await page.waitForTimeout(300);
+    positions = await readNodePositions(page);
+  }
+  const nodes = Object.values(positions);
+  const candidates = [];
+  for (let x = box.x + 120; x < box.x + box.width - 120; x += 40) {
+    for (let y = box.y + 120; y < box.y + box.height - 120; y += 40) {
+      candidates.push({ x, y });
+    }
+  }
+  const distance = (point: { x: number; y: number }) =>
+    Math.min(
+      ...nodes.map((node) => Math.hypot(node.x - point.x, node.y - point.y))
+    );
+  const best = candidates.sort((a, b) => distance(b) - distance(a))[0];
+  if (!best || distance(best) < clearance) {
+    throw new Error(
+      'No empty canvas point is at least ' + clearance + 'px from a node'
+    );
+  }
+
+  return best;
+}
+
 export async function clickFirstGraphNode(page: Page): Promise<void> {
   const positions = await readNodePositions(page);
   const firstPos = Object.values(positions)[0];
