@@ -151,6 +151,8 @@ public class OntologyPropertyResource
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       final JsonPatch patch) {
+    OntologyResourceAccess.requireEditForContentPatch(
+        authorizer, securityContext, Entity.ONTOLOGY_PROPERTY, id, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 

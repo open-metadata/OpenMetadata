@@ -615,6 +615,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       final JsonPatch patch) {
+    OntologyResourceAccess.requireEditForContentPatch(
+        authorizer, securityContext, Entity.ONTOLOGY, id, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 

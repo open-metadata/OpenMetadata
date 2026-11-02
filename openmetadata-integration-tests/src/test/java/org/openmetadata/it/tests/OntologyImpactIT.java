@@ -76,8 +76,7 @@ public class OntologyImpactIT {
     final GlossaryTerm parent = createTerm(client, glossary, namespace.prefix("parent"), null);
     final GlossaryTerm child =
         createTerm(client, glossary, namespace.prefix("child"), parent.getFullyQualifiedName());
-    final OpenMetadataClient caller =
-        restrictedClient(namespace, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    final OpenMetadataClient caller = restrictedClient(namespace, MetadataOperation.EDIT_ALL);
 
     final OntologyImpactReport impact =
         caller.ontologyImpacts().previewGlossaryTermDelete(parent.getId());
@@ -105,8 +104,7 @@ public class OntologyImpactIT {
   void rejectsReassignmentOfProtectedDescendantBeforeMovingAnyChild(
       final boolean protectGrandchild, final TestNamespace namespace) {
     final Hierarchy hierarchy = createHierarchy(namespace, protectGrandchild);
-    final OpenMetadataClient caller =
-        restrictedClient(namespace, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    final OpenMetadataClient caller = restrictedClient(namespace, MetadataOperation.EDIT_ALL);
     final DeleteOntologyResource request =
         deleteRequest(caller, hierarchy.parent())
             .withReassignChildrenTo(hierarchy.glossary().getEntityReference());
@@ -179,8 +177,7 @@ public class OntologyImpactIT {
         .glossaryTerms()
         .delete(hierarchy.protectedTerm().getId().toString(), Map.of("hardDelete", "false"));
     final GlossaryTerm deletedTerm = getIncludingDeleted(hierarchy.protectedTerm());
-    final OpenMetadataClient caller =
-        restrictedClient(namespace, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    final OpenMetadataClient caller = restrictedClient(namespace, MetadataOperation.EDIT_ALL);
     final DeleteOntologyResource request =
         deleteRequest(caller, hierarchy.parent())
             .withReassignChildrenTo(hierarchy.glossary().getEntityReference());
@@ -430,7 +427,10 @@ public class OntologyImpactIT {
             .withEffect(Rule.Effect.ALLOW)
             .withResources(List.of(Entity.GLOSSARY, Entity.GLOSSARY_TERM))
             .withOperations(
-                List.of(MetadataOperation.DELETE, MetadataOperation.EDIT_GLOSSARY_TERMS)),
+                List.of(
+                    MetadataOperation.DELETE,
+                    MetadataOperation.EDIT_GLOSSARY_TERMS,
+                    MetadataOperation.EDIT_ALL)),
         new Rule()
             .withName("DenyProtectedTerms")
             .withEffect(Rule.Effect.DENY)
