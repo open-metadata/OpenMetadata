@@ -1,7 +1,7 @@
 # SQLAlchemy Rule Library queries use the runner's physical table and execution bind
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-02 (connector default context) · v3 2026-11-02 (defer table rendering)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-02 (connector default context) · v3 2026-11-02 (defer table rendering) · v4 2026-11-02 (BigQuery query project and settings isolation)
 - **Deciders:** Ingestion maintainers
 - **Guard:** `test_rule_library_sql_expression_validator.py`, `test_rule_library_thresholds.py`, `test_runner.py`, `test_physical_table_expression.py`
 - **Related:** https://github.com/open-metadata/openmetadata-collate/issues/7374
@@ -33,3 +33,11 @@ The connector `test_table_context.py` suites guard these cases, including origin
 ## Amendment: defer table rendering until execution
 
 The runner exposes `get_table_reference()` as an explicit method. Timeout wrapping inspects runner attributes while constructing interfaces; a property would acquire a source connection during that inspection and reject missing raw tables before any case can report a result. Both SQL validators call the method within per-case validation, where missing or unsupported raw tables produce Aborted results. Wrapping the runner alone must not acquire a source connection. `test_rule_library_suite_construction.py` guards this through the normal sampler and test-suite constructors.
+
+## Amendment: BigQuery query project and settings isolation
+
+BigQuery's data project must remain independent of its billing client project. The dialect omits its computed project settings for supplied clients, and external-account credentials have no project field to carry a table-specific target. The connector therefore resolves the attached table's Database and binds its project through the engine's supported `job_config` execution option. Sampling, profiling and test-suite sessions all apply this same helper before creating sessions.
+
+The helper copies existing job settings and replaces only the `dataset_project_id` connection property. Other properties and fields survive; a minimal configuration still permits the client's defaults to merge at execution. Credentials, client billing, endpoints and original engine settings remain unchanged.
+
+The BigQuery DBAPI mutates job settings when adding bound parameters. An `engine_connect` listener on the returned engine gives each SQLAlchemy Connection its own copy, isolating concurrent sessions and other target engines. `test_table_context.py` guards real driver/DBAPI requests, deterministic interleaving, client defaults and object isolation without cloud queries.

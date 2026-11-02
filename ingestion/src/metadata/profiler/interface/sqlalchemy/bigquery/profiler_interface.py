@@ -24,6 +24,7 @@ from sqlalchemy.sql.type_api import TypeEngine
 from metadata.generated.schema.entity.data.table import SystemProfile, TableType
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -47,6 +48,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.table_entity.database:
             connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.table_entity.database.name)
             self.connection = get_ssl_connection(connection_config)
+        self.connection = bind_connection_to_table(self.connection, self.table_entity, self.ometa_client)
         return super().create_session()
 
     def _compute_system_metrics(
