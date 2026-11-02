@@ -98,7 +98,7 @@ export function graphFitsViewport(graph: Graph, size: ViewportSize): boolean {
   return Boolean(rect && rectFitsViewport(rect, size));
 }
 
-/** Pans to a node that sits outside the visible canvas; a visible node stays put. */
+/** Brings a node that sits outside the visible canvas into view; a visible node stays put. */
 export async function revealHiddenNode(
   graph: Graph,
   container: HTMLElement,
@@ -109,7 +109,17 @@ export async function revealHiddenNode(
   }
   const rect = nodeViewportRect(graph, new Set([nodeId]));
   if (rect && !rectFitsViewport(rect, containerViewportSize(container))) {
-    await graph.focusElement(nodeId, { duration: 0 });
+    // The canvas only learns its new size from the resize observer, which can
+    // run after this; fit against the size the container has now.
+    graph.resize(container.offsetWidth, container.offsetHeight);
+    // Fitting shows the selection with the rest of the graph; panning to it
+    // alone would leave the surrounding concepts behind when a panel narrows
+    // the canvas.
+    await fitViewWithMinZoom(graph);
+    const fitted = nodeViewportRect(graph, new Set([nodeId]));
+    if (fitted && !rectFitsViewport(fitted, containerViewportSize(container))) {
+      await graph.focusElement(nodeId, { duration: 0 });
+    }
   }
 }
 
