@@ -952,7 +952,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void requireParentInGlossary(GlossaryTerm term, GlossaryTerm parentTerm, boolean update) {
     boolean otherGlossary =
         parentTerm != null && !parentTerm.getGlossary().getId().equals(term.getGlossary().getId());
-    if (otherGlossary && (!update || placementChanges(term))) {
+    if (otherGlossary && (!update || placementChanges(term, parentTerm))) {
       throw new IllegalArgumentException(
           "Parent term %s is in glossary %s, not in the term's glossary %s"
               .formatted(
@@ -962,11 +962,34 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  // Whether the write gives the stored term a different parent or glossary.
-  private static boolean placementChanges(GlossaryTerm term) {
-    GlossaryTerm stored = Entity.getEntity(GLOSSARY_TERM, term.getId(), "parent", Include.ALL);
-    return !Objects.equals(refId(stored.getParent()), refId(term.getParent()))
+  // Whether the write gives the stored term a different parent or glossary; a term with no stored
+  // row is being created.
+  private static boolean placementChanges(GlossaryTerm term, GlossaryTerm parentTerm) {
+    GlossaryTerm stored = storedTerm(term, parentTerm);
+    return stored == null
+        || !Objects.equals(refId(stored.getParent()), refId(term.getParent()))
         || !Objects.equals(refId(stored.getGlossary()), refId(term.getGlossary()));
+  }
+
+  // A PUT is prepared with a fresh id, so the stored term is also looked up by the name the write
+  // files it under.
+  private static GlossaryTerm storedTerm(GlossaryTerm term, GlossaryTerm parentTerm) {
+    GlossaryTerm stored =
+        term.getId() == null
+            ? null
+            : Entity.getEntityOrNull(GLOSSARY_TERM, term.getId(), "parent", Include.ALL);
+    if (stored == null) {
+      GlossaryTerm named =
+          Entity.findEntityByNameOrNull(
+              GLOSSARY_TERM,
+              FullyQualifiedName.add(parentTerm.getFullyQualifiedName(), term.getName()),
+              Include.ALL);
+      stored =
+          named == null
+              ? null
+              : Entity.getEntityOrNull(GLOSSARY_TERM, named.getId(), "parent", Include.ALL);
+    }
+    return stored;
   }
 
   private static UUID refId(EntityReference ref) {

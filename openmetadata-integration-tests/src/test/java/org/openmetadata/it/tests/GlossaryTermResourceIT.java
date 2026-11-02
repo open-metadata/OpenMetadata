@@ -2170,6 +2170,24 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertEquals(term.getFullyQualifiedName(), unchanged.getFullyQualifiedName());
     assertEquals(source.getId(), unchanged.getGlossary().getId());
 
+    // A PUT that creates a term under a parent from another glossary is refused the same way.
+    OpenMetadataException putError =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/glossaryTerms",
+                        new CreateGlossaryTerm()
+                            .withName("created")
+                            .withGlossary(source.getFullyQualifiedName())
+                            .withParent(parent.getFullyQualifiedName())
+                            .withDescription("Created under another glossary's term"),
+                        RequestOptions.builder().build()));
+    assertEquals(400, putError.getStatusCode());
+
     // Moving it with its glossary is the same move made consistently, and is published.
     GlossaryTerm moved = patchTerm(term, "[%s,%s]".formatted(parentOp, glossaryOp));
     assertEquals(
