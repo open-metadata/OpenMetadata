@@ -2455,6 +2455,8 @@
     "ontology-event-approved": "Approved",
     "ontology-event-captured": "Captured",
     "ontology-event-rejected": "Rejected",
+    "ontology-event-review_requested": "Review requested",
+    "ontology-event-review_withdrawn": "Review withdrawn",
     "ontology-explorer": "온톨로지 탐색기",
     "ontology-has-no-concepts": "이 온톨로지에는 개념이 없습니다",
     "ontology-health": "온톨로지 상태",

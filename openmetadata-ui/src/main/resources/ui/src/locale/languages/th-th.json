@@ -2455,6 +2455,8 @@
     "ontology-event-approved": "Approved",
     "ontology-event-captured": "Captured",
     "ontology-event-rejected": "Rejected",
+    "ontology-event-review_requested": "Review requested",
+    "ontology-event-review_withdrawn": "Review withdrawn",
     "ontology-explorer": "ตัวสำรวจออนโทโลยี",
     "ontology-has-no-concepts": "ออนโทโลยีนี้ไม่มีแนวคิด",
     "ontology-health": "สถานะออนโทโลจี",

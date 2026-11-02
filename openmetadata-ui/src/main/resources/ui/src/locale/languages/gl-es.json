@@ -2455,6 +2455,8 @@
     "ontology-event-approved": "Approved",
     "ontology-event-captured": "Captured",
     "ontology-event-rejected": "Rejected",
+    "ontology-event-review_requested": "Review requested",
+    "ontology-event-review_withdrawn": "Review withdrawn",
     "ontology-explorer": "Explorador de Ontoloxía",
     "ontology-has-no-concepts": "Esta ontoloxía non ten conceptos",
     "ontology-health": "Estado da ontoloxía",
