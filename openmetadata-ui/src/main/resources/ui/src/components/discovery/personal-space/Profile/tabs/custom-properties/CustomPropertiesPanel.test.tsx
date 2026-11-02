@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesPanel from './CustomPropertiesPanel';
 
 const mockGetTypeByFQN = getTypeByFQN as jest.Mock;
@@ -318,6 +319,33 @@ describe('CustomPropertiesPanel', () => {
     await screen.findByTestId('detail-page');
 
     expect(mockGetTypeByFQN).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores a failed post-save refetch after the user has moved on', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByTestId('select-entity-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+
+    let rejectRefetch: ((err: Error) => void) | undefined;
+    mockGetTypeByFQN.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectRefetch = reject;
+        })
+    );
+    fireEvent.click(await screen.findByTestId('add-success-btn'));
+
+    act(() => {
+      mockOnHeaderChange.mock.calls.at(-1)?.[0].onBreadcrumbAction('landing');
+    });
+    await screen.findByTestId('landing-page');
+
+    await act(async () => {
+      rejectRefetch?.(new Error('network'));
+    });
+
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(screen.getByTestId('landing-page')).toBeInTheDocument();
   });
 
   it('transitions to add page when onAddProperty is triggered from detail', async () => {

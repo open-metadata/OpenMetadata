@@ -195,15 +195,21 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
     if (!fqn) {
       return;
     }
+    let type: Type | undefined;
     try {
-      const type = await getTypeByFQN(fqn);
-      // The user may have moved to another entity type while this loaded.
-      if (resolvedFqnRef.current !== fqn) {
-        return;
-      }
-      setEntityType(type);
+      type = await getTypeByFQN(fqn);
     } catch (err) {
-      showErrorToast(err as AxiosError);
+      // Stays silent when the user has already moved to another entity type.
+      if (resolvedFqnRef.current === fqn) {
+        showErrorToast(err as AxiosError);
+      }
+    }
+    // The user may have moved to another entity type while this loaded.
+    if (resolvedFqnRef.current !== fqn) {
+      return;
+    }
+    if (type) {
+      setEntityType(type);
     }
     handleBackToDetail();
   }, [entityType?.fullyQualifiedName, handleBackToDetail]);
