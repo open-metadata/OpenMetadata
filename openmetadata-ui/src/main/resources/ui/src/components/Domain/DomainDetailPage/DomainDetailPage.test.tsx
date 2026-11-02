@@ -17,6 +17,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { getDomainByName, patchDomains } from '../../../rest/domainAPI';
+import { domainStyleQueryKey } from '../../../rest/queries/domainStyleQuery';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DomainDetails from '../DomainDetails/DomainDetails.component';
@@ -222,5 +223,40 @@ describe('DomainDetailPage', () => {
     );
 
     invalidateSpy.mockRestore();
+  });
+
+  // Domain chips cache the style for minutes; a restyle saved here must show
+  // on them at once.
+  it("should write the saved domain's colour and icon into the chip style cache", async () => {
+    mockGetDomainByName.mockResolvedValue(DOMAINS_LIST[0] as Domain);
+    mockPatchDomains.mockResolvedValue({
+      ...DOMAINS_LIST[0],
+      style: {
+        color: '#F14C75',
+        iconURL: 'Database01',
+        coverImageURL: 'cover.png',
+      },
+    } as Domain);
+
+    const { queryClient } = renderWithQueryClient(
+      <MemoryRouter>
+        <DomainDetailPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(MockDomainDetails).toHaveBeenCalled());
+
+    const onUpdateProp = MockDomainDetails.mock.calls.at(-1)?.[0]?.onUpdate;
+
+    await act(async () => {
+      await onUpdateProp?.({
+        ...DOMAINS_LIST[0],
+        style: { color: '#F14C75', iconURL: 'Database01' },
+      } as Domain);
+    });
+
+    expect(
+      queryClient.getQueryData(domainStyleQueryKey(DOMAINS_LIST[0].id))
+    ).toEqual({ color: '#F14C75', iconURL: 'Database01' });
   });
 });
