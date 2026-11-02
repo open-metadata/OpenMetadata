@@ -742,13 +742,8 @@ const BulkEditEntity = ({
         <div className="bulk-edit-grid-shell">
           {searchText.trim() && visibleRows.length === 0 ? (
             // The grid is far wider than the card, so an in-grid fallback would centre off-screen.
-            // Height mirrors .bulk-edit-rdg .rdg so the card does not jump while searching.
-            <div className="om-rdg bulk-edit-rdg">
-              <div
-                className="tw:relative tw:h-[min(60vh,calc(100vh-400px))] tw:min-h-70"
-                data-testid="bulk-edit-no-search-results">
-                <NoSearchResultsPlaceholder />
-              </div>
+            <div className="tw:relative tw:min-h-70">
+              <NoSearchResultsPlaceholder data-testid="bulk-edit-no-search-results" />
             </div>
           ) : (
             editDataGrid
