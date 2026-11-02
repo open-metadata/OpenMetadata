@@ -1471,11 +1471,18 @@ public class TeamRepository extends EntityRepository<Team> {
               .map(EntityReference::getId)
               .collect(Collectors.toSet());
       for (EntityReference parent : listOrEmpty(team.getParents())) {
-        boolean alreadyAllowed =
-            parent.getName().equals(this.team.getName())
-                || storedParents.contains(parent.getId())
-                || createdTeams.contains(parent.getName());
-        if (!alreadyAllowed && !canEditParent(parent)) {
+        if (parent.getName().equals(this.team.getName())
+            || createdTeams.contains(parent.getName())) {
+          continue;
+        }
+        // A dry run gives a parent named by an earlier row a placeholder id, so use the stored one
+        Team persisted =
+            ((TeamRepository) Entity.getEntityRepository(TEAM))
+                .findByNameOrNull(parent.getName(), ALL);
+        boolean allowed =
+            persisted != null
+                && (storedParents.contains(persisted.getId()) || canEditParent(persisted.getId()));
+        if (!allowed) {
           importFailure(printer, parentNotEditable(4, team.getName(), parent.getName()), csvRecord);
           processRecord = false;
           return;
@@ -1483,13 +1490,13 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    private boolean canEditParent(EntityReference parent) {
+    private boolean canEditParent(UUID parentId) {
       try {
         Entity.getAuthorizer()
             .authorizeActor(
                 ChangeActor.recorded(importedBy, null),
                 new OperationContext(TEAM, MetadataOperation.EDIT_ALL),
-                new ResourceContext<>(TEAM, parent.getId(), null, ALL));
+                new ResourceContext<>(TEAM, parentId, null, ALL));
         return true;
       } catch (AuthorizationException e) {
         return false;

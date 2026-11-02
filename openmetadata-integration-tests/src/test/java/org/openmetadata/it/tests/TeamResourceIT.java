@@ -1588,6 +1588,30 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
         "Group must not be placed under a team its owner cannot edit");
   }
 
+  @Test
+  void test_importCsv_ownerDryRunReimportsNestedHierarchy(TestNamespace ns) {
+    User owner = createLoginUser(ns, "csvreimportowner");
+    Team department = createOwnedTeam(ns, "csvReimportDept", TeamType.DEPARTMENT, owner);
+    Team subTeam =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("csvReimportSub"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(department.getId())));
+    createEntity(
+        new CreateTeam()
+            .withName(ns.prefix("csvReimportGroup"))
+            .withTeamType(TeamType.GROUP)
+            .withParents(List.of(subTeam.getId())));
+    OpenMetadataClient client = clientFor(owner);
+    String csv = client.teams().exportCsv(department.getName());
+
+    // An unchanged export keeps every parent, so no row needs a new permission
+    String result = client.teams().importCsv(department.getName(), csv, true);
+
+    assertTrue(result.contains("\"numberOfRowsFailed\":0"), result);
+  }
+
   // Signed in by email, so the name must match the email's local part to resolve the user.
   private User createLoginUser(TestNamespace ns, String base) {
     String localPart = base + ns.shortPrefix();
