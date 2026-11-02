@@ -180,8 +180,9 @@ describe('useTestCaseListPage', () => {
     expect(typeof current.pagingData.pagingHandler).toBe('function');
 
     // On mount getTestCases seeds selectedFilter from DEFAULT_SELECTED_FILTERS
-    // (status, type, table, tags) merged with the (empty) URL params.
+    // (lastRun, status, type, table, tags) merged with the (empty) URL params.
     expect(current.selectedFilter).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.status,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.table,
@@ -445,11 +446,12 @@ describe('useTestCaseListPage', () => {
     const byKey = (key: string) =>
       result.current.filters.find((descriptor) => descriptor.key === key);
 
-    // Descriptors track selectedFilter (defaults: table/type/status/tags).
+    // Descriptors track selectedFilter (defaults: table/type/status/lastRun/tags).
     expect(result.current.filters.map((descriptor) => descriptor.key)).toEqual([
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.status,
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.tags,
     ]);
 
@@ -526,16 +528,13 @@ describe('useTestCaseListPage', () => {
     );
   });
 
-  it('should surface date and multiselect control types for lastRun and platform filters', async () => {
+  it('should surface the date control type for the default lastRun filter and multiselect for platform', async () => {
     const { result } = renderHook(() => useTestCaseListPage());
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
     );
 
-    act(() => {
-      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.lastRun });
-    });
     act(() => {
       result.current.handleMenuClick({ key: TEST_CASE_FILTERS.platform });
     });
@@ -628,6 +627,7 @@ describe('useTestCaseListPage', () => {
     });
 
     expect(result.current.selectedFilter).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.status,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.table,

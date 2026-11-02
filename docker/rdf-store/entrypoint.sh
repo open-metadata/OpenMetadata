@@ -92,4 +92,9 @@ fi
 mkdir -p "$FUSEKI_BASE/extra"
 cp /fuseki/extensions/openmetadata-fuseki-extensions.jar "$FUSEKI_BASE/extra/"
 
+# A crash core dump is as large as the heap and lands on the node's disk, not the data volume: in
+# production it filled the node and got the pod evicted. Added here, not in the Dockerfile's
+# default, so deployments that set their own JVM_ARGS keep it.
+export JVM_ARGS="${JVM_ARGS:-} -XX:-CreateCoredumpOnCrash"
+
 exec "$@"
