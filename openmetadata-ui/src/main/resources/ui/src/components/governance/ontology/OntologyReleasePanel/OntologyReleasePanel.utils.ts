@@ -31,6 +31,10 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getTaskDetailPath } from '../../../../utils/TaskUtils';
 import type {
+  PublicationAction,
+  PublicationActionInput,
+  PublicationActions,
+  PublicationState,
   ReleasePanelView,
   ReleaseStage,
 } from './OntologyReleasePanel.types';
@@ -175,6 +179,7 @@ export const deriveReleasePanelView = (
         stage.value.stage === Stage.Draft,
         unlocked,
       ].every(Boolean),
+      hasIndependentReviewer: effective.length > 0,
       canRequestReview:
         permissions.canWrite &&
         effective.length > 0 &&
@@ -206,3 +211,112 @@ export const visibleHistoryReleases = (
       Boolean(release.reviewTask) ||
       release.id === latestReleaseId
   );
+
+const action = (
+  kind: PublicationAction['kind'],
+  isDisabled = false
+): PublicationAction => ({ kind, isDisabled });
+
+export const derivePublicationState = (
+  input: PublicationActionInput
+): PublicationState => {
+  const { stage, canEdit } = input;
+  if (stage === Stage.Approved) {
+    return canEdit ? 'approvedCanPublish' : 'approvedCannotPublish';
+  }
+  if (!canEdit) {
+    return 'cannotEdit';
+  }
+  if (stage === Stage.InReview) {
+    return 'inReview';
+  }
+  if (stage === Stage.ChangesRequested) {
+    return 'rejected';
+  }
+  if (!input.hasChanges) {
+    return 'noChanges';
+  }
+  if (!input.hasReviewers) {
+    return input.validationErrors.length > 0
+      ? 'noReviewersInvalid'
+      : 'noReviewers';
+  }
+
+  return input.hasIndependentReviewer ? 'reviewersSet' : 'soloReviewer';
+};
+
+type PublicationRow = (
+  input: PublicationActionInput
+) => Omit<PublicationActions, 'state' | 'errors'>;
+
+/**
+ * The publication state table (plan Appendix A). One row per state; the label
+ * and sentence for each row are rendered by the panel.
+ */
+const PUBLICATION_ROWS: Record<PublicationState, PublicationRow> = {
+  cannotEdit: () => ({
+    primary: null,
+    secondary: null,
+    text: 'message.ontology-publication-needs-author-role',
+  }),
+  noChanges: () => ({
+    primary: action('publish', true),
+    secondary: action('saveDraft', true),
+    text: 'message.ontology-publication-no-changes',
+  }),
+  noReviewers: ({ isReady }) => ({
+    primary: action('publish', !isReady),
+    secondary: action('saveDraft', !isReady),
+    text: 'message.ontology-publication-no-reviewers',
+  }),
+  noReviewersInvalid: ({ isReady }) => ({
+    primary: action('publish', true),
+    secondary: action('saveDraft', !isReady),
+    text: 'message.ontology-publication-fix-to-publish',
+  }),
+  reviewersSet: ({ isReady }) => ({
+    primary: action('requestReview', !isReady),
+    secondary: action('saveDraft', !isReady),
+    text: 'message.ontology-publication-draft-stays-editable',
+  }),
+  soloReviewer: ({ isReady }) => ({
+    primary: action('requestReview', true),
+    secondary: action('saveDraft', !isReady),
+    text: 'message.ontology-publication-solo-reviewer',
+  }),
+  inReview: ({ isRequester, isReady }) => ({
+    primary: action('publish', true),
+    secondary: isRequester ? action('withdraw', !isReady) : null,
+    text: 'message.ontology-publication-waiting-for',
+  }),
+  approvedCanPublish: ({ isReady }) => ({
+    primary: action('publish', !isReady),
+    secondary: null,
+    text: 'message.ontology-publication-approved-by',
+  }),
+  approvedCannotPublish: () => ({
+    primary: null,
+    secondary: null,
+    text: 'message.ontology-publication-only-author-publishes',
+  }),
+  rejected: ({ changedSinceRejection, hasIndependentReviewer, isReady }) => ({
+    primary: action(
+      'requestReviewAgain',
+      !isReady || !changedSinceRejection || !hasIndependentReviewer
+    ),
+    secondary: action('saveDraft', !isReady || !changedSinceRejection),
+    text: 'message.ontology-publication-edit-then-request-again',
+  }),
+};
+
+export const getPublicationActions = (
+  input: PublicationActionInput
+): PublicationActions => {
+  const state = derivePublicationState(input);
+
+  return {
+    state,
+    ...PUBLICATION_ROWS[state](input),
+    errors: state === 'noReviewersInvalid' ? input.validationErrors : [],
+  };
+};
