@@ -719,6 +719,7 @@
         "openmetadata-spec/src/main/resources/json/schema/api/data/ontology*",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Ontology*IT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyApprovalIT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/OntologyConcurrentHardDeleteIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyReleaseIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyPublicationIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyActivationIT.java",
