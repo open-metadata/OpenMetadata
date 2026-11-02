@@ -319,9 +319,11 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
     assertEquals(release.getContentDigest(), reviewed.getContentDigest());
     assertEquals(task.getOntologyReview().getContentDigest(), OntologyReview.digest(reviewed));
     assertNull(state(ontology).getActiveReleaseId());
-    JsonNode firstPage = events(release, "?limit=1");
-    assertEquals(2, firstPage.path("paging").path("total").asInt());
+    JsonNode firstPage = events(release, "?limit=2");
+    assertEquals(3, firstPage.path("paging").path("total").asInt());
     assertEquals("CAPTURED", firstPage.path("data").get(0).path("eventType").asText());
+    assertEquals("REVIEW_REQUESTED", firstPage.path("data").get(1).path("eventType").asText());
+    assertEquals(task.getId().toString(), firstPage.path("data").get(1).path("taskId").asText());
     String cursor = firstPage.path("paging").path("after").asText();
     JsonNode lastPage = events(release, "?limit=1&after=" + cursor);
     OntologyReleaseEvent decision =
@@ -373,9 +375,9 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
     assertEquals(EntityStatus.REJECTED, get(release.getId()).getEntityStatus());
     assertEquals(release.getContentDigest(), get(release.getId()).getContentDigest());
     JsonNode events = events(release, "");
-    assertEquals(2, events.path("data").size());
-    assertEquals("REJECTED", events.path("data").get(1).path("eventType").asText());
-    assertEquals(task.getId().toString(), events.path("data").get(1).path("taskId").asText());
+    assertEquals(3, events.path("data").size());
+    assertEquals("REJECTED", events.path("data").get(2).path("eventType").asText());
+    assertEquals(task.getId().toString(), events.path("data").get(2).path("taskId").asText());
     assertNull(state(ontology).getActiveReleaseId());
   }
 
@@ -411,7 +413,7 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
         .tasks()
         .resolve(task.getId().toString(), decision(TaskResolutionType.Approved));
     assertEquals(EntityStatus.APPROVED, get(release.getId()).getEntityStatus());
-    assertEquals(2, events(release, "").path("data").size());
+    assertEquals(3, events(release, "").path("data").size());
     assertNull(state(ontology).getActiveReleaseId());
   }
 
