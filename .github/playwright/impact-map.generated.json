@@ -5043,7 +5043,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/search.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts"
+        "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
+        "playwright/e2e/Pages/DomainAdvanced.spec.ts"
       ]
     },
     {
