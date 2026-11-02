@@ -398,6 +398,20 @@ jest.mock('../../components/OntologyExplorer/OntologyImportExportMenu', () => ({
 }));
 
 jest.mock(
+  '../../components/governance/ontology/OntologyAuthoringWorkspace/OntologyConceptCreateDrawer',
+  () => ({
+    __esModule: true,
+    default: ({ onCreated }: { onCreated: () => void }) => (
+      <div data-testid="ontology-new-class-panel">
+        <button type="button" onClick={() => onCreated()}>
+          Save mock concept
+        </button>
+      </div>
+    ),
+  })
+);
+
+jest.mock(
   '../../components/governance/ontology/OntologyConceptEditor/OntologyConceptEditor',
   () => ({
     __esModule: true,
@@ -2173,6 +2187,38 @@ describe('OntologyExplorerPage', () => {
     expect(mockQueryConsole).toHaveBeenLastCalledWith(
       expect.objectContaining({ initialQuery: 'SELECT ?term WHERE {}' })
     );
+  });
+
+  it('opens the concept drawer from All ontologies Edit without a separate ontology select', async () => {
+    renderNativeStudio('');
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByRole('button', { name: /label.select-entity/ })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByTestId('ontology-add-concept'));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+  });
+
+  it('still opens the concept drawer when All ontologies is over the aggregate limit', async () => {
+    const many = Array.from({ length: 21 }, (_, index) => ({
+      ...nativeOntology,
+      id: 'bulk-' + index,
+      name: 'bulk' + index,
+      fullyQualifiedName: 'bulk' + index,
+    }));
+    renderNativeStudio('', nativeOntology, undefined, undefined, many);
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      await screen.findByText('message.ontology-aggregate-capacity')
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-add-concept'));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
   it('selects an owner before mounting aggregate Query console', async () => {

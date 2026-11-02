@@ -276,6 +276,39 @@ export const createOntologyConcept = async (request: CreateOntologyConcept) => {
   return response.data;
 };
 
+/** Hard deletes, so the name is free again; a soft delete keeps it reserved. */
+export const hardDeleteOntologyDefinition = async (
+  type: 'concept' | 'property' | 'axiom',
+  id: string
+) => {
+  const path = {
+    concept: ONTOLOGY_CONCEPTS_PATH,
+    property: ONTOLOGY_PROPERTIES_PATH,
+    axiom: ONTOLOGY_AXIOMS_PATH,
+  }[type];
+  try {
+    await APIClient.delete(`${path}/${encodeURIComponent(id)}`, {
+      params: { hardDelete: true },
+    });
+  } catch (error) {
+    if (!(isAxiosError(error) && error.response?.status === 404)) {
+      throw error;
+    }
+  }
+};
+
+export const restoreOntologyDefinition = async (
+  type: 'concept' | 'property' | 'axiom',
+  id: string
+) => {
+  const path = {
+    concept: ONTOLOGY_CONCEPTS_PATH,
+    property: ONTOLOGY_PROPERTIES_PATH,
+    axiom: ONTOLOGY_AXIOMS_PATH,
+  }[type];
+  await APIClient.put(`${path}/restore`, { id });
+};
+
 export const patchOntologyConcept = async (id: string, patch: Operation[]) => {
   const response = await APIClient.patch<OntologyConcept>(
     `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}`,

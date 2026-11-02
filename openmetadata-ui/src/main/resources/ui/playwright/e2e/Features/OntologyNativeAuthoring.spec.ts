@@ -36,9 +36,13 @@ const pick = async (page: Page, label: string, name: string) => {
   const input = page.getByRole('combobox', { name: label, exact: true });
   await scrollIntoViewAndSettle(input);
   await input.fill(name);
-  await page.getByRole('option', { name, exact: true }).click();
+  const listboxId = await input.getAttribute('aria-controls');
+  await page
+    .locator(`[id="${listboxId}"]`)
+    .getByRole('option', { name, exact: true })
+    .click();
   await input.press('Escape');
-  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
 };
 test.use({ isolatedUserOptions: { isAdmin: true } });
 test.describe(
@@ -121,6 +125,7 @@ test.describe(
           await page
             .getByTestId('new-class-description')
             .fill('Transfers funds between accounts.');
+          await page.getByTestId('new-class-advanced-toggle').click();
           await page
             .getByTestId('new-class-source')
             .fill('https://example.org/standard');
@@ -142,7 +147,10 @@ test.describe(
           ).toBeChecked();
           await page.getByTestId('new-class-property-name').press('Enter');
           await page.getByTestId('new-class-property-name').fill('status');
-          await page.getByRole('button', { name: /Type/ }).click();
+          await page
+            .getByTestId('new-class-advanced')
+            .getByRole('button', { name: /Type/ })
+            .click();
           await page.getByRole('option', { name: 'Enum', exact: true }).click();
           await page.getByTestId('new-class-enum-values').fill('Pending,');
           await expect(
@@ -152,7 +160,10 @@ test.describe(
           await page.getByTestId('new-class-enum-values').press('Enter');
           await clickIgnoringToasts(page.getByTestId('new-class-add-property'));
           await page.getByTestId('new-class-property-name').fill('customer');
-          await page.getByRole('button', { name: /Type/ }).click();
+          await page
+            .getByTestId('new-class-advanced')
+            .getByRole('button', { name: /Type/ })
+            .click();
           await page
             .getByRole('option', { name: 'Object', exact: true })
             .click();

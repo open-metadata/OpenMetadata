@@ -19,6 +19,7 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import OntologyConceptCreateDrawer from './OntologyConceptCreateDrawer';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyPropertyEditor from '../OntologyPropertyEditor/OntologyPropertyEditor';
 import OntologyDefinitionList from './OntologyDefinitionList';
@@ -52,15 +53,24 @@ const OntologyAuthoringWorkspace = ({
         key={ontology.id + ':concept'}
         load={listOntologyConcepts}
         ontology={ontology}
-        onWorkingChange={onWorkingChange}>
-        {(concept, canEdit, onSaved) => (
-          <OntologyConceptEditor
-            canEdit={canEdit}
-            concept={concept}
+        renderCreate={({ close, onCreated }) => (
+          <OntologyConceptCreateDrawer
             ontology={ontology}
-            onSaved={onSaved}
+            onClose={close}
+            onCreated={onCreated}
           />
         )}
+        onWorkingChange={onWorkingChange}>
+        {(concept, canEdit, onSaved) =>
+          concept ? (
+            <OntologyConceptEditor
+              canEdit={canEdit}
+              concept={concept}
+              ontology={ontology}
+              onSaved={onSaved}
+            />
+          ) : null
+        }
       </OntologyDefinitionList>
     );
   }

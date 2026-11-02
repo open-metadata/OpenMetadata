@@ -51,6 +51,8 @@ import {
 
 interface OntologyConceptLiveDataProps {
   readonly concept: OntologyConcept;
+  /** The server refuses a query for a concept with no bound table, so none is requested. */
+  readonly isBound?: boolean;
   readonly model: OntologyStudioModel;
   readonly relations: OntologyModelRelation[];
 }
@@ -108,6 +110,7 @@ const conceptName = (concept: OntologyConcept) =>
 
 const OntologyConceptLiveData = ({
   concept,
+  isBound = true,
   model,
   relations,
 }: OntologyConceptLiveDataProps) => {
@@ -127,6 +130,7 @@ const OntologyConceptLiveData = ({
     queryKey: ['ontology-concept-query', concept.id, request],
     queryFn: ({ signal }) =>
       generateOntologyConceptQuery(concept.id, request, signal),
+    enabled: isBound,
     retry: false,
   });
   const sql = query.data?.sql ?? '';
@@ -148,6 +152,13 @@ const OntologyConceptLiveData = ({
   };
 
   const renderSql = () => {
+    if (!isBound) {
+      return (
+        <InspectorEmptyText>
+          {t('message.ontology-live-data-needs-binding')}
+        </InspectorEmptyText>
+      );
+    }
     if (query.isError) {
       return (
         <InspectorEmptyText>

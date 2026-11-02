@@ -30,10 +30,7 @@ import {
 } from '../../../../generated/entity/data/ontologyConcept';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
-import {
-  createOntologyConcept,
-  patchOntologyConcept,
-} from '../../../../rest/ontologyAPI';
+import { patchOntologyConcept } from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   conceptFormFields,
@@ -46,7 +43,7 @@ import {
 
 interface OntologyConceptEditorProps {
   ontology: Ontology;
-  concept?: OntologyConcept;
+  concept: OntologyConcept;
   canEdit: boolean;
   onSaved: (concept: OntologyConcept) => void;
 }
@@ -70,6 +67,9 @@ const OntologyConceptEditor = ({
   });
   const addMappingButton = useRef<HTMLButtonElement>(null);
   const disabled = !canEdit || isSaving;
+  const saveStatus = form.formState.isDirty
+    ? t('label.unsaved-changes')
+    : t('label.all-changes-saved');
 
   const save = async (values: OntologyConceptFormValues) => {
     if (!canEdit) {
@@ -78,9 +78,10 @@ const OntologyConceptEditor = ({
     setIsSaving(true);
     try {
       const request = conceptRequest(values, ontology.fullyQualifiedName);
-      const result = concept
-        ? await patchOntologyConcept(concept.id, conceptPatch(concept, request))
-        : await createOntologyConcept(request);
+      const result = await patchOntologyConcept(
+        concept.id,
+        conceptPatch(concept, request)
+      );
       form.reset(conceptFormValues(result));
       markSaved();
       onSaved(result);
@@ -105,7 +106,7 @@ const OntologyConceptEditor = ({
     });
 
   const renderFields = () =>
-    conceptFormFields(t, Boolean(concept), disabled).map((field) => (
+    conceptFormFields(t, disabled).map((field) => (
       <Fragment key={field.name}>{getField(field)}</Fragment>
     ));
 
@@ -183,8 +184,12 @@ const OntologyConceptEditor = ({
             align="center"
             className="tw:sticky tw:bottom-0 tw:border-t tw:border-secondary tw:bg-surface tw:py-3"
             gap={2}>
-            <Typography className="tw:flex-1 tw:text-tertiary" size="text-xs">
-              {form.formState.isDirty ? t('label.unsaved-changes') : null}
+            <Typography
+              className="tw:flex-1 tw:text-tertiary"
+              data-testid="concept-save-status"
+              role="status"
+              size="text-xs">
+              {saveStatus}
             </Typography>
             <Button
               color="primary"
@@ -233,6 +238,12 @@ const OntologyConceptEditor = ({
           onPress={appendMapping}>
           {t('label.add-mapping')}
         </Button>
+        <Typography
+          data-testid="concept-save-status"
+          role="status"
+          size="text-xs">
+          {saveStatus}
+        </Typography>
         <Button isDisabled={!canEdit} isLoading={isSaving} type="submit">
           {t('label.save')}
         </Button>

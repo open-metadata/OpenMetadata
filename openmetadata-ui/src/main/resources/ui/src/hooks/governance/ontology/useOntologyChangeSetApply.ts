@@ -140,6 +140,7 @@ export const useOntologyChangeSetApply = ({
     isActive:
       status.kind === 'busy' &&
       (status.step === 'leasing' || status.step === 'applying'),
+    isConsumed: status.kind === 'applied',
     resourceId: attempt.current?.draft?.id,
     resourceType: 'ontologyChangeSet',
   });
@@ -414,6 +415,15 @@ export const useOntologyChangeSetApply = ({
       }
       if (attempt.current) {
         await run(attempt.current, false);
+      }
+    },
+    // Reads refs, not render state: onApplied calls this from a render that predates the applied status.
+    reset: () => {
+      if (!running.current && completed.current) {
+        attempt.current = undefined;
+        completed.current = false;
+        outcomeUnknown.current = false;
+        setStatus({ kind: 'idle' });
       }
     },
     retry: async () => {
