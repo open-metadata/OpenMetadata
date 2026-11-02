@@ -33,7 +33,7 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, MutableRefObject, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuid } from 'uuid';
@@ -104,10 +104,26 @@ interface SelectionValues {
   disjoint: FormSelectItem[];
   owners: EntityReferenceOption[];
 }
+/** What the author typed, kept by the host while the panel remounts for another ontology. */
+export interface CarriedConceptDraft {
+  label: string;
+  manualName?: string;
+  description: string;
+  conceptType: OntologyConceptType;
+  customIri: string;
+  source: string;
+  abstract: boolean;
+  advancedOpen: boolean;
+  synonyms: string[];
+  mappings: MappingInput[];
+  /** Concepts of the ontology the draft was typed under; mappings to them do not carry over. */
+  conceptIris: string[];
+}
 export interface OntologyFieldProps {
   options: { id: string; label: string }[];
   value: string;
   onChange: (id: string) => void;
+  draft?: MutableRefObject<CarriedConceptDraft | undefined>;
 }
 interface Props {
   ontology: Ontology;
@@ -189,18 +205,29 @@ const OntologyNewClassPanel = ({
     defaultValues: defaultSelections(),
   });
   const selections = form.watch();
-  const [label, setLabel] = useState('');
-  const [manualName, setManualName] = useState<string>();
+  const carried = useRef(ontologyField?.draft?.current).current;
+  const [label, setLabel] = useState(carried?.label ?? '');
+  const [manualName, setManualName] = useState<string | undefined>(
+    carried?.manualName
+  );
   const localName = manualName ?? classLocalName(label);
-  const [description, setDescription] = useState('');
-  const [conceptType, setConceptType] = useState(OntologyConceptType.OwlClass);
-  const [customIri, setCustomIri] = useState('');
-  const [source, setSource] = useState('');
-  const [abstract, setAbstract] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [synonyms, setSynonyms] = useState<string[]>([]);
+  const [description, setDescription] = useState(carried?.description ?? '');
+  const [conceptType, setConceptType] = useState(
+    carried?.conceptType ?? OntologyConceptType.OwlClass
+  );
+  const [customIri, setCustomIri] = useState(carried?.customIri ?? '');
+  const [source, setSource] = useState(carried?.source ?? '');
+  const [abstract, setAbstract] = useState(carried?.abstract ?? false);
+  const [advancedOpen, setAdvancedOpen] = useState(
+    carried?.advancedOpen ?? false
+  );
+  const [synonyms, setSynonyms] = useState<string[]>(carried?.synonyms ?? []);
   const [synonym, setSynonym] = useState('');
-  const [mappings, setMappings] = useState<MappingInput[]>([]);
+  const [mappings, setMappings] = useState<MappingInput[]>(() =>
+    (carried?.mappings ?? []).filter(
+      (mapping) => !carried?.conceptIris.includes(mapping.conceptIri)
+    )
+  );
   const [mappingType, setMappingType] = useState(ConceptMappingType.ExactMatch);
   const [mappingIri, setMappingIri] = useState('');
   const [properties, setProperties] = useState<OwnPropertyDraft[]>([]);
@@ -216,6 +243,37 @@ const OntologyNewClassPanel = ({
   const [saved, setSaved] = useState(false);
   const [focusName, setFocusName] = useState(false);
   const [pressed, setPressed] = useState<'create' | 'another'>('create');
+  const draftRef = ontologyField?.draft;
+  useEffect(() => {
+    if (draftRef) {
+      draftRef.current = {
+        abstract,
+        advancedOpen,
+        conceptIris: model.concepts.map((concept) => concept.iri),
+        conceptType,
+        customIri,
+        description,
+        label,
+        manualName,
+        mappings,
+        source,
+        synonyms,
+      };
+    }
+  }, [
+    abstract,
+    advancedOpen,
+    conceptType,
+    customIri,
+    description,
+    draftRef,
+    label,
+    manualName,
+    mappings,
+    model.concepts,
+    source,
+    synonyms,
+  ]);
   const attemptIri = useRef('');
   const attemptPlan = useRef<CreateOntologyChangeSet>();
   const addAnother = useRef(false);

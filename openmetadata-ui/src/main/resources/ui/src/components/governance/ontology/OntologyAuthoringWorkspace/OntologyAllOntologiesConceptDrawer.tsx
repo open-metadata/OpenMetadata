@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { CarriedConceptDraft } from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import OntologyConceptCreateDrawer from './OntologyConceptCreateDrawer';
 
 export const LAST_CONCEPT_ONTOLOGY_KEY =
@@ -48,6 +49,7 @@ const OntologyAllOntologiesConceptDrawer = ({
   onCreated,
 }: Props) => {
   const [chosenId, setChosenId] = useState(readLastOntology);
+  const draft = useRef<CarriedConceptDraft>();
   const ontology =
     ontologies.find((item) => item.id === chosenId) ?? ontologies[0];
   const options = useMemo(
@@ -67,6 +69,7 @@ const OntologyAllOntologiesConceptDrawer = ({
       ontologyField={{
         options,
         value: ontology.id,
+        draft,
         onChange: (id) => {
           rememberOntology(id);
           setChosenId(id);
