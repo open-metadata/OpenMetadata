@@ -9,6 +9,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -21,8 +22,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
+import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.teams.User;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Execution(ExecutionMode.SAME_THREAD)
@@ -437,6 +443,121 @@ public class McpOAuthIT extends McpTestBase {
     assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
   }
 
+  /**
+   * Grants are keyed by user name, so deleting a user ends them, and a sign-in waiting for its
+   * consent, before the name can be reused. The grant is held under another spelling of the name,
+   * as rows written before grants used the account's own name can be.
+   */
+  @Test
+  @Order(18)
+  void testDeletedUsersGrant_doesNotPassToANewUserWithTheSameName() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    String name = "mcp_grant_" + UUID.randomUUID().toString().substring(0, 8);
+    String providerSpelling = name.toUpperCase(Locale.ROOT);
+    User user = null;
+    try {
+      user = createUser(name);
+      String code = seedAuthorizationCode(providerSpelling);
+      String waitingConsent = seedWaitingConsent(providerSpelling);
+      JsonNode tokens =
+          OBJECT_MAPPER.readTree(
+              refresh(seedRefreshToken(providerSpelling, List.of(), inADay())).body());
+      String accessToken = tokens.get("access_token").asText();
+      assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
+
+      hardDelete(user);
+      user = null;
+      user = createUser(name);
+
+      assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+      assertThat(refresh(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(400);
+      assertThat(new OAuthAuthorizationCodeRepository().findByCode(code)).isNull();
+      assertThat(new McpPendingAuthRequestRepository().findByAuthRequestId(waitingConsent))
+          .isNull();
+    } finally {
+      hardDeleteIfCreated(user);
+    }
+  }
+
+  /** A soft delete ends the grant too, and restoring the user does not bring it back. */
+  @Test
+  @Order(19)
+  void testSoftDeletedUsersGrant_staysEndedAfterRestore() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    User user = null;
+    try {
+      user = createUser("mcp_grant_" + UUID.randomUUID().toString().substring(0, 8));
+      JsonNode tokens =
+          OBJECT_MAPPER.readTree(
+              refresh(seedRefreshToken(user.getName(), List.of(), inADay())).body());
+      String accessToken = tokens.get("access_token").asText();
+
+      SdkClients.adminClient().users().delete(user.getId().toString());
+      assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+      SdkClients.adminClient().users().restore(user.getId());
+
+      assertThat(refresh(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(400);
+    } finally {
+      hardDeleteIfCreated(user);
+    }
+  }
+
+  private static long inADay() {
+    return System.currentTimeMillis() + Duration.ofDays(1).toMillis();
+  }
+
+  private static void hardDelete(User user) {
+    SdkClients.adminClient().users().delete(user.getId().toString(), Map.of("hardDelete", "true"));
+  }
+
+  private static void hardDeleteIfCreated(User user) {
+    if (user != null) {
+      hardDelete(user);
+    }
+  }
+
+  /** A sign-in that passed the identity provider and waits on the consent page. */
+  private static String seedWaitingConsent(String userName) {
+    McpPendingAuthRequestRepository pending = new McpPendingAuthRequestRepository();
+    String authRequestId =
+        pending.createPendingRequest(
+            registeredClientId,
+            "codeChallenge-123456789012345678901234567890123456789012",
+            "S256",
+            "http://127.0.0.1:9090/callback",
+            null,
+            List.of("openid"),
+            null,
+            null,
+            null);
+    assertThat(pending.storeConsent(authRequestId, UUID.randomUUID().toString(), userName))
+        .isTrue();
+    return authRequestId;
+  }
+
+  private static String seedAuthorizationCode(String userName) {
+    String code = UUID.randomUUID().toString();
+    new OAuthAuthorizationCodeRepository()
+        .store(
+            code,
+            registeredClientId,
+            userName,
+            "codeChallenge-123456789012345678901234567890123456789012",
+            "S256",
+            URI.create("http://127.0.0.1:9090/callback"),
+            List.of("openid"),
+            System.currentTimeMillis() + Duration.ofMinutes(5).toMillis());
+    return code;
+  }
+
+  private static User createUser(String name) {
+    return SdkClients.adminClient()
+        .users()
+        .create(new CreateUser().withName(name).withEmail(name + "@example.com"));
+  }
+
   private HttpResponse<String> revoke(String token) throws Exception {
     String formBody =
         "token="
@@ -475,12 +596,16 @@ public class McpOAuthIT extends McpTestBase {
    * sign-in would.
    */
   private static String seedRefreshToken(List<String> scopes, long expiresAt) {
+    return seedRefreshToken("admin", scopes, expiresAt);
+  }
+
+  private static String seedRefreshToken(String userName, List<String> scopes, long expiresAt) {
     String value = UUID.randomUUID().toString();
     new OAuthTokenRepository()
         .storeRefreshToken(
             new RefreshToken(value, registeredClientId, scopes, expiresAt),
             registeredClientId,
-            "admin",
+            userName,
             scopes);
     return value;
   }
