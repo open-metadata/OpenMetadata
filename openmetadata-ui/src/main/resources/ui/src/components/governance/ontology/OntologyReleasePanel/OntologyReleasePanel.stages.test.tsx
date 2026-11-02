@@ -18,7 +18,9 @@ import {
   within,
 } from '@testing-library/react';
 import { applyPatch, Operation } from 'fast-json-patch';
-import { MemoryRouter } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { MemoryRouter, useLocation } from 'react-router-dom';
+import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import {
   AssigneeStatus,
   OntologyReleaseReview,
@@ -37,6 +39,10 @@ import {
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -45,6 +51,9 @@ import {
 } from '../../../../test/unit/test-utils';
 import OntologyReleasePanel from './OntologyReleasePanel';
 
+const activationButton = () =>
+  screen.queryByTestId('ontology-rollback-release') ??
+  screen.getByRole('button', { name: 'label.activate-release' });
 jest.mock('../../../../hooks/useAppMode', () => ({
   ...jest.requireActual('../../../../hooks/useAppMode'),
   useIsAiMode: jest.fn().mockReturnValue(false),
@@ -67,6 +76,7 @@ let state: OntologyState;
 let release: OntologyRelease;
 let review: OntologyReleaseReview;
 let historical: OntologyRelease | undefined;
+let activeReleaseRevision = 1;
 const renderPanel = async (
   canEdit = true,
   view: 'changes' | 'releases' = 'changes'
@@ -97,6 +107,7 @@ runQueryNotificationsSynchronously();
 beforeEach(() => {
   (useIsAiMode as jest.Mock).mockReturnValue(false);
   historical = undefined;
+  activeReleaseRevision = 1;
   get.mockReset();
   (APIClient.post as jest.MockedFunction<typeof APIClient.post>).mockReset();
   (APIClient.patch as jest.MockedFunction<typeof APIClient.patch>).mockReset();
@@ -194,7 +205,7 @@ beforeEach(() => {
         data: {
           ...release,
           id: id(10),
-          releaseRevision: 1,
+          releaseRevision: activeReleaseRevision,
           semanticVersion: '1.5.0',
           entityStatus: EntityStatus.Approved,
           baseReleaseId: undefined,
@@ -328,9 +339,9 @@ it('shows the human task label, UUID route and frozen All decisions while public
     `/tasks/${review.task.id}`
   );
   expect(screen.queryByTestId('ontology-publish-release')).toBeDisabled();
-  expect(
-    screen.getByTestId('ontology-publication-disabled-reason')
-  ).toHaveTextContent('message.ontology-publication-awaiting-approval');
+  expect(screen.getByTestId('ontology-publication-text')).toHaveTextContent(
+    'message.ontology-publication-waiting-for'
+  );
 
   const reviewers = screen.getByTestId('ontology-release-reviewers');
 
@@ -420,7 +431,7 @@ it('locks the latest Draft settings using an older open review from the owner pr
   ).toBeVisible();
 });
 
-it.each(['no changes', 'no reviewers', 'only caller', 'read only'])(
+it.each(['no changes', 'only caller'])(
   'does not write with %s',
   async (reason) => {
     if (!ontology.publicationStatus) {
@@ -429,19 +440,22 @@ it.each(['no changes', 'no reviewers', 'only caller', 'read only'])(
     if (reason === 'no changes') {
       ontology.publicationStatus.unpublishedChanges = 0;
     }
-    if (reason === 'no reviewers') {
-      ontology.reviewers = [];
-    }
     if (reason === 'only caller') {
       ontology.reviewers = [{ id: id(2), type: 'user', name: 'editor' }];
     }
-    await renderPanel(reason !== 'read only');
+    await renderPanel();
+    const primary = screen.getByTestId(
+      reason === 'no changes'
+        ? 'ontology-publish-release'
+        : 'ontology-request-review'
+    );
 
-    expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
+    expect(primary).toBeDisabled();
 
-    fireEvent.click(screen.getByTestId('ontology-request-review'));
+    fireEvent.click(primary);
 
     expect(APIClient.post).not.toHaveBeenCalled();
+    expect(APIClient.put).not.toHaveBeenCalled();
   }
 );
 
@@ -925,9 +939,7 @@ it('keeps the current InReview footer when an older Approved release is selected
     'label.in-review'
   );
   expect(screen.getByTestId('ontology-publish-release')).toBeDisabled();
-  expect(
-    screen.getByRole('button', { name: 'label.activate-release' })
-  ).toBeEnabled();
+  expect(activationButton()).toBeEnabled();
   expect(screen.getByRole('link', { name: 'TASK-00042' })).toHaveAttribute(
     'href',
     `/tasks/${review.task.id}`
@@ -974,9 +986,7 @@ it('keeps the current InReview footer when an older Approved release is selected
   expect(screen.getByTestId('ontology-release-definition')).toHaveTextContent(
     historical.name
   );
-  expect(
-    screen.getByRole('button', { name: 'label.activate-release' })
-  ).toBeEnabled();
+  expect(activationButton()).toBeEnabled();
 });
 
 it('clears visible reviewers and assignees when another user cannot read this ontology', async () => {
@@ -1414,12 +1424,465 @@ it.each(['user', 'ontology'])(
   }
 );
 
-it('tells a user without the author role why capture and review are disabled', async () => {
-  setStage(Stage.Draft);
-  await renderPanel(false);
+describe('publication state table', () => {
+  const text = () => screen.getByTestId('ontology-publication-text');
+  const primaryAndSecondary = (testIds: string[]) =>
+    testIds.map((testId) => screen.queryByTestId(testId));
 
-  expect(screen.getByTestId('ontology-capture-release')).toBeDisabled();
-  expect(
-    screen.getByTestId('ontology-publication-disabled-reason')
-  ).toHaveTextContent('message.ontology-publication-needs-author-role');
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  it('no reviewers, changes exist, validation passes: Publish and Save as release draft', async () => {
+    ontology.reviewers = [];
+    setStage(Stage.Draft);
+    await renderPanel();
+
+    expect(screen.getByTestId('ontology-publish-release')).toHaveTextContent(
+      'Publish v1.5.0'
+    );
+    expect(screen.getByTestId('ontology-publish-release')).toBeEnabled();
+    expect(screen.getByTestId('ontology-capture-release')).toHaveTextContent(
+      'Save as release draft'
+    );
+    expect(screen.queryByTestId('ontology-request-review')).toBeNull();
+    expect(text()).toHaveTextContent(
+      'No reviewers set. Publishing makes this version live for everyone.'
+    );
+  });
+
+  it('no reviewers, validation has errors: Publish is disabled and the first errors are listed', async () => {
+    ontology.reviewers = [];
+    setStage(Stage.Draft);
+    const original = get.getMockImplementation();
+    get.mockImplementation(async (url, config) =>
+      url.endsWith('/validation')
+        ? {
+            data: {
+              releaseId: release.id,
+              contentDigest: release.contentDigest,
+              baseReleaseId: release.baseReleaseId,
+              valid: false,
+              logicalCheck: 'NotRun',
+              deprecationImpacts: [],
+              shacl: {
+                violationCount: 0,
+                warningCount: 0,
+                findings: [],
+                truncated: false,
+              },
+              structure: {
+                releaseId: release.id,
+                contentDigest: release.contentDigest,
+                valid: false,
+                violationCount: 2,
+                violations: [
+                  {
+                    violation: { message: 'Customer has no label', path: '/a' },
+                  },
+                  {
+                    violation: { message: 'Order loops on itself', path: '/b' },
+                  },
+                ],
+              },
+            },
+          }
+        : original?.(url, config)
+    );
+    await renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-publish-release')).toBeDisabled()
+    );
+
+    expect(
+      within(screen.getByTestId('ontology-publication-errors'))
+        .getAllByRole('listitem')
+        .map((item) => item.textContent)
+    ).toEqual(['Customer has no label', 'Order loops on itself']);
+    expect(text()).toHaveTextContent('Fix these to publish.');
+    expect(screen.getByTestId('ontology-capture-release')).toBeEnabled();
+  });
+
+  it('reviewers set, eligible author: Request review and Save as release draft', async () => {
+    setStage(Stage.Draft);
+    await renderPanel();
+
+    expect(screen.getByTestId('ontology-request-review')).toHaveTextContent(
+      'Request review'
+    );
+    expect(screen.getByTestId('ontology-request-review')).toBeEnabled();
+    expect(screen.getByTestId('ontology-capture-release')).toHaveTextContent(
+      'Save as release draft'
+    );
+    expect(text()).toHaveTextContent(
+      'The draft stays editable while the review is open.'
+    );
+  });
+
+  it('the caller is the only reviewer: Request review is disabled with the sentence', async () => {
+    ontology.reviewers = [{ id: id(2), type: 'user', name: 'editor' }];
+    setStage(Stage.Draft);
+    await renderPanel();
+
+    expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
+    expect(screen.getByTestId('ontology-capture-release')).toBeEnabled();
+    expect(text()).toHaveTextContent(
+      'You are the only reviewer. Add another reviewer, or remove yourself to publish without review.'
+    );
+  });
+
+  it('review open, caller requested it: Publish is disabled, Withdraw request is offered, progress follows the All rule', async () => {
+    setStage(Stage.InReview);
+    review.requester = { id: id(2), type: 'user', name: 'editor' };
+    await renderPanel();
+
+    expect(screen.getByTestId('ontology-publish-release')).toBeDisabled();
+    expect(screen.getByTestId('ontology-withdraw-request')).toHaveTextContent(
+      'Withdraw request'
+    );
+    expect(text()).toHaveTextContent(
+      'Waiting for second reviewer. 1 of 2 approved.'
+    );
+  });
+
+  it('review open, caller did not request it: no Withdraw request', async () => {
+    setStage(Stage.InReview);
+    await renderPanel();
+
+    expect(screen.getByTestId('ontology-publish-release')).toBeDisabled();
+    expect(screen.queryByTestId('ontology-withdraw-request')).toBeNull();
+  });
+
+  it('approved, caller can edit: Publish vX.Y.Z and nothing else', async () => {
+    setStage(Stage.Approved);
+    await renderPanel();
+
+    expect(screen.getByTestId('ontology-publish-release')).toHaveTextContent(
+      'Publish v1.5.0'
+    );
+    expect(screen.getByTestId('ontology-publish-release')).toBeEnabled();
+    expect(
+      primaryAndSecondary([
+        'ontology-capture-release',
+        'ontology-request-review',
+        'ontology-withdraw-request',
+      ])
+    ).toEqual([null, null, null]);
+    expect(text()).toHaveTextContent('Approved by reviewer.');
+  });
+
+  it('approved, caller cannot edit: no action and the sentence', async () => {
+    setStage(Stage.Approved);
+    await renderPanel(false);
+
+    expect(screen.queryByTestId('ontology-publish-release')).toBeNull();
+    expect(text()).toHaveTextContent('Only an author or owner can publish.');
+  });
+
+  it('rejected, nothing changed since: Request review again is disabled and the reviewer and reason show', async () => {
+    setStage(Stage.ChangesRequested);
+    release.sourceWorkingRevision = state.workingRevision;
+    await renderPanel();
+
+    expect(screen.getByTestId('ontology-request-review')).toHaveTextContent(
+      'Request review again'
+    );
+    expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
+    expect(screen.getByTestId('ontology-capture-release')).toBeDisabled();
+    expect(screen.getByText('Deciding reviewer')).toBeVisible();
+    expect(text()).toHaveTextContent(
+      'Edit the ontology, then request review again.'
+    );
+  });
+
+  it('rejected, the ontology changed since: Request review again is enabled', async () => {
+    setStage(Stage.ChangesRequested);
+    release.sourceWorkingRevision = state.workingRevision - 1;
+    await renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-request-review')).toBeEnabled()
+    );
+  });
+
+  it('no unpublished changes: Publish and Save as release draft are disabled with the sentence', async () => {
+    if (!ontology.publicationStatus) {
+      throw new Error('Missing fixture');
+    }
+    ontology.publicationStatus.unpublishedChanges = 0;
+    ontology.reviewers = [];
+    setStage(Stage.Draft);
+    await renderPanel();
+
+    expect(screen.getByTestId('ontology-publish-release')).toBeDisabled();
+    expect(screen.getByTestId('ontology-capture-release')).toBeDisabled();
+    expect(text()).toHaveTextContent(
+      'There are no unpublished changes to capture.'
+    );
+  });
+
+  it('caller cannot edit a draft: no action and the role sentence', async () => {
+    setStage(Stage.Draft);
+    await renderPanel(false);
+
+    expect(
+      primaryAndSecondary([
+        'ontology-capture-release',
+        'ontology-request-review',
+        'ontology-publish-release',
+      ])
+    ).toEqual([null, null, null]);
+    expect(text()).toHaveTextContent(
+      'You need the OntologyAuthor role to capture or publish a release. An admin can grant it.'
+    );
+  });
+});
+
+describe('publication flows', () => {
+  const post = APIClient.post as jest.MockedFunction<typeof APIClient.post>;
+  const put = APIClient.put as jest.MockedFunction<typeof APIClient.put>;
+  const LocationProbe = () => (
+    <span data-testid="pathname">{useLocation().pathname}</span>
+  );
+  let activeVersionOnServer = 'v1.0.0';
+  const VersionChipProbe = () => {
+    const { data } = useQuery({
+      queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+      queryFn: async () => activeVersionOnServer,
+    });
+
+    return <span data-testid="chip-probe">{data}</span>;
+  };
+  const renderInRoute = async (view: 'changes' | 'releases' = 'changes') => {
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter initialEntries={['/governance/ontology']}>
+          <LocationProbe />
+          <VersionChipProbe />
+          <OntologyReleasePanel canEdit ontology={ontology} view={view} />
+        </MemoryRouter>
+      );
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-release-stage')).toBeInTheDocument()
+    );
+  };
+
+  beforeEach(() => {
+    useEnUsTranslations();
+    activeVersionOnServer = 'v1.0.0';
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  it('stays in Studio after Request review and names the version and reviewers', async () => {
+    ontology.reviewers = [
+      {
+        id: id(3),
+        type: 'user',
+        name: 'reviewer',
+        displayName: 'Rita Reviewer',
+      },
+    ];
+    state = { ...state, workingRevision: 8 };
+    post.mockImplementation(async (url) => {
+      if (url === `/ontologies/${ontology.id}/releases`) {
+        release = {
+          ...release,
+          id: id(6),
+          name: 'release-6',
+          fullyQualifiedName: 'Sales.release-6',
+          releaseRevision: 6,
+          semanticVersion: '1.6.0',
+          sourceWorkingRevision: 8,
+          reviewAuthor: 'editor',
+          contentDigest: 'b'.repeat(64),
+        };
+        state = { ...state, lastReleaseRevision: 6 };
+        if (ontology.publicationStatus) {
+          ontology.publicationStatus.latest = {
+            releaseId: id(6),
+            releaseRevision: 6,
+            semanticVersion: '1.6.0',
+            stage: Stage.Draft,
+          };
+        }
+
+        return { data: release };
+      }
+      release = {
+        ...release,
+        entityStatus: EntityStatus.InReview,
+        reviewTask: id(43),
+      };
+      review.task = { id: id(43), type: 'task' };
+      review.release = { id: id(6), type: 'ontologyRelease' };
+      if (ontology.publicationStatus?.latest) {
+        ontology.publicationStatus.latest.stage = Stage.InReview;
+      }
+
+      return {
+        data: {
+          id: id(43),
+          taskId: 'TASK-00043',
+          type: 'RequestApproval',
+          about: { id: id(6), type: 'ontologyRelease' },
+          reviewers: ontology.reviewers,
+        },
+      };
+    });
+    await renderInRoute();
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-request-review'))
+    );
+
+    expect(
+      await screen.findByTestId('ontology-publication-notice-requested')
+    ).toHaveTextContent('v1.6.0 sent to Rita Reviewer for review');
+    expect(
+      screen.getByTestId('ontology-publication-notice-requested')
+    ).toHaveTextContent(
+      "You'll be notified when it's approved. The draft stays editable; new changes go into the next version."
+    );
+    expect(screen.getByTestId('ontology-view-request')).toHaveAttribute(
+      'href',
+      `/tasks/${id(43)}`
+    );
+    expect(screen.getByTestId('pathname')).toHaveTextContent(
+      '/governance/ontology'
+    );
+  });
+
+  it('withdraws an open request by closing its task and says the release is a draft again', async () => {
+    setStage(Stage.InReview);
+    review.requester = { id: id(2), type: 'user', name: 'editor' };
+    post.mockResolvedValue({ data: { id: review.task.id } });
+    await renderInRoute();
+
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-withdraw-request'))
+    );
+
+    expect(post.mock.calls.map(([url]) => url)).toEqual([
+      `/tasks/${review.task.id}/close`,
+    ]);
+    expect(
+      await screen.findByTestId('ontology-publication-notice-withdrawn')
+    ).toHaveTextContent(
+      'Review request for v1.5.0 withdrawn. The release is a draft again.'
+    );
+  });
+
+  it('publishes in one click with no reviewers: saves the draft, activates it, confirms and refreshes the version chip', async () => {
+    ontology.reviewers = [];
+    setStage(Stage.Draft);
+    post.mockImplementation(async () => ({ data: release }));
+    put.mockImplementation(async () => {
+      activeVersionOnServer = 'v1.5.0';
+
+      return {
+        data: { ...state, activeReleaseId: release.id, activationRevision: 4 },
+      };
+    });
+    await renderInRoute();
+
+    expect(screen.getByTestId('chip-probe')).toHaveTextContent('v1.0.0');
+
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-publish-release'))
+    );
+
+    expect(post.mock.calls.map(([url]) => url)).toEqual([
+      `/ontologies/${ontology.id}/releases`,
+    ]);
+    expect(put.mock.calls.map(([url, body]) => [url, body])).toEqual([
+      [
+        `/ontologies/${ontology.id}/activation`,
+        { releaseId: release.id, expectedActivationRevision: 3 },
+      ],
+    ]);
+    expect(
+      await screen.findByTestId('ontology-publication-notice-published')
+    ).toHaveTextContent(
+      'v1.5.0 published. Everyone using Sales now sees this version.'
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('chip-probe')).toHaveTextContent('v1.5.0')
+    );
+  });
+
+  it('shows the existing draft and its notes when a save changes nothing', async () => {
+    release.releaseNotes = 'Original notes';
+    setStage(Stage.Draft);
+    post.mockImplementation(async () => ({ data: release }));
+    await renderInRoute();
+
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-capture-release'))
+    );
+
+    expect(
+      await screen.findByTestId('ontology-publication-notice-unchanged')
+    ).toHaveTextContent(
+      'Nothing changed since v1.5.0 was saved, so this is the same draft.'
+    );
+    expect(
+      screen.getByTestId('ontology-publication-unchanged-notes')
+    ).toHaveTextContent('Its release notes: Original notes');
+  });
+
+  it('asks before rolling back and names the current and target versions', async () => {
+    historical = {
+      ...release,
+      id: id(4),
+      name: 'release-4',
+      fullyQualifiedName: 'Sales.release-4',
+      releaseRevision: 4,
+      reviewTask: undefined,
+      semanticVersion: '1.0.0',
+      entityStatus: EntityStatus.Approved,
+    };
+    activeReleaseRevision = 9;
+    put.mockResolvedValue({
+      data: { ...state, activeReleaseId: id(4), activationRevision: 4 },
+    });
+    setStage(Stage.Draft);
+    await renderInRoute('releases');
+    await act(async () =>
+      fireEvent.click(
+        await screen.findByTestId(`ontology-release-select-${id(4)}`)
+      )
+    );
+
+    const rollback = await screen.findByTestId('ontology-rollback-release');
+
+    expect(rollback).toHaveTextContent('Roll back to v1.0.0');
+
+    await act(async () => fireEvent.click(rollback));
+
+    expect(
+      await screen.findByTestId('ontology-rollback-confirmation')
+    ).toHaveTextContent(
+      'Sales is on v1.5.0. Rolling back to v1.0.0 makes v1.0.0 the version everyone sees.'
+    );
+    expect(put).not.toHaveBeenCalled();
+
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-rollback-confirm'))
+    );
+
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+
+    expect(put.mock.calls.map(([, body]) => body)).toEqual([
+      { releaseId: id(4), expectedActivationRevision: 3 },
+    ]);
+  });
 });

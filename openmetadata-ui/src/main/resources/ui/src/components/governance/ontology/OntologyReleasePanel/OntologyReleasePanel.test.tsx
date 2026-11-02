@@ -47,6 +47,23 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyPublicationModal from '../OntologyPublicationModal/OntologyPublicationModal';
 import OntologyReleasePanel from './OntologyReleasePanel';
 
+const activationButton = () =>
+  screen.queryByTestId('ontology-rollback-release') ??
+  screen.getByRole('button', { name: 'label.activate-release' });
+const clickActivation = async () => {
+  const button = activationButton();
+  const isRollback = button.dataset.testid === 'ontology-rollback-release';
+  await act(async () => {
+    fireEvent.click(button);
+  });
+  if (isRollback && !button.hasAttribute('disabled')) {
+    const confirm = await screen.findByTestId('ontology-rollback-confirm');
+    await act(async () => {
+      fireEvent.click(confirm);
+    });
+  }
+};
+
 jest.mock('../../../../hooks/useAppMode', () => ({
   ...jest.requireActual('../../../../hooks/useAppMode'),
   useIsAiMode: jest.fn().mockReturnValue(false),
@@ -403,7 +420,7 @@ describe('OntologyReleasePanel', () => {
     await renderPanel(true, 'changes');
 
     expect(
-      await screen.findByRole('button', { name: 'label.capture-release' })
+      await screen.findByRole('button', { name: 'label.save-as-release-draft' })
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'label.ontology-release' })
@@ -547,12 +564,12 @@ describe('OntologyReleasePanel', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'label.capture-release' })
+        screen.getByRole('button', { name: 'label.save-as-release-draft' })
       ).toBeEnabled()
     );
     await act(async () =>
       fireEvent.click(
-        screen.getByRole('button', { name: 'label.capture-release' })
+        screen.getByRole('button', { name: 'label.save-as-release-draft' })
       )
     );
 
@@ -569,9 +586,7 @@ describe('OntologyReleasePanel', () => {
       }
     );
     expect(put).not.toHaveBeenCalled();
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeDisabled();
+    expect(activationButton()).toBeDisabled();
     expect(
       screen.getByText('message.ontology-consistency-not-run')
     ).toBeInTheDocument();
@@ -681,11 +696,7 @@ describe('OntologyReleasePanel', () => {
         }),
       ]);
     });
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'label.activate-release' })
-      ).toBeEnabled()
-    );
+    await waitFor(() => expect(activationButton()).toBeEnabled());
     put.mockImplementation(async () => {
       currentState = {
         ...currentState,
@@ -695,11 +706,7 @@ describe('OntologyReleasePanel', () => {
 
       return { data: currentState };
     });
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: 'label.activate-release' })
-      );
-    });
+    await clickActivation();
 
     expect(put).toHaveBeenCalledWith(`/ontologies/${ontology.id}/activation`, {
       releaseId: captures[1].id,
@@ -859,7 +866,7 @@ describe('OntologyReleasePanel', () => {
     ).toBeVisible();
     expect(screen.queryByText(/Account/)).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'label.capture-release' })
+      screen.getByRole('button', { name: 'label.save-as-release-draft' })
     ).toBeDisabled();
     expect(post).not.toHaveBeenCalled();
   });
@@ -981,7 +988,11 @@ describe('OntologyReleasePanel', () => {
       });
 
       expect(
-        await screen.findByTestId('ontology-capture-release')
+        await screen.findByTestId(
+          taskWasCreated
+            ? 'ontology-publish-release'
+            : 'ontology-request-review'
+        )
       ).toBeDisabled();
 
       await act(async () => {
@@ -1208,9 +1219,7 @@ describe('OntologyReleasePanel', () => {
       expect(screen.queryByText(/activation-author/)).not.toBeInTheDocument();
 
       const mounted = screen.getByTestId('ontology-release-definition');
-      fireEvent.click(
-        screen.getByRole('button', { name: 'label.activate-release' })
-      );
+      await clickActivation();
 
       expect(await screen.findByText(/activation-author/)).toHaveTextContent(
         new Date(2000).toLocaleString()
@@ -1305,11 +1314,7 @@ describe('OntologyReleasePanel', () => {
         await screen.findByTestId('ontology-release-stage')
       ).toHaveTextContent('label.approved');
 
-      await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'label.activate-release' })
-        );
-      });
+      await clickActivation();
       await waitFor(() => expect(projectionReads).toBe(1));
 
       expect(resolveRelease).toBeDefined();
@@ -1359,9 +1364,7 @@ describe('OntologyReleasePanel', () => {
     await selectRelease();
     await screen.findByTestId('ontology-release-definition');
 
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeDisabled();
+    expect(activationButton()).toBeDisabled();
     expect(
       screen.queryByRole('button', { name: 'label.request-approval' })
     ).not.toBeInTheDocument();
@@ -1399,9 +1402,7 @@ describe('OntologyReleasePanel', () => {
     expect(
       screen.queryByRole('button', { name: 'label.request-approval' })
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeDisabled();
+    expect(activationButton()).toBeDisabled();
   });
 
   it('rolls back to an older approved release using the displayed activation revision', async () => {
@@ -1419,16 +1420,8 @@ describe('OntologyReleasePanel', () => {
     await renderPanel();
     await selectRelease();
     await screen.findByTestId('ontology-release-definition');
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'label.activate-release' })
-      ).toBeEnabled()
-    );
-    await act(async () =>
-      fireEvent.click(
-        screen.getByRole('button', { name: 'label.activate-release' })
-      )
-    );
+    await waitFor(() => expect(activationButton()).toBeEnabled());
+    await clickActivation();
 
     expect(put).toHaveBeenCalledWith(
       '/ontologies/00000000-0000-4000-8000-000000000001/activation',
@@ -1503,15 +1496,9 @@ describe('OntologyReleasePanel', () => {
       await queryClient.invalidateQueries();
     });
 
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeEnabled();
+    expect(activationButton()).toBeEnabled();
 
-    await act(async () =>
-      fireEvent.click(
-        screen.getByRole('button', { name: 'label.activate-release' })
-      )
-    );
+    await clickActivation();
 
     expect(put).toHaveBeenCalledWith(
       '/ontologies/00000000-0000-4000-8000-000000000001/activation',
@@ -1555,9 +1542,7 @@ describe('OntologyReleasePanel', () => {
     await selectRelease();
     await screen.findByTestId('ontology-release-definition');
 
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeEnabled();
+    expect(activationButton()).toBeEnabled();
 
     const requests = get.getMockImplementation();
     if (!requests) {
@@ -1577,9 +1562,7 @@ describe('OntologyReleasePanel', () => {
       });
     });
 
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeDisabled();
+    expect(activationButton()).toBeDisabled();
 
     await act(async () => {
       rejectState?.(new AxiosError('State unavailable', '403'));
@@ -1594,13 +1577,9 @@ describe('OntologyReleasePanel', () => {
       )
     ).toBeVisible();
     expect(screen.getByTestId('ontology-release-definition')).toBeVisible();
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeDisabled();
+    expect(activationButton()).toBeDisabled();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    );
+    await clickActivation();
 
     expect(put).not.toHaveBeenCalled();
 
@@ -1612,9 +1591,7 @@ describe('OntologyReleasePanel', () => {
     expect(
       screen.queryByText('message.ontology-review-unavailable')
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeEnabled();
+    expect(activationButton()).toBeEnabled();
   });
 
   it('keeps the active pointer unchanged when the server rejects a stale activation', async () => {
@@ -1625,16 +1602,8 @@ describe('OntologyReleasePanel', () => {
     await renderPanel();
     await selectRelease();
     await screen.findByTestId('ontology-release-definition');
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'label.activate-release' })
-      ).toBeEnabled()
-    );
-    await act(async () =>
-      fireEvent.click(
-        screen.getByRole('button', { name: 'label.activate-release' })
-      )
-    );
+    await waitFor(() => expect(activationButton()).toBeEnabled());
+    await clickActivation();
 
     expect(put).toHaveBeenCalledTimes(1);
     expect(showErrorToast).toHaveBeenCalledWith(conflict);
@@ -1648,13 +1617,9 @@ describe('OntologyReleasePanel', () => {
     await selectRelease();
     await screen.findByTestId('ontology-release-definition');
 
-    expect(
-      screen.getByRole('button', { name: 'label.capture-release' })
-    ).toBeDisabled();
-    expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeDisabled();
+    expect(screen.queryByTestId('ontology-capture-release')).toBeNull();
+    expect(screen.queryByTestId('ontology-request-review')).toBeNull();
+    expect(activationButton()).toBeDisabled();
     expect(post).not.toHaveBeenCalled();
     expect(put).not.toHaveBeenCalled();
   });
@@ -1913,9 +1878,7 @@ describe('OntologyReleasePanel', () => {
     expect(
       screen.getByTestId(`ontology-release-export-${release.id}`)
     ).toBeEnabled();
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeDisabled();
+    expect(activationButton()).toBeDisabled();
     expect(screen.getByText('label.release-events')).toBeVisible();
   });
 
@@ -1929,7 +1892,7 @@ describe('OntologyReleasePanel', () => {
 
     const publish = await screen.findByTestId('ontology-publish-release');
 
-    expect(publish).toHaveTextContent('label.publish 1.2.3');
+    expect(publish).toHaveTextContent('label.publish v1.2.3');
     expect(
       screen.queryByTestId('ontology-request-review')
     ).not.toBeInTheDocument();
@@ -2087,7 +2050,7 @@ describe('OntologyReleasePanel', () => {
 
     expect(
       await screen.findByTestId('ontology-publish-release')
-    ).toHaveTextContent('label.publish 1.2.3');
+    ).toHaveTextContent('label.publish v1.2.3');
   });
 
   it('offers the review state retry in the AI Releases view', async () => {
@@ -2100,17 +2063,11 @@ describe('OntologyReleasePanel', () => {
 
     const retry = await screen.findByRole('button', { name: 'label.retry' });
 
-    expect(
-      screen.getByRole('button', { name: 'label.activate-release' })
-    ).toBeDisabled();
+    expect(activationButton()).toBeDisabled();
 
     await act(async () => fireEvent.click(retry));
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'label.activate-release' })
-      ).toBeEnabled()
-    );
+    await waitFor(() => expect(activationButton()).toBeEnabled());
   });
 
   it('shows one review-unavailable alert in AI mode when the state read fails', async () => {

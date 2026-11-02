@@ -733,7 +733,6 @@ describe('OntologyExplorerPage', () => {
 
   it.each([
     '?ontology=native-sales&source=review',
-    '?source=review',
     '?ontology=native-sales&source=review&task=',
   ])(
     'hands publication task UUIDs to the drawer and preserves query context for %s',
@@ -743,11 +742,6 @@ describe('OntologyExplorerPage', () => {
       fireEvent.click(
         await screen.findByTestId('ontology-publication-trigger')
       );
-      if (!search.includes('ontology=')) {
-        fireEvent.click(
-          screen.getByTestId('ontology-publication-select-native-sales')
-        );
-      }
       fireEvent.click(
         await screen.findByRole('button', { name: 'Open review task' })
       );
@@ -1363,23 +1357,20 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
-  it('chooses a publication owner from All ontologies before opening changes', async () => {
+  it('disables Publish on All ontologies and opens no dialog', async () => {
     renderNativeStudio('');
-    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
+    const trigger = screen.getByTestId('ontology-publication-trigger');
 
-    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
+    expect(trigger).toBeDisabled();
 
-    fireEvent.click(
-      screen.getByTestId('ontology-publication-select-native-sales')
-    );
+    fireEvent.click(trigger);
 
     expect(
-      await screen.findByTestId('ontology-publication-tab-changes')
-    ).toBeVisible();
-    expect(screen.getByTestId('ontology-publication-modal')).toHaveTextContent(
-      nativeOntology.name
-    );
-    expect(screen.getByTestId('location')).not.toHaveTextContent('ontology=');
+      screen.queryByTestId('ontology-publication-picker')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-publication-modal')
+    ).not.toBeInTheDocument();
   });
 
   it('switches from a glossary draft to a native tree and releases the glossary lease', async () => {
@@ -2669,12 +2660,12 @@ describe('OntologyExplorerPage', () => {
     }
   );
 
-  it('requires an aggregate publication target even with a selected concept', async () => {
+  it('keeps Publish disabled on All ontologies even with a selected concept', async () => {
     renderNativeStudio('?concept=Customer&source=review');
     await screen.findByTestId('ontology-concept-inspector');
     fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
 
-    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
+    expect(screen.getByTestId('ontology-publication-trigger')).toBeDisabled();
     expect(
       screen.queryByTestId('ontology-publication-tab-changes')
     ).not.toBeInTheDocument();
