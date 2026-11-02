@@ -25,6 +25,7 @@ import {
   listOntologyAxioms,
   listOntologyConcepts,
   listOntologyProperties,
+  listOntologyReleaseMembers,
 } from '../../../rest/ontologyAPI';
 import {
   useAllOntologyStudioModels,
@@ -328,5 +329,47 @@ describe('all native ontology models', () => {
     expect(result.current.models?.map((model) => model.ontology.id)).toEqual([
       ontology.id,
     ]);
+  });
+
+  describe('reading a release', () => {
+    it('builds the model from the release members, not the working draft', async () => {
+      const released = { ...concept('Order'), description: 'As released' };
+      (
+        listOntologyReleaseMembers as jest.MockedFunction<
+          typeof listOntologyReleaseMembers
+        >
+      ).mockImplementation(async (_id, kind) => ({
+        data:
+          kind === 'CONCEPT'
+            ? [
+                {
+                  memberId: released.id,
+                  memberKind: kind,
+                  payload: released,
+                  payloadBytes: 1,
+                  payloadDigest: 'x',
+                  releaseId: 'release-1',
+                },
+              ]
+            : [],
+        paging: { total: 0 },
+      }));
+      mockListOntologyConcepts.mockResolvedValue({
+        data: [{ ...concept('Order'), description: 'Working draft' }],
+        paging: { total: 1 },
+      });
+
+      const { result } = renderHook(
+        () => useOntologyStudioModel(ontology, 'release-1'),
+        { wrapper }
+      );
+
+      await waitFor(() => expect(result.current.model).toBeDefined());
+
+      expect(result.current.model?.concepts.map((c) => c.description)).toEqual([
+        'As released',
+      ]);
+      expect(mockListOntologyConcepts).not.toHaveBeenCalled();
+    });
   });
 });
