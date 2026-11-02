@@ -383,12 +383,14 @@ def test_discovery_refreshes_missing_families_once_per_dataset():
     assert source._sharding_scopes["demo_service.demo_project.demo_dataset"] is True
 
 
-@pytest.mark.parametrize("failure", [None, "listing", "replacement", "collision"])
+@pytest.mark.parametrize("failure", [None, "listing", "replacement", "collision", "placeholder_only"])
 def test_refreshed_inventory_controls_reconciliation(failure):
     initial = ["events_20260101", "events_20260102"]
     remaining = [] if failure is None else ["events_20260101"]
     if failure == "collision":
         remaining.append("events_yyyymmdd")
+    elif failure == "placeholder_only":
+        remaining = ["events_yyyymmdd"]
     family = catalog_table("events_yyyymmdd", sharded=True)
     source = source_for(initial, [family])
     source.source_config.markDeletedTables = True

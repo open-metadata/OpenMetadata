@@ -540,12 +540,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         context.shard_prefixes = set(families)
         for prefix in sorted(pending):
             family = families.get(prefix)
-            if family is None:
-                continue
             existing = self._catalog_table(logical_shard_name(prefix))
             if prefix in collisions or (existing and not get_table_sharding(existing)):
                 context.sharding_failed = True
                 self.status.warning(logical_shard_name(prefix), "Shard identity conflict after inventory refresh")
+                continue
+            if family is None:
                 continue
             client.get_table(f"{dataset}.{family.representative}")
             context.shard_family = family.descriptor(context.database, context.database_schema)
