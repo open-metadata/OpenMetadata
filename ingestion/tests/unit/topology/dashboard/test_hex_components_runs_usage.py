@@ -391,6 +391,15 @@ class TestAppViewsAsUsage:
         assert self.ingest(source, 5, DAY_2) == []
         assert source.metadata.usage == {DAY_1: 12, DAY_2: 3}
 
+    def test_views_that_age_out_still_write_the_day(self, make_source):
+        source = make_source()
+        week_later = "2026-11-10"
+
+        assert self.ingest(source, 10, DAY_1) == [10]
+        assert self.ingest(source, 0, week_later) == [0]
+        assert self.ingest(source, 0, week_later) == []
+        assert source.metadata.usage == {DAY_1: 10, week_later: 0}
+
     def test_no_usage_without_app_views(self, make_source):
         source = make_source()
 

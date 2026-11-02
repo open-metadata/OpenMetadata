@@ -528,9 +528,11 @@ class HexSource(DashboardServiceSource):
                 model_str(day.date): day.dailyStats.count
                 for day in self.metadata.get_dashboard_usage(dashboard, date=self.today, days=APP_VIEWS_DAYS)
             }
-            today_views = daily.pop(self.today, 0)
-            views = max(0, week_views - sum(daily.values())) - today_views
-            if views > 0:
+            today_views = daily.pop(self.today, None)
+            views = max(0, week_views - sum(daily.values())) - (today_views or 0)
+            # A zero still writes today's row: the dashboard's weekly count is read from its
+            # latest row, so without one views that aged out would keep showing
+            if views > 0 or today_views is None:
                 yield Either(  # pyright: ignore[reportCallIssue]
                     right=DashboardUsage(dashboard=dashboard, usage=UsageRequest(date=self.today, count=views))
                 )
