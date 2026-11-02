@@ -17,6 +17,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * writing triggers. Deleting table by table lets one of those writes land between the trigger and
  * job deletes, which then fails on the foreign key. Every table is therefore locked first and
  * emptied in one transaction, so the old scheduler waits for the purge instead of racing it.
+ * ADR:2026-11-02-the-1-13-0-quartz-purge-is-one-locked-transaction
  */
 @Slf4j
 public final class QuartzTablePurge {
