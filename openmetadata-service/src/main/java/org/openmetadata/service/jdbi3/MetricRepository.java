@@ -90,11 +90,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.metrics.MetricResource;
-import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -714,8 +715,7 @@ public class MetricRepository extends EntityRepository<Metric> {
     protected void authorizeRow(Metric original, Metric entity) {
       MetricRepository repository = (MetricRepository) Entity.getEntityRepository(METRIC);
       if (original == null) {
-        DefaultAuthorizer.authorizeUser(
-            importedBy,
+        authorizeRowTarget(
             new OperationContext(METRIC, MetadataOperation.CREATE),
             new CreateResourceContext<>(METRIC, entity));
       } else {
@@ -723,12 +723,18 @@ public class MetricRepository extends EntityRepository<Metric> {
         // relationship fields, and a pre-resolved ResourceContext never re-loads them, so
         // domain-conditioned rules would see no domains and fail open. The id-based context
         // resolves itself with the bounded security attributes the policy engine expects.
-        DefaultAuthorizer.authorizeUser(
-            importedBy,
+        authorizeRowTarget(
             new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
             new ResourceContext<>(METRIC, original.getId(), original.getFullyQualifiedName()));
       }
       authorizeHierarchyChange(repository, original, entity);
+    }
+
+    // Through the configured authorizer, as the import's domain check is, so a deployment that
+    // replaces it (e.g. NoopAuthorizer) decides row writes the same way it decides the request.
+    private void authorizeRowTarget(OperationContext operation, ResourceContextInterface resource) {
+      Entity.getAuthorizer()
+          .authorizeActor(ChangeActor.recorded(importedBy, null), operation, resource);
     }
 
     private void authorizeHierarchyChange(
@@ -749,15 +755,13 @@ public class MetricRepository extends EntityRepository<Metric> {
       }
       if (stored != null) {
         for (EntityReference metric : repository.hierarchySubtree(stored.getId())) {
-          DefaultAuthorizer.authorizeUser(
-              importedBy,
+          authorizeRowTarget(
               new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
               new ResourceContext<>(METRIC, metric.getId(), metric.getFullyQualifiedName()));
         }
       }
       for (EntityReference destination : hierarchyDestinations(stored, entity)) {
-        DefaultAuthorizer.authorizeUser(
-            importedBy,
+        authorizeRowTarget(
             new OperationContext(destination.getType(), MetadataOperation.EDIT_ALL),
             new ResourceContext<>(
                 destination.getType(), destination.getId(), destination.getFullyQualifiedName()));

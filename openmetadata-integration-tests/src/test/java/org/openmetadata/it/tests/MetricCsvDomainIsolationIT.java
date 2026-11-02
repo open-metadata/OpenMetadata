@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,12 +38,18 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -52,6 +59,7 @@ import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for advisory ANT-2026-3CSN88IX (CWE-863) — the metric CSV export and import
@@ -249,6 +257,133 @@ public class MetricCsvDomainIsolationIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  /**
+   * An owner of one metric may import at that metric's name, but each row must still be authorized
+   * against the metric it names. The owner's EditAll comes from a policy and role this test creates,
+   * so the outcome does not depend on seeded policies; only this test's own entities are asserted on.
+   */
+  @Test
+  void test_importCsv_metricOwnerCannotUpdateAnotherUsersMetric(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String shortId = ns.uniqueShortId();
+      Role ownerEditRole = createMetricOwnerEditRole(admin, shortId, cleanup);
+      User owner = createUser(admin, "own_" + shortId, List.of(ownerEditRole.getId()), cleanup);
+      User otherOwner = createUser(admin, "oth_" + shortId, List.of(), cleanup);
+      Metric ownedMetric =
+          createOwnedMetric(admin, "m1_" + shortId, owner, "Owned metric", cleanup);
+      Metric otherMetric =
+          createOwnedMetric(admin, "m2_" + shortId, otherOwner, "Someone else's metric", cleanup);
+
+      String updatedOwned = "Owned metric updated " + shortId;
+      String tampered = "Tampered by import " + shortId;
+      String csv =
+          appendRows(
+              admin
+                  .metrics()
+                  .exportCsv(ownedMetric.getFullyQualifiedName())
+                  .replace("Owned metric", updatedOwned),
+              admin
+                  .metrics()
+                  .exportCsv(otherMetric.getFullyQualifiedName())
+                  .replace("Someone else's metric", tampered));
+
+      OpenMetadataClient ownerClient =
+          SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
+      CsvImportResult result = importAs(ownerClient, ownedMetric.getFullyQualifiedName(), csv);
+
+      assertEquals(
+          1,
+          result.getNumberOfRowsPassed(),
+          "Only the owner's own row may pass: " + result.getImportResultsCsv());
+      assertEquals(
+          1,
+          result.getNumberOfRowsFailed(),
+          "The row naming another user's metric must fail: " + result.getImportResultsCsv());
+      assertEquals(
+          updatedOwned,
+          admin.metrics().getByName(ownedMetric.getFullyQualifiedName()).getDescription(),
+          "The owner must still update their own metric by import");
+      assertEquals(
+          "Someone else's metric",
+          admin.metrics().getByName(otherMetric.getFullyQualifiedName()).getDescription(),
+          "Another user's metric must be unchanged");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /** A role allowing ViewAll and EditAll on metrics the user owns, and nothing else. */
+  private Role createMetricOwnerEditRole(
+      OpenMetadataClient admin, String shortId, Deque<Runnable> cleanup) {
+    Rule ownerEdit =
+        new Rule()
+            .withName("MetricOwnerEdit")
+            .withResources(List.of(Entity.METRIC))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.EDIT_ALL))
+            .withCondition("isOwner()")
+            .withEffect(Rule.Effect.ALLOW);
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName("metricOwnerEditPolicy_" + shortId)
+                    .withRules(List.of(ownerEdit)));
+    cleanup.push(() -> admin.policies().delete(policy.getId()));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName("metricOwnerEditRole_" + shortId)
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    cleanup.push(() -> admin.roles().delete(role.getId()));
+    return role;
+  }
+
+  private User createUser(
+      OpenMetadataClient admin, String name, List<UUID> roles, Deque<Runnable> cleanup) {
+    User user =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(name)
+                    .withEmail(name + "@test.openmetadata.org")
+                    .withRoles(roles));
+    cleanup.push(() -> admin.users().delete(user.getId()));
+    return user;
+  }
+
+  private Metric createOwnedMetric(
+      OpenMetadataClient admin,
+      String name,
+      User owner,
+      String description,
+      Deque<Runnable> cleanup) {
+    Metric metric =
+        admin
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(name)
+                    .withDescription(description)
+                    .withMetricType(MetricType.COUNT)
+                    .withOwners(
+                        List.of(
+                            new EntityReference().withId(owner.getId()).withType(Entity.USER))));
+    cleanup.push(() -> admin.metrics().delete(metric.getId()));
+    return metric;
+  }
+
+  /** Joins two single-metric exports into one CSV: the first in full, the second without header. */
+  private String appendRows(String firstExport, String secondExport) {
+    String first = firstExport.endsWith("\n") ? firstExport : firstExport + "\n";
+    return first + secondExport.substring(secondExport.indexOf('\n') + 1);
   }
 
   private Domain createDomain(OpenMetadataClient admin, String name, Deque<Runnable> cleanup) {
