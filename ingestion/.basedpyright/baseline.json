@@ -16440,6 +16440,14 @@
                 }
             },
             {
+                "code": "reportCallIssue",
+                "range": {
+                    "startColumn": 12,
+                    "endColumn": 13,
+                    "lineCount": 6
+                }
+            },
+            {
                 "code": "reportRedeclaration",
                 "range": {
                     "startColumn": 4,
