@@ -22,6 +22,8 @@ confining them) and mint a token for any bot, since policies and bots are in no 
 
 ## Consequences
 Users and bots that hold only this role keep reading and listing what they could before, and keep
-full access inside their domains. Changing anything in no domain (policies, roles, bots, settings,
-domain-less assets) now needs another role that grants it. An install that customised this policy
+full access inside their domains. Changing a single resource in no domain (a policy, role, bot,
+setting or domain-less asset) now needs another role that grants it. Requests authorized against a
+whole entity type rather than one resource (e.g. stale-entity cleanup) still match, as they did
+before; those endpoints must authorize per item themselves. An install that customised this policy
 keeps its own rules and must apply the same split itself.
