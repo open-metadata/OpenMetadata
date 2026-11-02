@@ -653,7 +653,7 @@ describe('TasksTab', () => {
   // The My Tasks card on the home page links to a task that may have been
   // resolved since the card last cached it, so the default Open tab can be
   // empty and settled when the deep link lands. The linked task's detail
-  // must render, not the per-status empty placeholder.
+  // must render; the per-status empty state moves to the list column.
   it('opens on the linked task even when the visible list is empty and settled', () => {
     hookState = { items: [] as unknown as Task[], isLoading: false, total: 0 };
 
@@ -661,13 +661,16 @@ describe('TasksTab', () => {
 
     expect(screen.getByTestId('detail')).toHaveTextContent('t9');
     expect(
-      screen.queryByTestId('inbox-tasks-open-empty')
-    ).not.toBeInTheDocument();
+      within(screen.getByTestId('inbox-tasks-scroll')).getByTestId(
+        'inbox-tasks-open-empty'
+      )
+    ).toBeInTheDocument();
   });
 
-  // A narrowing that empties the list must not suppress a kept selection: the
-  // linked task's detail owns the pane, not the "no match" placeholder.
-  it('keeps the linked task detail when a narrowing empties the list', () => {
+  // A narrowing that empties the list must neither drop the linked task's
+  // detail nor hide why the list is empty: "no match" and its "Clear all"
+  // show in the list column.
+  it('keeps the linked task detail and says nothing matches when a narrowing empties the list', () => {
     hookState = {
       items: [{ id: 't1', type: 'TestCaseResolution' } as unknown as Task],
       isLoading: false,
@@ -680,13 +683,41 @@ describe('TasksTab', () => {
 
     fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
 
+    const list = within(screen.getByTestId('inbox-tasks-scroll'));
+
     expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+    expect(list.getByTestId('inbox-tasks-no-match')).toBeInTheDocument();
+
+    fireEvent.click(list.getByText('label.clear-all'));
+
+    expect(list.queryByTestId('inbox-tasks-no-match')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+  });
+
+  // A capped scan is the only way to reach matches on later pages, so its
+  // "Load more" must stay reachable while the linked task holds the detail.
+  it('keeps "Load more" reachable on a capped scan while a linked task is open', () => {
+    const scanned = Array.from(
+      { length: 200 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = { items: scanned, isLoading: false, total: 500, hasMore: true };
+
+    renderTab({}, '/inbox/tasks?taskId=linked');
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    const list = within(screen.getByTestId('inbox-tasks-scroll'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('linked');
     expect(
-      screen.queryByTestId('inbox-tasks-no-match')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('inbox-tasks-open-empty')
-    ).not.toBeInTheDocument();
+      list.getByTestId('inbox-tasks-no-match-scanned')
+    ).toBeInTheDocument();
+
+    fireEvent.click(list.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(scanned)).toBe(true);
   });
 
   it('removes a resolved task and decrements the total when it leaves the filter', () => {
