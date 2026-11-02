@@ -421,7 +421,7 @@ class TestCaseRunner(Processor):
                 )
                 continue
 
-            if column.dataType not in test_definition.supportedDataTypes:
+            if column.dataType not in (test_definition.supportedDataTypes or []):
                 self.status.failed(
                     StackTraceError(
                         name="Incompatible Column for Test Case",
