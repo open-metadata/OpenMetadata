@@ -18,6 +18,8 @@ import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
 import CustomPropertiesPanel from './CustomPropertiesPanel';
 
 const mockGetTypeByFQN = getTypeByFQN as jest.Mock;
+const mockGetEntityPermission = jest.fn();
+const fullPermission = { Create: true, EditAll: true, Delete: true };
 const mockOnHeaderChange = jest.fn();
 
 // replaceState, unlike assigning location.hash, queues no popstate that would
@@ -162,7 +164,11 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
   () => ({
-    usePermissionProvider: jest.fn().mockReturnValue({ permissions: {} }),
+    usePermissionProvider: jest.fn().mockReturnValue({
+      permissions: {},
+      getEntityPermission: (...args: unknown[]) =>
+        mockGetEntityPermission(...args),
+    }),
   })
 );
 
@@ -205,6 +211,7 @@ describe('CustomPropertiesPanel', () => {
     // The settings hash store is module-level; reset it to the bare tab.
     setLocationHash('#custom-properties');
     mockGetTypeByFQN.mockResolvedValue(mockEntityType);
+    mockGetEntityPermission.mockResolvedValue(fullPermission);
   });
 
   it('renders the landing page by default', () => {
@@ -271,6 +278,30 @@ describe('CustomPropertiesPanel', () => {
 
   it('falls back to the list when the linked property does not exist', async () => {
     setLocationHash('#custom-properties/table/edit-property/missing');
+    renderPanel();
+
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-page')).not.toBeInTheDocument();
+  });
+
+  it('opens the list instead of the add form without Create permission', async () => {
+    mockGetEntityPermission.mockResolvedValue({
+      ...fullPermission,
+      Create: false,
+    });
+    setLocationHash('#custom-properties/table/add-property');
+    renderPanel();
+
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-page')).not.toBeInTheDocument();
+  });
+
+  it('opens the list instead of the edit form without EditAll permission', async () => {
+    mockGetEntityPermission.mockResolvedValue({
+      ...fullPermission,
+      EditAll: false,
+    });
+    setLocationHash('#custom-properties/table/edit-property/myProp');
     renderPanel();
 
     expect(await screen.findByTestId('detail-page')).toBeInTheDocument();

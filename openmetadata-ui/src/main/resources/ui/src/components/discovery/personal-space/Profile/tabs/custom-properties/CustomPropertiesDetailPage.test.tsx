@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { useState } from 'react';
+import type { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import type { Type } from '../../../../../../generated/entity/type';
 import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -73,11 +74,11 @@ const mockEntityType = {
 const mockDeleteCustomPropertyByName = jest
   .fn()
   .mockResolvedValue(mockEntityType);
-const mockGetEntityPermission = jest.fn().mockResolvedValue({
+const fullPermission = {
   Create: true,
   EditAll: true,
   Delete: true,
-});
+} as unknown as OperationPermission;
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -88,15 +89,6 @@ jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
   deleteCustomPropertyByName: (fqn: string, name: string) =>
     mockDeleteCustomPropertyByName(fqn, name),
 }));
-
-jest.mock(
-  '../../../../../../context/PermissionProvider/PermissionProvider',
-  () => ({
-    usePermissionProvider: () => ({
-      getEntityPermission: mockGetEntityPermission,
-    }),
-  })
-);
 
 jest.mock('../../../../../../utils/PermissionsUtils', () => ({
   ...jest.requireActual('../../../../../../utils/PermissionsUtils'),
@@ -317,15 +309,11 @@ describe('CustomPropertiesDetailPage', () => {
     entityType: mockEntityType as unknown as Type,
     onAddProperty: mockOnAddProperty,
     onEditProperty: mockOnEditProperty,
+    permission: fullPermission,
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetEntityPermission.mockResolvedValue({
-      Create: true,
-      EditAll: true,
-      Delete: true,
-    });
   });
 
   it('renders the component with table', async () => {
@@ -363,9 +351,12 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('hides Add Property button when user lacks EditAll permission', async () => {
-    mockGetEntityPermission.mockResolvedValueOnce({ EditAll: false });
-
-    render(<DetailPageWithHeader {...defaultProps} />);
+    render(
+      <DetailPageWithHeader
+        {...defaultProps}
+        permission={{ EditAll: false } as unknown as OperationPermission}
+      />
+    );
 
     await waitFor(() => {
       expect(
@@ -459,17 +450,6 @@ describe('CustomPropertiesDetailPage', () => {
     expect(mockDeleteCustomPropertyByName).not.toHaveBeenCalled();
   });
 
-  it('shows error toast when the permission fetch fails', async () => {
-    const mockError = new Error('API Error');
-    mockGetEntityPermission.mockRejectedValueOnce(mockError);
-
-    render(<DetailPageWithHeader {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(showErrorToast).toHaveBeenCalledWith(mockError);
-    });
-  });
-
   it('drops the property locally when it was already removed elsewhere', async () => {
     mockDeleteCustomPropertyByName.mockResolvedValueOnce(undefined);
 
@@ -523,6 +503,7 @@ describe('CustomPropertiesDetailPage', () => {
     render(
       <DetailPageWithHeader
         entityType={emptyEntityType as unknown as Type}
+        permission={fullPermission}
         onAddProperty={mockOnAddProperty}
         onEditProperty={mockOnEditProperty}
       />
@@ -534,13 +515,18 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('passes the edit and delete permissions to the table', async () => {
-    mockGetEntityPermission.mockResolvedValueOnce({
-      Create: false,
-      EditAll: false,
-      Delete: true,
-    });
-
-    render(<DetailPageWithHeader {...defaultProps} />);
+    render(
+      <DetailPageWithHeader
+        {...defaultProps}
+        permission={
+          {
+            Create: false,
+            EditAll: false,
+            Delete: true,
+          } as unknown as OperationPermission
+        }
+      />
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();

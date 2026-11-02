@@ -21,15 +21,11 @@ import { Plus as Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import { deleteCustomPropertyByName } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -49,40 +45,16 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
   onEditProperty,
   onEntityTypeChange,
   onSetHeaderActions,
+  permission,
 }) => {
   const { t } = useTranslation();
-  const { getEntityPermission } = usePermissionProvider();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('custom-properties');
-  const [permission, setPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const {
     target: deleteTarget,
     open: openDeleteConfirm,
     popoverProps,
   } = useAnchoredConfirm<CustomProperty>();
-
-  const fetchPermission = useCallback(async () => {
-    if (!entityType.id) {
-      return;
-    }
-    setIsLoading(true);
-    try {
-      setPermission(
-        await getEntityPermission(ResourceEntity.TYPE, entityType.id)
-      );
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [entityType.id, getEntityPermission]);
-
-  useEffect(() => {
-    fetchPermission();
-  }, [fetchPermission]);
 
   const customProperties = useMemo(
     () => entityType.customProperties ?? [],
@@ -134,7 +106,6 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
           color="primary"
           data-testid="add-custom-property-btn"
           iconLeading={Expand}
-          isDisabled={isLoading}
           size="xs"
           onPress={onAddProperty}>
           {t('label.add-entity', { entity: t('label.custom-property') })}
@@ -143,7 +114,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
     );
 
     return () => onSetHeaderActions(undefined);
-  }, [canCreate, isLoading, onAddProperty, onSetHeaderActions, t]);
+  }, [canCreate, onAddProperty, onSetHeaderActions, t]);
 
   return (
     <>
@@ -192,7 +163,6 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                   />
                 </div>
               }
-              isLoading={isLoading}
               variant="muted"
               onDelete={openDeleteConfirm}
               onEdit={onEditProperty}

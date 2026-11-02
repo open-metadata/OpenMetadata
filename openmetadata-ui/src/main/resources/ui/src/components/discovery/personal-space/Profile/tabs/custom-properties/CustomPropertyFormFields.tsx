@@ -160,6 +160,8 @@ const CustomPropertyFormFields = ({
           value: CUSTOM_PROPERTY_NAME_REGEX,
           message: t('message.custom-property-name-validation'),
         },
+        // UI-only rule; the server still compares case-sensitively.
+        // ADR:2026-11-02-custom-property-names-are-unique-per-entity-type-ignoring-case-in-the-ui
         validate: (value: string) =>
           !existingNames?.some(
             (name) => name.toLowerCase() === value.trim().toLowerCase()
