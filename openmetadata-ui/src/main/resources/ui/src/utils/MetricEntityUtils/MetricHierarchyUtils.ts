@@ -146,31 +146,41 @@ export const flattenMetricRows = (rows: MetricTableRow[]): MetricTreeNode[] => {
 /**
  * The selected metrics that have no selected ancestor. A recursive delete of a parent already removes
  * its variants, so a separate job for a selected child races it and fails once the child is gone.
+ * Ancestry comes from the tree nesting and, for flat (status-filtered) search rows, from `parent` —
+ * variant FQNs do not nest under their parent's FQN.
  */
 export const getTopmostSelectedMetrics = (
   rows: MetricTableRow[],
   selectedIds: string[]
 ): MetricTreeNode[] => {
   const selected = new Set(selectedIds);
-  const topmost: MetricTreeNode[] = [];
+  const metrics = flattenMetricRows(rows);
+  const parentIdById = new Map<string, string>();
 
-  const visit = (current: MetricTableRow[]) => {
-    current.forEach((row) => {
-      if (!isMetricRow(row)) {
-        return;
-      }
-      if (selected.has(row.id)) {
-        topmost.push(row);
+  metrics.forEach((metric) => {
+    if (metric.parent?.id) {
+      parentIdById.set(metric.id, metric.parent.id);
+    }
+    metric.children?.forEach((child) => parentIdById.set(child.id, metric.id));
+  });
 
-        return;
+  const hasSelectedAncestor = (id: string) => {
+    const visited = new Set<string>();
+    let parentId = parentIdById.get(id);
+    while (parentId && !visited.has(parentId)) {
+      if (selected.has(parentId)) {
+        return true;
       }
-      visit(row.children ?? []);
-    });
+      visited.add(parentId);
+      parentId = parentIdById.get(parentId);
+    }
+
+    return false;
   };
 
-  visit(rows);
-
-  return topmost;
+  return metrics.filter(
+    ({ id }) => selected.has(id) && !hasSelectedAncestor(id)
+  );
 };
 
 /**

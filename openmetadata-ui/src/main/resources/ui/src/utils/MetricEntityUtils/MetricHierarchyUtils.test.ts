@@ -161,6 +161,21 @@ describe('getTopmostSelectedMetrics', () => {
     ).toEqual(['1', '4']);
   });
 
+  it('uses the parent reference for flat search rows, whose FQNs do not nest', () => {
+    const flatRows: MetricTableRow[] = [
+      metric('1', 'revenue') as MetricTreeNode,
+      metric('2', 'revenue_apac', '1') as MetricTreeNode,
+      metric('3', 'revenue_apac_jp', '2') as MetricTreeNode,
+    ];
+
+    expect(
+      getTopmostSelectedMetrics(flatRows, ['3', '1']).map((m) => m.id)
+    ).toEqual(['1']);
+    expect(
+      getTopmostSelectedMetrics(flatRows, ['3', '2']).map((m) => m.id)
+    ).toEqual(['2']);
+  });
+
   it('keeps a selected child when its parent is not selected', () => {
     expect(
       getTopmostSelectedMetrics(tree, ['2', '3']).map((m) => m.id)
