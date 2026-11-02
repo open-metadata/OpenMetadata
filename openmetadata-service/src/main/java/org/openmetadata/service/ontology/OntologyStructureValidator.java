@@ -51,9 +51,17 @@ public final class OntologyStructureValidator {
   private final OntologyPropertyHierarchy propertyHierarchy;
   private final OntologyClassHierarchy hierarchy;
   private final List<OntologyReleaseStructureIssue> findings = new ArrayList<>();
+  private final Map<UUID, List<OntologyDisjointnessClashes.Clash>> clashesBySubject;
   private int violationCount;
 
-  private OntologyStructureValidator(final List<Definition> definitions) {
+  private OntologyStructureValidator(
+      final List<Definition> definitions, final boolean blockOnClashes) {
+    clashesBySubject =
+        blockOnClashes
+            ? OntologyDisjointnessClashes.find(definitions.stream().map(Definition::value).toList())
+                .stream()
+                .collect(Collectors.groupingBy(clash -> clash.subject().getId()))
+            : Map.of();
     hierarchy = new OntologyClassHierarchy(definitions.stream().map(Definition::value).toList());
     concepts =
         definitions.stream()
@@ -84,7 +92,7 @@ public final class OntologyStructureValidator {
                     .thenComparing(member -> member.getMemberId().toString()))
             .map(member -> new Definition(member, OntologyReleaseReader.definition(member)))
             .toList();
-    final var validator = new OntologyStructureValidator(definitions);
+    final var validator = new OntologyStructureValidator(definitions, true);
     definitions.forEach(validator::validate);
     return new OntologyReleaseStructureReport()
         .withReleaseId(release.getId())
@@ -123,10 +131,27 @@ public final class OntologyStructureValidator {
   public static OntologyProfileReport validateWorking(
       final List<OntologyDefinition> values, final Set<UUID> affected) {
     final var validator = validateWorkingDefinitions(values, affected);
+    final var violations =
+        new ArrayList<>(
+            validator.findings.stream().map(OntologyReleaseStructureIssue::getViolation).toList());
+    OntologyDisjointnessClashes.find(values)
+        .forEach(
+            clash ->
+                violations.add(
+                    clashViolation(clash).withSeverity(OntologyProfileViolationSeverity.WARNING)));
     return new OntologyProfileReport()
         .withValid(validator.violationCount == 0)
-        .withViolations(
-            validator.findings.stream().map(OntologyReleaseStructureIssue::getViolation).toList());
+        .withViolations(List.copyOf(violations));
+  }
+
+  private static OntologyProfileViolation clashViolation(
+      final OntologyDisjointnessClashes.Clash clash) {
+    return new OntologyProfileViolation()
+        .withCode(OntologyProfileViolationCode.DISJOINT_CLASH)
+        .withPath("/expressions")
+        .withMessage(clash.message())
+        .withConceptIds(clash.conceptIds())
+        .withSeverity(OntologyProfileViolationSeverity.ERROR);
   }
 
   private static OntologyStructureValidator validateWorkingDefinitions(
@@ -149,7 +174,7 @@ public final class OntologyStructureValidator {
                                 }),
                         value))
             .toList();
-    final var validator = new OntologyStructureValidator(definitions);
+    final var validator = new OntologyStructureValidator(definitions, false);
     definitions.stream()
         .filter(definition -> affected.contains(definition.value().getId()))
         .forEach(validator::validate);
@@ -159,12 +184,17 @@ public final class OntologyStructureValidator {
   private void validate(final Definition definition) {
     hierarchy.validate(definition.value(), violation -> add(definition.member(), violation));
     switch (definition.value()) {
-      case OntologyConcept concept -> requireReplacement(
-          definition.member(),
-          concept.getIri(),
-          concept.getReplacedBy(),
-          concepts::contains,
-          OntologyProfileViolationCode.UNDECLARED_CLASS);
+      case OntologyConcept concept -> {
+        requireReplacement(
+            definition.member(),
+            concept.getIri(),
+            concept.getReplacedBy(),
+            concepts::contains,
+            OntologyProfileViolationCode.UNDECLARED_CLASS);
+        clashesBySubject
+            .getOrDefault(concept.getId(), List.of())
+            .forEach(clash -> add(definition.member(), clashViolation(clash)));
+      }
       case OntologyProperty property -> {
         validateProperty(definition.member(), property);
         requireReplacement(

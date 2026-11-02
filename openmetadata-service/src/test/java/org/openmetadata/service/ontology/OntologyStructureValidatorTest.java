@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyProfileViolationCode;
+import org.openmetadata.schema.type.OntologyProfileViolationSeverity;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
@@ -404,6 +405,88 @@ class OntologyStructureValidatorTest {
     assertEquals(1000, report.getViolations().size());
   }
 
+  @Test
+  void aClassDisjointWithItsAncestorIsAClashNamingBoth() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept dog = concept("Dog");
+    var report = validate(animal, dog, subclass(dog, animal), disjoint(dog, animal));
+    assertFalse(report.getValid());
+    assertEquals(1, report.getViolationCount());
+    var issue = report.getViolations().getFirst();
+    assertEquals(OntologyProfileViolationCode.DISJOINT_CLASH, issue.getViolation().getCode());
+    assertEquals(
+        "urn:class:Dog is disjoint with its ancestor urn:class:Animal",
+        issue.getViolation().getMessage());
+    assertEquals(dog.getId(), issue.getMemberId());
+    assertEquals(List.of(dog.getId(), animal.getId()), issue.getViolation().getConceptIds());
+  }
+
+  @Test
+  void aClassUnderTwoDisjointAncestorsIsAClashAndTheDiamondReportsOnce() {
+    OntologyConcept left = concept("Left");
+    OntologyConcept right = concept("Right");
+    OntologyConcept bottom = concept("Bottom");
+    OntologyConcept below = concept("Below");
+    var report =
+        validate(
+            left,
+            right,
+            bottom,
+            below,
+            subclass(bottom, left, right),
+            subclass(below, bottom),
+            disjoint(left, right));
+    assertEquals(1, report.getViolationCount());
+    var issue = report.getViolations().getFirst();
+    assertEquals(bottom.getId(), issue.getMemberId());
+    assertEquals(
+        "urn:class:Bottom has disjoint ancestors urn:class:Left and urn:class:Right",
+        issue.getViolation().getMessage());
+    assertEquals(
+        List.of(bottom.getId(), left.getId(), right.getId()), issue.getViolation().getConceptIds());
+  }
+
+  @Test
+  void aTwoHundredLevelChainReportsTheClashOnceWithoutRecursing() {
+    List<OntologyConcept> chain =
+        IntStream.range(0, 200).mapToObj(level -> concept("Level" + level)).toList();
+    List<OntologyDefinition> definitions = new ArrayList<>(chain);
+    IntStream.range(1, 200)
+        .forEach(level -> definitions.add(subclass(chain.get(level), chain.get(level - 1))));
+    definitions.add(disjoint(chain.get(0), chain.get(199)));
+    var report = validate(definitions.toArray(OntologyDefinition[]::new));
+    assertEquals(1, report.getViolationCount());
+    assertEquals(chain.get(199).getId(), report.getViolations().getFirst().getMemberId());
+  }
+
+  @Test
+  void disjointnessBetweenUnrelatedClassesIsNotAClash() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept plant = concept("Plant");
+    OntologyConcept dog = concept("Dog");
+    var report = validate(animal, plant, dog, subclass(dog, animal), disjoint(animal, plant));
+    assertTrue(report.getValid());
+    assertEquals(List.of(), report.getViolations());
+  }
+
+  @Test
+  void workingValidationWarnsOnAClashWithoutBlockingTheSave() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept dog = concept("Dog");
+    var report =
+        OntologyStructureValidator.validateWorking(
+            List.of(animal, dog, subclass(dog, animal), disjoint(dog, animal)));
+    assertTrue(report.getValid());
+    assertEquals(1, report.getViolations().size());
+    assertEquals(
+        OntologyProfileViolationSeverity.WARNING, report.getViolations().getFirst().getSeverity());
+    assertEquals(
+        "urn:class:Dog is disjoint with its ancestor urn:class:Animal",
+        report.getViolations().getFirst().getMessage());
+    OntologyStructureValidator.requireValidWorking(
+        List.of(animal, dog, subclass(dog, animal), disjoint(dog, animal)));
+  }
+
   private static OntologyReleaseStructureReport validate(OntologyDefinition... definitions) {
     return OntologyStructureValidator.validate(
         RELEASE, Arrays.stream(definitions).map(value -> member(RELEASE.getId(), value)).toList());
@@ -453,6 +536,10 @@ class OntologyStructureValidatorTest {
                             .withKind(OntologyExpressionKind.NAMED_CLASS)
                             .withClassIri(parent.getIri()))
                 .toList());
+  }
+
+  private static OntologyAxiom disjoint(OntologyConcept subject, OntologyConcept other) {
+    return subclass(subject, other).withAxiomType(OntologyAxiomType.DISJOINT_WITH);
   }
 
   private static OntologyAxiom assertion() {
