@@ -234,6 +234,35 @@ class OpenSearchRBACConditionEvaluatorTest {
   }
 
   @Test
+  void testInUserDomainsExcludesDomainlessEntities() {
+    setupMockPolicies("inUserDomains()", "ALLOW");
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Finance");
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
+
+    String generatedQuery =
+        ((OpenSearchQueryBuilder) evaluator.evaluateConditions(mockSubjectContext))
+            .build()
+            .toJsonString();
+
+    assertTrue(generatedQuery.contains(domain.getId().toString()), generatedQuery);
+    // Unlike hasDomain(), there is no clause keeping documents that have no domain
+    assertFalse(generatedQuery.contains("exists"), generatedQuery);
+
+    // A user with no domains matches nothing (the policy iterator is single-use, so set it again)
+    setupMockPolicies("inUserDomains()", "ALLOW");
+    when(mockUser.getDomains()).thenReturn(List.of());
+    String noDomainQuery =
+        ((OpenSearchQueryBuilder) evaluator.evaluateConditions(mockSubjectContext))
+            .build()
+            .toJsonString();
+    assertTrue(
+        noDomainQuery.contains("must_not") && noDomainQuery.contains("match_all"), noDomainQuery);
+    assertFalse(noDomainQuery.contains("domains.id"), noDomainQuery);
+  }
+
+  @Test
   void testHasDomainWithMultipleDomains() {
     setupMockPolicies("hasDomain()", "ALLOW");
 
