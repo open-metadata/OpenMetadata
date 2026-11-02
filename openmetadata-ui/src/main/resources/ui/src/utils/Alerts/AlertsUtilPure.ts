@@ -24,8 +24,8 @@ import {
 import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
-import { OPEN_METADATA } from '../../constants/Services.constant';
 import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
+import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import type {

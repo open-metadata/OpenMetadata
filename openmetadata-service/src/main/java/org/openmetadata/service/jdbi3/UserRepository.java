@@ -83,7 +83,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -399,6 +399,11 @@ public class UserRepository extends EntityRepository<User> {
   private static User withNewProfileEncrypted(User user) {
     User stored = JsonUtils.deepCopy(user, User.class);
     return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
+  }
+
+  @Override
+  protected User forChangeEvent(User entity) {
+    return ProfileWebhookSecrets.masked(entity);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {

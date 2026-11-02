@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.alerting.channel.webhook;
+package org.openmetadata.service.alerting.channel;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
@@ -237,6 +238,33 @@ class ProfileWebhookSecretsTest {
       assertTrue(json.contains("kept"));
       assertTrue(json.contains(TOKEN_URL));
     }
+  }
+
+  @Test
+  void aChangeEventRecordsAMaskedCopyAndLeavesTheEntityAsStored() {
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(profileWith(oauth2("the secret")));
+    User user = new User().withName("u").withProfile(stored);
+    Team team = new Team().withName("t").withProfile(stored);
+    String storedJson = JsonUtils.pojoToJson(stored);
+
+    String userEvent = JsonUtils.pojoToJson(ProfileWebhookSecrets.masked(user));
+    String teamEvent = JsonUtils.pojoToJson(ProfileWebhookSecrets.masked(team));
+
+    for (String json : List.of(userEvent, teamEvent)) {
+      assertFalse(json.contains(Fernet.FERNET_PREFIX), json);
+      assertTrue(json.contains(PASSWORD_MASK));
+    }
+    assertEquals(storedJson, JsonUtils.pojoToJson(user.getProfile()));
+    assertEquals(storedJson, JsonUtils.pojoToJson(team.getProfile()));
+  }
+
+  @Test
+  void aChangeEventOfAnEntityWithoutProfileWebhooksIsNotCopied() {
+    User user = new User().withName("u").withProfile(new Profile());
+    Team team = new Team().withName("t");
+
+    assertSame(user, ProfileWebhookSecrets.masked(user));
+    assertSame(team, ProfileWebhookSecrets.masked(team));
   }
 
   @Test

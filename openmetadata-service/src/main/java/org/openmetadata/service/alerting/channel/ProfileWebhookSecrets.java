@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.alerting.channel.webhook;
+package org.openmetadata.service.alerting.channel;
 
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,7 +34,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.alerting.channel.ConfigSecrets;
 import org.openmetadata.service.fernet.Fernet;
 
 /**
@@ -149,6 +148,26 @@ public final class ProfileWebhookSecrets {
     team.setProfile(masked(team.getProfile()));
     maskChangeDescriptions(team);
     return team;
+  }
+
+  /** A copy of the user with its profile webhook secrets masked, or the user when it has none. */
+  public static User masked(User user) {
+    return carriesProfileWebhooks(user, user.getProfile())
+        ? mask(JsonUtils.deepCopy(user, User.class))
+        : user;
+  }
+
+  /** A copy of the team with its profile webhook secrets masked, or the team when it has none. */
+  public static Team masked(Team team) {
+    return carriesProfileWebhooks(team, team.getProfile())
+        ? mask(JsonUtils.deepCopy(team, Team.class))
+        : team;
+  }
+
+  private static boolean carriesProfileWebhooks(EntityInterface<?> entity, Profile profile) {
+    return hasWebhooks(profile)
+        || recordsProfile(entity.getChangeDescription())
+        || recordsProfile(entity.getIncrementalChangeDescription());
   }
 
   private static void maskChangeDescriptions(EntityInterface<?> entity) {

@@ -96,7 +96,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.teams.TeamResource;
@@ -742,6 +742,11 @@ public class TeamRepository extends EntityRepository<Team> {
   private static Team withNewProfileEncrypted(Team team) {
     Team stored = JsonUtils.deepCopy(team, Team.class);
     return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
+  }
+
+  @Override
+  protected Team forChangeEvent(Team entity) {
+    return ProfileWebhookSecrets.masked(entity);
   }
 
   /**

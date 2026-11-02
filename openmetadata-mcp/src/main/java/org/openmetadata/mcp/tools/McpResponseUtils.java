@@ -23,7 +23,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
-import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.secrets.masker.EntityMasker;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;

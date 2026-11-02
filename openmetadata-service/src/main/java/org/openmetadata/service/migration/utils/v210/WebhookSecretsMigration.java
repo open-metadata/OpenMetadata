@@ -24,7 +24,7 @@ import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
-import org.openmetadata.service.alerting.channel.webhook.ProfileWebhookSecrets;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
