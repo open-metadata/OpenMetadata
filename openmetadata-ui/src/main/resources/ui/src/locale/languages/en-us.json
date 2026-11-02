@@ -5676,7 +5676,7 @@
     "ontology-data-graph-stale": "The bound data changed while loading. Retry to load it again.",
     "ontology-data-graph-unavailable": "The data graph could not load. Retry to load it.",
     "ontology-delete-counts-unavailable": "The counts could not be loaded.",
-    "ontology-delete-removes": "This permanently deletes {{name}} with its concepts, properties, relationships, rules and releases. This cannot be undone.",
+    "ontology-delete-removes": "This deletes {{name}} together with its concepts, properties, relationships, rules and releases. It leaves the ontology list at once.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} is editing this glossary in another session. Close that session or wait a minute for it to expire, then try again.",

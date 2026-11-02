@@ -40,7 +40,9 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 }));
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: (
-    selector: (store: { currentUser: { id: string } }) => unknown
+    selector: (store: {
+      currentUser: { id: string; name: string; displayName: string };
+    }) => unknown
   ) =>
     selector({
       currentUser: { id: 'author', name: 'author', displayName: 'Author' },
