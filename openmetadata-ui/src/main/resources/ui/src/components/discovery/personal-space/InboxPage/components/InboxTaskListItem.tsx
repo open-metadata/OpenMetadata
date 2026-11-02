@@ -45,6 +45,8 @@ export interface InboxTaskListItemProps {
 // the full "TASK-00357".
 const TASK_ID_PREFIX = 'TASK-';
 
+const AgentAvatarIcon = () => <AiAgent className="tw:size-2.5" />;
+
 /** Who raised the task: the AI agent that proposed its subject, else the person. */
 const TaskRequester: React.FC<{ task: Task }> = ({ task }) => {
   const { t } = useTranslation();
@@ -57,7 +59,7 @@ const TaskRequester: React.FC<{ task: Task }> = ({ task }) => {
       {agent ? (
         <Avatar
           data-testid="agent-avatar"
-          placeholderIcon={AiAgent}
+          placeholderIcon={AgentAvatarIcon}
           size="xxs"
         />
       ) : (
