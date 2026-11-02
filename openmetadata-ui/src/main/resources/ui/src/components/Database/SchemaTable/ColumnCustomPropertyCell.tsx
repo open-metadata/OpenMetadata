@@ -12,9 +12,9 @@
  */
 
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Column } from '../../../generated/entity/data/table';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { buildUpdatedExtension } from '../../../utils/CustomProperty.utils';
@@ -23,7 +23,10 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { isPropertyValueEmpty } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
 import { CustomPropertyEditModal } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal';
 import { getPropertyRenderer } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyRenderers';
-import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
 
 export interface ColumnCustomPropertyCellProps {
   property: CustomProperty;
@@ -72,34 +75,43 @@ export const ColumnCustomPropertyCell: FC<ColumnCustomPropertyCellProps> = ({
     }
   };
 
+  const editTitle = t('label.edit-entity', { entity: getEntityName(property) });
+
+  const renderValue = () => {
+    if (!isEmptyValue) {
+      return <View isCompact property={property} value={value} />;
+    }
+
+    return hasEditPermissions ? (
+      <WidgetPlusButton
+        compact
+        className="tw:mt-2"
+        data-testid="add-icon"
+        title={t('label.add-entity', { entity: getEntityName(property) })}
+        onClick={() => setIsEditing(true)}
+      />
+    ) : (
+      NO_DATA_PLACEHOLDER
+    );
+  };
+
   return (
     <div
-      className="tw:group tw:flex tw:min-w-0 tw:items-start tw:gap-1"
+      className="hover-icon-group tw:flex tw:min-w-0 tw:flex-col tw:items-start tw:gap-1 tw:text-xs"
       data-testid={property.name}>
       <div
-        className={classNames('tw:min-w-0 tw:flex-1 tw:text-xs', {
-          'tw:text-tertiary': isEmptyValue,
-        })}
+        className="tw:flex tw:min-w-0 tw:max-w-full"
         data-testid="property-value">
-        {isEmptyValue ? (
-          t('label.not-set')
-        ) : (
-          <View isCompact property={property} value={value} />
-        )}
+        {renderValue()}
       </div>
-      {hasEditPermissions && (
-        // Empty cells keep the icon visible: it is their only edit affordance.
-        <span
-          className={classNames('tw:flex tw:shrink-0', {
-            'tw:opacity-0 tw:group-hover:opacity-100 tw:group-focus-within:opacity-100':
-              !isEmptyValue,
-          })}>
-          <WidgetEditButton
-            data-testid="edit-icon"
-            title={t('label.edit-entity', { entity: getEntityName(property) })}
-            onClick={() => setIsEditing(true)}
-          />
-        </span>
+      {hasEditPermissions && !isEmptyValue && (
+        <WidgetEditButton
+          compact
+          className="hover-cell-icon"
+          data-testid="edit-icon"
+          title={editTitle}
+          onClick={() => setIsEditing(true)}
+        />
       )}
       {isEditing && (
         <CustomPropertyEditModal

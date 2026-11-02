@@ -64,15 +64,30 @@ describe('ColumnCustomPropertyCell', () => {
     expect(screen.getByTestId('owner')).toBeInTheDocument();
     expect(screen.getByTestId('property-value')).toHaveTextContent('old');
     expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
-    expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-icon')).toHaveClass('hover-cell-icon');
+    expect(screen.queryByTestId('add-icon')).not.toBeInTheDocument();
   });
 
-  it('shows "not set" when the record has no value for the property', () => {
+  it('shows a + button instead of the edit icon when the property has no value', async () => {
     renderCell({ record: { ...record, extension: undefined } });
 
-    expect(screen.getByTestId('property-value')).toHaveTextContent(
-      'label.not-set'
-    );
+    expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('add-icon'));
+
+    expect(
+      screen.getByTestId('custom-property-edit-modal')
+    ).toBeInTheDocument();
+  });
+
+  it('shows the placeholder for an empty value without edit permission', () => {
+    renderCell({
+      hasEditPermissions: false,
+      record: { ...record, extension: undefined },
+    });
+
+    expect(screen.getByTestId('property-value')).toHaveTextContent('--');
+    expect(screen.queryByTestId('add-icon')).not.toBeInTheDocument();
   });
 
   it('has no edit button without edit permission', () => {
