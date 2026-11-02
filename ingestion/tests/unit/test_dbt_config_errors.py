@@ -461,6 +461,45 @@ class TestDbtCloudMultipleJobs:
         assert "1 dbt Cloud environment(s) were not ingested: [6]" in str(exc_info.value)
         assert "run [2] of job [71]" in str(exc_info.value)
 
+    @pytest.mark.parametrize("failure", ["transport", "html_body"])
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_an_unreadable_artifact_skips_only_its_environment(self, tracked_rest, failure):
+        """A timeout or a proxy's HTML page on one environment's artifact must not end the others."""
+        get, _ = _dbt_cloud_jobs_api(
+            runs_by_job={
+                "70": {"id": 1, "environment_id": 5},
+                "71": {"id": 2, "environment_id": 6},
+                "72": {"id": 3, "environment_id": 7},
+            },
+            artifacts_by_run={
+                1: {"manifest": {"nodes": {"model.p.a": _model("a")}}},
+                3: {"manifest": {"nodes": {"model.p.c": _model("c")}}},
+            },
+        )
+        serve_raw = get.raw
+
+        def get_raw(path, data=None):
+            if "/runs/2/" not in path:
+                return serve_raw(path, data)
+            if failure == "transport":
+                raise RestTransportError("GET", path, requests.exceptions.ReadTimeout())
+            response = requests.Response()
+            response.status_code = 200
+            response._content = b"<html>proxy login</html>"
+            return response
+
+        get.raw = get_raw
+        _serve(tracked_rest, get)
+        yielded = []
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            yielded.extend(
+                list(files.dbt_manifest["nodes"]) for files in get_dbt_details(_cloud_config(job_ids="70,71,72"))
+            )
+
+        assert yielded == [["model.p.a"], ["model.p.c"]]
+        assert "1 dbt Cloud environment(s) were not ingested: [6]" in str(exc_info.value)
+
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_no_job_with_a_completed_run_fails(self, tracked_rest):
         get, _ = _dbt_cloud_jobs_api(runs_by_job={})

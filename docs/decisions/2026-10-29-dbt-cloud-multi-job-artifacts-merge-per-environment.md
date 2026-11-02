@@ -30,15 +30,15 @@ model's data model written by a full one, with no SQL and no catalog columns.
   environment's dbt version; when two jobs of one environment wrote different manifest schema
   versions, the run fails naming both jobs, since one manifest schema cannot validate the other's
   nodes and processing them apart would bring back the overwrite above.
-- Only a job with no completed run is skipped. Auth errors and failures listing runs fail the
-  run at once. Any other failure on a job (an exhausted retry, a missing manifest, mismatched
-  manifest versions) leaves that job's whole environment un-ingested, since merging without the
-  job's artifacts would overwrite the models only it compiled with no SQL; the other environments
-  are still ingested, and the run is then failed naming the skipped environments. An abandoned
-  job whose last run died before compiling is common, and must not block the rest of the account.
-  When merging, the catalog and `run_results` are fetched with `get_raw`, so only a 404 reads as
-  "absent"; `get` returns `None` for a request that ran out of retries too. 429 is retried, since
-  an all-jobs scan makes one runs call per job.
+- Only a job with no completed run is skipped. Any failure listing jobs or runs, auth included,
+  fails the run at once. Any other failure on a job (an exhausted retry, an artifact denied to the
+  token, a missing manifest, mismatched manifest versions) leaves that job's whole environment
+  un-ingested, since merging without the job's artifacts would overwrite the models only it
+  compiled with no SQL; the other environments are still ingested, and the run is then failed
+  naming the skipped environments. An abandoned job whose last run died before compiling is
+  common, and must not block the rest of the account. When merging, the catalog and `run_results`
+  are fetched with `get_raw`, so only a 404 reads as "absent"; `get` returns `None` for a request
+  that ran out of retries too. 429 is retried, since an all-jobs scan makes one runs call per job.
 - The latest runs are listed first, then one environment's artifacts are downloaded, merged and
   yielded at a time, so memory holds one merged manifest rather than one per environment.
 

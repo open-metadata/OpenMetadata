@@ -19,6 +19,7 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable
 from functools import singledispatch
+from typing import Any
 
 import requests
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
@@ -346,7 +347,7 @@ def _get_dbt_cloud_job_ids(client, config: DbtCloudConfig) -> list[str]:
     """
     account_id = config.dbtCloudAccountId
     project_id = config.dbtCloudProjectId
-    params = {"offset": 0, "limit": 100}
+    params: dict[str, Any] = {"offset": 0, "limit": 100}
     if project_id:
         params["project_id"] = project_id
     job_ids = []
@@ -361,7 +362,7 @@ def _get_dbt_cloud_job_ids(client, config: DbtCloudConfig) -> list[str]:
     if not job_ids:
         scope = f"project ID '{project_id}'" if project_id else f"account '{account_id}'"
         raise DBTConfigException(f"No dbt Cloud jobs found for {scope}. Please verify the IDs are correct.")
-    logger.info(f"Fetching dbt artifacts from {len(job_ids)} dbt Cloud jobs: {job_ids}")
+    logger.info("Fetching dbt artifacts from %d dbt Cloud jobs: %s", len(job_ids), job_ids)
     return job_ids
 
 
@@ -382,7 +383,7 @@ def _get_dbt_cloud_merged_files(client, config: DbtCloudConfig, job_ids: list[st
         try:
             run = _get_dbt_cloud_latest_run(client, config, job_id)
         except DbtCloudNoRunException as exc:
-            logger.warning(f"Skipping dbt Cloud job [{job_id}]: {exc}")
+            logger.warning("Skipping dbt Cloud job [%s]: %s", job_id, exc)
             continue
         runs_by_environment[run.get("environment_id")].append(run)
     if not runs_by_environment:
@@ -396,7 +397,7 @@ def _get_dbt_cloud_merged_files(client, config: DbtCloudConfig, job_ids: list[st
         try:
             merged = _get_dbt_cloud_environment_files(client, config, runs)
         except DBTConfigException as exc:
-            logger.warning(f"Skipping dbt Cloud environment [{environment_id}]: {exc}")
+            logger.warning("Skipping dbt Cloud environment [%s]: %s", environment_id, exc)
             failed_environments.append(f"[{environment_id}] {exc}")
             continue
         yield merged
@@ -480,7 +481,7 @@ def _get_dbt_cloud_latest_run(client, config: DbtCloudConfig, job_id: str | None
     if job_id:
         params_data["job_definition_id"] = job_id
 
-    logger.debug(f"Requesting the latest completed run of dbt Cloud job [{job_id or 'any'}]")
+    logger.debug("Requesting the latest completed run of dbt Cloud job [%s]", job_id or "any")
     runs_data = _dbt_cloud_get(client, config, f"/accounts/{account_id}/runs", params_data).get("data")
     if not runs_data:
         filter_info = []
@@ -499,8 +500,11 @@ def _get_dbt_cloud_latest_run(client, config: DbtCloudConfig, job_id: str | None
         )
     last_run = runs_data[0]
     logger.info(
-        f"Retrieved last completed run [{last_run['id']}]{f' of job [{job_id}]' if job_id else ''}: "
-        f"Finished {last_run['finished_at_humanized']} (duration: {last_run['duration_humanized']})"
+        "Retrieved last completed run [%s]%s: Finished %s (duration: %s)",
+        last_run["id"],
+        f" of job [{job_id}]" if job_id else "",
+        last_run["finished_at_humanized"],
+        last_run["duration_humanized"],
     )
     return last_run
 
@@ -522,11 +526,11 @@ def _get_dbt_cloud_run_files(client, config: DbtCloudConfig, run: dict, strict: 
             logger.debug("Requesting [dbt_catalog]")
             dbt_catalog = client.get(f"{artifacts_path}/{DBT_CATALOG_FILE_NAME}")
         except Exception as exc:
-            logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog: {exc}")
+            logger.warning("dbt catalog file not found for run %s, skipping catalog: %s", run_id, exc)
             logger.debug(traceback.format_exc())
         else:
             if dbt_catalog is None:
-                logger.warning(f"dbt catalog file not found for run {run_id}, skipping catalog")
+                logger.warning("dbt catalog file not found for run %s, skipping catalog", run_id)
         try:
             logger.debug("Requesting [dbt_manifest]")
             dbt_manifest = client.get(f"{artifacts_path}/{DBT_MANIFEST_FILE_NAME}")
@@ -555,12 +559,20 @@ def _get_dbt_cloud_artifact(client, path: str, data: dict | None = None) -> dict
     Fetch a run artifact, returning None only when it does not exist: `get` also returns None
     for a request that ran out of retries
     """
-    response = client.get_raw(path, data=data)
+    from metadata.ingestion.ometa.client import RestTransportError  # pylint: disable=import-outside-toplevel
+
+    try:
+        response = client.get_raw(path, data=data)
+    except RestTransportError as exc:
+        raise DBTConfigException(f"Unable to download {path} from dbt Cloud: {exc}") from exc
     if response.status_code == 404:
         return None
     if not response.ok:
         raise DBTConfigException(f"dbt Cloud answered {response.status_code} for {path}: {response.text[:200]}")
-    return response.json()
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise DBTConfigException(f"dbt Cloud answered a non-JSON body for {path}: {response.text[:200]}") from exc
 
 
 def _get_dbt_cloud_run_results(
