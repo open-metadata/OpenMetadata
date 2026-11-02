@@ -170,7 +170,12 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
       return;
     }
     try {
-      setEntityType(await getTypeByFQN(fqn));
+      const type = await getTypeByFQN(fqn);
+      // The user may have moved to another entity type while this loaded.
+      if (resolvedFqnRef.current !== fqn) {
+        return;
+      }
+      setEntityType(type);
     } catch (err) {
       showErrorToast(err as AxiosError);
     }

@@ -98,7 +98,7 @@ export const CustomPropertyListItem = ({
       <Tooltip title={typeLabel}>
         <TooltipTrigger
           aria-label={typeLabel}
-          className={`tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg ${
+          className={`tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring ${
             TYPE_ICON_TILE_CLASS[meta.color]
           }`}>
           <TypeIcon aria-hidden className="tw:size-4" />
@@ -106,7 +106,7 @@ export const CustomPropertyListItem = ({
       </Tooltip>
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
         <Tooltip title={propertyLabel}>
-          <TooltipTrigger className="tw:block tw:w-full tw:min-w-0 tw:text-left">
+          <TooltipTrigger className="tw:block tw:w-full tw:min-w-0 tw:rounded-xs tw:text-left tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring">
             <span
               className="tw:block tw:truncate tw:text-xs tw:text-secondary"
               data-testid="property-name">
