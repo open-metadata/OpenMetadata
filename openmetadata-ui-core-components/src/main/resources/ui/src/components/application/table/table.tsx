@@ -382,16 +382,25 @@ interface TableHeadProps
   extends AriaColumnProps,
     Omit<
       ThHTMLAttributes<HTMLTableCellElement>,
-      'children' | 'className' | 'style' | 'id'
+      'children' | 'className' | 'style' | 'id' | 'align'
     > {
   label?: string;
   tooltip?: string;
+  /** Aligns the header content, e.g. `center` over a column of centred icons. @default 'start' */
+  align?: 'start' | 'center' | 'end';
 }
+
+const HEAD_ALIGN_CLASS = {
+  start: '',
+  center: 'tw:justify-center',
+  end: 'tw:justify-end',
+};
 
 const TableHead = ({
   className,
   tooltip,
   label,
+  align = 'start',
   children,
   ...props
 }: TableHeadProps) => {
@@ -418,7 +427,11 @@ const TableHead = ({
         // Layout only — a real Group (role="group") here makes Chromium
         // compute an EMPTY accessible name for the columnheader, breaking
         // every getByRole('columnheader', { name }) locator.
-        <div className="tw:flex tw:items-center tw:gap-1">
+        <div
+          className={cx(
+            'tw:flex tw:items-center tw:gap-1',
+            HEAD_ALIGN_CLASS[align]
+          )}>
           <div className="tw:flex tw:items-center tw:gap-1">
             {label && (
               <span className="tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-quaternary">
