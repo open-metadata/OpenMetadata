@@ -636,9 +636,9 @@ test('Breadcrumb navigation', async ({ page }) => {
   await page.getByTestId('add-alert').click();
   await expect(page.getByTestId('alert-name-input')).toBeVisible();
 
-  await page.getByRole('link', { name: /alert/i }).click();
+  await page.getByRole('link', { name: 'Alerts', exact: true }).click();
   await expect(page.getByTestId('alerts-list-container')).toBeVisible();
 
-  await page.getByRole('link', { name: /notification/i }).click();
+  await page.getByRole('link', { name: 'Alerts & Notifications' }).click();
   await expect(page.getByTestId('notification-landing')).toBeVisible();
 });

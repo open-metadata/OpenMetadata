@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { createRef } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { MembersHeaderPatch } from './Members.types';
 import { UseMembersTeamHeaderParams } from './MembersTeamDetail.types';
@@ -171,6 +172,21 @@ describe('useMembersTeamHeader', () => {
     render(<>{lastPatch(params.onSetHeader).actions}</>);
     fireEvent.click(screen.getByRole('button', { name: /open menu/i }));
   };
+
+  it('anchors team confirmations to the menu trigger and opens delete from the menu', () => {
+    const menuTriggerRef = createRef<HTMLButtonElement>();
+    const params = buildParams({ menuTriggerRef });
+    openMenu(params);
+
+    // The open menu hides the rest of the page from assistive tech.
+    expect(menuTriggerRef.current).toBe(
+      screen.getByRole('button', { hidden: true, name: /open menu/i })
+    );
+
+    fireEvent.click(screen.getByTestId('delete-team'));
+
+    expect(params.onDelete).toHaveBeenCalled();
+  });
 
   it('offers export and import on a team the viewer can edit', () => {
     openMenu(buildParams({ isGroupType: false }));

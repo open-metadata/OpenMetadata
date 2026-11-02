@@ -135,6 +135,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
           typingInterval: 500,
         }}
         size="small"
+        variant="muted"
       />
       {showUsersPagination && (
         <PaginationCardWithControls

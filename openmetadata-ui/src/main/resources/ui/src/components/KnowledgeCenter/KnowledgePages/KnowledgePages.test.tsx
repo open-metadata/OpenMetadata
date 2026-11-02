@@ -13,10 +13,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import {
-  TourContext,
-  TourProviderContextProps,
-} from '../../../context/TourProvider/TourProvider';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgePages from './KnowledgePages';
 import { MOCK_KNOWLEDGE_PAGES } from './KnowledgePages.mock';
@@ -231,30 +227,6 @@ describe('KnowledgePages', () => {
 
     expect(getListKnowledgePages).not.toHaveBeenCalled();
 
-    expect(screen.queryByTestId('knowledge-pages')).not.toBeInTheDocument();
-  });
-
-  it('should not fetch knowledge pages for the tour mock entity', async () => {
-    // The previous test empties the shared entity; a real one is what makes this meaningful.
-    mockProps.entityId = '9d664bbd-8c9e-4068-9112-9ab0457d4c52';
-    mockProps.entityType = 'table';
-    (getListKnowledgePages as jest.Mock).mockClear();
-
-    await act(async () => {
-      render(
-        <TourContext.Provider
-          value={
-            {
-              isTourPage: true,
-            } as Partial<TourProviderContextProps> as TourProviderContextProps
-          }>
-          <KnowledgePages />
-        </TourContext.Provider>,
-        { wrapper: MemoryRouter }
-      );
-    });
-
-    expect(getListKnowledgePages).not.toHaveBeenCalled();
     expect(screen.queryByTestId('knowledge-pages')).not.toBeInTheDocument();
   });
 });

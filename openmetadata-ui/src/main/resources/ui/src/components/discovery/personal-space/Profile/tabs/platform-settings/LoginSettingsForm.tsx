@@ -126,6 +126,7 @@ const LoginSettingsForm = ({
 
   return (
     <SettingsFormLayout
+      centered
       form={form}
       isSaving={isSaving}
       showHint={showHint}

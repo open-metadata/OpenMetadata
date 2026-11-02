@@ -294,9 +294,13 @@ describe('Glossary Utils', () => {
   it('should allow glossary review actions for task assignees even when reviewers are not hydrated', () => {
     const result = permissionForApproveOrReject(
       {
+        id: 'term-id',
+        name: 'Term',
+        description: 'Term description',
+        glossary: { id: 'glossary-id', type: 'glossary' },
         fullyQualifiedName: '"Glossary"."Term"',
         reviewers: [],
-      } as ModifiedGlossaryTerm,
+      },
       { id: 'user-1' } as never,
       {
         '<#E::glossaryTerm::"Glossary"."Term">': [

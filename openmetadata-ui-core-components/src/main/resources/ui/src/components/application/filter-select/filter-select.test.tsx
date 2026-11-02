@@ -1128,6 +1128,29 @@ describe('FilterSelect', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows a row description under its label, always visible', () => {
+    renderFilter({
+      options: [
+        { value: 't1', label: 'Tier1', description: 'Critical source' },
+      ],
+    });
+
+    const row = screen.getByTestId('t1');
+
+    expect(within(row).getByText('Tier1')).toBeInTheDocument();
+    expect(within(row).getByText('Critical source')).toBeInTheDocument();
+    expect(screen.queryByTestId('t1-expand')).not.toBeInTheDocument();
+  });
+
+  it('lets menuClassName replace the default list height cap', () => {
+    renderFilter({ menuClassName: 'tw:max-h-104' });
+
+    const menu = screen.getByRole('menu');
+
+    expect(menu).toHaveClass('tw:max-h-104');
+    expect(menu).not.toHaveClass('tw:max-h-64');
+  });
+
   describe('row details', () => {
     const TIERS = [
       { value: 't1', label: 'Tier1', details: 'Critical metrics' },

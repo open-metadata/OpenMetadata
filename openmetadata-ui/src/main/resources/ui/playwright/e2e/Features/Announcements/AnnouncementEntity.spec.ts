@@ -23,7 +23,7 @@
  *  limitations under the License.
  */
 
-import test from '@playwright/test';
+import test, { Page } from '@playwright/test';
 import { EXTENDED_TEST_TIMEOUT } from '../../../constant/common';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
@@ -63,10 +63,7 @@ const createSeedAnnouncement = async (
   }
 };
 
-const visitDomainPage = async (
-  page: Parameters<typeof test>[0]['page'],
-  domain: Domain
-) => {
+const visitDomainPage = async (page: Page, domain: Domain) => {
   await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.DOMAIN);
   await selectDomain(page, domain.responseData);

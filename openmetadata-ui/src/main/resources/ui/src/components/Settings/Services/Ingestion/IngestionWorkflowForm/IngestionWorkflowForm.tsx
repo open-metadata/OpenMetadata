@@ -46,7 +46,10 @@ import {
 import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
-import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import {
+  getSchemaByWorkflowType,
+  validateOwnerConfigMaps,
+} from '../../../../../utils/IngestionWorkflowUtils';
 import { formatAdditionalProperties } from '../../../../../utils/JSONSchemaFormUtils';
 import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
@@ -407,6 +410,7 @@ const IngestionWorkflowForm = forwardRef<
         focusOnFirstError
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
+        customValidate={validateOwnerConfigMaps}
         fields={customFields}
         formContext={{ handleFocus: handleFieldFocus }}
         formData={internalData}

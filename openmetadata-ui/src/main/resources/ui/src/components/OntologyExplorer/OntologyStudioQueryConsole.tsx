@@ -61,6 +61,7 @@ import { OntologyGraphData } from './OntologyExplorer.interface';
 import OntologyQueryResults from './OntologyQueryResults';
 import {
   buildOntologyQuerySuggestions,
+  isCanonicalGlossaryQueryTemplate,
   NEW_NATIVE_ONTOLOGY_QUERY,
   NEW_ONTOLOGY_QUERY,
   OntologyQuerySuggestion,
@@ -609,6 +610,7 @@ const OntologyStudioQueryConsole = ({
   const { isAdminUser } = useAuth();
   const {
     isLoading,
+    loadStatus,
     queryTemplates,
     savedQueries,
     deleteQueryTemplate,
@@ -766,12 +768,16 @@ const OntologyStudioQueryConsole = ({
 
   useEffect(() => {
     // The ref keeps a re-run (React strict mode) from creating a second query.
-    if (!createQueryOnMount || isLoading || hasCreatedOnMountRef.current) {
+    if (
+      !createQueryOnMount ||
+      loadStatus !== 'ready' ||
+      hasCreatedOnMountRef.current
+    ) {
       return;
     }
     hasCreatedOnMountRef.current = true;
     void handleNewQuery().then(() => onQueryCreated?.());
-  }, [createQueryOnMount, handleNewQuery, isLoading, onQueryCreated]);
+  }, [createQueryOnMount, handleNewQuery, loadStatus, onQueryCreated]);
 
   const activeQuery = describeActiveQuery(
     activeQueryId,
@@ -921,34 +927,39 @@ const OntologyStudioQueryConsole = ({
       testId: `ontology-query-suggestion-${suggestion.id}`,
       onRun: () => runListedQuery(suggestion.id, suggestion.query),
     })),
-    ...queryTemplates.map((queryTemplate) => ({
-      actions: isAdminUser ? (
-        <>
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`ontology-query-template-edit-${queryTemplate.id}`}
-            icon={Edit03}
-            size="xs"
-            tooltip={`${t('label.edit')} ${queryTemplate.name}`}
-            onClick={() => handleTemplateEdit(queryTemplate)}
-          />
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`ontology-query-template-delete-${queryTemplate.id}`}
-            icon={Trash01}
-            size="xs"
-            tooltip={`${t('label.delete')} ${queryTemplate.name}`}
-            onClick={() => void handleDeleteTemplate(queryTemplate.id)}
-          />
-        </>
-      ) : undefined,
-      id: `template-${queryTemplate.id}`,
-      isDirty: isDirty && activeQueryId === `template-${queryTemplate.id}`,
-      label: queryTemplate.name,
-      testId: `ontology-query-template-${queryTemplate.id}`,
-      onRun: () =>
-        runListedQuery(`template-${queryTemplate.id}`, queryTemplate.query),
-    })),
+    ...queryTemplates
+      .filter(
+        (template) =>
+          !selectedOntologyId || !isCanonicalGlossaryQueryTemplate(template)
+      )
+      .map((queryTemplate) => ({
+        actions: isAdminUser ? (
+          <>
+            <ButtonUtility
+              color="tertiary"
+              data-testid={`ontology-query-template-edit-${queryTemplate.id}`}
+              icon={Edit03}
+              size="xs"
+              tooltip={`${t('label.edit')} ${queryTemplate.name}`}
+              onClick={() => handleTemplateEdit(queryTemplate)}
+            />
+            <ButtonUtility
+              color="tertiary"
+              data-testid={`ontology-query-template-delete-${queryTemplate.id}`}
+              icon={Trash01}
+              size="xs"
+              tooltip={`${t('label.delete')} ${queryTemplate.name}`}
+              onClick={() => void handleDeleteTemplate(queryTemplate.id)}
+            />
+          </>
+        ) : undefined,
+        id: `template-${queryTemplate.id}`,
+        isDirty: isDirty && activeQueryId === `template-${queryTemplate.id}`,
+        label: queryTemplate.name,
+        testId: `ontology-query-template-${queryTemplate.id}`,
+        onRun: () =>
+          runListedQuery(`template-${queryTemplate.id}`, queryTemplate.query),
+      })),
   ];
   const myQueryItems: QueryListItem[] = savedQueries.map((savedQuery) => ({
     actions: (
@@ -1028,7 +1039,9 @@ const OntologyStudioQueryConsole = ({
         className="tw:h-full tw:bg-primary"
         data-testid="ontology-studio-query-console">
         <Box
+          aria-busy={isLoading}
           className="tw:w-70 tw:shrink-0 tw:border-r tw:border-secondary"
+          data-library-state={loadStatus}
           data-testid="ontology-query-sample-rail"
           direction="col">
           <Box
@@ -1054,24 +1067,35 @@ const OntologyStudioQueryConsole = ({
             className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-2 tw:pt-4 tw:pb-6"
             direction="col"
             gap={6}>
-            <QueryGroup
-              activeQueryId={activeQueryId}
-              emptyText={t('message.no-query-available')}
-              hint={t('message.shared-queries-description')}
-              isLoading={isLoading}
-              items={sharedQueryItems}
-              listTestId="ontology-query-template-list"
-              title={t('label.shared-queries')}
-            />
-            <QueryGroup
-              areActionsAlwaysVisible
-              activeQueryId={activeQueryId}
-              emptyText={t('message.my-queries-empty')}
-              hint={t('message.sparql-private-queries-description')}
-              items={myQueryItems}
-              listTestId="ontology-query-saved-list"
-              title={t('label.my-queries')}
-            />
+            {loadStatus === 'error' ? (
+              <Typography
+                className="tw:px-3 tw:text-error-primary"
+                role="alert"
+                size="text-sm">
+                {t('server.unexpected-error')}
+              </Typography>
+            ) : (
+              <>
+                <QueryGroup
+                  activeQueryId={activeQueryId}
+                  emptyText={t('message.no-query-available')}
+                  hint={t('message.shared-queries-description')}
+                  isLoading={isLoading}
+                  items={sharedQueryItems}
+                  listTestId="ontology-query-template-list"
+                  title={t('label.shared-queries')}
+                />
+                <QueryGroup
+                  areActionsAlwaysVisible
+                  activeQueryId={activeQueryId}
+                  emptyText={t('message.my-queries-empty')}
+                  hint={t('message.sparql-private-queries-description')}
+                  items={myQueryItems}
+                  listTestId="ontology-query-saved-list"
+                  title={t('label.my-queries')}
+                />
+              </>
+            )}
           </Box>
         </Box>
 

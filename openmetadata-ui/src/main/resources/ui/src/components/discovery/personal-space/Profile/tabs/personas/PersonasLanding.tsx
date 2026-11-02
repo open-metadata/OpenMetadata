@@ -19,6 +19,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -202,10 +203,11 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     return (
       <Box
         align="center"
-        className="tw:min-h-64 tw:px-8 tw:relative"
+        className="tw:min-h-64 tw:flex-1 tw:px-8 tw:relative"
         data-testid="personas-landing-empty"
         justify="center">
         <NoDataPlaceholder
+          icon={<PersonaIcon />}
           title={t('label.no-entity-found', {
             entity: t('label.persona-plural'),
           })}

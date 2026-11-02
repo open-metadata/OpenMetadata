@@ -548,9 +548,7 @@ export const fetchEntityActivityCountInto = async (
 
 /**
  * The activity feed's authorship test: match on id when the post carries one,
- * otherwise on name. Shared so a call site that has to pass `canEdit` /
- * `canDelete` into ActivityFeedActions derives them from the same rule the
- * component itself falls back to, rather than a second copy of it.
+ * otherwise on name.
  */
 export const isFeedPostAuthor = (
   currentUser: { id?: string; name?: string } | undefined,
@@ -564,3 +562,14 @@ export const isFeedPostAuthor = (
     ? author.id === currentUser?.id
     : authorName === currentUser?.name;
 };
+
+/**
+ * Who may edit or delete a conversation or its reply: the author or an admin.
+ * ActivityFeedActions falls back to this rule, and a card that has to know
+ * beforehand whether that menu renders asks it too, so the two cannot drift.
+ */
+export const canManageFeedPost = (
+  currentUser: { id?: string; name?: string; isAdmin?: boolean } | undefined,
+  author: Parameters<typeof isFeedPostAuthor>[1]
+): boolean =>
+  isFeedPostAuthor(currentUser, author) || Boolean(currentUser?.isAdmin);

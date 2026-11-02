@@ -679,7 +679,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       restore: testCaseRestorePermission,
     } = getRowActionPermissions(
       testCasePermission,
-      isEditAllowed,
+      isEditAllowed ?? false,
       removeFromTestSuite?.isAllowed
     );
     const isRestoreMode =

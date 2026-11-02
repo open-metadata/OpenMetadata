@@ -109,9 +109,9 @@ public class HttpServletStatelessServerTransport extends HttpServlet
    * The request path without the servlet context path. Under a BASE_PATH the context path is that
    * base path, so the raw request URI never equals the bare MCP routes.
    */
-  public static String pathInContext(HttpServletRequest request) {
-    String requestUri = request.getRequestURI();
-    String contextPath = request.getContextPath();
+  public static String pathInContext(final HttpServletRequest request) {
+    final String requestUri = request.getRequestURI();
+    final String contextPath = request.getContextPath();
     return !nullOrEmpty(contextPath) && requestUri.startsWith(contextPath)
         ? requestUri.substring(contextPath.length())
         : requestUri;

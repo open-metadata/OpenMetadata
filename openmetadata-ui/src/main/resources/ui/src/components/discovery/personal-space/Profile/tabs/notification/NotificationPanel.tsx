@@ -210,7 +210,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     return {
       Component: card ? contribution?.component : undefined,
       isDenied: Boolean(contribution) && !card,
-      label: card?.title ?? t('label.notification'),
+      label: card?.title ?? t('label.alerts-and-notifications'),
       description: card?.description,
       icon: card?.icon,
     };
@@ -284,7 +284,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     }
 
     const settingsLabel = t('label.setting-plural');
-    const notificationLabel = t('label.notification');
+    const notificationLabel = t('label.alerts-and-notifications');
     const alertsLabel = t('label.alert-plural');
     const addAlertLabel = t('label.add-entity', { entity: t('label.alert') });
     const editAlertLabel = t('label.edit-entity', {

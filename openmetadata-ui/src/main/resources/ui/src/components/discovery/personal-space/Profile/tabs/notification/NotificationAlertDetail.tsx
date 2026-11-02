@@ -59,13 +59,13 @@ import {
   getDiagnosticInfo,
   syncOffset,
 } from '../../../../../../rest/observabilityAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
+import { formatEventCount } from '../../../../../../utils/Alerts/AlertsUtilPure';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -181,7 +181,10 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.total-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {eventsRecord.totalEventsCount ?? 0}
+          {formatEventCount(
+            eventsRecord.totalEventsCount,
+            eventsRecord.countsAreLowerBound
+          )}
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
@@ -189,7 +192,10 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.pending-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {eventsRecord.pendingEventsCount ?? 0}
+          {formatEventCount(
+            eventsRecord.pendingEventsCount,
+            eventsRecord.countsAreLowerBound
+          )}
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
@@ -207,26 +213,28 @@ const DiagnosticStatsSummary: FC<{
 // ─── Header actions builder ──────────────────────────────────────────────────
 
 function buildHeaderActions({
+  alertId,
+  alertName,
   canDelete,
   canEditAll,
   fqn,
+  handleAfterDelete,
   handleSync,
-  isDeleting,
   isSystemProvider,
   isSyncing,
   onNavigate,
-  setIsDeleteModalOpen,
   t,
 }: {
+  alertId?: string;
+  alertName: string;
   canDelete: boolean;
   canEditAll: boolean;
   fqn: string;
+  handleAfterDelete: () => void;
   handleSync: () => void;
-  isDeleting: boolean;
   isSystemProvider: boolean;
   isSyncing: boolean;
   onNavigate: (view: NotificationView) => void;
-  setIsDeleteModalOpen: (open: boolean) => void;
   t: ReturnType<typeof useTranslation>['t'];
 }): React.ReactNode {
   return (
@@ -236,7 +244,6 @@ function buildHeaderActions({
         data-testid="sync-alert-btn"
         icon={RefreshCw01}
         isDisabled={isSyncing || !canEditAll}
-        isLoading={isSyncing}
         size="xs"
         tooltip={String(
           canEditAll
@@ -256,15 +263,24 @@ function buildHeaderActions({
         />
       )}
       {canDelete && !isSystemProvider && (
-        <ButtonUtility
-          color="tertiary"
-          data-testid="delete-alert-btn"
-          icon={Trash01}
-          isDisabled={isDeleting}
-          size="xs"
-          tooltip={String(t('label.delete'))}
-          onPress={() => setIsDeleteModalOpen(true)}
-        />
+        <DeleteEntityPopover
+          afterDeleteAction={handleAfterDelete}
+          allowSoftDelete={false}
+          data-testid="delete-alert-popover"
+          description={t('message.permanently-delete-common-message', {
+            entity: t('label.alert-lowercase'),
+          })}
+          entityId={alertId}
+          entityName={alertName}
+          entityType={EntityType.SUBSCRIPTION}>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="delete-alert-btn"
+            icon={Trash01}
+            size="xs"
+            tooltip={String(t('label.delete'))}
+          />
+        </DeleteEntityPopover>
       )}
     </Box>
   );
@@ -309,10 +325,6 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
 
   // Sync
   const [isSyncing, setIsSyncing] = useState(false);
-
-  // Delete
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Permissions
   const {
@@ -407,24 +419,10 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
     }
   }, [fqn, t]);
 
-  const handleDelete = useCallback(async () => {
-    if (!alert) {
-      return;
-    }
-
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(alert),
-      alert.id ?? '',
-      EntityType.SUBSCRIPTION
-    );
-    setIsDeleting(false);
-    setIsDeleteModalOpen(false);
-
-    if (isSuccess) {
-      onNavigate({ type: 'list' });
-    }
-  }, [alert, onNavigate]);
+  const handleAfterDelete = useCallback(
+    () => onNavigate({ type: 'list' }),
+    [onNavigate]
+  );
 
   const handleOwnerUpdate = useCallback(
     async (updatedOwners?: EntityReference[]) => {
@@ -452,6 +450,8 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
 
   const editOwnersPermission = canEditOwners;
 
+  const alertName = useMemo(() => (alert ? getEntityName(alert) : ''), [alert]);
+
   useEffect(() => {
     if (!alert) {
       return;
@@ -459,33 +459,33 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
 
     onSetHeaderActions?.(
       buildHeaderActions({
+        alertId: alert.id,
+        alertName,
         canDelete,
         canEditAll,
         fqn,
+        handleAfterDelete,
         handleSync,
-        isDeleting,
         isSystemProvider,
         isSyncing,
         onNavigate,
-        setIsDeleteModalOpen,
         t,
       })
     );
   }, [
     alert,
+    alertName,
     canDelete,
     canEditAll,
     fqn,
+    handleAfterDelete,
     handleSync,
-    isDeleting,
     isSystemProvider,
     isSyncing,
     onNavigate,
     onSetHeaderActions,
     t,
   ]);
-
-  const alertName = useMemo(() => (alert ? getEntityName(alert) : ''), [alert]);
 
   useEffect(() => {
     if (alertName) {
@@ -579,17 +579,6 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
           />
         </Tabs.Panel>
       </Tabs>
-
-      <DeleteModal
-        entityTitle={alertName}
-        isDeleting={isDeleting}
-        message={t('message.permanently-delete-common-message', {
-          entity: alertName.toLowerCase(),
-        })}
-        open={isDeleteModalOpen}
-        onCancel={() => setIsDeleteModalOpen(false)}
-        onDelete={handleDelete}
-      />
     </Box>
   );
 };

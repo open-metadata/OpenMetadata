@@ -12,6 +12,7 @@
  */
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { ChevronRight, Column } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -27,7 +28,21 @@ export interface FeedFieldPathProps {
   entityType?: string;
   // An activity event's header already names the field it changed.
   showField?: boolean;
+  /**
+   * Replaces the default `tw:min-w-0`, which lets the trail shrink below its
+   * separators and field label. A caller that needs the field kept whole while
+   * a long column name truncates passes `tw:min-w-min`.
+   */
+  className?: string;
+  /** Caps a long column name, so the trail's minimum width stays bounded. */
+  truncateColumn?: boolean;
 }
+
+const getColumnLinkClassName = (truncateColumn?: boolean) =>
+  classNames(
+    'tw:truncate tw:text-sm tw:text-brand-secondary tw:hover:underline',
+    truncateColumn && 'tw:max-w-24'
+  );
 
 const Separator = () => (
   <ChevronRight
@@ -45,6 +60,8 @@ const FeedFieldPath = ({
   about,
   entityType,
   showField = true,
+  className = 'tw:min-w-0',
+  truncateColumn,
 }: FeedFieldPathProps) => {
   const { t } = useTranslation();
   const path = useMemo(() => getFeedFieldPath(about), [about]);
@@ -59,7 +76,7 @@ const FeedFieldPath = ({
     <Box
       inline
       align="center"
-      className="tw:min-w-0 tw:gap-1.5"
+      className={classNames('tw:gap-1.5', className)}
       data-testid="feed-field-path">
       {path?.child && <Separator />}
       {path?.child?.columnFqn && (
@@ -69,7 +86,7 @@ const FeedFieldPath = ({
             className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
           />
           <Link
-            className="tw:truncate tw:text-sm tw:text-brand-secondary tw:hover:underline"
+            className={getColumnLinkClassName(truncateColumn)}
             data-testid="feed-field-path-column"
             to={entityUtilClassBase.getEntityLink(
               entityType,

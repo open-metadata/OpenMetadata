@@ -143,7 +143,11 @@ const AppInstallDetailsStep: FC<{
         </Typography>
       </Box>
 
-      <Card className="tw:mt-4" data-testid="authorize-card" size="md">
+      <Card
+        className="tw:mt-4"
+        data-testid="authorize-card"
+        size="md"
+        variant="muted">
         <Card.Content>
           <Box align="center" direction="row" gap={3}>
             <UserPopOverCard

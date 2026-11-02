@@ -34,6 +34,7 @@ import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceho
 import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../../../components/common/Loader/Loader';
 import { ClientErrors } from '../../../../../enums/Axios.enum';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { User } from '../../../../../generated/entity/teams/user';
 import { useViewedUserFirstName } from '../../../../../hooks/discovery/personal-space/useViewedUserFirstName';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
@@ -582,6 +583,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // stays responsive while the request trails it.
   const [searchQuery, setSearchQuery] = useState('');
   const [grouping, setGrouping] = useState<InboxTaskGrouping>('type');
+  const [sortOrder, setSortOrder] = useState(SORT_ORDER.DESC);
   // Kinds as getTaskTypeKey names them, so types sharing a label filter as one.
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   // Narrows the active tab; nothing chosen shows all of it.
@@ -651,6 +653,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         limit: TASK_LIMIT,
         after,
         q: titleSearch.text || undefined,
+        sortOrder,
       };
 
       // aboutEntity = entity-page mode (all tasks about that entity); a user
@@ -664,7 +667,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         ? fetchUserTasksPage(user, params, after)
         : listMyVisibleTasks(params);
     },
-    [status, aboutEntity, user, titleSearch.text]
+    [status, aboutEntity, user, titleSearch.text, sortOrder]
   );
 
   // A short narrowed list keeps the scroll sentinel in view, which would page
@@ -711,7 +714,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setItems,
     setTotal,
   } = useInboxInfiniteList<Task>(
-    [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text],
+    [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text, sortOrder],
     fetchPage,
     canLoadMore
   );
@@ -768,8 +771,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
     () => (grouping === 'type' ? groupTasksByType(visibleTasks) : undefined),
     [grouping, visibleTasks]
   );
-  // The top row as displayed; grouping reorders the server's newest-first
-  // list, so its first task can sit anywhere in the grouped view.
+  // The top row as displayed; grouping reorders the server's list, so its
+  // first task can sit anywhere in the grouped view.
   const firstTaskId = taskGroups
     ? taskGroups[0]?.items[0]?.id
     : visibleTasks[0]?.id;
@@ -922,6 +925,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
             grouping={grouping}
             inline={Boolean(onOpenTask)}
             search={search}
+            sortOrder={sortOrder}
             statusFilter={statusFilter}
             statusOptions={STATUS_OPTIONS_BY_TAB[status]}
             statusTabs={statusTabs}
@@ -929,6 +933,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
             typeFilter={typeFilter}
             onGroupingChange={setGrouping}
             onSearchChange={handleSearchChange}
+            onSortOrderChange={setSortOrder}
             onStatusFilterChange={setStatusFilter}
             onTypeFilterChange={setTypeFilter}
           />

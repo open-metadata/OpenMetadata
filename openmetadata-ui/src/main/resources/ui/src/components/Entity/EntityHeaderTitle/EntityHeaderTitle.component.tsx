@@ -27,10 +27,8 @@ import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -76,7 +74,6 @@ const EntityHeaderTitle = ({
   entityUrl,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
-  const location = useCustomLocation();
   const [copyTooltip, setCopyTooltip] = useState<string>();
   const { onCopyToClipBoard } = useClipboard(
     entityUrl ?? globalThis.location.href
@@ -89,11 +86,6 @@ const EntityHeaderTitle = ({
     setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
   };
-
-  const isTourRoute = useMemo(
-    () => location.pathname.includes(ROUTES.TOUR),
-    [location.pathname]
-  );
 
   const formattedEntityType = useMemo(
     () => entityUtilClassBase.getFormattedEntityType(entityType as EntityType),
@@ -283,7 +275,7 @@ const EntityHeaderTitle = ({
     </div>
   );
 
-  return link && !isTourRoute ? (
+  return link ? (
     <Link
       className="no-underline d-inline-block w-max-full tw:min-w-0 entity-header-title-link"
       data-testid="entity-link"

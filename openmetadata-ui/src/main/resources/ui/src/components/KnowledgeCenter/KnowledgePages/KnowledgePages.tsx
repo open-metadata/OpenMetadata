@@ -25,7 +25,6 @@ import Loader from '../../../components/common/Loader/Loader';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { PAGE_SIZE, ROUTES } from '../../../constants/constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { Paging } from '../../../generated/type/paging';
 import {
@@ -48,7 +47,6 @@ const KnowledgePages: FC = () => {
     type: entityType,
     filterWidgets,
   } = useGenericContext();
-  const { isTourPage } = useTourProvider();
 
   const fetchKnowledgePages = async () => {
     setIsLoading(true);
@@ -67,12 +65,12 @@ const KnowledgePages: FC = () => {
   };
 
   useEffect(() => {
-    if (entityId && entityType && !isTourPage) {
+    if (entityId && entityType) {
       fetchKnowledgePages();
     } else {
       setIsLoading(false);
     }
-  }, [entityId, entityType, isTourPage]);
+  }, [entityId, entityType]);
 
   // only show view all if length is greater than PAGE_SIZE i.e 10
   const headerExtra = paging?.total > PAGE_SIZE && (

@@ -123,13 +123,15 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
       data-testid="intake-form-page"
       direction="col">
       <div className="tw:flex-1 tw:overflow-y-auto">
-        <IntakeFormDesignerBody
-          open
-          entityType={resolvedEntityType}
-          initialValue={existing}
-          ref={bodyRef}
-          onSubmit={handleSubmit}
-        />
+        <div className="tw:max-w-[50%] tw:w-full tw:mx-auto">
+          <IntakeFormDesignerBody
+            open
+            entityType={resolvedEntityType}
+            initialValue={existing}
+            ref={bodyRef}
+            onSubmit={handleSubmit}
+          />
+        </div>
       </div>
 
       <Box

@@ -38,6 +38,7 @@ public final class SearchEntityTypeCounts {
   private static final String PRECISE = "precise";
   private static final String PROBE = "probe";
   private static final String EXACT_TOTAL_RELATION = "eq";
+  private static final String ENTITY_TYPE = "entityType";
   private static final int MAX_CONCURRENT_AGGREGATIONS = 8;
   private static final AggregationExecutor AGGREGATION_EXECUTOR =
       new AggregationExecutor(
@@ -282,12 +283,19 @@ public final class SearchEntityTypeCounts {
     return value.longValue();
   }
 
+  // ADR:2026-10-29-explore-top-hit-hint-is-the-identity-probe — sized and projected so the
+  // identifier-precision search reuses it as its probe; only the top hit is returned.
   private SearchRequest hintRequest(SearchRequest request) {
+    List<String> fields =
+        Stream.concat(Stream.of(ENTITY_TYPE), SearchRankingHelper.identityFields().stream())
+            .toList();
     return JsonUtils.deepCopy(request, SearchRequest.class)
         .withIndex(searchRepository.getIndexOrAliasName(DATA_ASSET_SEARCH_ALIAS))
-        .withSize(1)
+        .withSize(SearchRankingHelper.identityProbeSize())
         .withFetchSource(true)
-        .withIncludeSourceFields(List.of("entityType"));
+        .withIncludeSourceFields(fields)
+        .withIncludeHighlights(false)
+        .withTrackTotalHits(false);
   }
 
   private ObjectNode fetchHint(SearchRequest hint) throws IOException {
@@ -300,7 +308,18 @@ public final class SearchEntityTypeCounts {
   }
 
   private ObjectNode attachHint(ObjectNode response, ObjectNode hint) {
-    ((ObjectNode) response.path("hits")).set("hits", hint.at("/hits/hits"));
+    ArrayNode topHit = JsonUtils.getObjectMapper().createArrayNode();
+    if (hint.at("/hits/hits/0") instanceof ObjectNode first) {
+      ObjectNode hit = first.deepCopy();
+      // Identity fields are only fetched for the probe; the hint exposes the entity type alone.
+      ObjectNode source = hit.putObject("_source");
+      JsonNode entityType = first.at("/_source/" + ENTITY_TYPE);
+      if (!entityType.isMissingNode()) {
+        source.set(ENTITY_TYPE, entityType);
+      }
+      topHit.add(hit);
+    }
+    ((ObjectNode) response.path("hits")).set("hits", topHit);
     ((ObjectNode) response.path("hits")).set("max_score", hint.at("/hits/max_score"));
     mergeMetrics(response, hint);
     return response;

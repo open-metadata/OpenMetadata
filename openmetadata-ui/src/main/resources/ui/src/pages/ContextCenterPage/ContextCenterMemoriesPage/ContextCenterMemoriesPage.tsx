@@ -692,7 +692,7 @@ const ContextCenterMemoriesPage: FC = () => {
     }
     setIsDeletingMemory(true);
     try {
-      await deleteContextMemory(memoryToDelete.id);
+      await deleteContextMemory(memoryToDelete.id, true);
       void queryClient.invalidateQueries({
         queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
       });
@@ -865,7 +865,9 @@ const ContextCenterMemoriesPage: FC = () => {
       <PageLayout
         className={pageLayoutClassNames.root}
         data-testid="context-center-page-layout">
-        <PageLayout.Header className={pageLayoutClassNames.header}>
+        <PageLayout.Header
+          className={pageLayoutClassNames.header}
+          data-tour-step="memories">
           <ContextCenterHeader
             actionsSlot={headerActions}
             breadcrumbs={[
