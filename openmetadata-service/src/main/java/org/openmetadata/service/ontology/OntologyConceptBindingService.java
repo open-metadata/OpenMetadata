@@ -203,7 +203,7 @@ public final class OntologyConceptBindingService {
           || !(target instanceof Table table)
           || OntologyBindingRules.resolveColumn(table, binding.getColumnPath()) == null) {
         throw new BadRequestException(
-            "Bindings require an applicable same-ontology DATA property and an existing exact column path");
+            "Bindings require an applicable same-ontology DATA or OBJECT property and an existing exact column path");
       }
     }
   }

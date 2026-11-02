@@ -105,6 +105,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
 
   const [isTogglingDefault, setIsTogglingDefault] = useState(false);
 
+  const fetchRequestIdRef = useRef(0);
+
   // Personas are not soft-deletable here (ManageButton legacy passed deleted=false),
   // so the permission lookup is deliberately ungated.
   const {
@@ -121,21 +123,45 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   );
 
   const fetchPersona = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
     try {
       const data = await getPersonaByName(fqn);
+      // Drop the response when a later fqn change has superseded this request,
+      // so persona A's data can never land after the prop has moved to persona B.
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       setPersona(data);
       onRename(getEntityName(data));
     } catch (error) {
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       showErrorToast(error as AxiosError);
+      // Clear the previously loaded persona so its body/actions cannot keep
+      // rendering under the new fqn's header when the refetch fails.
+      setPersona(undefined);
     } finally {
-      setIsLoading(false);
+      if (fetchRequestIdRef.current === requestId) {
+        setIsLoading(false);
+      }
     }
   }, [fqn, onRename]);
 
   useEffect(() => {
     void fetchPersona();
   }, [fetchPersona]);
+
+  // Discard persona-specific editing state when the persona changes. The
+  // parent re-mounts this component per fqn (key={fqn}); this guard also makes
+  // a no-key re-render safe, so an open rename/edit session for persona A can
+  // never be submitted against persona B after an fqn-only prop change.
+  useEffect(() => {
+    setIsEditingDesc(false);
+    setIsRenameOpen(false);
+    setRenameValue('');
+  }, [fqn]);
 
   const patchPersona = useCallback(
     async (data: Partial<Persona>) => {

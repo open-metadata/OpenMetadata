@@ -603,6 +603,8 @@ class HexSource(DashboardServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning("Could not parse SQL cell %s of Hex project %s: %s", cell.id, project.id, exc)
+                if cell.resultVariableName:
+                    upstream.fail(cell.resultVariableName, cell.dataConnectionId)
                 cell_id = cell.staticId or cell.id
                 lineage = HexCellLineage(name=cell_id, label=cell.label or cell_id, sql=cell.sql or "", failed=True)
             if lineage:
@@ -630,6 +632,13 @@ class HexSource(DashboardServiceSource):
             # the SQL cells it reads
             for reference in get_table_references(expression):
                 reference.meta[UNRESOLVED] = True
+        # Without the cell it reads this one would lose its columns and their lineage,
+        # so it fails too and keeps its existing group
+        failed = upstream.failed_readable_by(cell.dataConnectionId)
+        if failed and (
+            read := {table.name.lower() for table in get_table_references(expression) if not table.db} & failed
+        ):
+            raise ValueError(f"it reads {', '.join(sorted(read))}, whose SQL failed")
         if (
             not inline_upstream_cells(expression, upstream.readable_by(cell.dataConnectionId))
             and not cell.dataConnectionId

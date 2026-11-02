@@ -33,6 +33,8 @@ public class FolderRepository extends EntityRepository<Folder> {
         "");
     supportsSearch = true;
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
+    // A registered fetcher, so the search write path can load the count on its own.
+    fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
   }
 
   @Override
@@ -72,27 +74,30 @@ public class FolderRepository extends EntityRepository<Folder> {
           folder -> folder.setChildren(childrenMap.getOrDefault(folder.getId(), List.of())));
     }
 
-    if (fields.contains("childrenCount")) {
-      List<String> ids = entities.stream().map(f -> f.getId().toString()).toList();
-      Map<UUID, Integer> countMap =
-          daoCollection
-              .relationshipDAO()
-              .countNonDeletedChildFilesBatch(
-                  ids,
-                  FOLDER_ENTITY,
-                  Relationship.CONTAINS.ordinal(),
-                  ContextFileRepository.CONTEXT_FILE_ENTITY)
-              .stream()
-              .collect(
-                  Collectors.toMap(
-                      CollectionDAO.EntityRelationshipCount::getId,
-                      CollectionDAO.EntityRelationshipCount::getCount));
-      entities.forEach(folder -> folder.setChildrenCount(countMap.getOrDefault(folder.getId(), 0)));
-    }
-
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  private void fetchAndSetChildrenCount(List<Folder> entities, EntityUtil.Fields fields) {
+    if (!fields.contains("childrenCount") || entities.isEmpty()) {
+      return;
+    }
+    List<String> ids = entities.stream().map(f -> f.getId().toString()).toList();
+    Map<UUID, Integer> countMap =
+        daoCollection
+            .relationshipDAO()
+            .countNonDeletedChildFilesBatch(
+                ids,
+                FOLDER_ENTITY,
+                Relationship.CONTAINS.ordinal(),
+                ContextFileRepository.CONTEXT_FILE_ENTITY)
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    CollectionDAO.EntityRelationshipCount::getId,
+                    CollectionDAO.EntityRelationshipCount::getCount));
+    entities.forEach(folder -> folder.setChildrenCount(countMap.getOrDefault(folder.getId(), 0)));
   }
 
   private int countChildren(UUID folderId) {
