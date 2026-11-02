@@ -19,12 +19,18 @@ and skipped.
 ## Decision
 - The purge lives in `QuartzTablePurge`, called first from both `v1130` data migrations and never
   wrapped in a swallow-and-log `try/catch`.
-- It runs in one transaction behind locks on all nine tables, `QRTZ_LOCKS` first so it queues behind
-  a live scheduler instead of deadlocking with it: `LOCK TABLE … IN ACCESS EXCLUSIVE MODE` on
-  Postgres, autocommit off then `LOCK TABLES … WRITE` on MySQL, with `UNLOCK TABLES` only after the
-  transaction ends.
+- It runs in one transaction behind locks on all nine tables: `LOCK TABLE … IN ACCESS EXCLUSIVE
+  MODE` on Postgres, autocommit off then `LOCK TABLES … WRITE` on MySQL, with `UNLOCK TABLES` only
+  after the transaction ends. `QRTZ_LOCKS` is locked first so the purge queues behind a scheduler
+  that is firing a trigger, but Quartz acquires triggers in another table order without
+  `QRTZ_LOCKS`, so a deadlock with a live scheduler stays possible.
 - Only deadlocks and serialization failures (SQLState `40P01`, `40001`) are retried, up to 3
   attempts; anything else fails `migrate` at once with the transaction rolled back.
+- The purge runs once per database. Its transaction records a marker row in
+  `SERVER_MIGRATION_SQL_LOGS`, and it is skipped when that marker, or the log row of the old
+  schemaChanges.sql purge's last statement (`DELETE FROM QRTZ_SCHEDULER_STATE`), exists under
+  1.13.0. `migrate --force` reruns every data migration, and a second purge would drop the live
+  server's schedules.
 - A `QRTZ_SCHEDULER_STATE` check-in newer than twice its interval logs a warning and does not fail
   the migration: the lock already prevents the failure, and refusing would fail every upgrade that
   keeps the old server up during `migrate`.

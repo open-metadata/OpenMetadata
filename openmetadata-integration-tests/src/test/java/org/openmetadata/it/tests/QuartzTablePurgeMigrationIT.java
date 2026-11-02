@@ -37,6 +37,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v1130.QuartzTablePurge;
+import org.openmetadata.service.util.EntityUtil;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
 /**
@@ -52,6 +53,15 @@ class QuartzTablePurgeMigrationIT {
   private static final String GROUP = "OMJobGroup";
   private static final long CHECKIN_INTERVAL = 7_500;
   private static final String FAILURE_TRIGGER = "qrtz_purge_fail";
+  private static final String ATTEMPT_COUNTER = "qrtz_purge_attempts";
+  // As created by the v000 Flyway migration on both databases.
+  private static final String MIGRATION_LOG_DDL =
+      """
+      CREATE TABLE SERVER_MIGRATION_SQL_LOGS (
+        version VARCHAR(256) NOT NULL,
+        sqlStatement VARCHAR(10000) NOT NULL,
+        checksum VARCHAR(256) PRIMARY KEY,
+        executedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""";
   private static final String NON_RETRYABLE_STATE = "45000";
 
   private static final String SCRATCH_DATABASE =
@@ -73,7 +83,11 @@ class QuartzTablePurgeMigrationIT {
         readMigrationScripts(connectionType, "1.3.1").schemaStatements().stream()
             .filter(statement -> statement.contains("QRTZ_"))
             .toList();
-    scratch.useHandle(handle -> quartzDdl.forEach(handle::execute));
+    scratch.useHandle(
+        handle -> {
+          quartzDdl.forEach(handle::execute);
+          handle.execute(MIGRATION_LOG_DDL);
+        });
   }
 
   @AfterAll
@@ -88,6 +102,7 @@ class QuartzTablePurgeMigrationIT {
     QuartzTablePurge.purge(scratch, connectionType);
     scratch.useHandle(
         handle -> {
+          handle.execute("DELETE FROM SERVER_MIGRATION_SQL_LOGS");
           insertJob(handle);
           insertTrigger(handle, "existingTrigger");
           handle.execute(
@@ -138,6 +153,55 @@ class QuartzTablePurgeMigrationIT {
   }
 
   @Test
+  void aTransientDeadlockRollsBackAndTheRetrySucceeds() {
+    scratch.useHandle(
+        handle -> {
+          insertFiredTrigger(handle);
+          failDeletesOfFiredTriggers(handle, deadlockState(), 1);
+        });
+    try {
+      QuartzTablePurge.purge(scratch, connectionType);
+
+      scratch.useHandle(
+          handle -> {
+            QuartzTablePurge.TABLES.forEach(t -> assertEmpty(handle, t));
+            assertEquals(2, failureAttempts(handle), "one failed attempt, then one retry");
+          });
+    } finally {
+      scratch.useHandle(QuartzTablePurgeMigrationIT::stopFailingDeletes);
+    }
+  }
+
+  @Test
+  void aForcedRerunDoesNotPurgeASecondTime() {
+    QuartzTablePurge.purgeOnce(scratch, connectionType);
+    scratch.useHandle(
+        handle -> {
+          assertEmpty(handle, "QRTZ_JOB_DETAILS");
+          insertJob(handle);
+        });
+
+    QuartzTablePurge.purgeOnce(scratch, connectionType);
+
+    scratch.useHandle(handle -> assertRowCount(handle, "QRTZ_JOB_DETAILS", 1));
+  }
+
+  @Test
+  void aDatabaseTheOldSqlPurgeClearedIsNotPurgedAgain() {
+    scratch.useHandle(
+        handle ->
+            handle.execute(
+                "INSERT INTO SERVER_MIGRATION_SQL_LOGS (version, sqlStatement, checksum) VALUES (?, ?, ?)",
+                "1.13.0",
+                QuartzTablePurge.LEGACY_LAST_DELETE,
+                EntityUtil.hash(QuartzTablePurge.LEGACY_LAST_DELETE)));
+
+    QuartzTablePurge.purgeOnce(scratch, connectionType);
+
+    scratch.useHandle(handle -> assertRowCount(handle, "QRTZ_JOB_DETAILS", 1));
+  }
+
+  @Test
   void onlyRecentCheckInsCountAsALiveScheduler() {
     long now = System.currentTimeMillis();
     scratch.useHandle(
@@ -154,7 +218,7 @@ class QuartzTablePurgeMigrationIT {
     scratch.useHandle(
         handle -> {
           insertFiredTrigger(handle);
-          failDeletesOfFiredTriggers(handle, sqlState);
+          failDeletesOfFiredTriggers(handle, sqlState, Integer.MAX_VALUE);
         });
     try {
       IllegalStateException failure =
@@ -168,36 +232,64 @@ class QuartzTablePurgeMigrationIT {
             assertRowCount(handle, "QRTZ_JOB_DETAILS", 1);
             assertRowCount(handle, "QRTZ_TRIGGERS", 1);
           });
+      assertFalse(QuartzTablePurge.isAlreadyPurged(scratch), "a failed purge records no marker");
     } finally {
       scratch.useHandle(QuartzTablePurgeMigrationIT::stopFailingDeletes);
     }
   }
 
-  private static void failDeletesOfFiredTriggers(Handle handle, String sqlState) {
+  // The attempt counter lives where a rollback cannot undo it (a sequence on Postgres, a MyISAM
+  // table on MySQL), so the trigger can fail only the first attempts.
+  private static void failDeletesOfFiredTriggers(
+      Handle handle, String sqlState, int failingAttempts) {
     if (connectionType == ConnectionType.MYSQL) {
       handle.execute(
-          """
-          CREATE TRIGGER %s BEFORE DELETE ON QRTZ_FIRED_TRIGGERS FOR EACH ROW
-          SIGNAL SQLSTATE '%s' SET MESSAGE_TEXT = 'injected purge failure'"""
-              .formatted(FAILURE_TRIGGER, sqlState));
-    } else {
+          "CREATE TABLE %s (attempts INT NOT NULL) ENGINE=MyISAM".formatted(ATTEMPT_COUNTER));
+      handle.execute("INSERT INTO %s VALUES (0)".formatted(ATTEMPT_COUNTER));
       handle.execute(
           """
-          CREATE OR REPLACE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$
-          BEGIN RAISE EXCEPTION 'injected purge failure' USING ERRCODE = '%s'; END $$"""
-              .formatted(FAILURE_TRIGGER, sqlState));
+          CREATE TRIGGER %1$s BEFORE DELETE ON QRTZ_FIRED_TRIGGERS FOR EACH ROW
+          BEGIN
+            UPDATE %2$s SET attempts = attempts + 1;
+            IF (SELECT attempts FROM %2$s) <= %3$d THEN
+              SIGNAL SQLSTATE '%4$s' SET MESSAGE_TEXT = 'injected purge failure';
+            END IF;
+          END"""
+              .formatted(FAILURE_TRIGGER, ATTEMPT_COUNTER, failingAttempts, sqlState));
+    } else {
+      handle.execute("CREATE SEQUENCE %s".formatted(ATTEMPT_COUNTER));
+      handle.execute(
+          """
+          CREATE OR REPLACE FUNCTION %1$s() RETURNS trigger LANGUAGE plpgsql AS $$
+          BEGIN
+            IF nextval('%2$s') <= %3$d THEN
+              RAISE EXCEPTION 'injected purge failure' USING ERRCODE = '%4$s';
+            END IF;
+            RETURN NULL;
+          END $$"""
+              .formatted(FAILURE_TRIGGER, ATTEMPT_COUNTER, failingAttempts, sqlState));
       handle.execute(
           "CREATE TRIGGER %1$s BEFORE DELETE ON QRTZ_FIRED_TRIGGERS EXECUTE FUNCTION %1$s()"
               .formatted(FAILURE_TRIGGER));
     }
   }
 
+  private static long failureAttempts(Handle handle) {
+    String query =
+        connectionType == ConnectionType.MYSQL
+            ? "SELECT attempts FROM %s"
+            : "SELECT last_value FROM %s";
+    return handle.createQuery(query.formatted(ATTEMPT_COUNTER)).mapTo(Long.class).one();
+  }
+
   private static void stopFailingDeletes(Handle handle) {
     if (connectionType == ConnectionType.MYSQL) {
       handle.execute("DROP TRIGGER IF EXISTS %s".formatted(FAILURE_TRIGGER));
+      handle.execute("DROP TABLE IF EXISTS %s".formatted(ATTEMPT_COUNTER));
     } else {
       handle.execute("DROP TRIGGER IF EXISTS %s ON QRTZ_FIRED_TRIGGERS".formatted(FAILURE_TRIGGER));
       handle.execute("DROP FUNCTION IF EXISTS %s()".formatted(FAILURE_TRIGGER));
+      handle.execute("DROP SEQUENCE IF EXISTS %s".formatted(ATTEMPT_COUNTER));
     }
   }
 
