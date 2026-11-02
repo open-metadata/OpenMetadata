@@ -686,7 +686,7 @@ it('keeps the reviewer list closed after a pick while the addition saves', async
   expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 });
 
-it('shows reviewers that arrive after the search text was typed', async () => {
+it('keeps the reviewer list open from focus until the first search returns', async () => {
   configureReviewerSearch();
   const search = get.getMockImplementation();
   let releaseSearch: () => void = () => undefined;
@@ -708,6 +708,11 @@ it('shows reviewers that arrive after the search text was typed', async () => {
   await act(async () => {
     input.focus();
   });
+
+  // Closing the empty list here raced text typed right after the focus,
+  // which then never reopened it.
+  expect(screen.getByRole('listbox')).toHaveTextContent('label.loading');
+
   fireEvent.change(input, { target: { value: 'new' } });
   await act(async () => {
     releaseSearch();
