@@ -23,7 +23,7 @@ export const getCustomizePageCategories = (): SettingMenuItem[] =>
  * The categories shown as cards. The AI sidebar has no card of its own: the
  * Navigation card opens it in AI mode. It stays in `getCustomizePageCategories`
  * so breadcrumbs and the `/customize-page/<persona>/askCollateSidebar` route
- * keep resolving its label.
+ * keep resolving its label. ADR:2026-11-02-persona-navigation-card-opens-the-editor-for-the-app-mode
  */
 export const getCustomizePageCategoryCards = (): SettingMenuItem[] =>
   getCustomizePageCategories().filter(

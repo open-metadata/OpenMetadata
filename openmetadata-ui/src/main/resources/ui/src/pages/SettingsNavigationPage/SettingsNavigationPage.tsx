@@ -103,37 +103,47 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
     );
   };
 
-  const renderNode = (node: NavigationTreeNode): React.ReactNode => (
-    <Tree.Item id={node.key} key={node.key} textValue={t(node.title)}>
-      <Tree.ItemContent
-        className="tw:min-h-12"
-        icon={node.icon}
-        // The core tree mutes item icons; this page lists them as primary content.
-        iconClassName="tw:size-6 tw:text-fg-secondary">
-        <Box align="center" className="tw:flex-1" gap={2} justify="between">
-          <ButtonUtility
-            aria-label={t('label.move')}
-            // In the left gutter so it doesn't push the label off its icon. Revealed on the row's
-            // own :hover: a non-selectable react-aria tree item never gets `data-hovered`.
-            className="tw:absolute tw:-left-6 tw:invisible tw:in-[[role=row]:hover]:visible tw:group-focus-within/tree-item:visible"
-            color="tertiary"
-            icon={DotsGrid}
-            size="xs"
-            slot="drag"
-          />
-          <span className="tw:flex-1">{t(node.title)}</span>
-          <Toggle
-            data-testid={`navigation-switch-${node.key}`}
-            isSelected={!hiddenKeys.includes(node.key as string)}
-            onChange={(isSelected) =>
-              handleRemoveToggle(isSelected, node.key as string)
-            }
-          />
-        </Box>
-      </Tree.ItemContent>
-      {node.children?.map(renderNode)}
-    </Tree.Item>
-  );
+  const renderNode = (node: NavigationTreeNode): React.ReactNode => {
+    const Icon = node.icon;
+
+    return (
+      <Tree.Item id={node.key} key={node.key} textValue={t(node.title)}>
+        <Tree.ItemContent className="tw:min-h-12">
+          {/* The icon and the hover group live on our own row content, not on core Tree internals. */}
+          <Box
+            align="center"
+            className="tw:group/nav-row tw:relative tw:flex-1"
+            gap={3}
+            justify="between">
+            <ButtonUtility
+              aria-label={t('label.move')}
+              // Out in the left gutter, past the expand chevron, so the hidden handle takes no space.
+              className="tw:absolute tw:-left-12 tw:invisible tw:group-hover/nav-row:visible tw:group-focus-within/nav-row:visible"
+              color="tertiary"
+              icon={DotsGrid}
+              size="xs"
+              slot="drag"
+            />
+            {Icon && (
+              <Icon
+                aria-hidden="true"
+                className="tw:size-6 tw:shrink-0 tw:text-fg-secondary"
+              />
+            )}
+            <span className="tw:flex-1">{t(node.title)}</span>
+            <Toggle
+              data-testid={`navigation-switch-${node.key}`}
+              isSelected={!hiddenKeys.includes(node.key as string)}
+              onChange={(isSelected) =>
+                handleRemoveToggle(isSelected, node.key as string)
+              }
+            />
+          </Box>
+        </Tree.ItemContent>
+        {node.children?.map(renderNode)}
+      </Tree.Item>
+    );
+  };
 
   return (
     <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
