@@ -256,9 +256,22 @@ jest.mock('../../PageHeader/PageHeader.component', () => {
 jest.mock('../../common/DatePickerMenu/DatePickerMenu.component', () => {
   return jest
     .fn()
-    .mockImplementation(() => (
-      <div data-testid="date-picker-menu">DatePickerMenu</div>
-    ));
+    .mockImplementation(
+      ({
+        placeholder,
+        onClear,
+      }: {
+        placeholder?: string;
+        onClear?: () => void;
+      }) => (
+        <div data-testid="date-picker-menu">
+          {placeholder}
+          <button data-testid="clear-date-picker" onClick={onClear}>
+            clear
+          </button>
+        </div>
+      )
+    );
 });
 
 jest.mock('../../../utils/TagClassBase', () => ({
@@ -841,13 +854,37 @@ describe('TestCases component', () => {
       });
     });
 
-    it('should not show lastRun filter by default', async () => {
+    it('should show the lastRun filter by default, ahead of the other filters', async () => {
       render(<TestCases />);
 
+      const datePicker = await screen.findByTestId('date-picker-menu');
+      const tableFilter = await screen.findByTestId('table-select-filter');
+
+      expect(
+        datePicker.compareDocumentPosition(tableFilter) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+
+    it('should label an unset lastRun range as all time', async () => {
+      render(<TestCases />);
+
+      expect(await screen.findByTestId('date-picker-menu')).toHaveTextContent(
+        'label.all-time'
+      );
+    });
+
+    it('should drop the lastRun range from the URL when it is cleared', async () => {
+      mockLocation.search =
+        '?lastRunRange%5BstartTs%5D=1&lastRunRange%5BendTs%5D=2&testCaseStatus%5B%5D=Failed';
+      render(<TestCases />);
+
+      fireEvent.click(await screen.findByTestId('clear-date-picker'));
+
       await waitFor(() => {
-        expect(
-          screen.queryByTestId('date-picker-menu')
-        ).not.toBeInTheDocument();
+        expect(mockNavigate).toHaveBeenLastCalledWith({
+          search: 'testCaseStatus%5B%5D=Failed&currentPage=1',
+        });
       });
     });
   });
