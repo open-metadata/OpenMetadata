@@ -3,11 +3,13 @@ package org.openmetadata.service.migration.utils.v1130;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Empties the Quartz tables so no persisted job keeps App JSON with the pre-1.13 {@code preview}
@@ -16,11 +18,15 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * <p>An upgrade can run this while an old server is still up, and that server's scheduler keeps
  * writing triggers. Deleting table by table lets one of those writes land between the trigger and
  * job deletes, which then fails on the foreign key. Every table is therefore locked first and
- * emptied in one transaction, so the old scheduler waits for the purge instead of racing it.
+ * emptied in one transaction, so the old scheduler waits for the purge instead of racing it. The
+ * purge runs once per database: {@code migrate --force} reruns every data migration, and a second
+ * purge would drop the live server's schedules.
  */
 @Slf4j
 public final class QuartzTablePurge {
+  static final String VERSION = "1.13.0";
   private static final String LOCKS_TABLE = "QRTZ_LOCKS";
+  private static final String MIGRATION_LOG = "SERVER_MIGRATION_SQL_LOGS";
 
   // Foreign-key children before their parents.
   public static final List<String> TABLES =
@@ -34,6 +40,12 @@ public final class QuartzTablePurge {
           "QRTZ_FIRED_TRIGGERS",
           LOCKS_TABLE,
           "QRTZ_SCHEDULER_STATE");
+
+  // Recorded when this purge commits.
+  public static final String PURGE_MARKER = "-- 1.13.0 data migration: Quartz tables purged";
+  // The last statement of the purge that schemaChanges.sql ran before this class existed; its log
+  // row means that purge finished.
+  public static final String LEGACY_LAST_DELETE = "DELETE FROM QRTZ_SCHEDULER_STATE";
 
   private static final int MAX_ATTEMPTS = 3;
   private static final String LIVE_SCHEDULER_WARNING =
@@ -50,6 +62,35 @@ public final class QuartzTablePurge {
 
   private QuartzTablePurge() {}
 
+  public static void purgeOnce(Jdbi jdbi, ConnectionType connectionType) {
+    if (isAlreadyPurged(jdbi)) {
+      LOG.info("Quartz tables were already purged by the {} migration; skipping", VERSION);
+    } else {
+      purge(jdbi, connectionType);
+    }
+  }
+
+  public static boolean isAlreadyPurged(Jdbi jdbi) {
+    long recorded =
+        jdbi.withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        """
+                        SELECT COUNT(*) FROM SERVER_MIGRATION_SQL_LOGS
+                        WHERE version = :version AND (checksum = :marker OR checksum = :legacy)""")
+                    .bind("version", VERSION)
+                    .bind("marker", EntityUtil.hash(PURGE_MARKER))
+                    .bind("legacy", EntityUtil.hash(LEGACY_LAST_DELETE))
+                    .mapTo(Long.class)
+                    .one());
+    return recorded > 0;
+  }
+
+  // Quartz's own transactions take these tables in different orders (acquiring triggers reads
+  // QRTZ_TRIGGERS before QRTZ_JOB_DETAILS without touching QRTZ_LOCKS; firing one locks QRTZ_LOCKS
+  // first), so no lock order rules out a deadlock with a live scheduler. The database aborts one
+  // side; when that is the purge, it retries.
   public static void purge(Jdbi jdbi, ConnectionType connectionType) {
     int attempt = 1;
     boolean purged = false;
@@ -75,6 +116,7 @@ public final class QuartzTablePurge {
       handle.execute(lockStatement(connectionType));
       warnAboutLiveSchedulers(handle);
       TABLES.forEach(table -> handle.execute("DELETE FROM %s".formatted(table)));
+      recordPurge(handle, connectionType);
       handle.commit();
     } catch (JdbiException e) {
       handle.rollback();
@@ -89,15 +131,17 @@ public final class QuartzTablePurge {
   static String lockStatement(ConnectionType connectionType) {
     String statement;
     if (connectionType == ConnectionType.MYSQL) {
+      // A session holding LOCK TABLES can use no other table, so the migration log is locked too.
       statement =
           "LOCK TABLES %s"
               .formatted(
-                  TABLES.stream()
+                  Stream.concat(TABLES.stream(), Stream.of(MIGRATION_LOG))
                       .map(table -> "%s WRITE".formatted(table))
                       .collect(Collectors.joining(", ")));
     } else {
-      // A live scheduler takes its QRTZ_LOCKS row before writing triggers; locking that table
-      // first makes the purge queue behind it rather than deadlock with it.
+      // QRTZ_LOCKS first: a scheduler firing a trigger takes its QRTZ_LOCKS row before writing,
+      // so the purge queues behind it. Trigger acquisition takes the tables in another order; that
+      // deadlock is left to the retry in purge().
       statement =
           "LOCK TABLE %s, %s IN ACCESS EXCLUSIVE MODE"
               .formatted(
@@ -107,6 +151,23 @@ public final class QuartzTablePurge {
                       .collect(Collectors.joining(", ")));
     }
     return statement;
+  }
+
+  private static void recordPurge(Handle handle, ConnectionType connectionType) {
+    String insert =
+        connectionType == ConnectionType.MYSQL
+            ? """
+              INSERT IGNORE INTO SERVER_MIGRATION_SQL_LOGS (version, sqlStatement, checksum)
+              VALUES (:version, :statement, :checksum)"""
+            : """
+              INSERT INTO SERVER_MIGRATION_SQL_LOGS (version, sqlStatement, checksum)
+              VALUES (:version, :statement, :checksum) ON CONFLICT (checksum) DO NOTHING""";
+    handle
+        .createUpdate(insert)
+        .bind("version", VERSION)
+        .bind("statement", PURGE_MARKER)
+        .bind("checksum", EntityUtil.hash(PURGE_MARKER))
+        .execute();
   }
 
   // The purge still runs: the lock already stops a live scheduler from breaking it, and refusing

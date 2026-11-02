@@ -21,7 +21,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    QuartzTablePurge.purge(jdbi, ConnectionType.POSTGRES);
+    QuartzTablePurge.purgeOnce(jdbi, ConnectionType.POSTGRES);
     MigrationUtil.updateOwnerChartFormulas();
     try {
       MigrationUtil.migrateWebhookSecretKeyToAuthType(handle);
