@@ -18,6 +18,7 @@ import {
   createLoadMoreRow,
   flattenMetricRows,
   flattenVisibleMetricRows,
+  getTopmostSelectedMetrics,
   hasMetricChildren,
   isLoadMoreRow,
   MetricTableRow,
@@ -137,6 +138,36 @@ describe('flattenMetricRows', () => {
 
   it('returns an empty array for no rows', () => {
     expect(flattenMetricRows([])).toEqual([]);
+  });
+});
+
+describe('getTopmostSelectedMetrics', () => {
+  const tree: MetricTableRow[] = [
+    {
+      ...(metric('1', 'a', undefined, 1) as MetricTreeNode),
+      children: [
+        {
+          ...(metric('2', 'b', '1', 1) as MetricTreeNode),
+          children: [metric('3', 'c', '2') as MetricTreeNode],
+        },
+      ],
+    },
+    metric('4', 'sibling') as MetricTreeNode,
+  ];
+
+  it('drops selected descendants of a selected metric at any depth', () => {
+    expect(
+      getTopmostSelectedMetrics(tree, ['3', '1', '4']).map((m) => m.id)
+    ).toEqual(['1', '4']);
+  });
+
+  it('keeps a selected child when its parent is not selected', () => {
+    expect(
+      getTopmostSelectedMetrics(tree, ['2', '3']).map((m) => m.id)
+    ).toEqual(['2']);
+    expect(getTopmostSelectedMetrics(tree, ['3']).map((m) => m.id)).toEqual([
+      '3',
+    ]);
   });
 });
 

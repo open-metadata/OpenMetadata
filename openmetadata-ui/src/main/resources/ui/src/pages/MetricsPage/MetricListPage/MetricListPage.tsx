@@ -118,6 +118,7 @@ import {
 import {
   flattenMetricRows,
   flattenVisibleMetricRows,
+  getTopmostSelectedMetrics,
   hasMetricChildren,
   isGroupRow,
   isLoadMoreRow,
@@ -595,7 +596,9 @@ const MetricListPage = () => {
       // "metric is not empty" once the parent has variants. Never a hard delete, so the hierarchy
       // stays restorable (ADR:2026-10-28-metric-bulk-delete-is-a-recursive-soft-delete).
       const deleteJobs = await Promise.all(
-        selectedMetrics.map(({ id }) => deleteMetricAsync(id, true))
+        getTopmostSelectedMetrics(rows, selectedMetricIds).map(({ id }) =>
+          deleteMetricAsync(id, true)
+        )
       );
       setPendingDeleteJobIds((ids) => [
         ...ids,
@@ -616,7 +619,14 @@ const MetricListPage = () => {
     } finally {
       setIsDeletingMetrics(false);
     }
-  }, [queryClient, resetHierarchy, selectedMetrics, t]);
+  }, [
+    queryClient,
+    resetHierarchy,
+    rows,
+    selectedMetricIds,
+    selectedMetrics,
+    t,
+  ]);
 
   // Deletes run as async jobs, so the refetch in handleBulkDelete can land before a job
   // finishes. Refresh again when one of this page's jobs reports a final status; jobs started
@@ -680,7 +690,7 @@ const MetricListPage = () => {
         {tags.slice(0, MAX_VISIBLE_BADGES).map((tag) => (
           <Link
             {...ROW_ACTION_GUARD}
-            className="tw:no-underline"
+            className="tw:min-w-0 tw:no-underline"
             data-testid={`metric-tag-link-${tag.tagFQN}`}
             key={tag.tagFQN}
             to={getTagPath(tag.tagFQN)}>
@@ -1564,7 +1574,7 @@ const MetricListPage = () => {
     return (
       <TableV2<VisibleMetricTableRow>
         aria-label={t('label.metric-plural')}
-        cellClassName="tw:px-2 tw:py-3 tw:align-middle tw:whitespace-nowrap"
+        cellClassName="tw:px-2 tw:py-3 tw:align-middle tw:whitespace-nowrap tw:overflow-hidden"
         // Empty: hide the header and stretch the placeholder row to the card.
         // TableV2 stays mounted so the toolbar's search input keeps focus.
         className={isEmptyList ? 'tw:h-full tw:[&_thead]:hidden' : undefined}
@@ -1589,12 +1599,14 @@ const MetricListPage = () => {
               keys.map(String).filter((id) => selectableMetricIds.includes(id))
             ),
         }}
-        // Columns keep their widths as minimums and the table scrolls sideways.
-        scroll={{ x: 'max-content' }}
+        // Fixed layout so each page's content cannot resize the columns (they jumped between
+        // pages); `min-content` keeps the table at least as wide as its visible columns, so it
+        // scrolls sideways instead of squeezing them.
+        scroll={{ x: 'min-content' }}
         scrollContainerClassName={isEmptyList ? 'tw:flex-1' : undefined}
         size="small"
         staticVisibleColumns={METRIC_STATIC_COLUMNS}
-        tableLayout="auto"
+        tableLayout="fixed"
         onRowAction={handleMetricRowAction}
       />
     );
