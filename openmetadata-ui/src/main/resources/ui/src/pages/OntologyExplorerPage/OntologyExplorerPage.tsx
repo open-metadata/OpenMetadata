@@ -1756,11 +1756,17 @@ const OntologyExplorerContent: React.FC = () => {
           />
         ) : (
           <SomethingWentWrongPlaceholder
-            actions={ontologyActions}
-            onReload={() => {
-              void studioScopes.refetchOntologies();
-              void allModels.refetch();
-            }}
+            actions={[
+              {
+                key: 'reload',
+                label: t('label.reload'),
+                onPress: () => {
+                  void studioScopes.refetchOntologies();
+                  void allModels.refetch();
+                },
+              },
+              ...ontologyActions,
+            ]}
           />
         )}
       </div>
