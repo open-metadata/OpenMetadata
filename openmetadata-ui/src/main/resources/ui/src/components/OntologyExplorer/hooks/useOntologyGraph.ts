@@ -73,6 +73,12 @@ import {
 } from '../PortOverlay.interface';
 import { METRIC_NODE_TYPE } from '../utils/graphBuilders';
 import {
+  containerViewportSize,
+  graphFitsViewport,
+  revealHiddenNode,
+  settleStudioViewport,
+} from '../utils/studioViewport';
+import {
   adaptiveSpacing,
   getLayoutConfig,
   getNodeSize,
@@ -1200,6 +1206,8 @@ export function useOntologyGraph({
 
   const inputNodesRef = useRef(inputNodes);
   inputNodesRef.current = inputNodes;
+  const focusNodeIdRef = useRef(focusNodeId);
+  focusNodeIdRef.current = focusNodeId;
 
   const expandedTermIdsRef = useRef(expandedTermIds);
   expandedTermIdsRef.current = expandedTermIds;
@@ -1840,6 +1848,21 @@ export function useOntologyGraph({
 
     graphRef.current = graph;
     justInitializedRef.current = true;
+
+    // G6 gives each of its canvases tabindex="1", which puts four unlabelled
+    // stops ahead of the app navigation; the node list is the keyboard route.
+    const dropCanvasTabStops = () =>
+      container
+        .querySelectorAll('canvas[tabindex]')
+        .forEach((canvas) => canvas.removeAttribute('tabindex'));
+    dropCanvasTabStops();
+    const tabStopObserver = new MutationObserver(dropCanvasTabStops);
+    tabStopObserver.observe(container, {
+      attributeFilter: ['tabindex'],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
     termFingerprintRef.current = '';
     assetFingerprintRef.current = '';
 
@@ -2112,8 +2135,8 @@ export function useOntologyGraph({
 
     const finalizeInitialViewport = async () => {
       if (studioMode) {
-        await graph.zoomTo(DEFAULT_ZOOM, { duration: 0 });
-        await graph.translateTo([0, 0], { duration: 0 });
+        await settleStudioViewport(graph, container);
+        await revealHiddenNode(graph, container, focusNodeIdRef.current);
       } else {
         await fitAndClampZoom();
       }
@@ -2147,13 +2170,28 @@ export function useOntologyGraph({
 
     runRender();
 
+    let previousSize = containerViewportSize(container);
     const resizeObserver = new ResizeObserver(() => {
       if (containerRef.current && graphRef.current) {
+        const wasWhole = studioMode && graphFitsViewport(graph, previousSize);
         graphRef.current.resize(
           containerRef.current.offsetWidth,
           containerRef.current.offsetHeight
         );
+        previousSize = containerViewportSize(container);
         scheduleTransformWork();
+        if (studioMode && !renderCancelled) {
+          // Opening the concept panel narrows the canvas: a graph that was
+          // fully visible is fitted again, otherwise the selection is kept in
+          // view beside the panel.
+          const settle =
+            wasWhole && !graphFitsViewport(graph, previousSize)
+              ? fitViewWithMinZoom(graph)
+              : revealHiddenNode(graph, container, focusNodeIdRef.current);
+          settle.catch(() => {
+            // the graph may be destroyed while the panel animates
+          });
+        }
       }
     });
     resizeObserver.observe(container);
@@ -2172,6 +2210,7 @@ export function useOntologyGraph({
         cancelPendingUpdateRef.current = null;
       }
       resizeObserver.disconnect();
+      tabStopObserver.disconnect();
       graph.off(NodeEvent.CLICK, handleNodeClick);
       graph.off(NodeEvent.DBLCLICK, handleNodeDblClick);
       graph.off(NodeEvent.DRAG_START, cancelEditGesture);
@@ -2388,9 +2427,10 @@ export function useOntologyGraph({
     };
 
     const finalizeUpdateViewport = async () => {
-      if (studioMode && fp.termFingerprintChanged) {
-        await graph.zoomTo(DEFAULT_ZOOM, { duration: 0 });
-        await graph.translateTo([0, 0], { duration: 0 });
+      const host = containerRef.current;
+      if (studioMode && host && fp.termFingerprintChanged) {
+        await settleStudioViewport(graph, host);
+        await revealHiddenNode(graph, host, focusNodeIdRef.current);
       } else if (
         !studioMode &&
         (fp.termFingerprintChanged || fp.layoutTypeChanged)
@@ -2469,6 +2509,16 @@ export function useOntologyGraph({
     studioMode,
     recomputeGraphBounds,
   ]);
+
+  useEffect(() => {
+    const graph = graphRef.current;
+    const host = containerRef.current;
+    if (studioMode && graph && host) {
+      revealHiddenNode(graph, host, focusNodeId).catch(() => {
+        // the graph may be rebuilt before the pan finishes
+      });
+    }
+  }, [containerRef, focusNodeId, studioMode]);
 
   useEffect(() => {
     const graph = graphRef.current;

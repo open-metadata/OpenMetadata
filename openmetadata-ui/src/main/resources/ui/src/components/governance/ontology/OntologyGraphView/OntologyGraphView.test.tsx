@@ -1915,6 +1915,218 @@ describe('OntologyGraphView', () => {
     );
   });
 
+  describe('keyboard route and large ontologies', () => {
+    const renderGraph = (
+      props: Partial<React.ComponentProps<typeof OntologyGraphView>> = {}
+    ) =>
+      render(
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+          {...props}
+        />
+      );
+    const findBox = () => screen.getByTestId('ontology-graph-search');
+
+    it('lists matches under Find and opens the first one with Enter', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+
+      fireEvent.change(findBox(), { target: { value: 'cust' } });
+
+      const results = screen.getByTestId('ontology-graph-search-results');
+      expect(
+        within(results)
+          .getAllByRole('option')
+          .map((option) => option.textContent)
+      ).toEqual(['Customer']);
+      fireEvent.keyDown(findBox(), { key: 'Enter' });
+
+      expect(
+        await screen.findByTestId('ontology-concept-inspector')
+      ).toHaveTextContent('Customer');
+      expect(
+        screen.queryByTestId('ontology-graph-search-results')
+      ).not.toBeInTheDocument();
+    });
+
+    it('says when nothing matches and leaves Enter without effect', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+
+      fireEvent.change(findBox(), { target: { value: 'zzz' } });
+      fireEvent.keyDown(findBox(), { key: 'Enter' });
+
+      expect(
+        screen.getByTestId('ontology-graph-search-results')
+      ).toHaveTextContent('message.ontology-find-no-match');
+      expect(
+        screen.queryByTestId('ontology-concept-inspector')
+      ).not.toBeInTheDocument();
+    });
+
+    it('moves through the results with the arrow keys before Enter', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+
+      fireEvent.change(findBox(), { target: { value: 'r' } });
+      fireEvent.keyDown(findBox(), { key: 'ArrowDown' });
+      fireEvent.keyDown(findBox(), { key: 'Enter' });
+
+      expect(
+        await screen.findByTestId('ontology-concept-inspector')
+      ).toHaveTextContent('Orphan');
+    });
+
+    it('closes the panel on Escape and puts focus back on the Find box', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+      findBox().focus();
+      fireEvent.change(findBox(), { target: { value: 'cust' } });
+      fireEvent.keyDown(findBox(), { key: 'Enter' });
+      const inspector = await screen.findByTestId('ontology-concept-inspector');
+      within(inspector).getAllByRole('button')[0].focus();
+
+      fireEvent.keyDown(document.activeElement as HTMLElement, {
+        key: 'Escape',
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('ontology-concept-inspector')
+        ).not.toBeInTheDocument()
+      );
+      expect(findBox()).toHaveFocus();
+    });
+
+    it('clears the search on Escape while its result list is open', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+      findBox().focus();
+      fireEvent.change(findBox(), { target: { value: 'cust' } });
+
+      fireEvent.keyDown(findBox(), { key: 'Escape' });
+
+      expect(findBox()).toHaveValue('');
+      expect(
+        screen.queryByTestId('ontology-graph-search-results')
+      ).not.toBeInTheDocument();
+    });
+
+    it('opens a concept from the node list with the keyboard and returns focus to it on Escape', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+      const list = within(
+        screen.getByTestId('ontology-graph-node-list')
+      ).getByRole('listbox');
+      expect(list).toHaveAttribute('tabindex', '0');
+      act(() => list.focus());
+
+      expect(
+        within(list)
+          .getAllByRole('option')
+          .map((option) => option.textContent)
+      ).toEqual(['Customer', 'Orphan', 'Party']);
+      fireEvent.keyDown(list, { key: 'ArrowDown' });
+      fireEvent.keyDown(list, { key: 'Enter' });
+
+      expect(
+        await screen.findByTestId('ontology-concept-inspector')
+      ).toHaveTextContent('Orphan');
+      fireEvent.keyDown(list, { key: 'Escape' });
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('ontology-concept-inspector')
+        ).not.toBeInTheDocument()
+      );
+      expect(list).toHaveFocus();
+    });
+
+    describe('above the node limit', () => {
+      const filler = Array.from({ length: 600 }, (_, index) => ({
+        id: `filler-${index}`,
+        label: `Filler ${index}`,
+        type: 'ontologyConcept',
+      }));
+      const bigGraph = {
+        nodes: [...graph.nodes, ...filler],
+        edges: [
+          ...graph.edges,
+          ...filler.slice(1).map((node, index) => ({
+            from: node.id,
+            to: filler[index].id,
+            label: 'is a',
+            relationType: 'subClassOf',
+          })),
+        ],
+      };
+
+      beforeEach(() => {
+        mockUseOntologyStudioModel.mockReturnValue({
+          ...modelResult,
+          graph: bigGraph,
+        });
+      });
+
+      it('draws no canvas, explains why and offers Tree until a concept is chosen', async () => {
+        const onRequestTreeSurface = jest.fn();
+        renderGraph({ onRequestTreeSurface });
+
+        const notice = await screen.findByTestId(
+          'ontology-graph-focused-notice'
+        );
+
+        expect(notice).toHaveTextContent('message.ontology-graph-too-large');
+        expect(screen.queryByTestId('native-ontology-graph')).toBeNull();
+        fireEvent.click(screen.getByTestId('ontology-graph-open-tree'));
+        expect(onRequestTreeSurface).toHaveBeenCalledTimes(1);
+      });
+
+      it('draws the neighbourhood of a concept found with Find', async () => {
+        renderGraph();
+        await screen.findByTestId('ontology-graph-focused-notice');
+
+        fireEvent.change(findBox(), { target: { value: 'Filler 300' } });
+        fireEvent.keyDown(findBox(), { key: 'Enter' });
+
+        await screen.findByTestId('native-ontology-graph');
+        const drawn = latestGraphProps().nodes.map(
+          ({ label }: { label: string }) => label
+        );
+        expect(drawn).toEqual(
+          expect.arrayContaining([
+            'Filler 300',
+            'Filler 299',
+            'Filler 301',
+            'Filler 298',
+            'Filler 302',
+          ])
+        );
+        expect(drawn).not.toContain('Filler 10');
+        expect(drawn.length).toBeLessThan(10);
+        expect(
+          screen.getByTestId('ontology-graph-focused-notice')
+        ).toHaveTextContent('message.ontology-graph-focused');
+      });
+
+      it('lists only the drawn concepts in the keyboard node list', async () => {
+        renderGraph({
+          selectedConceptId: 'filler-5',
+          onSelectedConceptChange: jest.fn(),
+        });
+
+        await screen.findByTestId('native-ontology-graph');
+        const list = within(
+          screen.getByTestId('ontology-graph-node-list')
+        ).getByRole('listbox');
+
+        expect(list).toHaveAttribute('aria-label', 'label.concept-plural (5)');
+      });
+    });
+  });
+
   describe('canvas Add concept', () => {
     const renderEditing = () =>
       render(

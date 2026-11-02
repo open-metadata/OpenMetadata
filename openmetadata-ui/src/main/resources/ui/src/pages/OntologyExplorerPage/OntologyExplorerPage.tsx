@@ -1722,6 +1722,7 @@ const OntologyExplorerContent: React.FC = () => {
           handleModeChange('edit');
         }}
         onRequestGraphSurface={() => setViewSurface('graph')}
+        onRequestTreeSurface={() => setViewSurface('tree')}
         onSaved={(ontology) => {
           void queryClient.invalidateQueries({
             queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
