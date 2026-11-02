@@ -153,7 +153,7 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
           </Grid.Item>
 
           <Grid.Item className="layout-column" span={24}>
-            <Card className="custom-navigation-tree-container" variant="ghost">
+            <Card className="custom-navigation-tree-container">
               <Card.Header title={t('label.navigation-menu-plural')} />
               <Card.Content>
                 <Tree
