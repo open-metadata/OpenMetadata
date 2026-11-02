@@ -88,8 +88,8 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
   @CsvSource({
     "DataConsumer,Approved",
     "DataConsumer,Rejected",
-    "DataSteward,Approved",
-    "DataSteward,Rejected",
+    "OntologyReviewer,Approved",
+    "OntologyReviewer,Rejected",
     "NONE,Approved",
     "NONE,Rejected"
   })
@@ -133,7 +133,7 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
   }
 
   @ParameterizedTest
-  @CsvSource({"DataConsumer", "DataSteward", "NONE"})
+  @CsvSource({"DataConsumer", "OntologyReviewer", "NONE"})
   void listedReviewerCannotChangeReviewSettings(final String role, final TestNamespace ns) {
     final User reviewer = createUser(ns, "settings", role);
     final Ontology ontology = createOntologyWith(ns, "settings", List.of(reviewer), List.of());

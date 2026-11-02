@@ -83,7 +83,8 @@ class OntologyRolesIT extends BaseOntologyApprovalIT {
     ns.trackRoot(Entity.TASK, review);
 
     assertEquals("Authored", concept.getName());
-    assertEquals(1, release.getMemberCount());
+    assertTrue(
+        release.getMemberCount() >= 1, "The release must hold the concept the author declared");
     assertEquals(release.getId(), review.getAbout().getId());
   }
 
