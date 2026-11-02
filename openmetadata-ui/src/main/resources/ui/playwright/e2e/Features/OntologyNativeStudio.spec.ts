@@ -183,7 +183,10 @@ test.describe(
           const submit = page.getByTestId('ontology-create-submit');
           await expect(submit).toBeDisabled();
           await page.getByTestId('ontology-create-name').fill(name);
-          await page.getByTestId('ontology-create-prefix').fill(prefix);
+          await page.getByTestId('ontology-create-advanced-toggle').click();
+          await page
+            .getByTestId('ontology-create-iri')
+            .fill(`https://open-metadata.org/onto/${prefix}`);
           const created = page.waitForResponse(
             (response) =>
               new URL(response.url()).pathname === '/api/v1/ontologies' &&

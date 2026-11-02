@@ -170,6 +170,19 @@ describe.each([
     });
   });
 
+  it('separates the scope label from its count in the accessible name', async () => {
+    renderMenu();
+
+    const row = await screen.findByTestId('ontology-scope-all-ontologies');
+
+    expect(
+      within(row).getByTestId('ontology-scope-all-ontologies-label')
+    ).toHaveTextContent(/^label\.all-entity$/);
+    expect(row).toHaveAccessibleName(
+      'label.all-entity, 2 label.ontology-plural'
+    );
+  });
+
   it('filters the list as the user types and says when nothing matches', async () => {
     renderMenu();
     const search = await screen.findByTestId('ontology-scope-search');
