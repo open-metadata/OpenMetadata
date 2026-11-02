@@ -3870,6 +3870,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/DatePickerMenu/DatePickerMenu.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
