@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
@@ -47,6 +49,8 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Regression for the live-indexing soft-delete propagation bug. {@code SOFT_DELETE_RESTORE_SCRIPT}
@@ -104,6 +108,37 @@ public class TestCaseSoftDeleteSearchIT {
 
       client.tables().restore(fixture.table().getId());
       assertIncidentListedOnlyWithoutDeleted(client, fixture.testCase().getFullyQualifiedName());
+    } finally {
+      hardDeleteQuietly(client, fixture.database());
+    }
+  }
+
+  // A test suite soft delete reaches the incidents only through the test suite reference the
+  // incident document carries, as the cascade under it writes no search document per test case.
+  @Test
+  void softDeletingAndRestoringTestSuiteScopesItsIncidents() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    IncidentFixture fixture = createTestCaseWithIncident(client, "soft_delete_suite_cascade");
+    String testCaseFqn = fixture.testCase().getFullyQualifiedName();
+    UUID testSuiteId =
+        client
+            .testCases()
+            .get(fixture.testCase().getId().toString(), "testSuite")
+            .getTestSuite()
+            .getId();
+    try {
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.DELETE,
+              "/v1/dataQuality/testSuites/basic/" + testSuiteId,
+              null,
+              TestSuite.class,
+              RequestOptions.builder().queryParam("recursive", "true").build());
+      assertIncidentListedOnlyWithDeleted(client, testCaseFqn);
+
+      client.testSuites().restore(testSuiteId);
+      assertIncidentListedOnlyWithoutDeleted(client, testCaseFqn);
     } finally {
       hardDeleteQuietly(client, fixture.database());
     }

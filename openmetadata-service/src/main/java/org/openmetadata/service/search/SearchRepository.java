@@ -4412,13 +4412,15 @@ public class SearchRepository {
    * embed their test case instead, and the incident listing scopes on {@code testCase.deleted}. A
    * cascade soft-deletes the descendant test cases without search writes of their own, so the flag
    * is set here for every incident under the parent, through the same synchronous update as the
-   * soft delete above, so a quick restore cannot race it. The retry of a failed soft delete does not
+   * soft delete above, so a quick restore cannot race it. It reaches a reindex's staged index too,
+   * or promoting it would bring the old flag back. The retry of a failed soft delete does not
    * reach incident documents; a reindex of testCaseResolutionStatus repairs them.
    */
   private void softDeleteOrRestoreIncidentTestCases(
       Pair<String, String> parentMatch, boolean delete) throws IOException {
+    IndexMapping incidentMapping = entityIndexMap.get(Entity.TEST_CASE_RESOLUTION_STATUS);
     searchClient.softDeleteOrRestoreChildren(
-        withClusterAlias(List.of(Entity.TEST_CASE_RESOLUTION_STATUS)),
+        getWriteFanoutTargets(incidentMapping.getIndexName(clusterAlias)),
         "if (ctx._source.testCase != null) { ctx._source.testCase.deleted = " + delete + "; }",
         List.of(parentMatch));
   }

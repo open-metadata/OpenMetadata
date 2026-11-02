@@ -31,8 +31,10 @@ documents, so incidents of soft-deleted test cases stayed listed.
 - A soft delete or restore of any parent whose child aliases include `testCaseResolutionStatus`
   (table, schema, database, service, test suite, test case) sets `testCase.deleted` on the incident
   documents under it, matched on the same parent field as the soft-delete cascade and sent the same
-  synchronous way. A cascade writes no search document per descendant test case, so the top-level
-  update is the only one.
+  synchronous way, to the serving index and any reindex's staged index. A cascade writes no search
+  document per descendant test case, so the top-level update is the only one. An incident document
+  therefore carries every ancestor reference that update matches on (`table`, `database`,
+  `databaseSchema`, `service`, `testSuite`, `testCase`), and the strict read strips each of them.
 
 ## Consequences
 Counts that read `paging.total` of a `latest` database listing now count incidents, so they can
