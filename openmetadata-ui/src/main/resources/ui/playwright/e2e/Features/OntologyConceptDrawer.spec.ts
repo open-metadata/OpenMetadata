@@ -481,6 +481,77 @@ for (const mode of ['classic', 'ai'] as const) {
         );
       });
 
+      test('Add concept in All ontologies opens the drawer with a required Ontology field', async ({
+        isolatedUserPage: page,
+      }, testInfo) => {
+        test.slow();
+        const other = await createOntology(api, 'concept_drawer_other');
+        try {
+          await createConcept(api, owner, 'Payment');
+          await page.goto('/governance/ontology');
+          await page.getByTestId('mode-tab-edit').click();
+          await expect(
+            page.getByRole('button', { name: /Select Ontology/ })
+          ).toHaveCount(0);
+          await page.getByTestId('ontology-add-concept').click();
+          const panel = page.getByTestId('ontology-new-class-panel');
+          await expect(panel).toBeVisible();
+          await expect(page.getByTestId('new-class-ontology')).toBeVisible();
+          await expect(page.getByTestId('new-class-in-ontology')).toContainText(
+            /^in /
+          );
+          await page.screenshot({
+            path: testInfo.outputPath(`g10-all-ontologies-${mode}.png`),
+          });
+
+          const choose = async (target: Ontology) => {
+            await page
+              .getByTestId('new-class-ontology')
+              .getByRole('button')
+              .click();
+            await page
+              .getByRole('option', { name: target.name, exact: true })
+              .click();
+            await expect(page.getByTestId('new-class-in-ontology')).toHaveText(
+              'in ' + target.name
+            );
+          };
+
+          await choose(owner);
+          await page.getByTestId('new-class-advanced-toggle').click();
+          const parent = page.getByRole('combobox', {
+            name: 'Subclass of',
+            exact: true,
+          });
+          await parent.fill('Payment');
+          await page
+            .getByRole('option', { name: 'Payment', exact: true })
+            .click();
+          await parent.press('Escape');
+          await expect(
+            page.getByTestId('new-class-advanced').getByText('Payment')
+          ).toBeVisible();
+
+          await choose(other);
+          await page.getByTestId('new-class-advanced-toggle').click();
+          await expect(
+            page.getByTestId('new-class-advanced').getByText('Payment')
+          ).toHaveCount(0);
+
+          await page.getByTestId('new-class-label').fill('Remote Concept');
+          await submitDrawer(page, 'new-class-create');
+
+          expect((await listConcepts(api, other)).map((c) => c.name)).toEqual([
+            'RemoteConcept',
+          ]);
+          expect(
+            (await listConcepts(api, owner)).map((c) => c.name)
+          ).not.toContain('RemoteConcept');
+        } finally {
+          await removeOntology(api, other);
+        }
+      });
+
       test('guards unsaved text when switching nodes, switching mode and closing the drawer', async ({
         isolatedUserPage: page,
       }, testInfo) => {

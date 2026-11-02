@@ -1095,3 +1095,67 @@ describe('Undo after create', () => {
     close.mockRestore();
   });
 });
+
+describe('Ontology field for All ontologies', () => {
+  const second = {
+    ...ontology,
+    id: 'o2',
+    name: 'Risk',
+    fullyQualifiedName: 'Risk',
+  };
+  const field = (value: string, onChange = jest.fn()) => ({
+    options: [
+      { id: ontology.id, label: 'Finance' },
+      { id: second.id, label: 'Risk' },
+    ],
+    value,
+    onChange,
+  });
+
+  it('is absent when one ontology is open', () => {
+    setup();
+
+    expect(screen.queryByTestId('new-class-ontology')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('new-class-in-ontology')
+    ).not.toBeInTheDocument();
+  });
+
+  it('is the first field, preselected, and names the target in the header', () => {
+    setup({ ontologyField: field(ontology.id) });
+
+    expect(screen.getByTestId('new-class-in-ontology')).toHaveTextContent(
+      'label.in-entity'
+    );
+    expect(
+      screen
+        .getByTestId('new-class-ontology')
+        .compareDocumentPosition(screen.getByTestId('new-class-local-name')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId('new-class-ontology')).getByRole('button')
+    ).toHaveTextContent('Finance');
+  });
+
+  it('reports a change of ontology to the host', async () => {
+    const onChange = jest.fn();
+    setup({ ontologyField: field(ontology.id, onChange) });
+    fireEvent.click(
+      within(screen.getByTestId('new-class-ontology')).getByRole('button')
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Risk' }));
+
+    expect(onChange).toHaveBeenCalledWith('o2');
+  });
+
+  it('keeps Create disabled, with the reason, until an ontology is chosen', () => {
+    setup({ ontologyField: field('') });
+    fill('new-class-label', 'Remittance');
+
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByTestId('new-class-create-reason')).toHaveTextContent(
+      'message.ontology-concept-ontology-required'
+    );
+  });
+});

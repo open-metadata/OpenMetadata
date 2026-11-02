@@ -20,10 +20,13 @@ import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/use
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import Loader from '../../../common/Loader/Loader';
-import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
+import OntologyNewClassPanel, {
+  OntologyFieldProps,
+} from '../OntologyNewClassPanel/OntologyNewClassPanel';
 
 interface Props {
   ontology: Ontology;
+  ontologyField?: OntologyFieldProps;
   onClose: () => void;
   onCreated: (concept?: OntologyConcept) => void;
 }
@@ -31,6 +34,7 @@ interface Props {
 /** The Term tab opens the same drawer as the graph, so both validate and save alike. */
 const OntologyConceptCreateDrawer = ({
   ontology,
+  ontologyField,
   onClose,
   onCreated,
 }: Props) => {
@@ -65,6 +69,7 @@ const OntologyConceptCreateDrawer = ({
       canCreateProperty={flagsOf(ResourceEntity.ONTOLOGY_PROPERTY).canCreate}
       model={model}
       ontology={ontology}
+      ontologyField={ontologyField}
       onBeforeCreate={() => undefined}
       onClose={onClose}
       onCreated={async (iri, { keepOpen }) => {

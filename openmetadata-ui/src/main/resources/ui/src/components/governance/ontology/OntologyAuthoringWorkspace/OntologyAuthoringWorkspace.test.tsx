@@ -307,6 +307,7 @@ describe('OntologyAuthoringWorkspace', () => {
       ontology: { Create: false },
       ontologyConcept: { Create: false },
       ontologyProperty: { Create: false },
+      ontologyChangeSet: { Create: false },
     };
     renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
 

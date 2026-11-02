@@ -54,6 +54,7 @@ import {
   getOntologyState,
   hardDeleteOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import {
   buildNewClassChangeSet,
@@ -103,8 +104,15 @@ interface SelectionValues {
   disjoint: FormSelectItem[];
   owners: EntityReferenceOption[];
 }
+export interface OntologyFieldProps {
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (id: string) => void;
+}
 interface Props {
   ontology: Ontology;
+  /** Set when the drawer is opened from All ontologies, where the target is not yet known. */
+  ontologyField?: OntologyFieldProps;
   model: OntologyStudioModel;
   canCreate: boolean;
   canCreateProperty: boolean;
@@ -132,6 +140,7 @@ const CONCEPT_TYPES: [OntologyConceptType, string][] = [
 
 const OntologyNewClassPanel = ({
   ontology,
+  ontologyField,
   model,
   canCreate,
   canCreateProperty,
@@ -248,6 +257,9 @@ const OntologyNewClassPanel = ({
     return issue ? issueText(issue) : fallback;
   };
   const blockedReason = (() => {
+    if (ontologyField && !ontologyField.value) {
+      return t('message.ontology-concept-ontology-required');
+    }
     if (!permitted) {
       return t('message.no-permission-for-action');
     }
@@ -872,9 +884,19 @@ const OntologyNewClassPanel = ({
         align="center"
         className="tw:sticky tw:top-0 tw:shrink-0 tw:border-b tw:border-secondary tw:p-4"
         justify="between">
-        <Typography size="text-md" weight="semibold">
-          {t('label.new-class')}
-        </Typography>
+        <Box direction="col">
+          <Typography size="text-md" weight="semibold">
+            {t('label.new-class')}
+          </Typography>
+          {ontologyField ? (
+            <Typography
+              color="secondary"
+              data-testid="new-class-in-ontology"
+              size="text-xs">
+              {t('label.in-entity', { entity: getEntityName(ontology) })}
+            </Typography>
+          ) : null}
+        </Box>
         <ButtonUtility
           color="tertiary"
           data-testid="ontology-new-class-close"
@@ -888,6 +910,19 @@ const OntologyNewClassPanel = ({
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-4">
         <HookForm form={form} onSubmit={(event) => event.preventDefault()}>
           <Box direction="col" gap={4}>
+            {ontologyField ? (
+              <div data-testid="new-class-ontology">
+                <Select
+                  isRequired
+                  isDisabled={locked}
+                  items={ontologyField.options}
+                  label={t('label.ontology')}
+                  value={ontologyField.value}
+                  onChange={(key) => ontologyField.onChange(String(key))}>
+                  {(item) => <Select.Item id={item.id} label={item.label} />}
+                </Select>
+              </div>
+            ) : null}
             <Input
               hint={fieldHint(undefined, 'name-invalid', 'name-taken')}
               inputDataTestId="new-class-local-name"

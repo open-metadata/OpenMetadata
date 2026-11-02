@@ -58,6 +58,7 @@ import OntologyStudioHeader from '../../components/governance/ontology/OntologyS
 import OntologyShortcutList from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyShortcutList';
 import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
 import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
+import OntologyAllOntologiesConceptDrawer from '../../components/governance/ontology/OntologyAuthoringWorkspace/OntologyAllOntologiesConceptDrawer';
 import OntologyStudioWorkspace from '../../components/governance/ontology/OntologyStudioWorkspace/OntologyStudioWorkspace';
 import OntologyTasksDrawer from '../../components/governance/ontology/OntologyTasksDrawer/OntologyTasksDrawer';
 import OntologyVersionChip from '../../components/governance/ontology/OntologyVersionChip/OntologyVersionChip';
@@ -763,6 +764,7 @@ const OntologyExplorerContent: React.FC = () => {
   const [nativeStats, setNativeStats] = useState<OntologyModelStats>();
   const [nativeRefresh, setNativeRefresh] = useState(0);
   const [nativeAuthoringLocked, setNativeAuthoringLocked] = useState(false);
+  const [isAggregateCreateOpen, setIsAggregateCreateOpen] = useState(false);
   const [nativeConceptRequest, setNativeConceptRequest] = useState<{
     key: number;
     ontologyId: string;
@@ -777,6 +779,11 @@ const OntologyExplorerContent: React.FC = () => {
     loadGlossaries: isGlossaryScopeMenuOpen,
     knownGlossaries: glossaries,
   });
+  useEffect(() => {
+    if (!isAllOntologies || mode !== 'edit') {
+      setIsAggregateCreateOpen(false);
+    }
+  }, [isAllOntologies, mode]);
   const availableOntologies = useMemo(
     () => mergeSelectedOntology(studioScopes.ontologies, selectedOntology),
     [selectedOntology, studioScopes.ontologies]
@@ -1283,6 +1290,11 @@ const OntologyExplorerContent: React.FC = () => {
   }
 
   function handleAddConcept() {
+    if (isAllOntologies) {
+      setIsAggregateCreateOpen(true);
+
+      return;
+    }
     if (isNativeOntology) {
       setNativeConceptRequest((current) =>
         nextConceptRequest(current, ontologyId ?? '')
@@ -1302,9 +1314,17 @@ const OntologyExplorerContent: React.FC = () => {
   const headerActionSize = getHeaderActionSize(isAiMode);
 
   function renderPrimaryAction() {
-    const canAddConcept = isNativeOntology
-      ? canCreateNativeClass && canEditNativeOntology && editSurface === 'graph'
-      : canCreateConcept;
+    const canAddConcept = (() => {
+      if (isAllOntologies) {
+        return canCreateNativeClass && availableOntologies.length > 0;
+      }
+
+      return isNativeOntology
+        ? canCreateNativeClass &&
+            canEditNativeOntology &&
+            editSurface === 'graph'
+        : canCreateConcept;
+    })();
 
     if (mode === 'edit' && canAddConcept) {
       return (
@@ -1938,7 +1958,7 @@ const OntologyExplorerContent: React.FC = () => {
   const renderAggregateWorkspace = () => (
     <>
       {renderSubModeNav()}
-      {mode === 'edit' || mode === 'query' ? (
+      {mode === 'query' ? (
         <Box className="tw:p-4" direction="col" gap={3}>
           <Select
             className="tw:w-75"
@@ -1963,7 +1983,27 @@ const OntologyExplorerContent: React.FC = () => {
           </Select>
         </Box>
       ) : null}
-      {mode !== 'query' ? renderAllOntologies() : null}
+      {mode === 'query' ? null : (
+        <div className="tw:flex tw:min-h-0 tw:flex-1">
+          <div className="tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col">
+            {renderAllOntologies()}
+          </div>
+          {mode === 'edit' && isAggregateCreateOpen ? (
+            <OntologyAllOntologiesConceptDrawer
+              ontologies={availableOntologies}
+              onClose={() => guard(() => setIsAggregateCreateOpen(false))}
+              onCreated={(_ontology, done) => {
+                void studioScopes.refetchOntologies();
+                refreshNativeWorkingDiff();
+                void allModels.refetch();
+                if (done) {
+                  setIsAggregateCreateOpen(false);
+                }
+              }}
+            />
+          ) : null}
+        </div>
+      )}
     </>
   );
 
