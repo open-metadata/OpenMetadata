@@ -236,7 +236,9 @@ it.each([TableType.Regular, TableType.Sharded])(
     await act(async () => {
       render(<SampleDataTable {...mockProps} />);
     });
+
     expect(screen.getByTestId('sample-data-table')).toBeInTheDocument();
+
     if (tableType === TableType.Sharded) {
       expect(
         screen.getByText('message.execution-source-unavailable')
@@ -266,6 +268,7 @@ it('shows recorded sample provenance', async () => {
   await act(async () => {
     render(<SampleDataTable {...mockProps} />);
   });
+
   expect(
     screen.getByText(/my_db.my_schema.events_20260101/)
   ).toBeInTheDocument();

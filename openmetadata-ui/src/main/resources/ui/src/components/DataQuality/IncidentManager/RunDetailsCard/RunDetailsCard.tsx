@@ -50,6 +50,7 @@ import {
 import { formatThresholdAmount } from '../../../../utils/observability/data-quality/testCaseThresholdSentence.utils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
+import { ExecutionSource } from '../../../observability/profiler/ExecutionSource/ExecutionSource';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
 import { useTestCaseStore } from '../useTestCase.store';
@@ -408,6 +409,29 @@ const RunNote = ({ style }: { style: RunDetailsStatusStyle }) => {
   );
 };
 
+const RunExecutionSource = ({
+  testCase,
+  result,
+}: {
+  testCase: TestCase;
+  result: RunResult;
+}) => {
+  const tableFqn = getEntityFQN(testCase.entityLink ?? '');
+  const { data: table } = useQuery({
+    queryKey: tableQueryKey(tableFqn, ''),
+    queryFn: tableQueryFn(tableFqn, ''),
+    enabled: Boolean(tableFqn && !result.evaluationScope?.executionSource),
+  });
+
+  return (
+    <ExecutionSource
+      isSharded={table?.tableType === TableType.Sharded}
+      source={result.evaluationScope?.executionSource}
+      testId="run-execution-source"
+    />
+  );
+};
+
 const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
   const { t } = useTranslation();
   const selectedRunTimestamp = useTestCaseStore(
@@ -417,14 +441,6 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
     (state) => state.setSelectedRunTimestamp
   );
   const result = getSelectedRun(results, selectedRunTimestamp);
-  const tableFqn = getEntityFQN(testCase.entityLink ?? '');
-  const { data: table } = useQuery({
-    queryKey: tableQueryKey(tableFqn, ''),
-    queryFn: tableQueryFn(tableFqn, ''),
-    enabled: Boolean(
-      tableFqn && result && !result.evaluationScope?.executionSource
-    ),
-  });
   // A run picked on the chart that is not the newest says so, with the way back.
   const isOlderRunSelected =
     !isUndefined(result) &&
@@ -529,18 +545,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           </Box>
         )}
         <RunScopeBadges scope={result.evaluationScope} />
-        {(table?.tableType === TableType.Sharded ||
-          result.evaluationScope?.executionSource) && (
-          <Typography data-testid="run-execution-source" size="text-sm">
-            {result.evaluationScope?.executionSource
-              ? `${t('label.execution-source')}: ${
-                  result.evaluationScope.executionSource.databaseName
-                }.${result.evaluationScope.executionSource.schemaName}.${
-                  result.evaluationScope.executionSource.tableName
-                }`
-              : t('message.execution-source-unavailable')}
-          </Typography>
-        )}
+        <RunExecutionSource result={result} testCase={testCase} />
         <RunDuration duration={duration} errorDetails={errorDetails} />
       </Box>
       <Box

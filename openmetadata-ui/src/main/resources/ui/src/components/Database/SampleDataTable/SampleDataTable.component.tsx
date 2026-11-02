@@ -13,6 +13,7 @@
 
 import { Box, Select, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { ExecutionSource } from '../../observability/profiler/ExecutionSource/ExecutionSource';
 
 import { isEmpty, lowerCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -311,17 +312,10 @@ const SampleDataTable: FC<SampleDataProps> = ({
       className="p-md border-default border-radius-sm bg-white"
       data-testid="sample-data"
       id="sampleDataDetails">
-      {(isSharded || sampleData?.executionSource) && (
-        <p>
-          {sampleData?.executionSource
-            ? `${t('label.execution-source')}: ${
-                sampleData.executionSource.databaseName
-              }.${sampleData.executionSource.schemaName}.${
-                sampleData.executionSource.tableName
-              }`
-            : t('message.execution-source-unavailable')}
-        </p>
-      )}
+      <ExecutionSource
+        isSharded={isSharded}
+        source={sampleData?.executionSource}
+      />
       <Box
         inline
         align="center"

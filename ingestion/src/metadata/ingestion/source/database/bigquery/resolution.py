@@ -35,6 +35,9 @@ from metadata.ingestion.source.database.bigquery.sharding import (
     strip_partition_decorator,
 )
 from metadata.utils import fqn
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 
 def _resolve_unscoped_reference(
@@ -79,6 +82,7 @@ def _resolve_unscoped_reference(
         Table, {"query": {"bool": {"filter": scope, "should": alternatives, "minimum_should_match": 1}}}
     )
     physical, families = {}, {}
+    missing = 0
     for candidate in dict.fromkeys(names):
         table = (
             metadata.get_by_name(Table, candidate, fields=list(fields))
@@ -86,7 +90,10 @@ def _resolve_unscoped_reference(
             else metadata.get_by_name(Table, candidate)
         )
         if table is None or table.deleted or model_str(table.fullyQualifiedName) != candidate:
-            raise ValueError("Table changed during candidate search; resolution incomplete")
+            if not wildcard:
+                raise ValueError("Table changed during candidate search; resolution incomplete")
+            missing += 1
+            continue
         parts = fqn.split(candidate)
         if len(parts) != 4:
             continue
@@ -116,6 +123,13 @@ def _resolve_unscoped_reference(
             and ((wildcard and descriptor.prefix.startswith(name[:-1])) or (parsed and descriptor.prefix == parsed[0]))
         ):
             families[model_str(table.id)] = (key, table)
+    if missing:
+        logger.warning(
+            "Resolved %d of %d candidates for %s; wildcard results are incomplete",
+            len(set(names)) - missing,
+            len(set(names)),
+            reference,
+        )
     # A physical identity wins only within its namespace, never across unrelated services.
     physical_scopes = {key for key, _ in physical.values()}
     return tuple(table for _, table in physical.values()) + tuple(
@@ -129,7 +143,9 @@ def _resolve_scoped_reference(resolver, service: str, reference: TableReference,
     wildcard = any(part is None or "*" in part for part in parts)
     name = ".".join(fqn.quote_name(part) if part is not None else "*" for part in parts)
     mode = FqnLookupMode.WILDCARD if wildcard else FqnLookupMode.EXACT
-    plan = EntityResolutionPlan(Table, (ResolutionTier((FqnCandidate(name, mode),)),), fields, include, 100)
+    plan = EntityResolutionPlan(
+        Table, (ResolutionTier((FqnCandidate(name, mode),)),), fields, include, 100, warn_on_partial=True
+    )
     if "*" in reference.table and re.search(r"[0-9]+\*", reference.table):
         raise ValueError("Date-constrained BigQuery wildcards require member inventory evidence; resolution incomplete")
     exact = resolver.resolve(plan)
@@ -161,6 +177,7 @@ def _resolve_scoped_reference(resolver, service: str, reference: TableReference,
             fields,
             include,
             100,
+            warn_on_partial=True,
         )
     )
     return tuple(

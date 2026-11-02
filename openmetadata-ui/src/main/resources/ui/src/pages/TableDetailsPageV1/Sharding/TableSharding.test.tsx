@@ -34,6 +34,7 @@ it('renders the current representative without inventing metadata freshness', ()
     },
   });
   render(<TableShardingWidget />);
+
   expect(screen.getByRole('link', { name: 'events_20260102' })).toHaveAttribute(
     'href',
     expect.stringContaining('t=events_20260102')
@@ -46,5 +47,6 @@ it('does not display a sharding widget for an ordinary table', () => {
     data: { tableType: 'Regular' },
   });
   render(<TableShardingWidget />);
+
   expect(screen.queryByTestId('table-sharding')).not.toBeInTheDocument();
 });

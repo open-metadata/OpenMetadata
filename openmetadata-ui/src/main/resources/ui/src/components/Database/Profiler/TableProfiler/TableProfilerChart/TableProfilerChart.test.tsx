@@ -177,6 +177,7 @@ describe('TableProfilerChart component test', () => {
         />
       );
     });
+
     expect(
       screen.getByText('message.sharding-system-metrics-unsupported')
     ).toBeInTheDocument();
@@ -261,7 +262,9 @@ it.each([TableType.Regular, TableType.Sharded])(
     await act(async () => {
       render(<TableProfilerChart tableDetails={{ tableType } as Table} />);
     });
+
     expect(screen.getByTestId('row-metrics')).toBeInTheDocument();
+
     if (tableType === TableType.Sharded) {
       expect(
         screen.getByText(/message.execution-source-unavailable/)

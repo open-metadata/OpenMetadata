@@ -378,6 +378,7 @@ describe('AddServicePage', () => {
         await act(async () => {
           fireEvent.click(await screen.findByText('Save Filters'));
         });
+
         expect(postService).toHaveBeenCalledWith(
           'databaseServices',
           expect.objectContaining({

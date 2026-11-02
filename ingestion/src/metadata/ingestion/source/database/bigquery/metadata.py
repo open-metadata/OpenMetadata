@@ -487,6 +487,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 logical_shard_name(prefix), "Shard identity conflict: explicit operator resolution required"
             )
         context.sharding_failed = bool(blocked)
+        pending = set(families) - blocked
         for table in client.list_tables(dataset):
             parsed = eligible_shard(table.table_id, table.table_type, exclusions)
             context.shard_family = None
@@ -494,6 +495,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 family = families[parsed[0]]
                 if table.table_id != family.representative:
                     continue
+                pending.discard(family.prefix)
                 context.shard_family = family.descriptor(context.database, context.database_schema)
                 yield DiscoveredTable(
                     table.table_id, logical_shard_name(family.prefix), TableType.Sharded, context.shard_family
@@ -513,7 +515,43 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 yield DiscoveredTable(
                     table.table_id, table.table_id, _bigquery_table_types.get(table.table_type, TableType.Regular)
                 )
+        if pending:
+            yield from self._refresh_missing_families(dataset, pending, exclusions)
         self._set_sharding_scope(not context.sharding_failed)
+
+    def _refresh_missing_families(
+        self, dataset: str, pending: set[str], exclusions: list[str]
+    ) -> Iterable[DiscoveredTable]:
+        context = self._shard_context()
+        client = self._require_client()
+        collisions = set()
+
+        def refreshed_tables():
+            for table in client.list_tables(dataset):
+                if table.table_id.endswith("yyyymmdd") and table.table_id[:-8] in pending:
+                    collisions.add(table.table_id[:-8])
+                yield table
+
+        logger.warning(
+            "Refreshing BigQuery inventory once for %s: %d representatives disappeared", dataset, len(pending)
+        )
+        families = inventory_families(refreshed_tables(), exclusions)
+        context.shard_lifecycle = None
+        context.shard_prefixes = set(families)
+        for prefix in sorted(pending):
+            family = families.get(prefix)
+            if family is None:
+                continue
+            existing = self._catalog_table(logical_shard_name(prefix))
+            if prefix in collisions or (existing and not get_table_sharding(existing)):
+                context.sharding_failed = True
+                self.status.warning(logical_shard_name(prefix), "Shard identity conflict after inventory refresh")
+                continue
+            client.get_table(f"{dataset}.{family.representative}")
+            context.shard_family = family.descriptor(context.database, context.database_schema)
+            yield DiscoveredTable(
+                family.representative, logical_shard_name(prefix), TableType.Sharded, context.shard_family
+            )
 
     def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
         if not self.sharding_enabled:

@@ -872,3 +872,38 @@ def test_unscoped_clickhouse_preserves_database_qualifier(sdk, service_name):
     del transport.entities[expected.fullyQualifiedName.root]
     transport.hits = list(transport.entities)
     assert resolution.resolve(TableReference("my_db", "my_schema", "my_table"), service_name=service_name) == ()
+
+
+@pytest.mark.parametrize("failure", ["missing", "renamed", "deleted"])
+@pytest.mark.parametrize("service_name", [None, "my_service"])
+def test_bigquery_wildcard_returns_partial_matches_with_warning(sdk, caplog, failure, service_name):
+    metadata, transport = sdk
+    first = table("my_service.my_db.my_schema.events_first", serviceType="BigQuery")
+    second = table("my_service.my_db.my_schema.events_second", serviceType="BigQuery")
+    transport.hits = [first.fullyQualifiedName.root, second.fullyQualifiedName.root]
+    transport.entities[first.fullyQualifiedName.root] = first
+    if failure == "renamed":
+        transport.entities[second.fullyQualifiedName.root] = table("my_service.my_db.my_schema.renamed")
+    elif failure == "deleted":
+        second.deleted = True
+        transport.entities[second.fullyQualifiedName.root] = second
+    get = transport.get
+
+    def request(path):
+        if urlsplit(path).path == "/search/query":
+            return {
+                "hits": {
+                    "total": {"value": 2, "relation": "eq"},
+                    "hits": [{"_source": {"fullyQualifiedName": name}} for name in transport.hits],
+                }
+            }
+        return get(path)
+
+    metadata.client.get = request
+    resolution = load_table_binding_resolution("bigquery", metadata)
+    with caplog.at_level("WARNING"):
+        assert resolution.resolve(TableReference("my_db", "my_schema", "events_*"), service_name=service_name) == (
+            first,
+        )
+    assert "Resolved 1 of 2 candidates" in caplog.text
+    assert "wildcard results are incomplete" in caplog.text

@@ -347,3 +347,71 @@ def test_streamed_inventory_extracts_only_latest_members_at_catalog_scale():
     assert len({request.name.root for request in requests}) == 100
     assert all(request.tableSharding.shardCount == 365 for request in requests)
     assert source._sharding_scopes["demo_service.demo_project.demo_dataset"] is True
+
+
+class ChangingInventory(Inventory):
+    def __init__(self, snapshots, missing_on_fetch=False):
+        super().__init__(snapshots[0])
+        self.snapshots = snapshots
+        self.missing_on_fetch = missing_on_fetch
+
+    def list_tables(self, dataset):
+        self.names = self.snapshots[min(self.calls, len(self.snapshots) - 1)]
+        yield from super().list_tables(dataset)
+
+    def get_table(self, name):
+        if self.missing_on_fetch:
+            raise LookupError("replacement disappeared")
+        assert name.rsplit(".", 1)[-1] in self.names
+        return SimpleNamespace(table_id=name.rsplit(".", 1)[-1])
+
+
+def test_discovery_refreshes_missing_families_once_per_dataset():
+    initial = ["events_20260101", "events_20260102", "other_20260101", "other_20260102"]
+    remaining = ["events_20260101", "other_20260101"]
+    source = source_for(initial)
+    source.client = ChangingInventory([initial, initial, remaining, remaining])
+    emitted = []
+    for name, kind in source.get_tables_name_and_type():
+        descriptor = source.context.get().shard_family
+        emitted.append((name, kind, descriptor.shardCount, descriptor.lastShardDate))
+    assert emitted == [
+        ("events_20260101", TableType.Sharded, 1, date(2026, 1, 1)),
+        ("other_20260101", TableType.Sharded, 1, date(2026, 1, 1)),
+    ]
+    assert source.client.calls == 4
+    assert source._sharding_scopes["demo_service.demo_project.demo_dataset"] is True
+
+
+@pytest.mark.parametrize("failure", [None, "listing", "replacement", "collision"])
+def test_refreshed_inventory_controls_reconciliation(failure):
+    initial = ["events_20260101", "events_20260102"]
+    remaining = [] if failure is None else ["events_20260101"]
+    if failure == "collision":
+        remaining.append("events_yyyymmdd")
+    family = catalog_table("events_yyyymmdd", sharded=True)
+    source = source_for(initial, [family])
+    source.source_config.markDeletedTables = True
+    source.client = ChangingInventory([initial, initial, ["events_20260101"], remaining], failure == "replacement")
+    if failure == "listing":
+        source.client.fail_on = 4
+    source.database_source_state = set()
+    scope = "demo_service.demo_project.demo_dataset"
+    source._get_filtered_schema_names = lambda **kwargs: [scope]
+    source.metadata.list_all_entities = lambda *args, **kwargs: iter([family])
+    submitted = []
+
+    def delete_stale_entities(**kwargs):
+        submitted.append(kwargs)
+        return {"deleted": 1}
+
+    source.metadata.delete_stale_entities = delete_stale_entities
+    assert list(source.get_tables_name_and_type()) == []
+    list(source.mark_tables_as_deleted())
+    assert source.client.calls == 4
+    assert source._sharding_scopes[scope] is (failure is None)
+    if failure is None:
+        assert len(submitted) == 1
+        assert submitted[0]["live_fqns"] == set()
+    else:
+        assert submitted == []

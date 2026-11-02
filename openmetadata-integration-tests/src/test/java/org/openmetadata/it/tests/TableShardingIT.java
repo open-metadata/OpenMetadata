@@ -49,6 +49,13 @@ class TableShardingIT {
         request(ns)
             .withLifeCycle(new LifeCycle().withCreated(new AccessDetails().withTimestamp(2000L)));
     var original = SdkClients.adminClient().tables().create(request);
+    SdkClients.adminClient()
+        .tables()
+        .patch(
+            original.getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Independently curated description\"}]"));
+    request.withDescription(null);
     var execution = original.getTableSharding().getRepresentative();
     var client = SdkClients.adminClient();
     long timestamp = System.currentTimeMillis();
@@ -88,14 +95,15 @@ class TableShardingIT {
                 .withTableName("events_20260102")
                 .withShardDate("2026-01-02"));
     var updated =
-        SdkClients.adminClient()
+        SdkClients.ingestionBotClient()
             .getHttpClient()
             .execute(HttpMethod.PUT, "/v1/tables", request, Table.class);
     var stored = SdkClients.adminClient().tables().get(updated.getId().toString());
     assertEquals(original.getId(), stored.getId());
-    assertEquals("Curated description", stored.getDescription());
+    assertEquals("Independently curated description", stored.getDescription());
     assertEquals("events_20260102", stored.getTableSharding().getRepresentative().getTableName());
     assertEquals(original.getCreatedAt(), stored.getCreatedAt());
+    assertEquals(original.getCreatedBy(), stored.getCreatedBy());
     assertEquals(1000L, stored.getLifeCycle().getCreated().getTimestamp());
     assertTrue(stored.getVersion() > original.getVersion());
     var latest =

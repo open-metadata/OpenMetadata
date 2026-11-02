@@ -4205,3 +4205,9 @@ om:unitAnnotation a owl:AnnotationProperty ;
 om:identifierIntent a owl:AnnotationProperty ;
     rdfs:label "identifier intent" ;
     rdfs:comment "Authored identifier intent, without asserting functionality, an OWL key or source-data uniqueness." .
+
+om:tableSharding a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
+    rdfs:domain om:Table ;
+    rdfs:range xsd:string ;
+    rdfs:label "tableSharding" .

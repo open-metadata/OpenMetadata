@@ -113,15 +113,18 @@ describe('RunDetailsCard', () => {
       useTestCaseStore.setState({ selectedRunTimestamp: older.timestamp })
     );
     renderCard([older, newer]);
+
     expect(screen.getByTestId('run-execution-source')).toHaveTextContent(
       'events_20260101'
     );
     expect(screen.getByTestId('run-execution-source')).not.toHaveTextContent(
       'events_20260102'
     );
+
     act(() =>
       useTestCaseStore.setState({ selectedRunTimestamp: newer.timestamp })
     );
+
     expect(screen.getByTestId('run-execution-source')).toHaveTextContent(
       'events_20260102'
     );
@@ -427,6 +430,7 @@ it.each([TableType.Regular, TableType.Sharded])(
         screen.queryByTestId('run-execution-source')
       ).not.toBeInTheDocument();
     }
+
     expect(screen.queryByText(/events_20260102/)).not.toBeInTheDocument();
   }
 );

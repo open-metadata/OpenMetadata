@@ -567,6 +567,7 @@ const ExploreResultsPanel = ({
       className="explore-results-row tw:h-full tw:min-w-0 tw:w-full"
       colGap={3}>
       <ExploreResultsListPanel
+        additionalSearchResults={additionalSearchResults}
         entityDetails={entityDetails}
         handleExplorePageChange={handleExplorePageChange}
         handleExplorePageSizeChange={handleExplorePageSizeChange}
@@ -576,7 +577,6 @@ const ExploreResultsPanel = ({
         loading={loading}
         pageSize={pageSize}
         parsedSearch={parsedSearch}
-        additionalSearchResults={additionalSearchResults}
         searchResults={searchResults}
         showRankingDetails={showRankingDetails}
         showSummaryPanel={showSummaryPanel}
@@ -1421,6 +1421,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             minWidth: 800,
             children: (
               <ExploreResultsPanel
+                additionalSearchResults={additionalSearchResults}
                 entityDetails={entityDetails}
                 firstEntity={firstEntity}
                 handleClosePanel={handleClosePanel}
@@ -1432,7 +1433,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 loading={loading}
                 pageSize={pageSize}
                 parsedSearch={parsedSearch}
-                additionalSearchResults={additionalSearchResults}
                 searchResults={searchResults}
                 selectedQuickFilters={selectedQuickFilters}
                 showRankingDetails={showRankingDetails}

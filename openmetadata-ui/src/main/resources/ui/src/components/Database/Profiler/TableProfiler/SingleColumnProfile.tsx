@@ -48,7 +48,9 @@ import {
   getColumnCustomMetric,
 } from '../../../../utils/TableProfilerUtils';
 import { ColumnMetricsInterface } from '../../../../utils/TableProfilerUtils.interface';
+import { isShardedTable } from '../../../../utils/TableShardingUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { ProfileExecutionHistory } from '../../../observability/profiler/ExecutionSource/ProfileExecutionHistory';
 import CardinalityDistributionChart from '../../../Visualisations/Chart/CardinalityDistributionChart.component';
 import DataDistributionHistogram from '../../../Visualisations/Chart/DataDistributionHistogram.component';
 import ProfilerDetailsCard from '../ProfilerDetailsCard/ProfilerDetailsCard';
@@ -76,6 +78,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     customMetric: tableCustomMetric,
     isProfilingEnabled,
     testCaseSummary,
+    table: contextTable,
   } = useTableProfiler();
   const { t } = useTranslation();
 
@@ -309,6 +312,10 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         </Box>
       )}
 
+      <ProfileExecutionHistory
+        isSharded={isShardedTable(tableDetails ?? contextTable)}
+        profiles={columnProfilerData}
+      />
       <ProfilerDetailsCard
         chartCollection={columnMetric.countMetrics}
         isLoading={isLoading}

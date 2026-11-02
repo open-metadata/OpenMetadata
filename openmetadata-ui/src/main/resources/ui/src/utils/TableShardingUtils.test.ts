@@ -44,7 +44,7 @@ const family = {
 
 beforeEach(() => jest.resetAllMocks());
 
-test.each([
+it.each([
   ['events_20260101', 'events_'],
   ['events20260101', 'events'],
   ['20260101', ''],
@@ -54,7 +54,7 @@ test.each([
   expect(parseShardName(name)?.prefix).toBe(prefix);
 });
 
-test.each([
+it.each([
   'events_20260230',
   'events_202601010',
   'events$20260101',
@@ -63,7 +63,7 @@ test.each([
   expect(parseShardName(name)).toBeUndefined();
 });
 
-test('keeps nested query and post filters and uses its own bounded first page after rollover', async () => {
+it('keeps nested query and post filters and uses its own bounded first page after rollover', async () => {
   const queryFilter = {
     query: {
       bool: {
@@ -82,6 +82,7 @@ test('keeps nested query and post filters and uses its own bounded first page af
     queryFilter,
     postFilter
   );
+
   expect(result).toEqual([family]);
   expect(searchQuery).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -107,7 +108,7 @@ test('keeps nested query and post filters and uses its own bounded first page af
   );
 });
 
-test('omits ordinary placeholders and inaccessible verification reads', async () => {
+it('omits ordinary placeholders and inaccessible verification reads', async () => {
   (searchQuery as jest.Mock).mockResolvedValue({
     hits: { hits: [{ _source: family }] },
   });
@@ -115,22 +116,31 @@ test('omits ordinary placeholders and inaccessible verification reads', async ()
     ...family,
     tableType: TableType.Regular,
   });
+
   expect(await findShardedFamilies('events_20260101')).toEqual([]);
+
   (getTableDetailsByFQN as jest.Mock).mockRejectedValue(
     new Error('unavailable')
   );
+
   expect(await findShardedFamilies('events_20260101')).toEqual([]);
 });
 
-test('does not rewrite full text or advanced expressions', async () => {
+it('does not rewrite full text or advanced expressions', async () => {
   expect(await findShardedFamilies('events_20260101 OR owner:demo')).toEqual(
     []
   );
   expect(searchQuery).not.toHaveBeenCalled();
 });
 
-test('links to the physical source with encoded identifiers', () => {
-  const descriptor = family.tableSharding!;
+it('links to the physical source with encoded identifiers', () => {
+  const descriptor = family.tableSharding;
+
+  expect(descriptor).toBeDefined();
+
+  if (!descriptor) {
+    throw new Error('Missing shard fixture');
+  }
   const link = new URL(
     getBigQuerySourceLink({
       ...descriptor,
@@ -140,6 +150,7 @@ test('links to the physical source with encoded identifiers', () => {
       },
     })
   );
+
   expect(link.searchParams.get('project')).toBe('project+demo');
   expect(link.searchParams.get('t')).toBe('events_20260102');
 });

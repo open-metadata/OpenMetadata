@@ -17,6 +17,9 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTableDetailsByFQN } from '../rest/tableAPI';
 import Fqn from './Fqn';
 
+export const isShardedTable = (table?: Table): boolean =>
+  table?.tableType === TableType.Sharded;
+
 export const getTableSharding = (table?: Table): TableSharding | undefined =>
   table?.tableType === TableType.Sharded ? table.tableSharding : undefined;
 
@@ -41,11 +44,13 @@ export const parseShardName = (
   ) {
     return undefined;
   }
+
   return { prefix, date, logicalName: `${prefix}yyyymmdd` };
 };
 
 export const getBigQuerySourceLink = (sharding: TableSharding): string => {
   const { databaseName, schemaName, tableName } = sharding.representative;
+
   return `https://console.cloud.google.com/bigquery?project=${encodeURIComponent(
     databaseName
   )}&p=${encodeURIComponent(databaseName)}&d=${encodeURIComponent(
@@ -110,6 +115,7 @@ export const findShardedFamilies = async (
         }
         const table = await getTableDetailsByFQN(name, undefined, signal);
         const descriptor = getTableSharding(table);
+
         return descriptor?.prefix === candidate.prefix &&
           (!table.deleted || includeDeleted)
           ? table
@@ -119,6 +125,7 @@ export const findShardedFamilies = async (
       }
     })
   );
+
   return Array.from(
     new Map(
       tables

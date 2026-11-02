@@ -677,6 +677,7 @@ const ExplorePageV1: FC<unknown> = () => {
           setShardedFamilies([]);
         }
       });
+
     return () => {
       controller.abort();
     };
@@ -699,6 +700,7 @@ const ExplorePageV1: FC<unknown> = () => {
   return (
     <>
       <ExploreV1
+        activeTabKey={searchIndex}
         additionalSearchResults={
           shardedFamilies.length > 0 && (
             <section aria-label={t('label.matching-sharded-families')}>
@@ -718,7 +720,6 @@ const ExplorePageV1: FC<unknown> = () => {
             </section>
           )
         }
-        activeTabKey={searchIndex}
         aggregations={updatedAggregations}
         browseFields={browseFields}
         browseQueryFilter={browseQueryFilter}

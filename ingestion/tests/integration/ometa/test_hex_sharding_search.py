@@ -67,24 +67,27 @@ class SearchCatalog(ESMixin):
 
     def search(self, path):
         params = parse_qs(urlsplit(path).query)
-        assert urlsplit(path).path == "/search/query"
         assert params["deleted"] == ["false"]
         self.searches += 1
-        query = json.loads(params["query_filter"][0])["query"]
+        if urlsplit(path).path == "/search/query":
+            query = json.loads(params["query_filter"][0])["query"]
+        else:
+            assert urlsplit(path).path == "/search/fieldQuery"
+            query = {"wildcard": {params["fieldName"][0]: params["fieldValue"][0]}}
         response = requests.post(
             f"{self.base}/{self.index}/_search",
             json={
                 "query": {"bool": {"filter": [query, {"term": {"deleted": False}}]}},
                 "size": int(params["size"][0]),
-                "track_total_hits": params["track_total_hits"][0] == "true",
-                "_source": params["include_source_fields"],
+                "track_total_hits": params.get("track_total_hits", ["true"])[0] == "true",
+                "_source": params.get("include_source_fields", ["*"]),
             },
             timeout=10,
         )
         response.raise_for_status()
         return response.json()
 
-    def get_by_name(self, entity, fqn):
+    def get_by_name(self, entity, fqn, fields=None):
         return self.tables.get(fqn)
 
     def add(
@@ -181,13 +184,16 @@ def test_wildcard_complete_within_bound_and_overflow_reported(source):
     assert source.metadata.searches == 2
 
 
-def test_clickhouse_cross_service_normalization_only_widens_clickhouse_candidates(source):
-    clickhouse = source.metadata.add(
-        "warehouse", name="orders", service_type="Clickhouse", family=False, database="default"
-    )
+@pytest.mark.parametrize("has_match", [False, True])
+def test_clickhouse_unscoped_reference_preserves_database_constraint(source, has_match):
+    source.metadata.add("warehouse", name="orders", service_type="Clickhouse", family=False, database="default")
     source.metadata.add("unrelated", name="orders", service_type="Postgres", family=False, database="elsewhere")
-    assert source._resolve_table("demo_db", "analytics", "orders", "clickhouse")[0].id == clickhouse.id
+    matching = (
+        source.metadata.add("warehouse", name="orders", service_type="Clickhouse", family=False) if has_match else None
+    )
+    result = source._resolve_table("demo_db", "analytics", "orders", "clickhouse")
+    if matching:
+        assert result[0].id == matching.id
+    else:
+        assert result is None
     assert source.metadata.searches == 1
-    source.metadata.add("other", name="orders", service_type="Postgres", family=False)
-    assert source._resolve_table("demo_db", "analytics", "orders", "clickhouse") is None
-    assert source.metadata.searches == 2

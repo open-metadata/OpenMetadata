@@ -33,6 +33,7 @@ export const TableShardingWidget = () => {
   if (!sharding) {
     return null;
   }
+
   return (
     <Card data-testid="table-sharding">
       <Card.Header title={t('label.sharding')} />

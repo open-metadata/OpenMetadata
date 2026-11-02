@@ -24,17 +24,13 @@ import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../../../constants/profiler.constant';
-import {
-  TableProfile,
-  TableType,
-} from '../../../../../generated/entity/data/table';
+import { TableProfile } from '../../../../../generated/entity/data/table';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
-import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
@@ -42,9 +38,11 @@ import {
   calculateRowCountMetrics,
   calculateSystemMetrics,
 } from '../../../../../utils/TableProfilerUtils';
+import { isShardedTable } from '../../../../../utils/TableShardingUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
+import { ProfileExecutionHistory } from '../../../../observability/profiler/ExecutionSource/ProfileExecutionHistory';
 import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from '../../ProfilerDetailsCard/ProfilerDetailsCard';
@@ -69,8 +67,7 @@ const TableProfilerChart = ({
     table: contextTable,
   } = useTableProfiler();
 
-  const isSharded =
-    (tableDetails ?? contextTable)?.tableType === TableType.Sharded;
+  const isSharded = isShardedTable(tableDetails ?? contextTable);
   const { fqn: datasetFQN } = useFqn();
 
   const dateRangeObject = useMemo(() => {
@@ -164,6 +161,7 @@ const TableProfilerChart = ({
       if (isSharded) {
         setShowSystemMetrics(false);
         setIsSystemProfilerLoading(false);
+
         return;
       }
       setIsSystemProfilerLoading(true);
@@ -242,25 +240,10 @@ const TableProfilerChart = ({
       <div
         className="tw:flex tw:flex-col tw:gap-[30px]"
         data-testid="table-profiler-chart-metrics">
-        {(isSharded ||
-          profileMetrics.some((profile) => profile.executionSource)) && (
-          <ul>
-            {profileMetrics
-              .filter((profile) => isSharded || profile.executionSource)
-              .map((profile) => (
-                <li key={profile.timestamp}>
-                  {formatDateTimeLong(profile.timestamp)}:{' '}
-                  {profile.executionSource
-                    ? `${t('label.execution-source')}: ${
-                        profile.executionSource.databaseName
-                      }.${profile.executionSource.schemaName}.${
-                        profile.executionSource.tableName
-                      }`
-                    : t('message.execution-source-unavailable')}
-                </li>
-              ))}
-          </ul>
-        )}
+        <ProfileExecutionHistory
+          isSharded={isSharded}
+          profiles={profileMetrics}
+        />
         <div data-testid="row-metrics">
           <ProfilerDetailsCard
             chartCollection={rowCountMetrics}
@@ -271,22 +254,25 @@ const TableProfilerChart = ({
             title={t('label.data-volume')}
           />
         </div>
-        {isSharded && <p>{t('message.sharding-system-metrics-unsupported')}</p>}
-        {showSystemMetrics && !isSharded && (
-          <ProfilerStateWrapper
-            dataTestId="operation-metrics"
-            isLoading={isSystemProfilerLoading}
-            profilerLatestValueProps={{
-              information: operationMetrics.information,
-            }}
-            title={t('label.volume-change')}>
-            <CustomBarChart
-              ariaLabel={t('label.volume-change')}
-              chartCollection={operationMetrics}
-              name="operationMetrics"
-              noDataPlaceholderText={noProfilerMessage}
-            />
-          </ProfilerStateWrapper>
+        {isSharded ? (
+          <p>{t('message.sharding-system-metrics-unsupported')}</p>
+        ) : (
+          showSystemMetrics && (
+            <ProfilerStateWrapper
+              dataTestId="operation-metrics"
+              isLoading={isSystemProfilerLoading}
+              profilerLatestValueProps={{
+                information: operationMetrics.information,
+              }}
+              title={t('label.volume-change')}>
+              <CustomBarChart
+                ariaLabel={t('label.volume-change')}
+                chartCollection={operationMetrics}
+                name="operationMetrics"
+                noDataPlaceholderText={noProfilerMessage}
+              />
+            </ProfilerStateWrapper>
+          )
         )}
 
         <CustomMetricGraphs
