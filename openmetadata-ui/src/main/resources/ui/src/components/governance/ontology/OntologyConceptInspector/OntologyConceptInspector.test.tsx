@@ -19,6 +19,12 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { UpdateOntologyConceptBinding } from '../../../../generated/api/data/updateOntologyConceptBinding';
+import {
+  AxiomType,
+  ExpressionKind,
+  OntologyAxiom,
+  Provenance,
+} from '../../../../generated/entity/data/ontologyAxiom';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import {
   Kind,
@@ -947,5 +953,148 @@ describe('OntologyConceptInspector in AI mode', () => {
       assetId: 'table',
       expectedRevision: 4,
     });
+  });
+});
+
+describe('OntologyConceptInspector relationship authoring', () => {
+  const party = {
+    ...concept,
+    id: 'party',
+    iri: 'urn:sales:Party',
+    name: 'Party',
+  };
+  const customerIsParty: OntologyAxiom = {
+    axiomType: AxiomType.SubclassOf,
+    expressions: [{ classIri: party.iri, kind: ExpressionKind.NamedClass }],
+    fullyQualifiedName: 'Sales.CustomerIsParty',
+    id: 'axiom-customer-party',
+    name: 'CustomerIsParty',
+    ontology: { id: ontology.id, type: 'ontology' },
+    provenance: Provenance.Manual,
+    subjectIri: concept.iri,
+  };
+  const authoringModel: OntologyStudioModel = {
+    ...model,
+    axioms: [customerIsParty],
+    concepts: [concept, party],
+  };
+  const relationTypeGroups = [
+    {
+      id: 'hierarchy',
+      title: 'Hierarchy',
+      options: [{ id: 'isA', label: 'Is a', paletteKey: PaletteKey.Blue }],
+    },
+  ];
+
+  const renderAuthoring = (
+    props: Partial<React.ComponentProps<typeof OntologyConceptInspector>> = {}
+  ) =>
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyConceptInspector
+          canAddRelation
+          canEditRelations
+          concept={concept}
+          model={authoringModel}
+          relationTypeGroups={relationTypeGroups}
+          relations={getModelRelations(authoringModel)}
+          onAddRelation={jest.fn().mockResolvedValue(true)}
+          onClose={jest.fn()}
+          onDeleteRelation={jest.fn().mockResolvedValue(true)}
+          onEditRelation={jest.fn().mockResolvedValue(true)}
+          onOpenData={jest.fn()}
+          onSelectConcept={jest.fn()}
+          {...props}
+        />
+      </MemoryRouter>
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetBindings.mockResolvedValue({
+      kind: 'complete',
+      revision: 0,
+      assets: [],
+    });
+    mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
+  });
+
+  it('deletes the relationship on its row', () => {
+    const onDeleteRelation = jest.fn().mockResolvedValue(true);
+    renderAuthoring({ onDeleteRelation });
+
+    const row = screen.getByTestId('ontology-concept-relationships');
+
+    expect(row).toHaveTextContent('Party');
+
+    fireEvent.click(within(row).getByTestId('ontology-relation-delete'));
+
+    expect(onDeleteRelation).toHaveBeenCalledTimes(1);
+    expect(onDeleteRelation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'subClassOf',
+        from: expect.objectContaining({ id: concept.id }),
+        to: expect.objectContaining({ id: party.id }),
+      })
+    );
+  });
+
+  it('changes the type of the relationship on its row', async () => {
+    const onEditRelation = jest.fn().mockResolvedValue(true);
+    renderAuthoring({ onEditRelation });
+
+    fireEvent.click(screen.getByTestId('ontology-relation-edit'));
+    fireEvent.click(await screen.findByTestId('relation-type-isA'));
+
+    await waitFor(() => expect(onEditRelation).toHaveBeenCalledTimes(1));
+
+    expect(onEditRelation).toHaveBeenCalledWith(
+      expect.objectContaining({ key: expect.any(String) }),
+      'isA'
+    );
+  });
+
+  it('shows the reason in the picker and keeps the type unchanged when the edit is refused', async () => {
+    const onEditRelation = jest.fn().mockResolvedValue(true);
+    renderAuthoring({
+      checkRelationType: () => 'Customer is already a subclass of Party.',
+      onEditRelation,
+    });
+
+    fireEvent.click(screen.getByTestId('ontology-relation-edit'));
+    fireEvent.click(await screen.findByTestId('relation-type-isA'));
+
+    expect(
+      await screen.findByTestId('relation-check-message')
+    ).toHaveTextContent('Customer is already a subclass of Party.');
+    expect(onEditRelation).not.toHaveBeenCalled();
+  });
+
+  it('offers no row actions without relation edit rights', () => {
+    renderAuthoring({ canEditRelations: false });
+
+    expect(
+      screen.queryByTestId('ontology-relation-delete')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-relation-edit')
+    ).not.toBeInTheDocument();
+  });
+
+  it('explains why a new relationship cannot be added and disables Add', async () => {
+    renderAuthoring({
+      checkAddRelation: () => 'Party is already above Customer.',
+      relations: [],
+    });
+
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    fireEvent.click(screen.getByTestId('relation-type-isA'));
+    fireEvent.click(screen.getByRole('button', { name: /label.target/ }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
+
+    expect(screen.getByTestId('ontology-relationship-issue')).toHaveTextContent(
+      'Party is already above Customer.'
+    );
+    expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
   });
 });
