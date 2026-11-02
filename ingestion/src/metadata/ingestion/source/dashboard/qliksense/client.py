@@ -19,9 +19,13 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from metadata.generated.schema.entity.services.connections.dashboard.qlikSense.certificatePath import (
+    QlikCertificatesByFilePath,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.qlikSense.certificateValues import (
+    QlikCertificatesByValues,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
-    QlikCertificatePath,
-    QlikCertificateValues,
     QlikSenseConnection,
 )
 from metadata.ingestion.source.dashboard.qliksense.constants import (
@@ -75,7 +79,7 @@ class QlikSenseClient:
             file.write(data)
 
     def _get_ssl_context(self) -> dict | None:
-        if isinstance(self.config.certificates, QlikCertificatePath):
+        if isinstance(self.config.certificates, QlikCertificatesByFilePath):
             context = {
                 "ca_certs": self.config.certificates.rootCertificate,
                 "certfile": self.config.certificates.clientCertificate,
@@ -119,7 +123,7 @@ class QlikSenseClient:
         if self.socket_connection:
             self.socket_connection.close()
 
-        if isinstance(self.config.certificates, QlikCertificateValues):
+        if isinstance(self.config.certificates, QlikCertificatesByValues):
             self.ssl_manager.cleanup_temp_files()
 
     def __init__(

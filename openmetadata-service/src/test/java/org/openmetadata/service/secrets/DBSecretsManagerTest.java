@@ -21,6 +21,7 @@ import static org.openmetadata.schema.api.services.CreateMlModelService.MlModelS
 import static org.openmetadata.schema.entity.services.ServiceType.ML_MODEL;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -28,11 +29,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
+import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig;
+import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
@@ -92,6 +104,75 @@ public class DBSecretsManagerTest {
                 connection, "Sftp", "test", ServiceType.DRIVE);
 
     assertEquals(ENCRYPTED_VALUE, ((SftpBasicAuth) encrypted.getAuthType()).getPassword());
+  }
+
+  /**
+   * One level further down: the connection's converter typed {@code pbitFilesSource}, but the
+   * {@code gcpConfig} of its typed {@code securityConfig} child stayed a map.
+   */
+  @Test
+  void testEncryptSecretNestedInAChildOfAOneOfProperty() {
+    PowerBIConnection connection =
+        new PowerBIConnection()
+            .withPbitFilesSource(
+                Map.of(
+                    "securityConfig",
+                    Map.of("gcpConfig", Map.of("projectId", "project", "privateKey", "key"))));
+
+    PowerBIConnection encrypted =
+        (PowerBIConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                connection, "PowerBI", "test", ServiceType.DASHBOARD);
+
+    GCPCredentials credentials = ((GCSConfig) encrypted.getPbitFilesSource()).getSecurityConfig();
+    assertEquals(ENCRYPTED_VALUE, ((GCPValues) credentials.getGcpConfig()).getPrivateKey());
+  }
+
+  /** A {@code oneOf} whose branches were inline definitions had no class to be typed into. */
+  @Test
+  void testEncryptSecretInAFormerlyInlineOneOfBranch() {
+    NatsConnection connection =
+        new NatsConnection()
+            .withNatsServers("nats://nats:4222")
+            .withAuthType(Map.of("username", "om", "password", "nats-password"));
+
+    NatsConnection encrypted =
+        (NatsConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                connection, "Nats", "test", ServiceType.MESSAGING);
+
+    assertEquals(ENCRYPTED_VALUE, ((NatsBasicAuth) encrypted.getAuthType()).getPassword());
+  }
+
+  /** Only dbt pipeline configs used to be typed, so other pipelines stored their secrets as sent. */
+  @Test
+  void testEncryptSecretInANonDbtIngestionPipelineConfig() {
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withName("storage-metadata")
+            .withPipelineType(PipelineType.METADATA)
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        Map.of(
+                            "type",
+                            "StorageMetadata",
+                            "storageMetadataConfigSource",
+                            Map.of(
+                                "securityConfig",
+                                Map.of("awsRegion", "us-east-1", "awsSecretAccessKey", "aws-key"),
+                                "prefixConfig",
+                                Map.of("containerName", "manifests")))));
+
+    secretsManager.encryptIngestionPipeline(pipeline);
+
+    StorageServiceMetadataPipeline config =
+        (StorageServiceMetadataPipeline) pipeline.getSourceConfig().getConfig();
+    assertEquals(
+        ENCRYPTED_VALUE,
+        ((StorageMetadataS3Config) config.getStorageMetadataConfigSource())
+            .getSecurityConfig()
+            .getAwsSecretAccessKey());
   }
 
   @Test

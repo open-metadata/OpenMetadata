@@ -22,10 +22,14 @@ import nats
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
-    BasicAuth,
-    NkeyAuth,
-    TokenAuth,
+from metadata.generated.schema.entity.services.connections.messaging.nats.basicAuth import (
+    UsernameAndPassword,
+)
+from metadata.generated.schema.entity.services.connections.messaging.nats.nkeyAuth import (
+    NkeySeed,
+)
+from metadata.generated.schema.entity.services.connections.messaging.nats.tokenAuth import (
+    Token,
 )
 from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
     NatsConnection as NatsConnectionConfig,
@@ -148,12 +152,12 @@ def _build_connect_opts(connection: NatsConnectionConfig, temp_cert_files: list[
         raise ValueError("NATS servers must be non-empty comma-separated URLs")
     opts["servers"] = servers
 
-    if isinstance(connection.authType, BasicAuth):
+    if isinstance(connection.authType, UsernameAndPassword):
         opts["user"] = connection.authType.username
         opts["password"] = connection.authType.password.get_secret_value()
-    elif isinstance(connection.authType, TokenAuth):
+    elif isinstance(connection.authType, Token):
         opts["token"] = connection.authType.token.get_secret_value()
-    elif isinstance(connection.authType, NkeyAuth):
+    elif isinstance(connection.authType, NkeySeed):
         opts["nkeys_seed_str"] = connection.authType.nkeySeed.get_secret_value()
 
     if connection.tlsConfig and connection.tlsConfig.root:

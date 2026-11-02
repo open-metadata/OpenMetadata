@@ -13,10 +13,14 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.DBT;
-
+import java.util.Map;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline.StorageMetadataConfigType;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 
@@ -26,15 +30,23 @@ public final class IngestionPipelineBuilder {
     // Final
   }
 
-  /** Build `IngestionPipeline` object with concrete class for the config which by definition it is a `Object`. */
+  private static final String CONFIG_TYPE = "type";
+
+  /**
+   * Build `IngestionPipeline` object with concrete class for the config which by definition it is a `Object`.
+   *
+   * <p>Only the configs that can hold secrets are typed; any other config stays a map, which the
+   * password masker and the secrets manager skip.
+   */
   public static void addDefinedConfig(IngestionPipeline ingestionPipeline) {
-    if (DBT.equals(ingestionPipeline.getPipelineType())
-        && ingestionPipeline.getSourceConfig() != null) {
-      ingestionPipeline
-          .getSourceConfig()
-          .setConfig(
-              ClassConverterFactory.getConverter(DbtPipeline.class)
-                  .convert(ingestionPipeline.getSourceConfig().getConfig()));
+    SourceConfig sourceConfig = ingestionPipeline.getSourceConfig();
+    if (sourceConfig != null && sourceConfig.getConfig() != null) {
+      Class<?> configClass =
+          secretBearingConfigClass(ingestionPipeline.getPipelineType(), sourceConfig.getConfig());
+      if (configClass != null) {
+        sourceConfig.setConfig(
+            ClassConverterFactory.getConverter(configClass).convert(sourceConfig.getConfig()));
+      }
     }
     if (ingestionPipeline.getOpenMetadataServerConnection() != null) {
       ingestionPipeline.setOpenMetadataServerConnection(
@@ -42,5 +54,26 @@ public final class IngestionPipelineBuilder {
               ClassConverterFactory.getConverter(OpenMetadataConnection.class)
                   .convert(ingestionPipeline.getOpenMetadataServerConnection()));
     }
+  }
+
+  private static Class<?> secretBearingConfigClass(PipelineType pipelineType, Object config) {
+    if (pipelineType == null) {
+      return null;
+    }
+    return switch (pipelineType) {
+      case DBT -> DbtPipeline.class;
+      case TEST_SUITE -> TestSuitePipeline.class;
+      case METADATA -> isStorageMetadataConfig(config)
+          ? StorageServiceMetadataPipeline.class
+          : null;
+      default -> null;
+    };
+  }
+
+  /** Every service's metadata pipeline shares {@code METADATA}, so the config's own type decides. */
+  private static boolean isStorageMetadataConfig(Object config) {
+    return config instanceof StorageServiceMetadataPipeline
+        || config instanceof Map<?, ?> map
+            && StorageMetadataConfigType.STORAGE_METADATA.value().equals(map.get(CONFIG_TYPE));
   }
 }

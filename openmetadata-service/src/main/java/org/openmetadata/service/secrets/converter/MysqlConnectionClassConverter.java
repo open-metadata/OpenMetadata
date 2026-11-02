@@ -17,6 +17,7 @@ import java.util.List;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.AzureConfig;
+import org.openmetadata.schema.services.connections.database.common.GcpCloudSqlConfig;
 import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -27,7 +28,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 public class MysqlConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(basicAuth.class, IamAuthConfig.class, AzureConfig.class);
+      List.of(basicAuth.class, IamAuthConfig.class, AzureConfig.class, GcpCloudSqlConfig.class);
 
   private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
 
