@@ -40,10 +40,13 @@ def _parse_reference(table_name: str, database: str | None, schema: str | None) 
 
 @dataclass(frozen=True)
 class TableServiceBinding:
-    """Associate a named service with its connector's table naming policy."""
+    """Associate a named service with table naming and resolution policies."""
 
     service_name: str
     normalize: Callable[[TableReference], TableReference] = normalize_table_reference
+    resolve_reference: (
+        Callable[[EntityResolver, str, TableReference, tuple[str, ...], str | None], tuple[Table, ...]] | None
+    ) = None
 
 
 def table_lookup_tiers(service: str, reference: TableReference, include: str | None) -> tuple[ResolutionTier, ...]:
@@ -92,24 +95,22 @@ class TableResolver:
         service_names = tuple(service.service_name for service in services)
         if "*" in service_names and service_names != ("*",):
             raise ValueError("Wildcard service selection cannot be mixed with named services")
-        from metadata.ingestion.source.database.bigquery.naming import normalize_table_reference as bigquery_normalizer
-        from metadata.ingestion.source.database.bigquery.resolution import resolve_bigquery_reference
-
-        if table_name and any(binding.normalize is bigquery_normalizer for binding in services):
+        if table_name and any(binding.resolve_reference is not None for binding in services):
             reference = _parse_reference(table_name, database_name, database_schema)
             schemas = (reference.schema, None) if schema_fallback and reference.schema else (reference.schema,)
             for schema in schemas:
                 for binding in services:
                     scoped = replace(reference, schema=schema)
-                    if binding.normalize is bigquery_normalizer:
-                        matches = resolve_bigquery_reference(
-                            self._resolver, binding.service_name, scoped, fields, include
+                    normalized = scoped if binding.service_name == "*" else binding.normalize(scoped)
+                    if binding.resolve_reference is not None and binding.service_name != "*":
+                        matches = binding.resolve_reference(
+                            self._resolver, binding.service_name, normalized, fields, include
                         )
                     else:
                         matches = self._resolver.resolve(
                             EntityResolutionPlan(
                                 Table,
-                                table_lookup_tiers(binding.service_name, binding.normalize(scoped), include),
+                                table_lookup_tiers(binding.service_name, normalized, include),
                                 fields,
                                 include,
                             )

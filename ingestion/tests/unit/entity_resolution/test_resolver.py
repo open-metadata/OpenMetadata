@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableSharding import TableSharding
 from metadata.ingestion.ometa.client import APIError
@@ -43,11 +44,12 @@ from metadata.ingestion.source.dashboard.hex.cell_lineage import ChainedCells
 from metadata.ingestion.source.dashboard.hex.metadata import HexSource
 from metadata.ingestion.source.dashboard.hex.models import Cell, DataConnection
 from metadata.ingestion.source.dashboard.hex.query_fetcher import HexQueryFetcher
-from metadata.ingestion.source.database.bigquery.naming import normalize_table_reference as bigquery_reference
+from metadata.ingestion.source.database.bigquery.naming import table_service_binding as bigquery_binding
 from metadata.ingestion.source.database.clickhouse.naming import normalize_table_reference as clickhouse_reference
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.stage.table_usage import TableStageConfig, TableUsageStage
+from metadata.utils.importer import import_table_service_binding
 from metadata.utils.lru_cache import LRUCache
 
 EXACT = FqnLookupMode.EXACT
@@ -494,7 +496,8 @@ def bigquery_family(name="events_yyyymmdd"):
 
 
 def resolve_bigquery(metadata, name):
-    return TableResolver(EntityResolver(metadata), (TableServiceBinding("my_service", bigquery_reference),)).resolve(
+    binding = import_table_service_binding(ServiceType.Database, "BigQuery", "my_service")
+    return TableResolver(EntityResolver(metadata), (binding,)).resolve(
         database_name="my_db", database_schema="my_schema", table_name=name
     )
 
@@ -661,3 +664,43 @@ def test_looker_wildcard_lineage_is_complete_without_guessed_columns(sdk, count)
         edges = [outcome.right.edge for outcome in requests]
         assert {edge.fromEntity.id.root for edge in edges} == {value.id.root for value in matches}
         assert all(edge.toEntity.id == target.id and not edge.lineageDetails.columnsLineage for edge in edges)
+
+
+def test_custom_resolution_preserves_service_and_schema_precedence(sdk):
+    metadata, transport = sdk
+    family = bigquery_family()
+    fallback = table(
+        "my_service.my_db.other_schema.events_yyyymmdd",
+        tableType="Sharded",
+        tableSharding=family.tableSharding.model_copy(
+            update={
+                "representative": family.tableSharding.representative.model_copy(update={"schemaName": "other_schema"}),
+            }
+        ),
+    )
+    ordinary = table("second.my_db.my_schema.events_20260101")
+    transport.entities = {fallback.fullyQualifiedName.root: fallback, ordinary.fullyQualifiedName.root: ordinary}
+    transport.hits = list(transport.entities)
+    bindings = (bigquery_binding("my_service"), TableServiceBinding("second"))
+    kwargs = {"database_name": "my_db", "database_schema": "my_schema", "table_name": "events_20260101"}
+
+    def resolve(**options):
+        return TableResolver(EntityResolver(metadata), bindings).resolve(**kwargs, **options)
+
+    assert ids(resolve(schema_fallback=True)) == [ordinary.id]
+    del transport.entities[ordinary.fullyQualifiedName.root]
+    assert resolve() == ()
+    assert ids(resolve(schema_fallback=True)) == [fallback.id]
+    transport.entities[family.fullyQualifiedName.root] = family
+    assert ids(resolve(schema_fallback=True)) == [family.id]
+
+
+def test_wildcard_service_does_not_apply_connector_resolution(sdk):
+    metadata, transport = sdk
+    family = bigquery_family()
+    ordinary = table("second.my_db.my_schema.events_20260101")
+    transport.entities = {value.fullyQualifiedName.root: value for value in (family, ordinary)}
+    transport.hits = list(transport.entities)
+    facade = TableResolver(EntityResolver(metadata), (bigquery_binding("*"),))
+    result = facade.resolve(database_name="my_db", database_schema="my_schema", table_name="events_20260101")
+    assert ids(result) == [ordinary.id]

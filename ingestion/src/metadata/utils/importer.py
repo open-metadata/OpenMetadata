@@ -17,6 +17,7 @@ import sys
 import traceback
 from collections.abc import Callable
 from enum import Enum  # noqa: TC003
+from types import ModuleType
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic import BaseModel
@@ -37,6 +38,7 @@ from metadata.utils.singleton import Singleton
 
 if TYPE_CHECKING:
     from metadata.domain.table_reference import TableReference
+    from metadata.entity_resolution.table import TableServiceBinding
 
 logger = utils_logger()
 
@@ -93,20 +95,38 @@ def get_module_dir(type_: str) -> str:
     return type_.split(TYPE_SEPARATOR)[0]  # noqa: PLC0207
 
 
-def import_table_reference_normalizer(
-    service_type: ServiceType, connection_type: str
-) -> Callable[["TableReference"], "TableReference"]:
-    """Load optional connector naming without importing its source or driver."""
+def _import_table_naming(service_type: ServiceType, connection_type: str) -> ModuleType | None:
     module_name = (
         f"metadata.ingestion.source.{service_type.name.lower()}.{get_module_dir(connection_type.lower())}.naming"
     )
     try:
-        module = importlib.import_module(module_name)
+        return importlib.import_module(module_name)
     except ModuleNotFoundError as exc:
         if exc.name and (exc.name == module_name or module_name.startswith(exc.name + ".")):
-            return normalize_table_reference
+            return None
         raise
-    return module.normalize_table_reference
+
+
+def import_table_reference_normalizer(
+    service_type: ServiceType, connection_type: str
+) -> Callable[["TableReference"], "TableReference"]:
+    """Load optional connector naming without importing its source or driver."""
+    module = _import_table_naming(service_type, connection_type)
+    return module.normalize_table_reference if module else normalize_table_reference
+
+
+def import_table_service_binding(
+    service_type: ServiceType, connection_type: str, service_name: str
+) -> "TableServiceBinding":
+    """Load a service binding from the existing connector naming module."""
+    from metadata.entity_resolution.table import TableServiceBinding
+
+    module = _import_table_naming(service_type, connection_type)
+    factory = getattr(module, "table_service_binding", None)
+    if factory:
+        return factory(service_name)
+    normalizer = module.normalize_table_reference if module else normalize_table_reference
+    return TableServiceBinding(service_name, normalizer)
 
 
 def get_module_name(type_: str) -> str:
