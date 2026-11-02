@@ -134,6 +134,9 @@ class HexSource(DashboardServiceSource):
     Hex Source Class with direct warehouse query support for lineage
     """
 
+    # The project whose imported but unlisted components keep their existing charts, with those charts' FQNs
+    _kept_charts: tuple[str, list[str]] | None = None
+
     def __init__(
         self,
         config: WorkflowSource,
@@ -312,7 +315,8 @@ class HexSource(DashboardServiceSource):
                         )
                     )
                     for chart in self.context.get().charts or []
-                ],
+                ]
+                + [FullyQualifiedEntityName(kept) for kept in self._kept_chart_fqns(dashboard_details)],
                 dataModels=[
                     FullyQualifiedEntityName(
                         fqn.build(  # pyright: ignore[reportArgumentType]  # always a str for DashboardDataModel
@@ -422,16 +426,15 @@ class HexSource(DashboardServiceSource):
         The components the project imports, as charts. A component imported by several
         projects is the same chart under each of their dashboards.
         """
+        existing = None
         component_ids = self.client.get_component_ids(dashboard_details.id)
         if component_ids is None:
             # Unread is not gone: the charts the dashboard has keep their links and aren't deleted
-            component_ids = self._existing_chart_names(dashboard_details)
+            existing = component_ids = self._existing_chart_names(dashboard_details)
+        self._keep_unlisted_charts(dashboard_details, component_ids, existing)
         for component_id in component_ids:
             component = self.components.get(component_id)
             if not component:
-                logger.debug(
-                    "Hex component %s imported by project %s is not listed", component_id, dashboard_details.id
-                )
                 continue
             if filter_by_chart(self.source_config.chartFilterPattern, component.title):
                 self.status.filter(component.title, "Chart filtered out.")
@@ -458,6 +461,33 @@ class HexSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def _keep_unlisted_charts(self, project: Project, component_ids: list[str], existing: list[str] | None) -> None:
+        """
+        A component the project imports but the listing left out, as a failed listing page
+        does, keeps the chart the dashboard already has for it, linked and not deleted
+        """
+        kept: list[str] = []
+        unlisted = [component_id for component_id in component_ids if component_id not in self.components]
+        if unlisted:
+            logger.debug("Hex components %s imported by project %s are not listed", unlisted, project.id)
+            existing = existing if existing is not None else self._existing_chart_names(project)
+            # fqn.build is only None for entity types that need a search; a chart never does
+            kept = [  # pyright: ignore[reportAssignmentType]
+                fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    chart_name=component_id,
+                )
+                for component_id in unlisted
+                if component_id in existing
+            ]
+            self.chart_source_state.update(kept)
+        self._kept_charts = (project.id, kept)
+
+    def _kept_chart_fqns(self, project: Project) -> list[str]:
+        return self._kept_charts[1] if self._kept_charts and self._kept_charts[0] == project.id else []
 
     def _existing_chart_names(self, project: Project) -> list[str]:
         try:
