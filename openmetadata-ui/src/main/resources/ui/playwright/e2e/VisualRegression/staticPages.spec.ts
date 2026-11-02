@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Page } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/base';
 import {
   gotoForScreenshot,
   SCREENSHOT_OPTS,
+  waitForLandingPageWidgets,
 } from '../../utils/visualRegression';
 
 /**
@@ -52,11 +54,13 @@ const PAGES: {
   mask?: string[];
   maskColor?: string;
   maxDiffPixelRatio?: number;
+  waitForReady?: (page: Page) => Promise<void>;
 }[] = [
   {
     name: 'landing-page',
     route: '/my-data',
     mask: LANDING_PAGE_MASKS,
+    waitForReady: waitForLandingPageWidgets,
   },
   {
     name: 'explore',
@@ -132,9 +136,17 @@ const PAGES: {
   { name: 'applications', route: '/marketplace' },
 ];
 
-for (const { name, route, mask, maskColor, maxDiffPixelRatio } of PAGES) {
+for (const {
+  name,
+  route,
+  mask,
+  maskColor,
+  maxDiffPixelRatio,
+  waitForReady,
+} of PAGES) {
   test(`${name} matches baseline`, async ({ page }) => {
     await gotoForScreenshot(page, route);
+    await waitForReady?.(page);
     await expect(page).toHaveScreenshot(`${name}.png`, {
       ...SCREENSHOT_OPTS,
       ...(maxDiffPixelRatio !== undefined && { maxDiffPixelRatio }),
@@ -148,6 +160,7 @@ test('landing page with collapsed sidebar matches baseline', async ({
   page,
 }) => {
   await gotoForScreenshot(page, '/my-data');
+  await waitForLandingPageWidgets(page);
   await page.getByTestId('sidebar-toggle').click();
   await expect(page).toHaveScreenshot('landing-page-sidebar-collapsed.png', {
     ...SCREENSHOT_OPTS,

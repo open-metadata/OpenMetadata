@@ -100,6 +100,59 @@ export const gotoForScreenshot = async (
   });
 };
 
+/**
+ * Wait until every landing-page widget inside the viewport has mounted and
+ * loaded.
+ *
+ * Each grid cell mounts its widget behind a lazy chunk and an
+ * IntersectionObserver (`DeferredWidget`), so straight after navigation the
+ * cells are empty boxes — no spinner and no skeleton, which lets
+ * `gotoForScreenshot`'s guards pass vacuously. The widgets then arrive one at a
+ * time, and a capture taken in between records skeletons and misses the masks
+ * whose targets had not mounted when the mask pass ran. toHaveScreenshot's own
+ * stability check compares consecutive frames at the 1% gate, so two
+ * half-loaded frames read as stable.
+ *
+ * Cells below the fold are skipped: they stay unmounted until scrolled to and
+ * are not in the screenshot.
+ */
+export const waitForLandingPageWidgets = async (page: Page) => {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const visibleCells = Array.from(
+            document.querySelectorAll<HTMLElement>(
+              '[data-testid="topics-to-catch-up-on"] .react-grid-item'
+            )
+          ).filter(
+            (cell) => cell.getBoundingClientRect().top < window.innerHeight
+          );
+
+          if (visibleCells.length === 0) {
+            return -1;
+          }
+
+          return visibleCells.filter(
+            (cell) =>
+              !cell.querySelector('[data-testid^="topic-card-"]') ||
+              cell.querySelector(
+                '[class*="animate-pulse"], [aria-busy="true"]'
+              ) ||
+              Array.from(cell.querySelectorAll('img')).some(
+                (img) => !img.complete
+              )
+          ).length;
+        }),
+      {
+        timeout: 30_000,
+        message:
+          'Landing-page widgets in the viewport never finished mounting and loading',
+      }
+    )
+    .toBe(0);
+};
+
 export const gotoVisualGlossary = async (page: Page) => {
   await gotoForScreenshot(page, `/glossary/${VISUAL_GLOSSARY_NAME}`);
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
