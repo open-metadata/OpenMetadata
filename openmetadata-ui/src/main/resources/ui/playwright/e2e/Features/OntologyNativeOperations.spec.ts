@@ -30,7 +30,7 @@ import {
   selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
-import { readGraphEdges, readNodePositions } from '../../utils/ontologyStudio';
+import { readNodePositions } from '../../utils/ontologyStudio';
 import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
@@ -166,21 +166,15 @@ test.describe(
             inspector.getByTestId('ontology-concept-properties')
           ).toContainText('profile › customer_id');
           await page.getByTestId('ontology-graph-mode-data').click();
+          const dataGraph = page.getByTestId('ontology-native-data-graph');
           await expect(
-            page.getByTestId('ontology-native-data-graph')
-          ).toContainText('Data linked to Customer');
-          expect(await readGraphEdges(page, 3)).toEqual(
-            expect.arrayContaining([
-              expect.objectContaining({
-                from: concept.id,
-                relationType: 'columnBinding',
-              }),
-              expect.objectContaining({
-                from: `asset:table:${table.entityResponseData.id}`,
-                relationType: 'containsColumn',
-              }),
-            ])
+            dataGraph.getByTestId(`ontology-data-cluster-${concept.id}`)
+          ).toContainText('Customer');
+          const row = dataGraph.getByTestId(
+            `ontology-data-asset-asset:${concept.id}:${table.entityResponseData.id}`
           );
+          await expect(row).toContainText(table.entity.displayName);
+          await expect(row).toContainText('1 col');
         });
         await test.step('Remove the column binding and table link', async () => {
           await page.getByTestId('ontology-graph-mode-model').click();
@@ -201,17 +195,26 @@ test.describe(
               )
             ).assets[0].columns
           ).toEqual([]);
+          const removeTable = inspector.getByTestId(
+            `ontology-native-asset-remove-${table.entityResponseData.id}`
+          );
+          await clickIgnoringToasts(removeTable);
+          await page.getByTestId('ontology-unlink-cancel').click();
+          const retained = await okJson<OntologyConceptBindingsResponse>(
+            await api.get(bindingPath),
+            'Read cancelled unlink'
+          );
+          expect(retained.assets.map((asset) => asset.assetId)).toContain(
+            table.entityResponseData.id
+          );
+          await clickIgnoringToasts(removeTable);
           const unlinked = page.waitForResponse(
             (response) =>
               new URL(response.url()).pathname ===
                 `${bindingPath}/table/${table.entityResponseData.id}` &&
               response.request().method() === 'DELETE'
           );
-          await clickIgnoringToasts(
-            inspector.getByTestId(
-              `ontology-native-asset-remove-${table.entityResponseData.id}`
-            )
-          );
+          await page.getByTestId('ontology-unlink-confirm').click();
           expect(
             (
               await okJson<OntologyConceptBindingsResponse>(

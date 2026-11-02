@@ -714,7 +714,10 @@
         "openmetadata-spec/src/main/resources/json/schema/api/data/ontology*",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Ontology*IT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyReleaseValidationIT.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseValidationTest.java"
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseValidationTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptSqlGeneratorTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptQueryServiceTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyConceptBindingDaoTest.java"
       ],
       "tests": [
         "*Ontology*IT",

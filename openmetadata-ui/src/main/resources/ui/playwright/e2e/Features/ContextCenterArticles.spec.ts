@@ -2009,7 +2009,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, articleToDelete.fullyQualifiedName);
 
         const deleteResponse = page.waitForResponse(
-          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=false`
+          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=true`
         );
 
         await page.getByTestId('manage-button').first().click();

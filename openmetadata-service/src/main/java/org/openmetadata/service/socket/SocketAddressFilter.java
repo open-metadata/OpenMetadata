@@ -289,7 +289,8 @@ public class SocketAddressFilter implements Filter {
   }
 
   /**
-   * Binds the token to the same identity its HTTP requests carry ({@link JwtFilter#resolveUserName}):
+   * Binds the token to the same identity its HTTP requests carry ({@link
+   * JwtFilter#resolveUserName(Map, String)}):
    * with {@code emailClaim} configured that is the stored username resolved from the email, which
    * need not match any legacy principal claim.
    */
@@ -297,7 +298,7 @@ public class SocketAddressFilter implements Filter {
       JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
     Map<String, Claim> claims = jwtFilter.verifySignatureOnly(token);
-    String userName = jwtFilter.resolveUserName(claims);
+    String userName = jwtFilter.resolveUserName(claims, token);
     jwtFilter.checkValidationsForToken(claims, token, userName, null);
     String sessionId =
         claims.containsKey(JWTTokenGenerator.SESSION_ID_CLAIM)
