@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-30 (initial)
 - **Deciders:** Sonika Shah
-- **Guard:** `EntityCsvTest.test_exportNeutralizesFormulaCellsAndImportRestoresThem`; `DatabaseServiceResourceIT.test_importExportRecursive_escapesFormulaCellsOnce`; the formula cases in `openmetadata-ui/src/main/resources/ui/src/utils/CSV/CSVPureUtils.test.ts`; new readers of export output: reviewer
+- **Guard:** `EntityCsvTest.test_exportNeutralizesFormulaCellsAndImportRestoresThem`; `DatabaseServiceResourceIT.test_importExportRecursive_escapesFormulaCellsOnce`; `LineageRepositoryTest.testExportCsvAsync_NeutralizesFormulaCells` and `testExportByEntityCountCsvAsync_NeutralizesFormulaCells`; the formula cases in `openmetadata-ui/src/main/resources/ui/src/utils/CSV/CSVPureUtils.test.ts`; new readers of export output: reviewer
 - **Related:** #36070, ADR:2026-10-19-ui-csv-downloads-start-with-a-utf8-bom
 
 ## Context
@@ -16,6 +16,8 @@ escape has to be reversible or every round trip would change data.
 - `CsvUtil.formatCsv` prefixes `'` to every cell that matches `^'*[=+\-@\t\r]`: a formula
   trigger, possibly behind leading quotes. Only the first character decides. Dots, quoted FQN
   parts, `;`, `:` and everything after the first character are untouched.
+- The async lineage exports (`exportCsvAsync`, `exportByEntityCountCsvAsync`) escape every cell the
+  same way. Lineage CSV is export-only, so nothing restores it.
 - Both `EntityCsv.parse` overloads remove one leading `'` from a cell when the rest still matches
   that pattern. Escape and restore are exact inverses, so `'=x` exports as `''=x` and imports
   back as `'=x`.

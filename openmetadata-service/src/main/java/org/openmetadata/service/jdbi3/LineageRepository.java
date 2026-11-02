@@ -42,6 +42,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1087,7 +1088,8 @@ public class LineageRepository {
       pipelineServiceName,
       pipelineServiceType
     };
-    csvWriter.writeNext(row);
+    // Cells are user-controlled, so formula triggers are escaped (e.g. a =HYPERLINK description).
+    csvWriter.writeNext(Arrays.stream(row).map(CsvUtil::neutralizeFormula).toArray(String[]::new));
   }
 
   private static String getText(JsonNode node, String fieldName) {
