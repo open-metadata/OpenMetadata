@@ -53,6 +53,8 @@ import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.topics.TopicResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
@@ -481,22 +483,27 @@ public class TopicRepository extends EntityRepository<Topic> {
       return serviceMap;
     }
 
-    // Single batch query to get all services for all topics
-    var records =
+    final var records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(topics),
                 org.openmetadata.schema.type.Relationship.CONTAINS.ordinal());
 
-    records.forEach(
-        record -> {
-          var topicId = UUID.fromString(record.getToId());
-          var serviceRef =
-              Entity.getEntityReferenceById(
-                  Entity.MESSAGING_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-          serviceMap.put(topicId, serviceRef);
-        });
+    final var serviceIds =
+        records.stream().map(record -> UUID.fromString(record.getFromId())).toList();
+    final var serviceRefs =
+        Entity.getEntityReferencesByIds(Entity.MESSAGING_SERVICE, serviceIds, NON_DELETED).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+    for (final var record : records) {
+      final var serviceId = UUID.fromString(record.getFromId());
+      final var serviceRef = serviceRefs.get(serviceId);
+      if (serviceRef == null) {
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, serviceId));
+      }
+      serviceMap.put(UUID.fromString(record.getToId()), serviceRef);
+    }
 
     return serviceMap;
   }

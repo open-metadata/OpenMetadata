@@ -161,6 +161,24 @@ public class SearchIndexFactory {
     return SearchIndex.COMMON_REINDEX_FIELDS;
   }
 
+  /**
+   * {@link SearchIndex#getFieldsLoadedOnWrite()} for the given entity type, probed the same way as
+   * {@link #getReindexFieldsFor(String)}. Asked on every live write, so a failed probe loads
+   * nothing rather than failing the write.
+   */
+  public java.util.Set<String> getFieldsLoadedOnWriteFor(String entityType) {
+    java.util.Set<String> fields = java.util.Set.of();
+    try {
+      SearchIndex probe = buildIndex(entityType, null);
+      if (probe != null) {
+        fields = probe.getFieldsLoadedOnWrite();
+      }
+    } catch (Exception e) {
+      LOG.debug("Failed to probe fields loaded on write for {}: {}", entityType, e.getMessage());
+    }
+    return fields;
+  }
+
   public SearchIndex buildIndex(String entityType, Object entity) {
     return switch (entityType) {
       case Entity.TABLE -> new TableIndex((Table) entity);

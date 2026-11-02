@@ -597,6 +597,15 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT (json->>'version')::text FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = POSTGRES)
+  String findVersionByIdForUpdate(@Define("table") String table, @BindUUID("id") UUID id);
+
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
   List<EntityIdJsonPair> findByIds(

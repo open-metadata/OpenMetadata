@@ -26,6 +26,7 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
@@ -47,6 +49,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -55,10 +58,16 @@ import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
+import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
+import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.InferenceInvalidatingRdfStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
+import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
+import org.openmetadata.service.rdf.storage.StorageFacts;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.LiveTagLookup;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
@@ -158,6 +167,8 @@ public class RdfRepository {
   private final JsonLdTranslator documentTranslator;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
   private final RdfProjectionLoaders projectionLoaders;
+  private final RdfWriteDelivery delivery;
+  private final InferenceRuleRepository inferenceRuleRepository;
   private final AssertedOnlyQueries assertedOnlyQueries =
       new AssertedOnlyQueries(
           this::listAllGraphs,
@@ -200,20 +211,18 @@ public class RdfRepository {
               new RdfRebuildStore(
                   Entity.getJdbi(), Clock.systemUTC(), RdfRebuildStore.DEFAULT_LIMITS),
               Clock.systemUTC(),
-              name -> RdfStorageFactory.createStorage(config, name));
+              name -> RdfStorageFactory.createStorage(config, name),
+              Duration.ofMillis(RdfStorageInterface.resolveRequestTimeoutMs(config)));
       datasetManager.registerConfiguredStorage(configuredStorage);
-      this.materializationStorageService = datasetManager.routedStorage();
-      final InferenceRuleRepository inferenceRuleRepository =
+      this.delivery = RdfWriteDelivery.DIRECT;
+      this.inferenceRuleRepository =
           new InferenceRuleRepository(
               Entity.getCollectionDAO().rdfInferenceRuleDAO(),
               Clock.systemUTC(),
               config.getBaseUri().toString());
+      this.materializationStorageService = datasetManager.routedStorage(delivery);
       this.storageService =
-          new AssertedGraphTrackingRdfStorage(
-              new InferenceInvalidatingRdfStorage(
-                  materializationStorageService, inferenceRuleRepository),
-              assertedOnlyQueries,
-              KNOWLEDGE_GRAPH);
+          servingChain(materializationStorageService, inferenceRuleRepository, assertedOnlyQueries);
       this.translator =
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
       this.documentTranslator =
@@ -228,11 +237,64 @@ public class RdfRepository {
       loadOntologies();
     } else {
       this.datasetManager = null;
+      this.delivery = RdfWriteDelivery.DIRECT;
+      this.inferenceRuleRepository = null;
       this.storageService = null;
       this.materializationStorageService = null;
       this.translator = null;
       this.documentTranslator = null;
       LOG.info("RDF Repository disabled");
+    }
+  }
+
+  /** A view of {@code base} whose serving writes are made for {@code delivery}. */
+  private RdfRepository(final RdfRepository base, final RdfWriteDelivery delivery) {
+    this.config = base.config;
+    this.datasetNames = base.datasetNames;
+    this.datasetManager = base.datasetManager;
+    this.translator = base.translator;
+    this.documentTranslator = base.documentTranslator;
+    this.relationshipTypeResolverSupplier = base.relationshipTypeResolverSupplier;
+    this.projectionLoaders = base.projectionLoaders;
+    this.delivery = delivery;
+    this.inferenceRuleRepository = base.inferenceRuleRepository;
+    if (datasetManager == null) {
+      // Without dataset routing there is no pause to meet; only who owns a failure changes.
+      this.materializationStorageService = base.materializationStorageService;
+      this.storageService = base.storageService;
+    } else {
+      this.materializationStorageService = datasetManager.routedStorage(delivery);
+      // Graph tracking is shared, so a graph the view creates is known to every query.
+      this.storageService =
+          servingChain(
+              materializationStorageService, inferenceRuleRepository, base.assertedOnlyQueries);
+    }
+  }
+
+  private static RdfStorageInterface servingChain(
+      final RdfStorageInterface routed,
+      final InferenceRuleRepository inferenceRules,
+      final AssertedOnlyQueries asserted) {
+    return new AssertedGraphTrackingRdfStorage(
+        new InferenceInvalidatingRdfStorage(routed, inferenceRules), asserted, KNOWLEDGE_GRAPH);
+  }
+
+  /**
+   * This repository with its serving writes made for {@code delivery}: the live-write queue and the
+   * holder of the maintenance pause each write through their own view. See {@link
+   * RdfWriteDelivery}.
+   */
+  public RdfRepository forDelivery(final RdfWriteDelivery delivery) {
+    return delivery.equals(this.delivery) ? this : new RdfRepository(this, delivery);
+  }
+
+  /**
+   * A failure the live-write queue retries belongs to the queue; any other caller's write is lost,
+   * so it marks the projection degraded.
+   */
+  private void recordFailure(final Exception failure) {
+    if (!delivery.retriedByQueue()) {
+      RdfProjectionHealth.markDegraded(failure);
     }
   }
 
@@ -273,6 +335,8 @@ public class RdfRepository {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.datasetManager = null;
+    this.delivery = RdfWriteDelivery.DIRECT;
+    this.inferenceRuleRepository = null;
     this.storageService = storageService;
     this.materializationStorageService = storageService;
     this.translator = translator;
@@ -351,6 +415,14 @@ public class RdfRepository {
 
   public void renewBuild(final BuildTarget target) {
     requireDatasetManager().heartbeat(target);
+  }
+
+  /**
+   * Returns the disk of a dataset a blue/green promotion retired: nothing reads it again, and the
+   * next build would clear it before use anyway. Call it holding the reindex lock.
+   */
+  public CompactionResult clearRetiredDataset(final String dataset) {
+    return requireDatasetManager().clearRetired(dataset, maintenanceBudget());
   }
 
   public void abandonBuild(final BuildTarget target) {
@@ -579,7 +651,7 @@ public class RdfRepository {
           lineage.getToId(),
           RdfLineagePipelines.withLivePipeline(details, projectionLoaders.liveness()));
     } catch (RuntimeException exception) {
-      RdfProjectionHealth.markDegraded(exception);
+      recordFailure(exception);
       throw exception;
     }
   }
@@ -600,8 +672,11 @@ public class RdfRepository {
       Model rdfModel = translator.toRdf(entity);
       storageService.storeEntity(entityType, entity.getId(), rdfModel);
       LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
+    } catch (RdfStorageMaintenanceException heldBack) {
+      recordFailure(heldBack);
+      throw heldBack;
     } catch (Exception e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error(
           "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
           entity.getId(),
@@ -645,6 +720,8 @@ public class RdfRepository {
     try {
       bulkStoreEntityRequests(translateEntities(entities), writeMode);
       LOG.debug("Bulk created/updated {} entities in RDF store", entities.size());
+    } catch (RdfStorageMaintenanceException heldBack) {
+      throw heldBack;
     } catch (Exception e) {
       LOG.error("Failed to bulk create/update {} entities in RDF", entities.size(), e);
       throw new RuntimeException("Failed to bulk create/update entities in RDF", e);
@@ -697,6 +774,8 @@ public class RdfRepository {
     }
     try {
       bulkStoreEntityRequests(requests, writeMode);
+    } catch (RdfStorageMaintenanceException heldBack) {
+      throw heldBack;
     } catch (Exception e) {
       LOG.error("Failed to bulk store {} pre-translated entities in RDF", requests.size(), e);
       throw new RuntimeException("Failed to bulk create/update entities in RDF", e);
@@ -784,7 +863,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Deleted entity {} from RDF store", entityReference.getId());
     } catch (RuntimeException e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error("Failed to delete entity {} from RDF", entityReference.getId(), e);
       throw new IllegalStateException("Failed to delete entity from RDF", e);
     }
@@ -826,7 +905,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(insertQuery);
       LOG.debug("Added relationship {} to RDF store", relationship);
     } catch (Exception e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error("Failed to add relationship to RDF", e);
       throw new RuntimeException("Failed to add relationship to RDF", e);
     }
@@ -1655,7 +1734,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed relationship {} from RDF store", relationship);
     } catch (RuntimeException e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error("Failed to remove relationship from RDF", e);
       throw new IllegalStateException("Failed to remove relationship from RDF", e);
     }
@@ -3978,7 +4057,7 @@ public class RdfRepository {
         LOG.debug("Added glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
       }
     } catch (RuntimeException e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error(
           "Failed to add glossary term relation {} -> {} ({})",
           fromTermId,
@@ -4013,7 +4092,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
     } catch (RuntimeException e) {
-      RdfProjectionHealth.markDegraded(e);
+      recordFailure(e);
       LOG.error(
           "Failed to remove glossary term relation {} -> {} ({})",
           fromTermId,
@@ -4066,7 +4145,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(buildGlossaryTermRelationDeleteUpdate());
       LOG.info("Cleared all glossary term relations from RDF store");
     } catch (RuntimeException exception) {
-      RdfProjectionHealth.markDegraded(exception);
+      recordFailure(exception);
       LOG.error("Failed to clear glossary term relations from RDF", exception);
       throw new IllegalStateException(
           "Failed to clear glossary term relations from RDF", exception);
@@ -4197,21 +4276,49 @@ public class RdfRepository {
     }
   }
 
+  /** Compacts the dataset this repository writes to and reports the outcome. */
+  public CompactionResult compact(final Duration maxWait) {
+    return isEnabled() ? storageService.compact(maxWait) : CompactionResult.unsupported();
+  }
+
+  /** The store's data volume, when the store reports it. */
+  public Optional<StorageFacts> storageFacts() {
+    return isEnabled() ? storageService.storageFacts() : Optional.empty();
+  }
+
   /**
-   * Trigger a backend storage compaction to physically reclaim disk space after
-   * large deletes. See {@link
-   * org.openmetadata.service.rdf.storage.RdfStorageInterface#compactStorage()}
-   * for why this is necessary on TDB2: {@code CLEAR ALL} only marks triples as
-   * deleted in TDB2's free-list — the on-disk dataset never shrinks until the
-   * compaction admin endpoint is called explicitly. Failures are swallowed at
-   * the storage layer; this is a best-effort housekeeping call.
+   * Runs {@code work} while every other writer of the serving dataset, on every server, is held
+   * back, handing it the view of this repository whose writes pass the pause. Use it around
+   * anything that blocks Fuseki's writer, such as a compaction or a clear.
    */
-  public void compactStorage() {
-    if (!isEnabled()) {
-      return;
+  public <T> T withServingWritesPaused(final String jobId, final Function<RdfRepository, T> work) {
+    final RdfLiveWritePause pause =
+        new RdfLiveWritePause(
+            Entity.getCollectionDAO().rdfReindexLockDAO(),
+            requireDatasetManager(),
+            ServerIdentityResolver.getInstance().getServerId());
+    return pause.during(jobId, holder -> work.apply(forDelivery(holder)));
+  }
+
+  /**
+   * Empties the store as maintenance, within {@code timeout} instead of the request budget. Call it
+   * on the view {@link #withServingWritesPaused} hands out. A timeout throws {@link
+   * RdfWriteOutcomeUnknownException}: Fuseki keeps clearing after the client gives up.
+   */
+  public void clearAllAsMaintenance(final Duration timeout) {
+    if (isEnabled()) {
+      LOG.info("Clearing all data from RDF store (maintenance budget {})", timeout);
+      storageService.executeMaintenanceUpdate("CLEAR ALL", timeout);
+      LOG.info("Successfully cleared all data from RDF store");
     }
-    LOG.info("Compacting RDF storage to reclaim disk space");
-    storageService.compactStorage();
+  }
+
+  /** Longest a compaction or a maintenance clear may run; writes stay paused meanwhile. */
+  public Duration maintenanceBudget() {
+    final RdfStorageMaintenanceConfig maintenance =
+        Optional.ofNullable(config.getStorageMaintenance())
+            .orElseGet(RdfStorageMaintenanceConfig::new);
+    return Duration.ofMinutes(maintenance.getMaxDurationMinutes());
   }
 
   /**

@@ -107,11 +107,34 @@ public abstract class SecretsManager {
       String connectionType,
       String connectionName,
       ServiceType serviceType) {
+    return encryptServiceConnectionConfig(
+        connectionConfig, connectionType, connectionName, serviceType, true);
+  }
+
+  /** Protects prepared and approval-staged values without creating or changing external secrets. */
+  public Object prepareServiceConnectionConfig(
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType) {
+    return encryptServiceConnectionConfig(
+        connectionConfig, connectionType, connectionName, serviceType, false);
+  }
+
+  private Object encryptServiceConnectionConfig(
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType,
+      boolean persistExternalSecrets) {
     try {
       Object newConnectionConfig =
           SecretsUtil.convert(connectionConfig, connectionType, connectionName, serviceType);
       return encryptPasswordFields(
-          newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), true);
+          newConnectionConfig,
+          buildSecretId(true, serviceType.value(), connectionName),
+          true,
+          persistExternalSecrets);
     } catch (Exception e) {
       String message =
           SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
@@ -465,6 +488,11 @@ public abstract class SecretsManager {
   }
 
   private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
+    return encryptPasswordFields(toEncryptObject, secretId, store, true);
+  }
+
+  private Object encryptPasswordFields(
+      Object toEncryptObject, String secretId, boolean store, boolean persistExternalSecrets) {
     try {
       if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
         // for each get method
@@ -480,13 +508,18 @@ public abstract class SecretsManager {
                     encryptPasswordFields(
                         obj,
                         buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)),
-                        store);
+                        store,
+                        persistExternalSecrets);
                     // check if it has annotation
                   } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                     // store value if proceed
-                    String newFieldValue =
+                    String storedFieldValue =
                         storeValue(
-                            fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
+                            fieldName,
+                            fernet.decryptIfApplies((String) obj),
+                            secretId,
+                            store && persistExternalSecrets);
+                    String newFieldValue = persistExternalSecrets ? storedFieldValue : (String) obj;
                     // get setMethod
                     Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
                     // set new value. A null means the field was cleared, so there is nothing left
@@ -508,7 +541,8 @@ public abstract class SecretsManager {
                                     secretId,
                                     fieldName.toLowerCase(Locale.ROOT),
                                     elementKey),
-                                store));
+                                store,
+                                persistExternalSecrets));
                   }
                 });
       }
