@@ -12,11 +12,11 @@
  */
 
 import {
-    act,
-    fireEvent,
-    screen,
-    waitFor,
-    within
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { Profiler, ReactNode } from 'react';
@@ -28,17 +28,17 @@ import { OntologyConceptType } from '../../generated/entity/data/ontologyConcept
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
-    createOntology,
-    getNativeOntologyDataGraphPage,
-    getOntology,
-    getOntologyConcept,
-    getOntologyConceptBindings,
-    getOntologyWorkingDiff,
-    listOntologies,
-    listOntologyAxioms,
-    listOntologyConcepts,
-    listOntologyProperties,
-    listOntologyReleaseMembers
+  createOntology,
+  getNativeOntologyDataGraphPage,
+  getOntology,
+  getOntologyConcept,
+  getOntologyConceptBindings,
+  getOntologyWorkingDiff,
+  listOntologies,
+  listOntologyAxioms,
+  listOntologyConcepts,
+  listOntologyProperties,
+  listOntologyReleaseMembers,
 } from '../../rest/ontologyAPI';
 import { fetchRdfConfig } from '../../rest/rdfAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';

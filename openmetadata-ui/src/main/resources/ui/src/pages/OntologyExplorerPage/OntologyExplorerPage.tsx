@@ -12,18 +12,18 @@
  */
 
 import {
-    Badge,
-    BadgeWithDot,
-    Box,
-    Button,
-    Select,
-    Typography
+  Badge,
+  BadgeWithDot,
+  Box,
+  Button,
+  Select,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    GitBranch01,
-    Grid01,
-    Plus,
-    Share07
+  GitBranch01,
+  Grid01,
+  Plus,
+  Share07,
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
@@ -79,17 +79,17 @@ import { OntologyPublicationStatus } from '../../generated/type/ontologyPublicat
 import { useAuth } from '../../hooks/authHooks';
 import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
-    OntologyEditLeaseState,
-    useOntologyEditLease
+  OntologyEditLeaseState,
+  useOntologyEditLease,
 } from '../../hooks/governance/ontology/useOntologyEditLease';
 import { ONTOLOGY_WORKING_DIFF_QUERY_KEY } from '../../hooks/governance/ontology/useOntologyPublication';
 import {
-    ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
-    useAllOntologyStudioModels
+  ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
+  useAllOntologyStudioModels,
 } from '../../hooks/governance/ontology/useOntologyStudioModel';
 import {
-    ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
-    useOntologyStudioScopes
+  ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
+  useOntologyStudioScopes,
 } from '../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useOntologyUnpublishedCount } from '../../hooks/governance/ontology/useOntologyUnpublishedCount';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -98,29 +98,29 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { getOntology } from '../../rest/ontologyAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-    ALL_ONTOLOGIES_SCOPE,
-    getScopeKey,
-    getStudioScope,
-    isOntologyScope,
-    OntologyStudioScope
+  ALL_ONTOLOGIES_SCOPE,
+  getScopeKey,
+  getStudioScope,
+  isOntologyScope,
+  OntologyStudioScope,
 } from '../../utils/governance/ontology/OntologyStudioScope.utils';
 import {
-    parseStudioUrlState,
-    patchStudioUrlParams,
-    StudioUrlState,
-    StudioUrlVersion,
-    StudioUrlView
+  parseStudioUrlState,
+  patchStudioUrlParams,
+  StudioUrlState,
+  StudioUrlVersion,
+  StudioUrlView,
 } from '../../utils/governance/ontology/OntologyStudioUrlState.utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
-    checkPermission,
-    DEFAULT_ENTITY_PERMISSION
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { generateUUID } from '../../utils/StringUtils';
 import {
-    showErrorToast,
-    showInfoToast,
-    showSuccessToast
+  showErrorToast,
+  showInfoToast,
+  showSuccessToast,
 } from '../../utils/ToastUtils';
 
 // 'review' has no tab; a memory's "view draft" link (?draft=) still opens it.

@@ -25,7 +25,7 @@ import OntologyAuthoringWorkspace from '../OntologyAuthoringWorkspace/OntologyAu
 import OntologyAxiomWorkspace from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace';
 import OntologyCreateForm from '../OntologyCreateForm/OntologyCreateForm';
 import OntologyGraphView, {
-    OntologyModelStats
+  OntologyModelStats,
 } from '../OntologyGraphView/OntologyGraphView';
 import OntologyOverview from '../OntologyOverview/OntologyOverview';
 

@@ -20,16 +20,16 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
-    clickIgnoringToasts,
-    getWorkerAdminAPIContext,
-    scrollIntoViewAndSettle,
-    selectOptionWithRetry,
-    uuid
+  clickIgnoringToasts,
+  getWorkerAdminAPIContext,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
+  uuid,
 } from '../../utils/common';
 import {
-    clickGraphNode,
-    readGraphEdges,
-    readNodePositions
+  clickGraphNode,
+  readGraphEdges,
+  readNodePositions,
 } from '../../utils/ontologyStudio';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 

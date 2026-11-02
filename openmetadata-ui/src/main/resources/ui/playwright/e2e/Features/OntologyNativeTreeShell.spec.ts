@@ -12,10 +12,10 @@
  */
 import { APIRequestContext, Locator, Page, Response } from '@playwright/test';
 import {
-    AxiomType,
-    CreateOntologyAxiom,
-    ExpressionKind,
-    Provenance
+  AxiomType,
+  CreateOntologyAxiom,
+  ExpressionKind,
+  Provenance,
 } from '../../../src/generated/api/data/createOntologyAxiom';
 import { SparqlQuerySettings } from '../../../src/generated/configuration/sparqlQuerySettings';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
