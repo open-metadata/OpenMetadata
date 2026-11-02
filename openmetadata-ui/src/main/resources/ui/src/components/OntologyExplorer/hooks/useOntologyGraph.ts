@@ -1233,6 +1233,7 @@ export function useOntologyGraph({
   const onCanvasDoubleClickRef = useRef(onCanvasDoubleClick);
   onCanvasDoubleClickRef.current = onCanvasDoubleClick;
   const portDragEndedAtRef = useRef(0);
+  const portPressedRef = useRef(false);
 
   const isEditModeRef = useRef(isEditMode);
   isEditModeRef.current = isEditMode;
@@ -1856,8 +1857,9 @@ export function useOntologyGraph({
         {
           type: 'drag-element',
           // Pressing the + handle starts a connection, so it must not move the node.
-          enable: (event: IElementEvent) =>
-            !hasShapeClass(event.originalTarget, STUDIO_EDIT_PORT_CLASS_NAME),
+          // The drag events do not carry the pressed shape, so the press is
+          // remembered from the pointer-down handler below.
+          enable: () => !portPressedRef.current,
         },
       ],
       plugins: [],
@@ -2077,16 +2079,24 @@ export function useOntologyGraph({
       const [x, y] = graph.getCanvasByClient([e.client.x, e.client.y]);
       handler({ x, y });
     });
-    graph.on(NodeEvent.POINTER_DOWN, (e: IElementEvent & PointerEvent) => {
+    graph.on(NodeEvent.POINTER_DOWN, (e: IElementEvent) => {
       if (
         studioMode &&
         isEditModeRef.current &&
         hasShapeClass(e.originalTarget, STUDIO_EDIT_PORT_CLASS_NAME) &&
         e.target.id
       ) {
+        portPressedRef.current = true;
+        window.addEventListener(
+          'pointerup',
+          () => {
+            portPressedRef.current = false;
+          },
+          { once: true }
+        );
         const detail: OntologyEditPortDownDetail = {
-          clientX: e.clientX,
-          clientY: e.clientY,
+          clientX: e.client.x,
+          clientY: e.client.y,
           nodeId: e.target.id,
         };
         container.dispatchEvent(
