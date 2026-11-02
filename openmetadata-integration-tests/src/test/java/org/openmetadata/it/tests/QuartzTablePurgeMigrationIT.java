@@ -1,0 +1,222 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.it.tests;
+
+import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.v1130.QuartzTablePurge;
+import org.testcontainers.containers.JdbcDatabaseContainer;
+
+/**
+ * The 1.13.0 data migration empties the Quartz tables. Runs it in a scratch database, so the
+ * suite's own scheduler keeps its jobs, and plays the part of an older server that is still running
+ * during the upgrade.
+ */
+// The methods share one scratch database, and each one empties it.
+@Execution(ExecutionMode.SAME_THREAD)
+class QuartzTablePurgeMigrationIT {
+  private static final String SCHEDULER = "OMAppsJobScheduler";
+  private static final String JOB = "AuditLogConsumerJob";
+  private static final String GROUP = "OMJobGroup";
+  private static final long CHECKIN_INTERVAL = 7_500;
+
+  private static final String SCRATCH_DATABASE =
+      "qrtz_purge_%s".formatted(UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+  private static ConnectionType connectionType;
+  private static Jdbi scratch;
+
+  @BeforeAll
+  static void createScratchQuartzSchema() throws Exception {
+    // The bootstrap exposes the container as a GenericContainer; only a JDBC container carries the
+    // URL and credentials needed to create a second database beside the suite's.
+    assumeTrue(
+        TestSuiteBootstrap.getDatabaseContainer() instanceof JdbcDatabaseContainer<?>,
+        "needs the suite's database container to create a scratch database");
+    connectionType = ConnectionType.from(container().getDriverClassName());
+    admin().useHandle(handle -> handle.execute("CREATE DATABASE %s".formatted(SCRATCH_DATABASE)));
+    scratch = Jdbi.create(scratchUrl(), adminUser(), container().getPassword());
+    List<String> quartzDdl = quartzDdl();
+    scratch.useHandle(handle -> quartzDdl.forEach(handle::execute));
+  }
+
+  @AfterAll
+  static void dropScratchDatabase() {
+    if (scratch != null) {
+      admin().useHandle(handle -> handle.execute("DROP DATABASE %s".formatted(SCRATCH_DATABASE)));
+    }
+  }
+
+  @BeforeEach
+  void seedScheduledJob() {
+    QuartzTablePurge.purge(scratch, connectionType);
+    scratch.useHandle(
+        handle -> {
+          insertJob(handle);
+          insertTrigger(handle, "existingTrigger");
+          handle.execute(
+              "INSERT INTO QRTZ_LOCKS (SCHED_NAME, LOCK_NAME) VALUES (?, 'TRIGGER_ACCESS')",
+              SCHEDULER);
+          insertCheckIn(handle, "stoppedServer", System.currentTimeMillis() - 3_600_000);
+        });
+  }
+
+  @Test
+  void purgeEmptiesEveryQuartzTable() {
+    QuartzTablePurge.purge(scratch, connectionType);
+
+    scratch.useHandle(handle -> QuartzTablePurge.TABLES.forEach(t -> assertEmpty(handle, t)));
+  }
+
+  @Test
+  void purgeWaitsForARunningSchedulersTriggerWriteInsteadOfFailingOnTheForeignKey()
+      throws Exception {
+    try (Handle oldServer = scratch.open()) {
+      oldServer.begin();
+      insertTrigger(oldServer, "reinsertedByOldServer");
+
+      CompletableFuture<Void> purge =
+          CompletableFuture.runAsync(() -> QuartzTablePurge.purge(scratch, connectionType));
+      await()
+          .during(Duration.ofSeconds(2))
+          .atMost(Duration.ofSeconds(5))
+          .until(() -> !purge.isDone());
+
+      oldServer.commit();
+      purge.get(60, TimeUnit.SECONDS);
+    }
+
+    scratch.useHandle(handle -> QuartzTablePurge.TABLES.forEach(t -> assertEmpty(handle, t)));
+  }
+
+  @Test
+  void onlyRecentCheckInsCountAsALiveScheduler() {
+    long now = System.currentTimeMillis();
+    scratch.useHandle(
+        handle -> {
+          insertCheckIn(handle, "runningServer", now - CHECKIN_INTERVAL);
+          assertEquals(
+              List.of("runningServer"), QuartzTablePurge.liveSchedulerInstances(handle, now));
+        });
+  }
+
+  private static void insertJob(Handle handle) {
+    String no = connectionType == ConnectionType.MYSQL ? "'0'" : "FALSE";
+    handle.execute(
+        """
+        INSERT INTO QRTZ_JOB_DETAILS (SCHED_NAME, JOB_NAME, JOB_GROUP, JOB_CLASS_NAME, IS_DURABLE,
+          IS_NONCONCURRENT, IS_UPDATE_DATA, REQUESTS_RECOVERY)
+        VALUES (?, ?, ?, 'org.openmetadata.Job', %1$s, %1$s, %1$s, %1$s)"""
+            .formatted(no),
+        SCHEDULER,
+        JOB,
+        GROUP);
+  }
+
+  private static void insertTrigger(Handle handle, String trigger) {
+    handle.execute(
+        """
+        INSERT INTO QRTZ_TRIGGERS (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP, JOB_NAME, JOB_GROUP,
+          TRIGGER_STATE, TRIGGER_TYPE, START_TIME)
+        VALUES (?, ?, ?, ?, ?, 'WAITING', 'SIMPLE', 0)""",
+        SCHEDULER,
+        trigger,
+        GROUP,
+        JOB,
+        GROUP);
+    handle.execute(
+        """
+        INSERT INTO QRTZ_SIMPLE_TRIGGERS (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP, REPEAT_COUNT,
+          REPEAT_INTERVAL, TIMES_TRIGGERED)
+        VALUES (?, ?, ?, -1, 5000, 0)""",
+        SCHEDULER,
+        trigger,
+        GROUP);
+  }
+
+  private static void insertCheckIn(Handle handle, String instance, long lastCheckIn) {
+    handle.execute(
+        """
+        INSERT INTO QRTZ_SCHEDULER_STATE (SCHED_NAME, INSTANCE_NAME, LAST_CHECKIN_TIME,
+          CHECKIN_INTERVAL)
+        VALUES (?, ?, ?, ?)""",
+        SCHEDULER,
+        instance,
+        lastCheckIn,
+        CHECKIN_INTERVAL);
+  }
+
+  private static void assertEmpty(Handle handle, String table) {
+    long rows =
+        handle.createQuery("SELECT COUNT(*) FROM %s".formatted(table)).mapTo(Long.class).one();
+    assertEquals(0, rows, "%s still has rows".formatted(table));
+  }
+
+  // The 1.3.1 migration creates the Quartz tables; none of its statements contains a semicolon.
+  private static List<String> quartzDdl() throws Exception {
+    String dialect = connectionType == ConnectionType.MYSQL ? "mysql" : "postgres";
+    Path script = Path.of("bootstrap", "sql", "migrations", "native", "1.3.1", dialect);
+    Path moduleRelative = Path.of("..").resolve(script);
+    Path file =
+        (Files.exists(moduleRelative) ? moduleRelative : script).resolve("schemaChanges.sql");
+    String withoutComments =
+        Files.readAllLines(file).stream()
+            .filter(line -> !line.trim().startsWith("--"))
+            .collect(Collectors.joining("\n"));
+    return Arrays.stream(withoutComments.split(";"))
+        .map(String::trim)
+        .filter(statement -> statement.contains("QRTZ_"))
+        .toList();
+  }
+
+  private static JdbcDatabaseContainer<?> container() {
+    return (JdbcDatabaseContainer<?>) TestSuiteBootstrap.getDatabaseContainer();
+  }
+
+  // The MySQL suite user may only use its own database; root can create another.
+  private static String adminUser() {
+    return connectionType == ConnectionType.MYSQL ? "root" : container().getUsername();
+  }
+
+  private static Jdbi admin() {
+    return Jdbi.create(container().getJdbcUrl(), adminUser(), container().getPassword());
+  }
+
+  private static String scratchUrl() {
+    String database = container().getDatabaseName();
+    return container()
+        .getJdbcUrl()
+        .replace("/%s".formatted(database), "/%s".formatted(SCRATCH_DATABASE));
+  }
+}
