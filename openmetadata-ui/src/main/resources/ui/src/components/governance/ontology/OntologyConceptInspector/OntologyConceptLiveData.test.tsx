@@ -113,6 +113,23 @@ describe('OntologyConceptLiveData', () => {
     expect(screen.queryByTestId('live-data-extension')).not.toBeInTheDocument();
   });
 
+  it('asks for a binding instead of querying a concept with no bound table', async () => {
+    renderWithQueryClient(
+      <OntologyConceptLiveData
+        concept={transfer}
+        isBound={false}
+        model={model}
+        relations={relations}
+      />
+    );
+
+    expect(
+      await screen.findByText('message.ontology-live-data-needs-binding')
+    ).toBeVisible();
+    expect(mockGenerate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('ontology-live-data-sql')).toBeNull();
+  });
+
   it('titles the section with an h3 heading', async () => {
     renderLiveData();
     await screen.findByTestId('ontology-live-data-sql');
