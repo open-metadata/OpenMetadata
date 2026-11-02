@@ -20,6 +20,7 @@ from collections.abc import Iterable
 from sqlglot import exp
 
 from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -39,7 +40,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.hexConnecti
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -54,7 +54,7 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import get_service_table_binding, search_table_entities
+from metadata.ingestion.lineage.sql_lineage import get_table_binding_resolution
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -80,10 +80,9 @@ from metadata.ingestion.source.dashboard.hex.query_fetcher import (
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
-from metadata.utils.fqn import build_es_fqn_search_string
-from metadata.utils.importer import import_table_service_binding
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
+from metadata.utils.service_spec.service_spec import load_table_binding_resolution
 
 logger = ingestion_logger()
 
@@ -724,18 +723,25 @@ class HexSource(DashboardServiceSource):
             )
         return lineage
 
-    def _search_unscoped_tables(
-        self, database: str | None, schema: str | None, table: str, connection_type: str | None
-    ) -> tuple[Table, ...] | None:
-        if not connection_type:
-            return None
+    def _resolve_reference(
+        self,
+        database: str | None,
+        schema: str | None,
+        table: str,
+        service: str | None,
+        connection_type: str | None,
+    ) -> tuple[Table, ...]:
         try:
-            binding = import_table_service_binding(ServiceType.Database, connection_type, "*")
-            if binding.resolve_unscoped_reference is None:
-                return None
-            return binding.resolve_unscoped_reference(self.metadata, TableReference(database, schema, table))
+            resolution = (
+                get_table_binding_resolution(self.metadata, service)
+                if service
+                else load_table_binding_resolution(connection_type, self.metadata)
+            )
+            return resolution.resolve(
+                TableReference(database, schema, table), service_name=service, lookup=TableLookup.SEARCH
+            )
         except Exception as exc:
-            raise TableSearchError(f"searching unscoped table reference {table}: {exc}") from exc
+            raise TableSearchError(f"searching table reference {table}: {exc}") from exc
 
     def _add_wildcard_tables(
         self,
@@ -745,38 +751,21 @@ class HexSource(DashboardServiceSource):
         table_name: str,
         connection_type: str | None = None,
     ) -> None:
-        if not self.get_db_service_prefixes():
-            if not searched_schema:
-                return
-            matches = self._search_unscoped_tables(searched_database, searched_schema, table_name, connection_type)
-            scopes = {tuple(fqn.split(model_str(table.fullyQualifiedName))[:-1]) for table in matches or ()}
-            if len(scopes) == 1:
-                for match in matches or ():
-                    lineage.tables[model_str(match.id)] = (match, None)
-            return
-        for prefix in self.get_db_service_prefixes() or []:
-            service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
-            if not service or get_service_table_binding(self.metadata, service).resolve_reference is None:
+        for prefix in self.get_db_service_prefixes() or [None]:
+            service, database, schema, table = self.parse_db_service_prefix(prefix)
+            if not (searched_schema or schema):
                 continue
             if any(
                 expected and actual and expected != actual
-                for expected, actual in (
-                    (prefix_database, searched_database),
-                    (prefix_schema, searched_schema),
-                    (prefix_table, table_name),
-                )
+                for expected, actual in ((database, searched_database), (schema, searched_schema), (table, table_name))
             ):
                 continue
-            matches = (
-                search_table_entities(
-                    self.metadata,
-                    service,
-                    searched_database or prefix_database,
-                    searched_schema or prefix_schema,
-                    table_name,
-                )
-                or []
+            matches = self._resolve_reference(
+                searched_database or database, searched_schema or schema, table_name, service, connection_type
             )
+            scopes = {tuple(fqn.split(model_str(match.fullyQualifiedName))[:-1]) for match in matches}
+            if not service and len(scopes) > 1:
+                continue
             for match in matches:
                 lineage.tables[model_str(match.id)] = (match, prefix)
 
@@ -789,10 +778,6 @@ class HexSource(DashboardServiceSource):
         so a reference without a schema, or matching several tables (the same
         schema.table in two services), resolves to none.
         """
-        if not self.get_db_service_prefixes() and schema:
-            unscoped = self._search_unscoped_tables(database, schema, table, connection_type)
-            if unscoped is not None:
-                return (unscoped[0], None) if len(unscoped) == 1 else None
         matches: dict[str, tuple[Table, str | None]] = {}
         for prefix in self.get_db_service_prefixes() or [None]:
             service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
@@ -803,38 +788,14 @@ class HexSource(DashboardServiceSource):
                 continue
             if not (schema or prefix_schema):
                 continue
-            search = build_es_fqn_search_string(
-                database_name=database or prefix_database,
-                schema_name=schema or prefix_schema,
-                service_name=service or "*",
-                table_name=table,
-            )
-            found_tables = (
-                (
-                    search_table_entities(
-                        self.metadata, service, database or prefix_database, schema or prefix_schema, table
-                    )
-                    or []
-                )
-                if service and get_service_table_binding(self.metadata, service).resolve_reference is not None
-                else self._search_tables(search)
+            found_tables = self._resolve_reference(
+                database or prefix_database, schema or prefix_schema, table, service, connection_type
             )
             for found in found_tables:
                 matches.setdefault(model_str(found.id), (found, prefix))
         if len(matches) > 1:
             logger.debug("Skipping Hex table reference %s: it matches %d tables", table, len(matches))
         return next(iter(matches.values())) if len(matches) == 1 else None
-
-    def _search_tables(self, fqn_search_string: str) -> list[Table]:
-        try:
-            tables = self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=fqn.prefix_entity_for_wildcard_search(entity_type=Table, fqn=fqn_search_string),
-                raise_on_error=True,
-            )
-        except Exception as exc:
-            raise TableSearchError(f"searching {fqn_search_string}: {exc}") from exc
-        return [table for table in tables or [] if table is not None]
 
     @staticmethod
     def _unique_column_name(name: str, taken: set[str]) -> str:

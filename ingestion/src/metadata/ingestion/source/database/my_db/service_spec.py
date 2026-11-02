@@ -8,11 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from metadata.ingestion.source.database.my_db.connection import MyDbConnection
-from metadata.ingestion.source.database.my_db.metadata import MyDbSource
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=MyDbSource,
-    connection_class=MyDbConnection,
+    metadata_source_class="metadata.ingestion.source.database.my_db.metadata.MyDbSource",
+    connection_class="metadata.ingestion.source.database.my_db.connection.MyDbConnection",
 )

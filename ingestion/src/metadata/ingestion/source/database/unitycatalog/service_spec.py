@@ -1,34 +1,12 @@
-from metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface import (
-    UnityCatalogTestSuiteInterface,
-)
-from metadata.ingestion.source.database.unitycatalog.connection import (
-    UnityCatalogConnection,
-)
-from metadata.ingestion.source.database.unitycatalog.data_diff.data_diff import (
-    UnityCatalogTableParameter,
-)
-from metadata.ingestion.source.database.unitycatalog.lineage import (
-    UnitycatalogLineageSource,
-)
-from metadata.ingestion.source.database.unitycatalog.metadata import UnitycatalogSource
-from metadata.ingestion.source.database.unitycatalog.usage import (
-    UnitycatalogUsageSource,
-)
-from metadata.profiler.interface.sqlalchemy.unity_catalog.profiler_interface import (
-    UnityCatalogProfilerInterface,
-)
-from metadata.sampler.sqlalchemy.unitycatalog.sampler import (
-    UnityCatalogSamplerInterface,
-)
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=UnitycatalogSource,
-    lineage_source_class=UnitycatalogLineageSource,
-    usage_source_class=UnitycatalogUsageSource,
-    profiler_class=UnityCatalogProfilerInterface,
-    test_suite_class=UnityCatalogTestSuiteInterface,
-    sampler_class=UnityCatalogSamplerInterface,
-    data_diff=UnityCatalogTableParameter,
-    connection_class=UnityCatalogConnection,  # pyright: ignore[reportArgumentType]
+    metadata_source_class="metadata.ingestion.source.database.unitycatalog.metadata.UnitycatalogSource",
+    lineage_source_class="metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource",
+    usage_source_class="metadata.ingestion.source.database.unitycatalog.usage.UnitycatalogUsageSource",
+    profiler_class="metadata.profiler.interface.sqlalchemy.unity_catalog.profiler_interface.UnityCatalogProfilerInterface",
+    test_suite_class="metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface.UnityCatalogTestSuiteInterface",
+    sampler_class="metadata.sampler.sqlalchemy.unitycatalog.sampler.UnityCatalogSamplerInterface",
+    data_diff="metadata.ingestion.source.database.unitycatalog.data_diff.data_diff.UnityCatalogTableParameter",
+    connection_class="metadata.ingestion.source.database.unitycatalog.connection.UnityCatalogConnection",
 )

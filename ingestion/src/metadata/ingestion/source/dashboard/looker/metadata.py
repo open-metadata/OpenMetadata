@@ -49,6 +49,8 @@ from looker_sdk.sdk.api40.models import (
 )
 from pydantic import ValidationError
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -101,7 +103,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_service_table_binding, search_table_entities
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_table_binding_resolution
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
@@ -1978,40 +1980,18 @@ class LookerSource(DashboardServiceSource):
             ):
                 continue
 
-            if (
-                db_service_name
-                and get_service_table_binding(self.metadata, db_service_name).resolve_reference is not None
-            ):
-                matches = (
-                    search_table_entities(
-                        self.metadata,
-                        db_service_name,
-                        prefix_database_name or database_name,
-                        prefix_schema_name or source_elements["database_schema"],
-                        table_name,
-                    )
-                    or []
-                )
-                if matches:
-                    return list(matches)
-                continue
-
-            from_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
+            resolution = get_table_binding_resolution(self.metadata, db_service_name)
+            matches = resolution.resolve(
+                TableReference(
+                    prefix_database_name or database_name,
+                    prefix_schema_name or source_elements["database_schema"],
+                    table_name,
+                ),
                 service_name=db_service_name,
-                database_name=prefix_database_name or database_name,
-                schema_name=prefix_schema_name or source_elements["database_schema"],
-                table_name=table_name,
+                lookup=TableLookup.FQN,
             )
-
-            from_entity: Table = self.metadata.get_by_name(
-                entity=Table,
-                fqn=from_fqn,
-            )
-
-            if from_entity:
-                return [from_entity]
+            if matches:
+                return list(matches)
 
         return []
 

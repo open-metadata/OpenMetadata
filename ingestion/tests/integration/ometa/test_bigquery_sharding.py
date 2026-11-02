@@ -31,7 +31,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.tests.basic import TestCaseResult as CaseResult
 from metadata.generated.schema.tests.testCase import TestCase as Case
-from metadata.ingestion.source.database.bigquery.resolution import resolve_bigquery_reference
+from metadata.ingestion.source.database.bigquery.resolution import BigQueryTableBindingResolution
 from metadata.ingestion.source.database.bigquery.sharding import inventory_families
 
 
@@ -123,8 +123,8 @@ def test_migration_preserves_identities_relationships_and_case_history(shard_cat
     def resolve_physical():
         resolver = EntityResolver(metadata)
         try:
-            return resolve_bigquery_reference(
-                resolver, schema.split(".")[0], TableReference("demo_project", "demo_dataset", "events_20260101")
+            return BigQueryTableBindingResolution(metadata, resolver).resolve(
+                TableReference("demo_project", "demo_dataset", "events_20260101"), service_name=schema.split(".")[0]
             )[0]
         finally:
             resolver.close()

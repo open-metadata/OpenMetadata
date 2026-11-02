@@ -1,16 +1,9 @@
-from metadata.ingestion.source.database.redshift.connection import RedshiftConnection
-from metadata.ingestion.source.database.redshift.lineage import RedshiftLineageSource
-from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
-from metadata.ingestion.source.database.redshift.usage import RedshiftUsageSource
-from metadata.profiler.interface.sqlalchemy.redshift.profiler_interface import (
-    RedshiftProfilerInterface,
-)
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=RedshiftSource,
-    lineage_source_class=RedshiftLineageSource,
-    usage_source_class=RedshiftUsageSource,
-    profiler_class=RedshiftProfilerInterface,
-    connection_class=RedshiftConnection,  # pyright: ignore[reportArgumentType]
+    metadata_source_class="metadata.ingestion.source.database.redshift.metadata.RedshiftSource",
+    lineage_source_class="metadata.ingestion.source.database.redshift.lineage.RedshiftLineageSource",
+    usage_source_class="metadata.ingestion.source.database.redshift.usage.RedshiftUsageSource",
+    profiler_class="metadata.profiler.interface.sqlalchemy.redshift.profiler_interface.RedshiftProfilerInterface",
+    connection_class="metadata.ingestion.source.database.redshift.connection.RedshiftConnection",
 )

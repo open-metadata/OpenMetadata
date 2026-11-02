@@ -23,6 +23,8 @@ from datetime import datetime
 from functools import cached_property
 from typing import Any
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -85,8 +87,7 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_lineage_by_query,
-    get_service_table_binding,
-    search_table_entities,
+    get_table_binding_resolution,
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
@@ -862,25 +863,17 @@ class DbtSource(DbtServiceSource):
         if not fqn_search_string:
             return None
         parts = fqn.split(fqn_search_string)
-        if len(parts) == 4 and get_service_table_binding(self.metadata, parts[0]).resolve_reference is not None:
-            entities = search_table_entities(self.metadata, parts[0], parts[1], parts[2], parts[3]) or []
-            if len(entities) > 1:
-                self.status.warning(fqn_search_string, "Ambiguous dbt metadata attachment; resolved multiple tables")
-            return entities[0] if len(entities) == 1 else None
-        table_entities = get_entity_from_es_result(
-            entity_list=self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
-                fields="sourceHash",
-            ),
-            fetch_multiple_entities=True,
-        )
-
-        if not table_entities:
+        if len(parts) != 4:
             return None
-
-        logger.debug("Found table entities from %s: %d entities", fqn_search_string, len(table_entities))
-        return next(iter(filter(None, table_entities)), None) if table_entities else None
+        entities = get_table_binding_resolution(self.metadata, parts[0]).resolve(
+            TableReference(parts[1], parts[2], parts[3]),
+            service_name=parts[0],
+            fields=("sourceHash",),
+            lookup=TableLookup.FIRST_MATCH,
+        )
+        if len(entities) > 1:
+            self.status.warning(fqn_search_string, "Ambiguous dbt metadata attachment; resolved multiple tables")
+        return entities[0] if len(entities) == 1 else None
 
     def _get_table_entity_in_mapped_database(self, table_fqn: str) -> Table | None:
         """
@@ -1378,14 +1371,12 @@ class DbtSource(DbtServiceSource):
         try:
             for upstream in data_model_link.datamodel.upstream or []:
                 parts = fqn.split(upstream)
-                if (
-                    len(parts) == 4
-                    and "*" in parts[3]
-                    and get_service_table_binding(self.metadata, parts[0]).resolve_reference is not None
-                ):
-                    wildcard_targets[upstream] = (
-                        search_table_entities(self.metadata, parts[0], parts[1], parts[2], parts[3]) or []
+                if len(parts) == 4 and "*" in parts[3]:
+                    matches = get_table_binding_resolution(self.metadata, parts[0]).resolve(
+                        TableReference(parts[1], parts[2], parts[3]), service_name=parts[0], lookup=TableLookup.SEARCH
                     )
+                    if matches:
+                        wildcard_targets[upstream] = matches
         except Exception as exc:
             self.status.warning(
                 model_str(to_entity.fullyQualifiedName), f"dbt lineage incomplete; preserving prior lineage: {exc}"

@@ -31,13 +31,9 @@ from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Stage
 from metadata.ingestion.lineage.sql_lineage import (
-    get_service_table_binding,
-    get_table_fqn_from_query_name,
-    search_table_entities,
+    get_table_binding_resolution,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.utils import model_str
-from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import get_query_hash, init_staging_dir
 from metadata.utils.logger import ingestion_logger
@@ -209,41 +205,11 @@ class TableUsageStage(Stage):
         for parsed_data in record.parsedData:
             if parsed_data is None:
                 continue
-            usage_data = parsed_data
-            tables = parsed_data.tables
-            if get_service_table_binding(self.metadata, parsed_data.serviceName).resolve_reference is not None:
-                tables, joins = self._resolve_usage_targets(parsed_data)
-                usage_data = parsed_data.model_copy(update={"joins": joins})
-            for table in tables:
+            usage_data = get_table_binding_resolution(self.metadata, parsed_data.serviceName).prepare_usage(parsed_data)
+            for table in usage_data.tables:
                 yield from self._handle_table_usage(parsed_data=usage_data, table=table)
             self._handle_query_cost(parsed_data)
         self.dump_data_to_file()
-
-    def _resolve_usage_targets(self, parsed_data):
-        targets = {}
-        joins = {}
-        for table in parsed_data.tables:
-            database, schema, name = get_table_fqn_from_query_name(table)
-            if not name:
-                raise ValueError("Usage reference has no table name")
-            matches = search_table_entities(
-                self.metadata,
-                parsed_data.serviceName,
-                database or parsed_data.databaseName,
-                schema or parsed_data.databaseSchema,
-                name,
-            )
-            resolved = [
-                (
-                    entity.id.root,
-                    ".".join(fqn.quote_name(part) for part in fqn.split(model_str(entity.fullyQualifiedName))[1:]),
-                )
-                for entity in matches or []
-            ]
-            for identity, target in resolved or [(table, table)]:
-                targets[identity] = target
-                joins.setdefault(target, []).extend((parsed_data.joins or {}).get(table) or [])
-        return list(targets.values()), joins
 
     def dump_data_to_file(self):
         """

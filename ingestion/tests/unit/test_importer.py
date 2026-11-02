@@ -29,9 +29,8 @@ from metadata.utils.importer import (
     import_processor_class,
     import_sink_class,
     import_stage_class,
-    import_table_reference_normalizer,
 )
-from metadata.utils.service_spec.service_spec import import_source_class
+from metadata.utils.service_spec.service_spec import import_source_class, load_table_binding_resolution
 
 
 # pylint: disable=import-outside-toplevel
@@ -118,10 +117,39 @@ def test_import_from_module_does_not_wrap_module_level_attribute_error() -> None
         import_from_module("metadata.ingestion.source.database.mysql.metadata.MysqlSource")
 
 
-def test_broken_naming_hook_does_not_silently_use_default_names():
+def test_broken_service_spec_does_not_silently_use_default_resolution():
     error = ModuleNotFoundError("missing naming dependency", name="naming_dependency")
     with (
         patch("importlib.import_module", side_effect=error),
-        pytest.raises(ModuleNotFoundError, match="missing naming dependency"),
+        pytest.raises(DynamicImportException, match="service_spec"),
     ):
-        import_table_reference_normalizer(ServiceType.Database, "Clickhouse")
+        load_table_binding_resolution("Clickhouse", None)
+
+
+@pytest.mark.parametrize(
+    "class_path",
+    [
+        "metadata.entity_resolution.does_not_exist.Resolution",
+        "metadata.entity_resolution.table_binding.MissingResolution",
+    ],
+)
+def test_broken_resolution_declaration_is_reported(class_path):
+    from metadata.utils.dependency_injector.dependency_injector import DependencyContainer
+    from metadata.utils.service_spec.service_spec import BaseSpec, SourceLoader
+
+    container = DependencyContainer()
+    container.override(
+        SourceLoader,
+        lambda: (
+            lambda *args: BaseSpec(
+                metadata_source_class="custom.metadata.Source",
+                table_binding_resolution_class=class_path,
+            )
+        ),
+    )
+    try:
+        with pytest.raises(DynamicImportException, match="Cannot import") as failure:
+            load_table_binding_resolution("custom", None)
+        assert class_path in str(failure.value)
+    finally:
+        container.remove_override(SourceLoader)

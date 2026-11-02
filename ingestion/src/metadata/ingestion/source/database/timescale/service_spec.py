@@ -1,14 +1,9 @@
-from metadata.ingestion.source.database.timescale.connection import TimescaleConnection
-from metadata.ingestion.source.database.timescale.lineage import TimescaleLineageSource
-from metadata.ingestion.source.database.timescale.metadata import TimescaleSource
-from metadata.ingestion.source.database.timescale.usage import TimescaleUsageSource
-from metadata.sampler.sqlalchemy.timescale.sampler import TimescaleSampler
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=TimescaleSource,
-    lineage_source_class=TimescaleLineageSource,
-    usage_source_class=TimescaleUsageSource,
-    connection_class=TimescaleConnection,
-    sampler_class=TimescaleSampler,
+    metadata_source_class="metadata.ingestion.source.database.timescale.metadata.TimescaleSource",
+    lineage_source_class="metadata.ingestion.source.database.timescale.lineage.TimescaleLineageSource",
+    usage_source_class="metadata.ingestion.source.database.timescale.usage.TimescaleUsageSource",
+    connection_class="metadata.ingestion.source.database.timescale.connection.TimescaleConnection",
+    sampler_class="metadata.sampler.sqlalchemy.timescale.sampler.TimescaleSampler",
 )

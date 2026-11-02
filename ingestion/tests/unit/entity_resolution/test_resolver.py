@@ -30,27 +30,23 @@ from metadata.entity_resolution.engine import (
     FqnLookupMode,
     ResolutionTier,
 )
-from metadata.entity_resolution.table import TableResolver, TableServiceBinding
+from metadata.entity_resolution.table import TableResolver
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableSharding import TableSharding
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.cell_lineage import ChainedCells
-from metadata.ingestion.source.dashboard.hex.metadata import HexSource
+from metadata.ingestion.source.dashboard.hex.metadata import HexSource, TableSearchError
 from metadata.ingestion.source.dashboard.hex.models import Cell, DataConnection
 from metadata.ingestion.source.dashboard.hex.query_fetcher import HexQueryFetcher
-from metadata.ingestion.source.database.bigquery.naming import table_service_binding as bigquery_binding
-from metadata.ingestion.source.database.clickhouse.naming import normalize_table_reference as clickhouse_reference
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.stage.table_usage import TableStageConfig, TableUsageStage
-from metadata.utils.importer import import_table_service_binding
 from metadata.utils.lru_cache import LRUCache
 
 EXACT = FqnLookupMode.EXACT
@@ -404,7 +400,7 @@ def test_connector_bindings_preserve_priority_and_do_not_leak_normalization(sdk)
         item.fullyQualifiedName.root: item for item in (clickhouse, postgres, wrong_database, fallback)
     }
     transport.hits = list(transport.entities)
-    bindings = (TableServiceBinding("first", clickhouse_reference), TableServiceBinding("second"))
+    bindings = {"first": "Clickhouse", "second": "Postgres"}
     kwargs = {"database_name": "ignored", "database_schema": "ignored", "table_name": "my_db.my_schema.my_table"}
 
     def resolve():
@@ -417,12 +413,12 @@ def test_connector_bindings_preserve_priority_and_do_not_leak_normalization(sdk)
     assert ids(resolve()) == [fallback.id]
 
 
-def test_wildcard_service_uses_canonical_names_without_connector_normalization(sdk):
+def test_unknown_service_type_uses_canonical_names_without_connector_normalization(sdk):
     metadata, transport = sdk
     expected, wrong = table("first.my_db.my_schema.my_table"), table("second.other_db.my_schema.my_table")
     transport.entities = {item.fullyQualifiedName.root: item for item in (expected, wrong)}
     transport.hits = list(transport.entities)
-    facade = TableResolver(EntityResolver(metadata), (TableServiceBinding("*", clickhouse_reference),))
+    facade = TableResolver(EntityResolver(metadata), {})
     assert ids(facade.resolve(database_name="my_db", database_schema="my_schema", table_name="my_table")) == [
         expected.id
     ]
@@ -497,8 +493,7 @@ def bigquery_family(name="events_yyyymmdd"):
 
 
 def resolve_bigquery(metadata, name):
-    binding = import_table_service_binding(ServiceType.Database, "BigQuery", "my_service")
-    return TableResolver(EntityResolver(metadata), (binding,)).resolve(
+    return TableResolver(EntityResolver(metadata), {"my_service": "BigQuery"}).resolve(
         database_name="my_db", database_schema="my_schema", table_name=name
     )
 
@@ -591,7 +586,7 @@ def test_hex_sql_cells_expand_complete_bigquery_wildcards(sdk, count):
     )
     connections = {"connection": DataConnection(id="connection", name="demo", type="bigquery")}
     if count > 100:
-        with pytest.raises(ValueError, match="configured limit"):
+        with pytest.raises(TableSearchError, match="configured limit"):
             source._build_sql_cell_lineage(cell, connections, ChainedCells(), LRUCache(100))
     else:
         result = source._build_sql_cell_lineage(cell, connections, ChainedCells(), LRUCache(100))
@@ -682,7 +677,7 @@ def test_custom_resolution_preserves_service_and_schema_precedence(sdk):
     ordinary = table("second.my_db.my_schema.events_20260101")
     transport.entities = {fallback.fullyQualifiedName.root: fallback, ordinary.fullyQualifiedName.root: ordinary}
     transport.hits = list(transport.entities)
-    bindings = (bigquery_binding("my_service"), TableServiceBinding("second"))
+    bindings = {"my_service": "BigQuery", "second": "Postgres"}
     kwargs = {"database_name": "my_db", "database_schema": "my_schema", "table_name": "events_20260101"}
 
     def resolve(**options):
@@ -696,13 +691,13 @@ def test_custom_resolution_preserves_service_and_schema_precedence(sdk):
     assert ids(resolve(schema_fallback=True)) == [family.id]
 
 
-def test_wildcard_service_does_not_apply_connector_resolution(sdk):
+def test_unknown_service_type_does_not_apply_connector_resolution(sdk):
     metadata, transport = sdk
     family = bigquery_family()
     ordinary = table("second.my_db.my_schema.events_20260101")
     transport.entities = {value.fullyQualifiedName.root: value for value in (family, ordinary)}
     transport.hits = list(transport.entities)
-    facade = TableResolver(EntityResolver(metadata), (bigquery_binding("*"),))
+    facade = TableResolver(EntityResolver(metadata), {})
     result = facade.resolve(database_name="my_db", database_schema="my_schema", table_name="events_20260101")
     assert ids(result) == [ordinary.id]
 
@@ -750,3 +745,101 @@ def test_usage_without_resolution_policy_preserves_physical_names(sdk, tmp_path)
         "my_db.my_schema.events_20260101": 1,
         "my_db.my_schema.events_20260102": 1,
     }
+
+
+@pytest.mark.parametrize("source_type", [None, "Postgres", "not_installed"])
+def test_default_resolution_searches_across_services_only_when_service_is_unknown(sdk, source_type):
+    from metadata.domain.table_reference import TableReference
+    from metadata.utils.service_spec.service_spec import load_table_binding_resolution
+
+    metadata, transport = sdk
+    candidate = table("other.my_db.my_schema.my_table")
+    transport.hits = [candidate.fullyQualifiedName.root]
+    transport.entities[candidate.fullyQualifiedName.root] = candidate
+    resolution = load_table_binding_resolution(source_type, metadata)
+    reference = TableReference("my_db", "my_schema", "my_table")
+    assert resolution.resolve(reference) == (candidate,)
+    transport.requests.clear()
+    assert resolution.resolve(reference, service_name="missing") == ()
+    assert all("*." not in params.get("fieldValue", [""])[0] for _, params in transport.requests)
+
+
+def test_source_loader_override_controls_resolution_without_changing_callers(sdk):
+    from metadata.domain.table_reference import TableReference
+    from metadata.utils.dependency_injector.dependency_injector import DependencyContainer
+    from metadata.utils.service_spec.service_spec import BaseSpec, SourceLoader, load_table_binding_resolution
+
+    metadata, transport = sdk
+    family = bigquery_family()
+    transport.entities[family.fullyQualifiedName.root] = family
+    container = DependencyContainer()
+    container.override(
+        SourceLoader,
+        lambda: (
+            lambda *args: BaseSpec(
+                metadata_source_class="custom.metadata.Source",
+                table_binding_resolution_class="metadata.ingestion.source.database.bigquery.resolution.BigQueryTableBindingResolution",
+            )
+        ),
+    )
+    try:
+        resolution = load_table_binding_resolution("custom", metadata)
+        assert resolution.resolve(
+            TableReference("my_db", "my_schema", "events_20260101"), service_name="my_service"
+        ) == (family,)
+    finally:
+        container.remove_override(SourceLoader)
+
+
+def test_service_type_cache_is_isolated_between_catalogs(sdk):
+    from metadata.ingestion.lineage.sql_lineage import get_table_binding_resolution
+
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    assert type(get_table_binding_resolution(metadata, "my_service")).__name__ == "BigQueryTableBindingResolution"
+    second = OpenMetadata(metadata.config)
+    second.client = Transport()
+    second.client.entities["my_service"] = DatabaseService(id=uuid4(), name="my_service", serviceType="Postgres")
+    assert type(get_table_binding_resolution(second, "my_service")).__name__ == "TableBindingResolution"
+
+
+def test_ordinary_usage_keeps_names_and_counts_without_table_lookups(sdk, tmp_path):
+    metadata, transport = sdk
+    transport.entities["my_service"] = DatabaseService(id=uuid4(), name="my_service", serviceType="Postgres")
+    stage = TableUsageStage(TableStageConfig(filename=str(tmp_path / "usage")), metadata)
+    execution = ParsedData(
+        tables=["my_db.my_schema.my_table"],
+        databaseName="my_db",
+        databaseSchema="my_schema",
+        serviceName="my_service",
+        joins={},
+        date="1767398400000",
+        sql="SELECT * FROM my_table",
+    )
+    outcomes = list(stage._run(QueryParserData(parsedData=[execution, execution])))
+    assert [item.right for item in outcomes] == ["my_db.my_schema.my_table"] * 2
+    assert next(iter(stage.table_usage.values())).count == 2
+    assert all("/tables/" not in path for path, _ in transport.requests)
+
+
+@pytest.mark.parametrize("services", [None, []])
+def test_sql_lineage_without_service_context_searches_across_services(sdk, services):
+    metadata, transport = sdk
+    candidate = table("other.my_db.my_schema.my_table")
+    transport.entities[candidate.fullyQualifiedName.root] = candidate
+    transport.hits = [candidate.fullyQualifiedName.root]
+    assert search_table_entities(metadata, services, "my_db", "my_schema", "my_table") == [candidate]
+
+
+def test_dbt_family_resolution_requests_source_hash(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    family = bigquery_family()
+    family.sourceHash = "existing_hash"
+    transport.entities[family.fullyQualifiedName.root] = family
+    source = DbtSource.__new__(DbtSource)
+    source.metadata = metadata
+    source.status = MagicMock()
+    assert source._search_table("my_service.my_db.my_schema.events_20260101").sourceHash == "existing_hash"
+    table_requests = [(path, params) for path, params in transport.requests if path.startswith("/tables/")]
+    assert table_requests[-1][1]["fields"] == ["sourceHash"]

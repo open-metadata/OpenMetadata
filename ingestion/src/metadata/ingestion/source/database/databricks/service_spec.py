@@ -1,30 +1,12 @@
-from metadata.data_quality.interface.sqlalchemy.databricks.test_suite_interface import (
-    DatabricksTestSuiteInterface,
-)
-from metadata.ingestion.source.database.databricks.connection import (
-    DatabricksConnection,
-)
-from metadata.ingestion.source.database.databricks.data_diff.data_diff import (
-    DatabricksTableParameter,
-)
-from metadata.ingestion.source.database.databricks.lineage import (
-    DatabricksLineageSource,
-)
-from metadata.ingestion.source.database.databricks.metadata import DatabricksSource
-from metadata.ingestion.source.database.databricks.usage import DatabricksUsageSource
-from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
-    DatabricksProfilerInterface,
-)
-from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=DatabricksSource,
-    lineage_source_class=DatabricksLineageSource,
-    usage_source_class=DatabricksUsageSource,
-    profiler_class=DatabricksProfilerInterface,
-    test_suite_class=DatabricksTestSuiteInterface,
-    sampler_class=DatabricksSamplerInterface,
-    data_diff=DatabricksTableParameter,
-    connection_class=DatabricksConnection,  # pyright: ignore[reportArgumentType]
+    metadata_source_class="metadata.ingestion.source.database.databricks.metadata.DatabricksSource",
+    lineage_source_class="metadata.ingestion.source.database.databricks.lineage.DatabricksLineageSource",
+    usage_source_class="metadata.ingestion.source.database.databricks.usage.DatabricksUsageSource",
+    profiler_class="metadata.profiler.interface.sqlalchemy.databricks.profiler_interface.DatabricksProfilerInterface",
+    test_suite_class="metadata.data_quality.interface.sqlalchemy.databricks.test_suite_interface.DatabricksTestSuiteInterface",
+    sampler_class="metadata.sampler.sqlalchemy.databricks.sampler.DatabricksSamplerInterface",
+    data_diff="metadata.ingestion.source.database.databricks.data_diff.data_diff.DatabricksTableParameter",
+    connection_class="metadata.ingestion.source.database.databricks.connection.DatabricksConnection",
 )

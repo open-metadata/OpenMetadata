@@ -14,9 +14,17 @@ import re
 from dataclasses import replace
 
 from metadata.domain.table_reference import TableReference
-from metadata.entity_resolution.engine import EntityResolutionPlan, FqnCandidate, FqnLookupMode, ResolutionTier
+from metadata.entity_resolution.engine import (
+    EntityResolutionPlan,
+    EntityResolver,
+    FqnCandidate,
+    FqnLookupMode,
+    ResolutionTier,
+)
+from metadata.entity_resolution.table_binding import TableBindingResolution, TableLookup
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
+from metadata.generated.schema.type.queryParserData import ParsedData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.bigquery.sharding import (
@@ -28,7 +36,9 @@ from metadata.ingestion.source.database.bigquery.sharding import (
 from metadata.utils import fqn
 
 
-def resolve_unscoped_bigquery_reference(metadata: OpenMetadata, reference: TableReference) -> tuple[Table, ...]:
+def _resolve_unscoped_reference(
+    metadata: OpenMetadata, reference: TableReference, fields: tuple[str, ...] = ()
+) -> tuple[Table, ...]:
     """Resolve physical and logical candidates across services in one bounded search."""
     name = strip_partition_decorator(reference.table)
     wildcard = "*" in name
@@ -69,7 +79,11 @@ def resolve_unscoped_bigquery_reference(metadata: OpenMetadata, reference: Table
     )
     physical, families = {}, {}
     for candidate in dict.fromkeys(names):
-        table = metadata.get_by_name(Table, candidate)
+        table = (
+            metadata.get_by_name(Table, candidate, fields=list(fields))
+            if fields
+            else metadata.get_by_name(Table, candidate)
+        )
         if table is None or table.deleted or model_str(table.fullyQualifiedName) != candidate:
             raise ValueError("Table changed during candidate search; resolution incomplete")
         parts = fqn.split(candidate)
@@ -108,7 +122,7 @@ def resolve_unscoped_bigquery_reference(metadata: OpenMetadata, reference: Table
     )
 
 
-def resolve_bigquery_reference(resolver, service: str, reference: TableReference, fields=(), include=None):
+def _resolve_scoped_reference(resolver, service: str, reference: TableReference, fields=(), include=None):
     reference = replace(reference, table=strip_partition_decorator(reference.table))
     parts = (service, reference.database, reference.schema, reference.table)
     wildcard = any(part is None or "*" in part for part in parts)
@@ -156,3 +170,53 @@ def resolve_bigquery_reference(resolver, service: str, reference: TableReference
         and (not reference.database or descriptor.representative.databaseName == reference.database)
         and (not reference.schema or descriptor.representative.schemaName == reference.schema)
     )
+
+
+class BigQueryTableBindingResolution(TableBindingResolution):
+    def resolve(
+        self,
+        reference: TableReference,
+        *,
+        service_name: str | None = None,
+        fields: tuple[str, ...] = (),
+        include: str | None = None,
+        lookup: TableLookup = TableLookup.CATALOG,
+    ) -> tuple[Table, ...]:
+        if not service_name or service_name == "*":
+            if include in ("all", "deleted"):
+                raise ValueError("Search-assisted resolution supports active entities only")
+            return _resolve_unscoped_reference(self.metadata, reference, fields)
+        engine = self.engine or EntityResolver(self.metadata)
+        try:
+            return _resolve_scoped_reference(engine, service_name, reference, fields, include)
+        finally:
+            if self.engine is None:
+                engine.close()
+
+    def prepare_usage(self, execution: ParsedData) -> ParsedData:
+        from metadata.ingestion.lineage.sql_lineage import get_table_fqn_from_query_name, search_table_entities
+
+        targets = {}
+        joins = {}
+        for table in execution.tables:
+            database, schema, name = get_table_fqn_from_query_name(table)
+            if not name:
+                raise ValueError("Usage reference has no table name")
+            matches = search_table_entities(
+                self.metadata,
+                execution.serviceName,
+                database or execution.databaseName,
+                schema or execution.databaseSchema,
+                name,
+            )
+            resolved = [
+                (
+                    model_str(entity.id),
+                    ".".join(fqn.quote_name(part) for part in fqn.split(model_str(entity.fullyQualifiedName))[1:]),
+                )
+                for entity in matches or ()
+            ]
+            for identity, target in resolved or [(table, table)]:
+                targets[identity] = target
+                joins.setdefault(target, []).extend((execution.joins or {}).get(table) or [])
+        return execution.model_copy(update={"tables": list(targets.values()), "joins": joins})

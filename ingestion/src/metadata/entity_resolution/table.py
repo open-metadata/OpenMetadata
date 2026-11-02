@@ -11,19 +11,16 @@
 
 """Table identity and fallback policy for entity resolution."""
 
-from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import replace
 
-from metadata.domain.table_reference import TableReference, normalize_table_reference
+from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.engine import (
-    EntityResolutionPlan,
     EntityResolver,
     FqnCandidate,
     FqnLookupMode,
     ResolutionTier,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 
 
@@ -37,18 +34,6 @@ def _parse_reference(table_name: str, database: str | None, schema: str | None) 
         (None if parsed_schema == "<default>" else parsed_schema) or schema,
         parts[-1],
     )
-
-
-@dataclass(frozen=True)
-class TableServiceBinding:
-    """Associate a named service with table naming and resolution policies."""
-
-    service_name: str
-    normalize: Callable[[TableReference], TableReference] = normalize_table_reference
-    resolve_reference: (
-        Callable[[EntityResolver, str, TableReference, tuple[str, ...], str | None], tuple[Table, ...]] | None
-    ) = None
-    resolve_unscoped_reference: Callable[[OpenMetadata, TableReference], tuple[Table, ...]] | None = None
 
 
 def table_lookup_tiers(service: str, reference: TableReference, include: str | None) -> tuple[ResolutionTier, ...]:
@@ -72,9 +57,9 @@ def table_lookup_tiers(service: str, reference: TableReference, include: str | N
 class TableResolver:
     """Build table plans without owning cache state or the client lifecycle."""
 
-    def __init__(self, resolver: EntityResolver, services: tuple[TableServiceBinding, ...] = ()):
+    def __init__(self, resolver: EntityResolver, service_types: dict[str, str] | None = None):
         self._resolver = resolver
-        self._services = services
+        self._service_types = service_types or {}
 
     def resolve(
         self,
@@ -87,48 +72,23 @@ class TableResolver:
         fields: tuple[str, ...] = (),
         include: str | None = None,
     ) -> tuple[Table, ...]:
-        services = self._services
-        if service_names is not None:
-            if services:
-                by_name = {service.service_name: service for service in services}
-                services = tuple(by_name[name] for name in service_names)
-            else:
-                services = tuple(TableServiceBinding(name) for name in service_names)
-        service_names = tuple(service.service_name for service in services)
-        if "*" in service_names and service_names != ("*",):
+        from metadata.utils.service_spec.service_spec import load_table_binding_resolution
+
+        names = service_names or tuple(self._service_types) or ("*",)
+        if "*" in names and names != ("*",):
             raise ValueError("Wildcard service selection cannot be mixed with named services")
-        if table_name and any(binding.resolve_reference is not None for binding in services):
-            reference = _parse_reference(table_name, database_name, database_schema)
-            schemas = (reference.schema, None) if schema_fallback and reference.schema else (reference.schema,)
-            for schema in schemas:
-                for binding in services:
-                    scoped = replace(reference, schema=schema)
-                    normalized = scoped if binding.service_name == "*" else binding.normalize(scoped)
-                    if binding.resolve_reference is not None and binding.service_name != "*":
-                        matches = binding.resolve_reference(
-                            self._resolver, binding.service_name, normalized, fields, include
-                        )
-                    else:
-                        matches = self._resolver.resolve(
-                            EntityResolutionPlan(
-                                Table,
-                                table_lookup_tiers(binding.service_name, normalized, include),
-                                fields,
-                                include,
-                            )
-                        )
-                    if matches:
-                        return matches
+        if not table_name:
             return ()
-        tiers = []
-        if table_name:
-            reference = _parse_reference(table_name, database_name, database_schema)
-            schemas = (reference.schema, None) if schema_fallback and reference.schema else (reference.schema,)
-            for schema in schemas:
-                for binding in services:
-                    scoped = replace(reference, schema=schema)
-                    normalized = scoped if binding.service_name == "*" else binding.normalize(scoped)
-                    tiers.extend(table_lookup_tiers(binding.service_name, normalized, include))
-        return self._resolver.resolve(
-            EntityResolutionPlan(entity_type=Table, tiers=tuple(tiers), fields=fields, include=include)
-        )
+        reference = _parse_reference(table_name, database_name, database_schema)
+        schemas = (reference.schema, None) if schema_fallback and reference.schema else (reference.schema,)
+        for schema in schemas:
+            for name in names:
+                resolution = load_table_binding_resolution(
+                    self._service_types.get(name), self._resolver.metadata, engine=self._resolver
+                )
+                matches = resolution.resolve(
+                    replace(reference, schema=schema), service_name=name, fields=fields, include=include
+                )
+                if matches:
+                    return matches
+        return ()

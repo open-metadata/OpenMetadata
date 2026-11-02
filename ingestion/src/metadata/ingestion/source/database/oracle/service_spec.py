@@ -1,12 +1,8 @@
-from metadata.ingestion.source.database.oracle.connection import OracleConnection
-from metadata.ingestion.source.database.oracle.lineage import OracleLineageSource
-from metadata.ingestion.source.database.oracle.metadata import OracleSource
-from metadata.ingestion.source.database.oracle.usage import OracleUsageSource
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=OracleSource,
-    lineage_source_class=OracleLineageSource,
-    usage_source_class=OracleUsageSource,
-    connection_class=OracleConnection,
+    metadata_source_class="metadata.ingestion.source.database.oracle.metadata.OracleSource",
+    lineage_source_class="metadata.ingestion.source.database.oracle.lineage.OracleLineageSource",
+    usage_source_class="metadata.ingestion.source.database.oracle.usage.OracleUsageSource",
+    connection_class="metadata.ingestion.source.database.oracle.connection.OracleConnection",
 )

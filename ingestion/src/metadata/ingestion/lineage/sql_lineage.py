@@ -27,8 +27,7 @@ from collate_sqllineage.core.models import Table as LineageTable
 from networkx import DiGraph
 
 from metadata.domain.table_reference import TableReference
-from metadata.entity_resolution.engine import EntityResolver
-from metadata.entity_resolution.table import TableResolver, TableServiceBinding
+from metadata.entity_resolution.table_binding import TableBindingResolution, TableLookup
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
@@ -39,7 +38,6 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
 )
@@ -61,9 +59,9 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
-from metadata.utils.importer import import_table_service_binding
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
+from metadata.utils.service_spec.service_spec import load_table_binding_resolution
 from metadata.utils.timeout import timeout
 
 logger = utils_logger()
@@ -107,38 +105,6 @@ def get_column_fqn(
 
 search_cache = LRUCache(LRU_CACHE_SIZE)
 database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
-alias_resolution_cache = LRUCache(LRU_CACHE_SIZE)
-
-# Connection field a connector sets to opt into alias resolution. Read by name
-# rather than by service type so any connector exposing alternate names (SQL
-# Server synonyms today, Oracle synonyms later) participates without this
-# service-agnostic module learning connector names.
-ALIAS_OPT_IN_FIELD = "includeSynonyms"
-
-
-def service_resolves_aliases(metadata: OpenMetadata, service_name: str) -> bool:
-    """
-    Whether this service's connection opts into resolving alternate table names.
-
-    Resolving an alias costs an extra exact-match search per unresolved name, so
-    connectors that cannot produce aliases must not pay for it. Absent field
-    means no.
-    """
-    if service_name in alias_resolution_cache:
-        return bool(alias_resolution_cache.get(service_name))
-
-    resolves = False
-    try:
-        service: DatabaseService | None = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
-        if service:
-            resolves = bool(getattr(service.connection.config, ALIAS_OPT_IN_FIELD, False))
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning("Could not read alias opt-in for service '%s', assuming disabled: %s", service_name, exc)
-
-    alias_resolution_cache.put(service_name, resolves)
-
-    return resolves
 
 
 def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str | None:
@@ -152,8 +118,9 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str 
     Returns:
         The database service type or None if not found.
     """
-    if service_name in database_service_type_cache:
-        return database_service_type_cache.get(service_name)
+    key = (metadata, service_name)
+    if key in database_service_type_cache:
+        return database_service_type_cache.get(key)
 
     try:
         # try ES search first
@@ -171,58 +138,29 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str 
             service = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
 
         if service:
-            service_type = service.connection.config.type.value.lower()
-            logger.debug(f"Service (name={service.name.root}) is of type '{service_type}'")
+            service_type = service.serviceType.value.lower()
+            logger.debug("Service %s is of type %s", service_name, service_type)
 
             # cache the result
-            database_service_type_cache.put(service_name, service_type)
+            database_service_type_cache.put(key, service_type)
             return service_type
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Could not determine service type for service '{service_name}': {exc}")
+        logger.warning("Could not determine service type for service %s: %s", service_name, exc)
 
     return None
 
 
-def get_service_table_binding(metadata: OpenMetadata, service_name: str) -> TableServiceBinding:
-    """Load the table policies for a named catalog service."""
-    connection_type = get_database_service_type(metadata, service_name)
-    if connection_type is None or service_name == "*":
-        return TableServiceBinding(service_name)
-    return import_table_service_binding(ServiceType.Database, connection_type, service_name)
-
-
-def normalize_table_params_by_service(
-    metadata: OpenMetadata,
-    service_name: str,
-    database: str | None,
-    database_schema: str | None,
-) -> tuple[str | None, str | None]:
-    """Normalize database and schema through the service's naming policy."""
-    binding = get_service_table_binding(metadata, service_name)
-    reference = binding.normalize(TableReference(database, database_schema, ""))
-    return reference.database, reference.schema
-
-
-def _search_bound_tables(metadata, binding: TableServiceBinding, database, schema, table):
-    key = (metadata, binding.service_name, database, schema, table)
-    if key in search_cache:
-        return search_cache.get(key)
-    resolver = EntityResolver(metadata)
-    try:
-        result = TableResolver(resolver, (binding,)).resolve(
-            database_name=database, database_schema=schema, table_name=table
-        )
-        search_cache.put(key, result)  # pyright: ignore[reportArgumentType]
-        return result
-    finally:
-        resolver.close()
+def get_table_binding_resolution(metadata: OpenMetadata, service_name: str | None) -> TableBindingResolution:
+    """Load resolution for a known service, or the default for an unscoped reference."""
+    service_type = get_database_service_type(metadata, service_name) if service_name and service_name != "*" else None
+    return load_table_binding_resolution(service_type, metadata)
 
 
 def search_table_entities(
     metadata: OpenMetadata,
-    service_names: str | list[str],
+    service_names: str | list[str] | None,
     database: str | None,
     database_schema: str | None,
     table: str,
@@ -250,7 +188,7 @@ def search_table_entities(
     if isinstance(service_names, str):
         service_names = [service_names]
 
-    for service_name in service_names:
+    for service_name in service_names or [None]:
         result = _search_service_tables(metadata, service_name, database, database_schema, table)
         if result:
             return result
@@ -258,88 +196,19 @@ def search_table_entities(
 
 
 def _search_service_tables(metadata, service_name, database, database_schema, table):
-    binding = get_service_table_binding(metadata, service_name)
-    reference = binding.normalize(TableReference(database, database_schema, table))
-    normalized_db, normalized_schema = reference.database, reference.schema
-
-    if binding.resolve_reference is not None:
-        matches = _search_bound_tables(metadata, binding, database, database_schema, table)
-        if matches:
-            return list(matches)
-        return None
-
-    search_tuple = (service_name, normalized_db, normalized_schema, table)
-    if search_tuple in search_cache:
-        result = search_cache.get(search_tuple)
-        if result:
-            return result
-
-    try:
-        table_entities: list[Table] | None = []
-
-        # search on ES first
-        fqn_search_string = build_es_fqn_search_string(normalized_db, normalized_schema, service_name, table)
-        es_result_entities = metadata.es_search_from_fqn(
-            entity_type=Table,
-            fqn_search_string=fqn_search_string,
-        )
-        if es_result_entities:
-            table_entities = es_result_entities
-        else:
-            # build FQNs and search with the API in case ES response is empty
-            table_fqns = fqn.build(
-                metadata,
-                entity_type=Table,
-                service_name=service_name,
-                database_name=normalized_db,
-                schema_name=normalized_schema,
-                table_name=table,
-                fetch_multiple_entities=True,
-                skip_es_search=True,
-            )
-            for table_fqn in table_fqns or []:
-                table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
-                if table_entity:
-                    table_entities.append(table_entity)
-
-        # added the search tuple to the cache
-        search_cache.put(search_tuple, table_entities)  # pyright: ignore[reportArgumentType]
-        if table_entities:
-            return table_entities
-
-        # An alias name resolves to the canonical table it points at.
-        # Gated per service so connectors that cannot produce aliases never
-        # pay for the extra lookup.
-        if not service_resolves_aliases(metadata, service_name):
-            return None
-
-        alias_fqn = fqn.build(
-            metadata,
-            entity_type=Table,
-            service_name=service_name,
-            database_name=normalized_db,
-            schema_name=normalized_schema,
-            table_name=table,
-            skip_es_search=True,
-        )
-        if alias_fqn:
-            alias_entities = metadata.es_search_from_alias(
-                entity_type=Table,
-                alias_fqn=alias_fqn,
-            )
-            if alias_entities:
-                # LRUCache.put's `key` is typed as `str`, but this cache is keyed by the
-                # same (service, db, schema, table) tuple as the `search_cache.put` call
-                # above (line ~251, pre-existing and baselined) -- a real annotation gap,
-                # not a bug: dict keys accept any hashable value.
-                search_cache.put(search_tuple, alias_entities)  # pyright: ignore[reportArgumentType]
-                return alias_entities
-
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")
-
-    return None
+    key = (metadata, service_name, database, database_schema, table)
+    if key in search_cache:
+        return search_cache.get(key)
+    resolution = get_table_binding_resolution(metadata, service_name)
+    matches = resolution.resolve(
+        TableReference(database, database_schema, table),
+        service_name=service_name,
+        lookup=TableLookup.LINEAGE,
+    )
+    result = list(matches) if matches else None
+    if result:
+        search_cache.put(key, result)
+    return result
 
 
 def get_table_fqn_from_query_name(

@@ -147,6 +147,10 @@ class EntityResolver:
             self._closed = True
             self._cache.clear()
 
+    @property
+    def metadata(self) -> OpenMetadata:
+        return self._metadata
+
     def _ensure_open(self) -> None:
         if self._closed:
             raise RuntimeError("EntityResolver is closed")

@@ -95,8 +95,9 @@ class SearchCatalog(ESMixin):
         family=True,
         schema="analytics",
         deleted=False,
+        database="demo_db",
     ):
-        fqn = f"{service}.demo_db.{schema}.{name}"
+        fqn = f"{service}.{database}.{schema}.{name}"
         table = Table(
             id=uuid4(),
             name=name,
@@ -122,7 +123,7 @@ class SearchCatalog(ESMixin):
             else None,
         )
         doc = table.model_dump(mode="json", exclude_none=True)
-        doc.update(database={"name": "demo_db"}, databaseSchema={"name": schema})
+        doc.update(database={"name": database}, databaseSchema={"name": schema})
         response = requests.put(f"{self.base}/{self.index}/_doc/{table.id.root}?refresh=true", json=doc, timeout=10)
         response.raise_for_status()
         self.tables[fqn] = table
@@ -177,4 +178,16 @@ def test_wildcard_complete_within_bound_and_overflow_reported(source):
         source.metadata.add(name=f"events_family_{number}_yyyymmdd")
     with pytest.raises(TableSearchError, match="exceeds"):
         source._add_wildcard_tables(lineage, "demo_db", "analytics", "events_*", "bigquery")
+    assert source.metadata.searches == 2
+
+
+def test_clickhouse_cross_service_normalization_only_widens_clickhouse_candidates(source):
+    clickhouse = source.metadata.add(
+        "warehouse", name="orders", service_type="Clickhouse", family=False, database="default"
+    )
+    source.metadata.add("unrelated", name="orders", service_type="Postgres", family=False, database="elsewhere")
+    assert source._resolve_table("demo_db", "analytics", "orders", "clickhouse")[0].id == clickhouse.id
+    assert source.metadata.searches == 1
+    source.metadata.add("other", name="orders", service_type="Postgres", family=False)
+    assert source._resolve_table("demo_db", "analytics", "orders", "clickhouse") is None
     assert source.metadata.searches == 2
