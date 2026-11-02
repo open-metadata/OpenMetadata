@@ -113,3 +113,64 @@ it('uses honest draft, missing-status and legacy revision fallbacks', () => {
     'label.ontology-release-revision'
   );
 });
+
+describe('Draft and Published switch', () => {
+  it('marks the version being read and reports the other one when pressed', () => {
+    const onVersionChange = jest.fn();
+    render(
+      <OntologyVersionChip
+        status={{ active, unpublishedChanges: 0 }}
+        version="draft"
+        onPress={jest.fn()}
+        onVersionChange={onVersionChange}
+      />
+    );
+
+    expect(screen.getByTestId('ontology-version-draft')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('ontology-version-published')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-version-published'));
+
+    expect(onVersionChange).toHaveBeenCalledWith('published');
+  });
+
+  it('keeps Releases as its own action beside the switch', () => {
+    const onPress = jest.fn();
+    render(
+      <OntologyVersionChip
+        status={{ active, unpublishedChanges: 0 }}
+        version="published"
+        onPress={onPress}
+        onVersionChange={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-release-history-trigger'));
+
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('ontology-version-published')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('shows no switch to a user who cannot edit', () => {
+    render(
+      <OntologyVersionChip
+        status={{ active, unpublishedChanges: 0 }}
+        onPress={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('ontology-version-switch')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('v1.3.2 · Aug 14')).toBeVisible();
+  });
+});

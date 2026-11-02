@@ -26,15 +26,10 @@ import {
   Share07,
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
@@ -77,6 +72,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
+import { OntologyPublicationStatus } from '../../generated/type/ontologyPublicationStatus';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAuth } from '../../hooks/authHooks';
@@ -112,6 +108,13 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
+import {
+  parseStudioUrlState,
+  patchStudioUrlParams,
+  StudioUrlState,
+  StudioUrlVersion,
+  StudioUrlView,
+} from '../../utils/governance/ontology/OntologyStudioUrlState.utils';
 import { generateUUID } from '../../utils/StringUtils';
 import {
   showErrorToast,
@@ -121,8 +124,9 @@ import {
 
 // 'review' has no tab; a memory's "view draft" link (?draft=) still opens it.
 type StudioMode = 'view' | 'edit' | 'query' | 'ai' | 'review';
-type ViewSurface = 'graph' | 'tree';
+type ViewSurface = 'graph' | 'tree' | 'ontology';
 type QuerySurface = 'console' | 'builder';
+type EditSurface = 'graph' | 'tree' | 'definitions';
 
 interface StudioTab {
   id: string;
@@ -340,8 +344,38 @@ function computeVisibilityFlags(
   };
 }
 
+function resolveViewSurface(
+  view: StudioUrlView | undefined,
+  isNativeOntology: boolean
+): ViewSurface {
+  if (view === 'tree') {
+    return 'tree';
+  }
+
+  return view === 'ontology' && isNativeOntology ? 'ontology' : 'graph';
+}
+
+function resolveQuerySurface(view: StudioUrlView | undefined): QuerySurface {
+  return view === 'builder' ? 'builder' : 'console';
+}
+
+function resolveEditSurface(
+  view: StudioUrlView | undefined,
+  isNativeOntology: boolean
+): EditSurface {
+  if (!isNativeOntology) {
+    return 'graph';
+  }
+  if (view === 'ontology') {
+    return 'definitions';
+  }
+
+  return view === 'tree' ? 'tree' : 'graph';
+}
+
 function getViewSubModeConfiguration(
   viewSurface: ViewSurface,
+  isNativeOntology: boolean,
   t: TFunction
 ): StudioSubMode {
   return {
@@ -349,6 +383,9 @@ function getViewSubModeConfiguration(
     items: [
       { id: 'graph', label: t('label.graph') },
       { id: 'tree', label: t('label.tree') },
+      ...(isNativeOntology
+        ? [{ id: 'ontology', label: t('label.ontology') }]
+        : []),
     ],
   };
 }
@@ -375,7 +412,7 @@ function getQuerySubModeConfiguration(
 function getSubModeConfiguration(
   mode: StudioMode,
   surfaces: {
-    editSurface: 'graph' | 'definitions';
+    editSurface: EditSurface;
     viewSurface: ViewSurface;
     querySurface: QuerySurface;
   },
@@ -390,7 +427,10 @@ function getSubModeConfiguration(
       items: [
         { id: 'graph', label: t('label.graph') },
         ...(isNativeOntology
-          ? [{ id: 'definitions', label: t('label.term') }]
+          ? [
+              { id: 'tree', label: t('label.tree') },
+              { id: 'definitions', label: t('label.ontology') },
+            ]
           : []),
       ],
     }),
@@ -402,14 +442,79 @@ function getSubModeConfiguration(
         t
       ),
     review: () => ({ id: 'review', items: [] }),
-    view: () => getViewSubModeConfiguration(surfaces.viewSurface, t),
+    view: () =>
+      getViewSubModeConfiguration(surfaces.viewSurface, isNativeOntology, t),
   };
 
   return configByMode[mode]();
 }
 
-function resolveViewSurfaceChange(id: string): ViewSurface | undefined {
-  return id === 'graph' || id === 'tree' ? (id as ViewSurface) : undefined;
+interface StudioReadInput {
+  canEdit: boolean;
+  isPermissionLoading: boolean;
+  mode: StudioMode;
+  isNativeOntology: boolean;
+  listedStatus: OntologyPublicationStatus | undefined;
+  requestedVersion: StudioUrlVersion | undefined;
+  selectedOntology: Ontology | undefined;
+  showEditTab: boolean;
+}
+
+/**
+ * Decides which version of an open native ontology the Studio reads. Users without edit
+ * rights always read the active release; editors read the draft unless they asked for the
+ * release, and Edit always works on the draft.
+ */
+function resolveStudioRead({
+  canEdit,
+  isPermissionLoading,
+  isNativeOntology,
+  listedStatus,
+  mode,
+  requestedVersion,
+  selectedOntology,
+  showEditTab,
+}: StudioReadInput) {
+  const isOpen = isNativeOntology && Boolean(selectedOntology);
+  const readsPublished =
+    isOpen && mode !== 'edit' && (!canEdit || requestedVersion === 'published');
+  const releaseStatus = listedStatus ?? selectedOntology?.publicationStatus;
+
+  return {
+    canOfferEdit: showEditTab && !readsPublished,
+    isVersionPending: isOpen && isPermissionLoading,
+    publishedReleaseId: readsPublished
+      ? releaseStatus?.active?.releaseId
+      : undefined,
+    releaseStatus,
+    version: (readsPublished ? 'published' : 'draft') as StudioUrlVersion,
+  };
+}
+
+function getExplorerSurface(
+  mode: StudioMode,
+  viewSurface: ViewSurface,
+  editSurface: EditSurface,
+  isNativeOntology: boolean
+): ViewSurface {
+  if (mode === 'view') {
+    return isNativeOntology || viewSurface !== 'ontology'
+      ? viewSurface
+      : 'graph';
+  }
+
+  return mode === 'edit' && editSurface === 'tree' ? 'tree' : 'graph';
+}
+
+function resolveViewSurfaceChange(
+  id: string,
+  isNativeOntology: boolean
+): ViewSurface | undefined {
+  if (id === 'graph' || id === 'tree') {
+    return id;
+  }
+
+  return id === 'ontology' && isNativeOntology ? id : undefined;
 }
 
 function resolveQuerySurfaceChange(id: string): QuerySurface | undefined {
@@ -429,6 +534,11 @@ function useLinkedDraftId(): string | undefined {
 
 const studioModeFor = (linkedDraftId?: string): StudioMode =>
   linkedDraftId ? 'review' : 'view';
+
+const resolveStudioMode = (
+  urlState: StudioUrlState,
+  linkedDraftId?: string
+): StudioMode => urlState.mode ?? studioModeFor(linkedDraftId);
 
 const canCreateNativeOntology = (
   isAdminUser: boolean | undefined,
@@ -653,15 +763,55 @@ const OntologyExplorerContent: React.FC = () => {
     isUrlReached: boolean;
   }>();
   const [isGlossaryScopeMenuOpen, setIsGlossaryScopeMenuOpen] = useState(false);
-  const [mode, setMode] = useState<StudioMode>(() =>
-    studioModeFor(initialDraftId)
+  const urlState = useMemo(
+    () => parseStudioUrlState(searchParams),
+    [searchParams]
+  );
+  const mode = resolveStudioMode(urlState, initialDraftId);
+  const setStudioUrl = useCallback(
+    (patch: StudioUrlState, options?: { replace?: boolean }) =>
+      setSearchParams((current) => patchStudioUrlParams(current, patch), {
+        replace: options?.replace,
+      }),
+    [setSearchParams]
+  );
+  const setMode = useCallback(
+    (
+      next: StudioMode,
+      options?: { replace?: boolean; view?: StudioUrlView }
+    ) => {
+      if (next === 'review') {
+        return;
+      }
+      setStudioUrl(
+        {
+          mode: next,
+          view: options?.view,
+          ...(next === 'edit' ? { version: undefined } : {}),
+        },
+        options
+      );
+    },
+    [setStudioUrl]
+  );
+  const setViewSurface = useCallback(
+    (surface: ViewSurface) => setStudioUrl({ view: surface }),
+    [setStudioUrl]
+  );
+  const setEditSurface = useCallback(
+    (surface: EditSurface) =>
+      setStudioUrl({ view: surface === 'definitions' ? 'ontology' : surface }),
+    [setStudioUrl]
+  );
+  const setQuerySurface = useCallback(
+    (surface: QuerySurface) => setStudioUrl({ view: surface }),
+    [setStudioUrl]
   );
   const studioScope = getStudioScope(searchParams);
   const isAllOntologies = studioScope.kind === 'allOntologies';
   const isGlossaryScope = studioScope.kind === 'glossaries';
   const ontologyId = searchParams.get('ontology');
   const selectedConceptId = searchParams.get('concept') ?? undefined;
-  const requestedNativeMode = useRef<StudioMode>();
   const selectNativeConcept = useCallback(
     (id?: string) => {
       setSearchParams(
@@ -698,6 +848,7 @@ const OntologyExplorerContent: React.FC = () => {
     [setSearchParams]
   );
   const [ontologyLoadFailed, setOntologyLoadFailed] = useState(false);
+  const [ontologyNotFound, setOntologyNotFound] = useState(false);
   const [ontologyLoadAttempt, setOntologyLoadAttempt] = useState(0);
   const selectedOntology = getSelectedOntology(ontologyId, loadedOntology);
   const canCreateOntology = canCreateNativeOntology(isAdminUser, permissions);
@@ -718,7 +869,10 @@ const OntologyExplorerContent: React.FC = () => {
       });
     }
   }, [queryClient, selectedOntologyId]);
-  const { canEditAll: canEditNativeOntology } = useEntityPermissions(
+  const {
+    canEditAll: canEditNativeOntology,
+    isLoading: isNativePermissionLoading,
+  } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: selectedOntologyId },
     { enabled: Boolean(selectedOntology), deleted: selectedOntology?.deleted }
@@ -758,36 +912,38 @@ const OntologyExplorerContent: React.FC = () => {
     }
     const controller = new AbortController();
     setOntologyLoadFailed(false);
-    getOntology(ontologyId, 'owners,reviewers', controller.signal)
+    setOntologyNotFound(false);
+    getOntology(
+      ontologyId,
+      'owners,reviewers,publicationStatus',
+      controller.signal
+    )
       .then((ontology) => {
         if (!controller.signal.aborted) {
           setLoadedOntology(ontology);
         }
       })
       .catch((error) => {
-        if (!controller.signal.aborted) {
-          showErrorToast(error);
-          setLoadedOntology(undefined);
-          setOntologyLoadFailed(true);
+        if (controller.signal.aborted) {
+          return;
         }
+        setLoadedOntology(undefined);
+        if (isAxiosError(error) && error.response?.status === 404) {
+          setOntologyNotFound(true);
+
+          return;
+        }
+        showErrorToast(error);
+        setOntologyLoadFailed(true);
       });
 
     return () => controller.abort();
   }, [loadedOntology?.id, ontologyId, ontologyLoadAttempt]);
 
-  useEffect(() => {
-    setMode(requestedNativeMode.current ?? studioModeFor(initialDraftId));
-    requestedNativeMode.current = undefined;
-  }, [initialDraftId, ontologyId]);
-  const [viewSurface, setViewSurface] = useState<ViewSurface>('graph');
   const [settingsRequest, setSettingsRequest] = useState({
     ontologyId: '',
     key: 0,
   });
-  const [editSurface, setEditSurface] = useState<'graph' | 'definitions'>(
-    'graph'
-  );
-  const [querySurface, setQuerySurface] = useState<QuerySurface>('console');
   const [stats, setStats] = useState<string[]>([]);
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const [graphData, setGraphData] = useState<OntologyGraphData | null>(null);
@@ -872,7 +1028,8 @@ const OntologyExplorerContent: React.FC = () => {
   const selectOntology = (
     ontology?: Ontology,
     conceptId?: string,
-    nextMode: StudioMode = 'view'
+    nextMode: StudioMode = 'view',
+    nextView?: StudioUrlView
   ) => {
     if (nativeAuthoringLocked) {
       showErrorToast(t('message.ontology-class-attempt-pending'));
@@ -882,10 +1039,8 @@ const OntologyExplorerContent: React.FC = () => {
     setIsPublicationOpen(false);
     setLoadedOntology(undefined);
     setOntologyLoadAttempt((attempt) => attempt + 1);
-    requestedNativeMode.current = nextMode;
-    setMode(nextMode);
     setSearchParams((current) => {
-      const next = new URLSearchParams(current);
+      let next = new URLSearchParams(current);
       if ((ontology?.id ?? null) !== current.get('ontology')) {
         next.delete(DRAFT_SEARCH_PARAM);
       }
@@ -900,6 +1055,11 @@ const OntologyExplorerContent: React.FC = () => {
       } else {
         next.delete('ontology');
       }
+      next = patchStudioUrlParams(next, {
+        mode: nextMode === 'review' ? undefined : nextMode,
+        view: nextView,
+        version: undefined,
+      });
 
       return next;
     });
@@ -930,13 +1090,15 @@ const OntologyExplorerContent: React.FC = () => {
     setGlossaries(items);
   }, []);
 
-  const handleOpenGlossary = useCallback((glossaryName: string) => {
-    setPendingGlossaryName(glossaryName);
-    setIsLibraryOpen(false);
-    setMode('view');
-    setViewSurface('graph');
-    setExplorerRevision((revision) => revision + 1);
-  }, []);
+  const handleOpenGlossary = useCallback(
+    (glossaryName: string) => {
+      setPendingGlossaryName(glossaryName);
+      setIsLibraryOpen(false);
+      setStudioUrl({ mode: 'view', view: undefined, version: undefined });
+      setExplorerRevision((revision) => revision + 1);
+    },
+    [setStudioUrl]
+  );
 
   useEffect(() => {
     const targetGlossary = glossaries.find(
@@ -970,6 +1132,16 @@ const OntologyExplorerContent: React.FC = () => {
     (glossary) => glossary.id === selectedGlossaryId
   );
   const isNativeOntology = isOntologyScope(studioScope);
+  const viewSurface = resolveViewSurface(urlState.view, isNativeOntology);
+  const editSurface = resolveEditSurface(urlState.view, isNativeOntology);
+  const querySurface = resolveQuerySurface(urlState.view);
+  const [lastQuerySurface, setLastQuerySurface] =
+    useState<QuerySurface>('console');
+  useEffect(() => {
+    if (mode === 'query') {
+      setLastQuerySurface(querySurface);
+    }
+  }, [mode, querySurface]);
   const scopeLabel = getStudioScopeLabel(
     studioScope,
     selectedOntology,
@@ -1046,7 +1218,12 @@ const OntologyExplorerContent: React.FC = () => {
     t
   );
 
-  const explorerSurface: ViewSurface = mode === 'view' ? viewSurface : 'graph';
+  const explorerSurface = getExplorerSurface(
+    mode,
+    viewSurface,
+    editSurface,
+    isNativeOntology
+  );
 
   const canEditOntology = computeCanEditOntology(isAdminUser, permissions);
   const changeSetPermissions = computeChangeSetPermissions(
@@ -1083,26 +1260,44 @@ const OntologyExplorerContent: React.FC = () => {
     canEditSelectedOntology: canEditNativeOntology,
     isEditing: mode === 'edit',
   });
+  const {
+    canOfferEdit,
+    isVersionPending,
+    publishedReleaseId,
+    releaseStatus,
+    version,
+  } = resolveStudioRead({
+    canEdit: canEditNativeOntology,
+    isPermissionLoading: isNativePermissionLoading,
+    mode,
+    isNativeOntology,
+    listedStatus: publicationStatus,
+    requestedVersion: urlState.version,
+    selectedOntology,
+    showEditTab,
+  });
   const isOntologyAiAvailable = isGlossaryScope && isOntologyAiEnabled;
-  const modeTabs = computeModeTabs(t, showEditTab, isOntologyAiAvailable);
+  const modeTabs = computeModeTabs(t, canOfferEdit, isOntologyAiAvailable);
 
   useEffect(() => {
-    if (ontologyId && !selectedOntology) {
+    if ((ontologyId && !selectedOntology) || isVersionPending) {
       return;
     }
     const isUnavailableEditMode = mode === 'edit' && !canEditCurrentScope;
     const isUnavailableAiMode =
       mode === 'ai' && (isNativeOntology || !isOntologyAiEnabled);
     if (isUnavailableEditMode || isUnavailableAiMode) {
-      setMode('view');
+      setMode('view', { replace: true });
     }
   }, [
     canEditCurrentScope,
     isNativeOntology,
     isOntologyAiEnabled,
+    isVersionPending,
     mode,
     ontologyId,
     selectedOntology,
+    setMode,
   ]);
 
   const subModeConfiguration = getSubModeConfiguration(
@@ -1120,11 +1315,14 @@ const OntologyExplorerContent: React.FC = () => {
 
         return;
       }
-      if (mode === 'edit' && (id === 'graph' || id === 'definitions')) {
+      if (
+        mode === 'edit' &&
+        (id === 'graph' || id === 'tree' || id === 'definitions')
+      ) {
         setEditSurface(id);
       }
       if (mode === 'view') {
-        const nextViewSurface = resolveViewSurfaceChange(id);
+        const nextViewSurface = resolveViewSurfaceChange(id, isNativeOntology);
         if (nextViewSurface) {
           setViewSurface(nextViewSurface);
         }
@@ -1138,7 +1336,15 @@ const OntologyExplorerContent: React.FC = () => {
         }
       }
     },
-    [mode, nativeAuthoringLocked, t]
+    [
+      isNativeOntology,
+      mode,
+      nativeAuthoringLocked,
+      setEditSurface,
+      setQuerySurface,
+      setViewSurface,
+      t,
+    ]
   );
 
   const {
@@ -1176,7 +1382,7 @@ const OntologyExplorerContent: React.FC = () => {
       scope="global"
       searchSlot={searchSlot}
       showHealth={showHealth}
-      surface={explorerSurface}
+      surface={explorerSurface === 'ontology' ? 'graph' : explorerSurface}
       onConceptCreated={(concept) => {
         setConceptDraft(undefined);
         if (concept.glossary?.id) {
@@ -1203,7 +1409,6 @@ const OntologyExplorerContent: React.FC = () => {
     setIsLibraryOpen(false);
     if (nextScope.kind === 'allOntologies') {
       setLoadedOntology(undefined);
-      setMode('view');
       setConceptDraft(undefined);
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
@@ -1212,7 +1417,11 @@ const OntologyExplorerContent: React.FC = () => {
         next.delete(DRAFT_SEARCH_PARAM);
         next.delete('concept');
 
-        return next;
+        return patchStudioUrlParams(next, {
+          mode: 'view',
+          view: undefined,
+          version: undefined,
+        });
       });
       void queryClient.invalidateQueries({
         queryKey: ['ontology-studio-model', 'all'],
@@ -1238,10 +1447,6 @@ const OntologyExplorerContent: React.FC = () => {
     if (scopeChanged) {
       setConceptDraft(undefined);
     }
-    if (domainChanged) {
-      setMode('view');
-      setViewSurface('graph');
-    }
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.delete('ontology');
@@ -1251,11 +1456,17 @@ const OntologyExplorerContent: React.FC = () => {
         next.delete(DRAFT_SEARCH_PARAM);
       }
 
-      return next;
+      return domainChanged
+        ? patchStudioUrlParams(next, {
+            mode: 'view',
+            view: undefined,
+            version: undefined,
+          })
+        : next;
     });
   }
 
-  function handleModeChange(nextMode: StudioMode) {
+  function handleModeChange(nextMode: StudioMode, editView?: StudioUrlView) {
     if (nativeAuthoringLocked) {
       showErrorToast(t('message.ontology-class-attempt-pending'));
 
@@ -1274,7 +1485,9 @@ const OntologyExplorerContent: React.FC = () => {
     if (nextMode !== 'edit') {
       setConceptDraft(undefined);
     }
-    setMode(nextMode);
+    setMode(nextMode, {
+      view: nextMode === 'query' ? lastQuerySurface : editView,
+    });
   }
 
   function renderScopeMenu() {
@@ -1316,12 +1529,11 @@ const OntologyExplorerContent: React.FC = () => {
         }
         onOpenSettings={(ontology) =>
           guard(() => {
-            setEditSurface('definitions');
             setSettingsRequest(({ key }) => ({
               ontologyId: ontology.id,
               key: key + 1,
             }));
-            selectOntology(ontology, undefined, 'edit');
+            selectOntology(ontology, undefined, 'edit', 'ontology');
           })
         }
         onRetry={() =>
@@ -1610,6 +1822,19 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }
 
+  function handleVersionChange(next: StudioUrlVersion) {
+    if (next === 'published') {
+      setConceptDraft(undefined);
+      setStudioUrl({
+        version: 'published',
+        ...(mode === 'edit' ? { mode: 'view' as const } : {}),
+      });
+
+      return;
+    }
+    setStudioUrl({ version: undefined });
+  }
+
   function renderVersionChip() {
     return selectedOntology ? (
       <OntologyVersionChip
@@ -1617,10 +1842,16 @@ const OntologyExplorerContent: React.FC = () => {
           studioScopes.isOntologyLoading || studioScopes.isOntologyError
         }
         status={publicationStatus}
+        version={canEditNativeOntology ? version : undefined}
         onPress={() => {
           setPublicationTab('releases');
           setIsPublicationOpen(true);
         }}
+        onVersionChange={
+          canEditNativeOntology
+            ? (next) => guard(() => handleVersionChange(next))
+            : undefined
+        }
       />
     ) : null;
   }
@@ -1741,8 +1972,7 @@ const OntologyExplorerContent: React.FC = () => {
           relationshipTypes={relationTypes}
           onOpenQuery={(query) => {
             setGeneratedQuery({ scopeKey: currentScopeKey, query });
-            setQuerySurface('console');
-            setMode('query');
+            setMode('query', { view: 'console' });
           }}
         />
       );
@@ -1782,9 +2012,37 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }
 
+  const renderNothingPublished = () =>
+    releaseStatus || !studioScopes.isOntologyLoading ? (
+      <div
+        className="tw:relative tw:min-h-70 tw:flex-1"
+        data-testid="ontology-nothing-published">
+        <NoDataPlaceholder
+          description={t('message.ontology-nothing-published-description')}
+          title={t('message.ontology-nothing-published')}
+        />
+      </div>
+    ) : (
+      <Loader />
+    );
+
+  const renderReadGate = () => {
+    if (isVersionPending) {
+      return <Loader />;
+    }
+
+    return mode === 'view' && version === 'published' && !publishedReleaseId
+      ? renderNothingPublished()
+      : null;
+  };
+
   const renderNativeContent = (ontology: Ontology) => {
     if (mode === 'query' || mode === 'ai') {
       return renderMainContent();
+    }
+    const gate = renderReadGate();
+    if (gate) {
+      return gate;
     }
 
     return (
@@ -1795,13 +2053,15 @@ const OntologyExplorerContent: React.FC = () => {
             : 0
         }
         initialDraftId={initialDraftId}
-        key={`${ontology.id}:${nativeRefresh}`}
+        key={`${ontology.id}:${nativeRefresh}:${publishedReleaseId ?? 'draft'}`}
         mode={
           mode === 'edit' && editSurface === 'definitions'
             ? 'definitions'
             : mode
         }
         ontology={ontology}
+        publicationStatus={releaseStatus}
+        releaseId={publishedReleaseId}
         selectedConceptId={selectedConceptId}
         settingsRequestKey={
           settingsRequest.ontologyId === ontology.id ? settingsRequest.key : 0
@@ -1809,10 +2069,7 @@ const OntologyExplorerContent: React.FC = () => {
         viewSurface={explorerSurface}
         onAuthoringLockChange={setNativeAuthoringLocked}
         onRequestCreateConcept={() => guard(handleAddConcept)}
-        onRequestEdit={() => {
-          setEditSurface('graph');
-          handleModeChange('edit');
-        }}
+        onRequestEdit={() => handleModeChange('edit', 'graph')}
         onRequestGraphSurface={() => setViewSurface('graph')}
         onRequestTreeSurface={() => setViewSurface('tree')}
         onSaved={(ontology) => {
@@ -1880,13 +2137,15 @@ const OntologyExplorerContent: React.FC = () => {
       return null;
     }
 
+    const listSurface = viewSurface === 'ontology' ? 'graph' : viewSurface;
+
     return (
       <AllOntologiesGraphView
         graph={allModels.graph}
         isFetching={allModels.isFetching}
         models={allModels.models ?? []}
         selectedConceptId={selectedConceptId}
-        surface={viewSurface}
+        surface={listSurface}
         onEditConcept={(ontology, conceptId) =>
           selectOntology(ontology, conceptId, 'edit')
         }
@@ -1913,6 +2172,29 @@ const OntologyExplorerContent: React.FC = () => {
   }
 
   const renderOwnerLoading = () => {
+    if (ontologyNotFound) {
+      return (
+        <div
+          className="tw:relative tw:min-h-70 tw:flex-1"
+          data-testid="ontology-not-found"
+          role="alert">
+          <NoDataPlaceholder
+            description={t('message.ontology-not-found')}
+            footer={
+              <Button
+                color="secondary"
+                onPress={() => handleScopeChange(ALL_ONTOLOGIES_SCOPE)}>
+                {t('label.all-entity', {
+                  entity: t('label.ontology-plural').toLocaleLowerCase(),
+                })}
+              </Button>
+            }
+            title={t('label.ontology')}
+          />
+        </div>
+      );
+    }
+
     return ontologyLoadFailed ? (
       <div className="tw:relative tw:min-h-70 tw:flex-1" role="alert">
         <SomethingWentWrongPlaceholder
@@ -2086,7 +2368,6 @@ const OntologyExplorerContent: React.FC = () => {
           onOpenOntology: (ontology) => {
             guard(() => {
               selectOntology(ontology);
-              setViewSurface('graph');
               setIsLibraryOpen(false);
             });
           },
@@ -2106,7 +2387,6 @@ const OntologyExplorerContent: React.FC = () => {
 
   const handleOntologyCreated = (ontology: Ontology) => {
     setIsCreateDialogOpen(false);
-    setEditSurface('graph');
     setPendingFirstClass({ ontologyId: ontology.id, isUrlReached: false });
     void queryClient.invalidateQueries({
       queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],

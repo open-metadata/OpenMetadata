@@ -248,7 +248,7 @@ test.describe(
               if (mode === 'edit' && scope === 'owner') {
                 await expect(
                   subbar.getByTestId('submode-tab-definitions')
-                ).toHaveText('Term');
+                ).toHaveText('Ontology');
               }
               if (mode === 'query' && scope === 'owner') {
                 await expect(

@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { AxiosError, AxiosResponse } from 'axios';
 import { Profiler, ReactNode } from 'react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -36,6 +37,7 @@ import {
   listOntologyAxioms,
   listOntologyConcepts,
   listOntologyProperties,
+  listOntologyReleaseMembers,
 } from '../../rest/ontologyAPI';
 import { fetchRdfConfig } from '../../rest/rdfAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
@@ -143,6 +145,7 @@ jest.mock('../../rest/ontologyAPI', () => ({
   listOntologies: jest.fn(),
   listOntologyConcepts: jest.fn(),
   listOntologyProperties: jest.fn(),
+  listOntologyReleaseMembers: jest.fn(),
 }));
 
 jest.mock('../../rest/rdfAPI', () => ({
@@ -508,7 +511,14 @@ describe('OntologyExplorerPage', () => {
     fullyQualifiedName: 'NativeSales',
     iri: 'urn:NativeSales',
     namespace: 'urn:NativeSales:',
-    publicationStatus: { unpublishedChanges: 0 },
+    publicationStatus: {
+      unpublishedChanges: 0,
+      active: {
+        releaseId: 'native-sales-release',
+        releaseRevision: 1,
+        semanticVersion: '1.0.0',
+      },
+    },
   };
 
   const Location = () => {
@@ -548,7 +558,15 @@ describe('OntologyExplorerPage', () => {
   ) => {
     (usePermissionProvider as jest.Mock).mockReturnValue({ permissions });
     mockUseRealRouter = true;
-    (getOntology as jest.Mock).mockResolvedValue(ontology);
+    (getOntology as jest.Mock).mockImplementation(async (id: string) => {
+      if (id === 'does-not-exist') {
+        throw new AxiosError('missing', '404', undefined, undefined, {
+          status: 404,
+        } as AxiosResponse);
+      }
+
+      return ontology;
+    });
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
       state: {
         ontologyId: nativeOntology.id,
@@ -587,6 +605,7 @@ describe('OntologyExplorerPage', () => {
           data: names.map((name) => ({
             id: name,
             name,
+            description: `${name} working draft`,
             iri: `urn:${name}`,
             fullyQualifiedName: `${owner.fullyQualifiedName}.${name}`,
             ontology: { id: owner.id, type: 'ontology' },
@@ -595,6 +614,28 @@ describe('OntologyExplorerPage', () => {
           })),
           paging: { total: names.length },
         };
+      }
+    );
+    (listOntologyReleaseMembers as jest.Mock).mockImplementation(
+      async (_releaseId: string, kind: string) => {
+        const members =
+          kind === 'CONCEPT'
+            ? conceptNames.map((name) => ({
+                memberId: name,
+                memberKind: kind,
+                payload: {
+                  id: name,
+                  name,
+                  description: `${name} as released`,
+                  iri: `urn:${name}`,
+                  fullyQualifiedName: `${ontology.fullyQualifiedName}.${name}`,
+                  ontology: { id: ontology.id, type: 'ontology' },
+                  conceptType: OntologyConceptType.OwlClass,
+                },
+              }))
+            : [];
+
+        return { data: members, paging: { total: members.length } };
       }
     );
     (listOntologyProperties as jest.Mock).mockResolvedValue({
@@ -1614,7 +1655,7 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
-  it('opens the graph editor for a concept owner after visiting Definitions', async () => {
+  it('shows a concept owner without ontology rights the published release, with no edit entry', async () => {
     (useEntityPermissions as jest.Mock).mockImplementation((resource) => ({
       canEditAll: resource === 'ontologyConcept',
     }));
@@ -1627,14 +1668,232 @@ describe('OntologyExplorerPage', () => {
 
     fireEvent.click(screen.getByTestId('submode-tab-tree'));
     fireEvent.click(screen.getByTestId('ontology-tree-term-Customer'));
-    fireEvent.click(screen.getByTestId('ontology-concept-edit'));
 
-    expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
-    expect(screen.getByTestId('native-canvas')).toBeVisible();
-    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
-      'aria-selected',
-      'true'
+    expect(await screen.findByText('Customer as released')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-concept-edit')
+    ).not.toBeInTheDocument();
+  });
+
+  describe('published version and URL state', () => {
+    const asConsumer = () => {
+      (useEntityPermissions as jest.Mock).mockReturnValue({
+        canEditAll: false,
+        isLoading: false,
+      });
+      mockUseAuth.mockReturnValue({
+        isAdminUser: false,
+        isFirstTimeUser: false,
+      });
+    };
+    const openConcept = async (name: string) => {
+      fireEvent.click(await screen.findByTestId('submode-tab-tree'));
+      fireEvent.click(await screen.findByTestId(`ontology-tree-term-${name}`));
+    };
+
+    it('shows a user without edit rights the released wording while the draft has newer wording', async () => {
+      asConsumer();
+      renderNativeStudio('?ontology=native-sales');
+      await openConcept('Customer');
+
+      expect(await screen.findByText('Customer as released')).toBeVisible();
+      expect(
+        screen.queryByText('Customer working draft')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ontology-version-switch')
+      ).not.toBeInTheDocument();
+    });
+
+    it('tells a user without edit rights that nothing is published when no release is active', async () => {
+      asConsumer();
+      renderNativeStudio('?ontology=native-sales', {
+        ...nativeOntology,
+        publicationStatus: { unpublishedChanges: 3 },
+      });
+
+      expect(
+        await screen.findByTestId('ontology-nothing-published')
+      ).toHaveTextContent('message.ontology-nothing-published');
+      expect(screen.queryByTestId('native-canvas')).not.toBeInTheDocument();
+    });
+
+    it('lets an editor switch between the draft and the published release', async () => {
+      renderNativeStudio('?ontology=native-sales');
+      await openConcept('Customer');
+
+      expect(await screen.findByText('Customer working draft')).toBeVisible();
+      expect(screen.getByTestId('mode-tab-edit')).toBeVisible();
+
+      fireEvent.click(screen.getByTestId('ontology-version-published'));
+
+      expect(await screen.findByText('Customer as released')).toBeVisible();
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'version=published'
+      );
+      expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-version-draft'));
+
+      expect(await screen.findByText('Customer working draft')).toBeVisible();
+      expect(screen.getByTestId('location')).not.toHaveTextContent('version');
+      expect(screen.getByTestId('mode-tab-edit')).toBeVisible();
+    });
+
+    it('leaves Edit when an editor switches to the published release', async () => {
+      renderNativeStudio('?ontology=native-sales&mode=edit');
+      await screen.findByTestId('native-canvas');
+
+      expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-version-published'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+          'aria-selected',
+          'true'
+        )
+      );
+
+      expect(screen.getByTestId('location')).not.toHaveTextContent('mode=edit');
+    });
+
+    it.each([
+      ['Edit', '?ontology=native-sales&mode=edit', 'mode-tab-edit', undefined],
+      [
+        'Edit Tree',
+        '?ontology=native-sales&mode=edit&view=tree',
+        'mode-tab-edit',
+        'submode-tab-tree',
+      ],
+      [
+        'View Tree',
+        '?ontology=native-sales&view=tree',
+        'mode-tab-view',
+        'submode-tab-tree',
+      ],
+      [
+        'Query',
+        '?ontology=native-sales&mode=query',
+        'mode-tab-query',
+        undefined,
+      ],
+    ])(
+      'reloading on %s returns to the same mode and view',
+      async (_name, search, modeTab, viewTab) => {
+        renderNativeStudio(search);
+
+        await waitFor(() =>
+          expect(screen.getByTestId(modeTab)).toHaveAttribute(
+            'aria-selected',
+            'true'
+          )
+        );
+        if (viewTab) {
+          expect(screen.getByTestId(viewTab)).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+        }
+
+        expect(screen.getByTestId('location')).toHaveTextContent(
+          search.slice(1)
+        );
+      }
     );
+
+    it('pushes a history entry for a view change and Back returns to the previous view', async () => {
+      renderNativeStudio('?ontology=native-sales');
+      await screen.findByTestId('native-canvas');
+
+      fireEvent.click(screen.getByTestId('submode-tab-tree'));
+      fireEvent.click(screen.getByTestId('mode-tab-edit'));
+      fireEvent.click(screen.getByTestId('mode-tab-query'));
+
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '?ontology=native-sales&mode=query'
+      );
+
+      fireEvent.click(screen.getByTestId('history-back'));
+      await waitFor(() =>
+        expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+          'aria-selected',
+          'true'
+        )
+      );
+
+      fireEvent.click(screen.getByTestId('history-back'));
+      await waitFor(() =>
+        expect(screen.getByTestId('submode-tab-tree')).toHaveAttribute(
+          'aria-selected',
+          'true'
+        )
+      );
+
+      expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+
+      fireEvent.click(screen.getByTestId('history-back'));
+      await waitFor(() =>
+        expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(
+          'aria-selected',
+          'true'
+        )
+      );
+
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '?ontology=native-sales'
+      );
+    });
+
+    it('replaces the entry when a concept is selected inside a view', async () => {
+      renderNativeStudio('?ontology=native-sales');
+      await screen.findByTestId('native-canvas');
+      fireEvent.click(screen.getByTestId('submode-tab-tree'));
+      fireEvent.click(await screen.findByTestId('ontology-tree-term-Customer'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('location')).toHaveTextContent('concept=')
+      );
+
+      fireEvent.click(screen.getByTestId('history-back'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('location')).toHaveTextContent(
+          /^\?ontology=native-sales$/
+        )
+      );
+    });
+
+    it('opens the read-only Overview for a user without edit rights from the Ontology view', async () => {
+      asConsumer();
+      renderNativeStudio('?ontology=native-sales&view=ontology');
+
+      const overview = await screen.findByTestId('ontology-overview');
+
+      expect(overview).toHaveTextContent('urn:NativeSales:');
+      expect(overview).toHaveTextContent('v1.0.0');
+      expect(
+        await screen.findByTestId('ontology-overview-count-concepts')
+      ).toHaveTextContent('2');
+      expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    it('says the ontology was not found for an unknown ontology id', async () => {
+      renderNativeStudio('?ontology=does-not-exist');
+
+      expect(await screen.findByTestId('ontology-not-found')).toHaveTextContent(
+        'message.ontology-not-found'
+      );
+    });
   });
 
   it('opens native Changes and Releases from the shared Publish action', async () => {

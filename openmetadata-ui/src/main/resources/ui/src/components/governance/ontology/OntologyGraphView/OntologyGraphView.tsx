@@ -311,6 +311,8 @@ const RelationshipTypeDialog = ({
 
 interface OntologyGraphViewProps {
   readonly ontology: Ontology;
+  /** Reads the definitions this release froze instead of the working draft; nothing is editable. */
+  readonly releaseId?: string;
   readonly surface: 'graph' | 'tree';
   readonly onRequestGraphSurface: () => void;
   readonly onRequestTreeSurface?: () => void;
@@ -338,6 +340,7 @@ interface ConceptEditorRequest {
 
 const OntologyGraphView = ({
   ontology,
+  releaseId,
   surface,
   onRequestGraphSurface,
   onRequestTreeSurface,
@@ -366,11 +369,12 @@ const OntologyGraphView = ({
   const [nodePositions, setNodePositions] =
     useState<Record<string, { x: number; y: number }>>();
   const creationPositions = useRef<Record<string, { x: number; y: number }>>();
-  const { canEditAll: canEditOntology } = useEntityPermissions(
+  const { canEditAll: canEditOntologyByRights } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: ontology.id },
     { deleted: ontology.deleted }
   );
+  const canEditOntology = canEditOntologyByRights && !releaseId;
 
   const [search, setSearch] = useState('');
   const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
@@ -402,7 +406,7 @@ const OntologyGraphView = ({
     [guard, onSelectedConceptChange]
   );
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
-    useOntologyStudioModel(ontology);
+    useOntologyStudioModel(ontology, releaseId);
   const treeIndex = useMemo(
     () => buildNativeTreeIndex(graph, { ...FILTERS, searchQuery: search }, []),
     [graph, search]
@@ -524,7 +528,7 @@ const OntologyGraphView = ({
   ].every(canCreateDefinition);
   const canLinkInverse = flagsOf(ResourceEntity.RELATIONSHIP_TYPE).canEditAll;
   const conceptPermissionId = conceptEditor?.conceptId ?? selectedId;
-  const { canEditAll: canEditConcept } = useEntityPermissions(
+  const { canEditAll: canEditConceptByRights } = useEntityPermissions(
     ResourceEntity.ONTOLOGY_CONCEPT,
     { id: conceptPermissionId ?? '' },
     {
@@ -534,6 +538,7 @@ const OntologyGraphView = ({
       )?.deleted,
     }
   );
+  const canEditConcept = canEditConceptByRights && !releaseId;
   const selected = model?.concepts.find((concept) => concept.id === selectedId);
   const {
     data: relationTypes = NO_RELATIONSHIP_TYPES,
@@ -1183,6 +1188,20 @@ const OntologyGraphView = ({
       </Button>
     ) : null;
 
+  const renderMissingConcept = () =>
+    selectedId && !selected ? (
+      <div
+        className="tw:absolute tw:top-16 tw:left-3.5 tw:z-6 tw:max-w-sm"
+        data-testid="ontology-concept-not-found"
+        role="alert">
+        <Alert variant="warning">
+          {t('message.ontology-concept-not-found', {
+            version: t(releaseId ? 'label.published' : 'label.draft'),
+          })}
+        </Alert>
+      </div>
+    ) : null;
+
   const renderSearch = () => {
     const finder = (
       <OntologyConceptSearch
@@ -1224,11 +1243,12 @@ const OntologyGraphView = ({
     // Escape bubbles up from whichever control opened or sits in the panel.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
-      className="tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
+      className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
       ref={rootRef}
       onKeyDown={closeOnEscape}>
       <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
         {renderSearch()}
+        {renderMissingConcept()}
         {renderAddConcept()}
         {renderGraphMode()}
         {renderSurface()}
