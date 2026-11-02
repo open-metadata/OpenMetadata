@@ -17,7 +17,7 @@ API, answering in the shapes of its OpenAPI spec, and the OpenMetadata server.
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from requests import HTTPError
@@ -315,6 +315,34 @@ class TestComponentsAsCharts:
         assert [chart.name.root for chart in charts] == ["comp_1"]
         assert source.chart_source_state == {f"{SERVICE}.comp_1"}
 
+    def test_a_failed_listing_page_keeps_the_charts_of_unlisted_components(self, make_source):
+        source = make_source()
+        listing = source.client.client.get
+        pages = iter([{"values": [PROJECT, DRAFT], "pagination": {"after": "page_2"}}, ConnectionError("down")])
+
+        def get(path, data=None):
+            if path != "/projects":
+                return listing(path, data)
+            page = next(pages)
+            if isinstance(page, Exception):
+                raise page
+            return page
+
+        source.client.client.get = get
+        source.metadata.dashboard.charts = EntityReferenceList(
+            [EntityReference(id=uuid.uuid4(), type="chart", name="comp_1")]
+        )
+        source._get_dashboard_tags = MagicMock(return_value=None)
+        source.register_record = MagicMock()
+        source.source_config.includeDataModels = False
+        item = project(source)
+
+        assert list(source.yield_dashboard_chart(item)) == []
+        (dashboard,) = source.yield_dashboard(item)
+
+        assert [chart.root for chart in dashboard.right.charts] == [f"{SERVICE}.comp_1"]
+        assert source.chart_source_state == {f"{SERVICE}.comp_1"}
+
     def test_dashboard_life_cycle(self, make_source):
         source = make_source()
         source._get_dashboard_tags = MagicMock(return_value=None)
@@ -332,6 +360,18 @@ class TestComponentsAsCharts:
 
 
 class TestAppViewsAsUsage:
+    def test_percentiles_are_computed_on_close_only_with_usage(self, make_source):
+        for include_usage, expected in ((True, [call(Dashboard, DAY_1)]), (False, [])):
+            source = make_source()
+            source.source_config.includeUsage = include_usage
+            source._connection = None
+            source.metadata.compute_percentile = MagicMock()
+            source.metadata.close = MagicMock()
+
+            source.close()
+
+            assert source.metadata.compute_percentile.call_args_list == expected
+
     def ingest(self, source, week_views, today):
         source.today = today
         item = project(source)
