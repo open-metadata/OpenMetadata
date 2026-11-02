@@ -15141,6 +15141,12 @@ public interface CollectionDAO {
     int deleteExpiredLocks(@Bind("now") long now);
 
     @SqlUpdate(
+        "DELETE FROM rdf_reindex_lock WHERE lockKey = :lockKey AND jobId = :jobId "
+            + "AND expiresAt < :now")
+    int deleteExpired(
+        @Bind("lockKey") String lockKey, @Bind("jobId") String jobId, @Bind("now") long now);
+
+    @SqlUpdate(
         "UPDATE rdf_reindex_lock SET jobId = :toJobId, serverId = :serverId, "
             + "lastHeartbeat = :heartbeat, expiresAt = :expiresAt "
             + "WHERE lockKey = :lockKey AND jobId = :fromJobId")
@@ -15162,7 +15168,9 @@ public interface CollectionDAO {
 
       RdfReindexLockRecord existing = findByKey(lockKey);
       if (existing != null && existing.isExpired()) {
-        delete(lockKey);
+        // Delete only the expired holder we read: another server may have replaced it since, and
+        // deleting by key alone would let two servers each believe they hold the lock.
+        deleteExpired(lockKey, existing.jobId(), System.currentTimeMillis());
         inserted = insertIfNotExists(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
         return inserted > 0;
       }

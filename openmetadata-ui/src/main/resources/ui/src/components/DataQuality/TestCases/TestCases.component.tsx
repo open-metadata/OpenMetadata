@@ -141,6 +141,24 @@ export const TestCases = () => {
                 </Button>
               </Dropdown>
             </Form.Item>
+            {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
+              <Form.Item
+                className="m-0"
+                label={t('label.last-run')}
+                name="lastRunRange"
+                trigger="handleDateRangeChange"
+                valuePropName="defaultDateRange">
+                <DatePickerMenu
+                  allowClear
+                  showSelectedCustomRange
+                  // Without a placeholder an unset filter falls back to the menu's
+                  // built-in default range, which is never sent to the API.
+                  placeholder={t('label.all-time')}
+                  size="small"
+                  onClear={() => handleSearchParam('lastRunRange', undefined)}
+                />
+              </Form.Item>
+            )}
             {selectedFilter.includes(TEST_CASE_FILTERS.table) && (
               <Form.Item
                 className="m-0 w-80"
@@ -200,16 +218,6 @@ export const TestCases = () => {
                   options={TEST_CASE_STATUS_FILTER_OPTIONS}
                   placeholder={t('label.status')}
                 />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
-              <Form.Item
-                className="m-0"
-                label={t('label.last-run')}
-                name="lastRunRange"
-                trigger="handleDateRangeChange"
-                valuePropName="defaultDateRange">
-                <DatePickerMenu showSelectedCustomRange size="small" />
               </Form.Item>
             )}
             {selectedFilter.includes(TEST_CASE_FILTERS.tags) && (
