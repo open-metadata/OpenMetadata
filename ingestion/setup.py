@@ -322,7 +322,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["thrift"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL>=26.0.0",  # CVE-2026-27459 DTLS cookie callback BoF
-        "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
+        "pyasn1>=0.6.5",  # CVE-2026-30922, GHSA-2qm8-x737-gmw5 / -9m75-vc3g-4x39 / -fm9c-5rcf-2q5p / -mm57-4v3p-rchx
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
