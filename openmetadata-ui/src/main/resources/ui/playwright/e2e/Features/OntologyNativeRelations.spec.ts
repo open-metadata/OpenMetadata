@@ -98,7 +98,7 @@ const createFixture = async (
       (
         await okJson<{ data: OntologyAxiom[] }>(
           await api.get('/api/v1/ontologyAxioms', {
-            params: { ontology: fqn, limit: 100 },
+            params: { ontologyId: ontology.id, limit: 100 },
           }),
           'List the axioms'
         )
@@ -829,7 +829,7 @@ test.describe(
         ).toHaveText('Beta');
         await expect(
           detail.getByTestId('ontology-relation-detail-type')
-        ).toContainText(/subclass of/i);
+        ).toHaveText('is a');
         await expect(
           detail.getByTestId('ontology-relation-detail-target')
         ).toHaveText('Alpha');
@@ -921,6 +921,72 @@ test.describe(
       }
     });
 
+    test('offers Restore when a new concept reuses the name of a deleted one', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'reuse');
+      try {
+        const customer = await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Customer',
+              ontology: fixture.fqn,
+              conceptType: 'OWL_CLASS',
+              description: 'A party that buys from us.',
+            },
+          }),
+          'Create Customer'
+        );
+        await fixture.concept('Anchor');
+
+        await openStudio(page, fixture.ontology, true);
+        await clickGraphNode(page, customer.id);
+        await page.getByTestId('ontology-concept-delete').click();
+        await page.getByTestId('ontology-concept-delete-confirm').click();
+        await expect(
+          page.getByTestId('ontology-concept-delete-dialog')
+        ).toHaveCount(0);
+        await expect(page.getByTestId('ontology-undo')).toBeVisible();
+        await expect(page.getByTestId('ontology-undo')).toHaveCount(0, {
+          timeout: 30_000,
+        });
+
+        const empty = await findEmptyCanvasPoint(page);
+        await page.mouse.dblclick(empty.x, empty.y);
+        await page.getByTestId('new-class-local-name').fill('Customer');
+        await expect(page.getByTestId('new-class-name-deleted')).toContainText(
+          'A deleted concept named Customer exists in this ontology.'
+        );
+        await expect(page.getByTestId('new-class-create')).toBeDisabled();
+
+        await page.getByTestId('new-class-restore').click();
+        await expect(page.getByTestId('ontology-new-class-panel')).toHaveCount(
+          0
+        );
+        await expect
+          .poll(async () => Object.keys(await readGraphPoints(page, 'node')))
+          .toContain(customer.id);
+        await expect(
+          page.getByTestId('ontology-concept-inspector')
+        ).toContainText('A party that buys from us.');
+
+        await page.reload();
+        await expect
+          .poll(async () => Object.keys(await readGraphPoints(page, 'node')))
+          .toContain(customer.id);
+        const restored = await okJson<OntologyConcept>(
+          await api.get(`/api/v1/ontologyConcepts/${customer.id}`),
+          'Read Customer'
+        );
+        expect(restored.deleted).toBe(false);
+        expect(restored.description).toBe('A party that buys from us.');
+      } finally {
+        await fixture.cleanup();
+      }
+    });
+
     test('lists Broader and Narrower under Relationships, not Properties', async ({
       isolatedUserPage: page,
     }) => {
@@ -949,7 +1015,8 @@ test.describe(
         await property('narrower', 'OBJECT');
         await property('legalName', 'DATA');
 
-        await page.goto(`/governance/ontology?ontology=${fixture.ontology.id}`);
+        await fixture.concept('Anchor');
+        await openStudio(page, fixture.ontology, true);
         await page.getByTestId('submode-tab-definitions').click();
         await page
           .getByRole('tab', { name: 'Properties', exact: true })

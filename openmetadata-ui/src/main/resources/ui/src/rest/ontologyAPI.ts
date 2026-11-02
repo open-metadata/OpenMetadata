@@ -336,6 +336,16 @@ export const restoreOntologyDefinition = async (
   await APIClient.put(`${path}/restore`, { id });
 };
 
+/** Reads with include=all so a soft-deleted concept still holding the name is found. */
+export const getOntologyConceptByName = async (fqn: string) => {
+  const response = await APIClient.get<OntologyConcept>(
+    `${ONTOLOGY_CONCEPTS_PATH}/name/${getEncodedFqn(fqn)}`,
+    { params: { include: 'all' } }
+  );
+
+  return response.data;
+};
+
 export const patchOntologyConcept = async (id: string, patch: Operation[]) => {
   const response = await APIClient.patch<OntologyConcept>(
     `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}`,

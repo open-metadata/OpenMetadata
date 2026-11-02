@@ -29,7 +29,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
@@ -973,6 +979,7 @@ const OntologyExplorerContent: React.FC = () => {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [nativeStats, setNativeStats] = useState<OntologyModelStats>();
   const [nativeRefresh, setNativeRefresh] = useState(0);
+  const workspaceShownFor = useRef<string>();
   const [nativeAuthoringLocked, setNativeAuthoringLocked] = useState(false);
   const [isAggregateCreateOpen, setIsAggregateCreateOpen] = useState(false);
   const [nativeConceptRequest, setNativeConceptRequest] = useState<{
@@ -2060,8 +2067,10 @@ const OntologyExplorerContent: React.FC = () => {
       <Loader />
     );
 
-  const renderReadGate = () => {
-    if (isVersionPending) {
+  const renderReadGate = (ontologyId: string) => {
+    // Once the workspace is up, a later permission read (selecting a concept
+    // in Edit) must not unmount it, or the graph loses placed nodes and layout.
+    if (isVersionPending && workspaceShownFor.current !== ontologyId) {
       return <Loader />;
     }
 
@@ -2074,10 +2083,11 @@ const OntologyExplorerContent: React.FC = () => {
     if (mode === 'query' || mode === 'ai') {
       return renderMainContent();
     }
-    const gate = renderReadGate();
+    const gate = renderReadGate(ontology.id);
     if (gate) {
       return gate;
     }
+    workspaceShownFor.current = ontology.id;
 
     return (
       <OntologyStudioWorkspace

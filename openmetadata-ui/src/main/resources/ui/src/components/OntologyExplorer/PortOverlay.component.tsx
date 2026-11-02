@@ -90,6 +90,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
     armedFromId,
     cancel,
     confirmRelationType,
+    connect,
     cursor,
     dismissPending,
     pendingRelation,
@@ -102,8 +103,8 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
     onCreateRelation,
   });
 
-  const gesture = useRef({ cancel, selectTarget, startArm, toLocalPoint });
-  gesture.current = { cancel, selectTarget, startArm, toLocalPoint };
+  const gesture = useRef({ cancel, connect, startArm, toLocalPoint });
+  gesture.current = { cancel, connect, startArm, toLocalPoint };
 
   useEffect(() => {
     const container = containerRef.current;
@@ -137,9 +138,9 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
       window.removeEventListener('pointerup', listeners.end);
     };
     const handleDragEnd = (event: PointerEvent) => {
-      const wasDragged = drag?.isActive;
+      const dragged = drag?.isActive ? drag : null;
       stopDrag();
-      if (!wasDragged) {
+      if (!dragged) {
         return;
       }
       container.dispatchEvent(new Event(ONTOLOGY_EDIT_PORT_DRAG_END_EVENT));
@@ -148,8 +149,12 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
         y: event.clientY,
       });
       const point = gesture.current.toLocalPoint(event.clientX, event.clientY);
-      if (targetId && point) {
-        gesture.current.selectTarget(targetId, point, { isPort: false });
+      const origin = gesture.current.toLocalPoint(
+        dragged.start.x,
+        dragged.start.y
+      );
+      if (targetId && point && origin) {
+        gesture.current.connect(dragged.nodeId, origin, targetId, point);
       } else {
         gesture.current.cancel();
       }

@@ -53,6 +53,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   getOntologyState,
   hardDeleteOntologyDefinition,
+  restoreOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
@@ -88,6 +89,7 @@ import {
   ownPropertyDraft,
   ownPropertyTypeLabel,
 } from './OntologyNewClassPanel.utils';
+import { useDeletedConceptNamed } from './useDeletedConceptNamed';
 const DATATYPE_LABEL_KEYS: Record<StudioDatatype | 'object', string> = {
   boolean: 'label.boolean',
   date: 'label.date',
@@ -104,6 +106,7 @@ interface SelectionValues {
   disjoint: FormSelectItem[];
   owners: EntityReferenceOption[];
 }
+
 /** What the author typed, kept by the host while the panel remounts for another ontology. */
 export interface CarriedConceptDraft {
   label: string;
@@ -139,6 +142,7 @@ interface Props {
   onClose: () => void;
   onLockChange?: (locked: boolean) => void;
 }
+const NAME_ISSUES: ClassIdentityIssue[] = ['name-invalid', 'name-taken'];
 const ISSUE_MESSAGES: Record<ClassIdentityIssue, string> = {
   'name-required': 'message.ontology-concept-name-required',
   'name-invalid': 'message.ontology-concept-name-invalid',
@@ -296,6 +300,9 @@ const OntologyNewClassPanel = ({
   };
   const mappingRowValid = isValidMapping(mappings, pendingMapping);
   const mappingRowInvalid = Boolean(mappingIri.trim()) && !mappingRowValid;
+  const [restoring, setRestoring] = useState(false);
+  const [restoreFailed, setRestoreFailed] = useState(false);
+  const deletedConcept = useDeletedConceptNamed(ontology, model, localName);
   const issues = classIdentityIssues(model, {
     displayName: label,
     localName,
@@ -323,6 +330,11 @@ const OntologyNewClassPanel = ({
     }
     if (issues.length > 0) {
       return issueText(issues[0]);
+    }
+    if (deletedConcept) {
+      return t('message.ontology-concept-name-deleted', {
+        name: localName.trim(),
+      });
     }
     if (mappingRowInvalid) {
       return t('message.invalid-concept-iri');
@@ -493,6 +505,54 @@ const OntologyNewClassPanel = ({
       { mappingType, conceptIri: mappingIri.trim() },
     ]);
     setMappingIri('');
+  };
+  const restoreDeleted = async () => {
+    if (!deletedConcept || restoring) {
+      return;
+    }
+    setRestoring(true);
+    setRestoreFailed(false);
+    try {
+      await restoreOntologyDefinition('concept', deletedConcept.id);
+      if (!(await onCreated(deletedConcept.iri, { keepOpen: false }))) {
+        setError(true);
+      }
+    } catch {
+      setRestoreFailed(true);
+    } finally {
+      setRestoring(false);
+    }
+  };
+  const renderNameHint = () => {
+    if (apply.status.kind === 'blocked' && apply.status.conflict) {
+      return (
+        <span data-testid="new-class-name-conflict">
+          {apply.status.message}
+        </span>
+      );
+    }
+    if (deletedConcept && !has(...NAME_ISSUES)) {
+      return (
+        <span data-testid="new-class-name-deleted">
+          {restoreFailed
+            ? t('server.unexpected-error')
+            : t('message.ontology-concept-name-deleted', {
+                name: localName.trim(),
+              })}{' '}
+          <Button
+            color="link-color"
+            data-testid="new-class-restore"
+            isDisabled={locked}
+            isLoading={restoring}
+            size="sm"
+            onPress={() => void restoreDeleted()}>
+            {t('label.restore')}
+          </Button>
+        </span>
+      );
+    }
+
+    return fieldHint(undefined, ...NAME_ISSUES);
   };
   const create = async (keepOpen: boolean) => {
     if (!valid || !permitted || locked || submitting.current) {
@@ -823,7 +883,7 @@ const OntologyNewClassPanel = ({
             : t('server.unexpected-error')}
         </Alert>
       ) : null}
-      {apply.status.kind === 'blocked' ? (
+      {apply.status.kind === 'blocked' && !apply.status.conflict ? (
         <Alert variant="error">{apply.status.message}</Alert>
       ) : null}
       {blockedReason && apply.status.kind !== 'applied' ? (
@@ -982,11 +1042,15 @@ const OntologyNewClassPanel = ({
               </div>
             ) : null}
             <Input
-              hint={fieldHint(undefined, 'name-invalid', 'name-taken')}
+              isRequired
+              hint={renderNameHint()}
               inputDataTestId="new-class-local-name"
               isDisabled={locked}
-              isInvalid={has('name-invalid', 'name-taken')}
-              isRequired
+              isInvalid={
+                has(...NAME_ISSUES) ||
+                Boolean(deletedConcept) ||
+                (apply.status.kind === 'blocked' && apply.status.conflict)
+              }
               label={t('label.name')}
               ref={nameInput}
               value={localName}
