@@ -15,6 +15,9 @@ package org.openmetadata.it.tests;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Files;
@@ -51,6 +54,8 @@ class QuartzTablePurgeMigrationIT {
   private static final String JOB = "AuditLogConsumerJob";
   private static final String GROUP = "OMJobGroup";
   private static final long CHECKIN_INTERVAL = 7_500;
+  private static final String FAILURE_TRIGGER = "qrtz_purge_fail";
+  private static final String NON_RETRYABLE_STATE = "45000";
 
   private static final String SCRATCH_DATABASE =
       "qrtz_purge_%s".formatted(UUID.randomUUID().toString().replace("-", "").substring(0, 12));
@@ -108,16 +113,28 @@ class QuartzTablePurgeMigrationIT {
 
       CompletableFuture<Void> purge =
           CompletableFuture.runAsync(() -> QuartzTablePurge.purge(scratch, connectionType));
+      // Commit only once the database reports the purge waiting on the old server's locks, so the
+      // write always lands while the purge is in flight.
       await()
-          .during(Duration.ofSeconds(2))
-          .atMost(Duration.ofSeconds(5))
-          .until(() -> !purge.isDone());
+          .atMost(Duration.ofSeconds(30))
+          .until(QuartzTablePurgeMigrationIT::purgeIsWaitingOnALock);
+      assertFalse(purge.isDone(), "the purge finished while the old server still held its write");
 
       oldServer.commit();
       purge.get(60, TimeUnit.SECONDS);
     }
 
     scratch.useHandle(handle -> QuartzTablePurge.TABLES.forEach(t -> assertEmpty(handle, t)));
+  }
+
+  @Test
+  void aNonRetryableFailureRollsBackAndStopsAtOnce() {
+    assertPurgeFailsAndRollsBack(NON_RETRYABLE_STATE, 1);
+  }
+
+  @Test
+  void aPersistentDeadlockStopsAfterThreeAttempts() {
+    assertPurgeFailsAndRollsBack(deadlockState(), 3);
   }
 
   @Test
@@ -129,6 +146,90 @@ class QuartzTablePurgeMigrationIT {
           assertEquals(
               List.of("runningServer"), QuartzTablePurge.liveSchedulerInstances(handle, now));
         });
+  }
+
+  // QRTZ_FIRED_TRIGGERS is purged after the trigger and job tables, so a failure there proves the
+  // earlier deletes roll back with it.
+  private static void assertPurgeFailsAndRollsBack(String sqlState, int expectedAttempts) {
+    scratch.useHandle(
+        handle -> {
+          insertFiredTrigger(handle);
+          failDeletesOfFiredTriggers(handle, sqlState);
+        });
+    try {
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> QuartzTablePurge.purge(scratch, connectionType));
+      assertTrue(
+          failure.getMessage().contains("after %d attempt(s)".formatted(expectedAttempts)),
+          failure.getMessage());
+      scratch.useHandle(
+          handle -> {
+            assertRowCount(handle, "QRTZ_JOB_DETAILS", 1);
+            assertRowCount(handle, "QRTZ_TRIGGERS", 1);
+          });
+    } finally {
+      scratch.useHandle(QuartzTablePurgeMigrationIT::stopFailingDeletes);
+    }
+  }
+
+  private static void failDeletesOfFiredTriggers(Handle handle, String sqlState) {
+    if (connectionType == ConnectionType.MYSQL) {
+      handle.execute(
+          """
+          CREATE TRIGGER %s BEFORE DELETE ON QRTZ_FIRED_TRIGGERS FOR EACH ROW
+          SIGNAL SQLSTATE '%s' SET MESSAGE_TEXT = 'injected purge failure'"""
+              .formatted(FAILURE_TRIGGER, sqlState));
+    } else {
+      handle.execute(
+          """
+          CREATE OR REPLACE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$
+          BEGIN RAISE EXCEPTION 'injected purge failure' USING ERRCODE = '%s'; END $$"""
+              .formatted(FAILURE_TRIGGER, sqlState));
+      handle.execute(
+          "CREATE TRIGGER %1$s BEFORE DELETE ON QRTZ_FIRED_TRIGGERS EXECUTE FUNCTION %1$s()"
+              .formatted(FAILURE_TRIGGER));
+    }
+  }
+
+  private static void stopFailingDeletes(Handle handle) {
+    if (connectionType == ConnectionType.MYSQL) {
+      handle.execute("DROP TRIGGER IF EXISTS %s".formatted(FAILURE_TRIGGER));
+    } else {
+      handle.execute("DROP TRIGGER IF EXISTS %s ON QRTZ_FIRED_TRIGGERS".formatted(FAILURE_TRIGGER));
+      handle.execute("DROP FUNCTION IF EXISTS %s()".formatted(FAILURE_TRIGGER));
+    }
+  }
+
+  private static String deadlockState() {
+    return connectionType == ConnectionType.MYSQL ? "40001" : "40P01";
+  }
+
+  // Postgres reports a backend blocked on a lock; MySQL reports a metadata-lock wait for LOCK
+  // TABLES
+  // and an InnoDB lock wait for a row-level delete.
+  private static boolean purgeIsWaitingOnALock() {
+    String query =
+        connectionType == ConnectionType.MYSQL
+            ? """
+              SELECT (SELECT COUNT(*) FROM information_schema.processlist
+                       WHERE db = DATABASE() AND state LIKE 'Waiting for%lock')
+                   + (SELECT COUNT(*) FROM information_schema.innodb_trx
+                       WHERE trx_state = 'LOCK WAIT')"""
+            : """
+              SELECT COUNT(*) FROM pg_stat_activity
+              WHERE datname = current_database() AND wait_event_type = 'Lock'""";
+    return scratch.withHandle(handle -> handle.createQuery(query).mapTo(Long.class).one()) > 0;
+  }
+
+  private static void insertFiredTrigger(Handle handle) {
+    handle.execute(
+        """
+        INSERT INTO QRTZ_FIRED_TRIGGERS (SCHED_NAME, ENTRY_ID, TRIGGER_NAME, TRIGGER_GROUP,
+          INSTANCE_NAME, FIRED_TIME, SCHED_TIME, PRIORITY, STATE)
+        VALUES (?, 'firedEntry', 'existingTrigger', ?, 'oldServer', 0, 0, 5, 'EXECUTING')""",
+        SCHEDULER,
+        GROUP);
   }
 
   private static void insertJob(Handle handle) {
@@ -178,9 +279,13 @@ class QuartzTablePurgeMigrationIT {
   }
 
   private static void assertEmpty(Handle handle, String table) {
+    assertRowCount(handle, table, 0);
+  }
+
+  private static void assertRowCount(Handle handle, String table, long expected) {
     long rows =
         handle.createQuery("SELECT COUNT(*) FROM %s".formatted(table)).mapTo(Long.class).one();
-    assertEquals(0, rows, "%s still has rows".formatted(table));
+    assertEquals(expected, rows, "rows in %s".formatted(table));
   }
 
   // The 1.3.1 migration creates the Quartz tables; none of its statements contains a semicolon.
