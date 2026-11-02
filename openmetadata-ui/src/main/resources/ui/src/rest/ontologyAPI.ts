@@ -250,6 +250,12 @@ export const createOntology = async (request: CreateOntology) => {
   return response.data;
 };
 
+export const deleteOntology = async (id: string) => {
+  await APIClient.delete(`${ONTOLOGIES_PATH}/${encodeURIComponent(id)}`, {
+    params: { recursive: true, hardDelete: true },
+  });
+};
+
 export const patchOntology = async (id: string, patch: Operation[]) => {
   const response = await APIClient.patch<Ontology>(
     `${ONTOLOGIES_PATH}/${encodeURIComponent(id)}`,

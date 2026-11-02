@@ -55,6 +55,7 @@ import { OntologyModelStats } from '../../components/governance/ontology/Ontolog
 import OntologyNativeImportDialog from '../../components/governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog';
 import OntologyPublicationModal from '../../components/governance/ontology/OntologyPublicationModal/OntologyPublicationModal';
 import OntologyStudioHeader from '../../components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader';
+import OntologyShortcutList from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyShortcutList';
 import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
 import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
 import OntologyStudioWorkspace from '../../components/governance/ontology/OntologyStudioWorkspace/OntologyStudioWorkspace';
@@ -737,6 +738,10 @@ const OntologyExplorerContent: React.FC = () => {
     requestedNativeMode.current = undefined;
   }, [initialDraftId, ontologyId]);
   const [viewSurface, setViewSurface] = useState<ViewSurface>('graph');
+  const [settingsRequest, setSettingsRequest] = useState({
+    ontologyId: '',
+    key: 0,
+  });
   const [editSurface, setEditSurface] = useState<'graph' | 'definitions'>(
     'graph'
   );
@@ -1249,8 +1254,23 @@ const OntologyExplorerContent: React.FC = () => {
             ? () => handleModeChange('edit')
             : undefined
         }
+        onOntologyDeleted={(deleted) => {
+          if (deleted.id === selectedOntologyId) {
+            handleScopeChange(ALL_ONTOLOGIES_SCOPE);
+          }
+        }}
         onOpenChange={(open) =>
           setIsGlossaryScopeMenuOpen(open && isGlossaryScope)
+        }
+        onOpenSettings={(ontology) =>
+          guard(() => {
+            setEditSurface('definitions');
+            setSettingsRequest(({ key }) => ({
+              ontologyId: ontology.id,
+              key: key + 1,
+            }));
+            selectOntology(ontology, undefined, 'edit');
+          })
         }
         onRetry={() =>
           void (isGlossaryScope
@@ -1714,6 +1734,9 @@ const OntologyExplorerContent: React.FC = () => {
         }
         ontology={ontology}
         selectedConceptId={selectedConceptId}
+        settingsRequestKey={
+          settingsRequest.ontologyId === ontology.id ? settingsRequest.key : 0
+        }
         viewSurface={explorerSurface}
         onAuthoringLockChange={setNativeAuthoringLocked}
         onRequestCreateConcept={() => guard(handleAddConcept)}
@@ -1751,8 +1774,13 @@ const OntologyExplorerContent: React.FC = () => {
         role="alert">
         {allModels.isTooLarge ? (
           <NoDataPlaceholder
-            actions={ontologyActions}
             description={t('message.ontology-aggregate-capacity')}
+            footer={
+              <OntologyShortcutList
+                ontologies={availableOntologies}
+                onSelect={(ontology) => selectOntology(ontology)}
+              />
+            }
           />
         ) : (
           <SomethingWentWrongPlaceholder

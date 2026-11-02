@@ -1082,7 +1082,10 @@ describe('OntologyExplorerPage', () => {
       'true'
     );
     expect(createOntology).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Native sales' })
+      expect.objectContaining({
+        name: 'native-sales',
+        displayName: 'Native sales',
+      })
     );
   });
 
