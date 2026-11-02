@@ -10705,77 +10705,214 @@ public interface CollectionDAO {
         @BindMap Map<String, ?> outerParams,
         @Define("outerCond") String outerFilter);
 
+    // The same latest listing without a time range: the base partitioned query cannot rank the
+    // incidents' own status fields, and the originEntityFQN predicate reads the
+    // testCaseEntityFQN alias the join introduces, so the join travels with every latest shape.
+    @SqlQuery(
+        "SELECT json FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "ORDER BY timestamp DESC) ranked "
+            + "<outerCond> AND ranked.row_num = 1 LIMIT :limit OFFSET :offset")
+    List<String> listWithOffset(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
+    @Override
+    default List<String> listWithOffset(ListFilter filter, int limit, int offset, boolean latest) {
+      if (!latest) {
+        return EntityTimeSeriesDAO.super.listWithOffset(filter, limit, offset, false);
+      }
+      ListFilter outerFilter = latestRecordFilter(filter);
+      LATEST_RECORD_PARAMS.forEach(filter::removeQueryParam);
+      IncidentCondition shaped = incidentCondition(filter);
+      return listWithOffset(
+          getTimeSeriesTableName(),
+          shaped.params(),
+          shaped.condition(),
+          getPartitionFieldName(),
+          limit,
+          offset,
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
+    }
+
+    // The latest count without a time range: partition count over the same origin join and
+    // outer filter the listing reads, minus the timestamp window.
+    @SqlQuery(
+        "SELECT count(*) FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond>) ranked "
+            + "<outerCond> AND ranked.row_num = 1")
+    int listCount(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
+    @Override
+    default int listCount(ListFilter filter, boolean latest) {
+      if (!latest) {
+        return EntityTimeSeriesDAO.super.listCount(filter, false);
+      }
+      // The listing reads the same filter afterwards, so it is copied rather than trimmed.
+      ListFilter innerFilter = new ListFilter(filter.getInclude());
+      filter.getQueryParams().forEach(innerFilter::addQueryParam);
+      LATEST_RECORD_PARAMS.forEach(innerFilter::removeQueryParam);
+      ListFilter outerFilter = latestRecordFilter(filter);
+      IncidentCondition shaped = incidentCondition(innerFilter);
+      return listCount(
+          getTimeSeriesTableName(),
+          shaped.params(),
+          shaped.condition(),
+          getPartitionFieldName(),
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
+    }
+
+    List<String> LATEST_RECORD_PARAMS = List.of("testCaseResolutionStatusType", "assignee");
+
+    String TEST_CASE_JOIN =
+        "INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted"
+            + " FROM test_case) tc ON entityFQNHash = testCaseHash ";
+
+    String NON_DELETED_TEST_CASE_EXISTS =
+        " AND EXISTS (SELECT 1 FROM test_case tcScope"
+            + " WHERE tcScope.fqnHash = entityFQNHash AND tcScope.deleted = FALSE)";
+
+    String DELETED_TEST_CASE_EXISTS =
+        " AND EXISTS (SELECT 1 FROM test_case tcScope"
+            + " WHERE tcScope.fqnHash = entityFQNHash AND tcScope.deleted = TRUE)";
+
+    static ListFilter latestRecordFilter(ListFilter filter) {
+      ListFilter outerFilter = new ListFilter(null);
+      LATEST_RECORD_PARAMS.forEach(
+          param -> outerFilter.addQueryParam(param, filter.getQueryParam(param)));
+      return outerFilter;
+    }
+
+    // The incident listings scope deletion on test_case, and the include parameter names that
+    // scope (the endpoint's documented default is non-deleted): the time-series table has no
+    // deleted column, so getIncludeCondition's unqualified `deleted` clause never rides them.
+    // The scope travels qualified instead — with the test_case join when the originEntityFQN
+    // predicate needs its testCaseEntityFQN alias (tc.deleted), or an indexed EXISTS when the
+    // join is not needed — and the params carry the binds the planted conditions reference
+    // (ADR:2026-10-29-incident-listing-test-case-deletion-scoping-is-qualified).
+    record IncidentCondition(String condition, Map<String, ?> params) {}
+
+    static IncidentCondition incidentCondition(ListFilter filter) {
+      ListFilter conditionSource = new ListFilter(Include.ALL);
+      filter.getQueryParams().forEach(conditionSource::addQueryParam);
+      boolean joinNeeded = filter.getQueryParam("originEntityFQN") != null;
+      String condition = conditionSource.getCondition();
+      if (joinNeeded) {
+        condition = TEST_CASE_JOIN + condition;
+      }
+      condition =
+          switch (filter.getInclude()) {
+            case NON_DELETED -> condition
+                + (joinNeeded ? " AND tc.deleted = FALSE" : NON_DELETED_TEST_CASE_EXISTS);
+            case DELETED -> condition
+                + (joinNeeded ? " AND tc.deleted = TRUE" : DELETED_TEST_CASE_EXISTS);
+            case ALL -> condition;
+          };
+      return new IncidentCondition(condition, conditionSource.getQueryParams());
+    }
+
     @Override
     default List<String> listWithOffset(
         ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
       if (latest) {
-        // When fetching latest, we need to apply Assignee and Status filters on the outer query
-        // i.e. after we have fetched the latest records for each testCaseFQNHash
-        // We'll first get the values, remove then from `filter` and then create `outerFilter`
-        String testCaseResolutionStatusType = filter.getQueryParam("testCaseResolutionStatusType");
-        filter.removeQueryParam("testCaseResolutionStatusType");
-        String assignee = filter.getQueryParam("assignee");
-        filter.removeQueryParam("assignee");
-
-        ListFilter outerFilter = new ListFilter(null);
-        outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
-        outerFilter.addQueryParam("assignee", assignee);
-
-        String condition = filter.getCondition();
-        condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+        // Status and assignee describe an incident as it stands, so they apply to each incident's
+        // latest record (the outer query) rather than to the records it is ranked from.
+        ListFilter outerFilter = latestRecordFilter(filter);
+        LATEST_RECORD_PARAMS.forEach(filter::removeQueryParam);
+        IncidentCondition shaped = incidentCondition(filter);
 
         return listWithOffset(
             getTimeSeriesTableName(),
-            filter.getQueryParams(),
-            condition,
+            shaped.params(),
+            shaped.condition(),
             getPartitionFieldName(),
             limit,
             offset,
             startTs,
             endTs,
-            filter.getQueryParams(),
+            outerFilter.getQueryParams(),
             outerFilter.getCondition());
       }
-      String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      IncidentCondition shaped = incidentCondition(filter);
       return listWithOffset(
           getTimeSeriesTableName(),
-          filter.getQueryParams(),
-          condition,
+          shaped.params(),
+          shaped.condition(),
           limit,
           offset,
           startTs,
           endTs);
     }
 
+    // The ranged latest count mirrors the listing: the record-status fields apply to each
+    // incident's latest record (the outer query), or the total disagrees with the page it sizes.
+    @SqlQuery(
+        "SELECT count(*) FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "AND timestamp BETWEEN :startTs AND :endTs) ranked "
+            + "<outerCond> AND ranked.row_num = 1")
+    int listCount(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
     @Override
     default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
-      String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
-      return latest
-          ? listCount(
-              getTimeSeriesTableName(),
-              getPartitionFieldName(),
-              filter.getQueryParams(),
-              condition,
-              startTs,
-              endTs)
-          : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+      if (!latest) {
+        IncidentCondition shaped = incidentCondition(filter);
+        return listCount(
+            getTimeSeriesTableName(), shaped.params(), shaped.condition(), startTs, endTs);
+      }
+      // The listing reads the same filter afterwards, so it is copied rather than trimmed.
+      ListFilter innerFilter = new ListFilter(filter.getInclude());
+      filter.getQueryParams().forEach(innerFilter::addQueryParam);
+      LATEST_RECORD_PARAMS.forEach(innerFilter::removeQueryParam);
+      ListFilter outerFilter = latestRecordFilter(filter);
+      IncidentCondition shaped = incidentCondition(innerFilter);
+      return listCount(
+          getTimeSeriesTableName(),
+          shaped.params(),
+          shaped.condition(),
+          getPartitionFieldName(),
+          startTs,
+          endTs,
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
     }
 
     @Override
     default List<String> listWithOffset(ListFilter filter, int limit, int offset) {
-      String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      IncidentCondition shaped = incidentCondition(filter);
       return listWithOffset(
-          getTimeSeriesTableName(), filter.getQueryParams(), condition, limit, offset);
+          getTimeSeriesTableName(), shaped.params(), shaped.condition(), limit, offset);
     }
 
     @Override
     default int listCount(ListFilter filter) {
-      String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
-      return listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition);
+      IncidentCondition shaped = incidentCondition(filter);
+      return listCount(getTimeSeriesTableName(), shaped.params(), shaped.condition());
     }
 
     // relation = 9 corresponds to Relationship.PARENT_OF (the enum ordinal is stable;
