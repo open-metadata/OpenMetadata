@@ -475,7 +475,9 @@ describe('after a failed attempt', () => {
 
     expect(await screen.findByText('server.unexpected-error')).toBeVisible();
     expect(screen.getByTestId('new-class-label')).toBeEnabled();
-    expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled();
+    expect(screen.getByTestId('ontology-new-class-close')).not.toHaveAttribute(
+      'aria-disabled'
+    );
     expect(
       screen.queryByRole('button', { name: 'label.retry' })
     ).not.toBeInTheDocument();
@@ -554,7 +556,9 @@ describe('after a failed attempt', () => {
 
     expect(await screen.findByText('server.unexpected-error')).toBeVisible();
     expect(screen.getByTestId('new-class-label')).toBeEnabled();
-    expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled();
+    expect(screen.getByTestId('ontology-new-class-close')).not.toHaveAttribute(
+      'aria-disabled'
+    );
     expect(
       screen.queryByRole('button', { name: 'label.retry' })
     ).not.toBeInTheDocument();
@@ -631,7 +635,9 @@ describe('after a failed attempt', () => {
 
     expect(await screen.findByText('Definition already exists')).toBeVisible();
     expect(screen.getByTestId('new-class-label')).toBeEnabled();
-    expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled();
+    expect(screen.getByTestId('ontology-new-class-close')).not.toHaveAttribute(
+      'aria-disabled'
+    );
     expect(lockChanged).toHaveBeenLastCalledWith(false);
   });
 
@@ -665,7 +671,9 @@ describe('after a failed attempt', () => {
     await createFundsTransfer();
     await screen.findByRole('button', { name: 'label.retry' });
 
-    expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled();
+    expect(screen.getByTestId('ontology-new-class-close')).not.toHaveAttribute(
+      'aria-disabled'
+    );
     expect(lockChanged).toHaveBeenLastCalledWith(false);
   });
 });

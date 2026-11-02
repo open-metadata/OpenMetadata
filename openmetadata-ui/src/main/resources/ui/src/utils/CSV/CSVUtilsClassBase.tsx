@@ -1545,9 +1545,9 @@ const InlineCustomPropertiesEditor = ({
           {selectedValue && (
             <ButtonUtility
               aria-label={t('label.clear')}
-              color="tertiary"
               data-testid={`${customProperty.name}-enum-clear`}
-              icon={<XClose size={14} />}
+              icon={XClose}
+              size="xs"
               onClick={() => handleUpdateDraft(customProperty.name, [])}
             />
           )}

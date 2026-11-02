@@ -286,7 +286,6 @@ const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
           }}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="ontology-query-rename-save"
           icon={Check}
           isDisabled={!rename.value.trim()}
@@ -295,7 +294,6 @@ const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
           onClick={rename.onCommit}
         />
         <ButtonUtility
-          color="tertiary"
           icon={XClose}
           size="sm"
           tooltip={t('label.cancel')}
@@ -317,7 +315,6 @@ const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
       </Typography>
       {activeQuery.savedQuery ? (
         <ButtonUtility
-          color="tertiary"
           data-testid="ontology-query-rename"
           icon={Edit01}
           size="sm"
@@ -964,7 +961,6 @@ const OntologyStudioQueryConsole = ({
     actions: (
       <>
         <ButtonUtility
-          color="tertiary"
           data-testid={`ontology-query-saved-rename-${savedQuery.id}`}
           icon={Edit01}
           size="sm"

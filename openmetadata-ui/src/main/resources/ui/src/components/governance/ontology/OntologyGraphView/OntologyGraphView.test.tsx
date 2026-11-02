@@ -2176,7 +2176,9 @@ describe('OntologyGraphView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
     await act(async () => rejectPreparation(new Error('Preparation failed')));
     await waitFor(() =>
-      expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled()
+      expect(
+        screen.getByTestId('ontology-new-class-close')
+      ).not.toHaveAttribute('aria-disabled')
     );
   });
 
