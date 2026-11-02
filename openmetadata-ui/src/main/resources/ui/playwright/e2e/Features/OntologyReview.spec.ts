@@ -196,7 +196,7 @@ test.describe(
         ).toHaveText('Ontology');
         await expect(page.getByTestId('ontology-explorer')).toHaveCount(0);
         await expect(
-          page.getByRole('button', { name: 'Retry', exact: true })
+          page.getByRole('button', { name: 'Reload', exact: true })
         ).toBeVisible();
         await page
           .getByRole('button', { name: 'All ontologies', exact: true })
