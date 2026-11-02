@@ -23,6 +23,7 @@ import { CreateMemoryModalProps } from '../../../components/ContextCenter/Create
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
+  deleteContextMemory,
   getContextMemoryById,
   getContextMemoryByName,
   getListContextMemories,
@@ -114,12 +115,19 @@ jest.mock(
     __esModule: true,
     default: jest
       .fn()
-      .mockImplementation(({ canEdit, canDelete }) => (
+      .mockImplementation(({ canEdit, canDelete, onDeleteMemory }) => (
         <div
           data-can-delete={String(Boolean(canDelete))}
           data-can-edit={String(Boolean(canEdit))}
-          data-testid="memories-view"
-        />
+          data-testid="memories-view">
+          <button
+            aria-label="delete"
+            data-testid="mock-delete-memory"
+            onClick={() =>
+              onDeleteMemory?.({ id: 'memory-1', title: 'Test Memory' })
+            }
+          />
+        </div>
       )),
   })
 );
@@ -689,6 +697,24 @@ describe('ContextCenterMemoriesPage — page size', () => {
 
     expect(getListContextMemories).not.toHaveBeenCalledWith(
       expect.objectContaining({ offset: 100 })
+    );
+  });
+});
+
+describe('ContextCenterMemoriesPage — delete', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({ Delete: true });
+  });
+
+  it('hard deletes the memory the permanent-delete modal confirms', async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('mock-delete-memory'));
+    fireEvent.click(await screen.findByTestId('confirm-button'));
+
+    await waitFor(() =>
+      expect(deleteContextMemory).toHaveBeenCalledWith('memory-1', true)
     );
   });
 });

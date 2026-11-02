@@ -61,11 +61,17 @@ export interface MembersTeamsTabProps {
   searchTerm: string;
   canCreateTeam: boolean;
   movedTeam?: MovedTeam;
+  teamsPage: number;
+  teamsPageSize: number;
+  /** Rows paged through: every sub-team, or the search matches. */
+  teamsTotal: number;
   onShowDeletedTeamChange: (value: boolean) => void;
   onSearchTermChange: (value: string) => void;
   onNavigate: (view: MembersView) => void;
   onSetMovedTeam: (value: MovedTeam | undefined) => void;
   onMoveConfirm: () => void;
+  onTeamsPageChange: (page: number) => void;
+  onTeamsPageSizeChange: (pageSize: number) => void;
 }
 
 export interface MembersUsersTabProps {

@@ -141,6 +141,23 @@ class ListFilterTest {
   }
 
   @Test
+  void getCondition_executionAssetIds() {
+    // /api/v1/agentExecutions?agentId=… must reach the WHERE clause — without it the listing
+    // ignored the filter and returned another application's records.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("agentId", "agent-id");
+    String condition = filter.getCondition();
+    assertTrue(condition.contains("agentId = :agentId"), condition);
+
+    filter = new ListFilter();
+    filter.addQueryParam("serverId", "server-id");
+    condition = filter.getCondition();
+    assertTrue(condition.contains("serverId = :serverId"), condition);
+
+    assertFalse(new ListFilter().getCondition().contains("agentId"));
+  }
+
+  @Test
   void taskConditions_bindValuesInsteadOfInliningThemInSql() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("taskType", "task-type");
@@ -819,5 +836,25 @@ class ListFilterTest {
 
     filter.addQueryParam(WORKFLOW_INSTANCE_ID_PARAM, "11111111-1111-1111-1111-111111111111");
     assertTrue(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_CONDITION));
+  }
+
+  // A null include means "no deletion scoping" — an explicit ALL — never the no-arg
+  // NON_DELETED default, whose deleted clause is invalid on the time-series tables that
+  // have no deleted column. Consumers of getInclude() must never observe a null.
+  @Test
+  void aNullIncludeIsAnExplicitAllThatEmitsNoDeletedClause() {
+    final ListFilter filter = new ListFilter(null);
+
+    assertEquals(Include.ALL, filter.getInclude());
+    assertEquals("", filter.getIncludeCondition(null));
+    assertFalse(filter.getCondition().contains("deleted"));
+  }
+
+  @Test
+  void theNoArgConstructorKeepsTheNonDeletedDefaultForEntityTables() {
+    assertEquals(Include.NON_DELETED, new ListFilter().getInclude());
+    assertEquals("deleted = FALSE", new ListFilter().getIncludeCondition(null));
+    assertEquals("deleted = TRUE", new ListFilter(Include.DELETED).getIncludeCondition(null));
+    assertEquals("", new ListFilter(Include.ALL).getIncludeCondition(null));
   }
 }

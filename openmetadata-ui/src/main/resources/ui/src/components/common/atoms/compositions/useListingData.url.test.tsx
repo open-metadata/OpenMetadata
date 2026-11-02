@@ -16,6 +16,7 @@ import { ReactNode } from 'react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { SearchResponse } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { useListingData } from './useListingData';
 
@@ -27,6 +28,8 @@ jest.mock('../../../../rest/searchAPI', () => ({
 }));
 
 const mockSearchQuery = searchQuery as jest.Mock;
+const transform = (response: SearchResponse<SearchIndex.DOMAIN>) =>
+  response.hits.hits.map(({ _source }) => _source);
 const FILTER_KEYS: string[] = [];
 const COLUMNS: [] = [];
 const LIST_OPTIONS = [15, 25, 50];
@@ -40,6 +43,7 @@ const renderListing = (
     () => ({
       listing: useListingData({
         searchIndex: SearchIndex.DOMAIN,
+        transform,
         filterKeys: FILTER_KEYS,
         columns: COLUMNS,
         pageSize,
@@ -108,6 +112,7 @@ describe('useListingData with a page size from an old link', () => {
       ({ pageSize }: { pageSize: number }) => ({
         listing: useListingData({
           searchIndex: SearchIndex.DOMAIN,
+          transform,
           filterKeys: FILTER_KEYS,
           columns: COLUMNS,
           pageSize,
@@ -151,6 +156,7 @@ describe('useListingData with a page size from an old link', () => {
       ({ pageSize }: { pageSize: number }) => ({
         listing: useListingData({
           searchIndex: SearchIndex.DOMAIN,
+          transform,
           filterKeys: FILTER_KEYS,
           columns: COLUMNS,
           pageSize,
@@ -203,6 +209,7 @@ describe('useListingData with a page size from an old link', () => {
       ({ pageSize }: { pageSize: number }) =>
         useListingData({
           searchIndex: SearchIndex.DOMAIN,
+          transform,
           filterKeys: FILTER_KEYS,
           columns: COLUMNS,
           pageSize,

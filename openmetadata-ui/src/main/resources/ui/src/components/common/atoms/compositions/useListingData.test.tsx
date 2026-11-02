@@ -273,6 +273,7 @@ describe('useListingData', () => {
             columns: [],
             pageSize: 12,
             pageSizeOptions: [12, 24, 48],
+            transform,
           }),
         { wrapper }
       );
