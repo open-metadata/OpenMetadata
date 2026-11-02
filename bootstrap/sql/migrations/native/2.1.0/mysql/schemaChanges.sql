@@ -707,19 +707,30 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-CreateContextMemory-Rule'), '$.rules')
   AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('EditDescription')), '$.rules');
 
--- DomainOnlyAccessPolicy: deny changes to policies, roles, teams, users, bots and apps that are in
--- no domain.
+-- DomainOnlyAccessPolicy: deny changes to policies, roles, bots and apps, and to teams and users that
+-- are in no domain.
 UPDATE policy_entity
 SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
     'name', 'DomainAccessDenyAdministrationRule',
-    'description', 'Deny changing policies, roles, teams, users, bots and apps that are in no domain, and any bot, as they grant access or credentials',
+    'description', 'Deny changing policies, roles, bots and apps, which control access, whatever their domain',
     'effect', 'deny',
-    'resources', JSON_ARRAY('app', 'bot', 'policy', 'role', 'team', 'user'),
-    'operations', JSON_ARRAY('Create', 'Delete', 'Deploy', 'EditAll', 'Trigger'),
-    'condition', 'noDomain() || isBotUser()'))
+    'resources', JSON_ARRAY('app', 'bot', 'policy', 'role'),
+    'operations', JSON_ARRAY('Create', 'Delete', 'Deploy', 'EditAll')))
 WHERE name = 'DomainOnlyAccessPolicy'
   AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
     JSON_OBJECT('name', 'DomainAccessDenyAdministrationRule'));
+
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
+    'name', 'DomainAccessDenyTeamAndUserRule',
+    'description', 'Deny changing teams and users that are in no domain, and bot users',
+    'effect', 'deny',
+    'resources', JSON_ARRAY('team', 'user'),
+    'operations', JSON_ARRAY('Create', 'Delete', 'EditAll'),
+    'condition', 'noDomain() || isBotUser()'))
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
+    JSON_OBJECT('name', 'DomainAccessDenyTeamAndUserRule'));
 
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here

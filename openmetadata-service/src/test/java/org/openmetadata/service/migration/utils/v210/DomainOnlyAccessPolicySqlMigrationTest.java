@@ -54,7 +54,8 @@ class DomainOnlyAccessPolicySqlMigrationTest {
   private static final String DATABASE = "domain_policy_test";
   private static final String POLICY = "DomainOnlyAccessPolicy";
   private static final String OTHER_POLICY = "OtherPolicy";
-  private static final String ADMINISTRATION_RULE = "DomainAccessDenyAdministrationRule";
+  private static final List<String> ADDED_RULES =
+      List.of("DomainAccessDenyAdministrationRule", "DomainAccessDenyTeamAndUserRule");
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
 
@@ -95,29 +96,25 @@ class DomainOnlyAccessPolicySqlMigrationTest {
                             List.of(deny, shippedAllow().withCondition("hasDomain() && isOwner()")),
                             true),
                         new Scenario(
-                            "rule already present",
-                            List.of(deny, allow, administrationRule()),
-                            false))
+                            "rule already present", withAddedRules(List.of(deny, allow)), false))
                     .map(scenario -> Arguments.of(dialect, scenario)));
   }
 
   @ParameterizedTest(name = "{0}: {1}")
   @MethodSource("scenarios")
-  void addsTheAdministrationDenyRuleOnce(String dialect, Scenario scenario) {
+  void addsTheDenyRulesOnce(String dialect, Scenario scenario) {
     try (Handle handle = open(dialect)) {
       createPolicyTable(handle, dialect);
       insertPolicy(handle, dialect, POLICY, scenario.rules());
       insertPolicy(handle, dialect, OTHER_POLICY, List.of(shippedDeny(), shippedAllow()));
-      String statement = migrationStatement(dialect);
+      List<String> statements = migrationStatements(dialect);
 
-      handle.execute(statement);
+      statements.forEach(handle::execute);
       List<Rule> afterFirstRun = policy(handle, dialect, POLICY).getRules();
-      handle.execute(statement);
+      statements.forEach(handle::execute);
 
-      List<Rule> expected = new ArrayList<>(scenario.rules());
-      if (scenario.appended()) {
-        expected.add(administrationRule());
-      }
+      List<Rule> expected =
+          scenario.appended() ? withAddedRules(scenario.rules()) : scenario.rules();
       assertEquals(summary(expected), summary(afterFirstRun));
       assertEquals(afterFirstRun, policy(handle, dialect, POLICY).getRules(), "Second run changed");
       assertEquals(
@@ -167,16 +164,17 @@ class DomainOnlyAccessPolicySqlMigrationTest {
         .toList();
   }
 
-  /** The rule as new installations are seeded with it. */
-  private static Rule administrationRule() {
+  /** {@code rules} followed by the added rules as new installations are seeded with them. */
+  private static List<Rule> withAddedRules(List<Rule> rules) {
     try (InputStream seed =
         DomainOnlyAccessPolicySqlMigrationTest.class
             .getClassLoader()
             .getResourceAsStream("json/data/policy/DomainAccessPolicy.json")) {
-      return JsonUtils.readValue(new String(seed.readAllBytes()), Policy.class).getRules().stream()
-          .filter(rule -> ADMINISTRATION_RULE.equals(rule.getName()))
-          .findFirst()
-          .orElseThrow();
+      List<Rule> result = new ArrayList<>(rules);
+      JsonUtils.readValue(new String(seed.readAllBytes()), Policy.class).getRules().stream()
+          .filter(rule -> ADDED_RULES.contains(rule.getName()))
+          .forEach(result::add);
+      return result;
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
@@ -251,16 +249,16 @@ class DomainOnlyAccessPolicySqlMigrationTest {
     return JsonUtils.readValue(json, Policy.class);
   }
 
-  /** Parsed with the migration framework's own splitter, so it is what an upgrade would execute. */
-  private static String migrationStatement(String dialect) {
+  /** Parsed with the migration framework's own splitter, so they are what an upgrade would run. */
+  private static List<String> migrationStatements(String dialect) {
     ConnectionType connectionType =
         MYSQL_DIALECT.equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
     List<String> statements =
         MigrationFile.parseSQLFile(migrationFile(dialect).toFile(), connectionType).stream()
-            .filter(sql -> sql.contains(ADMINISTRATION_RULE) && sql.contains(POLICY))
+            .filter(sql -> sql.contains(POLICY) && ADDED_RULES.stream().anyMatch(sql::contains))
             .toList();
-    assertEquals(1, statements.size(), "Expected one " + ADMINISTRATION_RULE + " statement");
-    return statements.getFirst();
+    assertEquals(ADDED_RULES.size(), statements.size(), "Expected one statement per added rule");
+    return statements;
   }
 
   private static Path migrationFile(String dialect) {

@@ -596,8 +596,7 @@ public class DomainIsolationIT {
   }
 
   @Test
-  void test_domainOnlyUser_cannotChangeAdministrationResourcesInNoDomain(TestNamespace ns)
-      throws Exception {
+  void test_domainOnlyUser_cannotChangeAdministrationResources(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
@@ -614,6 +613,16 @@ public class DomainIsolationIT {
       cleanup.push(() -> admin.teams().delete(team.getId().toString()));
       createResourceDenyRole(admin, p, "chart", cleanup);
       Policy policy = admin.policies().getByName(p + "_chartDenyPolicy");
+      // A policy in the user's own domain still governs users outside it
+      Policy policyInDomain =
+          admin
+              .policies()
+              .create(
+                  new CreatePolicy()
+                      .withName(p + "_domainPolicy")
+                      .withDomains(List.of(domain.getFullyQualifiedName()))
+                      .withRules(policy.getRules()));
+      cleanup.push(() -> admin.policies().delete(policyInDomain.getId()));
       createBotClient(admin, p + "_tok", null, List.of(), cleanup);
       User bot = admin.users().getByName(p + "_tok_bot");
       OpenMetadataClient client = createRestrictedUserClient(admin, p, domain, cleanup);
@@ -624,27 +633,28 @@ public class DomainIsolationIT {
       JsonNode rename =
           MAPPER.readTree("[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"changed\"}]");
 
-      // Apps are checked first, so a failing check stops before any run is started
+      // Apps stay runnable as configured (e.g. AutoPilot for a service), but not reconfigurable
       String app = "/v1/apps/name/SearchIndexingApplication";
       assertThrows(
           ForbiddenException.class,
           () -> client.getHttpClient().executeForString(HttpMethod.PATCH, app, rename));
-      assertThrows(
-          ForbiddenException.class,
-          () ->
+      JsonNode appPermissions =
+          MAPPER.readTree(
               client
                   .getHttpClient()
-                  .execute(
-                      HttpMethod.POST,
-                      "/v1/apps/trigger/SearchIndexingApplication",
-                      Map.of(),
-                      Void.class));
+                  .executeForString(
+                      HttpMethod.GET, "/v1/permissions/app/name/SearchIndexingApplication", null));
+      assertEquals("allow", access(appPermissions, "Trigger"));
+      assertEquals("deny", access(appPermissions, "EditAll"));
 
-      // Domainless policies, teams and bots grant access: the user may read them, not change them
+      // Policies and bots in any domain, and teams in no domain: readable, not changeable
       assertEquals(policy.getId(), client.policies().get(policy.getId().toString()).getId());
       assertThrows(
           ForbiddenException.class,
           () -> client.policies().patch(policy.getId().toString(), allowRule));
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.policies().patch(policyInDomain.getId().toString(), allowRule));
       assertThrows(
           ForbiddenException.class,
           () -> client.users().generateToken(bot.getId(), JWTTokenExpiry.OneHour));
@@ -659,6 +669,15 @@ public class DomainIsolationIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  private static String access(JsonNode resourcePermission, String operation) {
+    for (JsonNode permission : resourcePermission.path("permissions")) {
+      if (operation.equals(permission.path("operation").asText())) {
+        return permission.path("access").asText();
+      }
+    }
+    return null;
   }
 
   // Task /v1/tasks domain isolation is covered comprehensively by
