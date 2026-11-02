@@ -40,6 +40,7 @@ import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.OntologyWorkflowDecision;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.ontology.OntologyDecisionNotice;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
 import org.openmetadata.service.ontology.OntologyReview;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -110,6 +111,14 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
             .withVoters(decision.voters())
             .withResolution(task.getResolution());
     daoCollection.ontologyReleaseDAO().appendEvent(event);
+    PostCommitActionQueue.runOrDefer(
+        () ->
+            OntologyDecisionNotice.publish(
+                release,
+                decision.resolution(),
+                decision.user(),
+                decision.comment(),
+                task.getResolution().getResolvedAt()));
   }
 
   /**
