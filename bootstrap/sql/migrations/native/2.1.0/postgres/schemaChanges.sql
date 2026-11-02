@@ -902,22 +902,23 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
 
 -- DomainOnlyAccessPolicy granted every operation on resources in no domain (policies, bots,
--- settings); it now grants only viewing them. Rewritten only while it still has the shipped rules.
+-- settings); it now grants only viewing them. Rewritten only while it still has the two shipped
+-- rules, in either order (the repository stores rules sorted by name).
 UPDATE policy_entity
 SET json = jsonb_set(json, '{rules}', '[
+    {"name": "DomainAccessAllowRule", "description": "Allow access to resources in the user''s domains",
+     "effect": "allow", "resources": ["All"], "operations": ["All"], "condition": "inUserDomains()"},
     {"name": "DomainAccessDenyRule", "description": "Deny access when domain check fails",
      "effect": "deny", "resources": ["All"], "operations": ["All"], "condition": "!hasDomain()"},
-    {"name": "DomainAccessAllowRule", "description": "Allow access to resources in the user''s domains",
-     "effect": "allow", "resources": ["All"], "operations": ["All"],
-     "condition": "inUserDomains()"},
     {"name": "DomainAccessViewRule",
      "description": "Allow viewing resources that are in no domain, such as policies, bots and settings",
      "effect": "allow", "resources": ["All"], "operations": ["ViewAll"], "condition": "hasDomain()"}
   ]'::jsonb)
 WHERE name = 'DomainOnlyAccessPolicy'
-  AND json->'rules' = '[
-    {"name": "DomainAccessDenyRule", "description": "Deny access when domain check fails",
-     "effect": "deny", "resources": ["All"], "operations": ["All"], "condition": "!hasDomain()"},
-    {"name": "DomainAccessAllowRule", "description": "Allow access when domain check passes",
-     "effect": "allow", "resources": ["All"], "operations": ["All"], "condition": "hasDomain()"}
+  AND jsonb_array_length(json->'rules') = 2
+  AND json->'rules' @> '[
+    {"name": "DomainAccessAllowRule", "effect": "allow", "condition": "hasDomain()",
+     "resources": ["All"], "operations": ["All"]},
+    {"name": "DomainAccessDenyRule", "effect": "deny", "condition": "!hasDomain()",
+     "resources": ["All"], "operations": ["All"]}
   ]'::jsonb;

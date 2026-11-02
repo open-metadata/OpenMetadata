@@ -1193,28 +1193,28 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- DomainOnlyAccessPolicy granted every operation on resources in no domain (policies, bots,
--- settings); it now grants only viewing them. Rewritten only while it still has the shipped rules.
+-- settings); it now grants only viewing them. Rewritten only while it still has the two shipped
+-- rules, in either order (the repository stores rules sorted by name).
 UPDATE policy_entity
 SET json = JSON_SET(json, '$.rules', JSON_ARRAY(
-    JSON_OBJECT('name', 'DomainAccessDenyRule', 'description', 'Deny access when domain check fails',
-        'effect', 'deny', 'resources', JSON_ARRAY('All'), 'operations', JSON_ARRAY('All'),
-        'condition', '!hasDomain()'),
     JSON_OBJECT('name', 'DomainAccessAllowRule',
         'description', 'Allow access to resources in the user''s domains',
         'effect', 'allow', 'resources', JSON_ARRAY('All'), 'operations', JSON_ARRAY('All'),
         'condition', 'inUserDomains()'),
+    JSON_OBJECT('name', 'DomainAccessDenyRule', 'description', 'Deny access when domain check fails',
+        'effect', 'deny', 'resources', JSON_ARRAY('All'), 'operations', JSON_ARRAY('All'),
+        'condition', '!hasDomain()'),
     JSON_OBJECT('name', 'DomainAccessViewRule',
         'description', 'Allow viewing resources that are in no domain, such as policies, bots and settings',
         'effect', 'allow', 'resources', JSON_ARRAY('All'), 'operations', JSON_ARRAY('ViewAll'),
         'condition', 'hasDomain()')))
 WHERE name = 'DomainOnlyAccessPolicy'
-  AND JSON_EXTRACT(json, '$.rules') = JSON_ARRAY(
-    JSON_OBJECT('name', 'DomainAccessDenyRule', 'description', 'Deny access when domain check fails',
-        'effect', 'deny', 'resources', JSON_ARRAY('All'), 'operations', JSON_ARRAY('All'),
-        'condition', '!hasDomain()'),
-    JSON_OBJECT('name', 'DomainAccessAllowRule', 'description', 'Allow access when domain check passes',
-        'effect', 'allow', 'resources', JSON_ARRAY('All'), 'operations', JSON_ARRAY('All'),
-        'condition', 'hasDomain()'));
+  AND JSON_LENGTH(json, '$.rules') = 2
+  AND JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'), JSON_ARRAY(
+    JSON_OBJECT('name', 'DomainAccessAllowRule', 'effect', 'allow', 'condition', 'hasDomain()',
+        'resources', JSON_ARRAY('All'), 'operations', JSON_ARRAY('All')),
+    JSON_OBJECT('name', 'DomainAccessDenyRule', 'effect', 'deny', 'condition', '!hasDomain()',
+        'resources', JSON_ARRAY('All'), 'operations', JSON_ARRAY('All'))));
 
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.

@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-02 (initial)
 - **Deciders:** Sonika Shah
-- **Guard:** `DomainIsolationIT.test_domainOnlyUser_cannotEditPoliciesOrMintBotTokens`
+- **Guard:** `DomainIsolationIT.test_domainOnlyUser_cannotEditPoliciesOrMintBotTokens`,
+  `DomainOnlyAccessPolicySqlMigrationTest`, `DomainAccessTest.testInUserDomains`
 - **Related:** ADR:2026-10-21-only-admins-change-a-users-domains,
   ADR:2026-10-30-only-admins-add-roles-or-policies-to-a-team
 
@@ -17,8 +18,9 @@ confining them) and mint a token for any bot, since policies and bots are in no 
 - The policy grants every operation on resources in one of the user's domains and on listings or
   bulk requests, which are filtered per item (`inUserDomains()`, a new function), and only
   `ViewAll` on a single resource in no domain (`hasDomain()`). The deny rule is unchanged.
-- The 2.1.0 migration rewrites the stored policy only while its rules are still the shipped ones; a
-  customised policy is left as it is.
+- The 2.1.0 migration rewrites the stored policy only while it still has exactly the two shipped
+  rules, compared by name, effect, resources, operations and condition in either order (the
+  repository stores rules sorted by name); a customised policy is left as it is.
 
 ## Consequences
 Users and bots that hold only this role keep reading and listing what they could before, and keep
