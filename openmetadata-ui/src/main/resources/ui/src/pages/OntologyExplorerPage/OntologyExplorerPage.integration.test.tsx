@@ -535,7 +535,8 @@ describe('Ontology Studio mode-switch integration', () => {
     });
     const ontology: Ontology = {
       id: 'new-native',
-      name: 'Finance Core',
+      name: 'finance-core',
+      displayName: 'Finance Core',
       fullyQualifiedName: 'FinanceCore',
       iri: 'https://open-metadata.org/onto/financec',
       namespace: 'https://open-metadata.org/onto/financec#',
@@ -568,10 +569,11 @@ describe('Ontology Studio mode-switch integration', () => {
       target: { value: 'Finance Core' },
     });
 
+    fireEvent.click(screen.getByTestId('ontology-create-advanced-toggle'));
     await waitFor(() =>
-      expect(
-        screen.getByTestId('ontology-create-iri-preview')
-      ).toHaveTextContent('https://open-metadata.org/onto/financec#')
+      expect(screen.getByTestId('ontology-create-namespace')).toHaveValue(
+        'https://open-metadata.org/onto/financec#'
+      )
     );
 
     fireEvent.click(screen.getByTestId('ontology-create-submit'));
@@ -587,7 +589,8 @@ describe('Ontology Studio mode-switch integration', () => {
     );
     expect(mockCreateOntology).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'Finance Core',
+        name: 'finance-core',
+        displayName: 'Finance Core',
         iri: ontology.iri,
         namespace: ontology.namespace,
         layer: 'L3',
@@ -977,10 +980,11 @@ describe('Ontology Studio mode-switch integration', () => {
     fireEvent.change(await screen.findByTestId('ontology-create-name'), {
       target: { value: 'Customer 360' },
     });
+    fireEvent.click(screen.getByTestId('ontology-create-advanced-toggle'));
     await waitFor(() =>
-      expect(
-        screen.getByTestId('ontology-create-iri-preview')
-      ).toHaveTextContent('https://open-metadata.org/onto/customer#')
+      expect(screen.getByTestId('ontology-create-namespace')).toHaveValue(
+        'https://open-metadata.org/onto/customer#'
+      )
     );
 
     expect(
