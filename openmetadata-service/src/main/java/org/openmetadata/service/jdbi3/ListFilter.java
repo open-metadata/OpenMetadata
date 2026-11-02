@@ -171,6 +171,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
+    conditions.add(getAgentIdCondition());
     conditions.add(getNameFilterCondition());
     conditions.add(getSourceFileCondition());
     conditions.add(getSourceEntityCondition());
@@ -1409,6 +1410,11 @@ public class ListFilter extends Filter<ListFilter> {
   private String getServerIdCondition() {
     String serverId = queryParams.get("serverId");
     return serverId == null ? "" : "serverId = :serverId";
+  }
+
+  private String getAgentIdCondition() {
+    String agentId = queryParams.get("agentId");
+    return agentId == null ? "" : "agentId = :agentId";
   }
 
   private String getEntityFQNHashCondition() {
