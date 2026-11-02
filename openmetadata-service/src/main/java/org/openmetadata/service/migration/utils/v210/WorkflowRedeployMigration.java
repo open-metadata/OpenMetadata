@@ -13,19 +13,55 @@
  */
 package org.openmetadata.service.migration.utils.v210;
 
-import org.openmetadata.service.migration.utils.v1131.MigrationUtil;
+import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Event-triggered workflows pass the entity version their event produced to the main workflow, so
- * a change check judges that edit's change rather than a later one. The trigger BPMN carries the
- * pass-through, and a deployed workflow keeps its old BPMN until it is redeployed.
+ * a change check judges that edit's change rather than a later one. The trigger
+ * BPMN carries the pass-through, and a deployed workflow keeps its old BPMN until it is redeployed.
+ * A workflow that fails to redeploy is logged and the rest still run, so one undeployable workflow
+ * does not block the upgrade; saving it again redeploys it.
  */
+@Slf4j
 public final class WorkflowRedeployMigration {
   public static final String STEP_NAME = "redeployGovernanceWorkflowsForTriggeringVersion";
 
   private WorkflowRedeployMigration() {}
 
   public static void redeploy() {
-    MigrationUtil.redeployGovernanceWorkflows("2.1.0");
+    WorkflowDefinitionRepository repository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    List<WorkflowDefinition> workflows =
+        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+    int redeployed = redeployEach(WorkflowHandler.getInstance(), workflows);
+    LOG.info(
+        "[2.1.0] Redeployed {} of {} governance workflow definition(s)",
+        redeployed,
+        workflows.size());
+  }
+
+  static int redeployEach(WorkflowHandler workflowHandler, List<WorkflowDefinition> workflows) {
+    int redeployed = 0;
+    for (WorkflowDefinition workflow : workflows) {
+      try {
+        workflowHandler.deploy(new Workflow(workflow));
+        redeployed++;
+      } catch (RuntimeException e) {
+        // Flowable reports a failed deploy with its own unchecked exceptions.
+        LOG.warn(
+            "[2.1.0] Failed to redeploy workflow definition '{}'; continuing",
+            workflow.getFullyQualifiedName(),
+            e);
+      }
+    }
+    return redeployed;
   }
 }

@@ -81,8 +81,7 @@ public class WorkflowDefinitionResource
     super(Entity.WORKFLOW_DEFINITION, authorizer, limits);
     // A JSON Patch is authorized by the first mapped segment of its path, so without these a
     // nested key such as /trigger/config/filter/description would be authorized as a description
-    // edit. Every change under these fields is a change to the deployed workflow
-    // (ADR:2026-11-02-a-workflow-definitions-graph-and-filter-are-editall-fields).
+    // edit. Every change under these fields is a change to the deployed workflow.
     for (String field : List.of("config", "trigger", "nodes", "edges")) {
       ResourceRegistry.mapEntityFieldOperation(
           Entity.WORKFLOW_DEFINITION, field, MetadataOperation.EDIT_ALL);

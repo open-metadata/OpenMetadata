@@ -313,7 +313,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     // 8. Restrict every other value the BPMN builders interpolate into JUEL expressions
     validateExpressionInterpolation(workflowDefinition);
     // 9. Trigger filter entries are JSON Logic strings
-    // (ADR:2026-11-02-a-workflow-definitions-graph-and-filter-are-editall-fields)
     validateTriggerFilterEntries(workflowDefinition);
   }
 
