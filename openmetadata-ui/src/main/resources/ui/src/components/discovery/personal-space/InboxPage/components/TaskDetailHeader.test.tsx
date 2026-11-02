@@ -61,10 +61,7 @@ describe('TaskDetailHeader', () => {
   it('disables the overflow menu while a transition runs', () => {
     renderHeader('approve');
 
-    expect(screen.getByTestId('task-actions-menu')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('task-actions-menu')).toBeDisabled();
   });
 
   // Passed as an element, the icon kept its own 16px and the menu button sat

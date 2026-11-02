@@ -1,7 +1,7 @@
 # Icon-only actions are a tertiary ButtonUtility, and editing has one icon
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`) · v5 2026-11-02 (a disabled `ButtonUtility` is natively disabled; `Tooltip` wraps it)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx` (tertiary default, ref, disabled tooltip); `reviewer`
 - **Related:** ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec, open-metadata/OpenMetadata#35348
@@ -21,8 +21,8 @@ borderless icon buttons, and drew "edit" with seven different glyphs.
   card actions, `lg` collapse, accordion, canvas controls and page-header actions. `xl` is not
   used: its padding is too heavy beside a title.
 - Icons in `Button` / `ButtonUtility` are passed as component references, so the button sizes them.
-- A disabled `ButtonUtility` with a tooltip stays focusable with `aria-disabled` and keeps the
-  tooltip, which usually explains why it is disabled; without a tooltip it is natively disabled.
+- A disabled `ButtonUtility` is natively disabled (v5). With a tooltip, `Tooltip` wraps the
+  disabled button in one focusable span, so the tooltip that explains why still opens.
 - `ButtonUtility` forwards its ref so it can be a `PopoverTrigger` / `DialogTrigger` child directly.
 - Delete actions use core `Trash01` only.
 - Menu and popover item icons are 20px and `text-quaternary`.
@@ -73,3 +73,11 @@ This replaces "arrow and navigation actions only" in the v2 `xs` clause.
   `sm`; the pill variant of add-reaction keeps its round 26px pill.
 - The activity footer's comment action is a boxed `link-gray` `Button`, not a `ButtonUtility`: it has
   no hover background, matching the reaction pills beside it.
+
+## Amendment: native disabled (v5, 2026-11-02)
+This replaces the soft-disabled clause of the Decision. A disabled `ButtonUtility` passes
+`isDisabled` to react-aria, which blocks presses, parent `MenuTrigger`/`DialogTrigger` presses and
+form submits on its own. `Tooltip` already wraps a disabled trigger in a focusable span
+(`components/base/tooltip/tooltip.tsx`), so the tooltip stays reachable on hover and focus with
+one tab stop. A button that becomes disabled while focused loses focus; callers that move focus
+onward (the announcement pagers) do so themselves.

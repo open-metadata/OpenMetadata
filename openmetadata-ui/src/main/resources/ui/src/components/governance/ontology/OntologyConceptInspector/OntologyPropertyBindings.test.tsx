@@ -144,10 +144,7 @@ it('blocks every mounted column action after a confirmed removal until a complet
 
   expect(screen.getByTestId('ontology-column-binding-editor')).toBeVisible();
   expect(screen.getByTestId('ontology-binding-save')).toBeDisabled();
-  expect(screen.getByTestId('ontology-binding-remove-first')).toHaveAttribute(
-    'aria-disabled',
-    'true'
-  );
+  expect(screen.getByTestId('ontology-binding-remove-first')).toBeDisabled();
 
   await act(async () => finish());
   await waitFor(() =>
@@ -165,9 +162,7 @@ it('blocks every mounted column action after a confirmed removal until a complet
   failRead = false;
   fireEvent.click(screen.getByRole('button', { name: 'Read bindings' }));
   await waitFor(() =>
-    expect(
-      screen.getByTestId('ontology-binding-remove-first')
-    ).not.toHaveAttribute('aria-disabled')
+    expect(screen.getByTestId('ontology-binding-remove-first')).toBeEnabled()
   );
 
   expect(

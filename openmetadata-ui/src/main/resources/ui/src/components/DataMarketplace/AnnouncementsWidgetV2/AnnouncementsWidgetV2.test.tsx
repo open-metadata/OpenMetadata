@@ -112,10 +112,7 @@ describe('AnnouncementsWidgetV2', () => {
       })
     ).toBeInTheDocument();
     // A disabled ButtonUtility with a tooltip stays focusable (aria-disabled).
-    expect(screen.getByTestId('announcement-next-btn')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('announcement-next-btn')).toBeDisabled();
     expect(screen.queryByText('Table update')).not.toBeInTheDocument();
   });
 

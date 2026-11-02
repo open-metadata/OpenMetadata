@@ -140,10 +140,10 @@ describe('TestDefinitionTable loading', () => {
     ).toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).toHaveAttribute('aria-disabled', 'true');
+    ).toBeDisabled();
     expect(
       screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
-    ).toHaveAttribute('aria-disabled', 'true');
+    ).toBeDisabled();
   });
 
   // Mounting straight into the refetching state proves nothing: the rows are
@@ -159,7 +159,7 @@ describe('TestDefinitionTable loading', () => {
 
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toHaveAttribute('aria-disabled');
+    ).toBeEnabled();
 
     rerender(
       <TestDefinitionTable
@@ -179,10 +179,10 @@ describe('TestDefinitionTable loading', () => {
     ).toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).toHaveAttribute('aria-disabled', 'true');
+    ).toBeDisabled();
     expect(
       screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
-    ).toHaveAttribute('aria-disabled', 'true');
+    ).toBeDisabled();
   });
 
   it('should hand the row controls back when the refetch lands', () => {
@@ -196,7 +196,7 @@ describe('TestDefinitionTable loading', () => {
 
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).toHaveAttribute('aria-disabled', 'true');
+    ).toBeDisabled();
 
     rerender(<TestDefinitionTable {...props} isLoading={false} />);
 
@@ -207,10 +207,10 @@ describe('TestDefinitionTable loading', () => {
     ).not.toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toHaveAttribute('aria-disabled');
+    ).toBeEnabled();
     expect(
       screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
-    ).not.toHaveAttribute('aria-disabled');
+    ).toBeEnabled();
   });
 
   it('should leave the row controls usable once the refetch lands', () => {
@@ -227,7 +227,7 @@ describe('TestDefinitionTable loading', () => {
     ).not.toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toHaveAttribute('aria-disabled');
+    ).toBeEnabled();
   });
 
   it('should not dim or mark the table busy when idle', () => {

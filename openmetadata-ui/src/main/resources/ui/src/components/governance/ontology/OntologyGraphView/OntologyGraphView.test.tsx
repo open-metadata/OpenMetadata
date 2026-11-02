@@ -2161,10 +2161,7 @@ describe('OntologyGraphView', () => {
     });
     fireEvent.click(screen.getByTestId('new-class-create'));
     await waitFor(() =>
-      expect(screen.getByTestId('ontology-new-class-close')).toHaveAttribute(
-        'aria-disabled',
-        'true'
-      )
+      expect(screen.getByTestId('ontology-new-class-close')).toBeDisabled()
     );
     fireEvent.click(screen.getByTestId(`native-graph-node-${customer.id}`));
 
@@ -2176,9 +2173,7 @@ describe('OntologyGraphView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
     await act(async () => rejectPreparation(new Error('Preparation failed')));
     await waitFor(() =>
-      expect(
-        screen.getByTestId('ontology-new-class-close')
-      ).not.toHaveAttribute('aria-disabled')
+      expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled()
     );
   });
 

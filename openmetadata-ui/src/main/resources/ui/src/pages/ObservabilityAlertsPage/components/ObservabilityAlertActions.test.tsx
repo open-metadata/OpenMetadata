@@ -94,7 +94,7 @@ describe('ObservabilityAlertActions', () => {
     });
     const deleteButton = screen.getByRole('button', { name: 'label.delete' });
 
-    expect(deleteButton).toHaveAttribute('aria-disabled', 'true');
+    expect(deleteButton).toBeDisabled();
 
     fireEvent.click(deleteButton);
 

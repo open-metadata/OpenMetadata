@@ -132,9 +132,6 @@ describe('TeamsHeadingLabel', () => {
       />
     );
 
-    expect(screen.getByTestId('edit-team-name')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('edit-team-name')).toBeDisabled();
   });
 });

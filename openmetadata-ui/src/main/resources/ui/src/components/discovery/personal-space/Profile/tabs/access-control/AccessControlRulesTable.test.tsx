@@ -109,14 +109,8 @@ describe('AccessControlRulesTable', () => {
   it('disables edit and delete without edit permission', () => {
     renderTable({ canEdit: false });
 
-    expect(screen.getByTestId('edit-rule-ViewTables')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
-    expect(screen.getByTestId('delete-rule-ViewTables')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('edit-rule-ViewTables')).toBeDisabled();
+    expect(screen.getByTestId('delete-rule-ViewTables')).toBeDisabled();
 
     fireEvent.click(screen.getByTestId('edit-rule-ViewTables'));
 
@@ -126,14 +120,8 @@ describe('AccessControlRulesTable', () => {
   it('disables edit and delete while a save is in flight', () => {
     renderTable({ isDisabled: true });
 
-    expect(screen.getByTestId('edit-rule-DenyDelete')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
-    expect(screen.getByTestId('delete-rule-DenyDelete')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('edit-rule-DenyDelete')).toBeDisabled();
+    expect(screen.getByTestId('delete-rule-DenyDelete')).toBeDisabled();
   });
 
   it('shows the empty state when the policy has no rules', () => {

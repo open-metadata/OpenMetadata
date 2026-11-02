@@ -386,10 +386,7 @@ describe('OntologyConceptLiveData', () => {
     expect(
       screen.queryByTestId('ontology-live-data-sql')
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('ontology-live-data-copy')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('ontology-live-data-copy')).toBeDisabled();
   });
 
   it('renders the preview only when the class base returns an extension', async () => {

@@ -116,14 +116,8 @@ describe('Data Quality settings', () => {
     expect(screen.getByTestId('dimension-freshness')).toHaveTextContent(
       'label.custom'
     );
-    expect(screen.getByTestId('edit-accuracy')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
-    expect(screen.getByTestId('delete-accuracy')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('edit-accuracy')).toBeDisabled();
+    expect(screen.getByTestId('delete-accuracy')).toBeDisabled();
     expect(screen.getByTestId('edit-freshness')).toBeEnabled();
   });
 

@@ -8,9 +8,7 @@ import type {
   ButtonHTMLAttributes,
   DetailedHTMLProps,
   FC,
-  KeyboardEvent,
   ReactNode,
-  SyntheticEvent,
 } from 'react';
 import { forwardRef, isValidElement } from 'react';
 import type { Placement } from 'react-aria';
@@ -19,21 +17,6 @@ import type {
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
-
-const stopPress = (event: SyntheticEvent) => event.stopPropagation();
-// The soft-disabled button stays natively enabled, so its click still carries the
-// default action (a `type="submit"` button would submit its form). Enter and
-// Space activate a button through this same click. Pointer and mouse down are
-// left alone so the button can still take focus and show its tooltip.
-const blockClick = (event: SyntheticEvent) => {
-  event.preventDefault();
-  event.stopPropagation();
-};
-const stopKeyPress = (event: KeyboardEvent) => {
-  if (event.key === 'Enter' || event.key === ' ') {
-    event.stopPropagation();
-  }
-};
 
 const neutralIcon =
   'tw:text-utility-gray-500 tw:hover:text-utility-gray-600 tw:*:data-icon:text-current';
@@ -154,9 +137,6 @@ export const ButtonUtility = forwardRef<
   const href = 'href' in otherProps ? otherProps.href : undefined;
   const isDisabled = isDisabledProp || isLoading;
   const Component = href ? AriaLink : AriaButton;
-  // A disabled button with a tooltip stays focusable and keeps its tooltip,
-  // which usually says why it is disabled; only the press is dropped.
-  const softDisabled = Boolean(isDisabled && tooltip && !href);
 
   let props = {};
 
@@ -176,10 +156,7 @@ export const ButtonUtility = forwardRef<
       ...otherProps,
 
       type: otherProps.type || 'button',
-      isDisabled: isDisabled && !softDisabled,
-      ...(softDisabled
-        ? { 'aria-disabled': true, onClick: undefined, onPress: undefined }
-        : {}),
+      isDisabled,
       ...(isSelected === undefined ? {} : { 'aria-pressed': isSelected }),
     };
   }
@@ -190,7 +167,6 @@ export const ButtonUtility = forwardRef<
       {...props}
       className={cx(
         'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled_subtle tw:disabled:*:data-icon:text-fg-disabled_subtle',
-        'tw:aria-disabled:cursor-not-allowed tw:aria-disabled:*:data-icon:text-fg-disabled_subtle',
         sizes[size],
         styles[(size === 'xs' && borderless[color]) || color],
         isSelected && selectedStyles,
@@ -213,7 +189,9 @@ export const ButtonUtility = forwardRef<
     </Component>
   );
 
-  const content = tooltip ? (
+  // A disabled trigger fires no hover or focus events, so Tooltip wraps it in a
+  // focusable span and the tooltip can still say why the action is unavailable.
+  return tooltip ? (
     <Tooltip
       offset={size === 'xs' || size === 'sm' ? 4 : 6}
       placement={tooltipPlacement}
@@ -222,26 +200,5 @@ export const ButtonUtility = forwardRef<
     </Tooltip>
   ) : (
     button
-  );
-
-  if (!tooltip || href) {
-    return content;
-  }
-
-  // A parent MenuTrigger / DialogTrigger presses through context, not props, so
-  // a soft-disabled button stops the press events before they reach it. The
-  // wrapper sits outside Tooltip, which would otherwise make it a second tab stop.
-  // It stays mounted while enabled too, so toggling isDisabled updates the button
-  // in place instead of remounting it and dropping keyboard focus.
-  return (
-    <span
-      className="tw:contents"
-      onClickCapture={softDisabled ? blockClick : undefined}
-      onKeyDownCapture={softDisabled ? stopKeyPress : undefined}
-      onKeyUpCapture={softDisabled ? stopKeyPress : undefined}
-      onMouseDownCapture={softDisabled ? stopPress : undefined}
-      onPointerDownCapture={softDisabled ? stopPress : undefined}>
-      {content}
-    </span>
   );
 });

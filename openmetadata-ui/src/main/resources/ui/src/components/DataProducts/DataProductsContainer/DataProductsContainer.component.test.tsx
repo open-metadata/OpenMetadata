@@ -152,7 +152,7 @@ describe('DataProductsContainer', () => {
 
     const addButton = screen.getByTestId('add-data-product');
 
-    expect(addButton).toHaveAttribute('aria-disabled', 'true');
+    expect(addButton).toBeDisabled();
     expect(addButton).toHaveAccessibleName(
       'message.select-domain-to-add-data-product'
     );
@@ -169,7 +169,7 @@ describe('DataProductsContainer', () => {
 
     const addButton = screen.getByTestId('add-data-product');
 
-    expect(addButton).not.toHaveAttribute('aria-disabled');
+    expect(addButton).toBeEnabled();
     expect(addButton).not.toHaveAccessibleName(
       'message.select-domain-to-add-data-product'
     );

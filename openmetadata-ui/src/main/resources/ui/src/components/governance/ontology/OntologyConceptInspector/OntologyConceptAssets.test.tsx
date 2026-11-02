@@ -161,7 +161,7 @@ it('keeps confirmed and unattempted selections separate after a failed complete 
   expect(within(picker).getByTestId('ontology-data-asset-save')).toBeDisabled();
   expect(
     screen.getByTestId('ontology-native-asset-remove-old-table')
-  ).toHaveAttribute('aria-disabled', 'true');
+  ).toBeDisabled();
   expect(http.put).toHaveBeenCalledTimes(1);
 
   failRead = false;
@@ -307,7 +307,7 @@ it('keeps a successful removal confirmed and restores the list using GET only', 
   await waitFor(() =>
     expect(
       screen.getByTestId('ontology-native-asset-remove-old-table')
-    ).toHaveAttribute('aria-disabled', 'true')
+    ).toBeDisabled()
   );
   failRead = false;
   fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));

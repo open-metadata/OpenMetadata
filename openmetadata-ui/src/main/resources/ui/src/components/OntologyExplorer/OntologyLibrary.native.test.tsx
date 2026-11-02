@@ -178,9 +178,7 @@ const install = async () => {
 const openInstalledPack = async () => {
   const card = await screen.findByTestId('ontology-pack-fhir');
 
-  expect(screen.getByTestId('ontology-library-close')).not.toHaveAttribute(
-    'aria-disabled'
-  );
+  expect(screen.getByTestId('ontology-library-close')).toBeEnabled();
 
   return card;
 };
@@ -504,10 +502,7 @@ describe('OntologyLibrary native installation', () => {
     expect(post.mock.calls.some(([url]) => url.includes('/library/'))).toBe(
       false
     );
-    expect(screen.getByTestId('ontology-library-close')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('ontology-library-close')).toBeDisabled();
     expect(screen.getByTestId('ontology-library-back')).toBeDisabled();
 
     permit(true);

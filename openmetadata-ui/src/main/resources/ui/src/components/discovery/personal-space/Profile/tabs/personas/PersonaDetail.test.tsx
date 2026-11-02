@@ -444,15 +444,9 @@ describe('PersonaDetail', () => {
     expect(
       screen.queryByTestId('edit-persona-description-btn')
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('rename-persona-btn')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('rename-persona-btn')).toBeDisabled();
     expect(screen.getByTestId('set-default-persona-btn')).toBeDisabled();
-    expect(screen.getByTestId('delete-persona-btn')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('delete-persona-btn')).toBeDisabled();
   });
 
   it('renames the persona with a trimmed display name', async () => {

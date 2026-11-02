@@ -31,8 +31,7 @@ describe('ButtonUtility activation', () => {
     render(<ButtonUtility isDisabled tooltip="Edit" onPress={onPress} />);
     const button = screen.getByRole('button', { name: 'Edit' });
 
-    // With a tooltip it stays focusable, so it is aria-disabled, not disabled.
-    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).toBeDisabled();
 
     await user.click(button);
 
@@ -402,26 +401,38 @@ describe('ButtonUtility — icon size and color', () => {
     expect(ref.current).toBe(screen.getByRole('button', { name: 'Edit' }));
   });
 
-  it('keeps a disabled button with a tooltip focusable but inert', async () => {
+  it('disables a button with a tooltip natively and keeps the tooltip reachable', async () => {
+    const user = userEvent.setup();
     const onClick = vi.fn();
     render(
       <ButtonUtility
         isDisabled
         icon={Edit01}
-        tooltip="Edit"
+        tooltip="Needs an owner first"
         onClick={onClick}
       />
     );
-    const button = screen.getByRole('button', { name: 'Edit' });
+    const button = screen.getByRole('button', { name: 'Needs an owner first' });
 
-    expect(button).toHaveAttribute('aria-disabled', 'true');
-    expect(button).not.toBeDisabled();
+    expect(button).toBeDisabled();
 
-    await userEvent.tab();
+    // Tooltip wraps the disabled button in one focusable span, so the tooltip
+    // that explains why it is disabled still opens on hover.
+    const wrapper = button.parentElement as HTMLElement;
 
-    expect(button).toHaveFocus();
+    expect(wrapper.tagName).toBe('SPAN');
+    expect(wrapper).toHaveAttribute('tabindex', '0');
 
-    await userEvent.click(button);
+    fireEvent.mouseMove(document);
+    await user.hover(wrapper);
+
+    await waitFor(() =>
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Needs an owner first'
+      )
+    );
+
+    await user.click(wrapper);
 
     expect(onClick).not.toHaveBeenCalled();
   });
@@ -459,20 +470,6 @@ describe('ButtonUtility — icon size and color', () => {
     await userEvent.keyboard(' ');
 
     expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  it('keeps the same focused button when it becomes disabled with a tooltip', () => {
-    const { rerender } = render(
-      <ButtonUtility icon={Edit01} tooltip="Refresh" />
-    );
-    const button = screen.getByRole('button', { name: 'Refresh' });
-    button.focus();
-
-    rerender(<ButtonUtility isDisabled icon={Edit01} tooltip="Refresh" />);
-
-    expect(screen.getByRole('button', { name: 'Refresh' })).toBe(button);
-    expect(button).toHaveFocus();
-    expect(button).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('disables a button without a tooltip natively', () => {

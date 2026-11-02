@@ -220,7 +220,7 @@ describe('SearchSettingsView', () => {
 
     expect(
       screen.getByTestId('global-setting-save-maxAggregateSize')
-    ).toHaveAttribute('aria-disabled', 'true');
+    ).toBeDisabled();
 
     fireEvent.change(input, { target: { value: '500' } });
     fireEvent.click(screen.getByTestId('global-setting-save-maxAggregateSize'));

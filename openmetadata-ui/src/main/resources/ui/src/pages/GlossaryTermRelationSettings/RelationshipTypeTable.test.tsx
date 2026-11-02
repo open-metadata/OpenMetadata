@@ -72,14 +72,8 @@ describe('RelationshipTypeTable', () => {
       />
     );
 
-    expect(screen.getByTestId('delete-broader-btn')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
-    expect(screen.getByTestId('delete-governedBy-btn')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('delete-broader-btn')).toBeDisabled();
+    expect(screen.getByTestId('delete-governedBy-btn')).toBeDisabled();
 
     fireEvent.click(screen.getByTestId('delete-supersedes-btn'));
 

@@ -141,10 +141,7 @@ describe('GovernanceGlossaryList', () => {
   it('cannot delete a system-defined relation type', async () => {
     await renderAndWaitForTable();
 
-    expect(screen.getByTestId('delete-broader-btn')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('delete-broader-btn')).toBeDisabled();
   });
 
   it('opens the delete confirmation popover when delete is clicked', async () => {

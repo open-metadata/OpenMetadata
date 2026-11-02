@@ -309,19 +309,13 @@ describe('CriticalAnnouncements', () => {
     await screen.findByText('Title first');
     const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
 
-    expect(screen.getByTestId(PREV_BTN)).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
-    expect(screen.getByTestId(NEXT_BTN)).not.toHaveAttribute('aria-disabled');
+    expect(screen.getByTestId(PREV_BTN)).toBeDisabled();
+    expect(screen.getByTestId(NEXT_BTN)).toBeEnabled();
 
     scrollRailTo(rail, 400);
 
-    expect(screen.getByTestId(PREV_BTN)).not.toHaveAttribute('aria-disabled');
-    expect(screen.getByTestId(NEXT_BTN)).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId(PREV_BTN)).toBeEnabled();
+    expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
   });
 
   it('announces which banner is showing as the rail pages', async () => {
@@ -352,10 +346,7 @@ describe('CriticalAnnouncements', () => {
 
     scrollRailTo(rail, 400);
 
-    expect(screen.getByTestId(NEXT_BTN)).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
     expect(screen.getByTestId(PREV_BTN)).toHaveFocus();
   });
 
