@@ -487,7 +487,7 @@ def test_physical_target_and_percentage_ignore_metadata_and_sample(
         assert result.passedRows == (2 if limit == "0" else 3)
         assert "out of 3 evaluated" in result.result
         assert physical_name in result.result
-        assert runner.table_reference in result.result
+        assert runner.get_table_reference() in result.result
 
 
 @pytest.mark.parametrize(

@@ -223,7 +223,7 @@ def test_table_reference_uses_raw_physical_table(raw_kind):
     raw = physical if raw_kind == "table" else type("Physical", (Base,), {"__table__": physical})
     with Session(create_engine("sqlite://")) as session:
         runner = QueryRunner(session, User, raw, profile_sample_query="SELECT * FROM decoy")
-        assert runner.table_reference == '"Order.Items"'
+        assert runner.get_table_reference() == '"Order.Items"'
 
 
 @pytest.mark.parametrize("raw", [None, "orders", object()])
@@ -231,7 +231,7 @@ def test_table_reference_rejects_missing_physical_table_before_connection(raw):
     session = Mock()
     runner = QueryRunner(session, User, raw)
     with pytest.raises(ValueError, match="physical SQLAlchemy Table"):
-        _ = runner.table_reference
+        runner.get_table_reference()
     session.connection.assert_not_called()
 
 
@@ -249,8 +249,8 @@ def test_table_reference_uses_connection_schema_translation(source_schema, targe
         runner = QueryRunner(session, User, physical)
         physical.metadata.create_all(connection)
         session.execute(physical.insert(), [{"id": 1}])
-        assert runner.table_reference == "main.orders"
+        assert runner.get_table_reference() == "main.orders"
         from sqlalchemy import select, text
 
         assert session.execute(select(physical.c.id)).scalar() == 1
-        assert session.execute(text(f"SELECT id FROM {runner.table_reference}")).scalar() == 1
+        assert session.execute(text(f"SELECT id FROM {runner.get_table_reference()}")).scalar() == 1

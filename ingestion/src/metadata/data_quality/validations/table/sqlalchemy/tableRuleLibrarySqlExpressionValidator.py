@@ -37,7 +37,7 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
 
     def get_table_name(self) -> str:
         """Use the same physical table and bind as the rule's row-count query."""
-        return cast("QueryRunner", self.runner).table_reference
+        return cast("QueryRunner", self.runner).get_table_reference()
 
     def compile_sql_expression(self, table_name: str) -> tuple[str, dict[str, str]]:
         """Compile SQL expression with SQLAlchemy bind parameters."""

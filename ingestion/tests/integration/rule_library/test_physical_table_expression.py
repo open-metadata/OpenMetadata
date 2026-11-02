@@ -140,7 +140,7 @@ def test_rule_and_denominator_read_the_same_source(source_engines, level, label,
         result = validator.run_validation()
         assert result.testCaseStatus == (TestCaseStatus.Success if limit == "-10" else TestCaseStatus.Failed)
         assert result.testResultValue[0].value == ("0" if limit == "-10" else "1")
-        assert runner.table_reference in result.result
+        assert runner.get_table_reference() in result.result
         if percentage:
             assert result.failedRows == 1
             assert result.passedRows == 2

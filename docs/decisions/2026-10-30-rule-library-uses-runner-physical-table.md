@@ -1,7 +1,7 @@
 # SQLAlchemy Rule Library queries use the runner's physical table and execution bind
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-02 (connector default context)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-02 (connector default context) · v3 2026-11-02 (defer table rendering)
 - **Deciders:** Ingestion maintainers
 - **Guard:** `test_rule_library_sql_expression_validator.py`, `test_rule_library_thresholds.py`, `test_runner.py`, `test_physical_table_expression.py`
 - **Related:** https://github.com/open-metadata/openmetadata-collate/issues/7374
@@ -29,3 +29,7 @@ Connector-owned context selection must distinguish physical catalog names from s
 BigQuery copies the attached Database's project into inline, key-file and ADC credentials before creating the test-suite session, including when the configured project is absent or scalar. Billing and authentication settings remain unchanged. External-account credentials have no project field and retain their existing default resolution.
 
 The connector `test_table_context.py` suites guard these cases, including original-config isolation and session selection.
+
+## Amendment: defer table rendering until execution
+
+The runner exposes `get_table_reference()` as an explicit method. Timeout wrapping inspects runner attributes while constructing interfaces; a property would acquire a source connection during that inspection and reject missing raw tables before any case can report a result. Both SQL validators call the method within per-case validation, where missing or unsupported raw tables produce Aborted results. Wrapping the runner alone must not acquire a source connection. `test_rule_library_suite_construction.py` guards this through the normal sampler and test-suite constructors.

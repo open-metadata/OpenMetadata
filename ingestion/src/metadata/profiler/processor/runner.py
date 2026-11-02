@@ -148,8 +148,7 @@ class QueryRunner:
         """Table name attribute access"""
         return self.raw_dataset.__table__.name
 
-    @property
-    def table_reference(self) -> str:
+    def get_table_reference(self) -> str:
         """Logical SQL reference to the unsampled physical table on the execution bind.
 
         ADR:2026-10-30-rule-library-uses-runner-physical-table
