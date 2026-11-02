@@ -72,6 +72,7 @@ public class SearchAggregateRbacIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String NAME_FREE_LETTERS = "jkmqsuvxyz";
+  private static final String DOMAIN_INDEX = "domain_search_index";
   private static final String TABLE_INDEX = "table_search_index";
   private static final String ENTITY_TYPE_FIELD = "entityType";
   private static final String TABLE_ENTITY_TYPE = Entity.TABLE;
@@ -526,11 +527,10 @@ public class SearchAggregateRbacIT {
 
   /**
    * Hierarchy search rewrites the caller's query into one should clause among name matches. A term
-   * must still meet the caller's access policies, query_filter and deleted flag to come back.
+   * must still meet the caller's access policies and deleted flag to come back.
    */
   @Test
-  void test_hierarchySearch_keepsPoliciesQueryFilterAndDeletedFlag(TestNamespace ns)
-      throws Exception {
+  void test_hierarchySearch_keepsPoliciesAndDeletedFlag(TestNamespace ns) throws Exception {
     assumeTheServerTrustsHarnessSignedTokens();
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
@@ -561,27 +561,57 @@ public class SearchAggregateRbacIT {
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
-                String live = searchTerms(admin, word, false, false, null);
+                String live = searchTerms(admin, word, false, false);
                 assertTrue(live.contains(ownTerm.getFullyQualifiedName()), live);
                 assertTrue(live.contains(foreignTerm.getFullyQualifiedName()), live);
                 assertTrue(
-                    searchTerms(admin, word, true, false, null)
+                    searchTerms(admin, word, true, false)
                         .contains(goneTerm.getFullyQualifiedName()));
               });
 
-      String restrictedTree = searchTerms(restricted, word, false, true, null);
+      String restrictedTree = searchTerms(restricted, word, false, true);
       assertTrue(restrictedTree.contains(ownTerm.getFullyQualifiedName()), restrictedTree);
       assertFalse(restrictedTree.contains(foreignTerm.getFullyQualifiedName()), restrictedTree);
       assertFalse(restrictedTree.contains(goneTerm.getFullyQualifiedName()), restrictedTree);
+    } finally {
+      drain(cleanup);
+    }
+  }
 
-      String ownGlossaryOnly =
-          "{\"query\":{\"term\":{\"glossary.name.keyword\":\""
-              + ownGlossary.getName().toLowerCase()
-              + "\"}}}";
-      String filteredTree = searchTerms(admin, word, false, true, ownGlossaryOnly);
-      assertTrue(filteredTree.contains(ownTerm.getFullyQualifiedName()), filteredTree);
-      assertFalse(filteredTree.contains(foreignTerm.getFullyQualifiedName()), filteredTree);
-      assertFalse(filteredTree.contains(goneTerm.getFullyQualifiedName()), filteredTree);
+  /**
+   * The navbar sends its selected domain as a query_filter on every search, the domain picker's
+   * included, so applied by hierarchy search it would leave the picker unable to find any other
+   * domain. Another domain still comes back by name.
+   */
+  @Test
+  void test_domainHierarchySearch_findsAnotherDomainWhileOneIsSelected(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain selected = createDomain(admin, p + "_selected", cleanup);
+      Domain other = createDomain(admin, p + "_other", cleanup);
+      String selectedFqn = selected.getFullyQualifiedName();
+      String navbarFilter =
+          "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":["
+              + "{\"term\":{\"fullyQualifiedName\":\""
+              + selectedFqn
+              + "\"}},{\"prefix\":{\"fullyQualifiedName\":\""
+              + selectedFqn
+              + ".\"}}]}}]}}}";
+      String byName = "*" + other.getName() + "*";
+      Awaitility.await("the other domain is indexed")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      search(admin, DOMAIN_INDEX, byName, false, true, null)
+                          .contains(other.getFullyQualifiedName())));
+
+      String picked = search(admin, DOMAIN_INDEX, byName, false, true, navbarFilter);
+
+      assertTrue(picked.contains(other.getFullyQualifiedName()), picked);
     } finally {
       drain(cleanup);
     }
@@ -620,11 +650,21 @@ public class SearchAggregateRbacIT {
   }
 
   private String searchTerms(
-      OpenMetadataClient client, String query, boolean deleted, boolean hierarchy, String filter) {
+      OpenMetadataClient client, String query, boolean deleted, boolean hierarchy) {
+    return search(client, "glossary_term_search_index", query, deleted, hierarchy, null);
+  }
+
+  private String search(
+      OpenMetadataClient client,
+      String index,
+      String query,
+      boolean deleted,
+      boolean hierarchy,
+      String filter) {
     RequestOptions.Builder options =
         RequestOptions.builder()
             .queryParam("q", query)
-            .queryParam("index", "glossary_term_search_index")
+            .queryParam("index", index)
             .queryParam("from", "0")
             .queryParam("size", "50")
             .queryParam("deleted", String.valueOf(deleted))
