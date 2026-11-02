@@ -101,7 +101,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_database_service_type, search_table_entities
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_service_table_binding, search_table_entities
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
@@ -1978,7 +1978,10 @@ class LookerSource(DashboardServiceSource):
             ):
                 continue
 
-            if db_service_name and get_database_service_type(self.metadata, db_service_name) == "bigquery":
+            if (
+                db_service_name
+                and get_service_table_binding(self.metadata, db_service_name).resolve_reference is not None
+            ):
                 matches = (
                     search_table_entities(
                         self.metadata,

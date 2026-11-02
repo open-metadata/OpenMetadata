@@ -58,7 +58,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import get_database_service_type, search_table_entities
+from metadata.ingestion.lineage.sql_lineage import get_service_table_binding, search_table_entities
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -661,7 +661,7 @@ class OpenlineageSource(PipelineServiceSource):
         resolved = services is not None
         found = []
         for db_service in services or self.get_db_service_names():
-            if get_database_service_type(self.metadata, db_service) == "bigquery":
+            if get_service_table_binding(self.metadata, db_service).resolve_reference is not None:
                 matches = (
                     search_table_entities(
                         self.metadata, db_service, table_details.database, table_details.schema, table_details.name
@@ -669,7 +669,7 @@ class OpenlineageSource(PipelineServiceSource):
                     or []
                 )
                 if len(matches) > 1:
-                    raise AmbiguousServiceException("BigQuery dataset reference resolves to multiple tables")
+                    raise AmbiguousServiceException("Dataset reference resolves to multiple tables")
                 result = model_str(matches[0].fullyQualifiedName) if matches else None
             else:
                 result = fqn.build(

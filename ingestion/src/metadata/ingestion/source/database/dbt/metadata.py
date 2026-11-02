@@ -84,8 +84,8 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
-    get_database_service_type,
     get_lineage_by_query,
+    get_service_table_binding,
     search_table_entities,
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -862,7 +862,7 @@ class DbtSource(DbtServiceSource):
         if not fqn_search_string:
             return None
         parts = fqn.split(fqn_search_string)
-        if len(parts) == 4 and get_database_service_type(self.metadata, parts[0]) == "bigquery":
+        if len(parts) == 4 and get_service_table_binding(self.metadata, parts[0]).resolve_reference is not None:
             entities = search_table_entities(self.metadata, parts[0], parts[1], parts[2], parts[3]) or []
             if len(entities) > 1:
                 self.status.warning(fqn_search_string, "Ambiguous dbt metadata attachment; resolved multiple tables")
@@ -1381,7 +1381,7 @@ class DbtSource(DbtServiceSource):
                 if (
                     len(parts) == 4
                     and "*" in parts[3]
-                    and get_database_service_type(self.metadata, parts[0]) == "bigquery"
+                    and get_service_table_binding(self.metadata, parts[0]).resolve_reference is not None
                 ):
                     wildcard_targets[upstream] = (
                         search_table_entities(self.metadata, parts[0], parts[1], parts[2], parts[3]) or []

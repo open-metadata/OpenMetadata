@@ -31,7 +31,7 @@ from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Stage
 from metadata.ingestion.lineage.sql_lineage import (
-    get_database_service_type,
+    get_service_table_binding,
     get_table_fqn_from_query_name,
     search_table_entities,
 )
@@ -211,21 +211,21 @@ class TableUsageStage(Stage):
                 continue
             usage_data = parsed_data
             tables = parsed_data.tables
-            if get_database_service_type(self.metadata, parsed_data.serviceName) == "bigquery":
-                tables, joins = self._bigquery_usage_targets(parsed_data)
+            if get_service_table_binding(self.metadata, parsed_data.serviceName).resolve_reference is not None:
+                tables, joins = self._resolve_usage_targets(parsed_data)
                 usage_data = parsed_data.model_copy(update={"joins": joins})
             for table in tables:
                 yield from self._handle_table_usage(parsed_data=usage_data, table=table)
             self._handle_query_cost(parsed_data)
         self.dump_data_to_file()
 
-    def _bigquery_usage_targets(self, parsed_data):
+    def _resolve_usage_targets(self, parsed_data):
         targets = {}
         joins = {}
         for table in parsed_data.tables:
             database, schema, name = get_table_fqn_from_query_name(table)
             if not name:
-                raise ValueError("BigQuery usage reference has no table name")
+                raise ValueError("Usage reference has no table name")
             matches = search_table_entities(
                 self.metadata,
                 parsed_data.serviceName,

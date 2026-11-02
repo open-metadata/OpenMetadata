@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableSharding import TableSharding
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.cell_lineage import ChainedCells
@@ -704,3 +705,48 @@ def test_wildcard_service_does_not_apply_connector_resolution(sdk):
     facade = TableResolver(EntityResolver(metadata), (bigquery_binding("*"),))
     result = facade.resolve(database_name="my_db", database_schema="my_schema", table_name="events_20260101")
     assert ids(result) == [ordinary.id]
+
+
+def test_lineage_service_priority_keeps_resolution_policy_scoped(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    transport.entities["ordinary_service"] = DatabaseService(
+        id=uuid4(),
+        name="ordinary_service",
+        serviceType="Postgres",
+    )
+    family = bigquery_family()
+    ordinary = table("ordinary_service.my_db.my_schema.events_20260101")
+    transport.entities.update({value.fullyQualifiedName.root: value for value in (family, ordinary)})
+    assert ids(
+        search_table_entities(metadata, ["my_service", "ordinary_service"], "my_db", "my_schema", "events_20260101")
+    ) == [family.id]
+    assert ids(
+        search_table_entities(metadata, ["ordinary_service", "my_service"], "my_db", "my_schema", "events_20260101")
+    ) == [ordinary.id]
+    assert search_table_entities(metadata, "ordinary_service", "my_db", "my_schema", "events_20260102") is None
+
+
+def test_usage_without_resolution_policy_preserves_physical_names(sdk, tmp_path):
+    metadata, transport = sdk
+    transport.entities["ordinary_usage_service"] = DatabaseService(
+        id=uuid4(),
+        name="ordinary_usage_service",
+        serviceType="Postgres",
+    )
+    stage = TableUsageStage(TableStageConfig(filename=str(tmp_path / "usage")), metadata)
+    execution = ParsedData(
+        tables=["my_db.my_schema.events_20260101", "my_db.my_schema.events_20260102"],
+        databaseName="my_db",
+        databaseSchema="my_schema",
+        serviceName="ordinary_usage_service",
+        joins={},
+        date="1767398400000",
+        sql="SELECT 1",
+    )
+    outcomes = list(stage._run(QueryParserData(parsedData=[execution])))
+    assert [outcome.right for outcome in outcomes] == execution.tables
+    assert {value.table: value.count for value in stage.table_usage.values()} == {
+        "my_db.my_schema.events_20260101": 1,
+        "my_db.my_schema.events_20260102": 1,
+    }

@@ -28,6 +28,7 @@ from networkx import DiGraph
 
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.engine import EntityResolver
+from metadata.entity_resolution.table import TableResolver, TableServiceBinding
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
@@ -38,6 +39,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
 )
@@ -56,10 +58,10 @@ from metadata.ingestion.models.ometa_lineage import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.database.bigquery.resolution import resolve_bigquery_reference
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
+from metadata.utils.importer import import_table_service_binding
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.timeout import timeout
@@ -183,43 +185,35 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str 
     return None
 
 
+def get_service_table_binding(metadata: OpenMetadata, service_name: str) -> TableServiceBinding:
+    """Load the table policies for a named catalog service."""
+    connection_type = get_database_service_type(metadata, service_name)
+    if connection_type is None or service_name == "*":
+        return TableServiceBinding(service_name)
+    return import_table_service_binding(ServiceType.Database, connection_type, service_name)
+
+
 def normalize_table_params_by_service(
     metadata: OpenMetadata,
     service_name: str,
     database: str | None,
     database_schema: str | None,
 ) -> tuple[str | None, str | None]:
-    """
-    Normalize database and schema parameters based on service type.
-
-    Certain database types require parameter normalization:
-    - ClickHouse: Uses database_schema as schema, sets database to None
-
-    Args:
-        metadata: OMeta client
-        service_name: service name
-        database: database name
-        database_schema: schema name
-
-    Returns:
-        Tuple of (normalized_database, normalized_schema)
-    """
-    conn_type = get_database_service_type(metadata, service_name)
-
-    # ClickHouse normalization
-    if conn_type == "clickhouse" and database:
-        return None, database_schema
-
-    return database, database_schema
+    """Normalize database and schema through the service's naming policy."""
+    binding = get_service_table_binding(metadata, service_name)
+    reference = binding.normalize(TableReference(database, database_schema, ""))
+    return reference.database, reference.schema
 
 
-def search_bigquery_tables(metadata, service, database, schema, table):
-    key = (metadata, service, database, schema, table)
+def _search_bound_tables(metadata, binding: TableServiceBinding, database, schema, table):
+    key = (metadata, binding.service_name, database, schema, table)
     if key in search_cache:
         return search_cache.get(key)
     resolver = EntityResolver(metadata)
     try:
-        result = resolve_bigquery_reference(resolver, service, TableReference(database, schema, table))
+        result = TableResolver(resolver, (binding,)).resolve(
+            database_name=database, database_schema=schema, table_name=table
+        )
         search_cache.put(key, result)  # pyright: ignore[reportArgumentType]
         return result
     finally:
@@ -264,13 +258,12 @@ def search_table_entities(
 
 
 def _search_service_tables(metadata, service_name, database, database_schema, table):
-    # normalize database and schema parameters based on service type
-    normalized_db, normalized_schema = normalize_table_params_by_service(
-        metadata, service_name, database, database_schema
-    )
+    binding = get_service_table_binding(metadata, service_name)
+    reference = binding.normalize(TableReference(database, database_schema, table))
+    normalized_db, normalized_schema = reference.database, reference.schema
 
-    if get_database_service_type(metadata, service_name) == "bigquery":
-        matches = search_bigquery_tables(metadata, service_name, normalized_db, normalized_schema, table)
+    if binding.resolve_reference is not None:
+        matches = _search_bound_tables(metadata, binding, database, database_schema, table)
         if matches:
             return list(matches)
         return None

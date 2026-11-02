@@ -52,7 +52,7 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import get_database_service_type, search_table_entities
+from metadata.ingestion.lineage.sql_lineage import get_service_table_binding, search_table_entities
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -658,7 +658,7 @@ class HexSource(DashboardServiceSource):
             searched_database = reference.catalog or (connection.default_database if connection else None)
             searched_schema = reference.db or (connection.default_schema if connection else None)
             if "*" in reference.name:
-                self._add_bigquery_wildcard_tables(lineage, searched_database, searched_schema, reference.name)
+                self._add_wildcard_tables(lineage, searched_database, searched_schema, reference.name)
                 reference.meta[UNRESOLVED] = True
                 continue
             if key not in resolved_tables:
@@ -714,10 +714,10 @@ class HexSource(DashboardServiceSource):
             )
         return lineage
 
-    def _add_bigquery_wildcard_tables(self, lineage, searched_database, searched_schema, table_name):
+    def _add_wildcard_tables(self, lineage, searched_database, searched_schema, table_name):
         for prefix in self.get_db_service_prefixes() or []:
             service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
-            if not service or get_database_service_type(self.metadata, service) != "bigquery":
+            if not service or get_service_table_binding(self.metadata, service).resolve_reference is None:
                 continue
             if any(
                 expected and actual and expected != actual
@@ -771,7 +771,7 @@ class HexSource(DashboardServiceSource):
                     )
                     or []
                 )
-                if service and get_database_service_type(self.metadata, service) == "bigquery"
+                if service and get_service_table_binding(self.metadata, service).resolve_reference is not None
                 else self._search_tables(search)
             )
             for found in found_tables:

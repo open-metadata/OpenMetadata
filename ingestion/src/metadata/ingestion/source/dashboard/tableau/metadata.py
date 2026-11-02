@@ -72,6 +72,7 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Diale
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
+    get_service_table_binding,
     get_table_fqn_from_query_name,
     search_table_entities,
 )
@@ -1097,7 +1098,10 @@ class TableauSource(DashboardServiceSource):
                 logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
                 return None
 
-            if db_service_entity and isinstance(db_service_entity.connection.config, BigQueryConnection):
+            if (
+                db_service_entity
+                and get_service_table_binding(self.metadata, db_service_entity.name.root).resolve_reference is not None
+            ):
                 resolved_name = prefix_table_name or table_name
                 matches = (
                     search_table_entities(
