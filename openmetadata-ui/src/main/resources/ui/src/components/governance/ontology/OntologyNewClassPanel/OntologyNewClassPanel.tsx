@@ -32,7 +32,6 @@ import {
   ChevronRight,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { Fragment, MutableRefObject, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -53,7 +52,6 @@ import {
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   getOntologyState,
-  getOntologyConceptByName,
   hardDeleteOntologyDefinition,
   restoreOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
@@ -84,7 +82,6 @@ import {
   classLocalName,
   distinctChipValues,
   inheritedClassProperties,
-  isValidLocalName,
   isValidMapping,
   isValidOwnProperty,
   MappingInput,
@@ -92,6 +89,7 @@ import {
   ownPropertyDraft,
   ownPropertyTypeLabel,
 } from './OntologyNewClassPanel.utils';
+import { useDeletedConceptNamed } from './useDeletedConceptNamed';
 const DATATYPE_LABEL_KEYS: Record<StudioDatatype | 'object', string> = {
   boolean: 'label.boolean',
   date: 'label.date',
@@ -108,6 +106,7 @@ interface SelectionValues {
   disjoint: FormSelectItem[];
   owners: EntityReferenceOption[];
 }
+
 /** What the author typed, kept by the host while the panel remounts for another ontology. */
 export interface CarriedConceptDraft {
   label: string;
@@ -143,6 +142,7 @@ interface Props {
   onClose: () => void;
   onLockChange?: (locked: boolean) => void;
 }
+const NAME_ISSUES: ClassIdentityIssue[] = ['name-invalid', 'name-taken'];
 const ISSUE_MESSAGES: Record<ClassIdentityIssue, string> = {
   'name-required': 'message.ontology-concept-name-required',
   'name-invalid': 'message.ontology-concept-name-invalid',
@@ -157,19 +157,6 @@ const CONCEPT_TYPES: [OntologyConceptType, string][] = [
   [OntologyConceptType.SkosConcept, 'label.concept-skos'],
   [OntologyConceptType.Both, 'label.both-owl-skos'],
 ];
-
-const useDebouncedValue = (value: string, delayMs: number) => {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebounced(value);
-    }, delayMs);
-
-    return () => clearTimeout(timer);
-  }, [value, delayMs]);
-
-  return debounced;
-};
 
 const OntologyNewClassPanel = ({
   ontology,
@@ -315,35 +302,7 @@ const OntologyNewClassPanel = ({
   const mappingRowInvalid = Boolean(mappingIri.trim()) && !mappingRowValid;
   const [restoring, setRestoring] = useState(false);
   const [restoreFailed, setRestoreFailed] = useState(false);
-  const lookupName = useDebouncedValue(localName.trim(), 250);
-  const nameLookupPending = lookupName !== localName.trim();
-  const { data: deletedMatch } = useQuery({
-    queryKey: ['ontology-deleted-concept', ontology.id, lookupName],
-    enabled:
-      isValidLocalName(lookupName) &&
-      !model.concepts.some(
-        (concept) => concept.iri === ontology.namespace + lookupName
-      ),
-    retry: false,
-    queryFn: async () => {
-      try {
-        const found = await getOntologyConceptByName(
-          `${ontology.fullyQualifiedName}.${lookupName}`
-        );
-
-        return found.deleted ? found : null;
-      } catch (lookupError) {
-        if (isAxiosError(lookupError) && lookupError.response?.status === 404) {
-          return null;
-        }
-        throw lookupError;
-      }
-    },
-  });
-  const deletedConcept =
-    !nameLookupPending && deletedMatch?.name === localName.trim()
-      ? deletedMatch
-      : undefined;
+  const deletedConcept = useDeletedConceptNamed(ontology, model, localName);
   const issues = classIdentityIssues(model, {
     displayName: label,
     localName,
@@ -572,7 +531,7 @@ const OntologyNewClassPanel = ({
         </span>
       );
     }
-    if (deletedConcept && !has('name-invalid', 'name-taken')) {
+    if (deletedConcept && !has(...NAME_ISSUES)) {
       return (
         <span data-testid="new-class-name-deleted">
           {restoreFailed
@@ -593,7 +552,7 @@ const OntologyNewClassPanel = ({
       );
     }
 
-    return fieldHint(undefined, 'name-invalid', 'name-taken');
+    return fieldHint(undefined, ...NAME_ISSUES);
   };
   const create = async (keepOpen: boolean) => {
     if (!valid || !permitted || locked || submitting.current) {
@@ -1083,15 +1042,15 @@ const OntologyNewClassPanel = ({
               </div>
             ) : null}
             <Input
+              isRequired
               hint={renderNameHint()}
               inputDataTestId="new-class-local-name"
               isDisabled={locked}
               isInvalid={
-                has('name-invalid', 'name-taken') ||
+                has(...NAME_ISSUES) ||
                 Boolean(deletedConcept) ||
                 (apply.status.kind === 'blocked' && apply.status.conflict)
               }
-              isRequired
               label={t('label.name')}
               ref={nameInput}
               value={localName}

@@ -362,8 +362,8 @@ it('locks the panel through uncertain apply and retries the retained draft befor
           onBeforeCreate={jest.fn()}
           onClose={jest.fn()}
           onCreated={reconcile}
-          onUndone={jest.fn()}
           onLockChange={lockChanged}
+          onUndone={jest.fn()}
         />
       </OntologyDraftProvider>
     </MemoryRouter>
@@ -1108,6 +1108,7 @@ describe('Undo after create', () => {
       ],
     ]);
     expect(onUndone).toHaveBeenCalledTimes(1);
+
     add.mockRestore();
     close.mockRestore();
   });
@@ -1248,6 +1249,7 @@ describe('a name held by a deleted concept', () => {
         keepOpen: false,
       })
     );
+
     expect(put).toHaveBeenCalledWith('/ontologyConcepts/restore', {
       id: 'deleted-id',
     });

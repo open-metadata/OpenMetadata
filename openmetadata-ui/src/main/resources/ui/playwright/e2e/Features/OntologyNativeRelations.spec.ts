@@ -98,7 +98,7 @@ const createFixture = async (
       (
         await okJson<{ data: OntologyAxiom[] }>(
           await api.get('/api/v1/ontologyAxioms', {
-            params: { ontology: fqn, limit: 100 },
+            params: { ontologyId: ontology.id, limit: 100 },
           }),
           'List the axioms'
         )
@@ -829,7 +829,7 @@ test.describe(
         ).toHaveText('Beta');
         await expect(
           detail.getByTestId('ontology-relation-detail-type')
-        ).toContainText(/subclass of/i);
+        ).toHaveText('is a');
         await expect(
           detail.getByTestId('ontology-relation-detail-target')
         ).toHaveText('Alpha');
@@ -1015,7 +1015,8 @@ test.describe(
         await property('narrower', 'OBJECT');
         await property('legalName', 'DATA');
 
-        await page.goto(`/governance/ontology?ontology=${fixture.ontology.id}`);
+        await fixture.concept('Anchor');
+        await openStudio(page, fixture.ontology, true);
         await page.getByTestId('submode-tab-definitions').click();
         await page
           .getByRole('tab', { name: 'Properties', exact: true })
