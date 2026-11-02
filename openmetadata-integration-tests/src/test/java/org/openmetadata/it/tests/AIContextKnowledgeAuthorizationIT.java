@@ -36,6 +36,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Metric;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -55,10 +57,10 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
 /**
- * The AI Context batch endpoint returns only the knowledge items the caller may view. A user
- * holding the seeded {@code DomainOnlyAccessRole} who can view a table must not receive the
- * articles and metrics of another domain attached to it, while the items of their own domain still
- * come back.
+ * AI Context returns only what the caller may view. A user holding the seeded {@code
+ * DomainOnlyAccessRole} who can view a table must not receive the articles and metrics of another
+ * domain attached to it, nor the names of its lineage neighbours in another domain, while the items
+ * and neighbours of their own domain still come back.
  */
 @Slf4j
 @Execution(ExecutionMode.CONCURRENT)
@@ -98,6 +100,71 @@ public class AIContextKnowledgeAuthorizationIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  @Test
+  void assetContext_omitsLineageNeighboursFromDomainsTheCallerCannotView(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<CleanupStep> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain own = createDomain(admin, p + "_own", cleanup);
+      Domain other = createDomain(admin, p + "_other", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table table = createTable(admin, p + "_t", schema, own);
+      Table otherUpstream = createTable(admin, p + "_up", schema, other);
+      Table ownDownstream = createTable(admin, p + "_down", schema, own);
+      addLineage(admin, otherUpstream, table);
+      addLineage(admin, table, ownDownstream);
+
+      OpenMetadataClient user = createDomainOnlyUser(admin, p + "_member", own, cleanup);
+
+      assertThrows(
+          ForbiddenException.class, () -> user.tables().get(otherUpstream.getId().toString()));
+
+      JsonNode adminContext = assetContext(admin, table);
+      assertEquals(
+          Set.of(otherUpstream.getFullyQualifiedName()), fqns(adminContext.path("upstream")));
+      assertEquals(
+          Set.of(ownDownstream.getFullyQualifiedName()), fqns(adminContext.path("downstream")));
+
+      JsonNode userContext = assetContext(user, table);
+      assertEquals(Set.of(), fqns(userContext.path("upstream")));
+      assertEquals(0, userContext.path("upstreamEdges").size());
+      assertEquals(
+          Set.of(ownDownstream.getFullyQualifiedName()), fqns(userContext.path("downstream")));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private JsonNode assetContext(OpenMetadataClient client, Table table) throws Exception {
+    return MAPPER.readTree(
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/name/" + table.getFullyQualifiedName() + "/context?format=json",
+                null,
+                RequestOptions.builder().build()));
+  }
+
+  private static Set<String> fqns(JsonNode array) {
+    Set<String> fqns = new TreeSet<>();
+    array.forEach(node -> fqns.add(node.asText()));
+    return fqns;
+  }
+
+  private void addLineage(OpenMetadataClient admin, Table from, Table to) {
+    admin
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(from.getEntityReference())
+                        .withToEntity(to.getEntityReference())));
   }
 
   private Set<String> attachedKnowledgeFqns(OpenMetadataClient client, Table table)
