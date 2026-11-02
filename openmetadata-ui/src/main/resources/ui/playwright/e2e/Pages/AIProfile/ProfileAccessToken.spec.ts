@@ -13,38 +13,19 @@
 
 import { expect, test } from '../../../support/fixtures/isolatedUser';
 import { openAiProfile } from '../../../utils/aiProfile';
-import { okJson } from '../../../utils/apiResponse';
-import { getApiContext } from '../../../utils/common';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
-// The token is created for and revoked by a per-test account, so retries and
+// The token is generated and revoked by a per-test account, so retries and
 // parallel shards never contend for the shared admin's token.
 test.describe(
   'Profile personal access token',
   { tag: ['@Platform', '@Features'] },
   () => {
     test('asks for confirmation before revoking the personal access token', async ({
-      freshUserPage: { page, user },
+      freshUserPage: { page },
     }) => {
-      await test.step('Create a token for the signed-in user', async () => {
-        await openAiProfile(page);
-        const { apiContext, afterAction } = await getApiContext(page);
-        try {
-          await okJson(
-            await apiContext.put('/api/v1/users/security/token', {
-              data: {
-                JWTTokenExpiry: 'OneHour',
-                tokenName: `pw-token-${user.responseData.name}`,
-              },
-            }),
-            'Create personal access token'
-          );
-        } finally {
-          await afterAction();
-        }
-      });
-
       await test.step('Open the access token panel', async () => {
+        await openAiProfile(page);
         const tokenResponse = waitForResponseWithStatus(
           page,
           (response) =>
@@ -55,6 +36,20 @@ test.describe(
         );
         await page.getByTestId('profile-nav-access-token').click();
         await tokenResponse;
+      });
+
+      // The panel only shows the token it issues itself, so generate it here.
+      await test.step('Generate a token from the panel', async () => {
+        const generateResponse = waitForResponseWithStatus(
+          page,
+          (response) =>
+            new URL(response.url()).pathname ===
+              '/api/v1/users/security/token' &&
+            response.request().method() === 'PUT',
+          200
+        );
+        await page.getByTestId('generate-token').click();
+        await generateResponse;
       });
 
       const revokeButton = page.getByTestId('revoke-token');

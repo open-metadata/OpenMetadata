@@ -82,7 +82,9 @@ const searchBot = async (page: Page, term: string) => {
 
       return (
         url.pathname === '/api/v1/search/query' &&
-        (url.searchParams.get('q') ?? '').includes(term) &&
+        // The bot list sends an empty `q` and an escaped wildcard in query_filter, so match the
+        // bot filter itself; the list only searches while the box has text.
+        (url.searchParams.get('query_filter') ?? '').includes('"isBot":true') &&
         response.request().method() === 'GET'
       );
     },

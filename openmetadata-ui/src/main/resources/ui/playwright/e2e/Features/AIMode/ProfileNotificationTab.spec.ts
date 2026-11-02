@@ -657,9 +657,11 @@ test('Edit cancel returns to the detail and the owner picker takes two users', a
 
       const detailResponse = waitForResponseWithStatus(
         page,
+        // The detail page also requests `/name/<fqn>/eventsRecord`; match only the alert itself.
         (res) =>
-          res.url().includes(`/api/v1/events/subscriptions/name/`) &&
-          res.request().method() === 'GET',
+          /^\/api\/v1\/events\/subscriptions\/name\/[^/]+$/.test(
+            new URL(res.url()).pathname
+          ) && res.request().method() === 'GET',
         200
       );
       await page.getByTestId('cancel-btn').click();
