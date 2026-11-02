@@ -26,6 +26,8 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -235,5 +237,62 @@ public class SecretsManagerLifecycleTest {
 
     secretsManager.deleteContextPluginConnectionSecrets(encrypted, "my-plugin");
     assertFalse(secretsManager.getSecretsMap().containsKey(fieldPath));
+  }
+
+  @Test
+  void testListSecretsLifecycle() {
+    InMemorySecretsManager manager = passThroughFernetSecretsManager();
+    McpConnection stored =
+        (McpConnection)
+            manager.encryptServiceConnectionConfig(
+                mcpConnection("alpha-key", "beta-key"), "Mcp", "mcp-lists", ServiceType.MCP);
+    List<String> secretIds = referencedSecretIds(stored);
+    assertEquals(2, secretIds.size());
+    secretIds.forEach(secretId -> assertTrue(manager.getSecretsMap().containsKey(secretId)));
+
+    manager.deleteSecretsFromServiceConnectionConfig(stored, "Mcp", "mcp-lists", ServiceType.MCP);
+
+    secretIds.forEach(secretId -> assertFalse(manager.getSecretsMap().containsKey(secretId)));
+  }
+
+  /** An older entity holds the value itself in a list, and a user can point at their own secret. */
+  @Test
+  void deletingListSecretsLeavesSecretsTheEntityDoesNotReference() {
+    InMemorySecretsManager manager = passThroughFernetSecretsManager();
+    McpConnection stored =
+        (McpConnection)
+            manager.encryptServiceConnectionConfig(
+                mcpConnection("alpha-key", "beta-key"), "Mcp", "mcp-lists", ServiceType.MCP);
+    List<String> secretIds = referencedSecretIds(stored);
+
+    manager.deleteSecretsFromServiceConnectionConfig(
+        mcpConnection("alpha-key", "secret:/custom/beta"), "Mcp", "mcp-lists", ServiceType.MCP);
+
+    secretIds.forEach(secretId -> assertTrue(manager.getSecretsMap().containsKey(secretId)));
+  }
+
+  private static InMemorySecretsManager passThroughFernetSecretsManager() {
+    InMemorySecretsManager manager =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of(), null)) {};
+    Fernet fernet = Mockito.mock(Fernet.class);
+    lenient().when(fernet.decryptIfApplies(anyString())).thenAnswer(call -> call.getArgument(0));
+    lenient().when(fernet.encrypt(anyString())).thenAnswer(call -> call.getArgument(0));
+    manager.setFernet(fernet);
+    return manager;
+  }
+
+  private static McpConnection mcpConnection(String alphaKey, String betaKey) {
+    return new McpConnection()
+        .withServers(
+            List.of(
+                new McpServerConfig().withName("alpha").withApiKey(alphaKey),
+                new McpServerConfig().withName("beta").withApiKey(betaKey)));
+  }
+
+  private static List<String> referencedSecretIds(McpConnection connection) {
+    return connection.getServers().stream()
+        .map(server -> server.getApiKey().substring(SecretsManager.SECRET_FIELD_PREFIX.length()))
+        .toList();
   }
 }

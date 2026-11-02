@@ -19,11 +19,13 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -437,6 +439,28 @@ public abstract class SecretsManager {
     return null;
   }
 
+  /**
+   * Applies {@code action} to each OpenMetadata object held in {@code obj} when it is a collection,
+   * passing the element index. Collections were previously not traversed, so a secret declared
+   * inside a JSON-schema array was never encrypted and was persisted in cleartext.
+   *
+   * <p>Every walker here routes through this so that encrypt and delete derive the same secret id
+   * for the same element - otherwise deleting a service would strand its secrets in the store.
+   */
+  private static void forEachTraversableElement(Object obj, BiConsumer<Object, String> action) {
+    if (!(obj instanceof Collection<?> collection)) {
+      return;
+    }
+    List<String> elementKeys = ReflectionUtil.getCollectionElementKeys(collection);
+    int index = 0;
+    for (Object element : collection) {
+      if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(element))) {
+        action.accept(element, elementKeys.get(index));
+      }
+      index++;
+    }
+  }
+
   private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
     try {
       if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
@@ -469,6 +493,18 @@ public abstract class SecretsManager {
                             ? newFieldValue
                             : store ? fernet.encrypt(newFieldValue) : newFieldValue,
                         toSet);
+                  } else {
+                    forEachTraversableElement(
+                        obj,
+                        (element, elementKey) ->
+                            encryptPasswordFields(
+                                element,
+                                buildSecretId(
+                                    false,
+                                    secretId,
+                                    fieldName.toLowerCase(Locale.ROOT),
+                                    elementKey),
+                                store));
                   }
                 });
       }
@@ -507,6 +543,9 @@ public abstract class SecretsManager {
                       toDecryptObject,
                       Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue,
                       toSet);
+                } else {
+                  forEachTraversableElement(
+                      obj, (element, elementKey) -> decryptPasswordFields(element));
                 }
               });
       return toDecryptObject;
@@ -547,6 +586,8 @@ public abstract class SecretsManager {
                           ? getSecretValue(fieldValue)
                           : fieldValue,
                       toSet);
+                } else {
+                  forEachTraversableElement(obj, (element, elementKey) -> getSecretFields(element));
                 }
               });
       return toDecryptObject;
@@ -637,6 +678,11 @@ public abstract class SecretsManager {
     }
   }
 
+  /** Whether a stored field value is the reference to this secret that storeValue writes. */
+  private boolean isReferenceTo(String fieldValue, String fieldSecretId) {
+    return (SECRET_FIELD_PREFIX + fieldSecretId).equals(fernet.decryptIfApplies(fieldValue));
+  }
+
   public void deleteSecretsFromWorkflow(Workflow workflow) {
     Workflow workflowConverted =
         (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
@@ -653,6 +699,16 @@ public abstract class SecretsManager {
   }
 
   private void deleteSecrets(Object toDeleteSecretsFrom, String secretId) {
+    deleteSecrets(toDeleteSecretsFrom, secretId, false);
+  }
+
+  /**
+   * @param onlyReferencedSecrets delete a field's secret only when the field references it. Secrets
+   *     in lists were not stored before list elements were walked, so an older entity still holds
+   *     the value itself there, and external stores fail the delete of a secret that does not exist.
+   */
+  private void deleteSecrets(
+      Object toDeleteSecretsFrom, String secretId, boolean onlyReferencedSecrets) {
     if (!DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
       Arrays.stream(toDeleteSecretsFrom.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
@@ -665,10 +721,24 @@ public abstract class SecretsManager {
                 // encrypt at encryptPasswordFields
                 if (CommonUtil.isOpenMetadataObject(obj)) {
                   deleteSecrets(
-                      obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                      obj,
+                      buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)),
+                      onlyReferencedSecrets);
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  deleteSecretInternal(
-                      buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                  String fieldSecretId =
+                      buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+                  if (!onlyReferencedSecrets || isReferenceTo((String) obj, fieldSecretId)) {
+                    deleteSecretInternal(fieldSecretId);
+                  }
+                } else {
+                  forEachTraversableElement(
+                      obj,
+                      (element, elementKey) ->
+                          deleteSecrets(
+                              element,
+                              buildSecretId(
+                                  false, secretId, fieldName.toLowerCase(Locale.ROOT), elementKey),
+                              true));
                 }
               });
     }

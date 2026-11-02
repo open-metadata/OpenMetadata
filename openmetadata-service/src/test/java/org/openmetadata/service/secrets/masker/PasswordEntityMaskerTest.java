@@ -2,6 +2,8 @@ package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -12,10 +14,15 @@ import org.openmetadata.schema.services.connections.database.CassandraConnection
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig__1;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
+  private static final String ALPHA_KEY = "alpha-api-key";
+  private static final String BETA_KEY = "beta-api-key";
+
   private static final String TOKEN = "openmetadata-token";
 
   public PasswordEntityMaskerTest() {
@@ -122,5 +129,91 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
     assertEquals(
         "Failed to unmask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
+  }
+
+  @Test
+  void testCollectionSecretsFollowTheElementNotThePosition() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("alpha").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("beta").withApiKey(BETA_KEY)));
+    // What the edit form sends back after deleting "alpha": "beta" alone, key still masked.
+    McpConnection edited =
+        new McpConnection()
+            .withServers(
+                List.of(new McpServerConfig().withName("beta").withApiKey(getMaskedPassword())));
+
+    McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(edited, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(1, restored.getServers().size());
+    assertEquals(BETA_KEY, restored.getServers().getFirst().getApiKey());
+  }
+
+  @Test
+  void testCollectionSecretsSurviveReordering() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("alpha").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("beta").withApiKey(BETA_KEY)));
+    McpConnection reordered =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("beta").withApiKey(getMaskedPassword()),
+                    new McpServerConfig().withName("alpha").withApiKey(getMaskedPassword())));
+
+    McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(reordered, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(BETA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(ALPHA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
+  @Test
+  void testDuplicateNamesDoNotShareASecret() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("dup").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("dup").withApiKey(BETA_KEY)));
+    McpConnection edited =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("dup").withApiKey(getMaskedPassword()),
+                    new McpServerConfig().withName("dup").withApiKey(getMaskedPassword())));
+
+    McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(edited, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(ALPHA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
+  @Test
+  void testNullListElementIsSkipped() {
+    McpConnection mcpConnection =
+        new McpConnection()
+            .withServers(
+                Arrays.asList(null, new McpServerConfig().withName("alpha").withApiKey(ALPHA_KEY)));
+
+    McpConnection masked =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(mcpConnection, "Mcp", ServiceType.MCP);
+
+    assertEquals(getMaskedPassword(), masked.getServers().get(1).getApiKey());
   }
 }

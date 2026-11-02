@@ -31,6 +31,8 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
@@ -92,6 +94,33 @@ public class DBSecretsManagerTest {
   @Test
   void testReturnsExpectedSecretManagerProvider() {
     assertEquals(SecretsManagerProvider.DB, secretsManager.getSecretsManagerProvider());
+  }
+
+  /** A secret inside a JSON-schema array, such as an MCP server's API key, is encrypted at rest. */
+  @Test
+  void testEncryptsSecretsInsideAList() {
+    McpConnection actualConfig =
+        (McpConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                mcpConnection(DECRYPTED_VALUE), "Mcp", "test", ServiceType.MCP);
+    actualConfig.getServers().forEach(server -> assertEquals(ENCRYPTED_VALUE, server.getApiKey()));
+  }
+
+  @Test
+  void testDecryptsSecretsInsideAList() {
+    McpConnection actualConfig =
+        (McpConnection)
+            secretsManager.decryptServiceConnectionConfig(
+                mcpConnection(ENCRYPTED_VALUE), "Mcp", ServiceType.MCP);
+    actualConfig.getServers().forEach(server -> assertEquals(DECRYPTED_VALUE, server.getApiKey()));
+  }
+
+  private static McpConnection mcpConnection(String apiKey) {
+    return new McpConnection()
+        .withServers(
+            List.of(
+                new McpServerConfig().withName("alpha").withApiKey(apiKey),
+                new McpServerConfig().withName("beta").withApiKey(apiKey)));
   }
 
   private void testEncryptServiceConnection() {
