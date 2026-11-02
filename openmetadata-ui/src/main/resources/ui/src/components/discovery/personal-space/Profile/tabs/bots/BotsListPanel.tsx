@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   Input,
   PaginationCardWithControls,
   Skeleton,
@@ -25,7 +24,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  CpuChip01,
   NoSearch,
+  Plus,
   Search,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
@@ -63,7 +64,9 @@ import { formatUsersResponse } from '../../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { escapeESReservedCharacters } from '../../../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { BotsView } from './BotsPanel.types';
 
@@ -101,7 +104,6 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const [bots, setBots] = useState<Bot[]>([]);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedBot, setSelectedBot] = useState<Bot>();
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [paging, setPaging] = useState<Paging>({ total: 0 });
@@ -327,7 +329,6 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
   const handleDeleteAction = useCallback(() => {
     getResourceLimit('bot', true, true);
-    setSelectedBot(undefined);
     botMapLoadPromiseRef.current = null;
     botsByUserNameRef.current = new Map();
     setReloadKey((k) => k + 1);
@@ -446,21 +447,28 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
         }
 
         return (
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`bot-delete-${bot.name}`}
-            icon={Trash01}
-            isDisabled={isDisabled}
-            size="xs"
-            tooltip={tooltipContent}
-            onPress={() => setSelectedBot(bot)}
-          />
+          <DeleteEntityPopover
+            afterDeleteAction={handleDeleteAction}
+            allowSoftDelete={!showDeleted}
+            data-testid="delete-bot-popover"
+            entityId={bot.id}
+            entityName={getEntityName(bot)}
+            entityType={EntityType.BOT}>
+            <ButtonUtility
+              color="tertiary"
+              data-testid={`bot-delete-${bot.name}`}
+              icon={Trash01}
+              isDisabled={isDisabled}
+              size="xs"
+              tooltip={tooltipContent}
+            />
+          </DeleteEntityPopover>
         );
       }
 
       return null;
     },
-    [isAdminUser, onNavigate, t]
+    [isAdminUser, onNavigate, t, showDeleted, handleDeleteAction]
   );
 
   const renderEmptyState = useCallback(() => {
@@ -476,11 +484,19 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
     if (searchTerm.trim()) {
       return (
-        <div className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder
+        <div className="tw:relative tw:min-h-70">
+          <NoSearchResultsPlaceholder
+            actions={[
+              {
+                color: 'primary' as const,
+                key: 'clear-filters',
+                label: t('label.clear-entity', { entity: t('label.all') }),
+                onPress: () => handleSearch(''),
+              },
+            ]}
             data-testid="search-error-placeholder"
             description={t('message.check-spelling-or-try-different-term')}
-            icon={<NoSearch className="tw:text-quaternary" />}
+            icon={<NoSearch />}
             title={t('label.no-matching-results')}
           />
         </div>
@@ -488,13 +504,14 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
     }
 
     return (
-      <div className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+      <div className="tw:relative tw:min-h-70">
+        <NoDataPlaceholder
           actions={
             isAdminUser && !showDeleted
               ? [
                   {
                     color: 'primary' as const,
+                    iconLeading: Plus,
                     key: 'add-bot',
                     label: t('label.add-entity', {
                       entity: t('label.bot'),
@@ -504,13 +521,14 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
                 ]
               : undefined
           }
-          title={t('label.no-entity-found', {
-            entity: t('label.bot-plural'),
-          })}
+          description={t('label.no-bots-yet-description')}
+          icon={<CpuChip01 className="tw:text-fg-brand-primary" />}
+          title={t('label.no-bots-yet')}
         />
       </div>
     );
   }, [
+    handleSearch,
     isAdminUser,
     isLoading,
     onNavigate,
@@ -526,7 +544,10 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
       data-testid="bots-list-panel"
       direction="col"
       gap={4}>
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col tw:rounded-xl tw:shadow-none"
+        size="compact"
+        variant="muted">
         <Box
           align="center"
           className="tw:border-b tw:border-subtle tw:px-4 tw:py-3"
@@ -603,16 +624,6 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
           />
         )}
       </TableCard.Root>
-
-      <DeleteEntityModal
-        afterDeleteAction={handleDeleteAction}
-        allowSoftDelete={!showDeleted}
-        entityId={selectedBot?.id ?? ''}
-        entityName={getEntityName(selectedBot)}
-        entityType={EntityType.BOT}
-        visible={Boolean(selectedBot)}
-        onCancel={() => setSelectedBot(undefined)}
-      />
     </Box>
   );
 };

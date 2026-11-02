@@ -72,6 +72,8 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
+import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
@@ -261,6 +263,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
   // Configuration
   private final K8sPipelineClientConfig k8sConfig;
   private final String metadataApiEndpoint;
+  private final VerifySSL verifySSL;
+  private final ValidateSSLClientConfig sslConfig;
   private final boolean useOMJobOperator;
 
   public K8sPipelineClient(PipelineServiceClientConfiguration clientConfig) {
@@ -288,6 +292,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     this.k8sConfig = new K8sPipelineClientConfig(params);
     this.metadataApiEndpoint = clientConfig.getMetadataApiEndpoint();
+    this.verifySSL =
+        clientConfig.getVerifySSL() == null ? VerifySSL.NO_SSL : clientConfig.getVerifySSL();
+    this.sslConfig =
+        verifySSL == VerifySSL.VALIDATE
+            ? JsonUtils.convertValue(clientConfig.getSslConfig(), ValidateSSLClientConfig.class)
+            : null;
     this.useOMJobOperator =
         Boolean.parseBoolean(getStringParam(params, USE_OM_JOB_OPERATOR_KEY, "false"));
 
@@ -2039,7 +2049,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
         .withSecurityConfig(
             new org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig()
                 .withJwtToken(jwtToken))
-        .withVerifySSL(org.openmetadata.schema.security.ssl.VerifySSL.NO_SSL)
+        .withVerifySSL(verifySSL)
+        .withSslConfig(sslConfig)
         .withSecretsManagerLoader(
             org.openmetadata.schema.security.secrets.SecretsManagerClientLoader.NOOP)
         .withSecretsManagerProvider(

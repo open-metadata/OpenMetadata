@@ -14,10 +14,10 @@ import { isEmpty } from 'lodash';
 import { FC, Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
+import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { CustomPropertyChanges } from '../../../rest/metadataTypeAPI';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import CustomPropertiesListTable from './CustomPropertiesListTable';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
@@ -81,16 +81,17 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         canEdit={hasAccess}
         customProperties={customProperties}
         emptyText={
-          <ErrorPlaceHolder
-            className="mt-xs border-none"
-            doc={ADD_CUSTOM_PROPERTIES_DOCS}
-            heading={t('label.property')}
-            permission={hasAccess}
-            permissionValue={t('label.create-entity', {
-              entity: t('label.custom-property'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <CreatePlaceholder
+              data-testid={`create-error-placeholder-${t('label.property')}`}
+              doc={ADD_CUSTOM_PROPERTIES_DOCS}
+              heading={t('label.property')}
+              permission={hasAccess}
+              permissionValue={t('label.create-entity', {
+                entity: t('label.custom-property'),
+              })}
+            />
+          </div>
         }
         isLoading={isLoading}
         onDelete={handleDelete}

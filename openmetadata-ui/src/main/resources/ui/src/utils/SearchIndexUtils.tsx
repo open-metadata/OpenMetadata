@@ -21,13 +21,12 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
@@ -167,13 +166,14 @@ export const getSearchIndexDetailsTabs = ({
         />
       ) : (
         <div className="m-t-xlg">
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.sample-data'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <PermissionPlaceholder
+              data-testid="permission-error-placeholder"
+              permissionValue={t('label.view-entity', {
+                entity: t('label.sample-data'),
+              })}
+            />
+          </div>
         </div>
       ),
     },

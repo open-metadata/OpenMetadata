@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
@@ -23,6 +24,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -44,6 +46,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
@@ -393,6 +396,44 @@ class CreateEntityToolTest {
   }
 
   @Test
+  void contextMemoryAnswerReducesAQueryTheCallerMayNotViewToIdAndType() {
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(ContextMemory.class);
+    EntityReference query =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.QUERY)
+            .withName("payroll")
+            .withFullyQualifiedName("erp.payroll")
+            .withDisplayName("Who earns more than the CEO?");
+    ContextMemory saved =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("memory")
+            .withFullyQualifiedName("memory")
+            .withRelatedEntities(List.of(query));
+    stubWrite(repository, saved);
+    Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorize(
+            any(), argThat(operation -> Entity.QUERY.equals(operation.getResource())), any());
+    Map<String, Object> params = params(Entity.CONTEXT_MEMORY);
+    params.put("attributes", Map.of("question", "Q", "answer", "A"));
+
+    Map<String, Object> result =
+        withRepository(
+            Entity.CONTEXT_MEMORY,
+            repository,
+            () ->
+                new CreateEntityTool()
+                    .execute(authorizer, mock(Limits.class), securityContext(), params));
+
+    assertEquals(
+        List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)),
+        result.get("relatedEntities"));
+  }
+
+  @Test
   void deniedCallerDoesNotReachPersistence() {
     EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
     Authorizer authorizer = mock(Authorizer.class);
@@ -646,6 +687,42 @@ class CreateEntityToolTest {
                     () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
 
     assertTrue(failure.getMessage().contains("children"), failure.getMessage());
+    verify(repository, never()).prepareInternal(any(), anyBoolean());
+  }
+
+  @Test
+  void aDataContractCannotBeGivenFieldsItsRepositoryOwns() {
+    // A caller-supplied testSuite pointed a new contract at another contract's suite.
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(DataContract.class);
+
+    Map<String, Object> described =
+        withRepository(
+            Entity.DATA_CONTRACT,
+            repository,
+            () ->
+                new DescribeEntityTypeTool()
+                    .execute(null, null, Map.of("entityType", Entity.DATA_CONTRACT)));
+
+    assertTrue(
+        Collections.disjoint(
+            attributeNames(described),
+            Set.of("testSuite", "latestResult", "contractUpdates", "inherited")),
+        attributeNames(described).toString());
+
+    Map<String, Object> params = params(Entity.DATA_CONTRACT);
+    params.put(
+        "attributes",
+        Map.of("testSuite", Map.of("id", UUID.randomUUID().toString(), "type", Entity.TEST_SUITE)));
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                withRepository(
+                    Entity.DATA_CONTRACT,
+                    repository,
+                    () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
+
+    assertTrue(failure.getMessage().contains("testSuite"), failure.getMessage());
     verify(repository, never()).prepareInternal(any(), anyBoolean());
   }
 

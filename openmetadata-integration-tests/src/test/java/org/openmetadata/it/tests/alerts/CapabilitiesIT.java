@@ -19,12 +19,14 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.AlertCapabilities;
 import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
+import org.openmetadata.schema.api.events.AlertConditionCapability;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.AlertSourceCapability;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -50,17 +52,52 @@ class CapabilitiesIT {
     assertFalse(capabilities.getTriggers().isEmpty());
   }
 
-  // Offered in the form, never enforced on save.
+  // Pipelines and ingestion pipelines name this filter after their own assets.
+  @Test
+  void filterTheSourcesNameDifferentlyHasItsGeneralName() {
+    AlertCapabilities capabilities =
+        ask(AlertType.OBSERVABILITY, List.of("pipeline", "ingestionPipeline"));
+
+    assertEquals("Entity FQN", filter(capabilities, "filterByFqn").getDisplayName());
+    assertEquals("Update is Bot", filter(capabilities, "filterByUpdaterIsBot").getDisplayName());
+  }
+
+  // Offered in the form, never enforced on save. A task has no owners, so they are not offered.
   @Test
   void offersTheRecipientsInsideThePlatformTheSourcesReach() {
     AlertCapabilities capabilities = ask(AlertType.NOTIFICATION, List.of("task"));
 
     assertEquals(
-        List.of(
-            SubscriptionCategory.ASSIGNEES,
-            SubscriptionCategory.OWNERS,
-            SubscriptionCategory.MENTIONS),
+        List.of(SubscriptionCategory.ASSIGNEES, SubscriptionCategory.MENTIONS),
         capabilities.getRecipientCategories());
+  }
+
+  // Owners and followers are fields of the entity, so a type without the field offers no one.
+  @Test
+  void entitySourceOffersTheOwnersAndFollowersItsTypeHolds() {
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS,
+            SubscriptionCategory.TEAMS,
+            SubscriptionCategory.ADMINS,
+            SubscriptionCategory.OWNERS,
+            SubscriptionCategory.FOLLOWERS),
+        ask(AlertType.NOTIFICATION, List.of("table")).getRecipientCategories());
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS,
+            SubscriptionCategory.TEAMS,
+            SubscriptionCategory.ADMINS,
+            SubscriptionCategory.OWNERS),
+        ask(AlertType.NOTIFICATION, List.of("glossaryTerm")).getRecipientCategories());
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS, SubscriptionCategory.TEAMS, SubscriptionCategory.ADMINS),
+        ask(AlertType.NOTIFICATION, List.of("user")).getRecipientCategories());
+    assertFalse(
+        ask(AlertType.OBSERVABILITY, List.of("testSuite"))
+            .getRecipientCategories()
+            .contains(SubscriptionCategory.FOLLOWERS));
   }
 
   @Test
@@ -119,6 +156,14 @@ class CapabilitiesIT {
         .filter(source -> name.equals(source.getName()))
         .findFirst()
         .map(AlertSourceCapability::getSelected)
+        .orElseThrow();
+  }
+
+  private static EventFilterRule filter(AlertCapabilities capabilities, String name) {
+    return capabilities.getFilters().stream()
+        .map(AlertConditionCapability::getCondition)
+        .filter(filter -> name.equals(filter.getName()))
+        .findFirst()
         .orElseThrow();
   }
 

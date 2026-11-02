@@ -20,6 +20,7 @@ import {
   hasBlankRule,
   hasUnfinishedRule,
 } from '../QueryBuilderElasticsearchFormatUtils';
+import { toEngineJsonLogic } from './jsonLogicNegation';
 
 // What a formatted tree produces, for both output types.
 interface FormattedQuery {
@@ -54,7 +55,11 @@ export const toJsonLogicQuery = (
   try {
     const jsonLogic = QbUtils.jsonLogicFormat(tree, config);
 
-    return { value: JSON.stringify(jsonLogic.logic ?? '') };
+    return {
+      value: JSON.stringify(
+        jsonLogic.logic ? toEngineJsonLogic(jsonLogic.logic) : ''
+      ),
+    };
   } catch {
     return { value: '' };
   }

@@ -51,6 +51,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -109,7 +111,6 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.security.policyevaluator.UpdatedDomainsResourceContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.BulkAssetsOperationResponse;
@@ -120,7 +121,6 @@ import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -515,7 +515,33 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getVersion(id, version);
+    T stored = repository.getVersion(id, version);
+    return snapshotRedaction(securityContext)
+        .map(redaction -> redaction.apply(stored))
+        .orElse(stored);
+  }
+
+  /**
+   * The versions and history endpoints return entities as they were stored, without the
+   * post-processing the entity's own reads apply. A resource whose entities carry secrets returns
+   * the redaction its reads apply; empty, the default, shows a stored snapshot unchanged.
+   */
+  protected Optional<UnaryOperator<T>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.empty();
+  }
+
+  /** Applies {@code redaction} to the entity a response carries, bare or inside a change event. */
+  @SuppressWarnings("unchecked")
+  protected final Response withRedactedEntity(Response response, UnaryOperator<T> redaction) {
+    Object body = response.getEntity();
+    if (entityClass.isInstance(body)) {
+      return Response.fromResponse(response).entity(redaction.apply((T) body)).build();
+    }
+    if (body instanceof ChangeEvent changeEvent
+        && entityClass.isInstance(changeEvent.getEntity())) {
+      changeEvent.setEntity(redaction.apply((T) changeEvent.getEntity()));
+    }
+    return response;
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
@@ -529,7 +555,20 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listVersions(id);
+    EntityHistory history = repository.listVersions(id);
+    snapshotRedaction(securityContext)
+        .ifPresent(
+            redaction ->
+                history.setVersions(
+                    history.getVersions().stream()
+                        .map(
+                            version ->
+                                (Object)
+                                    JsonUtils.pojoToJson(
+                                        redaction.apply(
+                                            JsonUtils.readValue((String) version, entityClass))))
+                        .collect(Collectors.toList())));
+    return history;
   }
 
   protected ResultList<T> listEntityHistoryByTimestampInternal(
@@ -543,7 +582,14 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     ResourceContext resourceContext = getResourceContext();
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+    ResultList<T> history =
+        repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+    snapshotRedaction(securityContext)
+        .ifPresent(
+            redaction ->
+                history.setData(
+                    history.getData().stream().map(redaction).collect(Collectors.toList())));
+    return history;
   }
 
   public T getByNameInternal(
@@ -612,12 +658,35 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                 uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
   }
 
+  /**
+   * Authorizes what a create or update does beyond writing the entity itself, once the CREATE or
+   * EDIT_ALL check on the entity has passed. Every create and create-or-update path, single and
+   * bulk, calls it, so a resource whose entity links to other entities checks those links in one
+   * place. {@code stored} is the saved entity, carrying what {@link
+   * #prepareCreateOrUpdateAuthorization} loaded, or null when the write creates it. Throwing fails
+   * the write; in a bulk request it fails that item alone.
+   */
+  protected void authorizeCreateOrUpdate(SecurityContext securityContext, T entity, T stored) {}
+
+  /**
+   * Loads onto the stored entities what {@link #authorizeCreateOrUpdate} reads from them, for all of
+   * them at once, so a bulk request pays one read rather than one per item. It runs before that
+   * check on every update path: for a bulk request, once with every entity the request updates.
+   */
+  protected void prepareCreateOrUpdateAuthorization(List<T> stored) {}
+
+  private void authorizeUpdate(SecurityContext securityContext, T entity, T stored) {
+    prepareCreateOrUpdateAuthorization(List.of(stored));
+    authorizeCreateOrUpdate(securityContext, entity, stored);
+  }
+
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     OperationContext operationContext = new OperationContext(entityType, CREATE);
     CreateResourceContext<T> createResourceContext =
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
+    authorizeCreateOrUpdate(securityContext, entity, null);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     T createdEntity =
         addHref(
@@ -638,6 +707,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    authorizeCreateOrUpdate(securityContext, entity, null);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     T createdEntity =
         addHref(
@@ -659,6 +729,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
+      authorizeCreateOrUpdate(securityContext, entity, null);
       T createdEntity =
           addHref(
               uriInfo,
@@ -666,14 +737,13 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                   uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
+    // Already loaded by createOrUpdateOperation, so handing it over costs no read.
+    T stored = entityClass.cast(resourceContext.getEntity());
     resourceContext =
         getResourceContextByName(
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    authorizeDomainChange(
-        securityContext,
-        resourceContext,
-        appliedPutDomains(securityContext, resourceContext, entity));
+    authorizeUpdate(securityContext, entity, stored);
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
@@ -697,6 +767,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+      authorizeCreateOrUpdate(securityContext, entity, null);
       T createdEntity =
           addHref(
               uriInfo,
@@ -705,103 +776,11 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-    authorizeDomainChange(
-        securityContext,
-        resourceContext,
-        appliedPutDomains(securityContext, resourceContext, entity));
+    authorizeUpdate(securityContext, entity, entityClass.cast(resourceContext.getEntity()));
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
-  }
-
-  /**
-   * Authorizes the domains an update moves the asset <i>into</i>. A null {@code updatedDomains}
-   * means the request leaves the assignment alone.
-   *
-   * <p>An update is authorized against the stored entity, so a reassignment would otherwise be
-   * judged only against the domain the asset is leaving. A user whose grant is conditioned on {@code
-   * hasDomain()} could then move assets into domains they do not hold, and an asset carrying no
-   * domain at all — for which {@code hasDomain()} deliberately returns true — could be moved
-   * anywhere.
-   */
-  private void authorizeDomainChange(
-      SecurityContext securityContext,
-      ResourceContextInterface resourceContext,
-      List<EntityReference> updatedDomains) {
-    if (updatedDomains == null || !domainsChanged(resourceContext.getDomains(), updatedDomains)) {
-      return;
-    }
-    // Authorize against the domains resolved server-side by id, not the references the client sent.
-    // The repository persists a domain by its id (validateDomainsByRef), while hasDomain() compares
-    // only the FQN, so a client-supplied {id, fullyQualifiedName} pair whose FQN names a held
-    // domain
-    // but whose id points elsewhere would otherwise pass the check yet be stored under the other
-    // domain. Resolving by id makes the authorized FQN match what will be persisted.
-    List<EntityReference> resolvedDomains = resolveDomainsById(updatedDomains);
-    try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(entityType, MetadataOperation.EDIT_DOMAINS),
-          new UpdatedDomainsResourceContext(resourceContext, resolvedDomains));
-    } catch (AuthorizationException e) {
-      throw domainChangeDenied(securityContext, resolvedDomains, e);
-    }
-  }
-
-  /**
-   * Resolves each target domain from the store so the reference carries the real, persisted FQN.
-   * Keys on id when present (the field the repository persists), falling back to the FQN only for an
-   * id-less reference. An unresolvable reference throws, which denies the change rather than
-   * authorizing a domain that does not exist.
-   */
-  private List<EntityReference> resolveDomainsById(List<EntityReference> domains) {
-    List<EntityReference> resolved = new ArrayList<>(domains.size());
-    for (EntityReference domain : domains) {
-      resolved.add(
-          domain.getId() != null
-              ? Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), Include.NON_DELETED)
-              : Entity.getEntityReferenceByName(
-                  Entity.DOMAIN, domain.getFullyQualifiedName(), Include.NON_DELETED));
-    }
-    return resolved;
-  }
-
-  /** Names the domains the caller was reaching for, which the generic denial does not. */
-  private static AuthorizationException domainChangeDenied(
-      SecurityContext securityContext,
-      List<EntityReference> targetDomains,
-      AuthorizationException cause) {
-    return new AuthorizationException(
-        CatalogExceptionMessage.domainPermissionNotAllowed(
-            securityContext.getUserPrincipal().getName(),
-            targetDomains,
-            List.of(MetadataOperation.EDIT_DOMAINS)),
-        cause);
-  }
-
-  /**
-   * Domains a PUT actually applies, or null when the stored assignment survives it. Mirrors {@code
-   * EntityRepository.EntityUpdater.updateDomains}: a PUT carrying no domains keeps the stored ones,
-   * and a bot's PUT never overwrites a non-empty assignment.
-   */
-  private List<EntityReference> appliedPutDomains(
-      SecurityContext securityContext, ResourceContextInterface resourceContext, T entity) {
-    if (nullOrEmpty(entity.getDomains())) {
-      return null;
-    }
-    boolean botCannotOverwrite =
-        getSubjectContext(securityContext).isBot() && !nullOrEmpty(resourceContext.getDomains());
-    return botCannotOverwrite ? null : entity.getDomains();
-  }
-
-  private static boolean domainsChanged(
-      List<EntityReference> stored, List<EntityReference> updated) {
-    return !domainIds(stored).equals(domainIds(updated));
-  }
-
-  private static Set<UUID> domainIds(List<EntityReference> domains) {
-    return listOrEmpty(domains).stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   /** Deprecated: use method with changeContext
@@ -836,11 +815,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ChangeSource changeSource,
       String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    ResourceContextInterface resourceContext =
-        getResourceContextById(id, ResourceContextInterface.Operation.PATCH);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    authorizeDomainChange(
-        securityContext, resourceContext, JsonPatchUtils.getPatchedDomains(resourceContext, patch));
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
@@ -869,10 +847,6 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       UUID id,
       JsonPatch patch) {
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-    ResourceContextInterface resourceContext =
-        getResourceContextById(id, ResourceContextInterface.Operation.PATCH);
-    authorizeDomainChange(
-        securityContext, resourceContext, JsonPatchUtils.getPatchedDomains(resourceContext, patch));
     String ifMatchHeader =
         org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
@@ -914,11 +888,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ChangeSource changeSource,
       String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    ResourceContextInterface resourceContext =
-        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    authorizeDomainChange(
-        securityContext, resourceContext, JsonPatchUtils.getPatchedDomains(resourceContext, patch));
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
@@ -1728,6 +1701,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       }
       if (!existingEntities.isEmpty()) {
         repository.enrichEntitiesForAuth(existingEntities);
+        prepareCreateOrUpdateAuthorization(existingEntities);
       }
     }
 
@@ -1752,6 +1726,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
               new CreateResourceContext<>(entityType, entity);
           limits.enforceLimits(securityContext, createResourceContext, operationContext);
           authorizer.authorize(securityContext, operationContext, createResourceContext);
+          authorizeCreateOrUpdate(securityContext, entity, null);
         } else {
           MetadataOperation operation = MetadataOperation.EDIT_ALL;
           OperationContext operationContext = new OperationContext(entityType, operation);
@@ -1759,6 +1734,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
           ResourceContext<T> resourceContext =
               new ResourceContext<>(entityType, existingEntity, repository, bulkFieldHydrator);
           authorizer.authorize(securityContext, operationContext, resourceContext);
+          authorizeCreateOrUpdate(securityContext, entity, existingEntity);
         }
 
         validEntities.add(entity);

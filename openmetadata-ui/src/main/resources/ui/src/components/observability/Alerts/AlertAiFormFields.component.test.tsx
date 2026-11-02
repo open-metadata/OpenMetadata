@@ -29,9 +29,11 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { isEmpty } from 'lodash';
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
+import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
 import { AlertType } from '../../../generated/events/api/createEventSubscription';
 import {
   AlertType as EventSubscriptionAlertType,
@@ -46,12 +48,14 @@ import {
   Type,
   type Destination,
 } from '../../../generated/events/eventSubscription';
+import type { AlertSelection } from '../../../hooks/useAlertSelection';
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import type { SelectionSupport } from '../../../utils/Alerts/AlertSelectionUtil';
 import { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
@@ -72,6 +76,46 @@ const applyLastUpdater = (
   prev: ModifiedCreateEventSubscription
 ): ModifiedCreateEventSubscription =>
   onChange.mock.calls[onChange.mock.calls.length - 1][0](prev);
+
+const makeSourceSearch = (): AlertSourceSearch => ({
+  byId: jest.fn().mockResolvedValue([]),
+  byName: jest.fn().mockResolvedValue([]),
+  containerEntities: [],
+  indexes: [],
+});
+
+// The sources the server lists for the picker.
+const LISTED_SOURCES = {
+  alertType: 'Observability',
+  filters: [],
+  triggers: [],
+  sources: ['table', 'topic', 'pipeline'].map((name) => ({
+    name,
+    kind: 'entity',
+  })),
+} as unknown as AlertCapabilities;
+
+// What the page that shows the form hands it: what the chosen sources support, and their search.
+// An answer for the chosen sources says whether it lists any rule, as getSelectionSupport does.
+const selectionOf = (support: SelectionSupport = {}): AlertSelection => ({
+  sources: [],
+  support: {
+    hasFilters: support.supportedFilters && !isEmpty(support.supportedFilters),
+    hasTriggers:
+      support.supportedTriggers && !isEmpty(support.supportedTriggers),
+    ...support,
+  },
+  capabilities: {
+    selection: LISTED_SOURCES,
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
+  loading: false,
+  search: makeSourceSearch(),
+});
 
 jest.mock('../../../rest/alertsAPI', () => ({
   testAlertDestination: jest.fn().mockResolvedValue([]),
@@ -631,6 +675,8 @@ describe('AlertAi form field components', () => {
       <AlertAiRuleSection
         isViewOnly
         field="filters"
+        selectedSources={[]}
+        sourceSearch={makeSourceSearch()}
         supportedRules={[]}
         title="Filters"
         value={baseValue}
@@ -653,7 +699,8 @@ describe('AlertAi form field components', () => {
     render(
       <AlertAiRuleSection
         field="filters"
-        selectedSource={undefined}
+        selectedSources={[]}
+        sourceSearch={makeSourceSearch()}
         supportedRules={supportedRules}
         title="Filters"
         value={baseValue}
@@ -665,10 +712,10 @@ describe('AlertAi form field components', () => {
     expect(addFilterButton).toBeDisabled();
   });
 
-  it('enables add rule buttons from selected source descriptors', () => {
+  it('enables add rule buttons once the chosen sources support rules', () => {
     const value = {
       ...baseValue,
-      resources: ['table'],
+      resources: ['table', 'topic'],
     } as ModifiedCreateEventSubscription;
     const sourceRule: EventFilterRule = {
       condition: '',
@@ -681,13 +728,10 @@ describe('AlertAi form field components', () => {
       <AlertAiFormFields
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[
-          {
-            name: 'table',
-            supportedActions: [sourceRule],
-            supportedFilters: [sourceRule],
-          },
-        ]}
+        selection={selectionOf({
+          supportedFilters: [sourceRule],
+          supportedTriggers: [sourceRule],
+        })}
         value={value}
         onChange={jest.fn()}
       />
@@ -713,7 +757,8 @@ describe('AlertAi form field components', () => {
       <AlertAiRuleSection
         isViewOnly
         field="filters"
-        selectedSource="table"
+        selectedSources={['table']}
+        sourceSearch={makeSourceSearch()}
         supportedRules={[
           {
             condition: '',
@@ -751,7 +796,8 @@ describe('AlertAi form field components', () => {
       render(
         <AlertAiRuleSection
           field="filters"
-          selectedSource="table"
+          selectedSources={['table']}
+          sourceSearch={makeSourceSearch()}
           supportedRules={[
             {
               arguments: ['domainList'],
@@ -825,7 +871,8 @@ describe('AlertAi form field components', () => {
     render(
       <AlertAiRuleSection
         field="filters"
-        selectedSource="table"
+        selectedSources={['table']}
+        sourceSearch={makeSourceSearch()}
         supportedRules={[
           {
             arguments: ['domainList'],
@@ -933,7 +980,8 @@ describe('AlertAi form field components', () => {
     render(
       <AlertAiRuleSection
         field="actions"
-        selectedSource="testCase"
+        selectedSources={['testCase']}
+        sourceSearch={makeSourceSearch()}
         supportedRules={[
           {
             arguments: ['testResultList'],
@@ -996,7 +1044,8 @@ describe('AlertAi form field components', () => {
       render(
         <AlertAiRuleSection
           field="actions"
-          selectedSource="testCase"
+          selectedSources={['testCase']}
+          sourceSearch={makeSourceSearch()}
           supportedRules={[
             {
               arguments: ['testStatusList', 'testSuiteList'],
@@ -1047,7 +1096,7 @@ describe('AlertAi form field components', () => {
     render(
       <AlertAiDestinationSection
         isViewOnly
-        selectedSource="table"
+        selectedSources={['table']}
         value={value}
       />
     );
@@ -1461,7 +1510,9 @@ describe('AlertAi form field components', () => {
       destinations: [destination],
     } as ModifiedCreateEventSubscription;
 
-    render(<AlertAiDestinationSection selectedSource="table" value={value} />);
+    render(
+      <AlertAiDestinationSection selectedSources={['table']} value={value} />
+    );
 
     expect(screen.getByTestId('test-destination-button')).not.toBeDisabled();
 
@@ -1495,7 +1546,9 @@ describe('AlertAi form field components', () => {
       { statusDetails: { status: Status.Success, statusCode: 200 } },
     ]);
 
-    render(<AlertAiDestinationSection selectedSource="table" value={value} />);
+    render(
+      <AlertAiDestinationSection selectedSources={['table']} value={value} />
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('test-destination-button'));
@@ -1536,8 +1589,9 @@ describe('AlertAi form field components', () => {
       <AlertAiFormFields
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
-        recipientCategories={[SubscriptionCategory.Owners]}
+        selection={selectionOf({
+          recipientCategories: [SubscriptionCategory.Owners],
+        })}
         value={value}
         onChange={onChange}
       />
@@ -1584,7 +1638,7 @@ describe('AlertAi form field components', () => {
       <AlertAiFormFields
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
+        selection={selectionOf()}
         value={value}
         onChange={onChange}
       />
@@ -1625,7 +1679,7 @@ describe('AlertAi form field components', () => {
       <AlertAiFormFields
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
+        selection={selectionOf()}
         value={value}
         onChange={onChange}
       />
@@ -1662,8 +1716,8 @@ describe('AlertAi form field components', () => {
       <AlertAiForm
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
         mode="edit"
+        selection={selectionOf()}
         value={value}
         onChange={onChange}
         onSubmit={onSubmit}
@@ -1682,8 +1736,8 @@ describe('AlertAi form field components', () => {
       <AlertAiForm
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
         mode="edit"
+        selection={selectionOf()}
         value={switchedValue}
         onChange={onChange}
         onSubmit={onSubmit}
@@ -1717,8 +1771,8 @@ describe('AlertAi form field components', () => {
 
     render(
       <AlertAiForm
-        filterResources={[{ name: 'table' }]}
         mode="edit"
+        selection={selectionOf()}
         shouldShowActionsSection={false}
         shouldShowFiltersSection={false}
         value={value}
@@ -1748,7 +1802,9 @@ describe('AlertAi form field components', () => {
       ],
     } as ModifiedCreateEventSubscription;
 
-    render(<AlertAiDestinationSection selectedSource="table" value={value} />);
+    render(
+      <AlertAiDestinationSection selectedSources={['table']} value={value} />
+    );
 
     fireEvent.click(screen.getByTestId('test-destination-button'));
 
@@ -1760,8 +1816,7 @@ describe('AlertAi form field components', () => {
     expect(testAlertDestination).not.toHaveBeenCalled();
   });
 
-  it('resets dependent values when source changes', () => {
-    const onChange = jest.fn();
+  describe('several sources', () => {
     const value: ModifiedCreateEventSubscription = {
       ...baseValue,
       destinations: [
@@ -1777,31 +1832,115 @@ describe('AlertAi form field components', () => {
       },
       resources: ['table'],
     };
+    const renderFields = (onChange: jest.Mock) =>
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf()}
+          value={value}
+          onChange={onChange}
+        />
+      );
 
-    render(
-      <AlertAiFormFields
-        shouldShowActionsSection
-        shouldShowFiltersSection
-        filterResources={[{ name: 'table' }, { name: 'pipeline' }]}
-        value={value}
-        onChange={onChange}
-      />
-    );
+    it('adds a source to the ones chosen, starting the rules over but keeping the destinations', () => {
+      const onChange = jest.fn();
+      renderFields(onChange);
 
-    fireEvent.change(screen.getByTestId('source-select'), {
-      target: { value: 'pipeline' },
+      fireEvent.change(screen.getByTestId('source-select-options'), {
+        target: { value: 'pipeline' },
+      });
+
+      expect(applyLastUpdater(onChange, value)).toEqual(
+        expect.objectContaining({
+          destinations: value.destinations,
+          input: {},
+          resources: ['table', 'pipeline'],
+        })
+      );
     });
 
-    expect(applyLastUpdater(onChange, value)).toEqual(
-      expect.objectContaining({
-        destinations: [],
-        input: {},
-        resources: ['pipeline'],
-      })
-    );
+    it('starts the destinations over when a source is taken away', () => {
+      const onChange = jest.fn();
+      renderFields(onChange);
+
+      fireEvent.click(screen.getByTestId('source-select-clear-table'));
+
+      expect(applyLastUpdater(onChange, value)).toEqual(
+        expect.objectContaining({
+          destinations: [],
+          input: {},
+          resources: [],
+        })
+      );
+    });
+
+    it('shows every source a saved alert watches', () => {
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf()}
+          value={{ ...value, resources: ['table', 'pipeline'] }}
+        />
+      );
+
+      expect(
+        screen.getByTestId('source-select-clear-table')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('source-select-clear-pipeline')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('source-select')).toBeDisabled();
+    });
+
+    it('searches what every chosen source holds for a name filter', async () => {
+      const selection = selectionOf({
+        supportedFilters: [
+          {
+            arguments: ['fqnList'],
+            condition: '',
+            effect: Effect.Include,
+            inputType: InputType.Runtime,
+            name: 'filterByFqn',
+          } as EventFilterRule,
+        ],
+      });
+      (selection.search.byName as jest.Mock).mockResolvedValue([
+        { label: 'shop.orders', value: 'shop.orders' },
+      ]);
+
+      await act(async () => {
+        render(
+          <AlertAiFormFields
+            shouldShowFiltersSection
+            selection={selection}
+            shouldShowActionsSection={false}
+            value={{
+              ...value,
+              input: {
+                filters: [
+                  {
+                    arguments: [{ input: [], name: 'fqnList' }],
+                    effect: Effect.Include,
+                    name: 'filterByFqn',
+                  },
+                ],
+              },
+              resources: ['table', 'pipeline'],
+            }}
+            onChange={jest.fn()}
+          />
+        );
+      });
+
+      expect(selection.search.byName).toHaveBeenCalledWith('');
+      expect(await screen.findByText('shop.orders')).toBeInTheDocument();
+    });
   });
 
-  describe('view-mode section visibility when descriptors are unavailable', () => {
+  describe('view-mode section visibility when what the sources support is unknown', () => {
     const viewValue = {
       ...baseValue,
       input: {
@@ -1821,15 +1960,13 @@ describe('AlertAi form field components', () => {
       name: 'testResultTrigger',
     };
 
-    it('renders configured filters and triggers in view mode when both catalog and capabilities are unavailable (regression)', () => {
+    it('renders configured filters and triggers in view mode when what the sources support is unknown (regression)', () => {
       render(
         <AlertAiFormFields
           isViewOnly
           shouldShowActionsSection
           shouldShowFiltersSection
-          filterResources={[]}
-          supportedFilters={undefined}
-          supportedTriggers={undefined}
+          selection={selectionOf()}
           value={viewValue}
         />
       );
@@ -1842,15 +1979,16 @@ describe('AlertAi form field components', () => {
       expect(screen.getByTestId('actions-0')).toBeInTheDocument();
     });
 
-    it('renders configured rules in view mode when the catalog failed but capabilities supplied a list (contrast)', () => {
+    it('renders configured rules in view mode once the sources support them (contrast)', () => {
       render(
         <AlertAiFormFields
           isViewOnly
           shouldShowActionsSection
           shouldShowFiltersSection
-          filterResources={[]}
-          supportedFilters={[domainFilterRule]}
-          supportedTriggers={[testResultTriggerRule]}
+          selection={selectionOf({
+            supportedFilters: [domainFilterRule],
+            supportedTriggers: [testResultTriggerRule],
+          })}
           value={viewValue}
         />
       );
@@ -1861,40 +1999,33 @@ describe('AlertAi form field components', () => {
       expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
     });
 
-    it('renders configured rules in view mode when the catalog resolved but capabilities are unavailable (contrast)', () => {
+    // The server answers after the saved alert has loaded, or its answer failed.
+    it("keeps a saved alert's rules in edit mode while what the sources support is unknown", () => {
       render(
         <AlertAiFormFields
-          isViewOnly
           shouldShowActionsSection
           shouldShowFiltersSection
-          filterResources={[
-            {
-              name: 'table',
-              supportedActions: [testResultTriggerRule],
-              supportedFilters: [domainFilterRule],
-            },
-          ]}
-          supportedFilters={undefined}
-          supportedTriggers={undefined}
+          selection={selectionOf()}
           value={viewValue}
+          onChange={jest.fn()}
         />
       );
 
-      expect(
-        screen.getByTestId('label.filter-plural-section')
-      ).toBeInTheDocument();
-      expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
+      expect(screen.getByTestId('filters-0')).toBeInTheDocument();
+      expect(screen.getByTestId('actions-0')).toBeInTheDocument();
+      // A saved rule is shown by its name, never blank.
+      expect(screen.getByTestId('filters-select-0')).toHaveValue('domainList');
+      // Nothing new can be added until the server says what is supported.
+      expect(screen.getByTestId('add-filters')).toBeDisabled();
     });
 
-    it('hides configured rules in edit mode when both catalog and capabilities are unavailable (contrast)', () => {
+    it('shows no empty rule section in edit mode while what the sources support is unknown', () => {
       render(
         <AlertAiFormFields
           shouldShowActionsSection
           shouldShowFiltersSection
-          filterResources={[]}
-          supportedFilters={undefined}
-          supportedTriggers={undefined}
-          value={viewValue}
+          selection={selectionOf()}
+          value={{ ...viewValue, input: {} }}
           onChange={jest.fn()}
         />
       );
@@ -1905,6 +2036,127 @@ describe('AlertAi form field components', () => {
       expect(
         screen.queryByTestId('label.trigger-section')
       ).not.toBeInTheDocument();
+    });
+
+    // Rules stored only in filteringRules, with no `input` selections.
+    const legacyAlert: EventSubscription = {
+      alertType: EventSubscriptionAlertType.Observability,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          config: { endpoint: 'https://hooks.slack.com/services/x' },
+          readTimeout: 12,
+          timeout: 10,
+          type: SubscriptionType.Slack,
+        },
+      ],
+      id: 'legacy-alert-id',
+      name: 'legacy-alert',
+      filteringRules: {
+        actions: [
+          {
+            arguments: ['testSuiteList'],
+            condition: 'matchTestResult(true)',
+            effect: Effect.Include,
+            name: 'testResultTrigger',
+          },
+        ],
+        resources: ['table'],
+        rules: [
+          {
+            arguments: ['domainList'],
+            condition: 'matchAnyDomain(true)',
+            effect: Effect.Include,
+            name: 'domainList',
+          },
+        ],
+      },
+    } as EventSubscription;
+
+    it("renders a legacy-shaped alert's rules in view mode after seeding from filteringRules", () => {
+      // A WrittenByHand alert carries its rules only in the legacy filteringRules
+      // shape with no `input`; getModifiedAlertDataForForm seeds `input` from it.
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+        />
+      );
+
+      // The legacy rules are seeded into `input`, so the form lists them in view
+      // mode instead of hiding the sections — "a saved alert never hides them".
+      expect(
+        screen.getByTestId('label.filter-plural-section')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
+      expect(screen.getByTestId('filters-0')).toBeInTheDocument();
+      expect(screen.getByTestId('actions-0')).toBeInTheDocument();
+      expect(screen.getByTestId('filters-select-0')).toHaveValue('domainList');
+      expect(screen.getByTestId('actions-select-0')).toHaveValue(
+        'testResultTrigger'
+      );
+    });
+
+    it("keeps a legacy-shaped alert's rules listed when its sources change", () => {
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+      const formValue: ModifiedCreateEventSubscription = {
+        ...seeded,
+        domains: seeded.domains?.map(
+          (domain) => domain.fullyQualifiedName ?? domain.id
+        ),
+      };
+      const onChange = jest.fn();
+
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={formValue}
+          onChange={onChange}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('source-select-options'), {
+        target: { value: 'pipeline' },
+      });
+
+      expect(applyLastUpdater(onChange, formValue)).toEqual(
+        expect.objectContaining({
+          input: seeded.input,
+          resources: ['table', 'pipeline'],
+        })
+      );
+    });
+
+    it("keeps a legacy-shaped alert's rules read-only in edit mode", () => {
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('alert-brand')).toHaveTextContent(
+        'message.alert-rules-read-only'
+      );
+      expect(screen.getByTestId('filters-select-0')).toHaveValue('domainList');
+      expect(screen.queryByTestId('add-filters')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-actions')).not.toBeInTheDocument();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
     });
   });
 
@@ -1924,7 +2176,7 @@ describe('AlertAi form field components', () => {
     };
 
     const editableProps = {
-      filterResources: [{ name: 'table' }],
+      selection: selectionOf(),
       mode: 'edit' as const,
       onChange: jest.fn(),
       onSubmit,
@@ -1943,8 +2195,8 @@ describe('AlertAi form field components', () => {
 
     rerender(
       <AlertAiForm
-        filterResources={[]}
         mode="view"
+        selection={selectionOf()}
         shouldShowActionsSection={false}
         shouldShowFiltersSection={false}
         value={baseValue}
@@ -1961,8 +2213,8 @@ describe('AlertAi form field components', () => {
 
     render(
       <AlertAiForm
-        filterResources={[{ name: 'table' }]}
         mode="add"
+        selection={selectionOf()}
         shouldShowActionsSection={false}
         shouldShowFiltersSection={false}
         value={{ ...baseValue, name: '' }}
@@ -1998,8 +2250,8 @@ describe('AlertAi form field components', () => {
 
     render(
       <AlertAiForm
-        filterResources={[{ name: 'table' }]}
         mode="add"
+        selection={selectionOf()}
         shouldShowActionsSection={false}
         shouldShowFiltersSection={false}
         value={{ ...baseValue, name: '' }}
@@ -2014,7 +2266,7 @@ describe('AlertAi form field components', () => {
       screen.getByText('message.field-text-is-required:label.source')
     ).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId('source-select'), {
+    fireEvent.change(screen.getByTestId('source-select-options'), {
       target: { value: 'table' },
     });
 
@@ -2032,8 +2284,8 @@ describe('AlertAi form field components', () => {
   it('renders hint docs inside the shared typography wrapper', () => {
     render(
       <AlertAiForm
-        filterResources={[{ name: 'table' }]}
         mode="edit"
+        selection={selectionOf()}
         shouldShowActionsSection={false}
         shouldShowFiltersSection={false}
         value={baseValue}
@@ -2056,7 +2308,7 @@ describe('AlertAi form field components', () => {
         <AlertAiFormFields
           shouldShowActionsSection
           shouldShowFiltersSection
-          filterResources={[{ name: 'table' }]}
+          selection={selectionOf()}
           value={{} as ModifiedCreateEventSubscription}
           onChange={jest.fn()}
         />
@@ -2086,7 +2338,7 @@ describe('AlertAi form field components', () => {
           shouldShowActionsSection
           shouldShowFiltersSection
           templatesLoading
-          filterResources={[{ name: 'table' }]}
+          selection={selectionOf()}
           templateResourcePermission={permission}
           templates={templates}
           value={value}
@@ -2117,7 +2369,7 @@ describe('AlertAi form field components', () => {
       <AlertAiFormFields
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
+        selection={selectionOf()}
         value={{} as ModifiedCreateEventSubscription}
         onChange={jest.fn()}
       />
@@ -2150,7 +2402,7 @@ describe('AlertAi form field components', () => {
         isViewOnly
         shouldShowActionsSection
         shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
+        selection={selectionOf()}
         value={{} as ModifiedCreateEventSubscription}
         onChange={jest.fn()}
       />

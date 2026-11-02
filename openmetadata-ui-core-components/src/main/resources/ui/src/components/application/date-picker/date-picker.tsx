@@ -80,17 +80,18 @@ export const DatePicker = ({
       onChange={setValue}>
       <AriaGroup>
         {triggerVariant === 'input' ? (
-          // Deliberately the same chrome `Input`'s wrapper draws — radius,
-          // surface, shadow and the outline border (not a ring: WebKit does not
-          // pixel-snap box-shadow) — so a picker and a text field in the same
-          // form column are the same object at rest.
+          // Deliberately the same chrome `Input`'s wrapper draws at its default
+          // `sm` size — padding, text size, radius, surface, shadow and the
+          // outline border (not a ring: WebKit does not pixel-snap box-shadow)
+          // — so a picker and a text field in the same form column are the same
+          // object at rest.
           <AriaButton
             // `isInvalid` comes off the picker's own props, not the button's
             // render props — react-aria scopes validation state to the field,
             // and a plain `Button` is never told about it.
             className={({ isFocusVisible, isDisabled }) =>
               cx(
-                'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5 tw:text-left tw:text-md tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
+                'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-left tw:text-sm tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
                 isFocusVisible &&
                   !isDisabled &&
                   'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',

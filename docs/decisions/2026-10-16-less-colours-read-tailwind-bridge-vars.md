@@ -1,6 +1,6 @@
 # LESS and CSS colours read the Tailwind bridge variables
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars
 - **Revisions:** v1 2026-10-16 (initial)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** reviewer for colour-role selection; `yarn token-audit` for raw colour literals

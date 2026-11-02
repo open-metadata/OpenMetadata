@@ -1463,6 +1463,9 @@ public class TableRepository extends EntityRepository<Table> {
     EntityRepository.invalidateCacheForEntity(
         entityType, table.getId(), table.getFullyQualifiedName());
     RdfUpdater.updateEntity(table);
+    // Skipping postUpdate skips the search update as well: rebuild the table's document from the
+    // merged row, so that its tags, owners and column tags show the model.
+    searchRepository.updateEntity(table.getEntityReference());
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -2548,13 +2551,16 @@ public class TableRepository extends EntityRepository<Table> {
         CSVRecord csvRecord = getNextRecord(printer, csvRecords);
         if (csvRecord != null) {
           updateColumnsFromCsv(printer, csvRecord);
-          String violations = ValidatorUtil.validate(table);
-          if (violations != null) {
-            // JSON schema based validation failed for the entity
-            importFailure(printer, violations, csvRecord);
-            return;
-          }
         }
+      }
+
+      // Validate the whole table once, after every row is applied, rather than re-walking all of
+      // its
+      // columns on each row — which made a large import quadratic in the number of columns.
+      String violations = ValidatorUtil.validate(table);
+      if (violations != null) {
+        importFailure(printer, violations, csvRecords.get(csvRecords.size() - 1));
+        return;
       }
 
       if (processRecord) {
@@ -2660,6 +2666,9 @@ public class TableRepository extends EntityRepository<Table> {
                 printer,
                 "Parent Column not found. Check the order of the columns in the CSV file.",
                 csvRecord);
+            // Without the parent there is nowhere to attach the column; going on would dereference
+            // a null parent below.
+            return;
           }
 
           // Update Name And Ordinal position in the parent column

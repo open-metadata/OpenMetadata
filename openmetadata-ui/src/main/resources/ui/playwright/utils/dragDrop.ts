@@ -16,7 +16,7 @@ import { expect, Locator, Page } from '@playwright/test';
 // hydrate and shift rows). dragTo snapshots both boxes up front and presses at
 // those coordinates, so a drag begun mid-reflow presses on whatever slid into
 // the old spot and no dragstart fires. Hold both rows still before pressing.
-const waitForStableBox = async (locator: Locator) => {
+export const waitForStableBox = async (locator: Locator) => {
   let previous: { x: number; y: number } | undefined;
 
   await expect(async () => {

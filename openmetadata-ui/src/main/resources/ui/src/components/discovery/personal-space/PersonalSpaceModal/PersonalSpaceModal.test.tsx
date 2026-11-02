@@ -50,8 +50,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     ) : null,
   Modal: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  Dialog: ({ children, title }: { children?: ReactNode; title?: string }) => (
-    <div>
+  Dialog: ({
+    children,
+    title,
+    'aria-label': ariaLabel,
+  }: {
+    children?: ReactNode;
+    title?: string;
+    'aria-label'?: string;
+  }) => (
+    <div aria-label={ariaLabel} role="dialog">
       {title && <h2 data-testid="dialog-title">{title}</h2>}
       {children}
     </div>
@@ -127,14 +135,16 @@ describe('PersonalSpaceModal', () => {
     expect(screen.queryByTestId('dialog-title')).not.toBeInTheDocument();
   });
 
-  it('renders My Data under its title when the my-data panel is active', async () => {
+  // My Data draws its own My Data | Following tab header instead of a title.
+  it('renders My Data untitled, named for assistive tech', async () => {
     mockActivePanel = 'my-data';
     renderInRouter();
 
     expect(await screen.findByTestId('my-data-page')).toBeInTheDocument();
-    expect(screen.getByTestId('dialog-title')).toHaveTextContent(
-      'label.my-data'
-    );
+    expect(screen.queryByTestId('dialog-title')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'label.my-data-and-following' })
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('profile-page')).not.toBeInTheDocument();
   });
 

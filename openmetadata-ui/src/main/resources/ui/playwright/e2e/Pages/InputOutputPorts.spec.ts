@@ -46,7 +46,7 @@ import {
 } from '../../utils/inputOutputPorts';
 import { sidebarClick } from '../../utils/sidebar';
 import {
-  waitForAntOverlayToOpen,
+  waitForOverlayToOpen,
   waitForResponseWithStatus,
 } from '../../utils/waitHelpers';
 
@@ -1033,12 +1033,12 @@ test.describe('Input Output Ports', () => {
           name: 'Remove Port',
           exact: true,
         });
-        await waitForAntOverlayToOpen(dialog);
+        await waitForOverlayToOpen(dialog);
         await dialog
           .getByRole('button', { name: 'Cancel', exact: true })
           .click();
 
-        await expect(page.getByRole('dialog')).not.toBeVisible();
+        await expect(dialog).not.toBeVisible();
       });
 
       await test.step('Verify port still exists', async () => {
@@ -1884,7 +1884,7 @@ test.describe('Input Output Ports', () => {
         ).toBeVisible();
 
         const dialog = page.getByRole('dialog');
-        await waitForAntOverlayToOpen(dialog);
+        await waitForOverlayToOpen(dialog);
         const removeRes = waitForResponseWithStatus(
           page,
           (res) =>

@@ -180,6 +180,16 @@ describe('MetricDetails component', () => {
     expect(container).toBeInTheDocument();
   });
 
+  it('does not wrap the tabs in the metric-page-tabs container', () => {
+    const { container } = render(<MetricDetails {...mockProps} />, {
+      wrapper: Wrapper,
+    });
+
+    // metric.less sizes `.metric-page-tabs .activity-feed-tab` to 100% of a
+    // parent with no fixed height, so the feed panel shrinks to its content.
+    expect(container.querySelector('.metric-page-tabs')).toBeNull();
+  });
+
   it('should pass entity name as pageTitle to PageLayoutV1', () => {
     render(<MetricDetails {...mockProps} />, {
       wrapper: Wrapper,

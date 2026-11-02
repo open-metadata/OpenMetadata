@@ -26,14 +26,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -47,7 +56,9 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PersonalAccessToken;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -76,6 +87,10 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.credentials.CredentialSourceTestSupport;
+import org.openmetadata.service.security.credentials.TokenDigest;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.TokenUtil;
 
 /**
  * Integration tests for User entity operations.
@@ -2635,6 +2650,76 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         "Admin should not be able to generate token for regular user");
   }
 
+  /**
+   * Bot tokens are for bots: a person's own account gets personal access tokens instead, which can
+   * be revoked, and minting one here would replace the account's stored authentication mechanism.
+   */
+  @Test
+  void test_generateToken_forOwnRegularAccount_forbidden(TestNamespace ns) {
+    String userName = ns.shortPrefix("owntoken");
+    User regularUser =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@example.com")
+                .withDescription("Regular user asking for a bot token for itself"));
+    OpenMetadataClient asTheUser =
+        SdkClients.createClient(regularUser.getName(), regularUser.getEmail(), new String[] {});
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> asTheUser.users().generateToken(regularUser.getId(), JWTTokenExpiry.Seven));
+    assertEquals(403, exception.getStatusCode(), exception.getMessage());
+  }
+
+  /** The create payload never carries a person's password, so a PUT must not erase the stored one. */
+  @Test
+  void test_putWithoutPassword_keepsTheStoredPassword(TestNamespace ns) throws Exception {
+    String userName = ns.shortPrefix("keeppwd");
+    String password = "Keep!Passw0rd" + ns.uniqueShortId();
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@example.com")
+                .withPassword(password)
+                .withConfirmPassword(password)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+                .withIsBot(false));
+    assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser()
+                .withName(user.getName())
+                .withEmail(user.getEmail())
+                .withDisplayName("Renamed by PUT")
+                .withIsBot(false),
+            User.class);
+
+    assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
+  }
+
+  private static HttpResponse<String> basicLogin(String email, String password) throws Exception {
+    LoginRequest request =
+        new LoginRequest()
+            .withEmail(email)
+            .withPassword(
+                Base64.getEncoder().encodeToString(password.getBytes(StandardCharsets.UTF_8)));
+    // A fresh client per POST: the JDK only retries GET and HEAD on a connection the server closed.
+    return HttpClient.newHttpClient()
+        .send(
+            HttpRequest.newBuilder(URI.create(SdkClients.getServerUrl() + "/v1/auth/login"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+  }
+
   // ===================================================================
   // AUTHORIZATION
   // Root JSON Patch replacement, roles and personal access token constraints
@@ -2775,7 +2860,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   @Test
   void test_createPersonalAccessToken_impersonatedBot_forbidden(TestNamespace ns) {
     // The bot's stored name must equal its email local-part: JwtFilter resolves the bot's
-    // username from the token's email claim, and BotTokenCache is keyed by that name.
+    // username from the token's email claim, and the stored-credential check reads that name.
     String localPart = "patbot" + ns.shortPrefix();
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()
@@ -2873,9 +2958,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     OpenMetadataClient firstClient = clientWithToken(firstToken);
     assertEquals(botUser.getId(), getLoggedInUser(firstClient).getId());
 
-    // JWT timestamps have second precision, so two tokens minted within the same second with the
-    // same expiry are byte-identical (and therefore both "current"). A different expiry makes the
-    // rotation observable without sleeping across a second boundary.
     String secondToken = generateBotToken(botUser, JWTTokenExpiry.Thirty);
     assertNotEquals(firstToken, secondToken);
 
@@ -2930,6 +3012,63 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_revokeToken_waitForPropagation(TestNamespace ns) {
+    User botUser = createBotUser(ns, "waitrevokebot");
+    OpenMetadataClient botClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+    String adminToken = SdkClients.getAdminToken();
+    String request = "{\"id\":\"" + botUser.getId() + "\"}";
+
+    TimedResponse revoke = timedPut(WAITING_BOT_REVOKE, adminToken, request);
+
+    assertWaitedForPropagation(revoke);
+    User revoked = JsonUtils.readValue(revoke.response().body(), User.class);
+    assertEquals(botUser.getId(), revoked.getId());
+    assertUnauthorized(botClient);
+    assertWaitedForPropagation(timedPut(WAITING_BOT_REVOKE, adminToken, request));
+  }
+
+  @Test
+  void test_revokePersonalAccessToken_waitForPropagation(TestNamespace ns) {
+    User owner = createRegularUser(ns, "patwait");
+    PersonalAccessToken pat = createPersonalAccessToken(clientFor(owner), ns.prefix("pat"));
+    OpenMetadataClient patClient = clientWithToken(pat.getJwtToken());
+    assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+    String ownerToken = CredentialFixtures.loginToken(owner);
+    String request = "{\"tokenIds\":[\"" + pat.getToken() + "\"]}";
+
+    TimedResponse revoke = timedPut(WAITING_PAT_REVOKE, ownerToken, request);
+
+    assertWaitedForPropagation(revoke);
+    String remaining = revoke.response().body();
+    assertEquals(0, JsonUtils.readTree(remaining).get("data").size(), remaining);
+    assertUnauthorized(patClient);
+    assertWaitedForPropagation(timedPut(WAITING_PAT_REVOKE, ownerToken, request));
+  }
+
+  @Test
+  void test_sameSecondPats_independent(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patsamesec"));
+    PersonalAccessToken first = createPersonalAccessToken(owner, ns.prefix("pat1"));
+    PersonalAccessToken second = createPersonalAccessToken(owner, ns.prefix("pat2"));
+    assertNotEquals(first.getJwtToken(), second.getJwtToken());
+    OpenMetadataClient firstClient = clientWithToken(first.getJwtToken());
+    OpenMetadataClient secondClient = clientWithToken(second.getJwtToken());
+    assertNotNull(getLoggedInUser(firstClient));
+    assertNotNull(getLoggedInUser(secondClient));
+
+    owner
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + first.getToken() + "\"]}");
+
+    assertUnauthorized(firstClient);
+    assertNotNull(getLoggedInUser(secondClient));
+  }
+
+  @Test
   void test_revokeAllPersonalAccessTokens_rejectsEveryToken(TestNamespace ns) {
     OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
     OpenMetadataClient first =
@@ -2974,6 +3113,148 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     restoreEntity(owner.getId().toString());
 
     assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+  }
+
+  @Test
+  void test_hardDelete_removesTokenRows(TestNamespace ns) {
+    User owner = createRegularUser(ns, "pathard");
+    createPersonalAccessToken(clientFor(owner), ns.prefix("pat"));
+    Entity.getTokenRepository()
+        .insertToken(TokenUtil.getEmailVerificationToken(owner.getId(), UUID.randomUUID()));
+    assertEquals(2, tokenRowCount(owner));
+
+    hardDeleteEntity(owner.getId().toString());
+
+    assertEquals(0, tokenRowCount(owner));
+  }
+
+  @Test
+  void test_revokePat_isScopedToTheCaller(TestNamespace ns) {
+    OpenMetadataClient caller = clientFor(createRegularUser(ns, "patcaller"));
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
+    PersonalAccessToken ownerPat = createPersonalAccessToken(owner, ns.prefix("pat"));
+    OpenMetadataClient ownerPatClient = clientWithToken(ownerPat.getJwtToken());
+    assertNotNull(getLoggedInUser(ownerPatClient));
+
+    caller
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + ownerPat.getToken() + "\"]}");
+
+    assertNotNull(getLoggedInUser(ownerPatClient));
+    String listed =
+        owner.getHttpClient().executeForString(HttpMethod.GET, "/v1/users/security/token", null);
+    assertTrue(listed.contains(ownerPat.getToken().toString()), listed);
+  }
+
+  @Test
+  void test_revokePat_withoutIdsDeletesNothing(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patnoids"));
+    OpenMetadataClient first =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat1")).getJwtToken());
+    OpenMetadataClient second =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat2")).getJwtToken());
+
+    owner
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users/security/token/revoke?removeAll=false", "{\"tokenIds\":[]}");
+
+    assertNotNull(getLoggedInUser(first));
+    assertNotNull(getLoggedInUser(second));
+  }
+
+  /**
+   * A PATCH cannot change a user's authentication mechanism: {@code UserRepository} puts the
+   * stored one back before the update, so the token a patch carries is never stored and is
+   * rejected. Until missRefreshMinAge after the server last read the bot, that token could be one
+   * created on another server, so a check may answer 503 first. Bot tokens change through
+   * generateToken and revokeToken, which the tests above cover.
+   */
+  @Test
+  void test_patchBotAuthMechanism_isIgnored(TestNamespace ns) {
+    User botUser = createBotUser(ns, "patchedbot");
+    String storedToken = generateBotToken(botUser, JWTTokenExpiry.Seven);
+    OpenMetadataClient storedClient = clientWithToken(storedToken);
+    assertEquals(botUser.getId(), getLoggedInUser(storedClient).getId());
+    JWTAuthMechanism patched =
+        JWTTokenGenerator.getInstance().generateJWTToken(botUser, JWTTokenExpiry.Thirty);
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/users/" + botUser.getId(), replaceJwtMechanism(patched));
+
+    assertEquals(
+        Set.of(TokenDigest.of(storedToken)),
+        CredentialSourceTestSupport.digests(Entity.getJdbi(), botUser.getName()));
+    assertEquals(botUser.getId(), getLoggedInUser(storedClient).getId());
+    String patchedToken = patched.getJWTToken();
+    Awaitility.await("an answer other than 503 for the patched token")
+        .pollInterval(Duration.ofMillis(100))
+        .atMost(Duration.ofSeconds(10))
+        .until(
+            () ->
+                CredentialFixtures.status(CredentialFixtures.LOGGED_IN_USER, patchedToken) != 503);
+    assertUnauthorized(clientWithToken(patchedToken));
+  }
+
+  @Test
+  void test_unrecognizedOmToken_rejected(TestNamespace ns) throws Exception {
+    User user = createRegularUser(ns, "unrecognized");
+    String loginToken = CredentialFixtures.loginToken(user);
+    String unrecognized = userTokenOfBotType(user);
+    assertEquals(user.getId(), getLoggedInUser(clientWithToken(loginToken)).getId());
+    assertEquals(200, mcpInitializeStatus(loginToken));
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class, () -> getLoggedInUser(clientWithToken(unrecognized)));
+    assertEquals(401, rejected.getStatusCode());
+    assertEquals("Not Authorized! Unrecognized token type!", rejected.getMessage());
+    assertEquals(401, mcpInitializeStatus(unrecognized));
+  }
+
+  private static ArrayNode replaceJwtMechanism(JWTAuthMechanism jwt) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject()
+        .put("op", "replace")
+        .put("path", "/authenticationMechanism")
+        .set(
+            "value",
+            PATCH_MAPPER.valueToTree(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(jwt)));
+    return ops;
+  }
+
+  /** Signed with the server key, but no issuing call pairs isBot=false with tokenType=BOT. */
+  private static String userTokenOfBotType(User user) {
+    return JWTTokenGenerator.getInstance()
+        .getJwtAuthMechanism(
+            user.getName(),
+            new HashSet<>(),
+            false,
+            user.getEmail(),
+            false,
+            ServiceTokenType.BOT,
+            JWTTokenGenerator.getExpiryDate(JWTTokenExpiry.Seven),
+            null)
+        .getJWTToken();
+  }
+
+  private static int tokenRowCount(User user) {
+    return Entity.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM user_tokens WHERE userid = :id")
+                    .bind("id", user.getId().toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   /**
@@ -3033,6 +3314,49 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     OpenMetadataException exception =
         assertThrows(OpenMetadataException.class, () -> getLoggedInUser(client));
     assertEquals(401, exception.getStatusCode(), exception.getMessage());
+  }
+
+  private static final String WAITING_BOT_REVOKE =
+      "/api/v1/users/revokeToken?waitForPropagation=true";
+  private static final String WAITING_PAT_REVOKE =
+      "/api/v1/users/security/token/revoke?waitForPropagation=true";
+
+  private record TimedResponse(HttpResponse<String> response, Duration took) {}
+
+  private static TimedResponse timedPut(String path, String bearerToken, String body) {
+    long started = System.nanoTime();
+    HttpResponse<String> response = CredentialFixtures.put(path, bearerToken, body);
+    return new TimedResponse(response, Duration.ofNanos(System.nanoTime() - started));
+  }
+
+  /** Asserts a lower bound only, as load can stretch the call but never cut the wait short. */
+  private static void assertWaitedForPropagation(TimedResponse revoke) {
+    Duration maxStaleness = CredentialSourceTestSupport.serverMaxStaleness();
+    assertEquals(200, revoke.response().statusCode(), revoke.response().body());
+    assertTrue(
+        revoke.took().compareTo(maxStaleness) >= 0,
+        "the revoke took "
+            + revoke.took().toMillis()
+            + " ms, less than maxStaleness "
+            + maxStaleness);
+  }
+
+  private static final HttpClient MCP_HTTP_CLIENT = HttpClient.newHttpClient();
+
+  /** The MCP transport authenticates the bearer token before it reads the request. */
+  private static int mcpInitializeStatus(String token) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(TestSuiteBootstrap.getBaseUrl() + "/mcp"))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json, text/event-stream")
+            .header("Authorization", "Bearer " + token)
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    JsonUtils.pojoToJson(McpTestUtils.createInitializeRequest())))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return MCP_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
   }
 
   @Test
@@ -3267,6 +3591,257 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     String response =
         editorClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", updateBody);
     assertTrue(response.contains(description), "Cross user edit without roles must stay allowed");
+  }
+
+  // ===================================================================
+  // USER DOMAINS
+  // hasDomain() grants access by the user's domains, so setting them is admin only, like roles
+  // ===================================================================
+
+  @Test
+  void test_patchUser_ownDomains_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndomainpatch");
+
+    assertPatchForbidden(clientFor(user), user, addDomainsOp(testDomain().getEntityReference()));
+
+    assertHoldsNoDomain(user);
+  }
+
+  @Test
+  void test_patchUser_ownDomainsByRootReplacement_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndomainroot");
+    final ObjectNode withDomain =
+        userJsonWithField(user, "domains", List.of(testDomain().getEntityReference()));
+
+    assertPatchForbidden(clientFor(user), user, rootReplacementOps(withDomain));
+
+    assertHoldsNoDomain(user);
+  }
+
+  @Test
+  void test_putUser_ownDomains_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndomainput");
+
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                clientFor(user)
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", userBodyWithDomain(user)));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "Adding a domain to your own user is admin only: " + exception.getMessage());
+
+    assertHoldsNoDomain(user);
+  }
+
+  @Test
+  void test_putUser_keepsOwnDomainButCannotClaimTeamDomain(TestNamespace ns) {
+    // A domain held only through a team goes away with the membership, so naming it on a PUT would
+    // turn it into a direct assignment that outlives the team.
+    final Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("domainTeam"))
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withDomains(List.of(testSubDomain().getFullyQualifiedName())));
+    final String localPart = "teamdomainput" + ns.shortPrefix();
+    final User user =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@open-metadata.org")
+                .withTeams(List.of(team.getId()))
+                .withDomains(List.of(testDomain().getFullyQualifiedName())));
+    final OpenMetadataClient self = clientFor(user);
+
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users", userBodyInTeam(user, team, List.of(testDomain())));
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                self.getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users",
+                        userBodyInTeam(user, team, List.of(testDomain(), testSubDomain()))));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "A team's domain is not the user's own: " + exception.getMessage());
+
+    final List<UUID> directDomainIds =
+        Users.get(user.getId().toString(), "domains").getDomains().stream()
+            .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+            .map(EntityReference::getId)
+            .toList();
+    assertEquals(List.of(testDomain().getId()), directDomainIds);
+  }
+
+  @Test
+  void test_createUser_selfSignUpWithDomains_forbidden(TestNamespace ns) {
+    // The name must equal the email local part for JwtFilter to resolve the caller.
+    final String userName = "domainsignup" + ns.shortPrefix();
+    final String email = userName + "@test.com";
+    final OpenMetadataClient newcomerClient =
+        SdkClients.createClient(userName, email, new String[] {});
+    final String createBody =
+        "{\"name\":\""
+            + userName
+            + "\",\"email\":\""
+            + email
+            + "\",\"domains\":[\""
+            + testDomain().getFullyQualifiedName()
+            + "\"]}";
+
+    final OpenMetadataException postException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", createBody));
+    assertEquals(
+        403,
+        postException.getStatusCode(),
+        "Self sign-up cannot set domains: " + postException.getMessage());
+
+    final OpenMetadataException putException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", createBody));
+    assertEquals(
+        403,
+        putException.getStatusCode(),
+        "Self creation through PUT cannot set domains: " + putException.getMessage());
+
+    final OpenMetadataException notCreated =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/users/name/" + userName, null));
+    assertEquals(404, notCreated.getStatusCode(), "The rejected user should not exist");
+  }
+
+  @Test
+  void test_patchUser_ownDisplayName_allowedAndKeepsDomains(TestNamespace ns) {
+    final String localPart = "domainholder" + ns.shortPrefix();
+    final User user =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@open-metadata.org")
+                .withDomains(List.of(testDomain().getFullyQualifiedName())));
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + user.getId(),
+            replaceOp("/displayName", "Domain Holder"));
+
+    final User stored = Users.get(user.getId().toString(), "domains");
+    assertEquals("Domain Holder", stored.getDisplayName());
+    assertEquals(List.of(testDomain().getId()), domainIds(stored));
+  }
+
+  @Test
+  void test_admin_canSetUserDomains(TestNamespace ns) {
+    final User patched = createRegularUser(ns, "admindomainpatch");
+    final User put = createRegularUser(ns, "admindomainput");
+    final OpenMetadataClient admin = SdkClients.adminClient();
+
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + patched.getId(),
+            addDomainsOp(testDomain().getEntityReference()));
+    admin.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", userBodyWithDomain(put));
+
+    assertEquals(
+        List.of(testDomain().getId()), domainIds(Users.get(patched.getId().toString(), "domains")));
+    assertEquals(
+        List.of(testDomain().getId()), domainIds(Users.get(put.getId().toString(), "domains")));
+  }
+
+  @Test
+  void test_updateUser_crossUserDomains_forbidden(TestNamespace ns) {
+    // A principal holding EDIT on users may update somebody else, but assigning them a domain stays
+    // admin only, as granting a role does.
+    final OpenMetadataClient editorClient = createUserEditorClient(ns);
+    final User target = createRegularUser(ns, "domaintarget");
+
+    assertPatchForbidden(editorClient, target, addDomainsOp(testDomain().getEntityReference()));
+    final OpenMetadataException putException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                editorClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", userBodyWithDomain(target)));
+    assertEquals(
+        403,
+        putException.getStatusCode(),
+        "Assigning a domain to another user is admin only: " + putException.getMessage());
+
+    assertHoldsNoDomain(target);
+  }
+
+  private ArrayNode addDomainsOp(final EntityReference domain) {
+    final ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    final ObjectNode operation = ops.addObject().put("op", "add").put("path", "/domains");
+    operation
+        .putArray("value")
+        .addObject()
+        .put("id", domain.getId().toString())
+        .put("type", domain.getType());
+    return ops;
+  }
+
+  private String userBodyWithDomain(final User user) {
+    return "{\"name\":\""
+        + user.getName()
+        + "\",\"email\":\""
+        + user.getEmail()
+        + "\",\"domains\":[\""
+        + testDomain().getFullyQualifiedName()
+        + "\"]}";
+  }
+
+  // Naming the team keeps the user in it; without teams the server moves them to the organization.
+  private static String userBodyInTeam(
+      final User user, final Team team, final List<Domain> domains) {
+    final ObjectNode body =
+        PATCH_MAPPER.createObjectNode().put("name", user.getName()).put("email", user.getEmail());
+    body.putArray("teams").add(team.getId().toString());
+    final ArrayNode domainFqns = body.putArray("domains");
+    domains.forEach(domain -> domainFqns.add(domain.getFullyQualifiedName()));
+    return body.toString();
+  }
+
+  private void assertHoldsNoDomain(final User user) {
+    assertEquals(
+        List.of(),
+        domainIds(Users.get(user.getId().toString(), "domains")),
+        "The rejected request must not have assigned a domain");
+  }
+
+  private static List<UUID> domainIds(final User user) {
+    return user.getDomains() == null
+        ? List.of()
+        : user.getDomains().stream().map(EntityReference::getId).toList();
   }
 
   // A non admin whose role grants EDIT_ALL on users, through a team's default roles.

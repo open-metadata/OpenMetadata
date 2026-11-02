@@ -193,32 +193,52 @@ class TestHexApiClient(TestCase):
 
         self.assertEqual(len(projects), 0)
 
-    def test_get_project_url(self):
-        """Test building project URL"""
-        project = Project(
-            id="proj_789",
-            title="Test Project",
-        )
+    def test_get_project_url_unpublished_opens_notebook(self):
+        """An unpublished project links to the notebook under the workspace"""
+        self.client.client.get = MagicMock(return_value={"org": {"id": "ws-uuid"}})
 
-        url = self.client.get_project_url(project)
+        url = self.client.get_project_url(Project(id="proj_789", title="Test Project"))
 
-        self.assertEqual(url, "https://app.hex.tech/app/projects/proj_789")
+        self.client.client.get.assert_called_once_with("/users/me")
+        self.assertEqual(url, "https://app.hex.tech/ws-uuid/hex/proj_789")
+
+    def test_get_project_url_published_opens_app(self):
+        """A published project links to the app, which viewers can open"""
+        self.client.client.get = MagicMock(return_value={"org": {"id": "ws-uuid"}})
+        project = Project(id="proj_789", title="Test", last_published_at="2026-10-01T00:00:00Z")
+
+        self.assertEqual(self.client.get_project_url(project), "https://app.hex.tech/ws-uuid/app/proj_789")
+
+    def test_get_project_url_fetches_workspace_once(self):
+        """The workspace id is looked up once per run, not per project"""
+        self.client.client.get = MagicMock(return_value={"org": {"id": "ws-uuid"}})
+
+        self.client.get_project_url(Project(id="a", title="A"))
+        self.client.get_project_url(Project(id="b", title="B"))
+
+        self.client.client.get.assert_called_once()
+
+    def test_get_project_url_without_workspace_is_none(self):
+        """No URL rather than a broken one when the workspace can't be resolved"""
+        self.client.client.get = MagicMock(side_effect=APIError({"message": "Internal Server Error"}))
+
+        self.assertIsNone(self.client.get_project_url(Project(id="proj_789", title="Test")))
 
     def test_get_project_url_with_trailing_slash(self):
         """Test building project URL when host has trailing slash"""
         config = HexConnection(
             type="Hex",
-            hostPort="https://app.hex.tech/",
+            hostPort="https://eu.hex.tech/",
             token="test_token",
         )
 
-        with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST"):
+        with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST") as mock_rest:
+            mock_rest.return_value.get.return_value = {"org": {"id": "ws-uuid"}}
             client = HexApiClient(config)
 
-            project = Project(id="proj_789", title="Test")
-            url = client.get_project_url(project)
+            url = client.get_project_url(Project(id="proj_789", title="Test"))
 
-            self.assertEqual(url, "https://app.hex.tech/app/projects/proj_789")
+            self.assertEqual(url, "https://eu.hex.tech/ws-uuid/hex/proj_789")
 
     def test_rate_limiting_handling(self):
         """Test handling rate limiting (429 error)"""

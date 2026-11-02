@@ -41,14 +41,6 @@ jest.mock('../../../rest/tableAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="error-placeholder">ErrorPlaceholder</div>
-    );
-});
-
 jest.mock('../../common/DeleteModal/DeleteModal', () => {
   return jest.fn().mockReturnValue(<p>DeleteModal</p>);
 });
@@ -63,7 +55,9 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable {...mockProps} />);
     });
 
-    const errorPlaceholder = screen.getByTestId('error-placeholder');
+    const errorPlaceholder = screen.getByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(errorPlaceholder).toBeInTheDocument();
   });

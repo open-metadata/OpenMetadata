@@ -188,7 +188,17 @@ export const GlossaryUpdateConfirmationModal = ({
     switch (updateState) {
       case UpdateState.INITIAL:
         return {
-          footer: null,
+          // The footer gives the buttons the dialog's bottom padding; content has none.
+          footer: (
+            <Box className="tw:w-full" gap={2} justify="center">
+              <Button color="secondary" onPress={onCancel}>
+                {t('label.no-comma-cancel')}
+              </Button>
+              <Button color="primary" onPress={handleUpdateConfirmation}>
+                {t('label.yes-comma-confirm')}
+              </Button>
+            </Box>
+          ),
           content: (
             <Box align="center" direction="col" gap={2}>
               <FeaturedIcon
@@ -207,14 +217,6 @@ export const GlossaryUpdateConfirmationModal = ({
                   {getEntityName(glossaryTerm)}
                 </Typography>
               </Typography>
-              <Box align="center" className="tw:mt-6" gap={2}>
-                <Button color="secondary" onPress={onCancel}>
-                  {t('label.no-comma-cancel')}
-                </Button>
-                <Button color="primary" onPress={handleUpdateConfirmation}>
-                  {t('label.yes-comma-confirm')}
-                </Button>
-              </Box>
             </Box>
           ),
         };

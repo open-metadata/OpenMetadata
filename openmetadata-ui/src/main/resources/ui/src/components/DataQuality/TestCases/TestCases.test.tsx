@@ -182,17 +182,6 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
     ),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`}>
-        ErrorPlaceHolder.component
-      </div>
-    )),
-}));
-
 const mockOnAddTestCase = jest.fn();
 
 const mockDataQualityContext = {
@@ -386,7 +375,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       expect(
-        await screen.findByTestId('error-placeholder-type-PERMISSION')
+        await screen.findByTestId('permission-error-placeholder')
       ).toBeInTheDocument();
     });
 

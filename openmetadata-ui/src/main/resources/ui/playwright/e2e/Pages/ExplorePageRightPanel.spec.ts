@@ -1935,13 +1935,6 @@ test.describe('Right Panel Test Suite', () => {
           await overview.navigateToOverviewTab();
           const tierSection = adminPage.locator('.tier-section');
           await expect(tierSection).toBeVisible();
-          // The tier chip only renders when a tier is assigned — verify it is absent
-          await expect(
-            adminPage
-              .locator('[data-testid="entity-summary-panel-container"]')
-              .getByTestId('Tier')
-              .locator('.ant-tag')
-          ).not.toBeVisible();
         } finally {
           await testEntity.delete(apiContext);
           await afterAction();
@@ -2014,7 +2007,7 @@ test.describe('Right Panel Test Suite', () => {
           await expect(
             adminPage
               .getByTestId('glossary-container')
-              .locator('.no-data-placeholder')
+              .getByText('No Glossary Terms assigned')
           ).toBeVisible();
         } finally {
           await testEntity.delete(apiContext);

@@ -116,7 +116,11 @@ const computeLabelStyleOverrides = (
   return {
     hasStyleOverrides,
     labelStyleOverrides: {
-      backgroundColor: labelBgStyle?.fill,
+      // The tint tokens are translucent in dark mode; layering them over the
+      // label's opaque surface keeps the edge line from showing through.
+      backgroundImage: labelBgStyle?.fill
+        ? `linear-gradient(${labelBgStyle.fill}, ${labelBgStyle.fill})`
+        : undefined,
       borderColor: labelBgStyle?.stroke,
       color: labelStyle?.color,
       ...labelStyle,

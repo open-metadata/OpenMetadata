@@ -35,10 +35,6 @@ jest.mock('../ProfilerLatestValue/ProfilerLatestValue', () =>
   jest.fn(() => <div>ProfilerLatestValue</div>)
 );
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../../../constants/profiler.constant', () => ({
   PROFILER_CHART_DATA_SIZE: 500,
 }));
@@ -147,7 +143,11 @@ describe('ProfilerDetailsCard', () => {
       />
     );
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(LineChart).not.toHaveBeenCalled();
   });
 });

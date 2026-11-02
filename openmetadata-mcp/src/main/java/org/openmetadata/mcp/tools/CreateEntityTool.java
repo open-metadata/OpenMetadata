@@ -84,7 +84,9 @@ public class CreateEntityTool implements McpTool {
     RestUtil.PutResponse<EntityInterface<?>> response = persist(type, entity, userName);
 
     Map<String, Object> result =
-        McpResponseUtils.compact(response.getEntity(), response.getChangeType());
+        McpResponseUtils.compact(
+            CommonUtils.withVisibleEvidence(response.getEntity(), authorizer, securityContext),
+            response.getChangeType());
     addClassificationWarning(
         requestedMutuallyExclusive, response.getEntity(), response.getChangeType(), result);
     return result;

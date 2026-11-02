@@ -32,10 +32,12 @@ const SliderWithInput = ({
 
   return (
     <Box
-      className={`layout-row ${className} tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5`}
+      align="center"
+      className={className}
       data-testid="percentage-input"
+      gap={5}
       wrap="wrap">
-      <Box className="layout-column tw:block tw:flex-auto">
+      <Box className="tw:block tw:min-w-0 tw:flex-auto">
         <Slider
           showRange
           aria-label={t('label.profile-sample')}
@@ -47,7 +49,7 @@ const SliderWithInput = ({
           onChange={(next) => onChange(isNumber(next) ? next : next[0])}
         />
       </Box>
-      <Box className="layout-column tw:block tw:w-44">
+      <Box className="tw:block tw:w-44">
         <Box align="center" gap={2}>
           <NumberInput
             aria-label={t('label.profile-sample')}

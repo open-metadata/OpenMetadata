@@ -41,7 +41,11 @@ export interface FieldDocPopoverProps
    * to 480.
    */
   maxHeight?: number;
+  /** `muted` sits the card on the same step as a muted Card (darker in dark mode). */
+  variant?: FieldDocPopoverVariant;
 }
+
+export type FieldDocPopoverVariant = 'default' | 'muted';
 
 const defaultRenderDoc = (doc: string): ReactNode => (
   <p className="tw:whitespace-pre-wrap tw:text-sm tw:text-secondary">{doc}</p>
@@ -64,6 +68,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
   // in the spread and clobber the default.
   offset = 16,
   maxHeight = 480,
+  variant = 'default',
   ...popoverProps
 }) => {
   const { t } = useCoreTranslation();
@@ -87,7 +92,8 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
       isNonModal
       isOpen
       className={cx(
-        'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-lg',
+        'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:shadow-lg',
+        variant === 'muted' ? 'tw:bg-primary_alt' : 'tw:bg-overlay-surface',
         className
       )}
       placement="right top"

@@ -15,7 +15,7 @@ import { LOGGED_IN_USER_STORAGE_KEY } from '../../../constants/constants';
 import { RouteVisibilityProvider } from '../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import WelcomeScreenGate from './WelcomeScreenGate';
 
-const mockTour = { isTourPage: false };
+const mockTour = { isActive: false };
 const mockWelcome = { isWelcomeVisible: true };
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -26,8 +26,9 @@ jest.mock('../../../hooks/useWelcomeStore', () => ({
   useWelcomeStore: () => mockWelcome,
 }));
 
-jest.mock('../../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: () => mockTour,
+jest.mock('../../../hooks/product-tour/useProductTourStore', () => ({
+  useProductTourStore: (selector: (state: typeof mockTour) => boolean) =>
+    selector(mockTour),
 }));
 
 jest.mock('./WelcomeScreen.component', () =>
@@ -48,7 +49,7 @@ const renderGate = () =>
 describe('WelcomeScreenGate', () => {
   beforeEach(() => {
     localStorage.clear();
-    mockTour.isTourPage = false;
+    mockTour.isActive = false;
     mockWelcome.isWelcomeVisible = true;
   });
 
@@ -98,7 +99,7 @@ describe('WelcomeScreenGate', () => {
   });
 
   it('skips the welcome screen on the tour', () => {
-    mockTour.isTourPage = true;
+    mockTour.isActive = true;
     renderGate();
 
     expect(screen.getByTestId('home')).toBeInTheDocument();

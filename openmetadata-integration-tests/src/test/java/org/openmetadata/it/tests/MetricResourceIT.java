@@ -1290,6 +1290,21 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void restore_parentWithChildren_bringsTheSubtreeBack(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("restore_parent"), ns));
+    Metric child = createChild(ns, "restore_child", parent);
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
+
+    restoreEntity(parent.getId().toString());
+
+    Metric restored = getWithHierarchy(parent);
+    assertEquals(1, restored.getChildrenCount(), "The restored child must count again");
+    assertEquals(child.getId(), restored.getChildren().get(0).getId());
+  }
+
+  @Test
   void inactiveContainsEdgeIsExcludedFromHierarchyReads(TestNamespace ns) {
     Metric parent = createEntity(createRequest(ns.prefix("inactive_edge_parent"), ns));
     Metric child = createChild(ns, "inactive_edge_child", parent);

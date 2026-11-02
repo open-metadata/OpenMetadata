@@ -11,69 +11,24 @@
  *  limitations under the License.
  */
 
+import type { MembersView } from './Members.types';
 import {
+  buildMembersHeaderMaps,
+  canOpenMembers,
   formatOnlineStatus,
   getCsvFileSizeLabel,
   getCsvRowCount,
-  hashSubPathToView,
-  viewToSubPath,
+  getHiddenUserDetailTabs,
+  getMembersAccess,
+  hasDirectDomainChanges,
+  isMembersCardAllowed,
+  isMembersViewAllowed,
+  makeBreadcrumbAction,
+  mergeDomainEdits,
 } from './Members.utils';
 
 const t = (key: string, params?: Record<string, string | number>) =>
   params ? `${key}${JSON.stringify(params)}` : key;
-
-describe('hash <-> view round-trip', () => {
-  it('encodes and decodes a team fqn containing special characters', () => {
-    const fqn = 'PW%data_consumer_team-131661dd';
-    const subPath = viewToSubPath({ type: 'team-detail', fqn, name: fqn });
-
-    expect(subPath).toBe(`teams/${encodeURIComponent(fqn)}`);
-    expect(hashSubPathToView(subPath as string)).toEqual({
-      type: 'team-detail',
-      fqn,
-      name: fqn,
-    });
-  });
-
-  it('round-trips a dotted team fqn', () => {
-    const fqn = 'Engineering.Data.Platform';
-    const view = hashSubPathToView(
-      viewToSubPath({ type: 'team-detail', fqn, name: fqn }) as string
-    );
-
-    expect(view).toEqual({ type: 'team-detail', fqn, name: fqn });
-  });
-
-  it('maps teams/add to the add view (not a team named "add")', () => {
-    expect(hashSubPathToView('teams/add')).toEqual({ type: 'teams-add' });
-  });
-
-  it('round-trips a team import view', () => {
-    const fqn = 'Engineering.Data';
-    const view = {
-      type: 'teams-import' as const,
-      fqn,
-      importType: 'teams' as const,
-    };
-    const subPath = viewToSubPath(view);
-
-    expect(subPath).toBe(`teams/${encodeURIComponent(fqn)}/import-team`);
-    expect(hashSubPathToView(subPath as string)).toEqual(view);
-  });
-
-  it('round-trips a user import view', () => {
-    const fqn = 'Organization';
-    const view = {
-      type: 'teams-import' as const,
-      fqn,
-      importType: 'users' as const,
-    };
-    const subPath = viewToSubPath(view);
-
-    expect(subPath).toBe(`teams/${encodeURIComponent(fqn)}/import-user`);
-    expect(hashSubPathToView(subPath as string)).toEqual(view);
-  });
-});
 
 describe('getCsvRowCount', () => {
   it('counts data rows excluding the header and blank lines', () => {
@@ -130,37 +85,173 @@ describe('formatOnlineStatus', () => {
   });
 });
 
-describe('contributed section hash routing', () => {
-  it('round-trips a section view', () => {
-    const view = { type: 'section' as const, key: 'provisioning' };
-
-    expect(viewToSubPath(view)).toBe('section/provisioning');
-    expect(hashSubPathToView('section/provisioning')).toEqual(view);
-  });
-
-  it('round-trips a section sub-path, which the section owns', () => {
-    const view = {
-      type: 'section' as const,
-      key: 'provisioning',
-      subPath: 'edit/mapping-1',
+describe('user-detail header', () => {
+  it('ends the breadcrumbs at the username', () => {
+    const view: MembersView = {
+      type: 'user-detail',
+      name: 'alice',
+      tab: 'access',
     };
-
-    expect(viewToSubPath(view)).toBe('section/provisioning/edit/mapping-1');
-    expect(hashSubPathToView('section/provisioning/edit/mapping-1')).toEqual(
-      view
+    const { crumbsByType, titleByType } = buildMembersHeaderMaps(
+      view,
+      (key: string) => key,
+      ''
     );
+
+    expect(crumbsByType['user-detail'].map((c) => c.label)).toEqual([
+      'label.setting-plural',
+      'label.member-plural',
+      'label.user-plural',
+      'alice',
+    ]);
+    expect(titleByType['user-detail']).toBe('alice');
   });
 
-  it('falls back to landing when the section key is missing', () => {
-    expect(hashSubPathToView('section')).toEqual({ type: 'landing' });
+  it('adds Tasks and the task id on a task page', () => {
+    const view: MembersView = {
+      type: 'user-detail',
+      name: 'alice',
+      tab: 'tasks',
+      taskId: 'TASK-00170',
+    };
+    const { crumbsByType } = buildMembersHeaderMaps(
+      view,
+      (key: string) => key,
+      ''
+    );
+
+    expect(crumbsByType['user-detail'].map((c) => c.id)).toEqual([
+      'settings',
+      'members',
+      'users',
+      'user',
+      'user-tasks',
+      'current',
+    ]);
+    expect(crumbsByType['user-detail'][5].label).toBe('TASK-00170');
   });
 
-  it('does not treat a team named "section" as a contributed section', () => {
-    // `section` is a top-level segment; team fqns live under `teams/`.
-    expect(hashSubPathToView('teams/section')).toEqual({
-      type: 'team-detail',
-      fqn: 'section',
-      name: 'section',
+  it('sends Settings/Members/Users to the users list and user/Tasks to the task list', () => {
+    const onNavigate = jest.fn();
+    const action = makeBreadcrumbAction(onNavigate, {
+      type: 'user-detail',
+      name: 'alice',
+      tab: 'tasks',
+      taskId: 'TASK-1',
+    });
+
+    ['settings', 'members', 'users'].forEach((id) => action(id));
+    action('user');
+    action('user-tasks');
+
+    expect(onNavigate.mock.calls.map(([view]) => view)).toEqual([
+      { type: 'users' },
+      { type: 'users' },
+      { type: 'users' },
+      { type: 'user-detail', name: 'alice', tab: 'tasks' },
+      { type: 'user-detail', name: 'alice', tab: 'tasks' },
+    ]);
+  });
+});
+
+describe('getHiddenUserDetailTabs', () => {
+  it('hides nothing for an admin viewing a person with custom property access', () => {
+    expect(
+      getHiddenUserDetailTabs({
+        canViewAccess: true,
+        canViewCustomProperties: true,
+      }).size
+    ).toBe(0);
+  });
+
+  it('hides Access from a viewer who is neither an admin nor that user', () => {
+    expect(
+      getHiddenUserDetailTabs({
+        canViewAccess: false,
+        canViewCustomProperties: true,
+      })
+    ).toEqual(new Set(['access']));
+  });
+
+  it('hides Following for a bot and Custom Properties without view access', () => {
+    expect(
+      getHiddenUserDetailTabs({
+        isBot: true,
+        canViewAccess: true,
+        canViewCustomProperties: false,
+      })
+    ).toEqual(new Set(['following', 'custom-properties']));
+  });
+});
+
+describe('Members access (classic parity)', () => {
+  const viewTeams = { team: { ViewAll: true } } as never;
+
+  it('lets an admin open everything', () => {
+    const access = getMembersAccess({} as never, true);
+
+    expect(access).toEqual({ teams: true, users: true, onlineUsers: true });
+    expect(canOpenMembers(access)).toBe(true);
+  });
+
+  it('opens Members to a non-admin who can view teams, without Online users', () => {
+    const access = getMembersAccess(viewTeams, false);
+
+    expect(canOpenMembers(access)).toBe(true);
+    expect(isMembersCardAllowed('teams', access)).toBe(true);
+    expect(isMembersCardAllowed('users', access)).toBe(false);
+    expect(isMembersCardAllowed('online-users', access)).toBe(false);
+    expect(isMembersCardAllowed('a-contributed-section', access)).toBe(true);
+  });
+
+  it('keeps Members closed to a viewer with neither team nor user view', () => {
+    expect(canOpenMembers(getMembersAccess({} as never, false))).toBe(false);
+  });
+
+  it('guards deep links to views the landing would not offer', () => {
+    const access = getMembersAccess(viewTeams, false);
+
+    expect(
+      isMembersViewAllowed({ type: 'team-detail', fqn: 'x', name: 'x' }, access)
+    ).toBe(true);
+    expect(isMembersViewAllowed({ type: 'online-users' }, access)).toBe(false);
+    expect(isMembersViewAllowed({ type: 'users' }, access)).toBe(false);
+    expect(isMembersViewAllowed({ type: 'landing' }, access)).toBe(true);
+  });
+});
+
+describe('mergeDomainEdits', () => {
+  const inherited = {
+    id: 'd-team',
+    type: 'domain',
+    name: 'TeamDomain',
+    inherited: true,
+  };
+  const direct = { id: 'd1', type: 'domain', name: 'Sales' };
+
+  it('returns the stored list unchanged when the direct ids are the same', () => {
+    const current = [inherited, direct];
+
+    expect(mergeDomainEdits(current, ['d1'])).toBe(current);
+  });
+
+  it('replaces only the direct domains and keeps inherited refs untouched', () => {
+    expect(mergeDomainEdits([inherited, direct], ['d2'])).toEqual([
+      inherited,
+      { id: 'd2', type: 'domain' },
+    ]);
+  });
+
+  describe('hasDirectDomainChanges', () => {
+    const current = [
+      { id: 'd-team', type: 'domain', inherited: true },
+      { id: 'd1', type: 'domain' },
+    ];
+
+    it('compares only the direct domains, by id', () => {
+      expect(hasDirectDomainChanges(current, ['d1'])).toBe(false);
+      expect(hasDirectDomainChanges(current, [])).toBe(true);
+      expect(hasDirectDomainChanges(current, ['d1', 'd2'])).toBe(true);
     });
   });
 });

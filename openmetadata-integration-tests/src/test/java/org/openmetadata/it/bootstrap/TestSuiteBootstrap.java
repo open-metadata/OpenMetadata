@@ -538,6 +538,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return "redis".equalsIgnoreCase(cacheProvider);
   }
 
+  /** The Redis container of the Redis lane; null when the suite runs without Redis. */
+  public static GenericContainer<?> getRedisContainer() {
+    return REDIS_CONTAINER;
+  }
+
   public static String getRedisUrl() {
     return redisUrl;
   }

@@ -467,8 +467,16 @@ public interface EntityDAO<T extends EntityInterface<?>> {
     if (CollectionUtils.isEmpty(entityFQNs)) {
       return List.of();
     }
-    List<String> nameHashes =
-        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
+    return findReferencesByNameHashes(
+        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList(), include);
+  }
+
+  /** {@link #findReferencesByFqns} for callers that hold name hashes rather than FQNs. */
+  default List<EntityReference> findReferencesByNameHashes(
+      List<String> nameHashes, Include include) {
+    if (CollectionUtils.isEmpty(nameHashes)) {
+      return List.of();
+    }
     int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (nameHashes.size() <= maxChunkSize) {
       return findReferenceRows(nameHashes, include).stream()

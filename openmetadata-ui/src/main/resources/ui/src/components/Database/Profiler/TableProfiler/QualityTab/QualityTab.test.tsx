@@ -260,10 +260,6 @@ jest.mock('../../../../common/SummaryCard/SummaryCardV1', () =>
   ))
 );
 
-jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
-);
-
 describe('QualityTab', () => {
   it('should render QualityTab', async () => {
     await act(async () => {
@@ -817,7 +813,11 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should forward showPagination=true from testCasePaging to DataQualityTab', async () => {

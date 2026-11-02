@@ -77,6 +77,17 @@ test.describe(
           await expect(
             page.getByTestId('ontology-library-trigger')
           ).toBeVisible();
+          await page.getByTestId('ontology-scope-menu-trigger').click();
+          for (const ontology of ontologies) {
+            await expect(
+              page.getByTestId(`ontology-scope-${ontology.id}`)
+            ).toBeVisible();
+          }
+          await expect(
+            page.getByTestId('ontology-scope-all-glossaries')
+          ).toHaveCount(0);
+          await expect(page.getByTestId('ontology-create')).toBeVisible();
+          await page.keyboard.press('Escape');
           await page.getByTestId('submode-tab-tree').click();
           const owner = ontologies[1];
           await page
@@ -344,7 +355,11 @@ test.describe(
           ).toContainText('customer number');
 
           await inspector.getByTestId('ontology-add-relationship').click();
-          await clickIgnoringToasts(page.getByTestId('relation-type-isA'));
+          await clickIgnoringToasts(
+            page.getByTestId(
+              'relation-type-http://www.w3.org/2000/01/rdf-schema#subClassOf'
+            )
+          );
           const target = inspector.getByLabel('Target');
           await scrollIntoViewAndSettle(target);
           await selectOptionWithRetry(

@@ -13,7 +13,6 @@
 import {
   Box,
   ButtonUtility,
-  EmptyPlaceholder,
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -25,6 +24,7 @@ import {
   Effect,
   Rule,
 } from '../../../../../../generated/api/policies/createPolicy';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 
 type RuleColumnId =
@@ -169,7 +169,7 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
         dependencies={[canEdit, isDisabled]}
         items={rules.map((rule) => ({ ...rule, id: rule.name ?? '' }))}
         renderEmptyState={() => (
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.rule-plural'),
             })}

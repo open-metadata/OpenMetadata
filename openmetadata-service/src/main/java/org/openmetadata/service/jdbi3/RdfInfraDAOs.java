@@ -62,6 +62,9 @@ public interface RdfInfraDAOs {
   OntologyReferenceDAO ontologyReferenceDAO();
 
   @CreateSqlObject
+  OntologyConceptBindingDAO ontologyConceptBindingDAO();
+
+  @CreateSqlObject
   OntologyReleaseDAO ontologyReleaseDAO();
 
   @CreateSqlObject
@@ -114,6 +117,17 @@ public interface RdfInfraDAOs {
       long expiresAt) {}
 
   interface OntologyEntityDAO extends EntityDAO<Ontology> {
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_entity WHERE deleted = FALSE AND id > :afterId AND JSON_LENGTH(json, '$.installedPacks') > 0 ORDER BY id LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_entity WHERE deleted = FALSE AND id > :afterId AND jsonb_typeof(json -> 'installedPacks') = 'array' AND jsonb_array_length(json -> 'installedPacks') > 0 ORDER BY id LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listJsonWithInstalledPacks(
+        @Bind("limit") int limit, @Bind("afterId") String afterId);
+
     @Override
     default String getTableName() {
       return "ontology_entity";
@@ -241,22 +255,6 @@ public interface RdfInfraDAOs {
   }
 
   interface OntologyChangeSetDAO extends EntityDAO<OntologyChangeSet> {
-    String OPEN_MEMORY_DRAFTS =
-        "FROM ontology_change_set_entity cs JOIN entity_relationship er ON er.fromId = cs.id "
-            + "WHERE er.toId = :memoryId AND er.fromEntity = 'ontologyChangeSet' "
-            + "AND er.toEntity = 'contextMemory' AND er.relation = :relation "
-            + "AND er.deleted = FALSE "
-            + "AND cs.state IN ('DRAFT', 'SUBMITTED', 'APPLY_FAILED') "
-            + "AND (cs.deleted IS NULL OR cs.deleted = FALSE) "
-            + "ORDER BY cs.updatedAt DESC LIMIT 100";
-
-    @ConnectionAwareSqlQuery(value = "SELECT cs.json " + OPEN_MEMORY_DRAFTS, connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value = "SELECT cs.json::text " + OPEN_MEMORY_DRAFTS,
-        connectionType = POSTGRES)
-    List<String> findOpenBySourceMemoryId(
-        @Bind("memoryId") String memoryId, @Bind("relation") int relation);
-
     @Override
     default String getTableName() {
       return "ontology_change_set_entity";

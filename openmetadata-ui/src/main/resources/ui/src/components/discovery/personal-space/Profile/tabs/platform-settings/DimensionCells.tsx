@@ -15,15 +15,18 @@ import {
   Badge,
   Box,
   ButtonUtility,
+  ConfirmPopover,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { DIMENSION_COLOR_PALETTE } from '../../../../../../constants/DataQualityDimension.constants';
 import {
   DataQualityDimension,
   ProviderType,
 } from '../../../../../../generated/tests/dataQualityDimension';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 
 const isSystemDimension = (dimension: DataQualityDimension) =>
   dimension.provider === ProviderType.System;
@@ -66,15 +69,65 @@ export const DimensionTypeCell = ({
   );
 };
 
-interface DimensionActionsCellProps {
+interface DimensionDeleteImpactProps {
+  /** `undefined` means the count could not be fetched: reported as unknown, not none. */
+  testCaseCount?: number;
+  testDefinitionCount?: number;
+}
+
+const DimensionDeleteImpact = ({
+  testCaseCount,
+  testDefinitionCount,
+}: DimensionDeleteImpactProps) => {
+  const { t } = useTranslation();
+  const isImpactUnknown =
+    isUndefined(testCaseCount) || isUndefined(testDefinitionCount);
+
+  if (!isImpactUnknown && !testCaseCount && !testDefinitionCount) {
+    return null;
+  }
+
+  return (
+    <Box data-testid="delete-dimension-impact" direction="col" gap={2}>
+      {isImpactUnknown && (
+        <Typography className="tw:text-warning-primary" size="text-sm">
+          {t('message.dimension-impact-unknown')}
+        </Typography>
+      )}
+      {Boolean(testCaseCount) && (
+        <Typography size="text-sm">
+          <strong>
+            {t('message.dimension-in-use-count', { count: testCaseCount })}
+          </strong>{' '}
+          {t('message.dimension-delete-fallback')}
+        </Typography>
+      )}
+      {Boolean(testDefinitionCount) && (
+        <Typography size="text-sm">
+          <strong>
+            {t('message.dimension-in-use-test-definition-count', {
+              count: testDefinitionCount,
+            })}
+          </strong>{' '}
+          {t('message.dimension-delete-test-definition-fallback')}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
+interface DimensionActionsCellProps extends DimensionDeleteImpactProps {
   dimension: DataQualityDimension;
   onEdit: (dimension: DataQualityDimension) => void;
-  onDelete: (dimension: DataQualityDimension) => void;
+  /** Resolves `false` when the delete failed, keeping the confirmation open. */
+  onDelete: (dimension: DataQualityDimension) => Promise<boolean>;
 }
 
 /** System dimensions ship with the platform and are read-only. */
 export const DimensionActionsCell = ({
   dimension,
+  testCaseCount,
+  testDefinitionCount,
   onEdit,
   onDelete,
 }: DimensionActionsCellProps) => {
@@ -94,17 +147,30 @@ export const DimensionActionsCell = ({
         tooltip={isSystem ? lockedTooltip : t('label.edit-entity', { entity })}
         onPress={() => onEdit(dimension)}
       />
-      <ButtonUtility
-        color="tertiary"
-        data-testid={`delete-${dimension.name}`}
-        icon={Trash01}
-        isDisabled={isSystem}
-        size="xs"
-        tooltip={
-          isSystem ? lockedTooltip : t('label.delete-entity', { entity })
+      <ConfirmPopover
+        content={
+          <DimensionDeleteImpact
+            testCaseCount={testCaseCount}
+            testDefinitionCount={testDefinitionCount}
+          />
         }
-        onPress={() => onDelete(dimension)}
-      />
+        data-testid="delete-dimension-popover"
+        description={t('message.delete-dimension-confirmation')}
+        title={t('label.delete-entity', {
+          entity: getEntityName(dimension),
+        })}
+        onConfirm={() => onDelete(dimension)}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid={`delete-${dimension.name}`}
+          icon={Trash01}
+          isDisabled={isSystem}
+          size="xs"
+          tooltip={
+            isSystem ? lockedTooltip : t('label.delete-entity', { entity })
+          }
+        />
+      </ConfirmPopover>
     </Box>
   );
 };

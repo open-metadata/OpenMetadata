@@ -18,6 +18,10 @@ import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/R
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useQuickFilterLabels } from '../../../../hooks/useQuickFilterLabels';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
+import {
+  SearchIndexValue,
+  SearchResponse,
+} from '../../../../interface/search.interface';
 import { getAggregations } from '../../../../utils/ExplorePureUtils';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { useDataFetching } from '../data/useDataFetching';
@@ -26,8 +30,9 @@ import { useUrlState } from '../data/useUrlState';
 import { usePaginationState } from '../pagination/usePaginationState';
 import { CellRenderer, ColumnConfig, ListingData } from '../shared/types';
 import { useActionHandlers } from './useActionHandlers';
-interface UseListingDataProps<T> {
-  searchIndex: SearchIndex;
+interface UseListingDataProps<T, SI extends SearchIndex> {
+  searchIndex: SI;
+  transform: (data: SearchResponse<SearchIndexValue<SI>>) => T[];
   baseFilter?: string;
   pageSize?: number;
   pageSizeOptions?: number[];
@@ -46,12 +51,14 @@ interface UseListingDataProps<T> {
 }
 
 export const useListingData = <
-  T extends { id: string; name?: string; fullyQualifiedName?: string }
+  T extends { id: string; name?: string; fullyQualifiedName?: string },
+  SI extends SearchIndex
 >(
-  props: UseListingDataProps<T>
+  props: UseListingDataProps<T, SI>
 ): ListingData<T> => {
   const {
     searchIndex,
+    transform,
     baseFilter = '',
     pageSize = PAGE_SIZE_BASE,
     pageSizeOptions,
@@ -133,8 +140,9 @@ export const useListingData = <
     setCurrentPage,
   ]);
 
-  const dataFetching = useDataFetching<T>({
+  const dataFetching = useDataFetching<T, SI>({
     searchIndex,
+    transform,
     baseFilter,
     pageSize: effectivePageSize,
     useNlq,

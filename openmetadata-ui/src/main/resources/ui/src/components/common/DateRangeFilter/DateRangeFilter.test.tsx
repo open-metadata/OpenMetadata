@@ -50,7 +50,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <span data-testid="picker-value">
         {value ? JSON.stringify(value) : 'null'}
       </span>
-      <button data-testid="picker-apply" onClick={onApply}>
+      <button data-testid="picker-apply" onClick={() => onApply?.()}>
         apply
       </button>
       <button data-testid="picker-cancel" onClick={onCancel}>

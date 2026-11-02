@@ -13,6 +13,7 @@
 import type {
   Config,
   ImmutableTree,
+  JsonLogicTree,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
@@ -28,6 +29,7 @@ import {
   migrateJsonLogic,
 } from '../QueryBuilderPureUtils';
 import { generateUUID } from '../StringUtils';
+import { fromEngineJsonLogic } from './jsonLogicNegation';
 import type { GroupMode } from './types';
 import { QUERY_BUILDER_CONJUNCTION, QUERY_BUILDER_GROUP_MODE } from './types';
 
@@ -241,7 +243,10 @@ export const loadQueryBuilderTree = ({
   try {
     // RAQB throws outright when a saved rule names a field the current config does not define — a live risk whenever a
     // field is renamed or an entity type narrows its allow-list.
-    const loaded = QbUtils.loadFromJsonLogic(migrateJsonLogic(parsed), config);
+    const loaded = QbUtils.loadFromJsonLogic(
+      fromEngineJsonLogic(migrateJsonLogic(parsed)) as JsonLogicTree,
+      config
+    );
 
     return loaded
       ? QbUtils.Validation.sanitizeTree(loaded, config).fixedTree

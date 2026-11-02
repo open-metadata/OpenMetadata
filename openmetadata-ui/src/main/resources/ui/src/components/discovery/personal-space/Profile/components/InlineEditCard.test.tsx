@@ -34,11 +34,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Button: ({
     children,
+    isDisabled,
     onClick,
   }: {
     children?: ReactNode;
+    isDisabled?: boolean;
     onClick?: (...args: unknown[]) => void;
-  }) => <button onClick={onClick}>{children}</button>,
+  }) => (
+    <button disabled={isDisabled} onClick={onClick}>
+      {children}
+    </button>
+  ),
 }));
 
 jest.mock('./FieldRow', () => ({
@@ -127,6 +133,17 @@ describe('InlineEditCard', () => {
     await waitFor(() => expect(screen.getByTestId('view')).toBeInTheDocument());
   });
 
+  it('disables save and never calls onSave when isSaveDisabled', () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    setup({ isSaveDisabled: true, onSave });
+
+    fireEvent.click(screen.getByLabelText('label.edit'));
+    fireEvent.click(screen.getByText('label.save-changes'));
+
+    expect(screen.getByText('label.save-changes')).toBeDisabled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('shows a toast and stays in edit mode when save fails', async () => {
     const err = new Error('boom');
     setup({ onSave: jest.fn().mockRejectedValue(err) });
@@ -138,6 +155,19 @@ describe('InlineEditCard', () => {
 
     expect(mockShowErrorToast).toHaveBeenCalledWith(err);
     expect(screen.getByTestId('edit-form')).toBeInTheDocument();
+  });
+
+  it('stays in edit mode when the save reports it did not land', async () => {
+    // The shared update handler toasts and resolves to false on failure.
+    setup({ onSave: jest.fn().mockResolvedValue(false) });
+
+    fireEvent.click(screen.getByLabelText('label.edit'));
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.save-changes'));
+    });
+
+    expect(screen.getByTestId('edit-form')).toBeInTheDocument();
+    expect(screen.queryByTestId('view')).not.toBeInTheDocument();
   });
 
   it('cancels editing', () => {

@@ -62,7 +62,17 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true, isFirstTimeUser: false }),
 }));
 jest.mock('../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { name: 'admin' } }),
+  useApplicationStore: (
+    selector?: (store: {
+      currentUser: { id: string; displayName: string; name: string };
+    }) => unknown
+  ) => {
+    const store = {
+      currentUser: { id: 'admin', displayName: 'Admin User', name: 'admin' },
+    };
+
+    return selector ? selector(store) : store;
+  },
 }));
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: {} }),
@@ -197,7 +207,7 @@ describe('Ontology Studio mode-switch integration', () => {
       getOntologyConceptBindings as jest.MockedFunction<
         typeof getOntologyConceptBindings
       >
-    ).mockResolvedValue({ revision: 0, assets: [] });
+    ).mockResolvedValue({ kind: 'complete', revision: 0, assets: [] });
     mockListOntologies.mockResolvedValue({ data: [], paging: { total: 0 } });
     mockListOntologyConcepts.mockResolvedValue({
       data: [],
@@ -235,6 +245,47 @@ describe('Ontology Studio mode-switch integration', () => {
       totalTerms: 2,
     });
   });
+
+  it.each(['/', '/?ontology=retail'])(
+    'only offers ontology scopes in the native menu at %s',
+    async (route) => {
+      const ontology: Ontology = {
+        id: 'retail',
+        name: 'Retail',
+        fullyQualifiedName: 'Retail',
+        iri: 'urn:retail',
+        namespace: 'urn:retail:',
+      };
+      mockGetOntology.mockResolvedValue(ontology);
+      mockListOntologies.mockResolvedValue({
+        data: [ontology],
+        paging: { total: 1 },
+      });
+      render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={[route]}>
+            <OntologyExplorerPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+      const menu = within(await screen.findByRole('menu'));
+
+      expect(
+        await menu.findByRole('menuitemradio', { name: /Retail/ })
+      ).toBeVisible();
+      expect(menu.getByTestId('ontology-scope-all-ontologies')).toBeVisible();
+      expect(menu.getByTestId('ontology-create')).toBeVisible();
+      expect(
+        menu.queryByTestId('ontology-scope-all-glossaries')
+      ).not.toBeInTheDocument();
+      expect(
+        menu.queryByRole('menuitemradio', { name: /Finance/ })
+      ).not.toBeInTheDocument();
+      expect(mockGetGlossariesList).not.toHaveBeenCalled();
+    }
+  );
 
   it('keeps the native inspector and selection across aggregate tree, owner Edit, and Query', async () => {
     const ontology: Ontology = {

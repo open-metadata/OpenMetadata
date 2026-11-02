@@ -11,6 +11,7 @@
 
 """Exercise DAG lifecycle operations against the shared test Airflow database."""
 
+import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -131,7 +132,7 @@ def test_invalid_dag_does_not_report_success(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("invalid_second", [False, True])
-def test_concurrent_deployments_report_each_dag_result(invalid_second):
+def test_concurrent_deployments_report_each_dag_result(invalid_second, caplog):
     dag_folder = Path(settings.DAGS_FOLDER)
     dag_folder.mkdir(parents=True, exist_ok=True)
     names = [f"bulk_{uuid4().hex}" for _ in range(2)]
@@ -149,9 +150,11 @@ def test_concurrent_deployments_report_each_dag_result(invalid_second):
             return response.status_code, response.get_json()
 
     try:
-        with ThreadPoolExecutor(max_workers=2) as pool:
+        with caplog.at_level(logging.WARNING), ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(refresh, names))
 
+        # Issue #35460: the SIGALRM import timeout cannot be set off the main thread
+        assert not [record for record in caplog.records if "timeout can't be used" in record.getMessage()]
         assert [status for status, _ in results] == [
             200,
             500 if invalid_second else 200,

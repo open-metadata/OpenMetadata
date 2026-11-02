@@ -558,6 +558,14 @@ export const useColumnGridListingData = (
     t,
   ]);
 
+  const handleClearAll = useCallback(() => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('q');
+    Object.keys(urlState.filters).forEach((key) => newParams.delete(key));
+    setSearchParams(newParams);
+    setCurrentPage(1);
+  }, [searchParams, setSearchParams, setCurrentPage, urlState.filters]);
+
   // Clear all edited values (call after successful bulk update)
   const clearEditedValues = useCallback(() => {
     editedValuesRef.current = new Map();
@@ -589,6 +597,7 @@ export const useColumnGridListingData = (
     aggregations: null,
     handleSearchChange,
     handleFilterChange,
+    handleClearAll,
     handlePageChange,
     handlePageSizeChange,
     refetch,

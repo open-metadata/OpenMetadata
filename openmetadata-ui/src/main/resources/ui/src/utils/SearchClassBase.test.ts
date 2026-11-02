@@ -27,6 +27,7 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { getEntityLinkFromType } from './EntityLinkUtils';
@@ -318,5 +319,33 @@ describe('SearchClassBase', () => {
     });
 
     expect(getTestSuiteDetailsPath).not.toHaveBeenCalled();
+  });
+
+  describe('getExploreTreeKey', () => {
+    it.each([
+      [ExplorePageTabs.TABLES, SearchIndex.DATABASE],
+      [ExplorePageTabs.COLUMNS, SearchIndex.DATABASE],
+      [ExplorePageTabs.DASHBOARDS, SearchIndex.DASHBOARD],
+      [ExplorePageTabs.DASHBOARD_DATA_MODEL, SearchIndex.DASHBOARD],
+      [ExplorePageTabs.CHARTS, SearchIndex.DASHBOARD],
+      [ExplorePageTabs.PIPELINES, SearchIndex.PIPELINE],
+      [ExplorePageTabs.TOPICS, SearchIndex.TOPIC],
+      [ExplorePageTabs.API_COLLECTION, SearchIndex.API_COLLECTION],
+      [ExplorePageTabs.API_ENDPOINT, SearchIndex.API_COLLECTION],
+      [ExplorePageTabs.DIRECTORIES, SearchIndex.DIRECTORY],
+      [ExplorePageTabs.FILES, SearchIndex.DIRECTORY],
+      [ExplorePageTabs.GLOSSARY, 'Governance'],
+      [ExplorePageTabs.TAG, 'Governance'],
+      [ExplorePageTabs.METRIC, 'Governance'],
+      [ExplorePageTabs.DATA_PRODUCT, 'Domain'],
+    ])('expands the root that holds the %s tab (%s)', (tab, rootKey) => {
+      expect(searchClassBase.getExploreTreeKey(tab)).toEqual([rootKey]);
+    });
+
+    it('falls back to Databases for a tab no root lists', () => {
+      expect(
+        searchClassBase.getExploreTreeKey('unknown' as ExplorePageTabs)
+      ).toEqual([SearchIndex.DATABASE]);
+    });
   });
 });

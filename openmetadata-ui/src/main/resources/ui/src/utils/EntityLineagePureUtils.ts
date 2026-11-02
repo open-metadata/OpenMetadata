@@ -39,11 +39,15 @@ import type { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import type {
   EdgeDetails,
+  EntityLineageResponse,
   LineageData,
   LineageNodeType,
 } from '../interface/lineage.interface';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
-import { getNodeLineageData } from './EntityLineageNodeUtils';
+import {
+  getNodeLineageData,
+  getUpstreamDownstreamNodesEdges,
+} from './EntityLineageNodeUtils';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { jsonToCSV } from './StringUtils';
@@ -469,6 +473,10 @@ const getOrCreateTempNode = (
   return tempNode;
 };
 
+/** Links a temp hop to the stored edge it was expanded from. */
+const getEdgeEndpointsKey = (edge: EdgeDetails) =>
+  `${edge.fromEntity.id}-${edge.toEntity.id}`;
+
 const extractTempLineageNodes = (
   edges: EdgeDetails[],
   existingNodes: LineageNodeType[]
@@ -488,6 +496,7 @@ const extractTempLineageNodes = (
     if (!edge.tempLineageTables?.length) {
       return;
     }
+    const tempHopOf = getEdgeEndpointsKey(edge);
     edge.tempLineageTables.forEach((hop: TempLineageTable) => {
       const fromNode = getOrCreateTempNode(
         hop.fromEntity,
@@ -500,6 +509,7 @@ const extractTempLineageNodes = (
         newTempNodes
       );
       newEdges.push({
+        tempHopOf,
         fromEntity: {
           id: fromNode.id,
           type: fromNode.type ?? EntityType.TABLE,
@@ -567,21 +577,133 @@ export const parseLineageData = (
     (node) => node.fullyQualifiedName === entityFqn
   ) as LineageNodeType;
 
-  const baseEdges = tempEdges.length
-    ? finalEdges.filter((e) => !e.tempLineageTables?.length)
-    : finalEdges;
-
+  // The edges that were expanded stay alongside their hops, so the temp tables
+  // can be hidden without refetching; applyTempTableVisibility picks one view.
   return {
     nodes: [...finalNodes, ...tempNodes],
-    edges: [...baseEdges, ...tempEdges],
+    edges: [...finalEdges, ...tempEdges],
     entity,
   };
 };
 
+/**
+ * The lineage to draw: temp tables between two tables when `show`, otherwise
+ * the direct edge between them. Returns the input unchanged when it has no
+ * temp hops.
+ */
+export const applyTempTableVisibility = <T extends EntityLineageResponse>(
+  lineage: T,
+  show: boolean
+): T => {
+  const edges = lineage.edges ?? [];
+  if (!edges.some((edge) => edge.tempHopOf)) {
+    return lineage;
+  }
+
+  // Stored edges that share a temp table each keep their own copy of the
+  // shared hop (pruneTempLineage needs them), but only one is drawn.
+  const drawnHops = new Set<string>();
+
+  return show
+    ? {
+        ...lineage,
+        edges: edges.filter((edge) => {
+          if (edge.tempLineageTables?.length) {
+            return false;
+          }
+          if (!edge.tempHopOf) {
+            return true;
+          }
+          const hop = getEdgeEndpointsKey(edge);
+          if (drawnHops.has(hop)) {
+            return false;
+          }
+          drawnHops.add(hop);
+
+          return true;
+        }),
+      }
+    : {
+        ...lineage,
+        nodes: (lineage.nodes ?? []).filter((node) => !node.isTempTable),
+        edges: edges.filter((edge) => !edge.tempHopOf),
+      };
+};
+
+/**
+ * Keeps a stored edge and its temp hops consistent after an edit made in one
+ * view: drops an edge with temp tables whose end node is gone, the hops of a
+ * stored edge that is gone, and temp tables no edge reaches. Returns the input
+ * unchanged when nothing needs dropping.
+ */
+export const pruneTempLineage = (
+  lineage: EntityLineageResponse
+): EntityLineageResponse => {
+  const edges = lineage.edges ?? [];
+  const nodes = lineage.nodes ?? [];
+  if (!edges.some((edge) => edge.tempHopOf || edge.tempLineageTables?.length)) {
+    return lineage;
+  }
+
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  if (lineage.entity?.id) {
+    nodeIds.add(lineage.entity.id);
+  }
+  const keptStored = edges.filter(
+    (edge) =>
+      !edge.tempLineageTables?.length ||
+      (nodeIds.has(edge.fromEntity.id) && nodeIds.has(edge.toEntity.id))
+  );
+  const storedKeys = new Set(
+    keptStored
+      .filter((edge) => edge.tempLineageTables?.length)
+      .map(getEdgeEndpointsKey)
+  );
+  const keptEdges = keptStored.filter(
+    (edge) => !edge.tempHopOf || storedKeys.has(edge.tempHopOf)
+  );
+  const reachedIds = new Set(
+    keptEdges.flatMap((edge) => [edge.fromEntity.id, edge.toEntity.id])
+  );
+  const keptNodes = nodes.filter(
+    (node) => !node.isTempTable || reachedIds.has(node.id)
+  );
+
+  return keptEdges.length === edges.length && keptNodes.length === nodes.length
+    ? lineage
+    : { ...lineage, nodes: keptNodes, edges: keptEdges };
+};
+
 export const getLineageConfigFormValues = (
   config: LineageConfig
-): LineageConfigFormValues => ({
+): Omit<LineageConfigFormValues, 'showTempTables'> => ({
   upstreamDepth: String(config.upstreamDepth ?? ''),
   downstreamDepth: String(config.downstreamDepth ?? ''),
   nodesPerLayer: String(config.nodesPerLayer ?? ''),
 });
+
+/**
+ * Drops the nodes no remaining edge reaches from the entity. Temp hops whose
+ * stored edge is gone are pruned first: left behind, they would keep the far
+ * end of a removed edge reachable.
+ */
+export const dropUnreachableNodes = (
+  lineage: EntityLineageResponse,
+  entityFqn: string
+): EntityLineageResponse => {
+  const pruned = pruneTempLineage(lineage);
+  const { downstreamEdges, upstreamEdges } = getUpstreamDownstreamNodesEdges(
+    pruned.edges ?? [],
+    pruned.nodes ?? [],
+    entityFqn
+  );
+
+  return {
+    ...pruned,
+    nodes: (pruned.nodes ?? []).filter(
+      (node) =>
+        downstreamEdges?.some((edge) => edge.toEntity.id === node.id) ||
+        upstreamEdges?.some((edge) => edge.fromEntity.id === node.id)
+    ),
+  };
+};

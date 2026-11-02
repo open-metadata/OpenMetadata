@@ -4,11 +4,9 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -17,16 +15,14 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.OntologyAssetBinding;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyColumnBinding;
-import org.openmetadata.schema.type.OntologyConceptBindings;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.util.ChildFieldResolver;
 
 public final class OntologyBindingRules {
-  private static final int MAX_ASSETS = 100;
-  private static final int MAX_ASSET_COLUMNS = 100;
-  private static final int MAX_CONCEPT_COLUMNS = 500;
+  public static final int MAX_ASSET_COLUMNS = 100;
+  public static final int MAX_CONCEPT_COLUMNS = 500;
   private static final int MAX_PATH_DEPTH = 32;
   private static final int MAX_SEGMENT_LENGTH = 256;
   private static final long MAX_REVISION = 9_007_199_254_740_991L;
@@ -76,72 +72,25 @@ public final class OntologyBindingRules {
         || segment.codePoints().anyMatch(Character::isISOControl);
   }
 
-  public static OntologyConceptBindings replace(
-      final OntologyConceptBindings current,
-      final OntologyAssetBinding asset,
-      final Long expectedRevision) {
-    requireRevision(expectedRevision);
-    validate(asset);
-    final var existing = find(current, asset.getAssetType(), asset.getAssetId());
-    if (existing != null
-        && new HashSet<>(listOrEmpty(existing.getColumns()))
-            .equals(new HashSet<>(listOrEmpty(asset.getColumns())))) {
-      return current;
-    }
-    final var assets = new ArrayList<>(current.getAssets());
-    assets.removeIf(value -> sameAsset(value, asset.getAssetType(), asset.getAssetId()));
-    assets.add(
-        new OntologyAssetBinding()
-            .withAssetType(asset.getAssetType())
-            .withAssetId(asset.getAssetId())
-            .withColumns(List.copyOf(listOrEmpty(asset.getColumns()))));
-    return changed(current, assets, expectedRevision);
+  /** Column bindings compare as a set, so resending them in another order is the same binding. */
+  public static boolean sameColumns(
+      final List<OntologyColumnBinding> stored, final List<OntologyColumnBinding> requested) {
+    return new HashSet<>(listOrEmpty(stored)).equals(new HashSet<>(listOrEmpty(requested)));
   }
 
-  public static OntologyConceptBindings remove(
-      final OntologyConceptBindings current,
-      final OntologyBindingAssetType assetType,
-      final UUID assetId,
-      final Long expectedRevision) {
-    requireRevision(expectedRevision);
-    final var assets =
-        current.getAssets().stream()
-            .filter(value -> !sameAsset(value, assetType, assetId))
-            .toList();
-    return assets.size() == current.getAssets().size()
-        ? current
-        : changed(current, assets, expectedRevision);
-  }
-
-  public static OntologyAssetBinding find(
-      final OntologyConceptBindings current, final OntologyBindingAssetType type, final UUID id) {
-    return current.getAssets().stream()
-        .filter(asset -> sameAsset(asset, type, id))
-        .findFirst()
-        .orElse(null);
-  }
-
-  private static boolean sameAsset(
-      final OntologyAssetBinding asset, final OntologyBindingAssetType type, final UUID id) {
-    return asset.getAssetType() == type && asset.getAssetId().equals(id);
-  }
-
-  private static OntologyConceptBindings changed(
-      final OntologyConceptBindings current,
-      final List<OntologyAssetBinding> assets,
-      final Long expectedRevision) {
-    if (!current.getRevision().equals(expectedRevision) || current.getRevision() == MAX_REVISION) {
+  /** The revision a changed write commits, or 409 when the writer did not see the current one. */
+  public static long nextRevision(final long current, final long expected) {
+    if (current != expected || current == MAX_REVISION) {
       throw new ClientErrorException(
           "Concept bindings changed; reload before editing", Response.Status.CONFLICT);
     }
-    if (assets.size() > MAX_ASSETS
-        || assets.stream().mapToInt(asset -> listOrEmpty(asset.getColumns()).size()).sum()
-            > MAX_CONCEPT_COLUMNS) {
-      throw new BadRequestException("Concept bindings exceed the 100 asset or 500 column limit");
+    return current + 1;
+  }
+
+  public static void requireColumnCapacity(final int boundColumns) {
+    if (boundColumns > MAX_CONCEPT_COLUMNS) {
+      throw new BadRequestException("Concept bindings exceed the 500 column limit");
     }
-    return new OntologyConceptBindings()
-        .withRevision(current.getRevision() + 1)
-        .withAssets(List.copyOf(assets));
   }
 
   public static Column resolveColumn(final Table table, final List<String> path) {

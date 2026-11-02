@@ -23,7 +23,6 @@ import static org.openmetadata.csv.CsvUtil.addReviewers;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 
 import java.io.IOException;
@@ -35,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -106,6 +106,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       Operation operation,
       ChangeSource changeSource) {
     return new ClassificationUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(TAG);
   }
 
   @Override
@@ -492,9 +497,6 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     searchRepository
         .getSearchClient()
         .updateClassificationTagByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
-    searchRepository
-        .getSearchClient()
-        .updateByFqnPrefix(TAG_SEARCH_INDEX, oldFqn, newFqn, "fullyQualifiedName");
   }
 
   private List<Tag> getAllTagsByClassification(Classification classification) {
@@ -594,6 +596,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
       invalidateClassification(updated.getId());
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+      reindexRenamedDescendants(Entity.TAG, renamedTags, newFqn);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Classification updated) {

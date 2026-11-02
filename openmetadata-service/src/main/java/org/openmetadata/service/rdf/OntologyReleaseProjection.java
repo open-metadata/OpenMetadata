@@ -3,6 +3,7 @@ package org.openmetadata.service.rdf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -93,7 +94,9 @@ public final class OntologyReleaseProjection {
             "xsd",
             XSD.NS,
             "dct",
-            DCTerms.NS));
+            DCTerms.NS,
+            "om",
+            OntologyRdfVocabulary.NAMESPACE));
     listOrEmpty(ontology.getPrefixes())
         .forEach(prefix -> model.setNsPrefix(prefix.getPrefix(), prefix.getNamespace().toString()));
     OwlEntityDeclarations.declare(model, DCTerms.source, EntityKind.ANNOTATION_PROPERTY);
@@ -131,6 +134,7 @@ public final class OntologyReleaseProjection {
           };
       if (!(definition.value() instanceof OntologyAxiom)) {
         labels(subject, definition.value());
+        deprecation(fragment, subject, definition.value());
       }
       target.add(fragment);
       if (!(definition.value() instanceof Ontology)) {
@@ -169,7 +173,38 @@ public final class OntologyReleaseProjection {
               OwlEntityDeclarations.declare(model, mapped, EntityKind.NAMED_INDIVIDUAL);
               subject.addProperty(predicate, mapped);
             });
+    if (Boolean.TRUE.equals(concept.getAbstract())) {
+      OwlEntityDeclarations.declare(
+          model, OntologyRdfVocabulary.ABSTRACT, EntityKind.ANNOTATION_PROPERTY);
+      subject.addLiteral(OntologyRdfVocabulary.ABSTRACT, true);
+    }
+    if (concept.getDefinitionSource() != null) {
+      subject.addProperty(
+          DCTerms.source, model.createResource(concept.getDefinitionSource().toString()));
+    }
     return subject;
+  }
+
+  private static void deprecation(
+      final Model model, final Resource subject, final OntologyDefinition definition) {
+    switch (definition) {
+      case OntologyConcept concept -> deprecation(
+          model, subject, concept.getDeprecated(), concept.getReplacedBy());
+      case OntologyProperty property -> deprecation(
+          model, subject, property.getDeprecated(), property.getReplacedBy());
+      default -> {}
+    }
+  }
+
+  private static void deprecation(
+      final Model model, final Resource subject, final Boolean deprecated, final URI replacement) {
+    if (Boolean.TRUE.equals(deprecated)) {
+      subject.addLiteral(OWL2.deprecated, true);
+    }
+    if (replacement != null) {
+      OwlEntityDeclarations.declare(model, DCTerms.isReplacedBy, EntityKind.ANNOTATION_PROPERTY);
+      subject.addProperty(DCTerms.isReplacedBy, model.createResource(replacement.toString()));
+    }
   }
 
   private static void labels(final Resource subject, final OntologyDefinition definition) {

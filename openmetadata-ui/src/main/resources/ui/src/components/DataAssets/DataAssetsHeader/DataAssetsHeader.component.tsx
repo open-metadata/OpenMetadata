@@ -53,7 +53,6 @@ import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
@@ -192,7 +191,6 @@ export const DataAssetsHeader = ({
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
-  const { isTourPage } = useTourProvider();
   const { customizedPage } = useCustomPages(
     ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
   );
@@ -378,7 +376,7 @@ export const DataAssetsHeader = ({
   );
 
   useEffect(() => {
-    if (dataAsset.fullyQualifiedName && !isTourPage && !isCustomizedView) {
+    if (dataAsset.fullyQualifiedName && !isCustomizedView) {
       void fetchActiveAnnouncement();
       void fetchDQFailureCount();
     }
@@ -388,7 +386,6 @@ export const DataAssetsHeader = ({
   }, [
     dataAsset.fullyQualifiedName,
     entityType,
-    isTourPage,
     isCustomizedView,
     fetchActiveAnnouncement,
     fetchDQFailureCount,
@@ -738,10 +735,10 @@ export const DataAssetsHeader = ({
   }, [dataAsset, t]);
 
   useEffect(() => {
-    if (dataAsset.id && !isTourPage) {
+    if (dataAsset.id) {
       void fetchDataContract(dataAsset.id);
     }
-  }, [dataAsset.id, isTourPage, fetchDataContract]);
+  }, [dataAsset.id, fetchDataContract]);
 
   const hasDisplayName = !isEmpty(dataAsset.displayName);
 

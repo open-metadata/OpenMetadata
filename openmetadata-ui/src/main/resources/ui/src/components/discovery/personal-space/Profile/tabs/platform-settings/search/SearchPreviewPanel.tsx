@@ -13,7 +13,6 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   Input,
   PaginationCardWithControls,
   Toggle,
@@ -28,6 +27,7 @@ import { SearchSettings } from '../../../../../../../generated/configuration/sea
 import { useSavedPageSize } from '../../../../../../../hooks/paging/useSavedPageSize';
 import { searchPreview } from '../../../../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import ExploreSearchCard from '../../../../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../../../../SearchedData/SearchedData.interface';
 import { SettingsSkeleton } from '../SettingsFormLayout';
@@ -131,9 +131,9 @@ const SearchPreviewPanel = ({
     if (hits.length === 0) {
       return (
         <div className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="search-preview-empty"
-            icon={<Search className="tw:text-quaternary" />}
+            icon={<Search />}
             title={t('message.no-data-available')}
           />
         </div>

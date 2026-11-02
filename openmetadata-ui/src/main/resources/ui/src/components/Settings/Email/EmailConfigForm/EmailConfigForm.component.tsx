@@ -153,9 +153,9 @@ function EmailConfigForm({
           onSubmit(toSmtpSettings(values))
         )}>
         <FormFields fields={fields} />
-        <Box className="layout-row" justify="end" wrap="wrap">
+        <Box className="layout-row" gap={3} justify="end" wrap="wrap">
           <Box className="layout-column tw:block">
-            <Button color="link-color" onClick={onCancel}>
+            <Button color="secondary" onClick={onCancel}>
               {t('label.cancel')}
             </Button>
           </Box>

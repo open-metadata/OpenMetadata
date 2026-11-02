@@ -28,7 +28,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Edge } from 'reactflow';
 import { PAGE_SIZE } from '../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -40,7 +39,8 @@ import Fqn from '../../../../utils/Fqn';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import '../../../ActivityFeed/FeedEditor/feed-editor.less';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 
 interface AddPipeLineModalType {
   showAddEdgeModal: boolean;
@@ -103,15 +103,17 @@ const AddPipeLineModal = ({
     if (isUndefined(selectedEdge)) {
       if (edgeSearchValue) {
         return (
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+          </div>
         );
       }
 
-      return <ErrorPlaceHolder />;
+      return (
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder data-testid="no-data-placeholder" />
+        </div>
+      );
     }
 
     return null;

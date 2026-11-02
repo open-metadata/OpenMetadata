@@ -84,6 +84,25 @@ describe('TaskDetailSummary', () => {
     expect(screen.queryByTestId('avatar-group')).not.toBeInTheDocument();
   });
 
+  it('names an AI agent with its badge rather than a person', () => {
+    render(
+      <TaskDetailSummary
+        rows={[
+          {
+            key: 'createdBy',
+            icon: 'owner',
+            label: 'Created by',
+            value: { kind: 'agent', name: 'Glossary Agent' },
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('agent-badge')).toHaveTextContent(
+      'Glossary Agent'
+    );
+  });
+
   // Several people stack as owners do; the overflow reads "5 Assignees", not
   // "5 Assignee".
   it("stacks several people under the row's plural title", () => {

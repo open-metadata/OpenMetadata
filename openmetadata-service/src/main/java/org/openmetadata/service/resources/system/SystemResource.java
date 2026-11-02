@@ -49,6 +49,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -279,17 +280,35 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    String settingName = canonicalSettingName(name);
     // Restrict access to authentication and authorizer configurations
-    if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
-        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+    if (settingName.equals(AUTHENTICATION_CONFIGURATION.value())
+        || settingName.equals(AUTHORIZER_CONFIGURATION.value())) {
       throw new SystemSettingsException(
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
-    if (!isUserReadableSetting(name)) {
+    if (!isUserReadableSetting(settingName)) {
       authorizer.authorizeAdmin(securityContext);
     }
-    return forResponse(systemRepository.getConfigWithKey(name));
+    Settings settings = systemRepository.getConfigWithKey(settingName);
+    // The lookup compares with the database collation, which on MySQL ignores accents, so it can
+    // answer with a row of another name than the one the checks above were made for.
+    if (settings != null
+        && settings.getConfigType() != null
+        && !settings.getConfigType().value().equals(settingName)) {
+      throw new SystemSettingsException(String.format("Setting %s was not found", name));
+    }
+    return forResponse(settings);
+  }
+
+  /** The defined setting name {@code name} refers to, ignoring case; any other name unchanged. */
+  private static String canonicalSettingName(String name) {
+    return Arrays.stream(SettingsType.values())
+        .map(SettingsType::value)
+        .filter(value -> SecurityUtil.sameIdentifier(value, name))
+        .findFirst()
+        .orElse(name);
   }
 
   /** The persisted search settings, so validation can tell a newly added highlight field from one this cluster already carried. */
@@ -1308,14 +1327,20 @@ public class SystemResource {
 
   static void preserveMaskedSecuritySecrets(
       SecurityConfiguration updated, SecurityConfiguration original) {
-    if (updated != null
-        && original != null
-        && updated.getAuthenticationConfiguration() != null
-        && original.getAuthenticationConfiguration() != null) {
+    if (updated == null || updated.getAuthenticationConfiguration() == null) {
+      return;
+    }
+    AuthenticationConfiguration originalAuthentication =
+        original == null ? null : original.getAuthenticationConfiguration();
+    SettingsSecrets.rejectForeignEncryptedSecrets(
+        AUTHENTICATION_CONFIGURATION,
+        updated.getAuthenticationConfiguration(),
+        originalAuthentication);
+    if (originalAuthentication != null) {
       SettingsSecrets.restoreMaskedInPlace(
           AUTHENTICATION_CONFIGURATION,
           updated.getAuthenticationConfiguration(),
-          original.getAuthenticationConfiguration());
+          originalAuthentication);
     }
   }
 

@@ -13,9 +13,14 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 
 @Slf4j
@@ -38,16 +43,38 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
   @Override
   public String adapt(String templateContent) {
     if (templateContent == null || templateContent.isEmpty()) return "";
+    requireHtmlWithinBudget(templateContent);
     try {
-      return CONVERTER.convert(templateContent);
+      return CONVERTER.convert(parseFlattened(templateContent));
+    } catch (RenderBudgetExceededException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to convert HTML to Markdown", e);
       return "";
     }
   }
 
+  private static void requireHtmlWithinBudget(String html) {
+    if (html.length() > RenderLimits.MAX_HTML_CHARS) {
+      throw new RenderBudgetExceededException(
+          String.format(
+              "Notification HTML of %d characters exceeds the render budget of %d",
+              html.length(), RenderLimits.MAX_HTML_CHARS));
+    }
+  }
+
+  // Elements nested deeper than the limit are flattened into their ancestor: each nesting level
+  // repeats a Markdown prefix on every line below it, so depth multiplies the output.
+  private static Document parseFlattened(String html) {
+    return Jsoup.parse(html, "", Parser.htmlParser().setMaxDepth(RenderLimits.MAX_HTML_DEPTH));
+  }
+
   /** Handles both <pre> and <code> so we can decide inline vs fenced. */
   static class CodeAndPreRenderer implements HtmlNodeRenderer {
+    private static final Pattern BACKTICK_RUN = Pattern.compile("`+");
+    private static final Pattern SAFE_LANGUAGE = Pattern.compile("[A-Za-z0-9_+-]+");
+    private static final int MIN_FENCE_LENGTH = 3;
+
     CodeAndPreRenderer(DataHolder options) {}
 
     @Override
@@ -96,12 +123,12 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
         }
       }
 
-      // Choose a fence that won't collide with content
-      String fence = codeText.contains("```") ? "~~~~" : "```";
+      // Only a run of backticks at least as long as the fence closes it, so the code cannot.
+      String fence = "`".repeat(Math.max(MIN_FENCE_LENGTH, longestBacktickRun(codeText) + 1));
 
       out.blankLine();
       out.append(fence);
-      if (!lang.isEmpty()) out.append(lang);
+      if (SAFE_LANGUAGE.matcher(lang).matches()) out.append(lang);
       out.line();
 
       out.append(codeText);
@@ -116,11 +143,21 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
       // For inline, collapse newlines to spaces and trim outer whitespace
       String text = code.text().replace('\n', ' ').replace('\r', ' ').trim();
 
-      // If the inline text contains backticks, use double backticks as the fence
-      boolean hasBacktick = text.indexOf('`') >= 0;
-      String tick = hasBacktick ? "``" : "`";
+      // A fence longer than any backtick run in the text; a backtick at either edge needs a space.
+      String tick = "`".repeat(longestBacktickRun(text) + 1);
+      boolean touchesTick = text.startsWith("`") || text.endsWith("`");
+      String padding = touchesTick ? " " : "";
 
-      out.append(tick).append(text).append(tick);
+      out.append(tick).append(padding).append(text).append(padding).append(tick);
+    }
+
+    private static int longestBacktickRun(String text) {
+      Matcher run = BACKTICK_RUN.matcher(text);
+      int longest = 0;
+      while (run.find()) {
+        longest = Math.max(longest, run.end() - run.start());
+      }
+      return longest;
     }
 
     static class Factory implements HtmlNodeRendererFactory {
@@ -133,6 +170,8 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
 
   /** Handles inline formatting elements to prevent unwanted spacing. */
   static class InlineElementRenderer implements HtmlNodeRenderer {
+    private static final char DELETE = 0x7F;
+
     InlineElementRenderer(DataHolder options) {}
 
     @Override
@@ -179,7 +218,18 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
       // Collect link text
       out.append("[");
       ctx.renderChildren(elem, false, null);
-      out.append("](").append(href).append(")");
+      out.append("](").append(encodeLinkTarget(href)).append(")");
+    }
+
+    // A Markdown link target ends at an ASCII space, control character or parenthesis, and a
+    // newline would start a new block, so those characters are percent-encoded as a URL allows.
+    private static String encodeLinkTarget(String href) {
+      StringBuilder encoded = new StringBuilder(href.length());
+      for (char c : href.toCharArray()) {
+        boolean breaksTheLink = c <= ' ' || c == DELETE || c == '(' || c == ')';
+        encoded.append(breaksTheLink ? String.format("%%%02X", (int) c) : String.valueOf(c));
+      }
+      return encoded.toString();
     }
 
     static class Factory implements HtmlNodeRendererFactory {
@@ -278,6 +328,9 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
         }
       }
 
+      int headerRowCount = Math.max(1, headerRows.size());
+      requireTableFits(out, headerRowCount + 1 + bodyRows.size(), colWidths);
+
       out.blankLine();
 
       // Render header
@@ -305,6 +358,22 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
       }
 
       out.blankLine();
+    }
+
+    // Every row is padded to the widest one, so a table's size is rows times the full row width.
+    // It is measured before anything is written, together with what was already written.
+    private static void requireTableFits(HtmlMarkdownWriter out, int rows, int[] colWidths) {
+      long rowLength = 2L;
+      for (int width : colWidths) {
+        rowLength += width + 3L;
+      }
+      long markdownLength = out.offsetWithPending() + rows * rowLength;
+      if (markdownLength > RenderLimits.MAX_MARKDOWN_CHARS) {
+        throw new RenderBudgetExceededException(
+            String.format(
+                "A table of %d rows and %d columns exceeds the render budget of %d characters",
+                rows, colWidths.length, RenderLimits.MAX_MARKDOWN_CHARS));
+      }
     }
 
     private List<String> extractRowCells(Element tr, String primary, String secondary) {

@@ -17,6 +17,7 @@ import { OntologyConcept } from '../../../generated/entity/data/ontologyConcept'
 import { Column } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { OntologyConceptBindingsResponse } from '../../../generated/type/ontologyConceptBindingsResponse';
+import { BindingWriteOutcome } from '../../../interface/governance/ontology/ontologyConceptBindings.types';
 import { getEntityName } from '../../EntityNameUtils';
 import Fqn from '../../Fqn';
 import { getEntityDetailsPath } from '../../RouterUtils';
@@ -26,6 +27,18 @@ import {
 } from './OntologyStudioModel.utils';
 
 export const NATIVE_BINDING_ASSET_TYPES = Object.values(AssetType);
+
+export const getOntologyBindingWriteMessage = (
+  outcome: BindingWriteOutcome
+) => {
+  if (outcome.kind === 'confirmed') {
+    return outcome.read.kind === 'ready'
+      ? 'label.saved'
+      : 'message.ontology-binding-saved-read-unavailable';
+  }
+
+  return `message.ontology-binding-${outcome.kind}` as const;
+};
 
 export const getOntologyAssetPath = (asset: EntityReference) => {
   const type = Object.values(EntityType).find((value) => value === asset.type);

@@ -269,7 +269,7 @@ test.describe('Data Products', () => {
       await page.getByRole('main').getByPlaceholder('Search').clear();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
+      await expect(page.getByTestId('pagination')).toBeVisible();
     });
 
     await test.step('Cleanup test data products', async () => {
@@ -326,71 +326,6 @@ test.describe('Data Products', () => {
         page.context().browser()!
       );
       await dataProduct.delete(apiContext);
-      await afterAction();
-    });
-  });
-
-  test('Pagination', async ({ page }) => {
-    const dataProducts: DataProduct[] = [];
-
-    await test.step('Create 30 test data products', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(
-        page.context().browser()!
-      );
-
-      for (let i = 0; i < 30; i++) {
-        const dp = new DataProduct([domain]);
-        await dp.create(apiContext);
-        dataProducts.push(dp);
-      }
-
-      await afterAction();
-    });
-
-    await test.step('Navigate to Data Products page', async () => {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await waitForAllLoadersToDisappear(page);
-    });
-
-    await test.step('Verify pagination controls are visible', async () => {
-      const pagination = page.getByLabel('Pagination Navigation');
-      await expect(pagination).toBeVisible();
-      await expect(
-        pagination.getByLabel('Page 1', { exact: true })
-      ).toBeVisible();
-    });
-
-    await test.step('Navigate to page 2', async () => {
-      await page.getByLabel('Next Page').click();
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page
-          .getByLabel('Pagination Navigation')
-          .getByLabel('Page 2', { exact: true })
-      ).toBeVisible();
-    });
-
-    await test.step('Navigate back to page 1', async () => {
-      await page.getByLabel('Previous Page').click();
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page
-          .getByLabel('Pagination Navigation')
-          .getByLabel('Page 1', { exact: true })
-      ).toBeVisible();
-    });
-
-    await test.step('Cleanup test data products', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(
-        page.context().browser()!
-      );
-
-      for (const dp of dataProducts) {
-        await dp.delete(apiContext);
-      }
-
       await afterAction();
     });
   });

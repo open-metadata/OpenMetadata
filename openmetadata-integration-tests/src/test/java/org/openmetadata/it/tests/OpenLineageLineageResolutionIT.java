@@ -41,6 +41,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -48,19 +49,25 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.services.CreateMessagingService;
+import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -1079,6 +1086,48 @@ public class OpenLineageLineageResolutionIT {
         () -> SdkClients.adminClient().databases().getByName(serviceName + "." + database));
   }
 
+  /**
+   * Spark Structured Streaming names a Kafka source {@code kafka://host:port}; the topic resolves
+   * through the bootstrapServers of its messaging service even when the event carries another
+   * listener port of the same broker host.
+   */
+  @Test
+  @Order(29)
+  void kafkaDataset_resolvesToTheTopicOfTheServiceListingItsBroker(TestNamespace ns)
+      throws Exception {
+    String suffix = uniqueSuffix();
+    String brokerHost = "ol-kafka-" + suffix;
+    MessagingService kafka =
+        ns.trackRoot(
+            Entity.MESSAGING_SERVICE,
+            SdkClients.adminClient()
+                .messagingServices()
+                .create(
+                    new CreateMessagingService()
+                        .withName(ns.prefix("ol_kafka_" + suffix))
+                        .withServiceType(MessagingServiceType.Kafka)
+                        .withConnection(
+                            new MessagingConnection()
+                                .withConfig(
+                                    new KafkaConnection()
+                                        .withBootstrapServers(brokerHost + ":9092")))));
+    Topic topic = TopicTestFactory.createSimple(ns, kafka.getFullyQualifiedName());
+    String outputName = "ol_kafka_out_" + suffix;
+    Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    JsonNode response =
+        send(
+            completeEvent("ol_kafka_ns", "ol_kafka_job_" + suffix)
+                .addInput(topic.getName(), "kafka://" + brokerHost + ":9093")
+                .addOutput("ecommerce_db.shopify." + outputName, serviceName));
+
+    assertEquals("success", response.get("status").asText(), response.toString());
+    assertEquals(1, response.get("lineageEdgesCreated").asInt(), response.toString());
+    assertNotNull(
+        fetchOpenLineageEdgeDetailsByFqn(
+            Entity.TOPIC, topic.getFullyQualifiedName(), schemaFqn + "." + outputName));
+  }
+
   // ====================================================================================
   // Helpers
   // ====================================================================================
@@ -1278,6 +1327,11 @@ public class OpenLineageLineageResolutionIT {
   }
 
   private static Map<?, ?> fetchOpenLineageEdgeDetailsByFqn(String inputFqn, String outputFqn) {
+    return fetchOpenLineageEdgeDetailsByFqn(Entity.TABLE, inputFqn, outputFqn);
+  }
+
+  private static Map<?, ?> fetchOpenLineageEdgeDetailsByFqn(
+      String inputType, String inputFqn, String outputFqn) {
     Map<?, ?>[] holder = new Map<?, ?>[1];
     Awaitility.await("OpenLineage edge from " + inputFqn + " to " + outputFqn)
         .atMost(Duration.ofSeconds(60))
@@ -1285,7 +1339,7 @@ public class OpenLineageLineageResolutionIT {
         .ignoreExceptions()
         .until(
             () -> {
-              holder[0] = findOpenLineageEdge(inputFqn, outputFqn);
+              holder[0] = findOpenLineageEdge(inputType, inputFqn, outputFqn);
               return holder[0] != null;
             });
     return holder[0];
@@ -1300,13 +1354,14 @@ public class OpenLineageLineageResolutionIT {
         .during(Duration.ofSeconds(3))
         .atMost(Duration.ofSeconds(10))
         .pollInterval(Duration.ofSeconds(1))
-        .until(() -> findOpenLineageEdge(inputFqn, outputFqn) == null);
+        .until(() -> findOpenLineageEdge(Entity.TABLE, inputFqn, outputFqn) == null);
   }
 
   @SuppressWarnings("unchecked")
-  private static Map<?, ?> findOpenLineageEdge(String inputFqn, String outputFqn) throws Exception {
+  private static Map<?, ?> findOpenLineageEdge(String inputType, String inputFqn, String outputFqn)
+      throws Exception {
     LineageAPI.LineageGraph graph =
-        LineageAPI.forName$("table", inputFqn).upstream(0).downstream(1).fetch();
+        LineageAPI.forName$(inputType, inputFqn).upstream(0).downstream(1).fetch();
     Map<String, Object> lineage = MAPPER.readValue(graph.getRaw(), Map.class);
     List<?> edges = (List<?>) lineage.get("downstreamEdges");
     if (edges == null) {

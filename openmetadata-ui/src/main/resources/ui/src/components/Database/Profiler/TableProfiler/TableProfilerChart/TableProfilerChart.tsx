@@ -24,7 +24,6 @@ import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../../../constants/profiler.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { TableProfile } from '../../../../../generated/entity/data/table';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
@@ -40,7 +39,7 @@ import {
   calculateSystemMetrics,
 } from '../../../../../utils/TableProfilerUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -193,12 +192,14 @@ const TableProfilerChart = ({
 
   if (permissions && !permissions?.ViewDataProfile) {
     return (
-      <ErrorPlaceHolder
-        permissionValue={t('label.view-entity', {
-          entity: t('label.data-observability'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-observability'),
+          })}
+        />
+      </div>
     );
   }
 

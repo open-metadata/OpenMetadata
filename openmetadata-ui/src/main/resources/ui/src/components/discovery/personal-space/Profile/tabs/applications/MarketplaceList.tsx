@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Grid,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { GridView } from '@openmetadata/ui-core-components/icons';
 import { FC, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +19,7 @@ import { GRID_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { useCursorPagedList } from '../../../../../../hooks/useCursorPagedList';
 import { getMarketPlaceApplicationList } from '../../../../../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import ApplicationCard from './ApplicationCard';
 import type { ApplicationsViewProps } from './Applications.types';
 import {
@@ -62,7 +58,7 @@ const MarketplaceList: FC<ApplicationsViewProps> = ({
       </Typography>
       {!isLoading && apps.length === 0 ? (
         <Box className="tw:relative tw:flex-1 tw:min-h-90">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-marketplace-applications"
             icon={GridView}
             title={t('label.no-entity', {

@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Grid,
   PaginationCardWithControls,
   Skeleton,
@@ -34,6 +33,7 @@ import {
 } from '../../../../../../hooks/useCursorPagedList';
 import { getApplicationList } from '../../../../../../rest/applicationAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { AppFooter } from './AppFooter';
 import ApplicationCard from './ApplicationCard';
 import type { ApplicationsViewProps } from './Applications.types';
@@ -146,7 +146,7 @@ const ApplicationsList: FC<ApplicationsViewProps> = ({
 
       {!isLoading && apps.length === 0 ? (
         <Box className="tw:relative tw:flex-1 tw:min-h-90">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-applications"
             description={
               showDisabled

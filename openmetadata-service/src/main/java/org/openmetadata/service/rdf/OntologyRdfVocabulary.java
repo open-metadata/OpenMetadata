@@ -1,18 +1,24 @@
 package org.openmetadata.service.rdf;
 
+import java.util.Set;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
+import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.SKOS;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 
 final class OntologyRdfVocabulary {
+  static final String NAMESPACE = "https://open-metadata.org/ontology/";
   static final Property UNIT =
       ResourceFactory.createProperty("https://open-metadata.org/ontology/unitAnnotation");
   static final Property IDENTIFIER_INTENT =
       ResourceFactory.createProperty("https://open-metadata.org/ontology/identifierIntent");
+  static final Property ABSTRACT = ResourceFactory.createProperty(NAMESPACE + "abstract");
+  static final Set<Resource> ANNOTATIONS =
+      Set.of(DCTerms.source, DCTerms.isReplacedBy, UNIT, IDENTIFIER_INTENT, ABSTRACT);
 
   private OntologyRdfVocabulary() {}
 

@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import CreatePlaceholder from './CreatePlaceholder';
+import FeaturesPlaceholder from './FeaturesPlaceholder';
 import NoDataPlaceholder from './NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from './NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from './NoSearchResultsPlaceholder';
@@ -155,9 +156,15 @@ describe('NoDataPlaceholder', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('should allow overriding the description', () => {
-    render(<NoDataPlaceholder description="custom description" />);
+  it('should allow overriding the title and description', () => {
+    render(
+      <NoDataPlaceholder
+        description="custom description"
+        title="custom title"
+      />
+    );
 
+    expect(screen.getByText('custom title')).toBeInTheDocument();
     expect(screen.getByText('custom description')).toBeInTheDocument();
     expect(
       screen.queryByText('message.no-data-available')
@@ -237,5 +244,136 @@ describe('CreatePlaceholder', () => {
         'message.adding-new-entity-is-easy-just-give-it-a-spin'
       )
     ).not.toBeInTheDocument();
+  });
+
+  it('should not render create controls in the denied state', () => {
+    render(
+      <CreatePlaceholder
+        description="message.adding-a-role"
+        footer={<button type="button">label.add-role</button>}
+        permission={false}
+        onCreate={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByText('message.adding-a-role')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-access-placeholder')
+    ).toBeInTheDocument();
+  });
+});
+
+describe('Caller copy replaces wrapper defaults', () => {
+  it('does not stack the default no-data title above a caller footer', () => {
+    render(<NoDataPlaceholder footer={<span>own footer copy</span>} />);
+
+    expect(screen.getByText('own footer copy')).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps a caller description as body copy without inventing a title', () => {
+    render(
+      <NoDataPlaceholder description="Enable the profiler to see data." />
+    );
+
+    const description = screen.getByText('Enable the profiler to see data.');
+
+    expect(description).toHaveClass('tw:text-secondary');
+    expect(description).not.toHaveClass('tw:font-semibold');
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders a caller title with its own text colour', () => {
+    render(<NoDataPlaceholder title="No test cases yet" />);
+
+    expect(screen.getByText('No test cases yet')).toHaveClass(
+      'tw:font-semibold',
+      'tw:text-primary'
+    );
+  });
+
+  it('adds no title above a description that has a footer', () => {
+    render(
+      <NoDataPlaceholder
+        description="Adding a new insight is easy."
+        footer={<span>doc link</span>}
+      />
+    );
+
+    expect(
+      screen.getByText('Adding a new insight is easy.')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      'NoSearchResultsPlaceholder',
+      NoSearchResultsPlaceholder,
+      'message.check-spelling-or-try-shorter-term',
+    ],
+    [
+      'NoFilteredResultsPlaceholder',
+      NoFilteredResultsPlaceholder,
+      'message.nothing-matches-current-filter',
+    ],
+    [
+      'SomethingWentWrongPlaceholder',
+      SomethingWentWrongPlaceholder,
+      'message.temporary-error-try-reloading',
+    ],
+    [
+      'PermissionPlaceholder',
+      PermissionPlaceholder,
+      'message.no-access-placeholder',
+    ],
+  ])(
+    '%s skips its default description when the caller sets a title',
+    (_, Placeholder, defaultDescription) => {
+      render(<Placeholder title="Caller title" />);
+
+      expect(screen.getByText('Caller title')).toBeInTheDocument();
+      expect(screen.queryByText(defaultDescription)).not.toBeInTheDocument();
+    }
+  );
+});
+
+describe('FeaturesPlaceholder', () => {
+  it('renders the title, description and feature columns', () => {
+    render(
+      <FeaturesPlaceholder
+        description="Set it up in three steps"
+        features={[
+          {
+            key: 'one',
+            icon: <span />,
+            title: 'Define it',
+            description: 'Step one',
+          },
+          {
+            key: 'two',
+            icon: <span />,
+            title: 'Own it',
+            description: 'Step two',
+          },
+        ]}
+        title="Get started"
+      />
+    );
+
+    expect(screen.getByText('Get started')).toBeInTheDocument();
+    expect(screen.getByText('Set it up in three steps')).toBeInTheDocument();
+    expect(screen.getByText('Define it')).toBeInTheDocument();
+    expect(screen.getByText('Own it')).toBeInTheDocument();
   });
 });

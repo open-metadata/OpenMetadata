@@ -870,7 +870,8 @@ public class NotificationTemplateResource
       summary = "Validate and send notification template to external destinations",
       description =
           "Validates template syntax, generates mock ChangeEvent data, and sends to specified external destinations. "
-              + "Returns validation status only. Delivery errors are logged server-side. "
+              + "Returns validation status only. Delivery errors are logged server-side, except a "
+              + "message too large for a destination's channel, which is returned as a body error. "
               + "Only external destinations (Email, Slack, Teams, GChat, Webhook) are supported. "
               + "Requires any of: CREATE, EDIT_ALL, EDIT_USER_NOTIFICATION_TEMPLATE.",
       responses = {

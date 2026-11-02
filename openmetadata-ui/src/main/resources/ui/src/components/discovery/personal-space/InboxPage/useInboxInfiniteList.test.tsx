@@ -133,14 +133,54 @@ describe('useInboxInfiniteList', () => {
     expect(api.hasMore).toBe(false);
   });
 
-  it('shows an error toast when a page fetch rejects', async () => {
-    const fetchPage = jest.fn().mockRejectedValue(new Error('boom'));
+  it('exposes a failed first page as an error instead of an empty list', async () => {
+    const failure = new Error('boom');
+    const fetchPage = jest.fn().mockRejectedValue(failure);
 
     renderHarness(fetchPage);
 
+    await waitFor(() => expect(api.error).toBe(failure));
+
+    expect(api.isLoading).toBe(false);
+    expect(api.items).toHaveLength(0);
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('clears the error once a retry succeeds', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(page(1));
+
+    renderHarness(fetchPage);
+    await waitFor(() => expect(api.error).toBeTruthy());
+
+    await act(async () => {
+      api.refetch();
+    });
+
+    await waitFor(() => expect(api.items).toHaveLength(1));
+
+    expect(api.error).toBeNull();
+  });
+
+  it('toasts a failed later page and keeps the loaded rows', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page(1, { after: 'c1', total: 5 }))
+      .mockRejectedValueOnce(new Error('boom'));
+
+    renderHarness(fetchPage);
+    await waitFor(() => expect(api.items).toHaveLength(1));
+
+    await act(async () => {
+      intersect?.();
+    });
+
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalled());
 
-    expect(api.items).toHaveLength(0);
+    expect(api.items).toHaveLength(1);
+    expect(api.error).toBeNull();
   });
 
   // A filter switch must not blank the list: the old rows stay until the new

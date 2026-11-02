@@ -25,7 +25,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, pick } from 'lodash';
-import { Key, useEffect, useRef, useState } from 'react';
+import { Key, ReactNode, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -35,11 +35,13 @@ import {
 import { OntologyProfileReport } from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyAxiom,
   patchOntologyAxiom,
   validateOntologyAxiom,
 } from '../../../../rest/ontologyAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyExpressionEditor, {
@@ -159,6 +161,95 @@ const ProfileResult = ({ profile }: { profile: OntologyProfileReport }) => {
   );
 };
 
+const previewSentence = (
+  values: OntologyAxiomFormState,
+  t: ReturnType<typeof useTranslation>['t']
+) =>
+  [
+    values.subjectIri,
+    axiomTypeLabel(values.axiomType, t),
+    values.propertyIri,
+    values.targetIri,
+    values.literalValue,
+    ...values.expressions.map((expression) => expression.classIri),
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+const AxiomFrame = ({
+  isAiMode,
+  children,
+}: {
+  isAiMode: boolean;
+  children: ReactNode;
+}) =>
+  isAiMode ? (
+    <section
+      className="tw:flex tw:flex-col tw:gap-4.5"
+      data-testid="ontology-axiom-panel">
+      {children}
+    </section>
+  ) : (
+    <Card
+      className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5"
+      data-testid="ontology-axiom-panel">
+      {children}
+    </Card>
+  );
+
+const AxiomTitle = ({
+  isAiMode,
+  axiom,
+}: {
+  isAiMode: boolean;
+  axiom?: OntologyAxiom;
+}) => {
+  const { t } = useTranslation();
+
+  return isAiMode ? (
+    <Typography
+      as="h3"
+      className="not-prose tw:m-0"
+      size="text-sm"
+      weight="semibold">
+      {axiom
+        ? getEntityName(axiom)
+        : t('label.new-entity', { entity: t('label.constraint') })}
+    </Typography>
+  ) : (
+    <Typography as="h3" size="text-lg" weight="semibold">
+      {t('label.ontology')} {t('label.constraint-plural')}
+    </Typography>
+  );
+};
+
+const axiomButtonSize = (isAiMode: boolean) => (isAiMode ? 'sm' : undefined);
+
+const AxiomPreview = ({
+  isAiMode,
+  sentence,
+}: {
+  isAiMode: boolean;
+  sentence: string;
+}) => {
+  const { t } = useTranslation();
+
+  if (!isAiMode) {
+    return null;
+  }
+
+  return (
+    <Card data-testid="ontology-axiom-preview" size="sm" variant="muted">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-1">
+        <Typography color="secondary" size="text-xs" weight="medium">
+          {t('label.preview')}
+        </Typography>
+        <Typography size="text-sm">{sentence}</Typography>
+      </Card.Content>
+    </Card>
+  );
+};
+
 const axiomFormValues = (axiom?: OntologyAxiom): OntologyAxiomFormState => {
   if (!axiom) {
     return {
@@ -192,6 +283,8 @@ const OntologyAxiomEditor = ({
   onSaved,
 }: OntologyAxiomEditorProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const buttonSize = axiomButtonSize(isAiMode);
   const form = useForm<OntologyAxiomFormState>({
     defaultValues: {
       ...EMPTY_AXIOM_FORM,
@@ -331,12 +424,8 @@ const OntologyAxiomEditor = ({
 
   return (
     <HookForm form={form} onSubmit={form.handleSubmit(submit)}>
-      <Card
-        className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5"
-        data-testid="ontology-axiom-panel">
-        <Typography as="h3" size="text-lg" weight="semibold">
-          {t('label.ontology')} {t('label.constraint-plural')}
-        </Typography>
+      <AxiomFrame isAiMode={isAiMode}>
+        <AxiomTitle axiom={axiom} isAiMode={isAiMode} />
         <Select
           items={Object.values(AxiomType).map((axiomType) => ({
             id: axiomType,
@@ -439,6 +528,10 @@ const OntologyAxiomEditor = ({
           </div>
         ) : null}
 
+        <AxiomPreview
+          isAiMode={isAiMode}
+          sentence={previewSentence(values, t)}
+        />
         {profile ? <ProfileResult profile={profile} /> : null}
         <div className="tw:flex tw:flex-wrap tw:justify-end tw:gap-2">
           <Button
@@ -446,6 +539,7 @@ const OntologyAxiomEditor = ({
             data-testid="ontology-axiom-validate"
             isDisabled={!isOntologyAxiomReady(values)}
             isLoading={isValidating}
+            size={buttonSize}
             onClick={() => void validate()}>
             {t('label.validate')}
           </Button>
@@ -454,6 +548,7 @@ const OntologyAxiomEditor = ({
             data-testid="ontology-axiom-submit"
             isDisabled={!canEdit || !profile?.valid}
             isLoading={form.formState.isSubmitting}
+            size={buttonSize}
             type="submit">
             {t('label.save')}
           </Button>
@@ -464,7 +559,7 @@ const OntologyAxiomEditor = ({
             variant="success"
           />
         ) : null}
-      </Card>
+      </AxiomFrame>
     </HookForm>
   );
 };

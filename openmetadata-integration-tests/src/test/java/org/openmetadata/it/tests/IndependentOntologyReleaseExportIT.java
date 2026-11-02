@@ -151,7 +151,10 @@ public class IndependentOntologyReleaseExportIT extends BaseOntologyApprovalIT {
         .update(
             dataProperty.getId(),
             dataProperty
-                .withEnumValues(List.of(new OntologyLiteral().withValue("Later value")))
+                .withEnumValues(
+                    List.of(
+                        new OntologyLiteral().withValue("Later value"),
+                        new OntologyLiteral().withValue("Other later value")))
                 .withUnit("g"));
     client
         .ontologyProperties()

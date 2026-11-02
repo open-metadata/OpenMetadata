@@ -12,7 +12,7 @@
  */
 import type { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined, omitBy, trim } from 'lodash';
+import { isEmpty, isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
 import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -22,6 +22,9 @@ import type { User } from '../generated/entity/teams/user';
 import type { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import {
   SubscriptionCategory,
+  type AlertFilteringInput,
+  type ArgumentsInput,
+  type EventFilterRule,
   type EventSubscription,
 } from '../generated/events/eventSubscription';
 import { searchContracts } from '../rest/contractAPI';
@@ -91,6 +94,40 @@ const searchDataContractNames: NameSearch = async (searchText) => {
     return [];
   }
 };
+
+const hasSelections = (input?: AlertFilteringInput) =>
+  !isEmpty(input?.filters) || !isEmpty(input?.actions);
+
+/**
+ * Mirrors the backend's `WrittenByHand` policy: rules stored without the form selections that
+ * compile them. Their argument values live only in each rule's SpEL `condition`, which the form
+ * cannot rebuild, so the form shows these rules read-only and a save never sends `input` — any
+ * selection would make the backend recompile `filteringRules` from it and drop the stored rules.
+ */
+export const hasRulesWithoutSelections = (
+  alert: Pick<EventSubscription, 'input' | 'filteringRules'>
+) =>
+  !hasSelections(alert.input) &&
+  (!isEmpty(alert.filteringRules?.rules) ||
+    !isEmpty(alert.filteringRules?.actions));
+
+const rulesToArgumentsInput = (rules?: EventFilterRule[]): ArgumentsInput[] =>
+  (rules ?? []).map((rule) => ({
+    arguments: rule.arguments?.map((argumentName) => ({ name: argumentName })),
+    effect: rule.effect,
+    name: rule.name,
+    prefixCondition: rule.prefixCondition,
+  }));
+
+const getAlertInputForForm = (
+  alert: EventSubscription
+): AlertFilteringInput | undefined =>
+  hasRulesWithoutSelections(alert)
+    ? {
+        filters: rulesToArgumentsInput(alert.filteringRules?.rules),
+        actions: rulesToArgumentsInput(alert.filteringRules?.actions),
+      }
+    : alert.input;
 
 class AlertsClassBase {
   /**
@@ -205,10 +242,14 @@ class AlertsClassBase {
       description,
       displayName: alertDisplayName,
       name: alertName,
-      input: {
-        actions: input?.actions ?? [],
-        filters: input?.filters ?? [],
-      },
+      ...(hasRulesWithoutSelections(initialData)
+        ? {}
+        : {
+            input: {
+              actions: input?.actions ?? [],
+              filters: input?.filters ?? [],
+            },
+          }),
       owners,
       filteringRules: {
         ...initialData.filteringRules,
@@ -278,6 +319,8 @@ class AlertsClassBase {
   ): ModifiedEventSubscription {
     return {
       ...alertData,
+      input: getAlertInputForForm(alertData),
+      hasRulesWithoutSelections: hasRulesWithoutSelections(alertData),
       timeout: alertData.destinations[0].timeout ?? 10,
       readTimeout:
         alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,

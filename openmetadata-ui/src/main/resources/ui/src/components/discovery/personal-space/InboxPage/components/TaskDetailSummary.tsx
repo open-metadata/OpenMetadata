@@ -31,6 +31,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import AgentBadge from '../../../../../components/common/AgentBadge/AgentBadge';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -67,14 +68,47 @@ const ROW_ICON: Record<TaskDetailRowIcon, typeof User01> = {
 // Past this many, a row's people collapse into "+N".
 const MAX_VISIBLE_PEOPLE = 3;
 
+/**
+ * Several people stack as owners do everywhere else: a hover card per avatar and a "+N" listing
+ * the rest under the row's plural title. One person reads with their name.
+ */
+const UsersValue: React.FC<{
+  value: Extract<TaskDetailRowValue, { kind: 'users' }>;
+  label: string;
+}> = ({ value, label }) => {
+  const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
+
+  return value.refs.length > 1 ? (
+    <AvatarGroup
+      maxCount={MAX_VISIBLE_PEOPLE}
+      overflowTeamsLabel={t('label.team-plural')}
+      overflowTitleLabel={value.title ?? label}
+      overflowUsersLabel={t('label.user-plural')}
+      owners={toOwnerRefs(value.refs)}
+    />
+  ) : (
+    <Box align="center" gap={1}>
+      <ProfilePicture
+        matchRingToFill
+        displayName={getEntityName(value.refs[0])}
+        name={value.refs[0]?.name ?? ''}
+        width="20"
+      />
+      <Typography size="text-sm">
+        {getEntityName(value.refs[0])}
+        {/* The viewer is named as themselves, e.g. "harsh.soni (You)". */}
+        {value.refs[0]?.id === currentUser?.id && ` (${t('label.you')})`}
+      </Typography>
+    </Box>
+  );
+};
+
 /** Renders one row's value; the union keeps the descriptor free of JSX. */
 const RowValue: React.FC<{ value: TaskDetailRowValue; label: string }> = ({
   value,
   label,
 }) => {
-  const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
-
   switch (value.kind) {
     // A date reads on one line, however long its neighbour's value.
     case 'date':
@@ -84,32 +118,11 @@ const RowValue: React.FC<{ value: TaskDetailRowValue; label: string }> = ({
         </Typography>
       );
 
-    // Several people stack as owners do everywhere else: a hover card per
-    // avatar and a "+N" listing the rest under the row's plural title.
     case 'users':
-      return value.refs.length > 1 ? (
-        <AvatarGroup
-          maxCount={MAX_VISIBLE_PEOPLE}
-          overflowTeamsLabel={t('label.team-plural')}
-          overflowTitleLabel={value.title ?? label}
-          overflowUsersLabel={t('label.user-plural')}
-          owners={toOwnerRefs(value.refs)}
-        />
-      ) : (
-        <Box align="center" gap={1}>
-          <ProfilePicture
-            matchRingToFill
-            displayName={getEntityName(value.refs[0])}
-            name={value.refs[0]?.name ?? ''}
-            width="20"
-          />
-          <Typography size="text-sm">
-            {getEntityName(value.refs[0])}
-            {/* The viewer is named as themselves, e.g. "harsh.soni (You)". */}
-            {value.refs[0]?.id === currentUser?.id && ` (${t('label.you')})`}
-          </Typography>
-        </Box>
-      );
+      return <UsersValue label={label} value={value} />;
+
+    case 'agent':
+      return <AgentBadge name={value.name} />;
 
     // The full tag FQN, as a reviewer searches for it: "PII.Sensitive".
     case 'tags':
@@ -148,39 +161,44 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
     {rows.length > 0 && (
       // Content-sized columns: a short left value ("Full Access") lends its
       // spare width to a long right one ("14 Days · expires Oct 8, 2026").
-      <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-3 tw:sm:grid-cols-[auto_auto]">
-        {rows.map((row) => {
-          const Icon = ROW_ICON[row.icon];
+      // The pane, not the window, decides the second column: beside the task
+      // list it is narrow on any screen. `minmax(0, …)` lets a column shrink
+      // and wrap its value instead of running past the pane.
+      <div className="tw:@container">
+        <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-3 tw:@2xl:grid-cols-[minmax(0,auto)_minmax(0,auto)]">
+          {rows.map((row) => {
+            const Icon = ROW_ICON[row.icon];
 
-          return (
-            <Box align="center" gap={2} key={row.key}>
-              <Icon
-                className="tw:shrink-0 tw:text-quaternary"
-                height={16}
-                width={16}
-              />
-              <Typography
-                className="tw:w-28 tw:shrink-0 tw:text-tertiary"
-                size="text-sm">
-                {row.label}
-              </Typography>
-              <div className="tw:min-w-0 tw:flex-1 tw:break-words">
-                <RowValue label={row.label} value={row.value} />
-              </div>
-            </Box>
-          );
-        })}
+            return (
+              <Box align="center" gap={2} key={row.key}>
+                <Icon
+                  className="tw:shrink-0 tw:text-quaternary"
+                  height={16}
+                  width={16}
+                />
+                <Typography
+                  className="tw:w-28 tw:shrink-0 tw:text-tertiary"
+                  size="text-sm">
+                  {row.label}
+                </Typography>
+                <div className="tw:min-w-0 tw:flex-1 tw:break-words">
+                  <RowValue label={row.label} value={row.value} />
+                </div>
+              </Box>
+            );
+          })}
+        </div>
       </div>
     )}
 
     {change && <ActivityChangePanel change={change} />}
 
     {callout && (
-      <Box
-        className="tw:rounded-xl tw:border tw:border-l-2 tw:border-secondary tw:border-l-utility-brand-300 tw:bg-secondary tw:px-4 tw:py-3"
-        data-testid="task-detail-callout"
-        direction="col"
-        gap={1}>
+      // A surface of its own, not a layout Box. In dark the pane behind is
+      // bg-secondary, so it lifts to bg-surface.
+      <div
+        className="tw:flex tw:flex-col tw:gap-1 tw:rounded-xl tw:border tw:border-l-2 tw:border-secondary tw:border-l-utility-brand-300 tw:bg-secondary tw:px-4 tw:py-3 tw:dark:bg-surface"
+        data-testid="task-detail-callout">
         <Typography
           className="tw:uppercase tw:text-tertiary tw:tracking-wide"
           size="text-xs"
@@ -193,7 +211,7 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
           enableSeeMoreVariant={false}
           markdown={getFrontEndFormat(callout.text)}
         />
-      </Box>
+      </div>
     )}
   </Box>
 );

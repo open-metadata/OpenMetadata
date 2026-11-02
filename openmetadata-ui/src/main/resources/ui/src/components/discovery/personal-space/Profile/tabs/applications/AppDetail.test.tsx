@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { ReactElement, useCallback, useState } from 'react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
@@ -20,10 +26,13 @@ import {
 } from '../../../../../../generated/entity/applications/app';
 import {
   getApplicationByName,
+  patchApplication,
+  restoreApp,
   uninstallApp,
 } from '../../../../../../rest/applicationAPI';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
 import AppDetail from './AppDetail';
@@ -87,14 +96,23 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
-  useLimitStore: () => ({ getResourceLimit: jest.fn() }),
+  useLimitStore: () => ({ getResourceLimit: mockGetResourceLimit }),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
+
+jest.mock(
+  '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval',
+  () =>
+    jest.fn(({ onChange }: { onChange: (cron: string) => void }) => (
+      <button onClick={() => onChange('0 12 * * *')}>Change schedule</button>
+    ))
+);
 
 jest.mock(
   '../../../../../Settings/Applications/AppSchedule/AppSchedule.component',
@@ -108,9 +126,8 @@ jest.mock(
   '../../../../../Settings/Applications/AppLiveIndexing/AppLiveIndexing.component',
   () => jest.fn(() => <div data-testid="app-live-indexing" />)
 );
-jest.mock(
-  '../../../../../Settings/Applications/McpApplicationConfiguration/McpApplicationConfiguration',
-  () => jest.fn(() => <div data-testid="mcp-config" />)
+jest.mock('./McpConfigForm', () =>
+  jest.fn(() => <div data-testid="mcp-config" />)
 );
 
 const baseApp = {
@@ -328,6 +345,74 @@ describe('AppDetail', () => {
     });
 
     expect(uninstallApp).toHaveBeenCalledWith('DataInsightsApplication', true);
+    expect(mockGetResourceLimit).toHaveBeenCalledWith('app', true, true);
+    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('treats the uninstall as done when only the usage-count refresh fails', async () => {
+    (uninstallApp as jest.Mock).mockResolvedValue({});
+    mockGetResourceLimit.mockRejectedValueOnce(new Error('limits down'));
+    await renderDetail();
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.uninstall' }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('app-action-confirm-confirm'));
+    });
+
+    expect(uninstallApp).toHaveBeenCalledTimes(1);
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('keeps the confirmation open when uninstall fails', async () => {
+    (uninstallApp as jest.Mock).mockRejectedValue(new Error('boom'));
+    await renderDetail();
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.uninstall' }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('app-action-confirm-confirm'));
+    });
+
+    expect(screen.getByTestId('app-action-confirm')).toBeInTheDocument();
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the confirmation is cancelled', async () => {
+    await renderDetail();
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.disable' }));
+    fireEvent.click(screen.getByTestId('app-action-confirm-cancel'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('app-action-confirm')).not.toBeInTheDocument()
+    );
+
+    expect(uninstallApp).not.toHaveBeenCalled();
+  });
+
+  it('restores a disabled app after confirmation', async () => {
+    (restoreApp as jest.Mock).mockResolvedValue({});
+    await renderDetail({ deleted: true });
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.restore' }));
+
+    expect(screen.getByTestId('app-action-confirm-confirm')).toHaveTextContent(
+      'label.restore'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('app-action-confirm-confirm'));
+    });
+
+    expect(restoreApp).toHaveBeenCalledWith('app-1');
     expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
   });
 
@@ -362,5 +447,98 @@ describe('AppDetail', () => {
       expect.objectContaining({ isReadOnly: true }),
       expect.anything()
     );
+  });
+
+  it('opens a run configuration as a sub-page and returns to the tabs', async () => {
+    const configForm = jest.fn(() => <div data-testid="config-form" />);
+    jest
+      .spyOn(applicationsClassBase, 'getModalAppConfigurationComponent')
+      .mockReturnValue(configForm);
+    await renderDetail();
+
+    const { onViewRunConfig } = (AppSchedule as jest.Mock).mock.calls[0][0];
+
+    act(() => {
+      onViewRunConfig({ id: 'run-1', config: { batchSize: 99 } });
+    });
+
+    expect(screen.getByTestId('config-form')).toBeInTheDocument();
+    expect(screen.queryByTestId('app-schedule')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(configForm).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        isReadOnly: true,
+        appData: expect.objectContaining({
+          appConfiguration: { batchSize: 99 },
+        }),
+      }),
+      expect.anything()
+    );
+    expect(lastHeader().subPage?.label).toBe('label.entity-configuration');
+
+    // The app crumb in the breadcrumb is the way back.
+    act(() => {
+      lastHeader().subPage?.onBack();
+    });
+
+    expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
+    expect(lastHeader().subPage).toBeUndefined();
+  });
+
+  it('edits the schedule as a sub-page and returns to the tabs after saving', async () => {
+    (patchApplication as jest.Mock).mockResolvedValue(baseApp);
+    await renderDetail();
+
+    act(() => {
+      (AppSchedule as jest.Mock).mock.calls.at(-1)[0].onEditSchedule();
+    });
+
+    expect(screen.getByTestId('update-schedule-form')).toBeInTheDocument();
+    expect(screen.queryByTestId('app-schedule')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(lastHeader().subPage?.label).toBe('label.update-entity');
+
+    fireEvent.click(screen.getByText('Change schedule'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(patchApplication).toHaveBeenCalledWith(
+      'app-1',
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: '/appSchedule',
+          value: expect.objectContaining({ cronExpression: '0 12 * * *' }),
+        }),
+      ])
+    );
+    expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
+    expect(lastHeader().subPage).toBeUndefined();
+  });
+
+  it('leaves the schedule sub-page on cancel without saving', async () => {
+    await renderDetail();
+
+    act(() => {
+      (AppSchedule as jest.Mock).mock.calls.at(-1)[0].onEditSchedule();
+    });
+    fireEvent.click(screen.getByTestId('cancel-button'));
+
+    expect(patchApplication).not.toHaveBeenCalled();
+    expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
+  });
+
+  it('shows an empty state with the reason when the app has no schema and no tabs', async () => {
+    jest
+      .spyOn(applicationsClassBase, 'importSchema')
+      .mockRejectedValue(new Error('missing'));
+    await renderDetail({ scheduleType: ScheduleType.NoSchedule });
+
+    expect(screen.getByTestId('app-detail-empty')).toBeInTheDocument();
+    expect(
+      screen.getByText('server.no-application-schema-found')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });

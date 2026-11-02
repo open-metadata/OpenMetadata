@@ -55,6 +55,10 @@
       "type": "integer",
       "existingJavaType": "java.lang.Long",
       "minimum": 0
+    },
+    "sourcePack": {
+      "description": "Library pack selection this native proposal installs, as stamped by the library preview.",
+      "$ref": "../../type/ontologyPackSource.json"
     }
   },
   "required": [

@@ -19,7 +19,7 @@ import { ALL_SERVICES_CATEGORY } from '../../constants/Services.constant';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { getServiceByFQN, postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
-import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import EmbeddedAddServicePage from './EmbeddedAddServicePage.component';
 
 const mockParam = {
@@ -649,9 +649,7 @@ describe('EmbeddedAddServicePage', () => {
       'message.service-name-already-exists-with-suggestion'
     );
     expect(screen.queryByText('Save Filters')).not.toBeInTheDocument();
-    expect(
-      serviceUtilClassBaseModule.getServiceConfigData
-    ).not.toHaveBeenCalled();
+    expect(serviceUtilClassBase.getServiceConfigData).not.toHaveBeenCalled();
   });
 
   it('still navigates after service creation error', async () => {
@@ -775,11 +773,7 @@ describe('EmbeddedAddServicePage', () => {
       });
     });
 
-    const mockedModule = serviceUtilClassBaseModule as unknown as {
-      getExtraInfo: jest.Mock;
-    };
-
-    expect(mockedModule.getExtraInfo).toHaveBeenCalled();
+    expect(serviceUtilClassBase.getExtraInfo).toHaveBeenCalled();
   });
 
   describe('with a preselected service type from navigation state', () => {

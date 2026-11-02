@@ -10,22 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ButtonUtility,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import CopyLinkButton from '../CopyLinkButton/CopyLinkButton';
+import { WidgetEditButton } from '../WidgetActionButton/WidgetActionButton';
 import { DisplayNameProps } from './DisplayName.interface';
 
 interface DisplayNamePropsWithParent extends DisplayNameProps {
@@ -99,18 +95,15 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
           {renderMainContent}
         </Typography>
 
-        <div className="d-flex items-center">
+        <div className="d-flex items-center gap-2">
           {hasEditPermission ? (
-            <Tooltip arrow placement="top" title={t('label.edit')}>
-              <ButtonUtility
-                className="hover-cell-icon"
-                color="tertiary"
-                data-testid="edit-displayName-button"
-                icon={IconEdit}
-                size="xs"
-                onClick={() => setIsDisplayNameEditing(true)}
-              />
-            </Tooltip>
+            <WidgetEditButton
+              compact
+              className="hover-cell-icon"
+              data-testid="edit-displayName-button"
+              title={t('label.edit')}
+              onClick={() => setIsDisplayNameEditing(true)}
+            />
           ) : null}
 
           {entityType && id && (

@@ -1050,7 +1050,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   const navFooter = (
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
-      <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
+      <div className="tw:flex tw:items-center tw:gap-1">
         <Button
           aria-label={t('label.previous')}
           color="secondary"

@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../constants/constants';
 import { useIsRouteVisible } from '../context/RouteVisibilityProvider/RouteVisibilityProvider';
-import { useTourProvider } from '../context/TourProvider/TourProvider';
+import { useProductTourStore } from './product-tour/useProductTourStore';
 import { useApplicationStore } from './useApplicationStore';
 import { useWelcomeStore } from './useWelcomeStore';
 
@@ -28,7 +28,8 @@ import { useWelcomeStore } from './useWelcomeStore';
 export const useFirstLoginWelcome = () => {
   const { currentUser } = useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
-  const { isTourPage } = useTourProvider();
+  // A tour shows the home page itself; the welcome screen would cover it.
+  const isTourRunning = useProductTourStore((state) => state.isActive);
   const isRouteVisible = useIsRouteVisible();
 
   const [showWelcome, setShowWelcome] = useState(false);
@@ -56,7 +57,9 @@ export const useFirstLoginWelcome = () => {
   };
 
   useEffect(() => {
-    updateWelcome(!usernameExistsInCookie && isWelcomeVisible && !isTourPage);
+    updateWelcome(
+      !usernameExistsInCookie && isWelcomeVisible && !isTourRunning
+    );
 
     return () => updateWelcome(false);
   }, []);
