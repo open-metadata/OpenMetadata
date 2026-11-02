@@ -41,6 +41,7 @@ import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyBulkResultArtifact } from '../generated/api/data/ontologyBulkResultArtifact';
 import { OntologyBulkSubmission } from '../generated/api/data/ontologyBulkSubmission';
+import { OntologyConceptDeleteImpact } from '../generated/api/data/ontologyConceptDeleteImpact';
 import { OntologyBulkTemplate } from '../generated/api/data/ontologyBulkTemplate';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
 import type {
@@ -295,6 +296,32 @@ export const hardDeleteOntologyDefinition = async (
       throw error;
     }
   }
+};
+
+export const softDeleteOntologyDefinition = async (
+  type: 'concept' | 'property' | 'axiom',
+  id: string
+) => {
+  const path = {
+    concept: ONTOLOGY_CONCEPTS_PATH,
+    property: ONTOLOGY_PROPERTIES_PATH,
+    axiom: ONTOLOGY_AXIOMS_PATH,
+  }[type];
+  await APIClient.delete(`${path}/${encodeURIComponent(id)}`, {
+    params: { hardDelete: false },
+  });
+};
+
+export const getOntologyConceptDeleteImpact = async (
+  id: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyConceptDeleteImpact>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/deleteImpact`,
+    { signal }
+  );
+
+  return response.data;
 };
 
 export const restoreOntologyDefinition = async (

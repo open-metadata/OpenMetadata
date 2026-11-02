@@ -125,12 +125,21 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   targetLabel,
   groups,
   canCreateType = false,
+  checkRelation,
 }) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(!groups);
+  const [issue, setIssue] = useState<string>();
+  const select = (relationType: string) => {
+    const found = checkRelation?.(relationType);
+    setIssue(found);
+    if (!found) {
+      onSelect(relationType);
+    }
+  };
 
   useEffect(() => {
     if (groups) {
@@ -220,7 +229,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
       <>
         {hasResults ? (
           visibleGroups.map((group) =>
-            renderGroup(group, onSelect, t('label.inverse'), isAiMode)
+            renderGroup(group, select, t('label.inverse'), isAiMode)
           )
         ) : (
           <span
@@ -236,7 +245,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
             data-testid="relation-type-create"
             iconLeading={Plus}
             size="sm"
-            onClick={() => onSelect(`${NEW_RELATION_TYPE_PREFIX}${term}`)}>
+            onClick={() => select(`${NEW_RELATION_TYPE_PREFIX}${term}`)}>
             {t('label.new-relationship-type-name', { name: term })}
           </Button>
         ) : null}
@@ -295,6 +304,15 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
           onChange={setSearch}
         />
       </div>
+
+      {issue ? (
+        <div
+          className="tw:border-b tw:border-error_subtle tw:bg-error-primary tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-error-primary"
+          data-testid="relation-check-message"
+          role="alert">
+          {issue}
+        </div>
+      ) : null}
 
       <div
         className={

@@ -75,6 +75,7 @@ import OntologyGraphView from './OntologyGraphView';
 
 const mockGraphProps = jest.fn();
 const mockGraphControls = {
+  clearEdgeSelection: jest.fn(),
   getNodePositions: jest.fn(),
   fitView: jest.fn(),
   zoomIn: jest.fn(),
@@ -801,7 +802,7 @@ describe('OntologyGraphView', () => {
     ]);
 
     await act(() =>
-      graphProps.onCreateRelation(customer.id, party.id, SUBCLASS_OF)
+      graphProps.onCreateRelation(orphan.id, party.id, SUBCLASS_OF)
     );
     await act(() =>
       graphProps.onCreateRelation(customer.id, orphan.id, objectProperty.iri)
@@ -814,8 +815,8 @@ describe('OntologyGraphView', () => {
     expect(createOntologyAxiom).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        name: 'CustomerIsParty2',
-        subjectIri: customer.iri,
+        name: 'OrphanIsParty',
+        subjectIri: orphan.iri,
       })
     );
     expect(createOntologyAxiom).toHaveBeenNthCalledWith(

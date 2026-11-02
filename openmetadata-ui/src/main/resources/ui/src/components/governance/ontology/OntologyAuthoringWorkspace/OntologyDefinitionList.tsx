@@ -30,6 +30,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
+import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -39,6 +40,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import OntologyConceptDeleteDialog from './OntologyConceptDeleteDialog';
 
 interface OntologyDefinitionListProps<T> {
   ontology: Ontology;
@@ -151,14 +153,17 @@ const OntologyDefinitionList = <
     );
   }
 
-  const offerUndo = (deleted: T) =>
+  const offerUndo = (
+    deleted: T,
+    restore = () => restoreOntologyDefinition(definitionType, deleted.id)
+  ) =>
     showUndoToast(
       t('message.ontology-definition-deleted', {
         name: getEntityName(deleted),
       }),
       async () => {
         try {
-          await restoreOntologyDefinition(definitionType, deleted.id);
+          await restore();
           void page.refetch();
           onWorkingChange?.();
         } catch (error) {
@@ -168,6 +173,45 @@ const OntologyDefinitionList = <
         }
       }
     );
+
+  const closeAfterDelete = () => {
+    setIsDeleting(false);
+    setSelected(undefined);
+    void page.refetch();
+    onWorkingChange?.();
+  };
+
+  const renderDeleteDialog = () => {
+    if (!definition || !isDeleting) {
+      return null;
+    }
+
+    return definitionType === 'concept' ? (
+      <OntologyConceptDeleteDialog
+        concept={definition}
+        onCancel={() => setIsDeleting(false)}
+        onDeleted={({ restore }) => {
+          closeAfterDelete();
+          offerUndo(definition, restore);
+        }}
+      />
+    ) : (
+      <DeleteEntityModal
+        allowSoftDelete
+        visible
+        afterDeleteAction={(isSoftDelete) => {
+          closeAfterDelete();
+          if (isSoftDelete) {
+            offerUndo(definition);
+          }
+        }}
+        entityId={definition.id}
+        entityName={getEntityName(definition)}
+        entityType={DEFINITION_ENTITIES[definitionType]}
+        onCancel={() => setIsDeleting(false)}
+      />
+    );
+  };
 
   const renderDelete = () => (
     <>
@@ -179,25 +223,7 @@ const OntologyDefinitionList = <
           {t('label.delete')}
         </Button>
       )}
-      {definition && isDeleting && (
-        <DeleteEntityModal
-          allowSoftDelete
-          visible
-          afterDeleteAction={(isSoftDelete) => {
-            setIsDeleting(false);
-            setSelected(undefined);
-            void page.refetch();
-            onWorkingChange?.();
-            if (isSoftDelete) {
-              offerUndo(definition);
-            }
-          }}
-          entityId={definition.id}
-          entityName={getEntityName(definition)}
-          entityType={DEFINITION_ENTITIES[definitionType]}
-          onCancel={() => setIsDeleting(false)}
-        />
-      )}
+      {renderDeleteDialog()}
     </>
   );
 
@@ -288,9 +314,32 @@ const OntologyDefinitionList = <
     </>
   );
 
-  const renderAiTable = (items: T[]) => (
-    <TableCard.Root size="sm">
-      <Table aria-label={pluralLabel} size="sm">
+  const groupsOf = (items: T[]) =>
+    definitionType === 'property'
+      ? [
+          {
+            id: 'property',
+            items: items.filter((item) => definitionKind(item) !== Kind.Object),
+            label: pluralLabel,
+          },
+          {
+            id: 'relationship',
+            items: items.filter((item) => definitionKind(item) === Kind.Object),
+            label: t('label.relationship-plural'),
+          },
+        ].filter((group, index) => index === 0 || group.items.length > 0)
+      : [{ id: definitionType, items, label: pluralLabel }];
+
+  const renderAiTable = (
+    items: T[],
+    label: string,
+    groupId: string,
+    hasPagination: boolean
+  ) => (
+    <TableCard.Root
+      data-testid={`ontology-definition-group-${groupId}`}
+      size="sm">
+      <Table aria-label={label} size="sm">
         <Table.Header>
           <Table.Head isRowHeader id="name" label={t('label.name')} />
           <Table.Head id="type" label={t('label.type')} />
@@ -334,11 +383,33 @@ const OntologyDefinitionList = <
           )}
         </Table.Body>
       </Table>
-      <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
-        {renderPagination()}
-      </div>
+      {hasPagination ? (
+        <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
+          {renderPagination()}
+        </div>
+      ) : null}
     </TableCard.Root>
   );
+
+  const renderAiTables = (items: T[]) => {
+    const groups = groupsOf(items);
+
+    return groups.map((group, index) => (
+      <Box direction="col" gap={2} key={group.id}>
+        {groups.length > 1 ? (
+          <Typography as="h3" size="text-sm" weight="semibold">
+            {group.label}
+          </Typography>
+        ) : null}
+        {renderAiTable(
+          group.items,
+          group.label,
+          group.id,
+          index === groups.length - 1
+        )}
+      </Box>
+    ));
+  };
 
   if (isAiMode) {
     return (
@@ -361,7 +432,7 @@ const OntologyDefinitionList = <
         {page.isPending ? (
           <Typography role="status">{t('label.loading')}</Typography>
         ) : (
-          renderAiTable(page.data.data)
+          renderAiTables(page.data.data)
         )}
         {renderEditor()}
       </Box>
@@ -386,17 +457,28 @@ const OntologyDefinitionList = <
       {page.isPending ? (
         <Typography role="status">{t('label.loading')}</Typography>
       ) : (
-        <ul className="tw:m-0 tw:list-none tw:p-0">
-          {page.data.data.map((item) => (
-            <li key={item.id}>
-              <Button
-                color="link-color"
-                onPress={() => guard(() => setSelected(item))}>
-                {getEntityName(item)}
-              </Button>
-            </li>
-          ))}
-        </ul>
+        groupsOf(page.data.data).map((group) => (
+          <Box direction="col" gap={1} key={group.id}>
+            {groupsOf(page.data.data).length > 1 ? (
+              <Typography as="h3" size="text-sm" weight="semibold">
+                {group.label}
+              </Typography>
+            ) : null}
+            <ul
+              className="tw:m-0 tw:list-none tw:p-0"
+              data-testid={`ontology-definition-group-${group.id}`}>
+              {group.items.map((item) => (
+                <li key={item.id}>
+                  <Button
+                    color="link-color"
+                    onPress={() => guard(() => setSelected(item))}>
+                    {getEntityName(item)}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </Box>
+        ))
       )}
       <Box gap={2}>{renderPagination()}</Box>
       {renderEditor()}

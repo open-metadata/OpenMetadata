@@ -60,6 +60,7 @@ import {
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
+import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
 import OntologyConceptLiveData from './OntologyConceptLiveData';
@@ -84,7 +85,25 @@ interface OntologyConceptInspectorProps {
     targetId: string,
     relationType: string
   ) => Promise<boolean>;
+  readonly canEditRelations?: boolean;
+  readonly checkAddRelation?: (
+    targetId: string,
+    relationType: string
+  ) => string | undefined;
+  /** The reason the relation cannot take this type, or undefined. */
+  readonly checkRelationType?: (
+    relation: OntologyModelRelation,
+    typeId: string
+  ) => string | undefined;
+  readonly onEditRelation?: (
+    relation: OntologyModelRelation,
+    typeId: string
+  ) => Promise<boolean>;
+  readonly onDeleteRelation?: (
+    relation: OntologyModelRelation
+  ) => Promise<boolean>;
   readonly onClose: () => void;
+  readonly onDelete?: () => void;
   readonly onEdit?: () => void;
   readonly onEditMappings?: () => void;
   readonly canEditBindings?: boolean;
@@ -295,7 +314,23 @@ interface RelationAuthoringProps {
   readonly onClose: () => void;
   readonly onOpen: () => void;
   readonly onSave: (targetId: string, relationType: string) => Promise<boolean>;
+  /** The reason the relation cannot be written, or undefined; shown before any write. */
+  readonly check?: (
+    targetId: string,
+    relationType: string
+  ) => string | undefined;
 }
+
+const RelationIssue = ({ message }: { message?: string }) =>
+  message ? (
+    <Typography
+      className="tw:text-error-primary"
+      data-testid="ontology-relationship-issue"
+      role="alert"
+      size="text-xs">
+      {message}
+    </Typography>
+  ) : null;
 
 const RelationAuthoring = ({
   canCreateRelationType,
@@ -307,6 +342,7 @@ const RelationAuthoring = ({
   onClose,
   onOpen,
   onSave,
+  check,
 }: RelationAuthoringProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -330,6 +366,8 @@ const RelationAuthoring = ({
   };
 
   const target = targetConcepts.find(({ id }) => id === targetId);
+  const issue = check?.(targetId, relationType);
+  const issueMessage = <RelationIssue message={issue} />;
   const relationLabel =
     groups
       .flatMap((group) => group.options)
@@ -391,6 +429,7 @@ const RelationAuthoring = ({
             {concept.displayName ?? concept.name} {relationLabel}{' '}
             {target ? target.displayName ?? target.name : '…'}
           </ConceptFormPreview>
+          {issueMessage}
           <Box gap={2} justify="end">
             <Button
               color="secondary"
@@ -402,7 +441,7 @@ const RelationAuthoring = ({
             <Button
               color="primary"
               data-testid="ontology-relationship-submit"
-              isDisabled={!targetId}
+              isDisabled={!targetId || Boolean(issue)}
               isLoading={isSaving}
               size="sm"
               onPress={() => void save()}>
@@ -449,10 +488,11 @@ const RelationAuthoring = ({
             {changeTypeButton}
           </Box>
           {targetSelect}
+          {issueMessage}
           <Box gap={2}>
             <Button
               data-testid="ontology-relationship-submit"
-              isDisabled={!targetId}
+              isDisabled={!targetId || Boolean(issue)}
               isLoading={isSaving}
               size="xs"
               onPress={() => void save()}>
@@ -484,7 +524,13 @@ const OntologyConceptInspector = ({
   relationTypeGroups = [],
   onAddProperty,
   onAddRelation,
+  canEditRelations = false,
+  checkAddRelation,
+  checkRelationType,
+  onEditRelation,
+  onDeleteRelation,
   onClose,
+  onDelete,
   onEdit,
   onEditMappings,
   canEditBindings = false,
@@ -638,6 +684,8 @@ const OntologyConceptInspector = ({
         ? getInverseRelationLabel(relation, model)
         : undefined;
     const readsForward = direction === 'outgoing' || !!inverseLabel;
+    const isRelationEditable = ({ axiom, kind }: OntologyModelRelation) =>
+      canEditRelations && Boolean(axiom) && kind !== 'objectProperty';
     const badge = (
       <Badge color="brand" size="sm" type="pill-color">
         {humanizeName(inverseLabel ?? getModelRelationLabel(relation))}
@@ -656,6 +704,16 @@ const OntologyConceptInspector = ({
           <span className="tw:truncate">{other.displayName ?? other.name}</span>
         </Button>
         {readsForward ? null : badge}
+        {isRelationEditable(relation) && onEditRelation && onDeleteRelation ? (
+          <OntologyRelationControls
+            canCreateRelationType={canCreateRelationType}
+            checkType={(typeId) => checkRelationType?.(relation, typeId)}
+            groups={relationTypeGroups}
+            relation={relation}
+            onDelete={() => onDeleteRelation(relation)}
+            onEdit={(typeId) => onEditRelation(relation, typeId)}
+          />
+        ) : null}
       </InspectorRow>
     );
   };
@@ -664,6 +722,7 @@ const OntologyConceptInspector = ({
     onAddRelation ? (
       <RelationAuthoring
         canCreateRelationType={canCreateRelationType}
+        check={checkAddRelation}
         concept={concept}
         groups={relationTypeGroups}
         isAvailable={canAddRelation}
@@ -782,6 +841,17 @@ const OntologyConceptInspector = ({
     </Box>
   );
 
+  const renderDeleteButton = (size: 'xs') =>
+    onDelete ? (
+      <Button
+        color="secondary-destructive"
+        data-testid="ontology-concept-delete"
+        size={size}
+        onPress={onDelete}>
+        {t('label.delete')}
+      </Button>
+    ) : null;
+
   const renderAiHeader = () => (
     <Box
       className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:pt-5 tw:pb-4"
@@ -799,6 +869,7 @@ const OntologyConceptInspector = ({
             {t('label.edit')}
           </Button>
         ) : null}
+        {renderDeleteButton('xs')}
         <ButtonUtility
           color="tertiary"
           icon={XClose}
@@ -1038,6 +1109,7 @@ const OntologyConceptInspector = ({
             {t('label.edit')}
           </Button>
         ) : null}
+        {renderDeleteButton('xs')}
       </Box>
 
       <Box

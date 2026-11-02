@@ -70,6 +70,9 @@ import {
   OntologyEditNodeClickDetail,
   ONTOLOGY_EDIT_CANCEL_EVENT,
   ONTOLOGY_EDIT_NODE_CLICK_EVENT,
+  ONTOLOGY_EDIT_PORT_DOWN_EVENT,
+  ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
+  OntologyEditPortDownDetail,
 } from '../PortOverlay.interface';
 import { METRIC_NODE_TYPE } from '../utils/graphBuilders';
 import {
@@ -198,6 +201,8 @@ export const findBadgeIndex = (originalTarget: unknown): number | null => {
   return null;
 };
 
+const PORT_DRAG_CLICK_GUARD_MS = 150;
+
 const hasShapeClass = (originalTarget: unknown, className: string): boolean => {
   let current: unknown = originalTarget;
   for (let depth = 0; depth < 14; depth += 1) {
@@ -304,6 +309,8 @@ interface UseOntologyGraphProps {
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
   onPaneClick: () => void;
+  /** Canvas-space point of a double-click on empty canvas while the studio is being edited. */
+  onCanvasDoubleClick?: (point: { x: number; y: number }) => void;
   onScrollNearEdge?: () => void;
   setClickedEdgeId: (id: string | null) => void;
   neighborSet: Set<string>;
@@ -1173,6 +1180,7 @@ export function useOntologyGraph({
   onNodeClick,
   onNodeDoubleClick,
   onPaneClick,
+  onCanvasDoubleClick,
   onScrollNearEdge,
   setClickedEdgeId,
   neighborSet,
@@ -1221,6 +1229,9 @@ export function useOntologyGraph({
   onNodeDoubleClickRef.current = onNodeDoubleClick;
   const onPaneClickRef = useRef(onPaneClick);
   onPaneClickRef.current = onPaneClick;
+  const onCanvasDoubleClickRef = useRef(onCanvasDoubleClick);
+  onCanvasDoubleClickRef.current = onCanvasDoubleClick;
+  const portDragEndedAtRef = useRef(0);
 
   const isEditModeRef = useRef(isEditMode);
   isEditModeRef.current = isEditMode;
@@ -1841,7 +1852,12 @@ export function useOntologyGraph({
       behaviors: [
         { type: 'drag-canvas' },
         { type: 'zoom-canvas' },
-        { type: 'drag-element' },
+        {
+          type: 'drag-element',
+          // Pressing the + handle starts a connection, so it must not move the node.
+          enable: (event: IElementEvent) =>
+            !hasShapeClass(event.originalTarget, STUDIO_EDIT_PORT_CLASS_NAME),
+        },
       ],
       plugins: [],
     });
@@ -1995,8 +2011,26 @@ export function useOntologyGraph({
           }
         })
       );
+      const edgePositions = Object.fromEntries(
+        graph.getEdgeData().flatMap((edge) => {
+          try {
+            const { min, max } = graph.getElementRenderBounds(String(edge.id));
+            const clientPosition = graph.getClientByCanvas([
+              (min[0] + max[0]) / 2,
+              (min[1] + max[1]) / 2,
+            ]);
+
+            return [
+              [String(edge.id), { x: clientPosition[0], y: clientPosition[1] }],
+            ];
+          } catch {
+            return [];
+          }
+        })
+      );
       container.dataset.graphZoom = String(zoom);
       container.dataset.nodePositions = JSON.stringify(positions);
+      container.dataset.edgePositions = JSON.stringify(edgePositions);
     };
 
     graph.on(NodeEvent.CLICK, handleNodeClick);
@@ -2007,9 +2041,45 @@ export function useOntologyGraph({
     graph.on(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);
     graph.on(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
     graph.on(CanvasEvent.CLICK, () => {
+      // Releasing a connection drag on empty canvas is not a click on the pane.
+      if (Date.now() - portDragEndedAtRef.current < PORT_DRAG_CLICK_GUARD_MS) {
+        return;
+      }
       setClickedEdgeIdRef.current(null);
       onPaneClickRef.current();
     });
+    graph.on(CanvasEvent.DBLCLICK, (e: IElementEvent & MouseEvent) => {
+      const handler = onCanvasDoubleClickRef.current;
+      if (!handler || !studioMode) {
+        return;
+      }
+      const [x, y] = graph.getCanvasByClient([e.clientX, e.clientY]);
+      handler({ x, y });
+    });
+    graph.on(NodeEvent.POINTER_DOWN, (e: IElementEvent & PointerEvent) => {
+      if (
+        studioMode &&
+        isEditModeRef.current &&
+        hasShapeClass(e.originalTarget, STUDIO_EDIT_PORT_CLASS_NAME) &&
+        e.target.id
+      ) {
+        const detail: OntologyEditPortDownDetail = {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          nodeId: e.target.id,
+        };
+        container.dispatchEvent(
+          new CustomEvent(ONTOLOGY_EDIT_PORT_DOWN_EVENT, { detail })
+        );
+      }
+    });
+    const notePortDragEnd = () => {
+      portDragEndedAtRef.current = Date.now();
+    };
+    container.addEventListener(
+      ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
+      notePortDragEnd
+    );
 
     const handleEdgeClick = (e: IElementEvent) => {
       setClickedEdgeIdRef.current(e.target.id ?? null);
@@ -2217,6 +2287,12 @@ export function useOntologyGraph({
       graph.off(NodeEvent.DRAG_END, rerouteRelationsEdgesAfterDrag);
       graph.off(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
       graph.off(CanvasEvent.CLICK);
+      graph.off(CanvasEvent.DBLCLICK);
+      graph.off(NodeEvent.POINTER_DOWN);
+      container.removeEventListener(
+        ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
+        notePortDragEnd
+      );
       graph.off('edge:click', handleEdgeClick);
       graph.off(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);
       graph.off(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);

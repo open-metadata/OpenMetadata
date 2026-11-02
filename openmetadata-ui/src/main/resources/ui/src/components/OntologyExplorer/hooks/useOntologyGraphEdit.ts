@@ -108,8 +108,11 @@ export const useOntologyGraphEdit = ({
   );
 
   const selectTarget = useCallback(
-    (toId: string, at?: Point) => {
-      if (toId === armedFromId || toId === pendingRelation?.fromId) {
+    (toId: string, at?: Point, options?: { isPort?: boolean }) => {
+      const reselectsSource =
+        toId === pendingRelation?.fromId ||
+        (toId === armedFromId && options?.isPort !== false);
+      if (reselectsSource) {
         cancel();
         setPendingRelation(null);
 
