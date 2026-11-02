@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Locator, Page } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { readFile } from 'fs/promises';
 import { SearchIndex } from '../../../src/enums/search.enum';
 import { ContextMemory } from '../../../src/generated/entity/context/contextMemory';
@@ -23,6 +23,7 @@ import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { TeamClass } from '../../support/team/TeamClass';
+import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { fillCodeEditor } from '../../utils/codeEditor';
 import {
@@ -195,7 +196,7 @@ test.describe(
         ).toHaveText('Ontology');
         await expect(page.getByTestId('ontology-explorer')).toHaveCount(0);
         await expect(
-          page.getByRole('button', { name: 'Retry', exact: true })
+          page.getByRole('button', { name: 'Reload', exact: true })
         ).toBeVisible();
         await page
           .getByRole('button', { name: 'All ontologies', exact: true })
@@ -348,9 +349,10 @@ test.describe(
     test('manages reviewers with reload persistence and locks settings during an open review', async ({
       isolatedUserPage: author,
       isolatedUser,
-      freshUserPage: { user: reviewer },
     }) => {
       const api = await getWorkerAdminAPIContext();
+      // Only needs to exist as a pickable user, so skip a browser sign-in.
+      const reviewer = new UserClass();
       const teamName = `pw_review_team_${uuid()}`;
       const team = new TeamClass({
         name: teamName,
@@ -364,6 +366,7 @@ test.describe(
       const tasks: string[] = [];
       let ontology: Ontology | undefined;
       try {
+        await reviewer.create(api);
         await team.create(api);
         await waitForSearchIndexed(
           api,
@@ -413,22 +416,6 @@ test.describe(
         await author.getByTestId('ontology-publication-trigger').click();
         const card = author.getByTestId('ontology-release-reviewers');
         const picker = card.getByRole('combobox', { name: 'Add reviewer' });
-        // The picker searches only once focused, and React Aria opens its list
-        // only on a text change while options are already loaded. Typing before
-        // that first search returns leaves the list closed; that is current
-        // product behaviour, kept as-is here, so load the options first.
-        const loadReviewerOptions = async (combobox: Locator) => {
-          const loaded = author.waitForResponse((response) => {
-            const url = new URL(response.url());
-
-            return (
-              url.pathname === '/api/v1/search/query' &&
-              url.searchParams.get('index') === SearchIndex.USER
-            );
-          });
-          await combobox.click();
-          expect((await loaded).status()).toBe(200);
-        };
         const searchFor = async (name: string) => {
           const users = author.waitForResponse((response) => {
             const url = new URL(response.url());
@@ -456,7 +443,6 @@ test.describe(
 
         await test.step('Add a user and exclude the current user, added user and teams', async () => {
           await expect(picker).toBeEnabled();
-          await loadReviewerOptions(picker);
           await searchFor(reviewer.responseData.name);
           const firstAddition = author.waitForResponse(
             (response) =>
@@ -522,7 +508,6 @@ test.describe(
           const emptyPicker = emptyCard.getByRole('combobox', {
             name: 'Add reviewer',
           });
-          await loadReviewerOptions(emptyPicker);
           await emptyPicker.fill(reviewer.responseData.name);
           const addition = author.waitForResponse(
             (response) =>
@@ -606,6 +591,7 @@ test.describe(
           );
         }
         await team.delete(api);
+        await reviewer.delete(api);
       }
     });
 
@@ -1081,6 +1067,7 @@ test(
         page.getByTestId(`ontology-memory-draft-${draft.id}`)
       ).toBeHidden();
       await selectOntology(page, ontology);
+      await page.getByTestId('fit-view').click();
       const positions = await readNodePositions(page);
       await page.mouse.click(positions[conceptId].x, positions[conceptId].y);
       await expect(

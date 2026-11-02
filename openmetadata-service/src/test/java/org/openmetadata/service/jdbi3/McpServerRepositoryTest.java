@@ -281,7 +281,7 @@ class McpServerRepositoryTest {
       assertFalse(eventJson.getValue().contains("-secret"));
       final ChangeEvent event = JsonUtils.readValue(eventJson.getValue(), ChangeEvent.class);
       assertMaskedConnection(
-          JsonUtils.convertValue(event.getEntity(), McpServer.class).getConnectionConfig());
+          JsonUtils.readOrConvertValue(event.getEntity(), McpServer.class).getConnectionConfig());
       assertEquals(before, JsonUtils.pojoToJson(updated));
     }
   }

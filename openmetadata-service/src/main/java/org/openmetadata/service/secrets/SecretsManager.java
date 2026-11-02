@@ -154,12 +154,39 @@ public abstract class SecretsManager {
             List.of(buildSecretId(true, serviceType.value(), connectionName))));
   }
 
+  /** Protects prepared and approval-staged values without creating or changing external secrets. */
+  public Object prepareServiceConnectionConfig(
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType) {
+    return encryptServiceConnectionConfig(
+        connectionConfig,
+        connectionType,
+        connectionName,
+        serviceType,
+        CredentialPolicy.strictWithReferenceBases(
+            List.of(buildSecretId(true, serviceType.value(), connectionName))),
+        false);
+  }
+
   public Object encryptServiceConnectionConfig(
       Object connectionConfig,
       String connectionType,
       String connectionName,
       ServiceType serviceType,
       CredentialPolicy policy) {
+    return encryptServiceConnectionConfig(
+        connectionConfig, connectionType, connectionName, serviceType, policy, true);
+  }
+
+  private Object encryptServiceConnectionConfig(
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType,
+      CredentialPolicy policy,
+      boolean persistExternalSecrets) {
     try {
       Object newConnectionConfig =
           SecretsUtil.convert(connectionConfig, connectionType, connectionName, serviceType);
@@ -167,6 +194,7 @@ public abstract class SecretsManager {
           newConnectionConfig,
           buildSecretId(true, serviceType.value(), connectionName),
           true,
+          persistExternalSecrets,
           policy);
     } catch (SecretsManagerException e) {
       // A rejection of a foreign credential is already classified with its own status and
@@ -691,6 +719,15 @@ public abstract class SecretsManager {
 
   private Object encryptPasswordFields(
       Object toEncryptObject, String secretId, boolean store, CredentialPolicy policy) {
+    return encryptPasswordFields(toEncryptObject, secretId, store, true, policy);
+  }
+
+  private Object encryptPasswordFields(
+      Object toEncryptObject,
+      String secretId,
+      boolean store,
+      boolean persistExternalSecrets,
+      CredentialPolicy policy) {
     try {
       if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
         // for each get method
@@ -707,15 +744,20 @@ public abstract class SecretsManager {
                         obj,
                         buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)),
                         store,
+                        persistExternalSecrets,
                         policy);
                     // check if it has annotation
                   } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                     // reject a credential the entity does not own before it can be decrypted
-                    requireOwnCredential(fieldName, obj, secretId, policy);
+                    requireOwnCredential(fieldName, obj, secretId, persistExternalSecrets, policy);
                     // store value if proceed
-                    String newFieldValue =
+                    String storedFieldValue =
                         storeValue(
-                            fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
+                            fieldName,
+                            fernet.decryptIfApplies((String) obj),
+                            secretId,
+                            store && persistExternalSecrets);
+                    String newFieldValue = persistExternalSecrets ? storedFieldValue : (String) obj;
                     // get setMethod
                     Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
                     // set new value. A null means the field was cleared, so there is nothing left
@@ -738,6 +780,7 @@ public abstract class SecretsManager {
                                     fieldName.toLowerCase(Locale.ROOT),
                                     elementKey),
                                 store,
+                                persistExternalSecrets,
                                 policy));
                   }
                 });
@@ -848,19 +891,36 @@ public abstract class SecretsManager {
    * the value would be re-stored as this entity's credential. A reference into a vault the
    * submitter manages themselves is left alone (see {@link #isManagedSecretReference}). The
    * submitted value is deliberately not echoed: it may itself be a stolen token.
+   *
+   * <p>On a pass that does not write to the external store ({@code persistExternalSecrets} false -
+   * the prepare pass that stages an approval or re-prepares a service before storage, per the
+   * defer-external-writes change) a Fernet token is left as it arrived: it is either the stored
+   * copy's own ciphertext, which the masker has already required byte-for-byte equality with, or
+   * the token the prepare pass itself encrypted locally before storage. A managed {@code secret:}
+   * reference is still classified in these passes: unlike a token, a reference survives the
+   * writing pass verbatim, so one borrowed from another entity would be re-stored as this
+   * entity's credential unless it is rejected here.
    */
   private void requireOwnCredential(
-      String fieldName, Object value, String secretId, CredentialPolicy policy) {
+      String fieldName,
+      Object value,
+      String secretId,
+      boolean persistExternalSecrets,
+      CredentialPolicy policy) {
     if (policy.internalReStorage()) {
       return;
     }
     String fieldValue = (String) value;
-    if (!Fernet.isTokenized(fieldValue) && !Boolean.TRUE.equals(isSecret(fieldValue))) {
+    boolean isReference = Boolean.TRUE.equals(isSecret(fieldValue));
+    if (!isReference && !Fernet.isTokenized(fieldValue)) {
       return; // a plain value the caller is entitled to store
     }
-    if (Boolean.TRUE.equals(isSecret(fieldValue))
-        && isAcceptedReference(fieldValue, secretId, fieldName, policy)) {
-      return;
+    if (isReference) {
+      if (isAcceptedReference(fieldValue, secretId, fieldName, policy)) {
+        return;
+      }
+    } else if (!persistExternalSecrets) {
+      return; // a non-writing pass preserves the ciphertext it is handed
     }
     throw new SecretsManagerException(
         Response.Status.BAD_REQUEST,

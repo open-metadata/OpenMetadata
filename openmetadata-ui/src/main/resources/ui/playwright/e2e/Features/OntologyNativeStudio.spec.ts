@@ -293,6 +293,7 @@ test.describe(
           });
 
         await test.step('Author a property and hierarchy from the concept inspector', async () => {
+          await page.getByTestId('fit-view').click();
           await clickGraphNode(page, customer.id);
           const inspector = page.getByTestId('ontology-concept-inspector');
           await expect(inspector).toContainText('A person who buys.');

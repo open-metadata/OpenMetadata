@@ -30,10 +30,16 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuid } from 'uuid';
+import { EntityType } from '../../../../enums/entity.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
+import {
+  useOntologyDirtyForm,
+  useOntologyDraftLock,
+} from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getOntologyState } from '../../../../rest/ontologyAPI';
+import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import {
   buildNewClassChangeSet,
@@ -122,7 +128,9 @@ const OntologyNewClassPanel = ({
       owners: currentUser
         ? [
             {
-              ...toEntityReferenceOption({ ...currentUser, type: 'user' }),
+              ...toEntityReferenceOption(
+                getEntityReferenceFromEntity(currentUser, EntityType.USER)
+              ),
               label:
                 (currentUser.displayName ?? currentUser.name) +
                 ' (' +
@@ -179,14 +187,35 @@ const OntologyNewClassPanel = ({
       setReconciling(false);
     }
   };
+  const markSaved = useOntologyDirtyForm(
+    [
+      label,
+      manualName,
+      description,
+      source,
+      abstract,
+      synonyms.length,
+      synonym,
+      properties.length,
+      propertyName,
+      range,
+      identifier,
+      enumInput,
+      enumValues.length,
+      datatype !== 'string',
+      form.formState.isDirty,
+    ].some(Boolean)
+  );
   const apply = useOntologyChangeSetApply({
     canApply: permitted,
     rebuildAfterFailure: true,
     onApplied: () => {
+      markSaved();
       void reconcile();
     },
   });
   const leaveLocked = preparing || reconciling || apply.configurationLocked;
+  useOntologyDraftLock(leaveLocked);
   const locked = leaveLocked || apply.status.kind === 'applied';
   useEffect(() => {
     onLockChange?.(leaveLocked);

@@ -14,6 +14,7 @@ import { Page } from '@playwright/test';
 import { SearchIndex } from '../../../src/enums/search.enum';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
+import { OntologyChangeSet } from '../../../src/generated/entity/data/ontologyChangeSet';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { expect, test } from '../../support/fixtures/isolatedUser';
@@ -22,6 +23,7 @@ import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
   clickIgnoringToasts,
   getWorkerAdminAPIContext,
+  scrollIntoViewAndSettle,
   uuid,
 } from '../../utils/common';
 import {
@@ -32,9 +34,11 @@ import {
 import { waitForSearchIndexed } from '../../utils/polling';
 const pick = async (page: Page, label: string, name: string) => {
   const input = page.getByRole('combobox', { name: label, exact: true });
+  await scrollIntoViewAndSettle(input);
   await input.fill(name);
   await page.getByRole('option', { name, exact: true }).click();
   await input.press('Escape');
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 };
 test.use({ isolatedUserOptions: { isAdmin: true } });
 test.describe(
@@ -127,13 +131,15 @@ test.describe(
           ).toBeVisible();
           await pick(page, 'Equivalent to', 'Payment');
           await pick(page, 'Disjoint with', 'Person');
-          await page
-            .getByRole('checkbox', { name: 'Abstract', exact: true })
-            .check();
+          await page.getByText('Abstract', { exact: true }).click();
+          await expect(
+            page.getByRole('checkbox', { name: 'Abstract', exact: true })
+          ).toBeChecked();
           await page.getByTestId('new-class-property-name').fill('reference');
-          await page
-            .getByRole('checkbox', { name: 'Identifier', exact: true })
-            .check();
+          await page.getByText('Identifier', { exact: true }).click();
+          await expect(
+            page.getByRole('checkbox', { name: 'Identifier', exact: true })
+          ).toBeChecked();
           await page.getByTestId('new-class-property-name').press('Enter');
           await page.getByTestId('new-class-property-name').fill('status');
           await page.getByRole('button', { name: /Type/ }).click();
@@ -161,9 +167,18 @@ test.describe(
           await expect(
             page.getByRole('textbox', { name: /Layer/ })
           ).toHaveValue('L2 Industry');
+          await page
+            .getByRole('button', { name: /^Remove .+ \(You\)$/ })
+            .click();
           await pick(page, 'Owners', team.responseData.displayName);
         });
         await test.step('Apply one plan and verify persisted definitions and non-overlapping node', async () => {
+          const createdPlan = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                '/api/v1/ontologyChangeSets' &&
+              response.request().method() === 'POST'
+          );
           const applied = page.waitForResponse(
             (r) =>
               r.url().includes('/ontologyChangeSets/') &&
@@ -171,7 +186,16 @@ test.describe(
               r.request().method() === 'POST'
           );
           await clickIgnoringToasts(page.getByTestId('new-class-create'));
-          expect((await applied).status()).toBe(200);
+          expect((await createdPlan).status()).toBe(201);
+          expect(
+            await okJson<OntologyChangeSet>(
+              await applied,
+              'Apply authoring plan'
+            )
+          ).toMatchObject({
+            state: 'APPLIED',
+            applicationResult: { operationsApplied: 8, operationsFailed: 0 },
+          });
           await expect(
             page.getByTestId('ontology-new-class-panel')
           ).toHaveCount(0);
@@ -202,14 +226,12 @@ test.describe(
           expect(created.superClasses).toEqual(
             expect.arrayContaining([concepts[0].iri, concepts[1].iri])
           );
-          expect(created.owners).toEqual(
-            expect.arrayContaining([
-              expect.objectContaining({
-                id: team.responseData.id,
-                type: 'team',
-              }),
-            ])
-          );
+          expect(created.owners).toEqual([
+            expect.objectContaining({
+              id: team.responseData.id,
+              type: 'team',
+            }),
+          ]);
           const propertyResponse = await okJson<{ data: OntologyProperty[] }>(
             await api.get('/api/v1/ontologyProperties', {
               params: { ontology: owner.fullyQualifiedName },
@@ -275,6 +297,9 @@ test.describe(
             page.getByTestId('ontology-connect-instruction')
           ).toHaveCount(0);
           await page.mouse.click(source.x + 75 * zoom, source.y);
+          await expect(
+            page.getByTestId('ontology-connect-instruction')
+          ).toBeVisible();
           await page.mouse.click(
             positions[concepts[1].id].x,
             positions[concepts[1].id].y
@@ -394,7 +419,7 @@ test.describe(
             lease.resourceId,
           { params: { sessionId: lease.sessionId } }
         );
-        expect(released.status()).toBe(200);
+        expect(released.status()).toBe(204);
         held = undefined;
         await clickIgnoringToasts(page.getByTestId('new-class-create'));
         await expect(page.getByTestId('ontology-new-class-panel')).toHaveCount(
@@ -412,14 +437,14 @@ test.describe(
       } finally {
         await page.unroute('**/api/v1/ontologyEditLocks/acquire');
         if (held) {
-          const response = await api.delete(
+          await deleteFixtureEntity(
+            api,
             '/api/v1/ontologyEditLocks/' +
               held.resourceType +
               '/' +
               held.resourceId,
             { params: { sessionId: held.sessionId } }
           );
-          expect(response.status()).toBe(200);
         }
         await deleteFixtureEntity(
           api,

@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -74,6 +75,10 @@ const OntologyStudioWorkspace = ({
 }: OntologyStudioWorkspaceProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const guard = useOntologyDraftGuard();
+  const [definitionTab, setDefinitionTab] = useState<string | number>(
+    'concept'
+  );
   const [revision, setRevision] = useState(0);
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
@@ -87,7 +92,8 @@ const OntologyStudioWorkspace = ({
         return (
           <Tabs
             className={isAiMode ? 'tw:gap-5' : undefined}
-            defaultSelectedKey="concept">
+            selectedKey={definitionTab}
+            onSelectionChange={(key) => guard(() => setDefinitionTab(key))}>
             {isAiMode ? (
               <Box direction="col" gap={1}>
                 <Typography
