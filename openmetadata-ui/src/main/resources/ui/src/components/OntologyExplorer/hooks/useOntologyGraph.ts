@@ -1513,6 +1513,7 @@ export function useOntologyGraph({
               graph.getEdgeData(),
               {
                 hierarchicalRelationTypes,
+                viewportHeight: containerRef.current?.offsetHeight,
                 viewportWidth: containerRef.current?.offsetWidth,
               }
             );
