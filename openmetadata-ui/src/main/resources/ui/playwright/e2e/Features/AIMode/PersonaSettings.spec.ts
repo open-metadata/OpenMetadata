@@ -42,7 +42,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
-import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
+import { enableAiAppMode } from '../../Utils/appMode';
 
 /**
  * The Home page customize route renders the real landing page, so every widget
