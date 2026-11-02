@@ -67,10 +67,12 @@ describe('buildStudioGraphScope', () => {
     });
 
     const ids = scope.graph.nodes.map(({ id }) => id);
+
     expect(ids).toEqual(
       expect.arrayContaining(['n10', 'n9', 'n11', 'n400', 'n399', 'n401'])
     );
     expect(ids).not.toContain('n200');
+
     scope.graph.edges.forEach(({ from, to }) => {
       expect(ids).toEqual(expect.arrayContaining([from, to]));
     });

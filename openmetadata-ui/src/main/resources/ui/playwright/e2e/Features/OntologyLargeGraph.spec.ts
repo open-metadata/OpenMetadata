@@ -184,9 +184,9 @@ test.describe(
           const list = nodeList(page, 400);
 
           await pressUntilFocused(page, list);
-          await expect(list.getByRole('option').first()).toHaveText(
-            'Concept 0'
-          );
+          await expect(
+            list.getByRole('option', { name: 'Concept 0', exact: true })
+          ).toBeVisible();
           await page.keyboard.press('ArrowDown');
           await page.keyboard.press('Enter');
 
@@ -214,7 +214,7 @@ test.describe(
           await findBox(page).fill('Concept 7');
           await findBox(page).press('Enter');
           await expect(panel(page)).toContainText('Concept 7');
-          await panel(page).getByRole('button').first().focus();
+          await panel(page).getByRole('button', { name: 'Close' }).focus();
           await page.keyboard.press('Escape');
           // A focused icon button shows a tooltip, and its first Escape only closes that.
           if (await panel(page).isVisible()) {
@@ -376,14 +376,16 @@ test.describe(
           page.getByTestId(`ontology-tree-term-${ids.get('Concept 0')}`)
         ).toBeVisible();
 
-        const first = rows.first();
-        await first.focus();
+        const rowOf = (label: string) =>
+          page.getByTestId(`ontology-tree-term-${ids.get(label)}`);
+        await rowOf('Concept 0').focus();
         await page.keyboard.press('ArrowDown');
-        await expect(rows.nth(1)).toBeFocused();
+        await expect(rowOf('Concept 1')).toBeFocused();
         await page.keyboard.press('End');
-        await expect(rows.last()).toBeFocused();
+        // The tree lists parents before children, so the last row is the last leaf of the last branch.
+        await expect(rowOf('Concept 340')).toBeFocused();
         await page.keyboard.press('Home');
-        await expect(first).toBeFocused();
+        await expect(rowOf('Concept 0')).toBeFocused();
         await page.screenshot({ path: test.info().outputPath('g14-tree.png') });
       });
     });

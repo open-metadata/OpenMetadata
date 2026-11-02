@@ -1936,11 +1936,13 @@ describe('OntologyGraphView', () => {
       fireEvent.change(findBox(), { target: { value: 'cust' } });
 
       const results = screen.getByTestId('ontology-graph-search-results');
+
       expect(
         within(results)
           .getAllByRole('option')
           .map((option) => option.textContent)
       ).toEqual(['Customer']);
+
       fireEvent.keyDown(findBox(), { key: 'Enter' });
 
       expect(
@@ -1997,6 +1999,7 @@ describe('OntologyGraphView', () => {
           screen.queryByTestId('ontology-concept-inspector')
         ).not.toBeInTheDocument()
       );
+
       expect(findBox()).toHaveFocus();
     });
 
@@ -2020,7 +2023,9 @@ describe('OntologyGraphView', () => {
       const list = within(
         screen.getByTestId('ontology-graph-node-list')
       ).getByRole('listbox');
+
       expect(list).toHaveAttribute('tabindex', '0');
+
       act(() => list.focus());
 
       expect(
@@ -2028,12 +2033,14 @@ describe('OntologyGraphView', () => {
           .getAllByRole('option')
           .map((option) => option.textContent)
       ).toEqual(['Customer', 'Orphan', 'Party']);
+
       fireEvent.keyDown(list, { key: 'ArrowDown' });
       fireEvent.keyDown(list, { key: 'Enter' });
 
       expect(
         await screen.findByTestId('ontology-concept-inspector')
       ).toHaveTextContent('Orphan');
+
       fireEvent.keyDown(list, { key: 'Escape' });
 
       await waitFor(() =>
@@ -2041,6 +2048,7 @@ describe('OntologyGraphView', () => {
           screen.queryByTestId('ontology-concept-inspector')
         ).not.toBeInTheDocument()
       );
+
       expect(list).toHaveFocus();
     });
 
@@ -2080,7 +2088,9 @@ describe('OntologyGraphView', () => {
 
         expect(notice).toHaveTextContent('message.ontology-graph-too-large');
         expect(screen.queryByTestId('native-ontology-graph')).toBeNull();
+
         fireEvent.click(screen.getByTestId('ontology-graph-open-tree'));
+
         expect(onRequestTreeSurface).toHaveBeenCalledTimes(1);
       });
 
@@ -2095,6 +2105,7 @@ describe('OntologyGraphView', () => {
         const drawn = latestGraphProps().nodes.map(
           ({ label }: { label: string }) => label
         );
+
         expect(drawn).toEqual(
           expect.arrayContaining([
             'Filler 300',

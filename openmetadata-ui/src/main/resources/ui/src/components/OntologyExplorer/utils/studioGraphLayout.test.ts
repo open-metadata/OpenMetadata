@@ -376,6 +376,7 @@ describe('calculateStudioNodePositions on large ontologies', () => {
       expect(aspect).toBeLessThan(2.4);
       expect(width).toBeLessThan(maxWidth);
       expect(height).toBeLessThan(maxHeight);
+
       expectNoOverlap(positions);
     },
     60000
@@ -416,6 +417,7 @@ describe('calculateStudioNodePositions on large ontologies', () => {
 
     expect(aspect).toBeGreaterThan(1.2);
     expect(aspect).toBeLessThan(2.4);
+
     expectNoOverlap(positions);
   });
 
@@ -436,6 +438,7 @@ describe('calculateStudioNodePositions on large ontologies', () => {
 
     expect(aspect).toBeGreaterThan(1.2);
     expect(aspect).toBeLessThan(2.4);
+
     expectNoOverlap(positions);
   }, 60000);
 

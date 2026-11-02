@@ -84,23 +84,23 @@ const OntologyConceptSearch = ({
         onChange={onChange}
       />
       {isListed ? (
-        <ul
+        <div
           aria-label={t('label.search-result-plural')}
-          className="tw:absolute tw:top-full tw:left-0 tw:z-20 tw:mt-1 tw:max-h-72 tw:min-w-full tw:w-72 tw:list-none tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1 tw:shadow-lg"
+          className="tw:absolute tw:top-full tw:left-0 tw:z-20 tw:mt-1 tw:max-h-72 tw:min-w-full tw:w-72 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1 tw:shadow-lg"
           data-testid="ontology-graph-search-results"
           id={listId}
           role="listbox">
           {results.length === 0 ? (
-            <li className="tw:px-3 tw:py-2" role="presentation">
+            <div className="tw:px-3 tw:py-2" role="presentation">
               <Typography color="secondary" size="text-sm">
                 {t('message.ontology-find-no-match')}
               </Typography>
-            </li>
+            </div>
           ) : (
             results.map((node, position) => (
               // Keyboard users act through the input; the option is a pointer shortcut.
               // eslint-disable-next-line jsx-a11y/click-events-have-key-events
-              <li
+              <div
                 aria-selected={position === active}
                 className={`tw:cursor-pointer tw:rounded-md tw:px-3 tw:py-2 tw:text-sm tw:text-primary ${
                   position === active
@@ -110,13 +110,14 @@ const OntologyConceptSearch = ({
                 data-testid={`ontology-graph-search-result-${node.id}`}
                 key={node.id}
                 role="option"
+                tabIndex={-1}
                 onClick={() => open(node)}
                 onMouseDown={(event) => event.preventDefault()}>
                 {node.label}
-              </li>
+              </div>
             ))
           )}
-        </ul>
+        </div>
       ) : null}
     </div>
   );

@@ -36,7 +36,7 @@ const OntologyGraphNodeList = ({
 }: OntologyGraphNodeListProps) => {
   const { t } = useTranslation();
   const listId = useId();
-  const listRef = useRef<HTMLUListElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [active, setActive] = useState(0);
 
@@ -56,7 +56,7 @@ const OntologyGraphNodeList = ({
   const moveTo = (position: number) =>
     setActive(Math.min(nodes.length - 1, Math.max(0, position)));
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const steps: Record<string, () => void> = {
       ArrowDown: () => moveTo(active + 1),
       ArrowUp: () => moveTo(active - 1),
@@ -89,11 +89,11 @@ const OntologyGraphNodeList = ({
         id={`${listId}-hint`}>
         {t('message.ontology-concept-list-hint')}
       </p>
-      <ul
+      <div
         aria-activedescendant={`${listId}-${active}`}
         aria-describedby={`${listId}-hint`}
         aria-label={`${t('label.concept-plural')} (${nodes.length})`}
-        className="tw:m-0 tw:max-h-60 tw:list-none tw:overflow-auto tw:p-0 tw:outline-none"
+        className="tw:m-0 tw:max-h-60 tw:overflow-auto tw:p-0 tw:outline-none"
         ref={listRef}
         role="listbox"
         tabIndex={0}
@@ -103,7 +103,7 @@ const OntologyGraphNodeList = ({
         {(isFocused ? nodes : []).map((node, position) => (
           // The listbox owns the keyboard; options are a pointer shortcut.
           // eslint-disable-next-line jsx-a11y/click-events-have-key-events
-          <li
+          <div
             aria-selected={node.id === selectedId}
             className={`tw:cursor-pointer tw:rounded-md tw:px-3 tw:py-1.5 tw:text-sm tw:text-primary ${
               position === active ? 'tw:bg-active' : ''
@@ -112,11 +112,12 @@ const OntologyGraphNodeList = ({
             id={`${listId}-${position}`}
             key={node.id}
             role="option"
+            tabIndex={-1}
             onClick={() => onOpen(node)}>
             {node.label}
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 };
