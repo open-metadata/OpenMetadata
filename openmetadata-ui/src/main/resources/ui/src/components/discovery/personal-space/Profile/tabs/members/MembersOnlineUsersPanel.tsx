@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Select, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Select,
+  TableCard,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -280,75 +285,83 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     <Box
       className="tw:px-8 tw:pb-8 tw:pt-1"
       data-testid="online-users-panel"
-      direction="col"
-      gap={4}>
-      <Table<User>
-        columns={columns}
-        data-testid="online-users-table"
-        dataSource={users}
-        extraTableFilters={
-          <Box align="center" direction="row" gap={2}>
-            <Typography size="text-sm">{t('label.time-window')}:</Typography>
-            <Select
-              data-testid="time-window-select"
-              selectedKey={String(timeWindow)} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
-              size="sm"
-              onSelectionChange={handleTimeWindowChange} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
-            >
-              {TIME_WINDOW_OPTIONS.map((opt) => (
-                <Select.Item
-                  id={String(opt.value)}
-                  key={String(opt.value)}
-                  textValue={t(opt.labelKey, opt.labelParams)}>
-                  {t(opt.labelKey, opt.labelParams)}
-                </Select.Item>
-              ))}
-            </Select>
-          </Box>
-        }
-        loading={loading}
-        locale={{
-          emptyText: (
-            <Box
-              align="center"
-              className="tw:min-h-32 tw:relative"
-              justify="center">
-              <NoDataPlaceholder
-                icon={<User01 />}
-                title={t('label.no-entity-found', {
-                  entity: t('label.online-user-plural'),
-                })}
-              />
+      direction="col">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
+        <Table<User>
+          columns={columns}
+          data-testid="online-users-table"
+          dataSource={users}
+          extraTableFilters={
+            <Box align="center" direction="row" gap={2}>
+              <Typography size="text-sm">{t('label.time-window')}:</Typography>
+              <Select
+                data-testid="time-window-select"
+                selectedKey={String(timeWindow)} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
+                size="sm"
+                onSelectionChange={handleTimeWindowChange} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
+              >
+                {TIME_WINDOW_OPTIONS.map((opt) => (
+                  <Select.Item
+                    id={String(opt.value)}
+                    key={String(opt.value)}
+                    textValue={t(opt.labelKey, opt.labelParams)}>
+                    {t(opt.labelKey, opt.labelParams)}
+                  </Select.Item>
+                ))}
+              </Select>
             </Box>
-          ),
-        }}
-        pagination={false}
-        rowKey="id"
-        searchProps={{
-          containerClassName: 'tw:w-80!',
-          onSearch: handleSearch,
-          searchValue: searchText,
-          typingInterval: 500,
-          placeholder: t('label.search-entity', {
-            entity: t('label.user-plural'),
-          }),
-        }}
-        size="small"
-        variant="muted"
-      />
-
-      {showPagination && (
-        <NextPrevious
-          currentPage={currentPage}
-          isLoading={loading}
-          isNumberBased={Boolean(searchText)}
-          pageSize={pageSize}
-          pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
-          paging={paging}
-          pagingHandler={handlePageNavigation}
-          onShowSizeChange={handlePageSizeChange}
+          }
+          loading={loading}
+          locale={{
+            emptyText: (
+              <Box
+                align="center"
+                className="tw:min-h-32 tw:relative"
+                justify="center">
+                <NoDataPlaceholder
+                  icon={<User01 />}
+                  title={t('label.no-entity-found', {
+                    entity: t('label.online-user-plural'),
+                  })}
+                />
+              </Box>
+            ),
+          }}
+          pagination={false}
+          rowKey="id"
+          searchProps={{
+            containerClassName: 'tw:w-80!',
+            onSearch: handleSearch,
+            searchValue: searchText,
+            typingInterval: 500,
+            placeholder: t('label.search-entity', {
+              entity: t('label.user-plural'),
+            }),
+          }}
+          size="small"
+          variant="muted"
         />
-      )}
+
+        {showPagination && (
+          <NextPrevious
+            currentPage={currentPage}
+            isLoading={loading}
+            isNumberBased={Boolean(searchText)}
+            pageSize={pageSize}
+            pageSizeOptions={[
+              PAGE_SIZE_BASE,
+              PAGE_SIZE_MEDIUM,
+              PAGE_SIZE_LARGE,
+            ]}
+            paging={paging}
+            pagingHandler={handlePageNavigation}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </TableCard.Root>
     </Box>
   );
 };

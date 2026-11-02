@@ -22,6 +22,7 @@ import {
   Dropdown,
   PaginationCardWithControls,
   Skeleton,
+  TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -358,14 +359,18 @@ const AlertAiRecentEventsTab = ({
       </Box>
       {renderEvents()}
       {showPagination && !loading && (
-        <PaginationCardWithControls
-          page={currentPage}
-          pageSize={pageSize}
-          pageSizeOptions={PAGE_SIZE_OPTIONS}
-          total={computeTotalPages(pageSize, paging.total)}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
+        // The pager is a card footer with no top edge; below the events list
+        // the card frame supplies the full outline.
+        <TableCard.Root>
+          <PaginationCardWithControls
+            page={currentPage}
+            pageSize={pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            total={computeTotalPages(pageSize, paging.total)}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </TableCard.Root>
       )}
     </Box>
   );

@@ -2622,6 +2622,49 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   }
 
   /**
+   * Test: a life cycle timestamp before the Unix epoch is the year-0001 placeholder older ingestion
+   * clients send; it is dropped on write while the real aspects next to it are kept.
+   */
+  @Test
+  void patch_entityLifeCyclePlaceholderTimestampIsDropped(TestNamespace ns) {
+    if (!supportsLifeCycle || !supportsPatch) return;
+
+    T entity = createEntity(createMinimalRequest(ns));
+    org.openmetadata.schema.type.AccessDetails placeholderCreated =
+        new org.openmetadata.schema.type.AccessDetails().withTimestamp(-62135596800000L);
+
+    entity.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle().withCreated(placeholderCreated));
+    T placeholderOnly = patchEntity(entity.getId().toString(), entity);
+    T fetched = getEntityWithFields(placeholderOnly.getId().toString(), "lifeCycle");
+    assertTrue(
+        fetched.getLifeCycle() == null || fetched.getLifeCycle().getCreated() == null,
+        "A placeholder created timestamp must not be stored");
+    assertEquals(entity.getVersion(), fetched.getVersion());
+
+    org.openmetadata.schema.type.AccessDetails accessed =
+        new org.openmetadata.schema.type.AccessDetails().withTimestamp(1695059900000L);
+    fetched.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle()
+            .withCreated(placeholderCreated)
+            .withAccessed(accessed));
+    patchEntity(fetched.getId().toString(), fetched);
+    T mixed = getEntityWithFields(fetched.getId().toString(), "lifeCycle");
+    assertNull(mixed.getLifeCycle().getCreated(), "The placeholder aspect is dropped");
+    assertEquals(1695059900000L, mixed.getLifeCycle().getAccessed().getTimestamp());
+
+    mixed.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle().withCreated(placeholderCreated));
+    patchEntity(mixed.getId().toString(), mixed);
+    T kept = getEntityWithFields(mixed.getId().toString(), "lifeCycle");
+    assertNull(kept.getLifeCycle().getCreated(), "The placeholder is not stored");
+    assertEquals(
+        1695059900000L,
+        kept.getLifeCycle().getAccessed().getTimestamp(),
+        "A placeholder-only life cycle leaves the recorded times in place");
+  }
+
+  /**
    * Test: Verify lifecycle updates do NOT cause version pollution
    * This test verifies the fix for https://github.com/open-metadata/OpenMetadata/issues/21326
    *
