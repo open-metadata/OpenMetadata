@@ -901,9 +901,8 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
 
--- DomainOnlyAccessPolicy allowed every operation on resources in no domain, so a confined user could
--- rewrite policies, mint bot tokens or run apps. Add a rule denying changes to those administrative
--- resources.
+-- DomainOnlyAccessPolicy: deny changes to policies, roles, teams, users, bots and apps that are in
+-- no domain.
 UPDATE policy_entity
 SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
     {"name": "DomainAccessDenyAdministrationRule",

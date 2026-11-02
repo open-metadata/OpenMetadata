@@ -1192,9 +1192,8 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   KEY ontology_concept_binding_asset_index (assetId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- DomainOnlyAccessPolicy allowed every operation on resources in no domain, so a confined user could
--- rewrite policies, mint bot tokens or run apps. Add a rule denying changes to those administrative
--- resources.
+-- DomainOnlyAccessPolicy: deny changes to policies, roles, teams, users, bots and apps that are in
+-- no domain.
 UPDATE policy_entity
 SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
     'name', 'DomainAccessDenyAdministrationRule',

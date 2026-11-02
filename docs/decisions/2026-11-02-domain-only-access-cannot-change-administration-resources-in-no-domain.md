@@ -11,8 +11,8 @@
 ## Context
 `hasDomain()` is true for a resource that has no domain, and `DomainOnlyAccessPolicy` allows every
 operation when it is. That is intended for assets in no domain, which domain-only users keep
-working on. It also covered policies, roles, teams and bots, which are in no domain, so a confined
-user could rewrite any policy (including the one confining them) and mint a token for any bot.
+working on. It also covered policies, roles, teams, users, bots and apps, which have no domain and
+control access, so the role reached further than a domain restriction should.
 
 ## Decision
 - The allow and deny rules are unchanged. A third rule denies `Create`, `Delete`, `EditAll` (every
