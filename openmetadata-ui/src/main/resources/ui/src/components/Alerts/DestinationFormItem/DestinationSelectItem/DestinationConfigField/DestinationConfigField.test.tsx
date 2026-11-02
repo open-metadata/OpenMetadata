@@ -217,21 +217,22 @@ function renderWebhookField() {
   return render(<Wrapper />);
 }
 
-function renderSavedWebhookField(onConfigExpandedChange: jest.Mock) {
+const SAVED_WEBHOOK_CONFIG = {
+  endpoint: '*********',
+  headers: [
+    { key: 'Authorization', value: '*********' },
+    { key: 'Content-Type', value: 'application/json' },
+  ],
+};
+
+function renderSavedWebhookField(
+  onConfigExpandedChange: jest.Mock,
+  config: Record<string, unknown> = SAVED_WEBHOOK_CONFIG
+) {
   function Wrapper() {
     const methods = useForm({
       defaultValues: {
-        destinations: [
-          {
-            config: {
-              endpoint: '*********',
-              headers: [
-                { key: 'Authorization', value: '*********' },
-                { key: 'Content-Type', value: 'application/json' },
-              ],
-            },
-          },
-        ],
+        destinations: [{ config }],
       },
     });
 
@@ -386,6 +387,29 @@ describe('DestinationConfigField', () => {
     expect(screen.getByTestId('header-value-input-field-0-0')).toHaveValue('');
     expect(screen.getByTestId('header-value-input-field-0-1')).toHaveValue(
       'application/json'
+    );
+    expect(onConfigExpandedChange).toHaveBeenCalledWith(true);
+  });
+
+  it('asks again for the hidden URL and credentials once the token URL changes', () => {
+    const onConfigExpandedChange = jest.fn();
+    renderSavedWebhookField(onConfigExpandedChange, {
+      endpoint: '*********',
+      authType: {
+        type: 'oauth2',
+        tokenUrl: 'https://auth.example.com/token',
+        clientId: '*********',
+        clientSecret: '*********',
+      },
+    });
+
+    fireEvent.change(screen.getByTestId('token-url-input-field-0'), {
+      target: { value: 'https://auth.example.com/new-token' },
+    });
+
+    expect(screen.getByTestId('endpoint-input-field-0')).toHaveValue('');
+    expect(screen.getByTestId('token-url-input-field-0')).toHaveValue(
+      'https://auth.example.com/new-token'
     );
     expect(onConfigExpandedChange).toHaveBeenCalledWith(true);
   });

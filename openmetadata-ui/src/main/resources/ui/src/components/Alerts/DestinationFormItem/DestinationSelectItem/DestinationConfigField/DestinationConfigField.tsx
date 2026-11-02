@@ -326,6 +326,7 @@ function DestinationConfigField({
       const config = getValues(configPath);
       const cleared = clearMaskedSecrets(config);
       if (!isEqual(cleared, config)) {
+        setValue(`${configPath}.endpoint`, cleared?.endpoint);
         cleared?.headers?.forEach((header, index) => {
           setValue(`${configPath}.headers.${index}.value`, header.value);
         });

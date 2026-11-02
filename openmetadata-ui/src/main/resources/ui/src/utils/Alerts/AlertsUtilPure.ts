@@ -467,6 +467,9 @@ export const clearMaskedSecrets = (
 
   return {
     ...config,
+    ...(config.endpoint !== undefined && {
+      endpoint: withoutMask(config.endpoint) as string,
+    }),
     ...(config.headers && {
       headers: config.headers.map((header) => ({
         ...header,

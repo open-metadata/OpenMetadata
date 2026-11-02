@@ -155,6 +155,28 @@ describe('clearMaskedSecrets', () => {
     });
   });
 
+  it('empties a URL that still shows the mask, as a token URL change needs', () => {
+    expect(
+      clearMaskedSecrets({
+        endpoint: '*********',
+        authType: {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/new-token',
+          clientId: '*********',
+          clientSecret: '*********',
+        },
+      } as ModifiedWebhookConfig)
+    ).toEqual({
+      endpoint: '',
+      authType: {
+        type: 'oauth2',
+        tokenUrl: 'https://auth.example.com/new-token',
+        clientId: '',
+        clientSecret: '',
+      },
+    });
+  });
+
   it('keeps secrets the user has already typed', () => {
     const config = {
       endpoint: 'https://new.example.com/hook',
