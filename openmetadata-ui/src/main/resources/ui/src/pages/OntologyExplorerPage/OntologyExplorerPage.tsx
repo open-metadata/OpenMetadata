@@ -491,6 +491,12 @@ function resolveStudioRead({
   };
 }
 
+const canEnterEditMode = (
+  canEditScope: boolean,
+  isNativeOntology: boolean,
+  canEditNative: boolean
+) => canEditScope && (!isNativeOntology || canEditNative);
+
 function getExplorerSurface(
   mode: StudioMode,
   viewSurface: ViewSurface,
@@ -1279,18 +1285,24 @@ const OntologyExplorerContent: React.FC = () => {
   const isOntologyAiAvailable = isGlossaryScope && isOntologyAiEnabled;
   const modeTabs = computeModeTabs(t, canOfferEdit, isOntologyAiAvailable);
 
+  const canEnterEdit = canEnterEditMode(
+    canEditCurrentScope,
+    isNativeOntology,
+    canEditNativeOntology
+  );
+
   useEffect(() => {
     if ((ontologyId && !selectedOntology) || isVersionPending) {
       return;
     }
-    const isUnavailableEditMode = mode === 'edit' && !canEditCurrentScope;
+    const isUnavailableEditMode = mode === 'edit' && !canEnterEdit;
     const isUnavailableAiMode =
       mode === 'ai' && (isNativeOntology || !isOntologyAiEnabled);
     if (isUnavailableEditMode || isUnavailableAiMode) {
       setMode('view', { replace: true });
     }
   }, [
-    canEditCurrentScope,
+    canEnterEdit,
     isNativeOntology,
     isOntologyAiEnabled,
     isVersionPending,

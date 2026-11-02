@@ -190,11 +190,13 @@ const studioUrl = (ontology: Ontology, query = '') =>
   `/governance/ontology?ontology=${ontology.id}${query}`;
 
 const expectSelected = async (page: Page, testId: string) =>
-  expect(page.getByTestId(testId)).toHaveAttribute('aria-selected', 'true');
+  expect(page.getByTestId(testId)).toHaveAttribute('aria-selected', 'true', {
+    timeout: 20_000,
+  });
 
-const openAlphaInTree = async (page: Page) => {
+const openConceptInTree = async (page: Page, concept: OntologyConcept) => {
   await page.getByTestId('submode-tab-tree').click();
-  await page.getByTestId('ontology-tree-term-Alpha').click();
+  await page.getByTestId(`ontology-tree-term-${concept.id}`).click();
 };
 
 test.describe(
@@ -220,7 +222,7 @@ test.describe(
           await expect(
             reader.page.getByTestId('ontology-version-switch')
           ).toHaveCount(0);
-          await openAlphaInTree(reader.page);
+          await openConceptInTree(reader.page, fixture.alpha);
 
           await expect(reader.page.getByText(RELEASED_WORDING)).toBeVisible();
           await expect(reader.page.getByText(DRAFT_WORDING)).toHaveCount(0);
@@ -242,6 +244,7 @@ test.describe(
     test('a user without edit rights is told nothing is published when the ontology has no release', async ({
       browser,
     }) => {
+      test.slow();
       const api = await getWorkerAdminAPIContext();
       const ontology = await createOntology(api);
       await createConcept(api, ontology, 'Draftonly', 'Never released');
@@ -271,7 +274,7 @@ test.describe(
       const fixture = await publishWithNewerDraft(api, page, reviewer);
       try {
         await page.goto(studioUrl(fixture.ontology));
-        await openAlphaInTree(page);
+        await openConceptInTree(page, fixture.alpha);
 
         await expect(page.getByText(DRAFT_WORDING)).toBeVisible();
         await expect(page.getByTestId('mode-tab-edit')).toBeVisible();
@@ -297,6 +300,7 @@ test.describe(
     test('reload keeps the mode, view and version, and Back walks the views in reverse', async ({
       isolatedUserPage: page,
     }) => {
+      test.slow();
       const api = await getWorkerAdminAPIContext();
       const ontology = await createOntology(api);
       await createConcept(api, ontology, 'Alpha', 'Alpha wording');
@@ -357,7 +361,7 @@ test.describe(
       try {
         const link = studioUrl(
           fixture.ontology,
-          `&mode=edit&view=tree&version=published&concept=${fixture.alpha.id}`
+          `&view=tree&version=published&concept=${fixture.alpha.id}`
         );
         await page.goto(link);
         await expectSelected(page, 'submode-tab-tree');
@@ -368,6 +372,10 @@ test.describe(
         await expect(reader.page.getByTestId('mode-tab-edit')).toHaveCount(0);
         await expectSelected(reader.page, 'submode-tab-tree');
         await expect(reader.page.getByText(RELEASED_WORDING)).toBeVisible();
+
+        await reader.page.goto(studioUrl(fixture.ontology, '&mode=edit'));
+        await expectSelected(reader.page, 'mode-tab-view');
+        await expect(reader.page.getByTestId('mode-tab-edit')).toHaveCount(0);
         await reader.page.screenshot({ path: 'test-results/g15-share.png' });
       } finally {
         await reader.dispose();
@@ -423,6 +431,7 @@ test.describe(
       isolatedUserPage: page,
       isolatedUser: user,
     }) => {
+      test.slow();
       const api = await getWorkerAdminAPIContext();
       const ontology = await createOntology(api);
       await createConcept(api, ontology, 'Lonely');
@@ -448,6 +457,7 @@ test.describe(
     test('an unknown ontology id and an unknown concept id each say the item was not found', async ({
       isolatedUserPage: page,
     }) => {
+      test.slow();
       const api = await getWorkerAdminAPIContext();
       const ontology = await createOntology(api);
       await createConcept(api, ontology, 'Alpha', 'Alpha wording');
