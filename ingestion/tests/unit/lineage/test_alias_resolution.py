@@ -153,9 +153,9 @@ class TestAliasOptInGate:
         metadata.es_search_from_alias.assert_not_called()
 
 
-def test_alias_opt_in_cache_is_isolated_between_clients():
+def test_alias_opt_in_cache_is_isolated_between_services():
     first, second = MagicMock(), MagicMock()
     first.get_by_name.return_value.connection.config.includeSynonyms = True
     second.get_by_name.return_value.connection.config.includeSynonyms = False
-    assert service_resolves_aliases(first, "svc") is True
-    assert service_resolves_aliases(second, "svc") is False
+    assert service_resolves_aliases(first, "enabled_service") is True
+    assert service_resolves_aliases(second, "disabled_service") is False

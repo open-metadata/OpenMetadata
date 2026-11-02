@@ -250,3 +250,26 @@ describe('TableProfilerChart component test', () => {
     });
   });
 });
+
+it.each([TableType.Regular, TableType.Sharded])(
+  'shows missing profile provenance only for sharded tables (%s)',
+  async (tableType) => {
+    jest.mocked(getTableProfilesList).mockResolvedValueOnce({
+      data: [{ timestamp: MOCK_START_TS, rowCount: 2 }],
+      paging: { total: 1 },
+    });
+    await act(async () => {
+      render(<TableProfilerChart tableDetails={{ tableType } as Table} />);
+    });
+    expect(screen.getByTestId('row-metrics')).toBeInTheDocument();
+    if (tableType === TableType.Sharded) {
+      expect(
+        screen.getByText(/message.execution-source-unavailable/)
+      ).toBeInTheDocument();
+    } else {
+      expect(
+        screen.queryByText(/message.execution-source-unavailable/)
+      ).not.toBeInTheDocument();
+    }
+  }
+);

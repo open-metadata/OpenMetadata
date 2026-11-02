@@ -242,20 +242,25 @@ const TableProfilerChart = ({
       <div
         className="tw:flex tw:flex-col tw:gap-[30px]"
         data-testid="table-profiler-chart-metrics">
-        <ul>
-          {profileMetrics.map((profile) => (
-            <li key={profile.timestamp}>
-              {formatDateTimeLong(profile.timestamp)}:{' '}
-              {profile.executionSource
-                ? `${t('label.execution-source')}: ${
-                    profile.executionSource.databaseName
-                  }.${profile.executionSource.schemaName}.${
-                    profile.executionSource.tableName
-                  }`
-                : t('message.execution-source-unavailable')}
-            </li>
-          ))}
-        </ul>
+        {(isSharded ||
+          profileMetrics.some((profile) => profile.executionSource)) && (
+          <ul>
+            {profileMetrics
+              .filter((profile) => isSharded || profile.executionSource)
+              .map((profile) => (
+                <li key={profile.timestamp}>
+                  {formatDateTimeLong(profile.timestamp)}:{' '}
+                  {profile.executionSource
+                    ? `${t('label.execution-source')}: ${
+                        profile.executionSource.databaseName
+                      }.${profile.executionSource.schemaName}.${
+                        profile.executionSource.tableName
+                      }`
+                    : t('message.execution-source-unavailable')}
+                </li>
+              ))}
+          </ul>
+        )}
         <div data-testid="row-metrics">
           <ProfilerDetailsCard
             chartCollection={rowCountMetrics}

@@ -133,13 +133,6 @@ def get_parser(args: list[str] | None = None):
     """
     parser = argparse.ArgumentParser(prog="metadata", description="Ingestion Framework")
     sub_parser = parser.add_subparsers(dest="command")
-    sharding = sub_parser.add_parser(
-        "migrate-bigquery-shards", help="Preview or apply a reviewed BigQuery shard migration"
-    )
-    sharding.add_argument("--config", type=Path, required=True)
-    sharding.add_argument("--output", type=Path)
-    sharding.add_argument("--apply", type=Path)
-    sharding.add_argument("--retire", action="store_true")
 
     create_common_config_parser_args(sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow"))
     create_dbt_parser_args(sub_parser.add_parser(MetadataCommands.INGEST_DBT.value, help="DBT Artifacts Ingestion"))
@@ -246,11 +239,6 @@ def metadata(args: list[str] | None = None):
     """
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
-    if metadata_workflow == "migrate-bigquery-shards":
-        from metadata.cli.bigquery_sharding import run_migration
-
-        run_migration(argparse.Namespace(**contains_args))
-        return
     config_file: Path | None = contains_args.get("config")
     dbt_project_path: Path | None = contains_args.get("dbt_project_path")
     status_file: Path | None = contains_args.get("status_file")

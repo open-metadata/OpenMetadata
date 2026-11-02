@@ -117,7 +117,7 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str 
     Returns:
         The database service type or None if not found.
     """
-    key = (metadata, service_name)
+    key = service_name
     if key in database_service_type_cache:
         return database_service_type_cache.get(key)
 
@@ -195,7 +195,7 @@ def search_table_entities(
 
 
 def _search_service_tables(metadata, service_name, database, database_schema, table):
-    key = (metadata, service_name, database, database_schema, table)
+    key = (service_name, database, database_schema, table)
     if key in search_cache:
         return search_cache.get(key)
     resolution = get_table_binding_resolution(metadata, service_name)

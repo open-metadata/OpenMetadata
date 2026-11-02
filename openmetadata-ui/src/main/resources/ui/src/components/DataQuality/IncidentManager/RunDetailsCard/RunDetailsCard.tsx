@@ -20,17 +20,24 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import type { TFunction } from 'i18next';
 import { isUndefined, maxBy } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { TableType } from '../../../../generated/entity/data/table';
 import {
   TestCase,
   TestCaseErrorDetails,
   TestCaseEvaluationScope,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
+import {
+  tableQueryFn,
+  tableQueryKey,
+} from '../../../../rest/queries/tableQuery';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getRunScopeBadges,
   getRunThresholdData,
@@ -410,6 +417,14 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
     (state) => state.setSelectedRunTimestamp
   );
   const result = getSelectedRun(results, selectedRunTimestamp);
+  const tableFqn = getEntityFQN(testCase.entityLink ?? '');
+  const { data: table } = useQuery({
+    queryKey: tableQueryKey(tableFqn, ''),
+    queryFn: tableQueryFn(tableFqn, ''),
+    enabled: Boolean(
+      tableFqn && result && !result.evaluationScope?.executionSource
+    ),
+  });
   // A run picked on the chart that is not the newest says so, with the way back.
   const isOlderRunSelected =
     !isUndefined(result) &&
@@ -514,15 +529,18 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           </Box>
         )}
         <RunScopeBadges scope={result.evaluationScope} />
-        <Typography data-testid="run-execution-source" size="text-sm">
-          {result.evaluationScope?.executionSource
-            ? `${t('label.execution-source')}: ${
-                result.evaluationScope.executionSource.databaseName
-              }.${result.evaluationScope.executionSource.schemaName}.${
-                result.evaluationScope.executionSource.tableName
-              }`
-            : t('message.execution-source-unavailable')}
-        </Typography>
+        {(table?.tableType === TableType.Sharded ||
+          result.evaluationScope?.executionSource) && (
+          <Typography data-testid="run-execution-source" size="text-sm">
+            {result.evaluationScope?.executionSource
+              ? `${t('label.execution-source')}: ${
+                  result.evaluationScope.executionSource.databaseName
+                }.${result.evaluationScope.executionSource.schemaName}.${
+                  result.evaluationScope.executionSource.tableName
+                }`
+              : t('message.execution-source-unavailable')}
+          </Typography>
+        )}
         <RunDuration duration={duration} errorDetails={errorDetails} />
       </Box>
       <Box

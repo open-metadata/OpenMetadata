@@ -13,6 +13,7 @@
 import importlib
 import traceback
 from enum import Enum
+from importlib.machinery import PathFinder
 from typing import Any, cast
 
 from metadata.domain.table_reference import TableReference
@@ -43,13 +44,16 @@ def load_table_binding_resolution(
     """Load an optional connector resolver; only an absent module uses the default."""
     if not source_type:
         return TableBindingResolution(metadata, engine)
-    module_name = f"metadata.ingestion.source.database.{get_module_dir(source_type.lower())}.resolution"
-    try:
-        module = importlib.import_module(module_name)
-    except ModuleNotFoundError as exc:
-        if exc.name and (exc.name == module_name or module_name.startswith(exc.name + ".")):
-            return TableBindingResolution(metadata, engine)
-        raise
+    database = importlib.import_module("metadata.ingestion.source.database")
+    package_name = f"{database.__name__}.{get_module_dir(source_type.lower())}"
+    package_spec = PathFinder.find_spec(package_name, database.__path__)
+    if package_spec is None or package_spec.submodule_search_locations is None:
+        return TableBindingResolution(metadata, engine)
+    module_name = f"{package_name}.resolution"
+    # Probe the child path without executing the connector package initializer.
+    if PathFinder.find_spec(module_name, package_spec.submodule_search_locations) is None:
+        return TableBindingResolution(metadata, engine)
+    module = importlib.import_module(module_name)
     resolution_class = module.TableBindingResolution
     if not isinstance(resolution_class, type) or not issubclass(resolution_class, TableBindingResolution):
         raise TypeError(f"{module_name}.TableBindingResolution must subclass the shared TableBindingResolution")
@@ -60,7 +64,7 @@ def service_resolves_aliases(metadata: OpenMetadata, service_name: str | None) -
     """Whether a named service opts into alternate table names."""
     if not service_name or service_name == "*":
         return False
-    key = (metadata, service_name)
+    key = service_name
     if key in alias_resolution_cache:
         return bool(alias_resolution_cache.get(key))
 

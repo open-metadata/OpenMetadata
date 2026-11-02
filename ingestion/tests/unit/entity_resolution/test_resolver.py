@@ -23,6 +23,7 @@ from uuid import uuid4
 
 import pytest
 
+from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.engine import (
     EntityResolutionPlan,
     EntityResolver,
@@ -31,6 +32,7 @@ from metadata.entity_resolution.engine import (
     ResolutionTier,
 )
 from metadata.entity_resolution.table import TableResolver
+from metadata.entity_resolution.table_binding import load_table_binding_resolution
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
@@ -98,6 +100,18 @@ class Transport:
 
     def close(self):
         self.closed = True
+
+
+@pytest.fixture(autouse=True)
+def clear_lineage_caches():
+    from metadata.entity_resolution.table_binding import alias_resolution_cache
+    from metadata.ingestion.lineage.sql_lineage import database_service_type_cache, search_cache
+
+    for cache in (alias_resolution_cache, database_service_type_cache, search_cache):
+        cache.clear()
+    yield
+    for cache in (alias_resolution_cache, database_service_type_cache, search_cache):
+        cache.clear()
 
 
 @pytest.fixture
@@ -792,16 +806,14 @@ def test_connector_module_controls_resolution_without_changing_callers(sdk, tmp_
         sys.modules.pop("metadata.ingestion.source.database.test_binding", None)
 
 
-def test_service_type_cache_is_isolated_between_catalogs(sdk):
+def test_service_type_cache_is_isolated_between_services(sdk):
     from metadata.ingestion.lineage.sql_lineage import get_table_binding_resolution
 
     metadata, transport = sdk
     add_bigquery_service(transport)
     assert type(get_table_binding_resolution(metadata, "my_service")).__name__ == "BigQueryTableBindingResolution"
-    second = OpenMetadata(metadata.config)
-    second.client = Transport()
-    second.client.entities["my_service"] = DatabaseService(id=uuid4(), name="my_service", serviceType="Postgres")
-    assert type(get_table_binding_resolution(second, "my_service")).__name__ == "TableBindingResolution"
+    transport.entities["other_service"] = DatabaseService(id=uuid4(), name="other_service", serviceType="Postgres")
+    assert type(get_table_binding_resolution(metadata, "other_service")).__name__ == "TableBindingResolution"
 
 
 def test_ordinary_usage_keeps_names_and_counts_without_table_lookups(sdk, tmp_path):
@@ -844,3 +856,19 @@ def test_dbt_family_resolution_requests_source_hash(sdk):
     assert source._search_table("my_service.my_db.my_schema.events_20260101").sourceHash == "existing_hash"
     table_requests = [(path, params) for path, params in transport.requests if path.startswith("/tables/")]
     assert table_requests[-1][1]["fields"] == ["sourceHash"]
+
+
+@pytest.mark.parametrize("service_name", [None, "*"])
+def test_unscoped_clickhouse_preserves_database_qualifier(sdk, service_name):
+    metadata, transport = sdk
+    expected = table("first.my_db.my_schema.my_table", serviceType="Clickhouse")
+    wrong_database = table("second.other_db.my_schema.my_table", serviceType="Clickhouse")
+    transport.entities = {item.fullyQualifiedName.root: item for item in (expected, wrong_database)}
+    transport.hits = list(transport.entities)
+    resolution = load_table_binding_resolution("clickhouse", metadata)
+    assert ids(resolution.resolve(TableReference("my_db", "my_schema", "my_table"), service_name=service_name)) == [
+        expected.id
+    ]
+    del transport.entities[expected.fullyQualifiedName.root]
+    transport.hits = list(transport.entities)
+    assert resolution.resolve(TableReference("my_db", "my_schema", "my_table"), service_name=service_name) == ()

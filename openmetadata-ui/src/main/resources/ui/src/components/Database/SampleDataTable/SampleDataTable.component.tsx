@@ -22,7 +22,7 @@ import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
-import { Table } from '../../../generated/entity/data/table';
+import { Table, TableType } from '../../../generated/entity/data/table';
 import { withLoader } from '../../../hoc/withLoader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -80,6 +80,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
 }) => {
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
+  const [isSharded, setIsSharded] = useState(false);
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
@@ -189,6 +190,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
           ? await getSampleDataByContainerId(tableId)
           : await getSampleDataByTableId(tableId);
       setSampleData(getSampleDataWithType(entityData));
+      setIsSharded(
+        'tableType' in entityData && entityData.tableType === TableType.Sharded
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -307,15 +311,17 @@ const SampleDataTable: FC<SampleDataProps> = ({
       className="p-md border-default border-radius-sm bg-white"
       data-testid="sample-data"
       id="sampleDataDetails">
-      <p>
-        {sampleData?.executionSource
-          ? `${t('label.execution-source')}: ${
-              sampleData.executionSource.databaseName
-            }.${sampleData.executionSource.schemaName}.${
-              sampleData.executionSource.tableName
-            }`
-          : t('message.execution-source-unavailable')}
-      </p>
+      {(isSharded || sampleData?.executionSource) && (
+        <p>
+          {sampleData?.executionSource
+            ? `${t('label.execution-source')}: ${
+                sampleData.executionSource.databaseName
+              }.${sampleData.executionSource.schemaName}.${
+                sampleData.executionSource.tableName
+              }`
+            : t('message.execution-source-unavailable')}
+        </p>
+      )}
       <Box
         inline
         align="center"

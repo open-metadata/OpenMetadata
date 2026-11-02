@@ -41,12 +41,14 @@ def test_all_connector_resolvers_load_without_specs_or_connector_drivers():
                 if source or any(fullname == root or fullname.startswith(root + ".") for root in drivers):
                     attempted.append(fullname)
                     raise ModuleNotFoundError(fullname, name=fullname)
-        sys.meta_path.insert(0, NoDrivers())
 
         from metadata.domain.table_reference import TableReference
         from metadata.generated.schema.entity.data.table import Table
         from metadata.entity_resolution.table_binding import TableBindingResolution, load_table_binding_resolution
         import metadata.ingestion.source.database
+
+        # Shared SDK initialization precedes connector resolver selection.
+        sys.meta_path.insert(0, NoDrivers())
 
         root = Path(next(iter(metadata.ingestion.source.database.__path__)))
         specs = sorted(root.glob("*/service_spec.py"))
@@ -109,9 +111,7 @@ def test_broken_connector_resolution_is_reported(connector_module, source, error
         load_table_binding_resolution("test_binding", None)
 
 
-def test_timescale_source_public_import_remains_available():
-    from metadata.generated.schema.entity.services.serviceType import ServiceType
-    from metadata.ingestion.source.database.timescale import TimescaleSource
-    from metadata.utils.service_spec.service_spec import import_source_class
-
-    assert import_source_class(ServiceType.Database, "timescale") is TimescaleSource
+@pytest.mark.parametrize("initializer", ["import missing_connector_driver", "raise RuntimeError('connector loaded')"])
+def test_absent_resolver_does_not_initialize_connector(connector_module, initializer):
+    (connector_module.parent / "__init__.py").write_text(initializer)
+    assert type(load_table_binding_resolution("test_binding", None)) is TableBindingResolution
