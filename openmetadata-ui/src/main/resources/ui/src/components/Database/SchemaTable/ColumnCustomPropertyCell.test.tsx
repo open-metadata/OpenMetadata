@@ -63,7 +63,7 @@ describe('ColumnCustomPropertyCell', () => {
 
     expect(screen.getByTestId('owner')).toBeInTheDocument();
     expect(screen.getByTestId('property-value')).toHaveTextContent('old');
-    expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
+    expect(screen.queryByText('Owner')).not.toBeInTheDocument();
     expect(screen.getByTestId('edit-icon')).toHaveClass('hover-cell-icon');
     expect(screen.queryByTestId('add-icon')).not.toBeInTheDocument();
   });

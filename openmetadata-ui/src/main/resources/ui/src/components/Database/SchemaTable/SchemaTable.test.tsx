@@ -28,6 +28,7 @@ import {
 } from '../../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import SchemaTable from './SchemaTable.component';
 
 const mockTableConstraints = [
@@ -196,6 +197,11 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
       customProperties: mockColumnCustomProperties,
     })
   ),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  ...jest.requireActual('../../../utils/ToastUtils'),
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('./ColumnCustomPropertyCell', () => ({
@@ -856,6 +862,24 @@ describe('Test EntityTable Component', () => {
       await screen.findAllByTestId('column-name');
 
       expect(getTypeByFQN).not.toHaveBeenCalled();
+      expect(screen.queryByText('Business Owner')).not.toBeInTheDocument();
+    });
+
+    it('shows an error toast when the column type cannot be fetched', async () => {
+      const error = new Error('type fetch failed');
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+      };
+      (getTypeByFQN as jest.Mock).mockRejectedValueOnce(error);
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      await screen.findAllByTestId('column-name');
+
+      expect(showErrorToast).toHaveBeenCalledWith(error);
       expect(screen.queryByText('Business Owner')).not.toBeInTheDocument();
     });
 

@@ -259,9 +259,10 @@ const SchemaTable = () => {
         if (!cancelled) {
           setColumnTypeDetail(res);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setColumnTypeDetail(undefined);
+          showErrorToast(error as AxiosError);
         }
       }
     };
