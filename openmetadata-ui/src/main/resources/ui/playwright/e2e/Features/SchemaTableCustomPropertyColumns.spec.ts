@@ -13,7 +13,6 @@
 import { APIRequestContext } from '@playwright/test';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
-import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -23,6 +22,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { openColumnDropdown, selectColumns } from '../../utils/glossary';
 import { getRowByName } from '../../utils/scopedLocators';
+import { expect, test } from '../fixtures/pages';
 
 const table = new TableClass();
 const PROPERTY_VALUE = 'schema table inline value';
