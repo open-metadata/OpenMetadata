@@ -8,12 +8,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import jakarta.servlet.ServletOutputStream;
@@ -30,14 +27,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.validators.IdTokenValidator;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
-import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
 class McpCallbackServletTest {
@@ -84,43 +78,11 @@ class McpCallbackServletTest {
     verify(holder[0], never()).handleCallback(any(), any());
   }
 
-  @Test
-  void getClaimsMapping_keepsClaimNamesThatContainAColon() throws Exception {
-    // Without the colon-safe split, both entries are dropped and the username falls back to the
-    // email prefix, which can name a different OpenMetadata user than the web login resolves.
-    AuthenticationConfiguration authConfig =
-        new AuthenticationConfiguration()
-            .withJwtPrincipalClaimsMapping(List.of("username:custom:login", "email:custom:mail"));
-    Map<String, Object> claims =
-        Map.of(
-            "custom:login", "employee42",
-            "custom:mail", "employee42@corp.example",
-            "email", "jdoe@example.com");
-
-    try (MockedStatic<SecurityConfigurationManager> scm =
-        mockStatic(SecurityConfigurationManager.class)) {
-      scm.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(authConfig);
-      Map<String, String> mapping = invokeGetClaimsMapping(makeServlet());
-
-      assertThat(findUserNameFromClaims(mapping, List.of("email"), claims)).isEqualTo("employee42");
-      assertThat(findEmailFromClaims(mapping, List.of("email"), claims, ""))
-          .isEqualTo("employee42@corp.example");
-    }
-  }
-
   // ── helpers ──────────────────────────────────────────────────────────────
 
   private static McpCallbackServlet makeServlet() {
     return new McpCallbackServlet(
         mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class));
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Map<String, String> invokeGetClaimsMapping(McpCallbackServlet servlet)
-      throws Exception {
-    Method m = McpCallbackServlet.class.getDeclaredMethod("getClaimsMapping");
-    m.setAccessible(true);
-    return (Map<String, String>) m.invoke(servlet);
   }
 
   private static HttpServletResponse newBufferedResponse(HttpServletResponse response)

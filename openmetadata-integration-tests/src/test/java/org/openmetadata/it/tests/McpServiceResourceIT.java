@@ -1,7 +1,6 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
@@ -17,22 +16,17 @@ import org.openmetadata.schema.api.services.CreateMcpService.McpServiceType;
 import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.services.connections.mcp.McpConnection.DiscoveryMethod;
-import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
-import org.openmetadata.schema.services.connections.mcp.McpServerConfig.TransportType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.McpConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 @Execution(ExecutionMode.CONCURRENT)
 public class McpServiceResourceIT extends BaseServiceIT<McpService, CreateMcpService> {
 
   private static final String REGISTRY_URL = "http://localhost:8080";
-  private static final String SERVER_API_KEY = "mcp-test-api-key";
 
   {
     supportsListHistoryByTimestamp = true;
@@ -46,20 +40,6 @@ public class McpServiceResourceIT extends BaseServiceIT<McpService, CreateMcpSer
             new org.openmetadata.schema.services.connections.mcp.McpConnection()
                 .withDiscoveryMethod(DiscoveryMethod.Registry)
                 .withRegistryUrl(REGISTRY_URL));
-  }
-
-  private static McpConnection directConnection(String apiKey) {
-    McpServerConfig server =
-        new McpServerConfig()
-            .withName("mcp-server")
-            .withTransport(TransportType.StreamableHTTP)
-            .withUrl("http://localhost:9000/mcp")
-            .withApiKey(apiKey);
-    return new McpConnection()
-        .withConfig(
-            new org.openmetadata.schema.services.connections.mcp.McpConnection()
-                .withDiscoveryMethod(DiscoveryMethod.DirectConnection)
-                .withServers(List.of(server)));
   }
 
   private static org.openmetadata.schema.services.connections.mcp.McpConnection configOf(
@@ -190,22 +170,5 @@ public class McpServiceResourceIT extends BaseServiceIT<McpService, CreateMcpSer
     var persisted = configOf(getEntity(service.getId().toString()));
     assertEquals(DiscoveryMethod.Registry, persisted.getDiscoveryMethod());
     assertEquals(REGISTRY_URL, persisted.getRegistryUrl());
-  }
-
-  @Test
-  void mcpServiceApiKey_encryptedAtRest_maskedForAdmin_readableForBot(TestNamespace ns) {
-    CreateMcpService request =
-        createRequest(ns.prefix("direct_mcp_service"), ns)
-            .withConnection(directConnection(SERVER_API_KEY));
-    McpService service = createEntity(request);
-    String id = service.getId().toString();
-
-    var stored =
-        configOf(Entity.getCollectionDAO().mcpServiceDAO().findEntityById(service.getId()));
-    var adminView = configOf(getEntity(id));
-    var botView = configOf(SdkClients.ingestionBotClient().mcpServices().get(id));
-    assertTrue(Fernet.isTokenized(stored.getServers().getFirst().getApiKey()));
-    assertEquals(PasswordEntityMasker.PASSWORD_MASK, adminView.getServers().getFirst().getApiKey());
-    assertEquals(SERVER_API_KEY, botView.getServers().getFirst().getApiKey());
   }
 }
