@@ -47,6 +47,8 @@ RUN java -cp ${FUSEKI_HOME}/fuseki-server.jar ${MAIN} --version
 # heap, so container memory must exceed the heap by the page-cache headroom.
 # GC logs rotate on the data volume for post-incident diagnosis.
 ENV JVM_ARGS="-Xms4g -Xmx4g -Xlog:gc*:file=/fuseki-data/gc.log:time,uptime:filecount=3,filesize=10m"
+# The extension's storage guard and report read the TDB2 datasets here (see config.ttl).
+ENV OPENMETADATA_STORAGE_ROOT=/fuseki-data
 
 # Create data directory and a dedicated non-root user (uid/gid 1000, matching
 # the official jena-fuseki-docker kit). Kubernetes deployments must set
@@ -96,7 +98,7 @@ COPY --from=fuseki-runtime /fuseki/fuseki-server.jar /extension/fuseki-server.ja
 COPY src/main/java /extension/src
 COPY src/main/resources /extension/resources
 RUN mkdir classes \
-    && javac --release 21 -cp fuseki-server.jar -d classes src/org/openmetadata/fuseki/*.java \
+    && javac --release 21 -cp fuseki-server.jar -d classes $(find src -name '*.java') \
     && jar --create --file openmetadata-fuseki-extensions.jar -C classes . -C resources .
 
 FROM fuseki-runtime
