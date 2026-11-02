@@ -1659,11 +1659,12 @@ describe('OntologyExplorerPage', () => {
     const asConceptOwner = (conceptId?: string) => {
       (useEntityPermissions as jest.Mock).mockImplementation(
         (resource, identifier, options) => ({
-          canEditAll:
-            resource === 'ontologyConcept' &&
-            options?.enabled !== false &&
-            Boolean(identifier?.id) &&
-            (!conceptId || identifier.id === conceptId),
+          canEditAll: [
+            resource === 'ontologyConcept',
+            options?.enabled !== false,
+            Boolean(identifier?.id),
+            !conceptId || identifier.id === conceptId,
+          ].every(Boolean),
           isLoading: false,
         })
       );

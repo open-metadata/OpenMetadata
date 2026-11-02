@@ -783,13 +783,15 @@ const OntologyGraphView = ({
     relations.length,
   ]);
 
-  const canOpenRequestedEditor = Boolean(
-    editConceptRequest &&
-      isEditing &&
-      canEditConceptByRights &&
-      selectedId === editConceptRequest &&
+  const canOpenRequestedEditor = [
+    Boolean(editConceptRequest),
+    isEditing,
+    canEditConceptByRights,
+    selectedId === editConceptRequest,
+    Boolean(
       model?.concepts.some((concept) => concept.id === editConceptRequest)
-  );
+    ),
+  ].every(Boolean);
   useEffect(() => {
     if (canOpenRequestedEditor) {
       setConceptEditor({ conceptId: editConceptRequest });
