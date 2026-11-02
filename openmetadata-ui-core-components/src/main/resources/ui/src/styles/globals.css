@@ -1322,7 +1322,7 @@
     --color-bg-success-secondary: theme(--color-success-600);
     --color-bg-success-solid: theme(--color-success-600);
     --color-bg-active: --alpha(theme(--color-white) / 10%);
-    --color-bg-disabled: theme(--color-gray-800);
+    --color-bg-disabled: theme(--color-gray-700);
     --color-bg-disabled_subtle: theme(--color-gray-900);
     /* Brand tint (nav-active, chips) = product primary (brand-600) @20%; brand-600
        is ~3.3:1 as dark-mode text, so it carries fills/borders and brand-400 the text. */

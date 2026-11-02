@@ -2924,27 +2924,11 @@
                 }
             },
             {
-                "code": "reportOptionalMemberAccess",
-                "range": {
-                    "startColumn": 61,
-                    "endColumn": 65,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportAssignmentType",
                 "range": {
                     "startColumn": 46,
                     "endColumn": 13,
                     "lineCount": 3
-                }
-            },
-            {
-                "code": "reportOperatorIssue",
-                "range": {
-                    "startColumn": 15,
-                    "endColumn": 72,
-                    "lineCount": 1
                 }
             }
         ],
@@ -34598,14 +34582,6 @@
             {
                 "code": "reportArgumentType",
                 "range": {
-                    "startColumn": 33,
-                    "endColumn": 72,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
                     "startColumn": 25,
                     "endColumn": 66,
                     "lineCount": 1
@@ -51532,22 +51508,6 @@
                 }
             },
             {
-                "code": "reportAssignmentType",
-                "range": {
-                    "startColumn": 31,
-                    "endColumn": 83,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportReturnType",
-                "range": {
-                    "startColumn": 15,
-                    "endColumn": 26,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportMissingParameterType",
                 "range": {
                     "startColumn": 27,
@@ -51576,14 +51536,6 @@
                 "range": {
                     "startColumn": 26,
                     "endColumn": 30,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 33,
-                    "endColumn": 66,
                     "lineCount": 1
                 }
             },

@@ -111,6 +111,7 @@ import {
   getCsvGridRowHeight,
   getCSVStringFromColumnsAndDataSource,
   getFailedImportRowIds,
+  normalizeCsvLineBreaks,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import entityBulkEditConfigClassBase, {
@@ -749,6 +750,7 @@ const BulkEntityImportPage = () => {
         },
         isBulkEdit,
         signal,
+        onEditCellHeightChange: handleEditCellHeightChange,
         onProgress: (loadedCount, matchedCount) =>
           setBulkEditLoadState({
             isLoading: true,
@@ -777,6 +779,7 @@ const BulkEntityImportPage = () => {
       canAddMultipleTeamOwner,
       canAddMultipleUserOwners,
       handleActiveStepChange,
+      handleEditCellHeightChange,
       isBulkEdit,
       effectiveBulkEditScope,
     ]
@@ -885,7 +888,7 @@ const BulkEntityImportPage = () => {
 
   const handleLoadData = useCallback(
     (e: ProgressEvent<FileReader>, file?: File) => {
-      const result = String(e.target?.result ?? '');
+      const result = normalizeCsvLineBreaks(String(e.target?.result ?? ''));
 
       setSelectedCsvFile({
         content: result,
@@ -2206,6 +2209,7 @@ const BulkEntityImportPage = () => {
             changedRowCount={bulkEditChangeSummary.changedRowCount}
             columns={filterColumns}
             dataSource={dataSource}
+            editingRowHeight={editingRowHeight}
             handleBack={handleBack}
             handleCopy={handleCopy}
             handleOnRowsChange={handleOnRowsChange}

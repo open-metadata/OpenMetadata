@@ -48,6 +48,7 @@ import { ManageMenu, ManageMenuItem, toManageMenuItems } from './ManageMenu';
 const ManageButton: FC<ManageButtonProps> = ({
   allowSoftDelete,
   afterDeleteAction,
+  onDeleteFailure,
   buttonClassName,
   deleteMessage,
   softDeleteMessagePostFix,
@@ -345,6 +346,7 @@ const ManageButton: FC<ManageButtonProps> = ({
         successMessage={successMessage}
         visible={isDelete}
         onCancel={() => setIsDelete(false)}
+        onDeleteFailure={onDeleteFailure}
       />
     );
   }, [
@@ -366,6 +368,7 @@ const ManageButton: FC<ManageButtonProps> = ({
     prepareType,
     softDeleteMessagePostFix,
     successMessage,
+    onDeleteFailure,
   ]);
 
   return (

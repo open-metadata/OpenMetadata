@@ -2111,6 +2111,7 @@ test.describe(
           page,
           (res) =>
             res.url().includes(`${MEMORIES_API}/${deleteMemoryId}`) &&
+            res.url().includes('hardDelete=true') &&
             res.request().method() === 'DELETE',
           'ok'
         );

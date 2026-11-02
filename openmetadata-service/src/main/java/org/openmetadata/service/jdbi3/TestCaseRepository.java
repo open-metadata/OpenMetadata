@@ -36,12 +36,14 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -666,9 +668,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             table.getTags() != null ? new ArrayList<>(table.getTags()) : new ArrayList<>();
 
         if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-          table.getColumns().stream()
-              .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
+          Optional.ofNullable(
+                  ColumnUtil.resolveColumnByPath(
+                      table.getColumns(), entityLink.getArrayFieldName()))
               .ifPresent(column -> tags.addAll(column.getTags()));
         }
 
@@ -790,9 +792,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           table.getTags() != null ? new ArrayList<>(table.getTags()) : new ArrayList<>();
       EntityUtil.mergeTags(testCaseTags, filterMutuallyExclusiveConflicts(testCaseTags, tableTags));
       if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-        table.getColumns().stream()
-            .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
-            .findFirst()
+        Optional.ofNullable(
+                ColumnUtil.resolveColumnByPath(table.getColumns(), entityLink.getArrayFieldName()))
             .ifPresent(
                 column ->
                     EntityUtil.mergeTags(
@@ -1114,7 +1115,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                 entityLink.getFieldName()));
       }
       if (entityLink.getArrayFieldName() != null) {
-        validateColumn(table, entityLink.getArrayFieldName(), Boolean.FALSE);
+        ColumnUtil.validateColumnPath(table.getColumns(), entityLink.getArrayFieldName());
       }
     }
   }
@@ -1122,6 +1123,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void validateDimensionColumns(TestCase test, Table table) {
     if (test.getDimensionColumns() != null && !test.getDimensionColumns().isEmpty()) {
       for (String dimensionColumn : test.getDimensionColumns()) {
+        // Top-level only: the ingestion runner resolves dimensions against the top-level SQL
+        // columns (SQAValidatorMixin.get_column_from_list), so a nested path accepted here would
+        // be silently dropped at run time as an Aborted dimension.
         validateColumn(table, dimensionColumn, Boolean.FALSE);
       }
     }
@@ -2847,8 +2851,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String fqn = link.getEntityFQN();
 
       if (link.getFieldName() != null && link.getFieldName().equals("columns")) {
-        // Column test case - use FQN utility to properly handle quoting
-        fqn = FullyQualifiedName.add(fqn, link.getArrayFieldName());
+        // Column test case - compose the column path segment by segment so a nested path
+        // (address.city) stays separate FQN segments and round-trips through columnPathOf
+        fqn = ColumnUtil.columnFqn(fqn, link.getArrayFieldName());
       }
 
       return fqn;
@@ -2869,15 +2874,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         // Not a table, try as column
         // Parse FQN to extract table FQN and column name using FQN parser
         String tableFqn = FullyQualifiedName.getTableFQN(fqn);
-        String columnName = FullyQualifiedName.getColumnName(fqn);
+        String columnPath = columnPathOf(fqn);
 
         // Validate that the table and column exist
         Table table = Entity.getEntityByName(TABLE, tableFqn, "columns", Include.NON_DELETED);
-        validateColumn(table, columnName, Boolean.FALSE);
+        ColumnUtil.validateColumnPath(table.getColumns(), columnPath);
 
         return String.format(
-            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), columnName);
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), columnPath);
       }
+    }
+
+    /**
+     * The dotted path of the column within its table, quoted per segment — a nested column's FQN
+     * {@code service.db.schema.tbl.address.city} yields {@code address.city}, and a literal column
+     * name containing a dot stays quoted.
+     */
+    private String columnPathOf(String columnFqn) {
+      String[] parts = FullyQualifiedName.split(columnFqn);
+      return Arrays.stream(parts)
+          .skip(4)
+          .map(FullyQualifiedName::quoteName)
+          .collect(Collectors.joining("."));
     }
 
     private String serializeParameterValues(List<TestCaseParameterValue> parameterValues) {

@@ -63,6 +63,7 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
@@ -395,6 +396,8 @@ const ExploreFilterStatusRow = ({
   onEditQueryFilter,
   t,
 }: ExploreFilterStatusRowProps) => {
+  const isAiMode = useIsAiMode();
+
   return (
     <>
       {shouldShowQueryFilterChips && (
@@ -411,7 +414,8 @@ const ExploreFilterStatusRow = ({
             onRemoveBrowseLevel={handleRemoveBrowseLevel}
             onRemoveValue={handleRemoveQuickFilterValue}
           />
-          <DomainFilterChip className="tw:mt-2" />
+          {/* AI mode shows the chip in its search header. */}
+          {!isAiMode && <DomainFilterChip className="tw:mt-2" />}
         </div>
       )}
       {isElasticSearchIssue ? (
