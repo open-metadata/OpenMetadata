@@ -52,6 +52,7 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.sql_lineage import get_database_service_type, search_table_entities
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -656,6 +657,10 @@ class HexSource(DashboardServiceSource):
             key = repr((cell.dataConnectionId, *table_key(reference)))
             searched_database = reference.catalog or (connection.default_database if connection else None)
             searched_schema = reference.db or (connection.default_schema if connection else None)
+            if "*" in reference.name:
+                self._add_bigquery_wildcard_tables(lineage, searched_database, searched_schema, reference.name)
+                reference.meta[UNRESOLVED] = True
+                continue
             if key not in resolved_tables:
                 resolved_tables.put(key, self._resolve_table(searched_database, searched_schema, reference.name))
             resolved = resolved_tables.get(key)
@@ -709,6 +714,33 @@ class HexSource(DashboardServiceSource):
             )
         return lineage
 
+    def _add_bigquery_wildcard_tables(self, lineage, searched_database, searched_schema, table_name):
+        for prefix in self.get_db_service_prefixes() or []:
+            service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
+            if not service or get_database_service_type(self.metadata, service) != "bigquery":
+                continue
+            if any(
+                expected and actual and expected != actual
+                for expected, actual in (
+                    (prefix_database, searched_database),
+                    (prefix_schema, searched_schema),
+                    (prefix_table, table_name),
+                )
+            ):
+                continue
+            matches = (
+                search_table_entities(
+                    self.metadata,
+                    service,
+                    searched_database or prefix_database,
+                    searched_schema or prefix_schema,
+                    table_name,
+                )
+                or []
+            )
+            for match in matches:
+                lineage.tables[model_str(match.id)] = (match, prefix)
+
     def _resolve_table(self, database: str | None, schema: str | None, table: str) -> tuple[Table, str | None] | None:
         """
         The one table the reference names across the db service prefixes (any service
@@ -732,7 +764,17 @@ class HexSource(DashboardServiceSource):
                 service_name=service or "*",
                 table_name=table,
             )
-            for found in self._search_tables(search):
+            found_tables = (
+                (
+                    search_table_entities(
+                        self.metadata, service, database or prefix_database, schema or prefix_schema, table
+                    )
+                    or []
+                )
+                if service and get_database_service_type(self.metadata, service) == "bigquery"
+                else self._search_tables(search)
+            )
+            for found in found_tables:
                 matches.setdefault(model_str(found.id), (found, prefix))
         if len(matches) > 1:
             logger.debug("Skipping Hex table reference %s: it matches %d tables", table, len(matches))

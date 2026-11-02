@@ -441,6 +441,7 @@ interface ExploreResultsPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
+  additionalSearchResults?: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -465,6 +466,7 @@ interface ExploreResultsListPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
+  additionalSearchResults?: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -486,6 +488,7 @@ const ExploreResultsListPanel = ({
   loading,
   isElasticSearchIssue,
   searchResults,
+  additionalSearchResults,
   parsedSearch,
   handleSummaryPanelDisplay,
   hasActiveFilters,
@@ -519,6 +522,7 @@ const ExploreResultsListPanel = ({
             <></>
           )}
           {loading ? <Loader /> : <></>}
+          {additionalSearchResults}
         </div>
       </CoreCard>
       {!loading && !isElasticSearchIssue && totalValue > 0 ? (
@@ -541,6 +545,7 @@ const ExploreResultsPanel = ({
   loading,
   isElasticSearchIssue,
   searchResults,
+  additionalSearchResults,
   parsedSearch,
   handleSummaryPanelDisplay,
   hasActiveFilters,
@@ -571,6 +576,7 @@ const ExploreResultsPanel = ({
         loading={loading}
         pageSize={pageSize}
         parsedSearch={parsedSearch}
+        additionalSearchResults={additionalSearchResults}
         searchResults={searchResults}
         showRankingDetails={showRankingDetails}
         showSummaryPanel={showSummaryPanel}
@@ -611,6 +617,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   activeTabKey,
   tabItems = [],
   searchResults,
+  additionalSearchResults,
   showRankingDetails = false,
   onChangeShowRankingDetails,
   onChangeAdvancedSearchQuickFilters,
@@ -1425,6 +1432,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 loading={loading}
                 pageSize={pageSize}
                 parsedSearch={parsedSearch}
+                additionalSearchResults={additionalSearchResults}
                 searchResults={searchResults}
                 selectedQuickFilters={selectedQuickFilters}
                 showRankingDetails={showRankingDetails}

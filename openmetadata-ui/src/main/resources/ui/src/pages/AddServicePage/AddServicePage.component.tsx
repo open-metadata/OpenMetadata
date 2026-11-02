@@ -348,7 +348,10 @@ const AddServicePage = () => {
     description: '',
     serviceType: preselectedServiceType,
     connection: {
-      config: {},
+      config:
+        preselectedServiceType === 'BigQuery'
+          ? { shardedTables: { enabled: true } }
+          : {},
     },
   });
   const [saveServiceState, setSaveServiceState] =
@@ -450,7 +453,10 @@ const AddServicePage = () => {
       description: '',
       serviceType: preselectedServiceType,
       connection: {
-        config: {},
+        config:
+          preselectedServiceType === 'BigQuery'
+            ? { shardedTables: { enabled: true } }
+            : {},
       },
     });
     setActiveServiceStep(2);
@@ -480,7 +486,7 @@ const AddServicePage = () => {
       description: '',
       serviceType: type,
       connection: {
-        config: {},
+        config: type === 'BigQuery' ? { shardedTables: { enabled: true } } : {},
       },
     });
     setActiveServiceStep(2);

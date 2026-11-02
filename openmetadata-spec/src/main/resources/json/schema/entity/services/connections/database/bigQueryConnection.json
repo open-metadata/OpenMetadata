@@ -154,6 +154,10 @@
       "description": "Cost per TiB for BigQuery usage",
       "type": "number",
       "default": 6.25
+    },
+    "shardedTables": {
+      "$ref": "bigQueryShardedTables.json",
+      "description": "Daily shard grouping. Omitted configuration remains disabled."
     }
   },
   "additionalProperties": false,

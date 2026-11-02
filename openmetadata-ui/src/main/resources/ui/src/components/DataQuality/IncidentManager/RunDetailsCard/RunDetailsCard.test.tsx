@@ -72,6 +72,46 @@ describe('RunDetailsCard', () => {
     act(() => useTestCaseStore.getState().reset());
   });
 
+  it('shows the selected historical execution source after representative rollover', () => {
+    const older = {
+      ...FAILED_RUN,
+      evaluationScope: {
+        executionSource: {
+          databaseName: 'demo_project',
+          schemaName: 'demo_dataset',
+          tableName: 'events_20260101',
+        },
+      },
+    };
+    const newer = {
+      ...FAILED_RUN,
+      timestamp: FAILED_RUN.timestamp + 1000,
+      evaluationScope: {
+        executionSource: {
+          databaseName: 'demo_project',
+          schemaName: 'demo_dataset',
+          tableName: 'events_20260102',
+        },
+      },
+    };
+    act(() =>
+      useTestCaseStore.setState({ selectedRunTimestamp: older.timestamp })
+    );
+    renderCard([older, newer]);
+    expect(screen.getByTestId('run-execution-source')).toHaveTextContent(
+      'events_20260101'
+    );
+    expect(screen.getByTestId('run-execution-source')).not.toHaveTextContent(
+      'events_20260102'
+    );
+    act(() =>
+      useTestCaseStore.setState({ selectedRunTimestamp: newer.timestamp })
+    );
+    expect(screen.getByTestId('run-execution-source')).toHaveTextContent(
+      'events_20260102'
+    );
+  });
+
   it('shows a failed run with its expected, found and difference', () => {
     renderCard([FAILED_RUN]);
 

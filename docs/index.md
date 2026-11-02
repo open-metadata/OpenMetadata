@@ -123,3 +123,5 @@ index, so only the entry point is listed here. A comment citing `ADR:<date>-<slu
 ---
 
 *Not indexed:* `docs/harness-audit/` exists in the working tree but is **untracked** (working audit notes, intentionally out of version control), so it is not part of the committed knowledge base.
+
+- [BigQuery daily sharded tables: operation and migration](connectors/bigquery-sharding.md)

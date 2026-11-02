@@ -173,6 +173,10 @@ const SampleDataTable: FC<SampleDataProps> = ({
     });
 
     return {
+      executionSource:
+        sampleData && 'executionSource' in sampleData
+          ? sampleData.executionSource
+          : undefined,
       columns: updatedColumns,
       rows: data,
     };
@@ -303,6 +307,15 @@ const SampleDataTable: FC<SampleDataProps> = ({
       className="p-md border-default border-radius-sm bg-white"
       data-testid="sample-data"
       id="sampleDataDetails">
+      <p>
+        {sampleData?.executionSource
+          ? `${t('label.execution-source')}: ${
+              sampleData.executionSource.databaseName
+            }.${sampleData.executionSource.schemaName}.${
+              sampleData.executionSource.tableName
+            }`
+          : t('message.execution-source-unavailable')}
+      </p>
       <Box
         inline
         align="center"

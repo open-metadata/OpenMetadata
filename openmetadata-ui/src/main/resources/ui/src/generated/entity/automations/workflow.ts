@@ -1434,6 +1434,10 @@ export interface Connection {
      */
     scheme?: AirflowConnectionScheme;
     /**
+     * Daily shard grouping. Omitted configuration remains disabled.
+     */
+    shardedTables?: BigQueryShardedTables;
+    /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?:          FilterPattern;
@@ -5460,6 +5464,16 @@ export enum SearchIndexMappingLanguage {
     Zh = "ZH",
 }
 
+/**
+ * Daily shard grouping. Omitted configuration remains disabled.
+ *
+ * Group native daily shard tables into stable logical families.
+ */
+export interface BigQueryShardedTables {
+    enabled?:         boolean;
+    excludePatterns?: string[];
+}
+
 export enum SpaceType {
     Data = "Data",
     Managed = "Managed",
@@ -6379,11 +6393,22 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */
     rows?: Array<any[]>;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 /**

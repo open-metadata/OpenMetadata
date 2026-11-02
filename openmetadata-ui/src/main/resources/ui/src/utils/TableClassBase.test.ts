@@ -126,6 +126,7 @@ describe('TableClassBase', () => {
         [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
         [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
         [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
+        [DetailPageWidgetKeys.TABLE_SHARDING]: 2,
         [DetailPageWidgetKeys.TABLE_ALIASES]: 2,
         [DetailPageWidgetKeys.ASSET_HEALTH]: 3,
       });

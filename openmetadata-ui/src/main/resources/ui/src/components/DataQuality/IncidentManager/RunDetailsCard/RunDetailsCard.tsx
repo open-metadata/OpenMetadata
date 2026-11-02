@@ -514,6 +514,15 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           </Box>
         )}
         <RunScopeBadges scope={result.evaluationScope} />
+        <Typography data-testid="run-execution-source" size="text-sm">
+          {result.evaluationScope?.executionSource
+            ? `${t('label.execution-source')}: ${
+                result.evaluationScope.executionSource.databaseName
+              }.${result.evaluationScope.executionSource.schemaName}.${
+                result.evaluationScope.executionSource.tableName
+              }`
+            : t('message.execution-source-unavailable')}
+        </Typography>
         <RunDuration duration={duration} errorDetails={errorDetails} />
       </Box>
       <Box

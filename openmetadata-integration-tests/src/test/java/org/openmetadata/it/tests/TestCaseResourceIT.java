@@ -86,6 +86,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.TableExecutionSource;
 import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -3511,7 +3512,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .withProfileSample(10.0)
             .withProfileSampleType(ProfileSampleType.PERCENTAGE)
             .withPartitioned(true)
-            .withPartitionColumnName("event_date");
+            .withPartitionColumnName("event_date")
+            .withExecutionSource(
+                new TableExecutionSource()
+                    .withDatabaseName("demo_project")
+                    .withSchemaName("demo_dataset")
+                    .withTableName("events_20260101")
+                    .withShardDate("2026-01-01"));
 
     CreateTestCaseResult create = new CreateTestCaseResult();
     create.setTimestamp(timestamp);

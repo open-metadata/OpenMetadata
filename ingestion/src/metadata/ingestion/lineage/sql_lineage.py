@@ -26,6 +26,8 @@ from collate_sqllineage.core.models import Column, DataFunction
 from collate_sqllineage.core.models import Table as LineageTable
 from networkx import DiGraph
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.engine import EntityResolver
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
@@ -54,6 +56,7 @@ from metadata.ingestion.models.ometa_lineage import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.database.bigquery.resolution import resolve_bigquery_reference
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -210,6 +213,19 @@ def normalize_table_params_by_service(
     return database, database_schema
 
 
+def search_bigquery_tables(metadata, service, database, schema, table):
+    key = (metadata, service, database, schema, table)
+    if key in search_cache:
+        return search_cache.get(key)
+    resolver = EntityResolver(metadata)
+    try:
+        result = resolve_bigquery_reference(resolver, service, TableReference(database, schema, table))
+        search_cache.put(key, result)  # pyright: ignore[reportArgumentType]
+        return result
+    finally:
+        resolver.close()
+
+
 def search_table_entities(
     metadata: OpenMetadata,
     service_names: str | list[str],
@@ -241,81 +257,94 @@ def search_table_entities(
         service_names = [service_names]
 
     for service_name in service_names:
-        # normalize database and schema parameters based on service type
-        normalized_db, normalized_schema = normalize_table_params_by_service(
-            metadata, service_name, database, database_schema
+        result = _search_service_tables(metadata, service_name, database, database_schema, table)
+        if result:
+            return result
+    return None
+
+
+def _search_service_tables(metadata, service_name, database, database_schema, table):
+    # normalize database and schema parameters based on service type
+    normalized_db, normalized_schema = normalize_table_params_by_service(
+        metadata, service_name, database, database_schema
+    )
+
+    if get_database_service_type(metadata, service_name) == "bigquery":
+        matches = search_bigquery_tables(metadata, service_name, normalized_db, normalized_schema, table)
+        if matches:
+            return list(matches)
+        return None
+
+    search_tuple = (service_name, normalized_db, normalized_schema, table)
+    if search_tuple in search_cache:
+        result = search_cache.get(search_tuple)
+        if result:
+            return result
+
+    try:
+        table_entities: list[Table] | None = []
+
+        # search on ES first
+        fqn_search_string = build_es_fqn_search_string(normalized_db, normalized_schema, service_name, table)
+        es_result_entities = metadata.es_search_from_fqn(
+            entity_type=Table,
+            fqn_search_string=fqn_search_string,
         )
-
-        search_tuple = (service_name, normalized_db, normalized_schema, table)
-        if search_tuple in search_cache:
-            result = search_cache.get(search_tuple)
-            if result:
-                return result
-
-        try:
-            table_entities: list[Table] | None = []
-
-            # search on ES first
-            fqn_search_string = build_es_fqn_search_string(normalized_db, normalized_schema, service_name, table)
-            es_result_entities = metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
-            )
-            if es_result_entities:
-                table_entities = es_result_entities
-            else:
-                # build FQNs and search with the API in case ES response is empty
-                table_fqns = fqn.build(
-                    metadata,
-                    entity_type=Table,
-                    service_name=service_name,
-                    database_name=normalized_db,
-                    schema_name=normalized_schema,
-                    table_name=table,
-                    fetch_multiple_entities=True,
-                    skip_es_search=True,
-                )
-                for table_fqn in table_fqns or []:
-                    table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
-                    if table_entity:
-                        table_entities.append(table_entity)
-
-            # added the search tuple to the cache
-            search_cache.put(search_tuple, table_entities)
-            if table_entities:
-                return table_entities
-
-            # An alias name resolves to the canonical table it points at.
-            # Gated per service so connectors that cannot produce aliases never
-            # pay for the extra lookup.
-            if not service_resolves_aliases(metadata, service_name):
-                continue
-
-            alias_fqn = fqn.build(
+        if es_result_entities:
+            table_entities = es_result_entities
+        else:
+            # build FQNs and search with the API in case ES response is empty
+            table_fqns = fqn.build(
                 metadata,
                 entity_type=Table,
                 service_name=service_name,
                 database_name=normalized_db,
                 schema_name=normalized_schema,
                 table_name=table,
+                fetch_multiple_entities=True,
                 skip_es_search=True,
             )
-            if alias_fqn:
-                alias_entities = metadata.es_search_from_alias(
-                    entity_type=Table,
-                    alias_fqn=alias_fqn,
-                )
-                if alias_entities:
-                    # LRUCache.put's `key` is typed as `str`, but this cache is keyed by the
-                    # same (service, db, schema, table) tuple as the `search_cache.put` call
-                    # above (line ~251, pre-existing and baselined) -- a real annotation gap,
-                    # not a bug: dict keys accept any hashable value.
-                    search_cache.put(search_tuple, alias_entities)  # pyright: ignore[reportArgumentType]
-                    return alias_entities
+            for table_fqn in table_fqns or []:
+                table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
+                if table_entity:
+                    table_entities.append(table_entity)
 
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")
+        # added the search tuple to the cache
+        search_cache.put(search_tuple, table_entities)  # pyright: ignore[reportArgumentType]
+        if table_entities:
+            return table_entities
+
+        # An alias name resolves to the canonical table it points at.
+        # Gated per service so connectors that cannot produce aliases never
+        # pay for the extra lookup.
+        if not service_resolves_aliases(metadata, service_name):
+            return None
+
+        alias_fqn = fqn.build(
+            metadata,
+            entity_type=Table,
+            service_name=service_name,
+            database_name=normalized_db,
+            schema_name=normalized_schema,
+            table_name=table,
+            skip_es_search=True,
+        )
+        if alias_fqn:
+            alias_entities = metadata.es_search_from_alias(
+                entity_type=Table,
+                alias_fqn=alias_fqn,
+            )
+            if alias_entities:
+                # LRUCache.put's `key` is typed as `str`, but this cache is keyed by the
+                # same (service, db, schema, table) tuple as the `search_cache.put` call
+                # above (line ~251, pre-existing and baselined) -- a real annotation gap,
+                # not a bug: dict keys accept any hashable value.
+                search_cache.put(search_tuple, alias_entities)  # pyright: ignore[reportArgumentType]
+                return alias_entities
+
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")
 
     return None
 
@@ -828,7 +857,7 @@ def _create_lineage_by_table_name(
                     to_table_raw_name=to_table,
                     from_table_raw_name=from_table,
                     masked_query=masked_query,
-                    column_lineage_map=column_lineage_map,
+                    column_lineage_map={} if "*" in from_table or "*" in to_table else column_lineage_map,
                     lineage_source=lineage_source,
                     procedure=procedure,
                 )

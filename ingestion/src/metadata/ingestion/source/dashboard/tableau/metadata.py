@@ -73,6 +73,7 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_table_fqn_from_query_name,
+    search_table_entities,
 )
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -1070,6 +1071,7 @@ class TableauSource(DashboardServiceSource):
                 table.database.name if table.database and table.database.name else database_schema_table.get("database")
             )
 
+            db_service_entity = None
             if db_service_name:
                 db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
                 if db_service_entity:
@@ -1094,6 +1096,21 @@ class TableauSource(DashboardServiceSource):
             if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
                 logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
                 return None
+
+            if db_service_entity and isinstance(db_service_entity.connection.config, BigQueryConnection):
+                resolved_name = prefix_table_name or table_name
+                matches = (
+                    search_table_entities(
+                        self.metadata,
+                        db_service_entity.name.root,
+                        prefix_database_name or database_name,
+                        prefix_schema_name or schema_name,
+                        resolved_name,
+                    )
+                    if resolved_name
+                    else []
+                )
+                return [TableAndQuery(table=match) for match in matches or []]
 
             fqn_search_string = build_es_fqn_search_string(
                 database_name=prefix_database_name or database_name,

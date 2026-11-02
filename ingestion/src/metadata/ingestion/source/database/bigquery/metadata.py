@@ -17,9 +17,10 @@ import os
 import threading
 import traceback
 from collections.abc import Iterable
-from typing import Literal
+from typing import Literal, Protocol, cast
 
 from google import auth
+from google.cloud import bigquery
 from google.cloud.bigquery.schema import SchemaField
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
@@ -66,8 +67,9 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SourceUrl,
 )
+from metadata.generated.schema.type.tableSharding import TableSharding
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.delete import delete_entity_by_name
+from metadata.ingestion.api.delete import delete_entity_by_name, delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
@@ -100,6 +102,14 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
+from metadata.ingestion.source.database.bigquery.sharding import (
+    DiscoveredTable,
+    eligible_shard,
+    get_table_sharding,
+    inventory_families,
+    logical_shard_name,
+    parse_shard_name,
+)
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
@@ -109,11 +119,13 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
+    LifeCycleQueryByTable,
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
+from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
@@ -224,6 +236,17 @@ BigQueryDialect.get_foreign_keys = get_foreign_keys
 
 
 # pylint: disable=too-many-public-methods
+class ShardingContext(Protocol):
+    database_service: str
+    database: str
+    database_schema: str
+    table: str
+    shard_family: TableSharding | None
+    shard_lifecycle: dict[str, LifeCycleQueryByTable] | None
+    shard_prefixes: set[str]
+    sharding_failed: bool
+
+
 class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
@@ -250,6 +273,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
         self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
+        self._sharding_scopes = {}
+        self._sharding_scope_lock = threading.Lock()
         self.incremental_table_processor: BigQueryIncrementalTableProcessor | None = None
 
         self._table_obj_cache: LRUCache = LRUCache(capacity=TABLE_OBJ_CACHE_SIZE)
@@ -268,7 +293,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             except Exception as exc:
                 logger.warning(f"Failed to initialize PolicyTagManagerClient: {exc}")
 
-        if self.incremental.enabled:
+        if self.incremental.enabled and not self.sharding_enabled:
             logger.info(
                 "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
                 self.incremental.start_datetime_utc,
@@ -410,14 +435,140 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             logger.error(f"Error listing tables for {dataset_ref}: {exc}")
             raise
 
-    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
-        """Narrow EXTERNAL tables to DeltaLake after the base tableFilterPattern has run,
-        so only kept tables pay the `tables.get` that reveals their format."""
-        for table_name, table_type in super().get_tables_name_and_type() or []:
-            if table_type == TableType.External:
-                yield table_name, self._external_table_type(table_name)
+    @property
+    def sharding_enabled(self) -> bool:
+        config = self.service_connection.shardedTables
+        return bool(config and config.enabled)
+
+    def _require_client(self) -> bigquery.Client:
+        if self.client is None:
+            raise ValueError("BigQuery client is not initialized")
+        return self.client
+
+    def _shard_context(self) -> ShardingContext:
+        return cast("ShardingContext", self.context.get())
+
+    def _sharding_scope(self) -> str:
+        context = self._shard_context()
+        return fqn._build(context.database_service, context.database, context.database_schema)
+
+    def _set_sharding_scope(self, complete: bool) -> None:
+        with self._sharding_scope_lock:
+            scope = self._sharding_scope()
+            if scope not in self._sharding_scopes and len(self._sharding_scopes) >= 10000:
+                raise ValueError("BigQuery sharding exceeds 10000 dataset scopes; narrow dataset selection")
+            self._sharding_scopes[scope] = complete
+
+    def _catalog_table(self, name: str):
+        return self.metadata.get_by_name(Table, fqn._build(*fqn.split(self._sharding_scope()), name), include="all")
+
+    def _grouped_tables(self):
+        context = self._shard_context()
+        self._set_sharding_scope(False)
+        context.shard_family = None
+        client = self._require_client()
+        dataset = f"{context.database}.{context.database_schema}"
+        exclusions = self.service_connection.shardedTables.excludePatterns or []
+        logger.info("BigQuery sharding uses full discovery for %s, including incremental configurations", dataset)
+        families = inventory_families(client.list_tables(dataset), exclusions)
+        context.shard_lifecycle = None
+        context.shard_prefixes = set(families)
+        blocked = set()
+        for prefix in families:
+            existing = self._catalog_table(logical_shard_name(prefix))
+            if existing and not get_table_sharding(existing):
+                blocked.add(prefix)
+        # Complete the second listing before extracting anything; only collision prefixes are retained.
+        for table in client.list_tables(dataset):
+            if table.table_id.endswith("yyyymmdd") and table.table_id[:-8] in families:
+                blocked.add(table.table_id[:-8])
+        for prefix in blocked:
+            self.status.warning(
+                logical_shard_name(prefix), "Shard identity conflict: explicit operator resolution required"
+            )
+        context.sharding_failed = bool(blocked)
+        for table in client.list_tables(dataset):
+            parsed = eligible_shard(table.table_id, table.table_type, exclusions)
+            context.shard_family = None
+            if parsed and parsed[0] not in blocked:
+                family = families[parsed[0]]
+                if table.table_id != family.representative:
+                    continue
+                context.shard_family = family.descriptor(context.database, context.database_schema)
+                yield DiscoveredTable(
+                    table.table_id, logical_shard_name(family.prefix), TableType.Sharded, context.shard_family
+                )
             else:
-                yield table_name, table_type
+                # A placeholder can never reuse a prior family identity, including soft-deleted ones.
+                if table.table_id.endswith("yyyymmdd"):
+                    existing = self._catalog_table(table.table_id)
+                    if existing and get_table_sharding(existing):
+                        context.sharding_failed = True
+                        self.status.warning(table.table_id, "Physical table conflicts with a cataloged shard family")
+                        continue
+                if parsed and parsed[0] in blocked:
+                    existing = self._catalog_table(logical_shard_name(parsed[0]))
+                    if existing and get_table_sharding(existing):
+                        continue
+                yield DiscoveredTable(
+                    table.table_id, table.table_id, _bigquery_table_types.get(table.table_type, TableType.Regular)
+                )
+        self._set_sharding_scope(not context.sharding_failed)
+
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
+        if not self.sharding_enabled:
+            for table_name, table_type in super().get_tables_name_and_type() or []:
+                if table_name.endswith("yyyymmdd"):
+                    existing = self._catalog_table(table_name)
+                    if existing and get_table_sharding(existing):
+                        self.database_source_state.add(existing.fullyQualifiedName.root)
+                        self.status.warning(table_name, "Physical table conflicts with a cataloged shard family")
+                        continue
+                yield (
+                    table_name,
+                    self._external_table_type(table_name) if table_type == TableType.External else table_type,
+                )
+            return
+        try:
+            for discovered in self._grouped_tables():
+                physical, table_type = discovered.physical_name, discovered.table_type
+                self._shard_context().shard_family = discovered.table_sharding
+                catalog_name = discovered.catalog_name
+                if table_type in (TableType.View, TableType.MaterializedView):
+                    if not self.source_config.includeViews:
+                        continue
+                elif not self.source_config.includeTables:
+                    continue
+                name = (
+                    fqn._build(*fqn.split(self._sharding_scope()), catalog_name)
+                    if self.source_config.useFqnForFiltering
+                    else catalog_name
+                )
+                if filter_by_table(self.source_config.tableFilterPattern, name):
+                    self.status.filter(name, "Table Filtered Out")
+                    continue
+                yield physical, self._external_table_type(physical) if table_type == TableType.External else table_type
+        except Exception as exc:
+            self._set_sharding_scope(False)
+            self.status.failed(
+                StackTraceError(name=self._sharding_scope(), error=str(exc), stackTrace=traceback.format_exc())
+            )
+
+    def prepare_table_request(self, request):
+        if self.sharding_enabled and (descriptor := self._shard_context().shard_family):
+            request.name = EntityName(logical_shard_name(descriptor.prefix))
+            request.tableSharding = descriptor
+        return request
+
+    def should_preserve_table_type_when_partitioned(self, table_type):
+        return table_type == TableType.Sharded or super().should_preserve_table_type_when_partitioned(table_type)
+
+    def yield_table(self, table_name_and_type):
+        for result in super().yield_table(table_name_and_type):
+            if self.sharding_enabled and result.left:
+                self._shard_context().sharding_failed = True
+                self._set_sharding_scope(False)
+            yield result
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
@@ -488,6 +639,40 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     exc,
                 )
         yield from super().yield_life_cycle_data(_)
+
+    def life_cycle_query_dict(self, query: str):  # pyright: ignore[reportIncompatibleVariableOverride]
+        if not self.sharding_enabled:
+            return super().life_cycle_query_dict(query)
+        context = self._shard_context()
+        descriptor = context.shard_family
+        if not descriptor:
+            escaped = context.table.replace("'", "''")
+            with self.engine.connect() as conn:
+                rows = conn.execute(text(f"SELECT * FROM ({query}) WHERE table_name = '{escaped}'"))
+                return {row.table_name: LifeCycleQueryByTable.model_validate(row._asdict()) for row in rows}
+        if context.shard_lifecycle is None:
+            summaries = {}
+            exclusions = self.service_connection.shardedTables.excludePatterns or []
+            with self.engine.connect() as conn:
+                for row in conn.execute(text(query)):
+                    values = row._asdict()
+                    name = values.get("table_name") or values.get("TABLE_NAME") or ""
+                    kind = values.get("table_type") or values.get("TABLE_TYPE") or ""
+                    parsed = eligible_shard(name, "TABLE" if kind == "BASE TABLE" else kind, exclusions)
+                    if not parsed or parsed[0] not in context.shard_prefixes:
+                        continue
+                    logical = logical_shard_name(parsed[0])
+                    incoming = LifeCycleQueryByTable.model_validate(values)
+                    if logical not in summaries:
+                        summaries[logical] = incoming.model_copy(update={"table_name": logical})
+                    else:
+                        stored = summaries[logical]
+                        created = [value for value in (stored.created_at, incoming.created_at) if value is not None]
+                        updated = [value for value in (stored.updated_at, incoming.updated_at) if value is not None]
+                        stored.created_at = min(created) if created else None
+                        stored.updated_at = max(updated) if updated else None
+            context.shard_lifecycle = summaries
+        return context.shard_lifecycle
 
     def _get_schema_region(self, schema_name: str) -> str | None:
         """Resolve the dataset's region for region-scoped INFORMATION_SCHEMA queries."""
@@ -769,7 +954,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
 
-            if self.incremental.enabled:
+            if self.incremental.enabled and not self.sharding_enabled:
                 self._prepare_schema_incremental_data(schema_name)
 
             yield schema_fqn if return_fqn else schema_name
@@ -982,7 +1167,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             else:
                 try:
                     self.set_inspector(database_name=project_id)
-                    if self.incremental.enabled:
+                    if self.incremental.enabled and not self.sharding_enabled:
                         self.incremental_table_processor = BigQueryIncrementalTableProcessor.from_project(project_id)
                         filtered_datasets = self._get_filtered_datasets(project_id)
                         logger.info(
@@ -1034,6 +1219,16 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 return view_definition  # noqa: RET504
 
             if self.source_config.includeDDL:
+                if self.sharding_enabled:
+                    query = BIGQUERY_GET_TABLE_DDLS.format(
+                        database_name=self._shard_context().database, schema_name=schema_name
+                    )
+                    query += " AND table_name = @table_name"
+                    job_config = bigquery.QueryJobConfig(
+                        query_parameters=[bigquery.ScalarQueryParameter("table_name", "STRING", table_name)]
+                    )
+                    rows = self._require_client().query(query, job_config=job_config).result()
+                    return next((row.ddl for row in rows), None)
                 return self._table_ddl_cache.get(table_name)
         except NotImplementedError:
             logger.warning(f"Schema definition not implemented for {schema_name}.{table_name}")
@@ -1359,7 +1554,38 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         """
         Use the current inspector to mark tables as deleted
         """
-        if self.incremental.enabled:
+        if self.sharding_enabled:
+            if not self.source_config.markDeletedTables:
+                return
+            for scope in self._get_filtered_schema_names(return_fqn=True, add_to_status=False):
+                if not self._sharding_scopes.get(scope, False):
+                    continue
+                try:
+                    for existing in self.metadata.list_all_entities(Table, params={"databaseSchema": scope}):
+                        name = (
+                            existing.fullyQualifiedName.root
+                            if self.source_config.useFqnForFiltering
+                            else existing.name.root
+                        )
+                        excluded = filter_by_table(self.source_config.tableFilterPattern, name)
+                        is_view = existing.tableType in (TableType.View, TableType.MaterializedView)
+                        disabled = not (
+                            self.source_config.includeViews if is_view else self.source_config.includeTables
+                        )
+                        if (
+                            excluded
+                            or disabled
+                            or (not get_table_sharding(existing) and parse_shard_name(existing.name.root))
+                        ):
+                            self.database_source_state.add(existing.fullyQualifiedName.root)
+                except Exception as exc:
+                    self.status.warning(scope, f"Catalog reconciliation inventory failed: {exc}")
+                    continue
+                yield from delete_entity_from_source(
+                    self.metadata, Table, self.database_source_state, recursive=True, params={"databaseSchema": scope}
+                )
+            return
+        if self.incremental.enabled and not self.sharding_enabled:
             if not self.context.get().__dict__.get("database"):
                 raise ValueError("No Database found in the context. We cannot run the table deletion.")
 

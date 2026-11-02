@@ -82,7 +82,12 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
+from metadata.ingestion.lineage.sql_lineage import (
+    get_column_fqn,
+    get_database_service_type,
+    get_lineage_by_query,
+    search_table_entities,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
@@ -856,6 +861,12 @@ class DbtSource(DbtServiceSource):
     def _search_table(self, fqn_search_string: str | None) -> Table | None:
         if not fqn_search_string:
             return None
+        parts = fqn.split(fqn_search_string)
+        if len(parts) == 4 and get_database_service_type(self.metadata, parts[0]) == "bigquery":
+            entities = search_table_entities(self.metadata, parts[0], parts[1], parts[2], parts[3]) or []
+            if len(entities) > 1:
+                self.status.warning(fqn_search_string, "Ambiguous dbt metadata attachment; resolved multiple tables")
+            return entities[0] if len(entities) == 1 else None
         table_entities = get_entity_from_es_result(
             entity_list=self.metadata.es_search_from_fqn(
                 entity_type=Table,
@@ -1363,9 +1374,42 @@ class DbtSource(DbtServiceSource):
         to_entity: Table = data_model_link.table_entity
         logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")
 
+        wildcard_targets = {}
+        try:
+            for upstream in data_model_link.datamodel.upstream or []:
+                parts = fqn.split(upstream)
+                if (
+                    len(parts) == 4
+                    and "*" in parts[3]
+                    and get_database_service_type(self.metadata, parts[0]) == "bigquery"
+                ):
+                    wildcard_targets[upstream] = (
+                        search_table_entities(self.metadata, parts[0], parts[1], parts[2], parts[3]) or []
+                    )
+        except Exception as exc:
+            self.status.warning(
+                model_str(to_entity.fullyQualifiedName), f"dbt lineage incomplete; preserving prior lineage: {exc}"
+            )
+            return
+
         resolved = data_model_link.upstream_table_ids
         for upstream_node in data_model_link.datamodel.upstream or []:
             try:
+                if upstream_node in wildcard_targets:
+                    for upstream_table in wildcard_targets[upstream_node]:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=AddLineageRequest(
+                                    edge=EntitiesEdge(
+                                        fromEntity=EntityReference(id=upstream_table.id, type="table"),
+                                        toEntity=EntityReference(id=to_entity.id, type="table"),
+                                        lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
+                                    )
+                                ),
+                                override_lineage=self.source_config.overrideLineage,
+                            )
+                        )
+                    continue
                 from_id = resolved.get(upstream_node)
                 if from_id is None:
                     from_entity = self._get_table_entity(table_fqn=upstream_node)

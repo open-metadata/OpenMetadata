@@ -92,6 +92,31 @@ class TableResolver:
         service_names = tuple(service.service_name for service in services)
         if "*" in service_names and service_names != ("*",):
             raise ValueError("Wildcard service selection cannot be mixed with named services")
+        from metadata.ingestion.source.database.bigquery.naming import normalize_table_reference as bigquery_normalizer
+        from metadata.ingestion.source.database.bigquery.resolution import resolve_bigquery_reference
+
+        if table_name and any(binding.normalize is bigquery_normalizer for binding in services):
+            reference = _parse_reference(table_name, database_name, database_schema)
+            schemas = (reference.schema, None) if schema_fallback and reference.schema else (reference.schema,)
+            for schema in schemas:
+                for binding in services:
+                    scoped = replace(reference, schema=schema)
+                    if binding.normalize is bigquery_normalizer:
+                        matches = resolve_bigquery_reference(
+                            self._resolver, binding.service_name, scoped, fields, include
+                        )
+                    else:
+                        matches = self._resolver.resolve(
+                            EntityResolutionPlan(
+                                Table,
+                                table_lookup_tiers(binding.service_name, binding.normalize(scoped), include),
+                                fields,
+                                include,
+                            )
+                        )
+                    if matches:
+                        return matches
+            return ()
         tiers = []
         if table_name:
             reference = _parse_reference(table_name, database_name, database_schema)

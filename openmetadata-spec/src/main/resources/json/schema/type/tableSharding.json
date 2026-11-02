@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/type/tableSharding.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tableSharding",
+  "description": "Daily shard family metadata. Columns describe the representative.",
+  "javaType": "org.openmetadata.schema.type.TableSharding",
+  "type": "object",
+  "properties": {
+    "prefix": {
+      "type": "string"
+    },
+    "suffixFormat": {
+      "type": "string",
+      "enum": [
+        "YYYYMMDD"
+      ]
+    },
+    "representative": {
+      "$ref": "tableExecutionSource.json"
+    },
+    "shardCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "firstShardDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "lastShardDate": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "prefix",
+    "suffixFormat",
+    "representative",
+    "shardCount",
+    "firstShardDate",
+    "lastShardDate"
+  ],
+  "additionalProperties": false
+}

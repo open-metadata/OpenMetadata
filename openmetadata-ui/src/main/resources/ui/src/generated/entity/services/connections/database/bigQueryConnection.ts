@@ -49,6 +49,10 @@ export interface BigQueryConnection {
      */
     scheme?: BigqueryScheme;
     /**
+     * Daily shard grouping. Omitted configuration remains disabled.
+     */
+    shardedTables?: BigQueryShardedTables;
+    /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?:          FilterPattern;
@@ -238,6 +242,16 @@ export interface FilterPattern {
  */
 export enum BigqueryScheme {
     Bigquery = "bigquery",
+}
+
+/**
+ * Daily shard grouping. Omitted configuration remains disabled.
+ *
+ * Group native daily shard tables into stable logical families.
+ */
+export interface BigQueryShardedTables {
+    enabled?:         boolean;
+    excludePatterns?: string[];
 }
 
 /**

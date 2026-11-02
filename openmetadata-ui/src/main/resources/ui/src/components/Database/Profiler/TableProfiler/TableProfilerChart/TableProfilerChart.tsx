@@ -24,13 +24,17 @@ import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../../../constants/profiler.constant';
-import { TableProfile } from '../../../../../generated/entity/data/table';
+import {
+  TableProfile,
+  TableType,
+} from '../../../../../generated/entity/data/table';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
+import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
@@ -62,8 +66,11 @@ const TableProfilerChart = ({
     overallSummary,
     isProfilingEnabled,
     customMetric: tableCustomMetric,
+    table: contextTable,
   } = useTableProfiler();
 
+  const isSharded =
+    (tableDetails ?? contextTable)?.tableType === TableType.Sharded;
   const { fqn: datasetFQN } = useFqn();
 
   const dateRangeObject = useMemo(() => {
@@ -154,6 +161,11 @@ const TableProfilerChart = ({
   );
   const fetchSystemProfiler = useCallback(
     async (fqn: string, dateRangeObj: DateRangeObject) => {
+      if (isSharded) {
+        setShowSystemMetrics(false);
+        setIsSystemProfilerLoading(false);
+        return;
+      }
       setIsSystemProfilerLoading(true);
       try {
         const { data } = await getSystemProfileList(fqn, dateRangeObj);
@@ -169,7 +181,7 @@ const TableProfilerChart = ({
         setIsSystemProfilerLoading(false);
       }
     },
-    [operationMetrics]
+    [operationMetrics, isSharded]
   );
 
   const fetchProfilerData = useCallback(
@@ -230,6 +242,20 @@ const TableProfilerChart = ({
       <div
         className="tw:flex tw:flex-col tw:gap-[30px]"
         data-testid="table-profiler-chart-metrics">
+        <ul>
+          {profileMetrics.map((profile) => (
+            <li key={profile.timestamp}>
+              {formatDateTimeLong(profile.timestamp)}:{' '}
+              {profile.executionSource
+                ? `${t('label.execution-source')}: ${
+                    profile.executionSource.databaseName
+                  }.${profile.executionSource.schemaName}.${
+                    profile.executionSource.tableName
+                  }`
+                : t('message.execution-source-unavailable')}
+            </li>
+          ))}
+        </ul>
         <div data-testid="row-metrics">
           <ProfilerDetailsCard
             chartCollection={rowCountMetrics}
@@ -240,7 +266,8 @@ const TableProfilerChart = ({
             title={t('label.data-volume')}
           />
         </div>
-        {showSystemMetrics && (
+        {isSharded && <p>{t('message.sharding-system-metrics-unsupported')}</p>}
+        {showSystemMetrics && !isSharded && (
           <ProfilerStateWrapper
             dataTestId="operation-metrics"
             isLoading={isSystemProfilerLoading}

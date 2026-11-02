@@ -16,6 +16,8 @@ import weakref
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from threading import Barrier
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 from urllib.parse import parse_qs, unquote, urlsplit
 from uuid import uuid4
 
@@ -29,12 +31,24 @@ from metadata.entity_resolution.engine import (
     ResolutionTier,
 )
 from metadata.entity_resolution.table import TableResolver, TableServiceBinding
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
+from metadata.generated.schema.type.tableSharding import TableSharding
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.hex.cell_lineage import ChainedCells
+from metadata.ingestion.source.dashboard.hex.metadata import HexSource
+from metadata.ingestion.source.dashboard.hex.models import Cell, DataConnection
+from metadata.ingestion.source.dashboard.hex.query_fetcher import HexQueryFetcher
+from metadata.ingestion.source.database.bigquery.naming import normalize_table_reference as bigquery_reference
 from metadata.ingestion.source.database.clickhouse.naming import normalize_table_reference as clickhouse_reference
+from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.database.dbt.metadata import DbtSource
+from metadata.ingestion.stage.table_usage import TableStageConfig, TableUsageStage
+from metadata.utils.lru_cache import LRUCache
 
 EXACT = FqnLookupMode.EXACT
 CI = FqnLookupMode.CASE_INSENSITIVE_EXACT
@@ -67,6 +81,8 @@ class Transport:
         self.requests.append((unquote(parsed.path), params))
         if self.error:
             raise self.error
+        if parsed.path == "/search/query":
+            return {"hits": {"hits": [], "total": {"value": 0, "relation": "eq"}}}
         if parsed.path == "/search/fieldQuery":
             return {
                 "hits": {
@@ -455,3 +471,193 @@ def test_invalid_search_response_is_an_error_not_a_miss(sdk, monkeypatch, respon
     monkeypatch.setattr(transport, "get", lambda path: response)
     with pytest.raises(TypeError, match="Invalid FQN search response"):
         EntityResolver(metadata).resolve(plan(mode=CI))
+
+
+def bigquery_family(name="events_yyyymmdd"):
+    return table(
+        f"my_service.my_db.my_schema.{name}",
+        tableType="Sharded",
+        tableSharding=TableSharding(
+            prefix="events_",
+            suffixFormat="YYYYMMDD",
+            shardCount=2,
+            firstShardDate="2026-01-01",
+            lastShardDate="2026-01-02",
+            representative={
+                "databaseName": "my_db",
+                "schemaName": "my_schema",
+                "tableName": "events_20260102",
+                "shardDate": "2026-01-02",
+            },
+        ),
+    )
+
+
+def resolve_bigquery(metadata, name):
+    return TableResolver(EntityResolver(metadata), (TableServiceBinding("my_service", bigquery_reference),)).resolve(
+        database_name="my_db", database_schema="my_schema", table_name=name
+    )
+
+
+def test_bigquery_concrete_precedence_and_decorator(sdk):
+    metadata, transport = sdk
+    family = bigquery_family()
+    transport.entities[family.fullyQualifiedName.root] = family
+    assert ids(resolve_bigquery(metadata, "events_20260101$20260102")) == [family.id]
+    physical = table("my_service.my_db.my_schema.events_20260101")
+    transport.entities[physical.fullyQualifiedName.root] = physical
+    assert ids(resolve_bigquery(metadata, "events_20260101")) == [physical.id]
+    physical.deleted = True
+    assert ids(resolve_bigquery(metadata, "events_20260101")) == [family.id]
+
+
+def test_bigquery_placeholder_without_descriptor_is_not_a_family(sdk):
+    metadata, transport = sdk
+    ordinary = table("my_service.my_db.my_schema.events_yyyymmdd")
+    transport.entities[ordinary.fullyQualifiedName.root] = ordinary
+    assert resolve_bigquery(metadata, "events_20260101") == ()
+
+
+@pytest.mark.parametrize("count", [11, 100, 101])
+def test_bigquery_wildcard_is_complete_or_fails(sdk, count):
+    metadata, transport = sdk
+    tables = [table(f"my_service.my_db.my_schema.events_{index}") for index in range(count)]
+    transport.entities = {value.fullyQualifiedName.root: value for value in tables}
+    transport.hits = list(transport.entities)
+    if count > 100:
+        with pytest.raises(ValueError, match="configured limit"):
+            resolve_bigquery(metadata, "events_*")
+    else:
+        assert len(resolve_bigquery(metadata, "events_*")) == count
+
+
+def test_bigquery_date_wildcard_does_not_invent_membership(sdk):
+    with pytest.raises(ValueError, match="member inventory evidence"):
+        resolve_bigquery(sdk[0], "events_2026*")
+
+
+def add_bigquery_service(transport):
+    transport.entities["my_service"] = DatabaseService(
+        id=uuid4(),
+        name="my_service",
+        serviceType="BigQuery",
+        connection={"config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}},
+    )
+
+
+def test_bigquery_usage_counts_each_execution_once_and_preserves_sql(sdk, tmp_path):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    family = bigquery_family()
+    transport.entities[family.fullyQualifiedName.root] = family
+    stage = TableUsageStage(TableStageConfig(filename=str(tmp_path / "usage")), metadata)
+    execution = ParsedData(
+        tables=["my_db.my_schema.events_20260101", "my_db.my_schema.events_20260102"],
+        databaseName="my_db",
+        databaseSchema="my_schema",
+        serviceName="my_service",
+        joins={},
+        date="1767398400000",
+        sql="SELECT * FROM events_20260101 JOIN events_20260102 USING(id)",
+    )
+    outcomes = list(stage._run(QueryParserData(parsedData=[execution, execution])))
+    assert len(outcomes) == 2
+    assert all(outcome.left is None and outcome.right == "my_db.my_schema.events_yyyymmdd" for outcome in outcomes)
+    values = list(stage.table_usage.values())
+    assert len(values) == 1
+    assert values[0].table == "my_db.my_schema.events_yyyymmdd"
+    assert values[0].count == 2
+    assert [item.query.root for item in values[0].sqlQueries] == [execution.sql, execution.sql]
+
+
+@pytest.mark.parametrize("count", [11, 100, 101])
+def test_hex_sql_cells_expand_complete_bigquery_wildcards(sdk, count):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    tables = [table(f"my_service.my_db.my_schema.events_{index}") for index in range(count)]
+    transport.entities.update({value.fullyQualifiedName.root: value for value in tables})
+    transport.hits = [value.fullyQualifiedName.root for value in tables]
+    source = HexSource.__new__(HexSource)
+    source.metadata = metadata
+    source.source_config = SimpleNamespace(lineageInformation=SimpleNamespace(dbServicePrefixes=["my_service"]))
+    cell = Cell(
+        id="cell",
+        dataConnectionId="connection",
+        contents={"sqlCell": {"source": "SELECT id FROM `my_db.my_schema.events_*`"}},
+    )
+    connections = {"connection": DataConnection(id="connection", name="demo", type="bigquery")}
+    if count > 100:
+        with pytest.raises(ValueError, match="configured limit"):
+            source._build_sql_cell_lineage(cell, connections, ChainedCells(), LRUCache(100))
+    else:
+        result = source._build_sql_cell_lineage(cell, connections, ChainedCells(), LRUCache(100))
+        assert set(result.tables) == {str(value.id.root) for value in tables}
+        assert all(not column.source_columns for column in result.columns)
+
+
+@pytest.mark.parametrize("count", [11, 100, 101])
+def test_hex_warehouse_queries_expand_or_report_incomplete(sdk, count, caplog):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    tables = [table(f"my_service.my_db.my_schema.events_{index}") for index in range(count)]
+    transport.entities.update({value.fullyQualifiedName.root: value for value in tables})
+    transport.hits = [value.fullyQualifiedName.root for value in tables]
+    result = HexQueryFetcher(metadata)._extract_tables_from_query(
+        "SELECT * FROM `my_db.my_schema.events_*`", "my_service", "my_db", "my_schema", "my_service"
+    )
+    if count > 100:
+        assert result == []
+        assert "incomplete" in caplog.text
+    else:
+        assert {value.id.root for value in result} == {value.id.root for value in tables}
+
+
+@pytest.mark.parametrize("count", [11, 100, 101])
+def test_dbt_wildcards_emit_all_edges_or_preserve_previous_scope(sdk, count):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    matches = [table(f"my_service.my_db.my_schema.events_{index}") for index in range(count)]
+    transport.entities.update({value.fullyQualifiedName.root: value for value in matches})
+    transport.hits = [value.fullyQualifiedName.root for value in matches]
+    source = DbtSource.__new__(DbtSource)
+    source.metadata = metadata
+    source.source_config = SimpleNamespace(overrideLineage=True)
+    source.status = MagicMock()
+    target = table("my_service.my_db.my_schema.summary")
+    link = DataModelLink(
+        table_entity=target, datamodel=DataModel(modelType="DBT", upstream=["my_service.my_db.my_schema.events_*"])
+    )
+    outcomes = list(source.create_dbt_lineage(link))
+    if count > 100:
+        assert outcomes == []
+        assert source.status.warning.call_args[0][1].startswith("dbt lineage incomplete")
+    else:
+        assert {outcome.right.lineage_request.edge.fromEntity.id.root for outcome in outcomes} == {
+            value.id.root for value in matches
+        }
+        assert all(outcome.right.lineage_request.edge.toEntity.id == target.id for outcome in outcomes)
+
+
+@pytest.mark.parametrize("count", [11, 100, 101])
+def test_looker_wildcard_lineage_is_complete_without_guessed_columns(sdk, count):
+    from metadata.generated.schema.entity.data.dashboard import Dashboard
+    from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
+
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    matches = [table(f"my_service.my_db.my_schema.events_{index}") for index in range(count)]
+    transport.entities.update({value.fullyQualifiedName.root: value for value in matches})
+    transport.hits = [value.fullyQualifiedName.root for value in matches]
+    source = LookerSource.__new__(LookerSource)
+    source.metadata = metadata
+    source._added_lineage = {}
+    target = Dashboard(id=uuid4(), name="demo_dashboard", service={"id": uuid4(), "type": "dashboardService"})
+    requests = source.build_lineage_requests("my_db.my_schema.events_*", "my_service", target, [("id", "id")])
+    if count > 100:
+        with pytest.raises(ValueError, match="configured limit"):
+            list(requests)
+        assert source._added_lineage == {}
+    else:
+        edges = [outcome.right.edge for outcome in requests]
+        assert {edge.fromEntity.id.root for edge in edges} == {value.id.root for value in matches}
+        assert all(edge.toEntity.id == target.id and not edge.lineageDetails.columnsLineage for edge in edges)

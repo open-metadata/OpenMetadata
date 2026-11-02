@@ -23,7 +23,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -44,6 +45,7 @@ import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.const
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Table } from '../../generated/entity/data/table';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -64,6 +66,7 @@ import {
 import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
 import { getExplorePath, getExploreTabPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { findShardedFamilies } from '../../utils/TableShardingUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   QueryFieldInterface,
@@ -77,6 +80,7 @@ const EXPLORE_PAGE_SIZE_OPTIONS = [
 ];
 
 const ExplorePageV1: FC<unknown> = () => {
+  const { t } = useTranslation();
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
     searchClassBase.getEntityTypeSearchIndexMapping();
@@ -645,6 +649,45 @@ const ExplorePageV1: FC<unknown> = () => {
     performFetch();
   }, [fetchDependencies]);
 
+  const [shardedFamilies, setShardedFamilies] = useState<Table[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setShardedFamilies([]);
+    const combined = getCombinedQueryFilterObject(
+      getCombinedQueryFilterObject(
+        advancedSearchQuickFilters,
+        browseQueryFilter
+      ),
+      queryFilter
+    );
+    findShardedFamilies(
+      searchQueryParam ?? '',
+      combined,
+      undefined,
+      showDeleted,
+      controller.signal
+    )
+      .then((tables) => {
+        if (!controller.signal.aborted) {
+          setShardedFamilies(tables);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setShardedFamilies([]);
+        }
+      });
+    return () => {
+      controller.abort();
+    };
+  }, [
+    searchQueryParam,
+    queryFilter,
+    advancedSearchQuickFilters,
+    browseQueryFilter,
+    showDeleted,
+  ]);
+
   const handleAdvanceSearchQuickFiltersChange = useCallback(
     (filter?: QueryFilterInterface) => {
       setAdvancedSearchQuickFilters(filter);
@@ -654,37 +697,60 @@ const ExplorePageV1: FC<unknown> = () => {
   );
 
   return (
-    <ExploreV1
-      activeTabKey={searchIndex}
-      aggregations={updatedAggregations}
-      browseFields={browseFields}
-      browseQueryFilter={browseQueryFilter}
-      currentPage={currentPage}
-      isElasticSearchIssue={showIndexNotFoundAlert}
-      loading={isLoading}
-      pageSize={pageSize}
-      quickFilters={advancedSearchQuickFilters}
-      searchIndex={searchIndex}
-      searchResults={searchResults}
-      showDeleted={showDeleted}
-      showRankingDetails={showRankingDetails}
-      sortOrder={sortOrder}
-      sortValue={effectiveSortValue}
-      tabItems={tabItems}
-      onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
-      onChangePage={handlePageChange}
-      onChangePageSize={handlePageSizeChange}
-      onChangeSearchIndex={handleSearchIndexChange}
-      onChangeShowDeleted={handleShowDeletedChange}
-      onChangeShowRankingDetails={setShowRankingDetails}
-      onChangeSortOder={(sortOrderVal) => {
-        handleSortOrderChange(sortOrderVal);
-      }}
-      onChangeSortValue={(sortVal) => {
-        handleSortValueChange(sortVal);
-      }}
-      onTreeSelect={handleTreeSelect}
-    />
+    <>
+      <ExploreV1
+        additionalSearchResults={
+          shardedFamilies.length > 0 && (
+            <section aria-label={t('label.matching-sharded-families')}>
+              <h2>{t('label.matching-sharded-families')}</h2>
+              <ul>
+                {shardedFamilies.map((table) => (
+                  <li key={table.id}>
+                    <Link
+                      to={`/table/${encodeURIComponent(
+                        table.fullyQualifiedName ?? ''
+                      )}`}>
+                      {table.fullyQualifiedName}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+        activeTabKey={searchIndex}
+        aggregations={updatedAggregations}
+        browseFields={browseFields}
+        browseQueryFilter={browseQueryFilter}
+        currentPage={currentPage}
+        isElasticSearchIssue={showIndexNotFoundAlert}
+        loading={isLoading}
+        pageSize={pageSize}
+        quickFilters={advancedSearchQuickFilters}
+        searchIndex={searchIndex}
+        searchResults={searchResults}
+        showDeleted={showDeleted}
+        showRankingDetails={showRankingDetails}
+        sortOrder={sortOrder}
+        sortValue={effectiveSortValue}
+        tabItems={tabItems}
+        onChangeAdvancedSearchQuickFilters={
+          handleAdvanceSearchQuickFiltersChange
+        }
+        onChangePage={handlePageChange}
+        onChangePageSize={handlePageSizeChange}
+        onChangeSearchIndex={handleSearchIndexChange}
+        onChangeShowDeleted={handleShowDeletedChange}
+        onChangeShowRankingDetails={setShowRankingDetails}
+        onChangeSortOder={(sortOrderVal) => {
+          handleSortOrderChange(sortOrderVal);
+        }}
+        onChangeSortValue={(sortVal) => {
+          handleSortValueChange(sortVal);
+        }}
+        onTreeSelect={handleTreeSelect}
+      />
+    </>
   );
 };
 
