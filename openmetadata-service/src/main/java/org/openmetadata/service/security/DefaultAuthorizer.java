@@ -181,15 +181,23 @@ public class DefaultAuthorizer implements Authorizer {
     }
 
     if (logic == AuthorizationLogic.ANY) {
+      // Every request is evaluated, not stopped at the first allow: an explicit Deny on any one of
+      // them refuses the whole thing, and that must hold whatever order the requests arrive in -
+      // otherwise [allowed, denied] would pass while [denied, allowed] is refused.
       boolean anySuccess = false;
+      PolicyDeniedException denied = null;
       for (AuthRequest req : requests) {
         try {
           PolicyEvaluator.hasPermission(
               subjectContext, req.resourceContext(), req.operationContext());
           anySuccess = true;
-          break;
+        } catch (PolicyDeniedException e) {
+          denied = e;
         } catch (AuthorizationException ignored) {
         }
+      }
+      if (denied != null) {
+        throw denied;
       }
       if (!anySuccess) {
         throw new AuthorizationException("User does not have ANY of the required permissions.");

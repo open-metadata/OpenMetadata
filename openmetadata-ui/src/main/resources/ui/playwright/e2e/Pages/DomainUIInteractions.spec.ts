@@ -37,7 +37,10 @@ import { fillStyleIconUrl } from '../../utils/glossaryForm';
 import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';
+import {
+  waitForAriaOverlayToSettle,
+  waitForResponseWithStatus,
+} from '../../utils/waitHelpers';
 
 const test = base.extend<{
   page: Page;
@@ -614,6 +617,8 @@ test.describe('Domain Form Validation', () => {
 
     await page.click('[data-testid="add-domain"]');
     await page.getByTestId('form-heading').waitFor();
+    // A Save press while the drawer slides in lands on a moving button and is dropped.
+    await waitForAriaOverlayToSettle(page);
 
     await page.locator('#root\\/name').fill('Invalid::Name');
     await page.locator('#root\\/displayName').fill('Test Domain');
@@ -632,6 +637,7 @@ test.describe('Domain Form Validation', () => {
 
     await page.click('[data-testid="add-domain"]');
     await page.getByTestId('form-heading').waitFor();
+    await waitForAriaOverlayToSettle(page);
 
     const longName = 'a'.repeat(150);
     await page.locator('#root\\/name').fill(longName);
@@ -648,6 +654,7 @@ test.describe('Domain Form Validation', () => {
 
     await page.click('[data-testid="add-domain"]');
     await expect(page.getByTestId('form-heading')).toHaveText('Add Domain');
+    await waitForAriaOverlayToSettle(page);
 
     await page.locator('#root\\/name').fill('ValidName');
     await page.locator('#root\\/displayName').fill('Valid Display Name');

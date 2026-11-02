@@ -46,6 +46,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.ChangeRequestVisibility;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -79,7 +80,10 @@ public class ChangeRequestResource {
       @Parameter(description = "Requester user name") @QueryParam("requestedBy") String requestedBy,
       @QueryParam("limit") @DefaultValue("50") @Min(1) @Max(500) int limit) {
     return new ResultList<>(
-        ChangeRequestVisibility.list(authorizer, securityContext, entityId, requestedBy, limit));
+        ChangeRequestVisibility.list(authorizer, securityContext, entityId, requestedBy, limit)
+            .stream()
+            .map(McpServerMasker::maskChangeRequest)
+            .toList());
   }
 
   @GET
@@ -94,7 +98,7 @@ public class ChangeRequestResource {
   public ChangeRequest get(@Context SecurityContext securityContext, @PathParam("id") UUID id) {
     ChangeRequest request = ChangeRequestService.report(id);
     ChangeRequestVisibility.requireVisible(authorizer, securityContext, request);
-    return request;
+    return McpServerMasker.maskChangeRequest(request);
   }
 
   @POST
@@ -111,8 +115,8 @@ public class ChangeRequestResource {
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @Valid WithdrawChangeRequest withdraw) {
-    return ChangeRequestService.withdraw(
-        id, withdraw, securityContext.getUserPrincipal().getName());
+    return McpServerMasker.maskChangeRequest(
+        ChangeRequestService.withdraw(id, withdraw, securityContext.getUserPrincipal().getName()));
   }
 
   @GET
@@ -126,8 +130,11 @@ public class ChangeRequestResource {
       })
   public ResultList<ChangeRevision> revisions(
       @Context SecurityContext securityContext, @PathParam("id") UUID id) {
-    get(securityContext, id);
-    return new ResultList<>(ChangeRequestService.revisions(id));
+    final ChangeRequest request = get(securityContext, id);
+    return new ResultList<>(
+        ChangeRequestService.revisions(id).stream()
+            .map(revision -> McpServerMasker.maskRevision(request.getEntityType(), revision))
+            .toList());
   }
 
   @GET
@@ -182,8 +189,9 @@ public class ChangeRequestResource {
         securityContext,
         new OperationContext(entityType, patch),
         new ResourceContext<>(entityType, id, null));
-    return ChangeRequestService.preview(
-        entityType, id, patch, securityContext.getUserPrincipal().getName());
+    return McpServerMasker.maskPreview(
+        ChangeRequestService.preview(
+            entityType, id, patch, securityContext.getUserPrincipal().getName()));
   }
 
   @POST
@@ -203,8 +211,8 @@ public class ChangeRequestResource {
       @PathParam("id") UUID id,
       @Valid OverrideChangeRequest override) {
     authorizer.authorizeAdmin(securityContext);
-    return ChangeRequestService.override(
-        id, override, securityContext.getUserPrincipal().getName());
+    return McpServerMasker.maskChangeRequest(
+        ChangeRequestService.override(id, override, securityContext.getUserPrincipal().getName()));
   }
 
   @POST
@@ -218,7 +226,8 @@ public class ChangeRequestResource {
   public ChangeRequest cancel(@Context SecurityContext securityContext, @PathParam("id") UUID id) {
     authorizer.authorizeAdmin(securityContext);
     String admin = securityContext.getUserPrincipal().getName();
-    return ChangeRequestService.finish(
-        id, null, ChangeRequestStatus.CANCELLED, "Cancelled by %s".formatted(admin), admin);
+    return McpServerMasker.maskChangeRequest(
+        ChangeRequestService.finish(
+            id, null, ChangeRequestStatus.CANCELLED, "Cancelled by %s".formatted(admin), admin));
   }
 }

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.SearchDocs.awaitDoc;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -16,7 +17,9 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.exceptions.ApiException;
@@ -175,6 +178,58 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
   // ===================================================================
   // FOLDER-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void test_folderKeepsItsChildrenCountInSearchThroughAPlainEdit(TestNamespace ns) {
+    Folder folder =
+        getFolderService().create(new CreateFolder().withName(ns.prefix("counted_folder")));
+    ContextFile file =
+        SdkClients.adminClient()
+            .contextFiles()
+            .create(
+                new CreateContextFile()
+                    .withName(ns.prefix("counted_file"))
+                    .withFolder(folder.getFullyQualifiedName()));
+    awaitDoc("folder_search_index", folder.getId(), doc -> doc.path("childrenCount").asInt() == 1);
+
+    Folder edited = getFolderService().get(folder.getId().toString());
+    edited.setDescription("Edited folder description");
+    getFolderService().update(folder.getId().toString(), edited);
+
+    awaitDoc(
+        "folder_search_index",
+        folder.getId(),
+        doc ->
+            "Edited folder description".equals(doc.path("description").asText())
+                && doc.path("childrenCount").asInt() == 1);
+
+    // Through REST a hard delete soft-deletes the file first, which is what drops the count.
+    SdkClients.adminClient()
+        .contextFiles()
+        .delete(file.getId().toString(), Map.of("hardDelete", "true"));
+    awaitDoc("folder_search_index", folder.getId(), doc -> doc.path("childrenCount").asInt() == 0);
+  }
+
+  @Test
+  void test_movingAFileRefreshesBothFoldersChildrenCount(TestNamespace ns) {
+    Folder source = getFolderService().create(new CreateFolder().withName(ns.prefix("move_from")));
+    Folder target = getFolderService().create(new CreateFolder().withName(ns.prefix("move_to")));
+    ContextFile file =
+        SdkClients.adminClient()
+            .contextFiles()
+            .create(
+                new CreateContextFile()
+                    .withName(ns.prefix("moved_file"))
+                    .withFolder(source.getFullyQualifiedName()));
+    awaitDoc("folder_search_index", source.getId(), doc -> doc.path("childrenCount").asInt() == 1);
+
+    SdkClients.adminClient()
+        .contextFiles()
+        .move(file.getId().toString(), target.getEntityReference());
+
+    awaitDoc("folder_search_index", source.getId(), doc -> doc.path("childrenCount").asInt() == 0);
+    awaitDoc("folder_search_index", target.getId(), doc -> doc.path("childrenCount").asInt() == 1);
+  }
 
   @Test
   void test_createFolder_minimalRequest(TestNamespace ns) {

@@ -142,8 +142,7 @@ p {
   padding: 0 var(--om-space-24) var(--om-space-16) var(--om-space-24);
 }
 
-a,
-a.ant-typography {
+a {
   &:hover {
     text-decoration: underline;
   }
@@ -620,20 +619,6 @@ a[href].link-text-grey,
   align-items: flex-start;
 }
 
-.multiple-label-field
-  .ant-form-item-label
-  > label.ant-form-item-required:not(
-    .ant-form-item-required-mark-optional
-  )::before {
-  line-height: 24px;
-}
-
-// Switch Inline Field
-
-.switch-field .ant-form-item {
-  margin: 0;
-}
-
 .common-left-panel-card-heading {
   color: @group-title-color;
   font-size: var(--om-font-size-xs);
@@ -676,27 +661,8 @@ a[href].link-text-grey,
   }
 }
 
-/* Tabs */
-.ant-tabs-top > .ant-tabs-nav::before {
-  border-color: @border-color;
-}
-
 // Entity Details Page css
 .entity-details-page-tabs {
-  .ant-tabs-tabpane {
-    height: @entity-details-tab-height;
-    overflow-y: auto;
-
-    .activity-feed-tab {
-      height: 100%;
-
-      .right-container,
-      .center-container {
-        height: 100%;
-      }
-    }
-  }
-
   /* Lineage tab panel styling */
   [id*='rc-tabs-'][id*='-panel-contract'],
   [id*='rc-tabs-'][id*='-panel-lineage'],
@@ -860,62 +826,8 @@ a[href].link-text-grey,
   color: @background-color !important;
 }
 
-// Dark-mode bridge for fixed-hex legacy LESS palette vars.
-// Each var in variables.less has a project token and original color fallback, so light
-// mode resolves to the exact original hex (no drift) while dark mode picks up
-// the semantic/utility override below. This themes every consumer of these
-// legacy vars app-wide without per-file edits. Utility tokens auto-invert under
-// .dark-mode, so referencing them here yields the dark value. Categorical ramps
-// (severity, heatmap gradients) are intentionally excluded — they belong to the
-// token foundation.
-// `:root.dark-mode` (not `.dark-mode`): tokens.css declares the light values on
-// `:root` at equal specificity and is imported after this file, so a bare
-// `.dark-mode` lost and every bridged var stayed light in dark mode.
-:root.dark-mode {
-  // Neutral surfaces / borders / muted text
-  --om-grey-26: var(--color-bg-secondary_subtle);
-  --om-grey-25: var(--color-bg-secondary_subtle);
-  --om-grey-9: var(--color-bg-secondary_subtle);
-  --om-grey-1: var(--color-bg-secondary);
-  --om-grey-2: var(--color-bg-secondary);
-  --om-grey-5: var(--color-bg-secondary);
-  --om-grey-6: var(--color-bg-secondary);
-  --om-grey-50: var(--color-bg-secondary);
-  // @grey-15 (= @border-color / @global-border) is the primary neutral border
-  // across antd + legacy components (cards, tabs, tables, panels, dividers).
-  // In dark, map it to the subtle white-alpha border (rgba(255,255,255,0.08))
-  // so every antd surface reads consistently instead of a solid gray edge —
-  // one change themes all @border-color borders app-wide (OSS + Collate via
-  // submodule). Light keeps the frozen #eaecf5 fallback.
-  --om-grey-15: var(--color-border-subtle);
-  --om-grey-38: var(--color-border-subtle);
-  --om-grey-7: var(--color-text-quaternary);
-  --om-heading-color: var(--color-text-primary);
-  --om-border-color-base: var(--color-border-primary);
-  // @blue-29/@blue-30 are the fill/edge of legacy neutral chips (column data
-  // type, tag/glossary chips, async-select tags) — dark uses the core gray Badge pair.
-  --om-blue-29: var(--tw-color-utility-gray-50);
-  --om-purple-1: var(--tw-color-utility-purple-50);
-  --om-blue-30: var(--tw-color-utility-gray-200);
-  // Status — utility tokens auto-invert to readable dark values
-  --om-blue-13: var(--tw-color-utility-blue-light-100);
-  --om-blue-22: var(--tw-color-utility-blue-light-50);
-  --om-blue-500: var(--tw-color-utility-blue-light-500);
-  --om-green-9: var(--tw-color-utility-success-50);
-  --om-green-10: var(--tw-color-utility-success-700);
-  --om-green-12: var(--tw-color-utility-success-100);
-  --om-green-100: var(--tw-color-utility-success-100);
-  --om-green-500: var(--tw-color-utility-success-500);
-  --om-red-9: var(--tw-color-utility-error-50);
-  --om-red-10: var(--tw-color-utility-error-700);
-  --om-red-22: var(--tw-color-utility-error-500);
-  --om-yellow-10: var(--tw-color-utility-warning-50);
-  --om-alert-error-icon-bg-1: var(--tw-color-utility-error-100);
-  --om-alert-warning-icon: var(--tw-color-utility-warning-600);
-  --om-alert-warning-icon-bg-1: var(--tw-color-utility-warning-100);
-  --om-warning-100: var(--tw-color-utility-warning-100);
-  --om-warning-400: var(--tw-color-utility-warning-400);
-}
+// Dark values for the legacy --om-* aliases live in tokens.css, next to their
+// light values (ADR:2026-10-13-om-tokens-have-one-source-file).
 
 // AI dark-mode brand ACCENTS -> blue-400 (#53b1fd), the devrel dark palette:
 // #1570ef carries fills/borders, #53b1fd labels/icons/links (~5.4:1 on dark;
@@ -955,7 +867,7 @@ a[href].link-text-grey,
 }
 
 // Legacy Ant links: `.text-link-color` uses `@primary-color`
-// (= var(--ant-primary-color)), injected by useThemeCssVariables as #1570ef and
+// (= var(--theme-primary-color)), injected by useThemeCssVariables as #1570ef and
 // never flipped. Point it at the core link token, which flips in dark.
 .dark-mode .text-link-color,
 .dark-mode a.text-link-color {
@@ -965,20 +877,10 @@ a[href].link-text-grey,
 // (Bare-anchor dark link color is handled in tailwind.css via `:where(.dark-mode) a`
 // so it keeps base specificity and doesn't override nav/chrome anchors.)
 
-// Ant Typography links (a.ant-typography / .ant-typography a, colored @blue-9 in
-// fonts.less at 0,1,1) aren't caught by the base-specificity `:where(.dark-mode) a`.
+// Prose links aren't caught by the base-specificity `:where(.dark-mode) a`.
 // Retint them in dark at a higher specificity that wins regardless of load order.
-.dark-mode a.ant-typography,
-.dark-mode .ant-typography a,
 .dark-mode .prose-typography a {
   color: var(--color-text-link);
-}
-
-// Ant secondary text is @text-color-secondary (fade(@black, 45%)), compiled to a
-// static near-black that vanishes on dark surfaces. The variable can't take a
-// var() (antd runs shade() on it), so retint the class in dark only.
-.dark-mode .ant-typography.ant-typography-secondary {
-  color: var(--om-color-text-tertiary);
 }
 
 // "No description" and other muted placeholders use @text-grey-muted, a fixed
@@ -987,7 +889,7 @@ a[href].link-text-grey,
   color: var(--om-color-text-tertiary);
 }
 
-// Carousel active dot draws with --ant-primary-color (#1570ef) via a `!important`
+// Carousel active dot draws with --theme-primary-color (#1570ef) via a `!important`
 // rule in temp.css; match !important to win and re-tint in dark.
 .dark-mode .slick-dots li.slick-active button:before {
   color: var(--tw-color-brand-400) !important;
@@ -1144,7 +1046,6 @@ a[href].link-text-grey,
     flex-wrap: wrap;
 
     &:hover {
-      .ant-typography,
       > * {
         color: @primary-color;
       }
@@ -1217,92 +1118,5 @@ a[href].link-text-grey,
     fill: none;
     height: @size-lg;
     width: @size-lg;
-  }
-}
-
-// antd Alert paints static light tints per type (and antd heading-colour
-// text);
-
-// antd DatePicker/RangePicker compile static light values: 25%-black
-// suffix/separator/clear icons and out-of-month cells, #bfbfbf placeholder,
-// #f5f5f5 disabled fill and cell hover, 6%-black panel rules, and the
-// theme-agnostic --ant-primary-1 range tint (near-white in dark). Light keeps
-// antd's values.
-.dark-mode {
-  .ant-picker-suffix,
-  .ant-picker-separator,
-  .ant-picker-clear,
-  .ant-picker-header button,
-  .ant-picker-cell:not(.ant-picker-cell-in-view),
-  .ant-picker-cell-disabled {
-    color: var(--om-color-text-quaternary);
-  }
-
-  .ant-picker-focused .ant-picker-separator,
-  .ant-picker-clear:hover {
-    color: var(--om-color-text-tertiary);
-  }
-
-  .ant-picker-input > input::placeholder,
-  .ant-picker-input-placeholder > input {
-    color: var(--om-color-text-placeholder);
-  }
-
-  .ant-picker.ant-picker-disabled,
-  .ant-picker-input > input[disabled] {
-    background-color: var(--om-color-bg-disabled);
-    color: var(--om-color-text-disabled);
-  }
-
-  .ant-picker-header {
-    color: var(--om-color-text-primary);
-  }
-
-  .ant-picker-panel,
-  .ant-picker-header,
-  .ant-picker-panel .ant-picker-footer,
-  .ant-picker-footer-extra:not(:last-child),
-  .ant-picker-datetime-panel .ant-picker-time-panel,
-  .ant-picker-time-panel-column:not(:first-child) {
-    border-color: var(--om-color-border-secondary);
-  }
-
-  .ant-picker-cell:hover:not(.ant-picker-cell-in-view) .ant-picker-cell-inner,
-  .ant-picker-cell:hover:not(.ant-picker-cell-selected):not(
-      .ant-picker-cell-range-start
-    ):not(.ant-picker-cell-range-end):not(
-      .ant-picker-cell-range-hover-start
-    ):not(.ant-picker-cell-range-hover-end)
-    .ant-picker-cell-inner,
-  .ant-picker-time-panel-column
-    > li.ant-picker-time-panel-cell
-    .ant-picker-time-panel-cell-inner:hover {
-    background-color: var(--om-color-bg-secondary-hover);
-  }
-
-  .ant-picker-cell-disabled::before {
-    background-color: var(--om-color-bg-disabled);
-  }
-
-  .ant-picker-cell-in-view.ant-picker-cell-in-range::before,
-  .ant-picker-cell-in-view.ant-picker-cell-range-start:not(
-      .ant-picker-cell-range-start-single
-    )::before,
-  .ant-picker-cell-in-view.ant-picker-cell-range-end:not(
-      .ant-picker-cell-range-end-single
-    )::before {
-    background-color: var(--om-color-bg-brand);
-  }
-}
-
-// antd multi-select tags use @background-color-base / @border-color-split,
-// both fixed light hexes: white chips with near-invisible text in dark.
-.dark-mode .ant-select-multiple .ant-select-selection-item {
-  background: var(--om-color-bg-secondary);
-  border-color: var(--om-color-border-secondary);
-  color: var(--om-color-text-primary);
-
-  .ant-select-selection-item-remove {
-    color: var(--om-color-text-tertiary);
   }
 }
