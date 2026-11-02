@@ -123,6 +123,11 @@ public class MigrationUtil {
    * regenerated definition.
    */
   public static void redeployGovernanceWorkflows() {
+    redeployGovernanceWorkflows("1.13.1");
+  }
+
+  /** Redeploys every governance workflow, logging under {@code release}. */
+  public static void redeployGovernanceWorkflows(final String release) {
     int redeployed = 0;
     int total = 0;
     try {
@@ -131,15 +136,18 @@ public class MigrationUtil {
       final List<WorkflowDefinition> workflows =
           repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
       total = workflows.size();
-      redeployed = redeployEach(WorkflowHandler.getInstance(), workflows);
+      redeployed = redeployEach(WorkflowHandler.getInstance(), workflows, release);
     } catch (Exception e) {
-      LOG.warn("[1.13.1] Skipping governance workflow redeploy; continuing", e);
+      LOG.warn("[{}] Skipping governance workflow redeploy; continuing", release, e);
     }
-    LOG.info("[1.13.1] Redeployed {} of {} governance workflow definition(s)", redeployed, total);
+    LOG.info(
+        "[{}] Redeployed {} of {} governance workflow definition(s)", release, redeployed, total);
   }
 
   private static int redeployEach(
-      final WorkflowHandler workflowHandler, final List<WorkflowDefinition> workflows) {
+      final WorkflowHandler workflowHandler,
+      final List<WorkflowDefinition> workflows,
+      final String release) {
     int redeployed = 0;
     for (final WorkflowDefinition workflow : workflows) {
       try {
@@ -147,7 +155,8 @@ public class MigrationUtil {
         redeployed++;
       } catch (Exception e) {
         LOG.warn(
-            "[1.13.1] Failed to redeploy workflow definition '{}'; continuing",
+            "[{}] Failed to redeploy workflow definition '{}'; continuing",
+            release,
             workflow.getFullyQualifiedName(),
             e);
       }
