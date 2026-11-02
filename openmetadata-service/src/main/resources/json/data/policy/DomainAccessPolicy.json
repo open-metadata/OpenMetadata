@@ -25,10 +25,10 @@
     },
     {
       "name": "DomainAccessDenyAdministrationRule",
-      "description": "Deny changing policies, roles, teams, users and bots that are in no domain, and any bot, as they grant access or credentials",
+      "description": "Deny changing policies, roles, teams, users, bots and apps that are in no domain, and any bot, as they grant access or credentials",
       "effect": "deny",
-      "resources": ["policy", "role", "team", "user", "bot"],
-      "operations": ["Create", "Delete", "EditAll"],
+      "resources": ["policy", "role", "team", "user", "bot", "app"],
+      "operations": ["Create", "Delete", "EditAll", "Trigger", "Deploy"],
       "condition": "noDomain() || isBotUser()"
     }
   ]

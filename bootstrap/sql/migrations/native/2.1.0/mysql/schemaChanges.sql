@@ -1193,14 +1193,15 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- DomainOnlyAccessPolicy allowed every operation on resources in no domain, so a confined user could
--- rewrite policies or mint bot tokens. Add a rule denying changes to those administrative resources.
+-- rewrite policies, mint bot tokens or run apps. Add a rule denying changes to those administrative
+-- resources.
 UPDATE policy_entity
 SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
     'name', 'DomainAccessDenyAdministrationRule',
-    'description', 'Deny changing policies, roles, teams, users and bots that are in no domain, and any bot, as they grant access or credentials',
+    'description', 'Deny changing policies, roles, teams, users, bots and apps that are in no domain, and any bot, as they grant access or credentials',
     'effect', 'deny',
-    'resources', JSON_ARRAY('bot', 'policy', 'role', 'team', 'user'),
-    'operations', JSON_ARRAY('Create', 'Delete', 'EditAll'),
+    'resources', JSON_ARRAY('app', 'bot', 'policy', 'role', 'team', 'user'),
+    'operations', JSON_ARRAY('Create', 'Delete', 'Deploy', 'EditAll', 'Trigger'),
     'condition', 'noDomain() || isBotUser()'))
 WHERE name = 'DomainOnlyAccessPolicy'
   AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),

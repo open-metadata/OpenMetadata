@@ -624,6 +624,23 @@ public class DomainIsolationIT {
       JsonNode rename =
           MAPPER.readTree("[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"changed\"}]");
 
+      // An app runs as its bot, so configuring or triggering one acts with the bot's roles. Checked
+      // first so an unfixed policy fails before a real run is started.
+      String app = "/v1/apps/name/SearchIndexingApplication";
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.getHttpClient().executeForString(HttpMethod.PATCH, app, rename));
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.POST,
+                      "/v1/apps/trigger/SearchIndexingApplication",
+                      Map.of(),
+                      Void.class));
+
       // Domainless policies, teams and bots grant access: the user may read them, not change them
       assertEquals(policy.getId(), client.policies().get(policy.getId().toString()).getId());
       assertThrows(
