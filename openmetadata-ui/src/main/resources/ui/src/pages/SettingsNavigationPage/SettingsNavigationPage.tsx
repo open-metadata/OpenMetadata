@@ -105,7 +105,11 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
 
   const renderNode = (node: NavigationTreeNode): React.ReactNode => (
     <Tree.Item id={node.key} key={node.key} textValue={t(node.title)}>
-      <Tree.ItemContent className="tw:min-h-12" icon={node.icon}>
+      <Tree.ItemContent
+        className="tw:min-h-12"
+        icon={node.icon}
+        // The core tree mutes item icons; this page lists them as primary content.
+        iconClassName="tw:size-6 tw:text-fg-secondary">
         <Box align="center" className="tw:flex-1" gap={2} justify="between">
           <ButtonUtility
             aria-label={t('label.move')}
@@ -150,7 +154,7 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
 
           <Grid.Item className="layout-column" span={24}>
             <Card className="custom-navigation-tree-container" variant="ghost">
-              <Card.Header title={t('label.navigation')} />
+              <Card.Header title={t('label.navigation-menu-plural')} />
               <Card.Content>
                 <Tree
                   aria-label={t('label.navigation')}
