@@ -58,6 +58,7 @@ const TaskRequester: React.FC<{ task: Task }> = ({ task }) => {
     <Box align="center" className="tw:gap-1.5">
       {agent ? (
         <Avatar
+          className="tw:bg-primary"
           data-testid="agent-avatar"
           placeholderIcon={AgentAvatarIcon}
           size="xxs"
