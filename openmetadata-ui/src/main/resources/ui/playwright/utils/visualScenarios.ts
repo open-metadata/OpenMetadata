@@ -148,6 +148,7 @@ export const registerVisualScenarios = (group: string) => {
                 );
             }
           }
+          await expect(locate(page, scene.ready)).toBeVisible();
           if (group === 'Entity tabs') {
             // A selected tab and its empty panel can render before lazy
             // content mounts. Require a checkpoint inside the loaded view.
@@ -160,12 +161,13 @@ export const registerVisualScenarios = (group: string) => {
               throw new Error(
                 'Entity tab scenarios require an explicit tab action.'
               );
-            await expect(locate(page, tab)).toHaveAttribute(
-              'aria-selected',
-              'true'
-            );
+            const selectedTab = locate(page, tab);
+            await expect(selectedTab).toHaveAttribute('aria-selected', 'true');
+            // Selecting a far-right tab can still be scrolling after its panel
+            // mounts; otherwise fast generation can approve a clipped label.
+            await selectedTab.scrollIntoViewIfNeeded();
+            await expect(selectedTab).toBeInViewport({ ratio: 1 });
           }
-          await expect(locate(page, scene.ready)).toBeVisible();
           for (const missing of scene.absent ?? [])
             await expect(locate(page, missing)).toHaveCount(0);
           for (const selected of scene.checked ?? [])
