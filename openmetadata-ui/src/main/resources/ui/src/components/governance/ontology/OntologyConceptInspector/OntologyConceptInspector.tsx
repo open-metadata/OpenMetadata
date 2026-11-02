@@ -861,7 +861,7 @@ const OntologyConceptInspector = ({
 
   const renderAiPanel = () => (
     <aside
-      className="tw:flex tw:h-full tw:w-105 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
+      className="tw:flex tw:h-full tw:w-75 tw:xl:w-105 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
       data-testid="ontology-concept-inspector">
       {renderAiHeader()}
       <div className="tw:min-h-0 tw:flex-1 tw:divide-y tw:divide-secondary tw:overflow-auto tw:px-6">

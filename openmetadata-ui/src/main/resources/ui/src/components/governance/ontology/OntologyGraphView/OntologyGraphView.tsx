@@ -24,10 +24,11 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
+  KeyboardEvent,
   lazy,
   Suspense,
   useCallback,
@@ -87,7 +88,10 @@ import {
   LayoutType,
   RELATION_COLORS,
 } from '../../../OntologyExplorer/OntologyExplorer.constants';
-import { OntologyGraphHandle } from '../../../OntologyExplorer/OntologyExplorer.interface';
+import {
+  OntologyGraphData,
+  OntologyGraphHandle,
+} from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
 import {
   buildNativeTreeIndex,
@@ -96,14 +100,18 @@ import {
 } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/RelationshipTypePicker.constants';
+import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
+import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
 import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
+import OntologyConceptSearch from './OntologyConceptSearch';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
+import OntologyGraphNodeList from './OntologyGraphNodeList';
 import { useOntologyGraphSearchSlot } from './OntologyGraphSearchSlot.context';
 import {
   AI_GRAPH_BACKDROP_CLASS,
@@ -126,6 +134,7 @@ const GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-border-color-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
 const RELATIONSHIP_TYPES_QUERY_KEY = 'relationship-types';
 const NO_RELATIONSHIP_TYPES: RelationshipType[] = [];
+const NO_GRAPH: OntologyGraphData = { nodes: [], edges: [] };
 
 const missingRelationType = (id: string): never => {
   throw new Error(`Unknown relation type ${id}`);
@@ -304,6 +313,7 @@ interface OntologyGraphViewProps {
   readonly ontology: Ontology;
   readonly surface: 'graph' | 'tree';
   readonly onRequestGraphSurface: () => void;
+  readonly onRequestTreeSurface?: () => void;
   readonly createConceptRequestKey?: number;
   readonly onRequestCreateConcept?: () => void;
   readonly onAuthoringLockChange?: (locked: boolean) => void;
@@ -330,6 +340,7 @@ const OntologyGraphView = ({
   ontology,
   surface,
   onRequestGraphSurface,
+  onRequestTreeSurface,
   createConceptRequestKey = 0,
   onRequestCreateConcept,
   onAuthoringLockChange,
@@ -411,6 +422,69 @@ const OntologyGraphView = ({
         : null,
     [graph, search]
   );
+  const searchMatchIds = useMemo(
+    () =>
+      new Set(
+        searchHighlight?.active ? searchHighlight.highlightedNodeIds : []
+      ),
+    [searchHighlight]
+  );
+  const searchResults = useMemo(
+    () =>
+      graph ? rankConceptMatches(graph.nodes, searchMatchIds, search) : [],
+    [graph, search, searchMatchIds]
+  );
+  const scope = useMemo(
+    () =>
+      buildStudioGraphScope(graph ?? NO_GRAPH, {
+        seedIds: [
+          ...(selectedId ? [selectedId] : []),
+          ...searchResults.map(({ id }) => id),
+        ],
+      }),
+    [graph, searchResults, selectedId]
+  );
+  const nodeListEntries = useMemo(
+    () =>
+      [...scope.graph.nodes].sort((left, right) =>
+        left.label.localeCompare(right.label)
+      ),
+    [scope]
+  );
+  const rootRef = useRef<HTMLDivElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const hadSelection = useRef(false);
+  // Closing the panel puts focus back where the keyboard opened it, or on the
+  // Find box when the opener is gone, instead of dropping it on the page body.
+  useEffect(() => {
+    if (selectedId) {
+      const active = document.activeElement;
+      if (
+        !hadSelection.current &&
+        active instanceof HTMLElement &&
+        active !== document.body
+      ) {
+        opener.current = active;
+      }
+      hadSelection.current = true;
+
+      return;
+    }
+    if (!hadSelection.current) {
+      return;
+    }
+    hadSelection.current = false;
+    const target = opener.current?.isConnected
+      ? opener.current
+      : rootRef.current?.querySelector<HTMLElement>(
+          '[data-testid="ontology-graph-search"]'
+        ) ??
+        document.querySelector<HTMLElement>(
+          '[data-testid="ontology-graph-search"]'
+        );
+    opener.current = null;
+    target?.focus();
+  }, [selectedId]);
   const relationColors = useMemo(
     () =>
       graph
@@ -930,6 +1004,40 @@ const OntologyGraphView = ({
     );
   };
 
+  const renderScopeNotice = () => {
+    if (!scope.isFocused) {
+      return null;
+    }
+    const message = t(
+      scope.shownCount === 0
+        ? 'message.ontology-graph-too-large'
+        : 'message.ontology-graph-focused',
+      { shown: scope.shownCount, total: scope.totalCount }
+    );
+
+    return (
+      <div
+        className={
+          scope.shownCount === 0
+            ? 'tw:absolute tw:inset-0 tw:z-5 tw:flex tw:items-center tw:justify-center tw:p-6'
+            : 'tw:absolute tw:top-16 tw:left-1/2 tw:z-6 tw:w-[min(32rem,calc(100%-2rem))] tw:-translate-x-1/2'
+        }>
+        <Alert data-testid="ontology-graph-focused-notice" variant="brand">
+          {message}
+          {onRequestTreeSurface ? (
+            <Button
+              color="secondary"
+              data-testid="ontology-graph-open-tree"
+              size="sm"
+              onPress={onRequestTreeSurface}>
+              {t('label.open-entity', { entity: t('label.tree') })}
+            </Button>
+          ) : null}
+        </Alert>
+      </div>
+    );
+  };
+
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
@@ -957,32 +1065,40 @@ const OntologyGraphView = ({
           aria-hidden="true"
           className={isAiMode ? AI_GRAPH_BACKDROP_CLASS : GRAPH_BACKDROP_CLASS}
         />
-        <Suspense fallback={<Loader />}>
-          <OntologyGraphG6
-            keepCanvasOnAdd
-            studioMode
-            canCreateRelationType={canCreateRelationType}
-            edges={graph.edges}
-            focusNodeId={selectedId}
-            glossaries={[]}
-            glossaryColorMap={{}}
-            graphSearchHighlight={searchHighlight}
-            isEditMode={canCreateAxiom}
-            nodePositions={nodePositions}
-            nodes={graph.nodes}
-            ref={graphRef}
-            relationColors={relationColors}
-            relationTypeGroups={relationTypeGroups}
-            selectedNodeId={selectedId}
-            settings={SETTINGS}
-            onCreateRelation={async (fromId, toId, relationType) => {
-              await createRelation(fromId, toId, relationType);
-            }}
-            onNodeClick={selectNode}
-            onNodeDoubleClick={selectNode}
-            onPaneClick={() => setSelectedId(undefined)}
-          />
-        </Suspense>
+        {renderScopeNotice()}
+        {scope.shownCount > 0 || !scope.isFocused ? (
+          <Suspense fallback={<Loader />}>
+            <OntologyGraphG6
+              keepCanvasOnAdd
+              studioMode
+              canCreateRelationType={canCreateRelationType}
+              edges={scope.graph.edges}
+              focusNodeId={selectedId}
+              glossaries={[]}
+              glossaryColorMap={{}}
+              graphSearchHighlight={searchHighlight}
+              isEditMode={canCreateAxiom}
+              nodePositions={nodePositions}
+              nodes={scope.graph.nodes}
+              ref={graphRef}
+              relationColors={relationColors}
+              relationTypeGroups={relationTypeGroups}
+              selectedNodeId={selectedId}
+              settings={SETTINGS}
+              onCreateRelation={async (fromId, toId, relationType) => {
+                await createRelation(fromId, toId, relationType);
+              }}
+              onNodeClick={selectNode}
+              onNodeDoubleClick={selectNode}
+              onPaneClick={() => setSelectedId(undefined)}
+            />
+          </Suspense>
+        ) : null}
+        <OntologyGraphNodeList
+          nodes={nodeListEntries}
+          selectedId={selectedId}
+          onOpen={selectNode}
+        />
         {renderGraphControls()}
       </>
     );
@@ -1064,19 +1180,16 @@ const OntologyGraphView = ({
     ) : null;
 
   const renderSearch = () => {
+    const finder = (
+      <OntologyConceptSearch
+        results={searchResults}
+        value={search}
+        onChange={setSearch}
+        onOpen={selectNode}
+      />
+    );
     if (isAiMode && searchSlot) {
-      return createPortal(
-        <Input
-          aria-label={t('label.find-concept')}
-          icon={Search}
-          inputDataTestId="ontology-graph-search"
-          placeholder={`${t('label.find-concept')}…`}
-          size="sm"
-          value={search}
-          onChange={setSearch}
-        />,
-        searchSlot
-      );
+      return createPortal(finder, searchSlot);
     }
 
     return (
@@ -1086,22 +1199,30 @@ const OntologyGraphView = ({
             ? 'tw:px-6 tw:pt-4'
             : 'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6'
         }>
-        <Input
-          aria-label={t('label.find-concept')}
-          className="tw:w-54"
-          icon={Search}
-          inputDataTestId="ontology-graph-search"
-          placeholder={`${t('label.find-concept')}…`}
-          size="sm"
-          value={search}
-          onChange={setSearch}
-        />
+        {finder}
       </div>
     );
   };
 
+  const closeOnEscape = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (
+      event.key === 'Escape' &&
+      !event.defaultPrevented &&
+      selected &&
+      !conceptEditor
+    ) {
+      event.stopPropagation();
+      setSelectedId(undefined);
+    }
+  };
+
   return (
-    <div className="tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden">
+    // Escape bubbles up from whichever control opened or sits in the panel.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
+      className="tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
+      ref={rootRef}
+      onKeyDown={closeOnEscape}>
       <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
         {renderSearch()}
         {renderAddConcept()}
