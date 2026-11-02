@@ -1,8 +1,12 @@
+from metadata.ingestion.source.database.dynamodb.connection import DynamoDBConnection
+from metadata.ingestion.source.database.dynamodb.metadata import DynamodbSource
+from metadata.profiler.interface.nosql.profiler_interface import NoSQLProfilerInterface
+from metadata.sampler.nosql.sampler import NoSQLSampler
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class="metadata.ingestion.source.database.dynamodb.metadata.DynamodbSource",
-    profiler_class="metadata.profiler.interface.nosql.profiler_interface.NoSQLProfilerInterface",
-    sampler_class="metadata.sampler.nosql.sampler.NoSQLSampler",
-    connection_class="metadata.ingestion.source.database.dynamodb.connection.DynamoDBConnection",
+    metadata_source_class=DynamodbSource,
+    profiler_class=NoSQLProfilerInterface,
+    sampler_class=NoSQLSampler,
+    connection_class=DynamoDBConnection,  # pyright: ignore[reportArgumentType]
 )

@@ -15,8 +15,12 @@ import subprocess
 import sys
 import textwrap
 
+import pytest
 
-def test_all_database_specs_and_resolution_load_without_connector_drivers():
+from metadata.entity_resolution.table_binding import TableBindingResolution, load_table_binding_resolution
+
+
+def test_all_connector_resolvers_load_without_specs_or_connector_drivers():
     script = textwrap.dedent("""
         import importlib.abc
         import sys
@@ -27,30 +31,27 @@ def test_all_database_specs_and_resolution_load_without_connector_drivers():
             "google.cloud.bigquery", "google.cloud.bigquery_storage", "sqlalchemy_bigquery",
             "snowflake.connector", "clickhouse_connect", "clickhouse_sqlalchemy", "psycopg2",
             "pymysql", "pyodbc", "oracledb", "trino", "pyhive", "databricks.sql",
+            "metadata.utils.service_spec.default",
         )
         class NoDrivers(importlib.abc.MetaPathFinder):
             def find_spec(self, fullname, path=None, target=None):
                 parts = fullname.split(".")
                 source = (parts[:4] == ["metadata", "ingestion", "source", "database"]
-                          and len(parts) == 6 and parts[-1] in ("metadata", "lineage", "usage", "connection"))
+                          and len(parts) == 6 and parts[-1] in ("metadata", "lineage", "usage", "connection", "service_spec"))
                 if source or any(fullname == root or fullname.startswith(root + ".") for root in drivers):
                     attempted.append(fullname)
                     raise ModuleNotFoundError(fullname, name=fullname)
         sys.meta_path.insert(0, NoDrivers())
 
-        from metadata.generated.schema.entity.services.serviceType import ServiceType
         from metadata.domain.table_reference import TableReference
         from metadata.generated.schema.entity.data.table import Table
-        from metadata.entity_resolution.table_binding import TableBindingResolution
-        from metadata.utils.service_spec.service_spec import BaseSpec, load_table_binding_resolution
+        from metadata.entity_resolution.table_binding import TableBindingResolution, load_table_binding_resolution
         import metadata.ingestion.source.database
 
         root = Path(next(iter(metadata.ingestion.source.database.__path__)))
         specs = sorted(root.glob("*/service_spec.py"))
         assert specs
         for path in specs:
-            spec = BaseSpec.get_for_source(ServiceType.Database, path.parent.name)
-            assert spec.metadata_source_class
             resolution = load_table_binding_resolution(path.parent.name, None)
             assert isinstance(resolution, TableBindingResolution)
 
@@ -69,7 +70,48 @@ def test_all_database_specs_and_resolution_load_without_connector_drivers():
         assert resolution.resolve(TableReference("demo_db", "analytics", "events_20260101$20260101"),
                                   service_name="warehouse") == (family,)
         assert not attempted, attempted
-        print(f"Loaded {len(specs)} specs and resolved a physical reference with drivers blocked")
+        print(f"Selected {len(specs)} resolvers and resolved a physical reference with specs and drivers blocked")
     """)
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=60, check=False)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.fixture
+def connector_module(tmp_path, monkeypatch):
+    import metadata.ingestion.source.database as database_package
+
+    monkeypatch.setattr(database_package, "__path__", [str(tmp_path), *database_package.__path__])
+    package = tmp_path / "test_binding"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    yield package / "resolution.py"
+    sys.modules.pop("metadata.ingestion.source.database.test_binding.resolution", None)
+    sys.modules.pop("metadata.ingestion.source.database.test_binding", None)
+
+
+@pytest.mark.parametrize("source_type", [None, "Postgres", "not_installed"])
+def test_absent_connector_resolution_uses_default(source_type):
+    assert type(load_table_binding_resolution(source_type, None)) is TableBindingResolution
+
+
+@pytest.mark.parametrize(
+    "source, error, message",
+    [
+        ("import missing_binding_dependency", ModuleNotFoundError, "missing_binding_dependency"),
+        ("raise AttributeError('module initialization failed')", AttributeError, "module initialization failed"),
+        ("", AttributeError, "TableBindingResolution"),
+        ("TableBindingResolution = object", TypeError, "must subclass"),
+    ],
+)
+def test_broken_connector_resolution_is_reported(connector_module, source, error, message):
+    connector_module.write_text(source)
+    with pytest.raises(error, match=message):
+        load_table_binding_resolution("test_binding", None)
+
+
+def test_timescale_source_public_import_remains_available():
+    from metadata.generated.schema.entity.services.serviceType import ServiceType
+    from metadata.ingestion.source.database.timescale import TimescaleSource
+    from metadata.utils.service_spec.service_spec import import_source_class
+
+    assert import_source_class(ServiceType.Database, "timescale") is TimescaleSource

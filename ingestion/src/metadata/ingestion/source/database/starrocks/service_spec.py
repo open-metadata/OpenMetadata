@@ -12,12 +12,19 @@
 StarRocks Service Spec
 """
 
+from metadata.ingestion.source.database.starrocks.connection import StarRocksConnection
+from metadata.ingestion.source.database.starrocks.lineage import StarRocksLineageSource
+from metadata.ingestion.source.database.starrocks.metadata import StarRocksSource
+from metadata.ingestion.source.database.starrocks.usage import StarRocksUsageSource
+from metadata.profiler.interface.sqlalchemy.starrocks.profiler_interface import (
+    StarRocksProfilerInterface,
+)
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class="metadata.ingestion.source.database.starrocks.metadata.StarRocksSource",
-    lineage_source_class="metadata.ingestion.source.database.starrocks.lineage.StarRocksLineageSource",
-    usage_source_class="metadata.ingestion.source.database.starrocks.usage.StarRocksUsageSource",
-    profiler_class="metadata.profiler.interface.sqlalchemy.starrocks.profiler_interface.StarRocksProfilerInterface",
-    connection_class="metadata.ingestion.source.database.starrocks.connection.StarRocksConnection",
+    metadata_source_class=StarRocksSource,
+    lineage_source_class=StarRocksLineageSource,
+    usage_source_class=StarRocksUsageSource,
+    profiler_class=StarRocksProfilerInterface,
+    connection_class=StarRocksConnection,  # pyright: ignore[reportArgumentType]
 )

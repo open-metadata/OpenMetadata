@@ -596,6 +596,7 @@ def test_hex_sql_cells_expand_complete_bigquery_wildcards(sdk, count):
 
 @pytest.mark.parametrize("count", [11, 100, 101])
 def test_hex_warehouse_queries_expand_or_report_incomplete(sdk, count, caplog):
+    caplog.set_level("DEBUG", logger="metadata.Ingestion")
     metadata, transport = sdk
     add_bigquery_service(transport)
     tables = [table(f"my_service.my_db.my_schema.events_{index}") for index in range(count)]
@@ -606,7 +607,7 @@ def test_hex_warehouse_queries_expand_or_report_incomplete(sdk, count, caplog):
     )
     if count > 100:
         assert result == []
-        assert "incomplete" in caplog.text
+        assert "configured limit" in caplog.text
     else:
         assert {value.id.root for value in result} == {value.id.root for value in tables}
 
@@ -750,7 +751,7 @@ def test_usage_without_resolution_policy_preserves_physical_names(sdk, tmp_path)
 @pytest.mark.parametrize("source_type", [None, "Postgres", "not_installed"])
 def test_default_resolution_searches_across_services_only_when_service_is_unknown(sdk, source_type):
     from metadata.domain.table_reference import TableReference
-    from metadata.utils.service_spec.service_spec import load_table_binding_resolution
+    from metadata.entity_resolution.table_binding import load_table_binding_resolution
 
     metadata, transport = sdk
     candidate = table("other.my_db.my_schema.my_table")
@@ -764,31 +765,31 @@ def test_default_resolution_searches_across_services_only_when_service_is_unknow
     assert all("*." not in params.get("fieldValue", [""])[0] for _, params in transport.requests)
 
 
-def test_source_loader_override_controls_resolution_without_changing_callers(sdk):
-    from metadata.domain.table_reference import TableReference
-    from metadata.utils.dependency_injector.dependency_injector import DependencyContainer
-    from metadata.utils.service_spec.service_spec import BaseSpec, SourceLoader, load_table_binding_resolution
+def test_connector_module_controls_resolution_without_changing_callers(sdk, tmp_path, monkeypatch):
+    import sys
 
+    import metadata.ingestion.source.database as database_package
+    from metadata.domain.table_reference import TableReference
+    from metadata.entity_resolution.table_binding import load_table_binding_resolution
+
+    monkeypatch.setattr(database_package, "__path__", [str(tmp_path), *database_package.__path__])
+    package = tmp_path / "test_binding"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    (package / "resolution.py").write_text(
+        "from metadata.ingestion.source.database.bigquery.resolution import TableBindingResolution"
+    )
     metadata, transport = sdk
     family = bigquery_family()
     transport.entities[family.fullyQualifiedName.root] = family
-    container = DependencyContainer()
-    container.override(
-        SourceLoader,
-        lambda: (
-            lambda *args: BaseSpec(
-                metadata_source_class="custom.metadata.Source",
-                table_binding_resolution_class="metadata.ingestion.source.database.bigquery.resolution.BigQueryTableBindingResolution",
-            )
-        ),
-    )
     try:
-        resolution = load_table_binding_resolution("custom", metadata)
+        resolution = load_table_binding_resolution("test_binding", metadata)
         assert resolution.resolve(
             TableReference("my_db", "my_schema", "events_20260101"), service_name="my_service"
         ) == (family,)
     finally:
-        container.remove_override(SourceLoader)
+        sys.modules.pop("metadata.ingestion.source.database.test_binding.resolution", None)
+        sys.modules.pop("metadata.ingestion.source.database.test_binding", None)
 
 
 def test_service_type_cache_is_isolated_between_catalogs(sdk):

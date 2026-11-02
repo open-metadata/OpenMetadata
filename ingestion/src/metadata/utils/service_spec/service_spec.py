@@ -2,15 +2,18 @@
 Manifests are used to store class information
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
-from pydantic import Field, model_validator
+from pydantic import model_validator
 
+from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.ingestion.api.steps import Source
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.dependency_injector.dependency_injector import Inject, inject
 from metadata.utils.importer import (
     TYPE_SEPARATOR,
@@ -22,16 +25,6 @@ from metadata.utils.importer import (
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
-
-if TYPE_CHECKING:
-    from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
-    from metadata.entity_resolution.engine import EntityResolver
-    from metadata.entity_resolution.table_binding import TableBindingResolution
-    from metadata.ingestion.api.steps import Source
-    from metadata.ingestion.connections.connection import BaseConnection
-    from metadata.ingestion.ometa.ometa_api import OpenMetadata
-    from metadata.profiler.interface.profiler_interface import ProfilerInterface
-    from metadata.sampler.sampler_interface import SamplerInterface
 
 
 class SourceLoader(ABC):
@@ -70,7 +63,6 @@ class BaseSpec(BaseModel):
     sampler_class: str | None = None
     data_diff: str | None = None
     connection_class: str | None = None
-    table_binding_resolution_class: str | None = Field(default=None)
 
     @model_validator(mode="before")
     @classmethod
@@ -90,7 +82,7 @@ class BaseSpec(BaseModel):
         source_type: str,
         from_: str = "ingestion",
         source_loader: Inject[SourceLoader] = None,
-    ) -> BaseSpec:
+    ) -> "BaseSpec":
         """Retrieves the manifest for a given source type. If it does not exist will attempt to retrieve
         a default manifest for the service type.
 
@@ -148,7 +140,7 @@ def import_source_class(service_type: ServiceType, source_type: str, from_: str 
         field = "metadata_source_class"
     spec = BaseSpec.get_for_source(service_type, source_type, from_)
     return cast(
-        "type[Source]",
+        type[Source],  # noqa: TC006
         import_from_module(spec.model_dump()[field]),
     )
 
@@ -157,7 +149,7 @@ def import_profiler_class(service_type: ServiceType, source_type: str) -> type[P
     class_path = BaseSpec.get_for_source(service_type, source_type).profiler_class
     if not class_path:
         raise ValueError(f"Profiler class not found for service type {service_type} and source type {source_type}")
-    return cast("type[ProfilerInterface]", import_from_module(class_path))
+    return cast(type[ProfilerInterface], import_from_module(class_path))  # noqa: TC006
 
 
 def import_test_suite_class(
@@ -174,7 +166,7 @@ def import_test_suite_class(
             raise
     if not class_path:
         raise ValueError(f"Test suite class not found for service type {service_type} and source type {source_type}")
-    return cast("type[TestSuiteInterface]", import_from_module(class_path))
+    return cast(type[TestSuiteInterface], import_from_module(class_path))  # noqa: TC006
 
 
 def import_sampler_class(
@@ -191,7 +183,7 @@ def import_sampler_class(
             raise
     if not class_path:
         raise ValueError(f"Sampler class not found for service type {service_type} and source type {source_type}")
-    return cast("type[SamplerInterface]", import_from_module(class_path))
+    return cast(type[SamplerInterface], import_from_module(class_path))  # noqa: TC006
 
 
 def import_connection_class(
@@ -204,33 +196,4 @@ def import_connection_class(
     class_path = BaseSpec.get_for_source(service_type, source_type).connection_class
     if not class_path:
         raise ValueError(f"Connection class not found for service type {service_type} and source type {source_type}")
-    return cast("type[BaseConnection]", import_from_module(class_path))
-
-
-def load_table_binding_resolution(
-    source_type: str | None,
-    metadata: OpenMetadata,
-    *,
-    engine: EntityResolver | None = None,
-) -> TableBindingResolution:
-    """Select table resolution from the service spec, defaulting only when undeclared."""
-    from metadata.entity_resolution.table_binding import TableBindingResolution
-
-    if not source_type:
-        return TableBindingResolution(metadata, engine)
-    module = f"metadata.ingestion.source.database.{get_module_dir(source_type.lower())}.service_spec"
-    try:
-        spec = BaseSpec.get_for_source(ServiceType.Database, source_type.lower())
-    except DynamicImportException as exc:
-        cause = exc.cause
-        if (
-            isinstance(cause, ModuleNotFoundError)
-            and cause.name
-            and (cause.name == module or module.startswith(cause.name + "."))
-        ):
-            return TableBindingResolution(metadata, engine)
-        raise
-    if not spec.table_binding_resolution_class:
-        return TableBindingResolution(metadata, engine)
-    resolution_class = import_from_module(spec.table_binding_resolution_class)
-    return resolution_class(metadata, engine)
+    return cast(type[BaseConnection], import_from_module(class_path))  # noqa: TC006

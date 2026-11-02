@@ -1,9 +1,14 @@
+from metadata.ingestion.source.database.clickhouse.connection import ClickhouseConnection
+from metadata.ingestion.source.database.clickhouse.lineage import (
+    ClickhouseLineageSource,
+)
+from metadata.ingestion.source.database.clickhouse.metadata import ClickhouseSource
+from metadata.ingestion.source.database.clickhouse.usage import ClickhouseUsageSource
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    table_binding_resolution_class="metadata.ingestion.source.database.clickhouse.resolution.ClickHouseTableBindingResolution",
-    metadata_source_class="metadata.ingestion.source.database.clickhouse.metadata.ClickhouseSource",
-    lineage_source_class="metadata.ingestion.source.database.clickhouse.lineage.ClickhouseLineageSource",
-    usage_source_class="metadata.ingestion.source.database.clickhouse.usage.ClickhouseUsageSource",
-    connection_class="metadata.ingestion.source.database.clickhouse.connection.ClickhouseConnection",
+    metadata_source_class=ClickhouseSource,
+    lineage_source_class=ClickhouseLineageSource,
+    usage_source_class=ClickhouseUsageSource,
+    connection_class=ClickhouseConnection,  # pyright: ignore[reportArgumentType]
 )

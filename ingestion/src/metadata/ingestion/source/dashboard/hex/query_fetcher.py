@@ -347,7 +347,7 @@ class HexQueryFetcher:
                 self._project_lineage_map[project_id].add_tables(upstream_tables)
 
             except Exception as e:
-                logger.warning("Hex query lineage incomplete: %s", e)
+                logger.debug(f"Error extracting tables from query: {e}")
 
     def _extract_tables_from_query(
         self,
@@ -416,11 +416,10 @@ class HexQueryFetcher:
 
             except Exception as parser_error:
                 hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-                logger.warning("%sHex query lineage incomplete: %s", hash_prefix, parser_error)
-                return []
+                logger.debug(f"{hash_prefix}LineageParser failed, falling back to alternative method: {parser_error}")
 
         except Exception as e:
-            logger.warning("Hex query lineage incomplete: %s", e)
+            logger.debug(f"Error extracting tables from query: {e}")
 
         return tables
 

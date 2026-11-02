@@ -27,7 +27,7 @@ from collate_sqllineage.core.models import Table as LineageTable
 from networkx import DiGraph
 
 from metadata.domain.table_reference import TableReference
-from metadata.entity_resolution.table_binding import TableBindingResolution, TableLookup
+from metadata.entity_resolution.table_binding import TableBindingResolution, TableLookup, load_table_binding_resolution
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
@@ -61,7 +61,6 @@ from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
-from metadata.utils.service_spec.service_spec import load_table_binding_resolution
 from metadata.utils.timeout import timeout
 
 logger = utils_logger()

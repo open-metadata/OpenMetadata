@@ -21,7 +21,8 @@ from metadata.entity_resolution.engine import (
     FqnLookupMode,
     ResolutionTier,
 )
-from metadata.entity_resolution.table_binding import TableBindingResolution, TableLookup
+from metadata.entity_resolution.table_binding import TableBindingResolution as DefaultTableBindingResolution
+from metadata.entity_resolution.table_binding import TableLookup
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.generated.schema.type.queryParserData import ParsedData
@@ -172,7 +173,7 @@ def _resolve_scoped_reference(resolver, service: str, reference: TableReference,
     )
 
 
-class BigQueryTableBindingResolution(TableBindingResolution):
+class BigQueryTableBindingResolution(DefaultTableBindingResolution):
     def resolve(
         self,
         reference: TableReference,
@@ -220,3 +221,6 @@ class BigQueryTableBindingResolution(TableBindingResolution):
                 targets[identity] = target
                 joins.setdefault(target, []).extend((execution.joins or {}).get(table) or [])
         return execution.model_copy(update={"tables": list(targets.values()), "joins": joins})
+
+
+TableBindingResolution = BigQueryTableBindingResolution

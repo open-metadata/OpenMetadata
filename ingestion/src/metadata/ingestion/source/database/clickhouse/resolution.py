@@ -14,14 +14,15 @@
 from dataclasses import replace
 
 from metadata.domain.table_reference import TableReference
-from metadata.entity_resolution.table_binding import TableBindingResolution, TableLookup
+from metadata.entity_resolution.table_binding import TableBindingResolution as DefaultTableBindingResolution
+from metadata.entity_resolution.table_binding import TableLookup
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 
 
-class ClickHouseTableBindingResolution(TableBindingResolution):
+class ClickHouseTableBindingResolution(DefaultTableBindingResolution):
     def _normalize_reference(self, reference: TableReference, service_name: str | None) -> TableReference:
         return replace(reference, database=None) if service_name and service_name != "*" else reference
 
@@ -71,3 +72,6 @@ class ClickHouseTableBindingResolution(TableBindingResolution):
             ):
                 tables.append(table)
         return tuple(tables)
+
+
+TableBindingResolution = ClickHouseTableBindingResolution

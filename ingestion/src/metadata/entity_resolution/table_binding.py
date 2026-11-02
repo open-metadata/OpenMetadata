@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Default table resolution and caller lookup policies."""
 
+import importlib
 import traceback
 from enum import Enum
 from typing import Any, cast
@@ -22,6 +23,7 @@ from metadata.generated.schema.type.queryParserData import ParsedData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.fqn import build_es_fqn_search_string
+from metadata.utils.importer import get_module_dir
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
@@ -30,6 +32,28 @@ alias_resolution_cache = LRUCache(LRU_CACHE_SIZE)
 
 # Connectors opt into alias lookup through their connection configuration.
 ALIAS_OPT_IN_FIELD = "includeSynonyms"
+
+
+def load_table_binding_resolution(
+    source_type: str | None,
+    metadata: OpenMetadata,
+    *,
+    engine: EntityResolver | None = None,
+) -> "TableBindingResolution":
+    """Load an optional connector resolver; only an absent module uses the default."""
+    if not source_type:
+        return TableBindingResolution(metadata, engine)
+    module_name = f"metadata.ingestion.source.database.{get_module_dir(source_type.lower())}.resolution"
+    try:
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name and (exc.name == module_name or module_name.startswith(exc.name + ".")):
+            return TableBindingResolution(metadata, engine)
+        raise
+    resolution_class = module.TableBindingResolution
+    if not isinstance(resolution_class, type) or not issubclass(resolution_class, TableBindingResolution):
+        raise TypeError(f"{module_name}.TableBindingResolution must subclass the shared TableBindingResolution")
+    return resolution_class(metadata, engine)
 
 
 def service_resolves_aliases(metadata: OpenMetadata, service_name: str | None) -> bool:

@@ -72,7 +72,7 @@ class TableResolver:
         fields: tuple[str, ...] = (),
         include: str | None = None,
     ) -> tuple[Table, ...]:
-        from metadata.utils.service_spec.service_spec import load_table_binding_resolution
+        from metadata.entity_resolution.table_binding import load_table_binding_resolution
 
         names = service_names or tuple(self._service_types) or ("*",)
         if "*" in names and names != ("*",):

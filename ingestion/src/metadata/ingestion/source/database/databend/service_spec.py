@@ -10,10 +10,13 @@
 #  limitations under the License.
 """Databend service specification."""
 
+from metadata.ingestion.source.database.databend.connection import DatabendConnection
+from metadata.ingestion.source.database.databend.lineage import DatabendLineageSource
+from metadata.ingestion.source.database.databend.metadata import DatabendSource
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class="metadata.ingestion.source.database.databend.metadata.DatabendSource",
-    lineage_source_class="metadata.ingestion.source.database.databend.lineage.DatabendLineageSource",
-    connection_class="metadata.ingestion.source.database.databend.connection.DatabendConnection",
+    metadata_source_class=DatabendSource,  # pyright: ignore[reportArgumentType]
+    lineage_source_class=DatabendLineageSource,  # pyright: ignore[reportArgumentType]
+    connection_class=DatabendConnection,  # pyright: ignore[reportArgumentType]
 )

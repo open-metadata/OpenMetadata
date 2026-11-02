@@ -23,7 +23,7 @@ from typing import Any
 from requests.utils import urlparse  # pyright: ignore[reportPrivateImportUsage]
 
 from metadata.domain.table_reference import TableReference
-from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_binding import TableLookup, load_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -120,7 +120,6 @@ from metadata.utils.helpers import (
     get_standard_chart_type,
 )
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.service_spec.service_spec import load_table_binding_resolution
 
 logger = ingestion_logger()
 

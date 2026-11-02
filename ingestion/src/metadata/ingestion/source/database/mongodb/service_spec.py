@@ -1,8 +1,12 @@
+from metadata.ingestion.source.database.mongodb.connection import MongoDBConnection
+from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
+from metadata.profiler.interface.nosql.profiler_interface import NoSQLProfilerInterface
+from metadata.sampler.nosql.sampler import NoSQLSampler
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class="metadata.ingestion.source.database.mongodb.metadata.MongodbSource",
-    profiler_class="metadata.profiler.interface.nosql.profiler_interface.NoSQLProfilerInterface",
-    sampler_class="metadata.sampler.nosql.sampler.NoSQLSampler",
-    connection_class="metadata.ingestion.source.database.mongodb.connection.MongoDBConnection",
+    metadata_source_class=MongodbSource,
+    profiler_class=NoSQLProfilerInterface,
+    sampler_class=NoSQLSampler,
+    connection_class=MongoDBConnection,  # pyright: ignore[reportArgumentType]
 )

@@ -1,9 +1,18 @@
+from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
+    PandasTestSuiteInterface,
+)
+from metadata.ingestion.source.database.datalake.connection import DatalakeConnection
+from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
+from metadata.profiler.interface.pandas.profiler_interface import (
+    PandasProfilerInterface,
+)
+from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class="metadata.ingestion.source.database.datalake.metadata.DatalakeSource",
-    profiler_class="metadata.profiler.interface.pandas.profiler_interface.PandasProfilerInterface",
-    test_suite_class="metadata.data_quality.interface.pandas.pandas_test_suite_interface.PandasTestSuiteInterface",
-    sampler_class="metadata.sampler.pandas.sampler.DatalakeSampler",
-    connection_class="metadata.ingestion.source.database.datalake.connection.DatalakeConnection",
+    metadata_source_class=DatalakeSource,
+    profiler_class=PandasProfilerInterface,
+    test_suite_class=PandasTestSuiteInterface,
+    sampler_class=DatalakeSampler,
+    connection_class=DatalakeConnection,
 )
