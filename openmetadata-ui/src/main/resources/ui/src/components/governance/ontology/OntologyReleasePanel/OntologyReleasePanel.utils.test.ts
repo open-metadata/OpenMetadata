@@ -12,8 +12,13 @@
  */
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import {
+  EntityStatus,
+  OntologyRelease,
+} from '../../../../generated/entity/data/ontologyRelease';
+import {
   isSameWorkingState,
   nextSemanticVersion,
+  visibleHistoryReleases,
 } from './OntologyReleasePanel.utils';
 
 describe('publication version preview', () => {
@@ -46,5 +51,38 @@ describe('publication version preview', () => {
     expect(
       isSameWorkingState(state, { ...state, lastReleaseRevision: 4 })
     ).toBe(false);
+  });
+});
+
+describe('visible release history', () => {
+  const release = (
+    id: string,
+    entityStatus: EntityStatus,
+    reviewTask?: string
+  ) => ({ id, entityStatus, reviewTask } as OntologyRelease);
+
+  it('hides a draft with no task unless it is the latest', () => {
+    const releases = [
+      release('latest-draft', EntityStatus.Draft),
+      release('old-draft', EntityStatus.Draft),
+      release('reviewed-draft', EntityStatus.Draft, 'task'),
+      release('approved', EntityStatus.Approved),
+      release('in-review', EntityStatus.InReview, 'task'),
+    ];
+
+    expect(
+      visibleHistoryReleases(releases, 'latest-draft').map(({ id }) => id)
+    ).toEqual(['latest-draft', 'reviewed-draft', 'approved', 'in-review']);
+  });
+
+  it('keeps every draft out of the way of a newer decided release', () => {
+    const releases = [
+      release('approved', EntityStatus.Approved),
+      release('old-draft', EntityStatus.Draft),
+    ];
+
+    expect(
+      visibleHistoryReleases(releases, 'approved').map(({ id }) => id)
+    ).toEqual(['approved']);
   });
 });

@@ -113,7 +113,11 @@ beforeEach(() => {
   });
   releases = [
     makeRelease(5),
-    { ...makeRelease(1), entityStatus: EntityStatus.Approved },
+    {
+      ...makeRelease(1),
+      semanticVersion: '1.5.0',
+      entityStatus: EntityStatus.Approved,
+    },
   ];
   currentState = {
     ontologyId: owner,
@@ -171,6 +175,31 @@ afterEach(() => {
   jest.useFakeTimers();
 });
 
+it('takes the version base from the active release, not from a newer versioned Draft', async () => {
+  releases[1] = { ...releases[1], semanticVersion: '1.0.0' };
+  const hook = await setup();
+
+  await waitFor(() =>
+    expect(hook.result.current.versionBase.isSuccess).toBe(true)
+  );
+
+  expect(hook.result.current.versionBase.data?.semanticVersion).toBe('1.0.0');
+  expect(
+    hook.result.current.history.data?.pages[0].data[0].semanticVersion
+  ).toBe('1.5.0');
+});
+
+it('has no version base until a release is active', async () => {
+  currentState = { ...currentState, activeReleaseId: undefined };
+  const hook = await setup();
+
+  await waitFor(() =>
+    expect(hook.result.current.versionBase.isSuccess).toBe(true)
+  );
+
+  expect(hook.result.current.versionBase.data).toBeUndefined();
+});
+
 it('opens the latest Draft when active is older, and keeps current separate from history selection', async () => {
   const hook = await setup();
 
@@ -193,7 +222,7 @@ it('opens the latest Draft when active is older, and keeps current separate from
 it('does not create a second task after an unknown task outcome returns Draft without a task', async () => {
   const hook = await setup();
 
-  expect(hook.result.current.latestVersioned.isSuccess).toBe(true);
+  expect(hook.result.current.versionBase.isSuccess).toBe(true);
 
   post.mockImplementation(async (url) => {
     if (url === `/ontologies/${owner}/releases`) {
@@ -239,7 +268,7 @@ it('does not create a second task after an unknown task outcome returns Draft wi
   hook.unmount();
   const reopened = await setup();
   await waitFor(() =>
-    expect(reopened.result.current.latestVersioned.isSuccess).toBe(true)
+    expect(reopened.result.current.versionBase.isSuccess).toBe(true)
   );
   await act(async () => {
     await reopened.result.current.captureAndRequestApproval(currentState, {
@@ -616,7 +645,7 @@ it('does not expose previous-user state, diff, version baseline or history after
 
   expect(hook.result.current.state.data).toBeUndefined();
   expect(hook.result.current.working.data).toBeUndefined();
-  expect(hook.result.current.latestVersioned.data).toBeUndefined();
+  expect(hook.result.current.versionBase.data).toBeUndefined();
   expect(hook.result.current.history.data).toBeUndefined();
   expect(hook.result.current.canWrite).toBe(false);
 });

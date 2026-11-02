@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { OntologyApprovalRule } from '../../../../generated/entity/data/ontology';
-import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
+import {
+  EntityStatus,
+  OntologyRelease,
+} from '../../../../generated/entity/data/ontologyRelease';
 import { TaskType } from '../../../../generated/entity/tasks/task';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
@@ -188,3 +191,18 @@ export const releaseChangeCount = (release: OntologyRelease) => {
 
   return summary.added + summary.changed + summary.removed + summary.deprecated;
 };
+
+/**
+ * A draft nobody asked to review is only interesting while it is the newest;
+ * older ones are superseded captures and would bury the releases that matter.
+ */
+export const visibleHistoryReleases = (
+  releases: OntologyRelease[],
+  latestReleaseId: string | undefined
+) =>
+  releases.filter(
+    (release) =>
+      release.entityStatus !== EntityStatus.Draft ||
+      Boolean(release.reviewTask) ||
+      release.id === latestReleaseId
+  );

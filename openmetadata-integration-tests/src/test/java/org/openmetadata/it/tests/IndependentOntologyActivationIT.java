@@ -181,6 +181,7 @@ public class IndependentOntologyActivationIT extends BaseOntologyApprovalIT {
   void concurrentActivationsCommitOnePointerAndOneEvent(TestNamespace ns) throws Exception {
     final var ontology = createOntology(ns);
     final var first = capture(ontology);
+    declareClass(ontology, "Second", java.net.URI.create("https://example.org/model/Second"));
     final var second = capture(ontology);
     approve(ns, first);
     approve(ns, second);

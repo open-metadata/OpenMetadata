@@ -149,7 +149,7 @@ const OntologyReleasePanel = ({
     selectedId,
     setSelectedId,
     isBusy,
-    latestVersioned,
+    versionBase,
     history,
     current,
     currentUser,
@@ -220,7 +220,7 @@ const OntologyReleasePanel = ({
     displayed.isSuccess,
     !displayed.isFetching,
   ].every(Boolean);
-  const baseVersion = latestVersioned.data?.semanticVersion;
+  const baseVersion = versionBase.data?.semanticVersion;
   const bump =
     versionBump ?? (baseVersion ? VersionBump.Minor : VersionBump.Major);
   const changedSinceRejection = () =>
@@ -230,8 +230,8 @@ const OntologyReleasePanel = ({
   const canCapture = [
     canWrite,
     hasCoherentPreview,
-    latestVersioned.isSuccess,
-    !latestVersioned.isFetching,
+    versionBase.isSuccess,
+    !versionBase.isFetching,
     Boolean(currentStage?.unpublishedChanges),
     changedSinceRejection(),
   ].every(Boolean);
@@ -417,7 +417,7 @@ const OntologyReleasePanel = ({
     );
   };
   const getVersionPreview = () =>
-    latestVersioned.isSuccess
+    versionBase.isSuccess
       ? (baseVersion ?? '0.0.0') +
         ' → ' +
         nextSemanticVersion(baseVersion, bump)
@@ -489,20 +489,20 @@ const OntologyReleasePanel = ({
   );
 
   const renderVersionError = () =>
-    latestVersioned.isError && (
+    versionBase.isError && (
       <Alert variant="error">
         {t('message.ontology-version-unavailable')}
         <Button
           color="secondary"
           size="sm"
-          onPress={() => void latestVersioned.refetch()}>
+          onPress={() => void versionBase.refetch()}>
           {t('label.retry')}
         </Button>
       </Alert>
     );
 
   const renderVersionEditor = () =>
-    latestVersioned.isSuccess && (
+    versionBase.isSuccess && (
       <OntologyVersionEditor
         baseVersion={baseVersion}
         bump={bump}
@@ -586,7 +586,7 @@ const OntologyReleasePanel = ({
       )}
       {renderChangesPagination()}
       {renderVersionError()}
-      {latestVersioned.isSuccess && (
+      {versionBase.isSuccess && (
         <Typography data-testid="ontology-version-preview" size="text-sm">
           {getVersionPreview()}
         </Typography>

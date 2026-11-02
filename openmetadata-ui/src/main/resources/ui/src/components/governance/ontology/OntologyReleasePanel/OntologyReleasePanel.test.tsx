@@ -88,6 +88,7 @@ const release: OntologyRelease = {
   entityStatus: EntityStatus.Draft,
   releaseRevision: 1,
   semanticVersion: '1.2.3',
+  baseReleaseId: '00000000-0000-4000-8000-000000000009',
   sourceWorkingRevision: 7,
   sealedAt: 1,
   sealedBy: 'author',
@@ -99,11 +100,21 @@ const release: OntologyRelease = {
   encodingVersion: EncodingVersion.OntologyReleaseV1,
   logicalCheck: LogicalCheck.NotRun,
 };
+const baseRelease: OntologyRelease = {
+  ...release,
+  id: '00000000-0000-4000-8000-000000000009',
+  name: 'Release 0',
+  releaseRevision: 0,
+  semanticVersion: '1.2.3',
+  baseReleaseId: undefined,
+  entityStatus: EntityStatus.Approved,
+};
 const initialState: OntologyState = {
   ontologyId: ontology.id,
   activationRevision: 3,
   workingRevision: 7,
   lastReleaseRevision: 1,
+  activeReleaseId: baseRelease.id,
 };
 let currentState: OntologyState;
 let currentRelease: OntologyRelease;
@@ -301,6 +312,9 @@ describe('OntologyReleasePanel', () => {
     const releaseResponse = (url: string) => {
       if (url === `/ontologyReleases/${currentRelease.id}`) {
         return { data: currentRelease };
+      }
+      if (url === `/ontologyReleases/${baseRelease.id}`) {
+        return { data: baseRelease };
       }
       if (url === `/ontologyReleases/${release.id}`) {
         return { data: release };
@@ -580,7 +594,7 @@ describe('OntologyReleasePanel', () => {
         name: 'Captured R7',
         releaseRevision: 3,
         sourceWorkingRevision: 8,
-        semanticVersion: '1.4.0',
+        semanticVersion: '1.3.0',
         contentDigest: 'c'.repeat(64),
       },
     ];
@@ -1064,6 +1078,7 @@ describe('OntologyReleasePanel', () => {
           id: '00000000-0000-4000-8000-000000000004',
           semanticVersion: '1.1.0',
           releaseRevision: 1,
+          entityStatus: EntityStatus.Approved,
         };
 
         return {
@@ -1934,6 +1949,7 @@ describe('OntologyReleasePanel', () => {
       id: '00000000-0000-4000-8000-000000000004',
       releaseRevision: 0,
       semanticVersion: '1.0.0',
+      entityStatus: EntityStatus.Approved,
     };
     const defaultGet = get.getMockImplementation();
     get.mockImplementation(async (url, config) =>
@@ -1952,6 +1968,34 @@ describe('OntologyReleasePanel', () => {
 
     expect(latestRow).toHaveTextContent('label.latest');
     expect(olderRow).not.toHaveTextContent('label.latest');
+  });
+
+  it('hides superseded drafts without a review task from the Releases tab', async () => {
+    const supersededDraft = {
+      ...release,
+      id: '00000000-0000-4000-8000-000000000004',
+      releaseRevision: 0,
+      semanticVersion: '0.1.0',
+    };
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) =>
+      url === `/ontologies/${ontology.id}/releases`
+        ? {
+            data: {
+              data: [currentRelease, supersededDraft],
+              paging: { total: 2 },
+            },
+          }
+        : defaultGet?.(url, config)
+    );
+    await renderPanel();
+
+    expect(
+      await screen.findByTestId(`ontology-release-select-${release.id}`)
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId(`ontology-release-select-${supersededDraft.id}`)
+    ).not.toBeInTheDocument();
   });
 
   it('offers the review retry in AI mode after the task request fails', async () => {
