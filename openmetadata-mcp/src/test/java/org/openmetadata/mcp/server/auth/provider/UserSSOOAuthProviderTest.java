@@ -14,24 +14,36 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
+import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.auth.exception.TokenException;
+import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
+import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
+import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 class UserSSOOAuthProviderTest {
 
   private static final String ISSUER = "https://om.test";
   private static final String CLIENT_ID = "client-1";
+  private static final String MCP_REDIRECT_URI = "https://mcp-client.example.com/callback";
+  private static final String AUTH_REQUEST_ID = "auth-req-1";
+  private static final String USER_NAME = "alice";
 
   @Test
   void exchangeRefreshToken_storesAnAccessTokenNamingItsClient() throws Exception {
@@ -80,6 +92,76 @@ class UserSSOOAuthProviderTest {
       assertThat(failed.getError()).isEqualTo("server_error");
     }
     verify(tokenRepo, never()).rotateRefreshToken(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void handleSSOCallbackWithDbState_keepsTheGrantUnderTheAccountsOwnName() throws Exception {
+    // A SAML NameID keeps the provider's casing; the account it resolves to is lowercase.
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
+    OAuthClientInformation client = mock(OAuthClientInformation.class);
+    when(client.validateRedirectUri(URI.create(MCP_REDIRECT_URI)))
+        .thenReturn(URI.create(MCP_REDIRECT_URI));
+    OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
+    when(clientRepo.findByClientId(CLIENT_ID)).thenReturn(client);
+    OAuthAuthorizationCodeRepository codeRepo = mock(OAuthAuthorizationCodeRepository.class);
+    UserSSOOAuthProvider provider = newProvider(pendingRepo, clientRepo, codeRepo);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.USER, "Alice", "", Include.NON_DELETED))
+          .thenReturn(new User().withName(USER_NAME));
+      provider.handleSSOCallbackWithDbState(
+          mock(HttpServletRequest.class),
+          response,
+          "Alice",
+          "alice@corp.example",
+          "mcp:" + AUTH_REQUEST_ID);
+    }
+
+    verify(codeRepo)
+        .store(
+            anyString(),
+            eq(CLIENT_ID),
+            eq(USER_NAME),
+            anyString(),
+            anyString(),
+            any(),
+            any(),
+            anyLong());
+  }
+
+  private static McpPendingAuthRequest samplePendingRequest() {
+    return new McpPendingAuthRequest(
+        AUTH_REQUEST_ID,
+        CLIENT_ID,
+        "codeChallenge-123456789012345678901234567890123456789012",
+        "S256",
+        MCP_REDIRECT_URI,
+        "mcp-client-state-xyz",
+        List.of("openid", "profile"),
+        "pac4j-state-abc",
+        "pac4j-nonce",
+        "pac4j-verifier",
+        System.currentTimeMillis() + 600_000L);
+  }
+
+  /** Allocates a UserSSOOAuthProvider without running its constructor and injects mock repos. */
+  private static UserSSOOAuthProvider newProvider(
+      McpPendingAuthRequestRepository pendingRepo,
+      OAuthClientRepository clientRepo,
+      OAuthAuthorizationCodeRepository codeRepo)
+      throws Exception {
+    sun.misc.Unsafe unsafe = getUnsafe();
+    UserSSOOAuthProvider provider =
+        (UserSSOOAuthProvider) unsafe.allocateInstance(UserSSOOAuthProvider.class);
+    setField(provider, "pendingAuthRepository", pendingRepo);
+    setField(provider, "clientRepository", clientRepo);
+    setField(provider, "codeRepository", codeRepo);
+    setField(provider, "issuer", ISSUER);
+    return provider;
   }
 
   private static OAuthTokenRepository refreshTokenRepository() {

@@ -15605,6 +15605,29 @@ public interface CollectionDAO {
       revoke(tokenHash);
       deleteAccessTokensForUser(clientId, userName);
     }
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)")
+    void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
+
+    @SqlUpdate(
+        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE")
+    void revokeRefreshTokensOfUser(@Bind("userName") String userName);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)")
+    void deleteAccessTokensOfUser(@Bind("userName") String userName);
+
+    /**
+     * Ends every grant held under a user name, on all clients. Grants are keyed by name only, so a
+     * later account with the same name would otherwise take them over. Names compare ignoring case:
+     * rows written before grants were stored under the account's own name may hold the provider's
+     * spelling of it. Codes go first, so none can start a new grant.
+     */
+    @Transaction
+    default void revokeAllGrantsOfUser(String userName) {
+      deleteAuthorizationCodesOfUser(userName);
+      revokeRefreshTokensOfUser(userName);
+      deleteAccessTokensOfUser(userName);
+    }
   }
 
   interface McpPendingAuthRequestDAO {
