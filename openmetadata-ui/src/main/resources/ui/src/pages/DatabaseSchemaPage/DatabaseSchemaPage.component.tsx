@@ -825,7 +825,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(databaseSchema)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(databaseSchema)}>
       {isSchemaMissing ? (
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
 import type { ServiceTypes } from 'Models';
 import {
   ADMONITION_BLOCK_REGEX,
@@ -74,6 +75,7 @@ export const getOptionalFields = (
     }
     case ServiceCategory.PIPELINE_SERVICES: {
       const pipelineService = service as PipelineService;
+      const hostPort = get(pipelineService, 'connection.config.hostPort');
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
@@ -81,7 +83,7 @@ export const getOptionalFields = (
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
-            {pipelineService.connection?.config?.hostPort || '--'}
+            {typeof hostPort === 'string' ? hostPort || '--' : '--'}
           </span>
         </div>
       );

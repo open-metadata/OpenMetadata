@@ -20,7 +20,10 @@ import {
 import classNames from 'classnames';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PanelTab } from '../../../constants/Feeds.constants';
+import {
+  FEED_DRAWER_WIDTH,
+  PanelTab,
+} from '../../../constants/Feeds.constants';
 import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
@@ -60,7 +63,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       shouldCloseOnInteractOutside={(element) =>
         !element.closest('[data-react-aria-top-layer]')
       }
-      width={576}
+      width={FEED_DRAWER_WIDTH}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
           onCancel?.();

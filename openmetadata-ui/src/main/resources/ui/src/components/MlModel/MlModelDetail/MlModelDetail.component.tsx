@@ -429,7 +429,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={mlModelName}>
+    <PageLayoutV1 fillEntityTabs pageTitle={mlModelName}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader

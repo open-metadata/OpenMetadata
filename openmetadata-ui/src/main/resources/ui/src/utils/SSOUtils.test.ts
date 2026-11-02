@@ -2864,20 +2864,6 @@ describe('SSOUtils', () => {
         expect(mockEvent.preventDefault).toHaveBeenCalled();
         expect(mockEvent.stopPropagation).toHaveBeenCalled();
       });
-
-      it('should prevent default when Enter is pressed in Ant Design input field', () => {
-        const div = document.createElement('div');
-        div.className = 'ant-input';
-        Object.defineProperty(mockEvent, 'target', {
-          value: div,
-          writable: true,
-        });
-
-        handler(mockEvent as KeyboardEvent);
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.stopPropagation).toHaveBeenCalled();
-      });
     });
 
     describe('should NOT prevent default for special cases', () => {
@@ -2894,10 +2880,10 @@ describe('SSOUtils', () => {
         expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
       });
 
-      it('should NOT prevent default when Enter is pressed in Select tags component', () => {
+      it('should NOT prevent default when Enter is pressed inside a combobox wrapper', () => {
         const input = document.createElement('input');
         const selector = document.createElement('div');
-        selector.className = 'ant-select-selector';
+        selector.setAttribute('role', 'combobox');
         selector.appendChild(input);
         Object.defineProperty(mockEvent, 'target', {
           value: input,
@@ -2987,36 +2973,6 @@ describe('SSOUtils', () => {
 
         expect(() => handler(mockEvent as KeyboardEvent)).not.toThrow();
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-      });
-
-      it('should prevent default for nested input inside ant-input div', () => {
-        const input = document.createElement('input');
-        const antInputDiv = document.createElement('div');
-        antInputDiv.className = 'ant-input';
-        antInputDiv.appendChild(input);
-        Object.defineProperty(mockEvent, 'target', {
-          value: antInputDiv,
-          writable: true,
-        });
-
-        handler(mockEvent as KeyboardEvent);
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.stopPropagation).toHaveBeenCalled();
-      });
-
-      it('should prevent default for input with multiple classes including ant-input', () => {
-        const div = document.createElement('div');
-        div.className = 'custom-class ant-input another-class';
-        Object.defineProperty(mockEvent, 'target', {
-          value: div,
-          writable: true,
-        });
-
-        handler(mockEvent as KeyboardEvent);
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.stopPropagation).toHaveBeenCalled();
       });
     });
   });

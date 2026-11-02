@@ -13,8 +13,10 @@
 
 import { viewToSubPath as appsViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/applications/Applications.utils';
 import { viewToSubPath as governanceViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/governance/Governance.utils';
-import { viewToSubPath as membersViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/members/Members.utils';
+import type { UserDetailTab } from '../components/discovery/personal-space/Profile/tabs/members/Members.types';
+import { viewToSubPath as membersViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/members/membersRoute.utils';
 import { viewToSubPath as personasViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/personas/Personas.utils';
+import { UserPageTabs } from '../components/Settings/Users/Users.interface';
 import { AI_APP_MODE } from '../constants/appMode.constants';
 import { ENTITY_PATH } from '../constants/constants';
 import {
@@ -27,8 +29,8 @@ import { isDev } from './EnvironmentUtils';
 import { safeDecodeURIComponent as decode } from './SettingsHashUtils';
 
 /**
- * In AI mode the classic `/settings/*`, `/marketplace*` and `/bots/*` pages are
- * not served; their content lives in the settings modal, opened by a
+ * In AI mode the classic `/settings/*`, `/marketplace*`, `/bots/*` and
+ * `/users/*` pages are not served; their content lives in the settings modal, opened by a
  * `#<tab>[/<subPath>]` hash over the current page (`useSettingsHash`). This maps
  * a classic path to that hash. Every name in a hash segment is URL-encoded
  * exactly once and each panel's parser decodes it once
@@ -98,6 +100,32 @@ const GOVERNANCE_PAGES: Record<string, string | undefined> = {
     type: 'intake-list',
   }),
 };
+
+// Classic user-page tab → the user-detail tab the `#profile/<name>` view opens.
+// Unlisted tabs (access token) open the overview.
+const USER_PAGE_TABS: Record<string, UserDetailTab> = {
+  [UserPageTabs.ACTIVITY]: 'activity',
+  [UserPageTabs.TASK]: 'tasks',
+  [UserPageTabs.MY_DATA]: 'owned-assets',
+  [UserPageTabs.FOLLOWING]: 'following',
+  [UserPageTabs.PERMISSIONS]: 'access',
+  [UserPageTabs.CUSTOM_PROPERTIES]: 'custom-properties',
+};
+
+// A user opens in the Members user detail, as from the Members list. A viewer
+// who may not browse users there is sent on to the read-only `#profile/<name>`
+// by the Profile page, which holds the permissions.
+// `/users/password/reset` and `/users/registrationConfirmation` are auth pages.
+const AUTH_USER_PATHS = new Set(['password', 'registrationConfirmation']);
+
+const mapUser: HashMapper = ([name, tab]) =>
+  name && !AUTH_USER_PATHS.has(name)
+    ? `members/${membersViewToSubPath({
+        type: 'user-detail',
+        name: decode(name),
+        tab: (tab && lookup(USER_PAGE_TABS, tab)) || 'overview',
+      })}`
+    : undefined;
 
 // A team page's `?activeTab=<key>` becomes the hash param the team detail reads.
 const withActiveTab = (hash: string, activeTab: string | null) =>
@@ -261,6 +289,7 @@ const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
       dispatchMapper(SETTINGS_HASH_MAPPERS, category, rest, query),
   ],
   ['bots', ([name]) => withSub('bots', name && reencode(name))],
+  ['users', mapUser],
   ['create-user', ([kind]) => (kind === 'bot' ? 'bots/add' : undefined)],
   [
     'marketplace',
@@ -302,7 +331,25 @@ export const isAiShell = (): boolean =>
   isAppModeSessionActive();
 
 /**
- * Mode-aware link to a classic settings, marketplace or bots page, for a
+ * Modal hash for an href in the AI shell: a same-origin link (absolute, as rich
+ * text stores mentions, or relative) to a page the settings modal hosts. A
+ * same-page link (`#…`, `?…`) or one already carrying a hash, such as a
+ * `getSettingsLink` result, is left alone: its path is the current page's, which
+ * may itself be a classic `/users/<name>` route.
+ */
+export const getSettingsHashForHref = (href: string): string | undefined => {
+  if (!isAiShell() || href.startsWith('#') || href.startsWith('?')) {
+    return undefined;
+  }
+  const url = new URL(href, globalThis.location.href);
+
+  return url.origin === globalThis.location.origin && !url.hash
+    ? settingsPathToHash(url.pathname + url.search)
+    : undefined;
+};
+
+/**
+ * Mode-aware link to a classic settings, marketplace, bots or user page, for a
  * react-router `to`, a `navigate()` target or an `href` — never a `pathname`.
  * The route builders (`getSettingPath`, `getTeamsWithFqnPath`…) always return
  * the classic path; this is the one place it turns into a link. Classic: the

@@ -278,6 +278,7 @@ const DataModelDetails = ({
 
   return (
     <PageLayoutV1
+      fillEntityTabs
       pageTitle={getEntityName(dataModelData)}
       title="Data Model Details">
       <Box direction="col" gap={3}>

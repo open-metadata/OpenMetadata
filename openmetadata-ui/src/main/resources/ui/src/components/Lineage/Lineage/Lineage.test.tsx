@@ -99,6 +99,24 @@ describe('Lineage', () => {
     expect(useLineageStore.getState().entityFqn).toBe('svc.db.s.t');
   });
 
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    'with ?fullscreen=true, platform=%s goes full screen: %s',
+    (isPlatformLineage, expected) => {
+      const { container } = render(
+        <MemoryRouter initialEntries={['/lineage?fullscreen=true']}>
+          <Lineage entityFqn="x" isPlatformLineage={isPlatformLineage} />
+        </MemoryRouter>
+      );
+
+      expect(Boolean(container.querySelector('.full-screen-lineage'))).toBe(
+        expected
+      );
+    }
+  );
+
   it('mirrors entityFqn to the store on mount with default props', () => {
     render(
       <MemoryRouter>

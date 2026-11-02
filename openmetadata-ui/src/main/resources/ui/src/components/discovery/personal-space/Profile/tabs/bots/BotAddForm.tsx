@@ -239,7 +239,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
           color="primary"
           data-testid="submit-btn"
           isLoading={isSubmitting}
-          onPress={form.handleSubmit(handleSubmit)}>
+          onPress={() => form.handleSubmit(handleSubmit)()}>
           {t('label.create')}
         </Button>
       </Box>

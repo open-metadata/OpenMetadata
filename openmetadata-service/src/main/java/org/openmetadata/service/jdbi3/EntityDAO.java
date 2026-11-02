@@ -467,8 +467,16 @@ public interface EntityDAO<T extends EntityInterface<?>> {
     if (CollectionUtils.isEmpty(entityFQNs)) {
       return List.of();
     }
-    List<String> nameHashes =
-        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
+    return findReferencesByNameHashes(
+        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList(), include);
+  }
+
+  /** {@link #findReferencesByFqns} for callers that hold name hashes rather than FQNs. */
+  default List<EntityReference> findReferencesByNameHashes(
+      List<String> nameHashes, Include include) {
+    if (CollectionUtils.isEmpty(nameHashes)) {
+      return List.of();
+    }
     int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (nameHashes.size() <= maxChunkSize) {
       return findReferenceRows(nameHashes, include).stream()
@@ -588,6 +596,15 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond> FOR UPDATE")
   String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT (json->>'version')::text FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = POSTGRES)
+  String findVersionByIdForUpdate(@Define("table") String table, @BindUUID("id") UUID id);
 
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)

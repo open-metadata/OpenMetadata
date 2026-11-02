@@ -18,7 +18,6 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -168,6 +167,17 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
           testDefinition: 'tableColumnCountToEqual',
         });
         softDeleteTestCaseId = softDeleteCandidate.id;
+        // A failed result opens an incident, stored as a child of the test
+        // case; the list's soft delete must then go out with recursive=true.
+        await table.addTestCaseResult(
+          apiContext,
+          softDeleteCandidate.fullyQualifiedName,
+          {
+            result: 'Soft delete with an open incident',
+            testCaseStatus: 'Failed',
+            timestamp: Date.now(),
+          }
+        );
 
         const restoreCandidateData = {
           name: restoreTestCaseName,
@@ -235,7 +245,11 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
         );
         const activeListRefresh = waitForTestCaseListResponse(page);
         await page.getByTestId('confirm-button').click();
-        await deleteResponse;
+        const deleted = await deleteResponse;
+        expect(new URL(deleted.url()).searchParams.get('recursive')).toBe(
+          'true'
+        );
+        expect(deleted.ok()).toBe(true);
         await activeListRefresh;
         await toastNotification(page, /deleted successfully!/);
         await expect(
@@ -349,7 +363,6 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
         }
 
         await page.getByTestId('manage-button').click();
-        await waitForAntdPopupToSettle(page);
         await expect(page.getByTestId('restore-button')).toBeVisible();
         await expect(page.getByTestId('delete-button')).not.toBeVisible();
         await expect(page.getByTestId('rename-button')).not.toBeVisible();

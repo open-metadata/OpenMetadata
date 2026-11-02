@@ -138,13 +138,13 @@ jest.mock('../../../utils/EntityStatusUtils', () => ({
     Approved: 'success',
     Deprecated: 'warning',
   },
-  getEntityStatusClass: jest.fn((status) => {
-    const statusMap = {
-      Draft: 'warning',
-      InReview: 'info',
-      Rejected: 'error',
-      Approved: 'success',
-      Deprecated: 'warning',
+  getEntityStatusClass: jest.fn((status: EntityStatus) => {
+    const statusMap: Partial<Record<EntityStatus, string>> = {
+      [EntityStatus.Draft]: 'warning',
+      [EntityStatus.InReview]: 'info',
+      [EntityStatus.Rejected]: 'error',
+      [EntityStatus.Approved]: 'success',
+      [EntityStatus.Deprecated]: 'warning',
     };
 
     return statusMap[status] || 'warning';
@@ -1037,7 +1037,7 @@ describe('Test GlossaryTermTab component', () => {
       const termWithInReviewStatus = [
         {
           ...mockedGlossaryTerms[0],
-          entityStatus: 'In Review',
+          entityStatus: EntityStatus.InReview,
         },
       ];
       mockUseGlossaryStore.glossaryChildTerms = termWithInReviewStatus;
@@ -1059,7 +1059,7 @@ describe('Test GlossaryTermTab component', () => {
     it('should keep the term in review when an approval vote is recorded but the task stays open', async () => {
       const term = {
         ...mockedGlossaryTerms[0],
-        entityStatus: 'In Review',
+        entityStatus: EntityStatus.InReview,
       };
 
       mockUseGlossaryStore.glossaryChildTerms = [term];
@@ -1116,7 +1116,7 @@ describe('Test GlossaryTermTab component', () => {
     it('should require and submit a comment when rejecting from the glossary list', async () => {
       const term = {
         ...mockedGlossaryTerms[0],
-        entityStatus: 'In Review',
+        entityStatus: EntityStatus.InReview,
       };
       mockUseGlossaryStore.glossaryChildTerms = [term];
       mockListTasks.mockResolvedValue({
@@ -1478,7 +1478,9 @@ describe('Test GlossaryTermTab component', () => {
           // Missing other required fields
         },
       ];
-      mockUseGlossaryStore.glossaryChildTerms = incompleteTerms;
+      Object.assign(mockUseGlossaryStore, {
+        glossaryChildTerms: incompleteTerms,
+      });
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
@@ -1498,7 +1500,9 @@ describe('Test GlossaryTermTab component', () => {
           description: undefined,
         },
       ];
-      mockUseGlossaryStore.glossaryChildTerms = termsWithUndefinedDescription;
+      Object.assign(mockUseGlossaryStore, {
+        glossaryChildTerms: termsWithUndefinedDescription,
+      });
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
@@ -1521,7 +1525,9 @@ describe('Test GlossaryTermTab component', () => {
           description: null,
         },
       ];
-      mockUseGlossaryStore.glossaryChildTerms = termsWithNullDescription;
+      Object.assign(mockUseGlossaryStore, {
+        glossaryChildTerms: termsWithNullDescription,
+      });
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,

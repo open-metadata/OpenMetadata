@@ -13,8 +13,8 @@
 import {
   Box,
   Button,
-  Card,
   FilterSelect,
+  TableCard,
   TriggerButton,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -44,6 +44,7 @@ import PermissionPlaceholder from '../common/EmptyPlaceholder/PermissionPlacehol
 import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { IncidentManagerProps } from './IncidentManager.interface';
 import IncidentManagerTable from './IncidentManagerTable.component';
+import { useIncidentAssignees } from './useIncidentFilterOptions';
 import { useIncidentManagerListPage } from './useIncidentManagerListPage';
 
 const toSelection = (value?: string) => (value ? [value] : []);
@@ -81,6 +82,7 @@ const IncidentManager = ({
 
   const captionId = useId();
   const queryClient = useQueryClient();
+  const assignees = useIncidentAssignees();
   const [isTestCasePickerOpen, setIsTestCasePickerOpen] = useState(false);
   const [testCaseSearch, setTestCaseSearch] = useState('');
   const debouncedSearch = useDebouncedValue(testCaseSearch, 300);
@@ -162,8 +164,10 @@ const IncidentManager = ({
     );
   }
 
+  // Keep the incident rows and filter band below the surrounding page-card surface.
+  // ADR:2026-10-28-incident-tables-and-filters-use-the-muted-step
   return (
-    <Card className="tw:rounded-(--om-radius-10) tw:border-border-secondary">
+    <TableCard.Root variant="muted">
       <Box
         align="start"
         className="tw:p-4"
@@ -222,6 +226,7 @@ const IncidentManager = ({
           <UserTeamSelectableList
             hasPermission
             label={t('label.assignee')}
+            options={assignees}
             owner={selectedAssignee ? [selectedAssignee] : []}
             onUpdate={onAssigneeFilterUpdate}>
             <TriggerButton
@@ -359,7 +364,7 @@ const IncidentManager = ({
         testCaseListData={testCaseListData}
         testCasePermissions={testCasePermissions}
       />
-    </Card>
+    </TableCard.Root>
   );
 };
 

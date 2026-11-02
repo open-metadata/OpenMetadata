@@ -271,7 +271,7 @@ export const useAssetSelectionState = ({
 
   useEffect(() => {
     if (open) {
-      fetchCurrentEntity();
+      fetchCurrentEntity().catch((err) => showErrorToast(err as AxiosError));
     }
   }, [open, fetchCurrentEntity]);
 
@@ -639,6 +639,7 @@ export const useAssetSelectionState = ({
 
   return {
     assetsFilter: assetsFilterFor(type),
+    activeEntity,
     search,
     setSearch,
     items,

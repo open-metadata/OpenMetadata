@@ -12,24 +12,28 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
-import { Link01 } from '@openmetadata/ui-core-components/icons';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { User } from '../../../../generated/entity/teams/user';
+import { useUserProfile } from '../../../../hooks/discovery/personal-space/useUserProfile';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
-import { useEditableUser } from '../../../../hooks/user-profile/useEditableUser';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
-import { getUserPath } from '../../../../utils/RouterUtils';
-import { safeDecodeURIComponent } from '../../../../utils/SettingsHashUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
@@ -47,26 +51,54 @@ import {
   WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
-import { profileHash } from './tabs/members/profileHash.utils';
+import { getMembersAccess } from './tabs/members/Members.utils';
+import {
+  getProfileUserDetailView,
+  hashSubPathToView as membersHashToView,
+  userViewToProfileSubPath,
+} from './tabs/members/membersRoute.utils';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { permissions, isPermissionsLoading } = usePermissionProvider();
   const { getContributions, contributionsReady } = useApplicationsProvider();
-  // The Profile tab is always the logged-in user; other users open in the
-  // Members edit view (`#members/user/<name>`).
+  const { state: hashState, setHash } = useSettingsHash();
+
+  // Every nav item is about the signed-in user; another user deep-linked as
+  // `#profile/<username>` is loaded by the profile tab's own user detail.
   const {
     userData,
-    isLoading: isProfileLoading,
+    isProfileLoading,
+    isUserNotFound,
+    loadError,
     updateUserDetails,
-  } = useEditableUser(currentUser?.name, currentUser as User | undefined, true);
-  const { state: hashState, setHash } = useSettingsHash();
-  const navigate = useNavigate();
+    refetch,
+    refresh,
+  } = useUserProfile(currentUser?.name);
+  // A user detail is open under Profile: someone else's, or a tab of yours.
+  const isViewingUserDetail =
+    hashState.tab === DEFAULT_PROFILE_NAV_ID &&
+    Boolean(currentUser?.name) &&
+    Boolean(getProfileUserDetailView(hashState.subPath, currentUser?.name));
 
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     (hashState.tab as ProfileNavId) || DEFAULT_PROFILE_NAV_ID
   );
+
+  // The user detail (Members, or `#profile/<you>/<tab>`) loads and saves its own
+  // copy of you, so this page's copy goes stale while you edit there. Re-read it
+  // in place when your own Profile comes back into view; not on the first
+  // render, which the hook already loads.
+  const isOwnProfileShown =
+    selectedId === DEFAULT_PROFILE_NAV_ID && !isViewingUserDetail;
+  const wasOwnProfileShownRef = useRef(isOwnProfileShown);
+  useEffect(() => {
+    if (isOwnProfileShown && !wasOwnProfileShownRef.current) {
+      refresh();
+    }
+    wasOwnProfileShownRef.current = isOwnProfileShown;
+  }, [isOwnProfileShown, refresh]);
 
   // Allows panels (e.g. Access Control) to override the header breadcrumbs
   // and title without needing a separate route.
@@ -74,9 +106,9 @@ const ProfilePage: React.FC = () => {
     useState<ProfileHeaderOverride | null>(null);
 
   // Follow hash tab changes (e.g. deep link, back navigation). A hash-driven
-  // cross-tab jump (e.g. team detail → a user) must also drop the previous
-  // tab's header override, otherwise its stale breadcrumb/title leaks into the
-  // new tab until that tab sets its own.
+  // cross-tab jump (e.g. team detail → a user profile) must also drop the
+  // previous tab's header override, otherwise its stale breadcrumb/title leaks
+  // into the new tab until that tab sets its own.
   useEffect(() => {
     if (hashState.tab && hashState.tab !== selectedId) {
       setSelectedId(hashState.tab as ProfileNavId);
@@ -84,31 +116,28 @@ const ProfilePage: React.FC = () => {
     }
   }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Old `#profile/<username>` links (bookmarks, shared URLs) predate the edit
-  // view: your own name collapses to `#profile`; anyone else's opens their Edit
-  // User form for admins, and the read-only classic user page for everyone
-  // else, who can't reach the admin-only Members tab.
+  // User links open `#members/user/<name>`; a viewer who may not browse users
+  // there gets the same read-only detail under `#profile/<name>`.
   useEffect(() => {
-    // Wait for the current user: during app boot it's still undefined, which
-    // would read as "not admin" and wrongly send an admin to the classic page.
-    if (
-      !currentUser ||
-      hashState.tab !== DEFAULT_PROFILE_NAV_ID ||
-      !hashState.subPath
-    ) {
+    if (hashState.tab !== 'members' || isPermissionsLoading) {
       return;
     }
-    const linkedName = safeDecodeURIComponent(hashState.subPath);
-    if (linkedName === currentUser?.name) {
-      setHash(DEFAULT_PROFILE_NAV_ID);
-    } else if (currentUser?.isAdmin) {
-      const target = profileHash.user(linkedName);
-      setHash(target.tab, target.subPath);
-    } else {
-      // Leaving the modal's route drops the hash, which closes the modal.
-      navigate(getUserPath(linkedName), { replace: true });
+    const view = membersHashToView(hashState.subPath ?? '');
+    const isAdmin = Boolean(currentUser?.isAdmin);
+    if (
+      view.type === 'user-detail' &&
+      !getMembersAccess(permissions, isAdmin).users
+    ) {
+      setHash(DEFAULT_PROFILE_NAV_ID, userViewToProfileSubPath(view));
     }
-  }, [hashState.tab, hashState.subPath, currentUser, setHash, navigate]);
+  }, [
+    currentUser?.isAdmin,
+    hashState.subPath,
+    hashState.tab,
+    isPermissionsLoading,
+    permissions,
+    setHash,
+  ]);
 
   // Plugins (e.g. Query Runner's "My Connections") contribute extra profile
   // tabs through the `profile.tabs` extension point. Read them through
@@ -126,8 +155,10 @@ const ProfilePage: React.FC = () => {
     if (!userData) {
       return coreItems;
     }
-    const context: PluginEntityDetailsContext = {
+    // `username` matches the classic user page's plugin context.
+    const context: PluginEntityDetailsContext & { username: string } = {
       userData,
+      username: userData.name,
       isLoggedInUser: true,
       isAiMode: true,
     };
@@ -169,7 +200,8 @@ const ProfilePage: React.FC = () => {
   // Clear header override whenever the user switches nav items.
   const handleNavSelect = useCallback(
     (id: ProfileNavId) => {
-      if (id === selectedId) {
+      // Profile stays clickable while another user's detail is open under it.
+      if (id === selectedId && !isViewingUserDetail) {
         return;
       }
       const switchTab = () => {
@@ -182,7 +214,7 @@ const ProfilePage: React.FC = () => {
         switchTab();
       }
     },
-    [selectedId, setHash]
+    [selectedId, isViewingUserDetail, setHash]
   );
 
   // A tab the user cannot see (e.g. a settings link to a team for a user
@@ -193,10 +225,14 @@ const ProfilePage: React.FC = () => {
 
   // Resolve header props — prefer panel-supplied override, fall back to defaults.
   const headerIcon = headerOverride?.icon ?? activeItem.icon;
+  // The static nav label unless a panel overrides it (the profile tab shows the
+  // user's identity instead).
   const headerTitle = headerOverride?.title ?? t(activeItem.label);
   const headerDescription =
     headerOverride?.description ?? t(activeItem.description);
   const headerBreadcrumbRoot = t(PROFILE_NAV_GROUP_LABEL[activeItem.group]);
+  // Tie the breadcrumb to the nav item, not the (possibly user-name-overridden)
+  // title — so your own profile reads "Account > Profile".
   const headerBreadcrumbs = headerOverride?.breadcrumbs ?? [
     { id: 'root', label: headerBreadcrumbRoot },
     { id: 'current', label: t(activeItem.label) },
@@ -207,6 +243,17 @@ const ProfilePage: React.FC = () => {
   // (keeps the component's cyclomatic complexity down and avoids a nested ternary).
   const renderContent = () => {
     if (!userData) {
+      if (isUserNotFound) {
+        return (
+          <Box className="tw:relative tw:flex-1">
+            <NoDataPlaceholder
+              icon={User01}
+              title={t('label.no-entity-found', { entity: t('label.user') })}
+            />
+          </Box>
+        );
+      }
+
       return <Loader />;
     }
 
@@ -223,6 +270,8 @@ const ProfilePage: React.FC = () => {
       activeItem.render({
         userData,
         isProfileLoading,
+        loadError,
+        onReload: refetch,
         updateUserDetails,
         onHeaderChange: setHeaderOverride,
       })
@@ -246,6 +295,7 @@ const ProfilePage: React.FC = () => {
             actions={headerOverride?.actions}
             breadcrumbRoot={headerBreadcrumbRoot}
             breadcrumbs={headerBreadcrumbs}
+            compact={headerOverride?.compact}
             description={headerDescription}
             icon={headerIcon}
             iconNode={headerOverride?.iconNode}

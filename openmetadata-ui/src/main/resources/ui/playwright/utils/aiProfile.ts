@@ -12,10 +12,12 @@
  */
 
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { escapeRegExp } from 'lodash';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage, uuid } from './common';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 /**
  * Open the AI-mode profile. The profile is a hash-driven surface reached from the
@@ -169,10 +171,12 @@ export const waitForTeamPatch = (page: Page, teamId: string) =>
 
 /** Wait for the PATCH that updates a given user (entity-id scoped for parallel safety). */
 export const waitForUserPatch = (page: Page, userId: string) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes(`/api/v1/users/${userId}`) &&
-      response.request().method() === 'PATCH'
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname === `/api/v1/users/${userId}`,
+    'ok'
   );
 
 /**
@@ -210,10 +214,10 @@ export const addUserToTeam = async (
 };
 
 /**
- * Open a user's page (`#members/user/<name>`) by clicking their name in the
- * Users list.
+ * Open a user's detail (`#members/user/<name>`, Overview tab) by clicking their
+ * name in the Users list.
  */
-export const openUserEditView = async (
+export const openUserDetailView = async (
   page: Page,
   userName: string
 ): Promise<void> => {
@@ -221,19 +225,24 @@ export const openUserEditView = async (
   await openUsersPanel(page);
   const userCell = await searchUserRow(page, userName);
 
-  const userResponse = page.waitForResponse((response) =>
-    response
-      .url()
-      .includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
+  const userResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
+        `/api/v1/users/name/${encodeURIComponent(userName)}`,
+    200
   );
   await userCell.click();
   await userResponse;
 
-  await expect(page.getByTestId('members-user-edit')).toBeVisible();
-  expect(new URL(page.url()).hash).toBe(
-    `#members/user/${encodeURIComponent(userName)}`
-  );
+  await expect(page.getByTestId('members-user-detail')).toBeVisible();
+  await expect(page).toHaveURL(userDetailUrl(userName));
 };
+
+/** The Members user-detail URL (Overview tab) for `userName`. */
+export const userDetailUrl = (userName: string) =>
+  new RegExp(`#members/user/${escapeRegExp(encodeURIComponent(userName))}$`);
 
 /** Click the "Members" breadcrumb in the profile content header. */
 export const clickMembersBreadcrumb = async (page: Page): Promise<void> => {

@@ -18,6 +18,7 @@ import {
   FormItemLabel,
   Grid,
   HintText,
+  Input,
   Modal,
   ModalOverlay,
   Owner,
@@ -105,7 +106,6 @@ import {
   getClassificationTagPath,
   getDomainDetailsPath,
   getGlossaryTermDetailsPath,
-  getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
@@ -171,6 +171,7 @@ import {
   computeTaskEditAccessFlags,
   computeTaskOwnershipFlags,
   computeWorkflowTaskAccess,
+  getTaskCreatorLink,
 } from './TaskTab.utils';
 
 const FeedbackApprovalTask = withSuspenseFallback(
@@ -643,6 +644,8 @@ export const TaskTabNew = ({
     return hasTaskFormFields(taskFormSchema?.formSchema);
   }, [taskFormSchema?.formSchema]);
 
+  const createdByLink = getTaskCreatorLink(task);
+
   const darHeaderRows = useMemo(() => {
     if (
       !isWorkflowDrivenTask ||
@@ -659,7 +662,7 @@ export const TaskTabNew = ({
         value: (
           <Link
             className="no-underline flex items-center gap-2"
-            to={getUserPath(task.createdBy?.name ?? '')}>
+            to={createdByLink}>
             <UserPopOverCard userName={task.createdBy?.name ?? ''}>
               <ProfilePicture name={task.createdBy?.name ?? ''} width="24" />
             </UserPopOverCard>
@@ -674,6 +677,7 @@ export const TaskTabNew = ({
       },
     ];
   }, [
+    createdByLink,
     isWorkflowDrivenTask,
     shouldRenderTaskPayload,
     t,
@@ -1591,7 +1595,7 @@ export const TaskTabNew = ({
             <Grid.Item span={15}>
               <Link
                 className="no-underline flex items-center gap-2"
-                to={getUserPath(task.createdBy?.name ?? '')}>
+                to={createdByLink}>
                 <UserPopOverCard userName={task.createdBy?.name ?? ''}>
                   <div className="d-flex items-center">
                     <ProfilePicture
@@ -1974,16 +1978,14 @@ export const TaskTabNew = ({
                   </UserPopOverCard>
                 </div>
 
-                {/* Only opens the editor, so it is a button rather than an input. */}
-                <Button
-                  ellipsis
-                  className="comments-input-field tw:w-full tw:justify-start"
-                  color="secondary"
-                  data-testid="comments-input-field"
+                {/* Read-only: focusing it reveals the editor, which takes the focus. */}
+                <Input
+                  isReadOnly
+                  inputDataTestId="comments-input-field"
+                  placeholder={t('message.input-placeholder')}
                   size="sm"
-                  onPress={() => setShowFeedEditor(true)}>
-                  {t('message.input-placeholder')}
-                </Button>
+                  onFocus={() => setShowFeedEditor(true)}
+                />
               </div>
             )
           )}

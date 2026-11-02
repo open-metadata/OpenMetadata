@@ -12,6 +12,8 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
+import ObservabilityFormTriggerItem from '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import { AlertType } from '../../generated/events/eventSubscription';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -178,6 +180,7 @@ const mockProps = {
 describe('Add ObservabilityPage Alerts Page Tests', () => {
   beforeEach(() => {
     mockFqn.fqn = '';
+    mockGetModifiedAlertDataForForm.mockReset();
     mockGlobalPermissions.permissions = { eventsubscription: { Create: true } };
     mockEntityPermissions(false);
   });
@@ -463,6 +466,34 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
     expect(await screen.findByTestId('extra-button')).toHaveTextContent(
       'typed-alert'
+    );
+  });
+
+  it('should keep rules stored without selections read-only when editing', async () => {
+    mockFqn.fqn = 'alert-test';
+    mockEntityPermissions(true);
+    mockGetModifiedAlertDataForForm.mockReturnValue({
+      ...MOCK_DATA[0],
+      filteringRules: { ...MOCK_DATA[0].filteringRules, resources: [] },
+      hasRulesWithoutSelections: true,
+    });
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('message.alert-rules-read-only')
+    ).toBeInTheDocument();
+    expect(ObservabilityFormFiltersItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
+    );
+    expect(ObservabilityFormTriggerItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
     );
   });
 

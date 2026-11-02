@@ -14,6 +14,7 @@
 import { isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import { TIER_CATEGORY } from '../../../../constants/constants';
+import { EntityField } from '../../../../constants/Feeds.constants';
 import {
   EntityReference,
   Task,
@@ -23,6 +24,10 @@ import {
 } from '../../../../generated/entity/tasks/task';
 import { DescriptionUpdatePayload } from '../../../../generated/type/descriptionUpdatePayload';
 import { DomainUpdatePayload } from '../../../../generated/type/domainUpdatePayload';
+import {
+  GlossaryApprovalPayload,
+  ProviderType,
+} from '../../../../generated/type/glossaryApprovalPayload';
 import { OwnershipUpdatePayload } from '../../../../generated/type/ownershipUpdatePayload';
 import { SuggestionPayload } from '../../../../generated/type/suggestionPayload';
 import { TagLabel } from '../../../../generated/type/tagLabel';
@@ -30,6 +35,8 @@ import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { ENTITY_LINK_SEPARATOR } from '../../../../utils/EntityPureUtils';
+import { getFeedChangeFieldLabel } from '../../../../utils/FeedUtilsPure';
 import Fqn from '../../../../utils/Fqn';
 import {
   getMetadataCompletionInstruction,
@@ -282,6 +289,31 @@ const textRow = (
 ): TaskDetailRow[] =>
   text ? [{ key, icon, label, value: { kind: 'text', text } }] : [];
 
+const getEntityFieldLabel = (field: string) =>
+  getFeedChangeFieldLabel(field as EntityField) || field;
+
+const splitFieldPath = (fieldPath: string) =>
+  (fieldPath.includes(ENTITY_LINK_SEPARATOR)
+    ? fieldPath.split(ENTITY_LINK_SEPARATOR)
+    : Fqn.split(fieldPath)
+  )
+    .filter(Boolean)
+    .map((name) => Fqn.unquoteName(name));
+
+export const getFieldPathLabel = (fieldPath?: string): string | undefined => {
+  const [container, ...rest] = fieldPath ? splitFieldPath(fieldPath) : [];
+  if (!container) {
+    return undefined;
+  }
+  const field = rest.length > 1 ? rest.pop() : undefined;
+
+  return [
+    getEntityFieldLabel(container),
+    ...rest,
+    ...(field ? [getEntityFieldLabel(field)] : []),
+  ].join(' › ');
+};
+
 const dateRow = (
   key: string,
   label: string,
@@ -341,6 +373,34 @@ const TAG_SOURCE_OVERRIDES: Record<string, string> = {
   Agent: 'label.auto-classifier',
 };
 
+/**
+ * The AI agent that proposed what the task decides, when an automation did: its name, or a
+ * generic one when it recorded none. A person reads it instead of the bot the agent writes as.
+ */
+export const getProposingAgent = (task: Task, t: Translate) => {
+  const { proposal } = getPayload<GlossaryApprovalPayload>(task);
+
+  return proposal?.provider === ProviderType.Automation
+    ? proposal.agent ?? t('label.ai-agent')
+    : undefined;
+};
+
+const createdByRow = (task: Task, t: Translate): TaskDetailRow[] => {
+  const agent = getProposingAgent(task, t);
+  const creators = task.createdBy ? [task.createdBy] : [];
+
+  return agent
+    ? [
+        {
+          key: 'createdBy',
+          icon: 'owner',
+          label: t('label.created-by'),
+          value: { kind: 'agent', name: agent },
+        },
+      ]
+    : usersRow('createdBy', 'owner', t('label.created-by'), creators);
+};
+
 /** Assignee / requester / opened-on, which every task type shows. */
 const getCommonRows = (
   task: Task,
@@ -354,12 +414,7 @@ const getCommonRows = (
     task.assignees,
     t('label.assignee-plural')
   ),
-  ...usersRow(
-    'createdBy',
-    'owner',
-    t('label.created-by'),
-    task.createdBy ? [task.createdBy] : []
-  ),
+  ...createdByRow(task, t),
   ...dateRow('createdAt', t(dateLabelKey), task.createdAt),
 ];
 
@@ -466,7 +521,12 @@ const describeDescriptionUpdate = (
     subtitleKey: 'message.task-requested',
     rows: [
       ...getCommonRows(task, t, 'label.requested-on'),
-      ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
+      ...textRow(
+        'fieldPath',
+        'type',
+        t('label.field'),
+        getFieldPathLabel(payload.fieldPath)
+      ),
       ...textRow(
         'source',
         'source',
@@ -499,7 +559,12 @@ const describeSuggestion = (
     subtitleKey: 'message.task-requested',
     rows: [
       ...getCommonRows(task, t, 'label.requested-on'),
-      ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
+      ...textRow(
+        'fieldPath',
+        'type',
+        t('label.field'),
+        getFieldPathLabel(payload.fieldPath)
+      ),
       ...textRow(
         'source',
         'source',

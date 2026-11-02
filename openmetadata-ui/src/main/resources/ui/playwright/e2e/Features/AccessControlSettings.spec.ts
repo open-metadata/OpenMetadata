@@ -474,7 +474,7 @@ test.describe(
             .getByTestId(`remove-${policyDisplayName}`)
             .waitFor({ state: 'visible' });
           await page.getByTestId(`remove-${policyDisplayName}`).click();
-          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+          await expect(page.getByTestId('remove-entity-popover')).toBeVisible();
         });
 
         await test.step('Confirm removal', async () => {
@@ -483,7 +483,7 @@ test.describe(
               r.url().includes('/api/v1/roles') &&
               r.request().method() === 'PATCH'
           );
-          await page.getByTestId('confirm-button').click();
+          await page.getByTestId('remove-entity-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
@@ -560,8 +560,8 @@ test.describe(
           await page
             .getByTestId(`remove-${testUser.responseData.displayName}`)
             .click();
-          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
-          await page.getByTestId('confirm-button').click();
+          await expect(page.getByTestId('remove-entity-popover')).toBeVisible();
+          await page.getByTestId('remove-entity-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
@@ -612,7 +612,7 @@ test.describe(
           rolesContainer
         );
         await roleRow.getByTestId(`delete-action-${roleName}`).click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        await expect(page.getByTestId('delete-role-popover')).toBeVisible();
       });
 
       await test.step('Confirm deletion and verify toast', async () => {
@@ -621,7 +621,7 @@ test.describe(
             r.url().includes('/api/v1/roles') &&
             r.request().method() === 'DELETE'
         );
-        await page.getByTestId('confirm-button').click();
+        await page.getByTestId('delete-role-popover-confirm').click();
         const deleteResponse = await deletePromise;
         expect(deleteResponse.status()).toBe(200);
         await toastNotification(page, /successfully/i);
@@ -654,7 +654,7 @@ test.describe(
 
       await test.step('Click delete role button in header', async () => {
         await page.getByTestId('delete-role-btn').click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        await expect(page.getByTestId('delete-role-popover')).toBeVisible();
       });
 
       await test.step('Confirm deletion and verify navigation back to list', async () => {
@@ -663,7 +663,7 @@ test.describe(
             r.url().includes('/api/v1/roles') &&
             r.request().method() === 'DELETE'
         );
-        await page.getByTestId('confirm-button').click();
+        await page.getByTestId('delete-role-popover-confirm').click();
         const deleteResponse = await deletePromise;
         expect(deleteResponse.status()).toBe(200);
         await page
@@ -1300,13 +1300,13 @@ test.describe(
           await page
             .getByTestId(`remove-${role.responseData.displayName}`)
             .click();
-          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+          await expect(page.getByTestId('remove-entity-popover')).toBeVisible();
           const patchPromise = page.waitForResponse(
             (r) =>
               r.url().includes('/api/v1/roles') &&
               r.request().method() === 'PATCH'
           );
-          await page.getByTestId('confirm-button').click();
+          await page.getByTestId('remove-entity-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
@@ -1390,13 +1390,13 @@ test.describe(
 
         await test.step('Click remove and confirm', async () => {
           await page.getByTestId(`remove-${orgTeam.name}`).click();
-          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+          await expect(page.getByTestId('remove-entity-popover')).toBeVisible();
           const patchPromise = page.waitForResponse(
             (r) =>
               r.url().includes('/api/v1/teams') &&
               r.request().method() === 'PATCH'
           );
-          await page.getByTestId('confirm-button').click();
+          await page.getByTestId('remove-entity-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
@@ -1444,7 +1444,7 @@ test.describe(
           policiesContainer
         );
         await policyRow.getByTestId(`delete-action-${policyName}`).click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        await expect(page.getByTestId('delete-policy-popover')).toBeVisible();
       });
 
       await test.step('Confirm deletion and verify toast', async () => {
@@ -1453,7 +1453,7 @@ test.describe(
             r.url().includes('/api/v1/policies') &&
             r.request().method() === 'DELETE'
         );
-        await page.getByTestId('confirm-button').click();
+        await page.getByTestId('delete-policy-popover-confirm').click();
         const deleteResponse = await deletePromise;
         expect(deleteResponse.status()).toBe(200);
         await toastNotification(page, /successfully/i);
@@ -1486,7 +1486,7 @@ test.describe(
 
       await test.step('Click delete policy button in header', async () => {
         await page.getByTestId('delete-policy-btn').click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        await expect(page.getByTestId('delete-policy-popover')).toBeVisible();
       });
 
       await test.step('Confirm deletion and verify navigation back to list', async () => {
@@ -1495,7 +1495,7 @@ test.describe(
             r.url().includes('/api/v1/policies') &&
             r.request().method() === 'DELETE'
         );
-        await page.getByTestId('confirm-button').click();
+        await page.getByTestId('delete-policy-popover-confirm').click();
         const deleteResponse = await deletePromise;
         expect(deleteResponse.status()).toBe(200);
         await page

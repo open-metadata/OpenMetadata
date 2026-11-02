@@ -22,7 +22,6 @@ import {
   DOMAIN_WIDGET,
   KNOWLEDGE_ARTICLE_WIDGET,
   OWNER_WIDGET,
-  PENDING_REVIEW_WIDGET,
   REFERENCES_WIDGET,
   RELATED_TERMS_WIDGET,
   REVIEWER_WIDGET,
@@ -95,10 +94,6 @@ type ComponentMap = {
     component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
-  [GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW]: {
-    component: ComponentType<WidgetCommonProps>;
-    props: WidgetCommonProps;
-  };
 };
 
 const CustomizeTabWidget = withSuspenseFallback(
@@ -150,7 +145,6 @@ const WIDGET_NAME_TO_KEY: Record<string, GlossaryTermDetailPageWidgetKeys> = {
   OWNER: GlossaryTermDetailPageWidgetKeys.OWNER,
   REVIEWER: GlossaryTermDetailPageWidgetKeys.REVIEWER,
   WORKFLOW_HISTORY: GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY,
-  PENDING_REVIEW: GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW,
 };
 
 const WIDGET_KEY_TO_HEIGHT_PROP: Record<
@@ -169,7 +163,6 @@ const WIDGET_KEY_TO_HEIGHT_PROP: Record<
   [GlossaryTermDetailPageWidgetKeys.OWNER]: 'OWNER',
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: 'REVIEWER',
   [GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY]: 'WORKFLOW_HISTORY',
-  [GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW]: 'PENDING_REVIEW',
 };
 
 class CustomizeGlossaryTermPageClassBase {
@@ -239,10 +232,6 @@ class CustomizeGlossaryTermPageClassBase {
           component: GenericWidget,
           props: {} as WidgetCommonProps,
         },
-        [GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW]: {
-          component: GenericWidget,
-          props: {} as WidgetCommonProps,
-        },
       };
     }
 
@@ -265,7 +254,6 @@ class CustomizeGlossaryTermPageClassBase {
       TERMS_TABLE: 1,
       EMPTY_WIDGET_PLACEHOLDER: 3,
       WORKFLOW_HISTORY: 1,
-      PENDING_REVIEW: 4,
     };
 
     this.defaultLayout = [
@@ -388,19 +376,11 @@ class CustomizeGlossaryTermPageClassBase {
           static: true,
         },
         {
-          h: this.detailPageWidgetDefaultHeights.PENDING_REVIEW,
-          i: GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW,
-          w: 2,
-          x: 6,
-          y: 0,
-          static: false,
-        },
-        {
           h: this.detailPageWidgetDefaultHeights.WORKFLOW_HISTORY,
           i: GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY,
           w: 2,
           x: 6,
-          y: 1,
+          y: 0,
           static: false,
         },
         {
@@ -408,7 +388,7 @@ class CustomizeGlossaryTermPageClassBase {
           i: DetailPageWidgetKeys.DOMAIN,
           w: 2,
           x: 6,
-          y: 2,
+          y: 1,
           static: false,
         },
         {
@@ -416,7 +396,7 @@ class CustomizeGlossaryTermPageClassBase {
           i: GlossaryTermDetailPageWidgetKeys.OWNER,
           w: 2,
           x: 6,
-          y: 3,
+          y: 2,
           static: false,
         },
         {
@@ -424,7 +404,7 @@ class CustomizeGlossaryTermPageClassBase {
           i: GlossaryTermDetailPageWidgetKeys.REVIEWER,
           w: 2,
           x: 6,
-          y: 4,
+          y: 3,
           static: false,
         },
         {
@@ -432,7 +412,7 @@ class CustomizeGlossaryTermPageClassBase {
           i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
           w: 2,
           x: 6,
-          y: 5,
+          y: 4,
           static: false,
         },
       ];
@@ -451,7 +431,6 @@ class CustomizeGlossaryTermPageClassBase {
       CUSTOM_PROPERTIES_WIDGET,
       TAGS_WIDGET,
       KNOWLEDGE_ARTICLE_WIDGET,
-      PENDING_REVIEW_WIDGET,
     ];
 
     return isGlossary

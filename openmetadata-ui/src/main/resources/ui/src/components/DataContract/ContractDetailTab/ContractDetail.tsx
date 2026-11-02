@@ -42,8 +42,6 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.s
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
-import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
-
 import {
   ContractImportFormat,
   DataContractMode,
@@ -70,6 +68,7 @@ import { getEntityStatusBadgeConfig } from '../../../utils/EntityStatusUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
@@ -567,8 +566,8 @@ const ContractDetail: React.FC<{
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-90 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
+            description={t('message.no-contract-description')}
             icon={DataContractIcon}
-            title={t('message.no-contract-description')}
           />
         </div>
       );

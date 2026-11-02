@@ -58,6 +58,7 @@ import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../../../../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../../../Database/SchemaEditor/SchemaEditor'))
@@ -195,10 +196,13 @@ function NotificationRecentEvents({
 
   const renderEmpty = () => {
     const isFiltered = filter !== AlertRecentEventFilters.ALL;
+    const EmptyStatePlaceholder = isFiltered
+      ? NoFilteredResultsPlaceholder
+      : NoDataPlaceholder;
 
     return (
       <Box className="tw:relative tw:min-h-80 tw:w-full">
-        <NoDataPlaceholder
+        <EmptyStatePlaceholder
           description={t(
             isFiltered
               ? 'message.no-data-available-for-selected-filter'
@@ -243,7 +247,7 @@ function NotificationRecentEvents({
               const eventKey = `${changeEventData.id}-${changeEventData.timestamp}`;
 
               return (
-                <AccordionItem id={eventKey} key={eventKey}>
+                <AccordionItem id={eventKey} key={eventKey} variant="muted">
                   <AccordionHeader>
                     <Box
                       align="center"
@@ -323,7 +327,7 @@ function NotificationRecentEvents({
                             })}:`}
                           </Typography>
                           <SchemaEditor
-                            className="border"
+                            className="border tw:dark:[&_.cm-editor]:bg-primary_alt!"
                             mode={{ name: CSMode.JAVASCRIPT }}
                             options={{ readOnly: true }}
                             showCopyButton={false}

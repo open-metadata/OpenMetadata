@@ -157,6 +157,19 @@ describe('InlineEditCard', () => {
     expect(screen.getByTestId('edit-form')).toBeInTheDocument();
   });
 
+  it('stays in edit mode when the save reports it did not land', async () => {
+    // The shared update handler toasts and resolves to false on failure.
+    setup({ onSave: jest.fn().mockResolvedValue(false) });
+
+    fireEvent.click(screen.getByLabelText('label.edit'));
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.save-changes'));
+    });
+
+    expect(screen.getByTestId('edit-form')).toBeInTheDocument();
+    expect(screen.queryByTestId('view')).not.toBeInTheDocument();
+  });
+
   it('cancels editing', () => {
     const onCancel = jest.fn();
     setup({ onCancel });

@@ -644,7 +644,7 @@ const APICollectionPage: FunctionComponent = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(apiCollection)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(apiCollection)}>
       <Box direction="col" gap={3}>
         <div>
           {isCollectionDataFetching || !apiCollection ? (

@@ -277,13 +277,6 @@ jest.mock('../../PageHeader/PageHeader.component', () =>
     ))
 );
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-
-  Tooltip: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-}));
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({

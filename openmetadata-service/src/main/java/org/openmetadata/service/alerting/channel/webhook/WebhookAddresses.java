@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -60,9 +61,10 @@ public final class WebhookAddresses implements AddressDirectory {
     Webhook webhook = action instanceof Webhook given ? given : null;
     Set<Recipient> recipients = configuredEndpoint(webhook);
     if (action != null && !nullOrEmpty(action.getReceivers())) {
+      Webhook eachReceiver = withoutReceivers(webhook);
       recipients =
           action.getReceivers().stream()
-              .map(receiver -> webhookForReceiver(webhook, receiver))
+              .map(receiver -> webhookForReceiver(eachReceiver, receiver))
               .flatMap(Optional::stream)
               .map(WebhookRecipient::new)
               .collect(Collectors.toUnmodifiableSet());
@@ -96,5 +98,11 @@ public final class WebhookAddresses implements AddressDirectory {
 
   private Webhook copyOf(Webhook webhook) {
     return webhook == null ? new Webhook() : JsonUtils.convertValue(webhook, Webhook.class);
+  }
+
+  // Each receiver gets its own copy of the webhook, so the receiver list is left out of it once:
+  // a copy that kept it would hold every receiver, and the copies together grow with its square.
+  private Webhook withoutReceivers(Webhook webhook) {
+    return copyOf(webhook).withReceivers(new LinkedHashSet<>());
   }
 }

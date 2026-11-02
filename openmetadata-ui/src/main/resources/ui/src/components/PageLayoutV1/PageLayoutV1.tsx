@@ -37,6 +37,9 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanelWidth?: number;
   fullHeight?: boolean;
   variant?: PageLayoutVariant;
+  // The page renders `.entity-details-page-tabs`: in the AI shell its active tab
+  // panel grows to the bottom of the canvas.
+  fillEntityTabs?: boolean;
 }
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
@@ -51,6 +54,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   fullHeight = false,
   variant = 'default',
+  fillEntityTabs = false,
 }: PageLayoutProp) => {
   const location = useLocation();
 
@@ -113,15 +117,15 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             marginInlineStart: `${((center ? 3 : 0) / 24) * 100}%`,
           }}>
           <Grid
-            className={classNames(
-              'layout-row layout-grid',
-              ENTITY_TABS_FILL_GRID_CLASS
-            )}>
+            className={classNames('layout-row layout-grid', {
+              [ENTITY_TABS_FILL_GRID_CLASS]: fillEntityTabs,
+            })}
+            data-testid="page-layout-v1-grid">
             <Grid.Item
-              className={classNames(
-                'layout-column',
-                ENTITY_TABS_FILL_COLUMN_CLASS
-              )}
+              className={classNames('layout-column', {
+                [ENTITY_TABS_FILL_COLUMN_CLASS]: fillEntityTabs,
+              })}
+              data-testid="page-layout-v1-column"
               span={24}>
               {children}
             </Grid.Item>

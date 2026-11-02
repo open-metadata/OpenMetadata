@@ -47,7 +47,7 @@ for (const variant of [
       <div id="menu" hidden class="task-action-dropdown"><div role="menu">
         <button role="menuitem" onclick="openModal('edit')">Edit suggestion</button>
       </div></div>
-      <div id="modal" hidden class="ant-modal-wrap"><div role="dialog">Task action</div></div>
+      <div id="modal" hidden><div role="dialog">Task action</div></div>
       <script>
         window.taskActions = [];
         function openModal(action) {

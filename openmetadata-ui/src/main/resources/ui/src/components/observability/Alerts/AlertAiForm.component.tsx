@@ -31,6 +31,7 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
   const { t } = useTranslation();
   const {
     fieldDocDisplay = 'panel',
+    fieldDocVariant,
     formId,
     mode,
     onSubmit,
@@ -110,6 +111,7 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
           </Typography>
         </Box>
       }
+      fieldDocVariant={fieldDocVariant}
       form={fieldDocForm}
       // `relative` makes the scrolling form the containing block of the
       // visually hidden inputs react-aria renders for toggles and checkboxes.

@@ -16,6 +16,7 @@ import {
   Activity,
   DataHealthScore,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import type { TFunction } from 'i18next';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +35,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import BucketServiceRow from '../Common/TopicWidget/BucketServiceRow';
 import FailingServiceRow from '../Common/TopicWidget/FailingServiceRow';
 import TopicCard from '../Common/TopicWidget/TopicCard';
+import { TOPIC_FILTERED_BODY_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -482,7 +484,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
         onPress: () =>
           navigate(connectionsRouterClassBase.getSettingsServicesPath()),
       }}
-      bodyClassName="tw:py-3"
+      bodyClassName={classNames(TOPIC_FILTERED_BODY_CLASSES, 'tw:pb-3')}
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}

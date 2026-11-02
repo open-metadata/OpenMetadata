@@ -161,6 +161,9 @@ const mockPaging: UsePagingInterface = {
 };
 
 const defaultProps: FilesTableProps = {
+  setFiles: jest.fn(),
+  setIsLoading: jest.fn(),
+  serviceFqn: 'drive-service',
   showDeleted: false,
   handleShowDeleted: jest.fn(),
   paging: mockPaging,

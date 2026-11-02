@@ -102,6 +102,8 @@ const AppRunsHistory = forwardRef(
       maxRecords,
       jsonSchema,
       showPagination = true,
+      onViewRunConfig,
+      variant,
     }: AppRunsHistoryProps,
     ref
   ) => {
@@ -212,10 +214,15 @@ const AppRunsHistory = forwardRef(
         if (!jsonSchema) {
           return;
         }
+        if (onViewRunConfig) {
+          onViewRunConfig(record);
+
+          return;
+        }
         setShowConfigModal(true);
         setAppRunRecordConfig(record.config ?? {});
       },
-      [jsonSchema]
+      [jsonSchema, onViewRunConfig]
     );
 
     const getActionButton = useCallback(
@@ -518,6 +525,8 @@ const AppRunsHistory = forwardRef(
             rowExpandable: (record) =>
               !showLogAction(record) && hasAppRunStats(record),
             expandedRowKeys,
+            onExpandedRowsChange: (keys) =>
+              setExpandedRowKeys(keys.map(String)),
           }}
           loading={isLoading}
           locale={{
@@ -533,6 +542,7 @@ const AppRunsHistory = forwardRef(
           pagination={false}
           rowKey="id"
           size="small"
+          variant={variant}
         />
 
         {isStopModalOpen && (

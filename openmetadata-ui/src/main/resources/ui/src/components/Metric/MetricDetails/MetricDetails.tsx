@@ -222,9 +222,12 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     }
   }, [decodedMetricFqn]);
 
+  // A soft-deleted metric stays on this page, so it is shown as deleted as soon as the delete
+  // job is accepted. If the job then fails, fetchMetricDetails restores the server's state.
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate(ROUTES.METRICS),
-    []
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? onToggleDelete(version) : navigate(ROUTES.METRICS),
+    [onToggleDelete]
   );
 
   // Named-flag derivation (Task 8 Batch 9), collapsing the 6-field block below into one
@@ -365,13 +368,14 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                   data-testid="metric-add-assets-button"
                   size="sm"
                   onPress={openAssetModal}>
-                  {t('label.add-entity', { entity: t('label.asset-plural') })}
+                  {t('label.add-entity', { entity: t('label.asset') })}
                 </Button>
               )
             }
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
             onCertificationUpdate={onCertificationUpdate}
+            onDeleteFailure={fetchMetricDetails}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMetric}
             onMetricUpdate={onMetricUpdate}
@@ -389,40 +393,38 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <div className="metric-page-tabs">
-            <Tabs
-              className="tw:gap-3"
-              data-testid="tabs"
-              selectedKey={getRenderedActiveTab(tabs, activeTab)}
-              onSelectionChange={(key) => handleTabChange(String(key))}>
-              <Tabs.List
-                actions={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
-                size="sm"
-                type="underline"
-                variant="card">
-                {tabs.map(({ key, label }) => (
-                  <Tabs.Item id={key} key={key}>
-                    {label}
-                  </Tabs.Item>
-                ))}
-              </Tabs.List>
-              {tabs.map(({ key, children }) => (
-                <Tabs.Panel id={key} key={key}>
-                  {children}
-                </Tabs.Panel>
+          <Tabs
+            className="tw:gap-3"
+            data-testid="tabs"
+            selectedKey={getRenderedActiveTab(tabs, activeTab)}
+            onSelectionChange={(key) => handleTabChange(String(key))}>
+            <Tabs.List
+              actions={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
+              size="sm"
+              type="underline"
+              variant="card">
+              {tabs.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
               ))}
-            </Tabs>
-          </div>
+            </Tabs.List>
+            {tabs.map(({ key, children }) => (
+              <Tabs.Panel id={key} key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
         </GenericProvider>
       </Box>
       {isAssetModalOpen && (

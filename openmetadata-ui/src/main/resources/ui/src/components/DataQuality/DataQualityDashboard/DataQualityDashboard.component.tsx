@@ -107,7 +107,6 @@ const DataQualityDashboard = ({
                     <UserTeamSelectableList
                       hasPermission
                       owner={filter.selectedOwners}
-                      popoverProps={{ placement: 'bottomLeft' }}
                       onUpdate={filter.onChange}>
                       <div
                         className="tw:flex tw:items-center tw:gap-1  tw:rounded-md quick-filter-dropdown-trigger-btn"
@@ -188,7 +187,9 @@ const DataQualityDashboard = ({
 
   const chartCards = DQ_DASHBOARD_SECTIONS.map((section) => (
     <Grid.Item className="export-pdf-container" key={section.key} span={24}>
-      <Card className={cardClassName}>
+      <Card
+        className={cardClassName}
+        data-tour-step={`data-quality-${section.key}`}>
         <div className={cardBodyClass}>
           <PageHeader
             data={{

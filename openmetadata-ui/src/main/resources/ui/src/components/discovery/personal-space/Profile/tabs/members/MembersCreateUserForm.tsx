@@ -138,6 +138,12 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
 
   const passwordGenerator = form.watch('passwordGenerator');
   const password = form.watch('password');
+  // The server answers an empty ADMIN_CREATE password with a misleading 409, so
+  // Save waits for the generated one (fetched on mount, slow under load).
+  const isGeneratedPasswordPending =
+    isAuthProviderBasic &&
+    passwordGenerator === CreatePasswordGenerator.AutomaticGenerate &&
+    !generatedPassword;
 
   const nameFields: FieldProp[] = [
     {
@@ -594,6 +600,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         <Button
           color="primary"
           data-testid="save-user"
+          isDisabled={isGeneratedPasswordPending}
           isLoading={isSaveLoading}
           onPress={() => handleSubmit(onSubmit)()}>
           {t('label.create')}

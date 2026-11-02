@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.SearchDocs.awaitDoc;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,7 +18,9 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -68,6 +71,7 @@ import org.openmetadata.schema.type.BulkCreateItemResult.Reason;
 import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -77,6 +81,7 @@ import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -266,6 +271,63 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // ===================================================================
   // GLOSSARY TERM-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void test_parentTermChildrenCountFollowsItsChildrenInSearch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+    GlossaryTerm parent = createEntity(countedTerm(ns, "counted_parent", glossary, null));
+    GlossaryTerm other = createEntity(countedTerm(ns, "counted_other", glossary, null));
+    GlossaryTerm child = createEntity(countedTerm(ns, "counted_child", glossary, parent));
+    awaitChildrenCount(parent, 1);
+
+    GlossaryTerm moving = client.glossaryTerms().get(child.getId().toString(), "parent");
+    moving.setParent(other.getEntityReference());
+    client.glossaryTerms().update(child.getId().toString(), moving);
+    awaitChildrenCount(parent, 0);
+    awaitChildrenCount(other, 1);
+
+    // A CSV import matches the term by glossary and name, so a new parent column moves it back.
+    String movedBack =
+        client
+            .glossaries()
+            .exportCsv(glossary.getName())
+            .lines()
+            .map(
+                line ->
+                    line.contains(child.getName())
+                        ? line.replace(
+                            other.getFullyQualifiedName(), parent.getFullyQualifiedName())
+                        : line)
+            .collect(Collectors.joining("\n", "", "\n"));
+    CsvImportResult imported =
+        JsonUtils.readValue(
+            client.glossaries().importCsv(glossary.getName(), movedBack, false),
+            CsvImportResult.class);
+    assertEquals(0, imported.getNumberOfRowsFailed(), imported.getImportResultsCsv());
+    awaitChildrenCount(other, 0);
+    awaitChildrenCount(parent, 1);
+
+    // The count includes soft-deleted terms, as REST reports it, so only a hard delete lowers it.
+    client.glossaryTerms().delete(child.getId().toString(), Map.of("hardDelete", "true"));
+    awaitChildrenCount(parent, 0);
+  }
+
+  private static CreateGlossaryTerm countedTerm(
+      TestNamespace ns, String name, Glossary glossary, GlossaryTerm parent) {
+    return new CreateGlossaryTerm()
+        .withName(ns.prefix(name))
+        .withGlossary(glossary.getFullyQualifiedName())
+        .withParent(parent == null ? null : parent.getFullyQualifiedName())
+        .withDescription("Counted term");
+  }
+
+  private static void awaitChildrenCount(GlossaryTerm term, int count) {
+    awaitDoc(
+        "glossary_term_search_index",
+        term.getId(),
+        doc -> doc.has("childrenCount") && doc.path("childrenCount").asInt() == count);
+  }
 
   @Test
   void post_glossaryTermWithSynonyms_200_OK(TestNamespace ns) {
@@ -2082,6 +2144,82 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     // FQN should have changed to include parent
     assertNotEquals(originalFqn, movedTerm.getFullyQualifiedName());
     assertTrue(movedTerm.getFullyQualifiedName().contains(parent.getName()));
+  }
+
+  // task_entity.aboutFqnHash stores one 32-char hash per FQN level, so eight levels (263 chars)
+  // need more than the varchar(256) the column was created with.
+  @Test
+  void test_createTaskAboutEighthLevelTerm(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "deepTaskGls");
+    GlossaryTerm term = null;
+    for (int level = 2; level <= 8; level++) {
+      term = createChildTerm(glossary, term, "l" + level);
+    }
+
+    Task task = SdkClients.adminClient().tasks().create(descriptionUpdateTask(ns, term));
+
+    assertEquals(List.of(task.getId()), taskIdsAbout(term.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_moveTermWithTaskToEighthLevel_repointsTask(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "deepMoveGls");
+    GlossaryTerm levelSix = null;
+    for (int level = 2; level <= 6; level++) {
+      levelSix = createChildTerm(glossary, levelSix, "l" + level);
+    }
+    GlossaryTerm newParent = createChildTerm(glossary, levelSix, "l7a");
+    GlossaryTerm term = createChildTerm(glossary, levelSix, "l7b");
+    Task task = SdkClients.adminClient().tasks().create(descriptionUpdateTask(ns, term));
+    String oldFqn = term.getFullyQualifiedName();
+
+    term.setParent(newParent.getEntityReference());
+    GlossaryTerm movedTerm = patchEntity(term.getId().toString(), term);
+
+    assertEquals(newParent.getId(), movedTerm.getParent().getId());
+    assertEquals(List.of(task.getId()), taskIdsAbout(movedTerm.getFullyQualifiedName()));
+    assertTrue(taskIdsAbout(oldFqn).isEmpty());
+  }
+
+  private Glossary createGlossary(TestNamespace ns, String name) {
+    return SdkClients.adminClient()
+        .glossaries()
+        .create(new CreateGlossary().withName(ns.prefix(name)).withDescription("Deep glossary"));
+  }
+
+  private GlossaryTerm createChildTerm(Glossary glossary, GlossaryTerm parent, String name) {
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Deep glossary term");
+    if (parent != null) {
+      request.withParent(parent.getFullyQualifiedName());
+    }
+    return createEntity(request);
+  }
+
+  private CreateTask descriptionUpdateTask(TestNamespace ns, GlossaryTerm term) {
+    return new CreateTask()
+        .withName(ns.prefix("deep-term-description"))
+        .withCategory(TaskCategory.MetadataUpdate)
+        .withType(TaskEntityType.DescriptionUpdate)
+        .withAbout("<#E::glossaryTerm::%s>".formatted(term.getFullyQualifiedName()))
+        .withPayload(
+            new DescriptionUpdatePayload()
+                .withFieldPath("description")
+                .withCurrentDescription(term.getDescription())
+                .withNewDescription("Updated deep term description"));
+  }
+
+  private List<UUID> taskIdsAbout(String entityFqn) {
+    return SdkClients.adminClient()
+        .tasks()
+        .listWithFilters(Map.of("aboutEntity", entityFqn, "limit", "100"))
+        .getData()
+        .stream()
+        .map(Task::getId)
+        .toList();
   }
 
   @Test
