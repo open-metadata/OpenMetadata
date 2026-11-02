@@ -657,7 +657,7 @@ test.describe('Glossary tests', () => {
         await openGlossaryPicker(
           page,
           page.locator(
-            '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
+            '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="add-tag"]'
           )
         );
 

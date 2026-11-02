@@ -96,7 +96,8 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   // ponytail: last-pressed element as anchor; plumb explicit refs if a guard
   // ever fires without a user press.
   useEffect(() => {
-    if (!isEditorDirty) {
+    // Presses inside an open prompt must not move it onto its own buttons.
+    if (!isEditorDirty || pendingExit) {
       return;
     }
     const recordAnchor = (event: Event) => {
@@ -109,7 +110,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
       document.removeEventListener('pointerdown', recordAnchor, true);
       document.removeEventListener('keydown', recordAnchor, true);
     };
-  }, [isEditorDirty]);
+  }, [isEditorDirty, pendingExit]);
 
   // Every way out of a dirty in-modal editor (breadcrumbs, Cancel, the modal's
   // close button) goes through here so unsaved changes are never dropped silently.
