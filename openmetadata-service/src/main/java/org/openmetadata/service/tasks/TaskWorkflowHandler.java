@@ -62,6 +62,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.events.ChangeEvents;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
@@ -335,6 +336,9 @@ public class TaskWorkflowHandler {
                       .get(null, taskId, taskRepository.getFields("comments"))
                       .getComments())
               : comment;
+      if (ontologyReview && nullOrEmpty(reason == null ? null : reason.strip())) {
+        throw new BadRequestException("A rejection requires a reason");
+      }
       recordRejection(workflowHandler, taskId, reason, user);
     }
 

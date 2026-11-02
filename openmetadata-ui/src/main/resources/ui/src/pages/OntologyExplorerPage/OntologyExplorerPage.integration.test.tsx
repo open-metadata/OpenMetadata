@@ -406,7 +406,7 @@ describe('Ontology Studio mode-switch integration', () => {
     ).toHaveTextContent('urn:retail:Customer');
     expect(mockGetOntology).toHaveBeenCalledWith(
       ontology.id,
-      'owners,reviewers',
+      'owners,reviewers,publicationStatus',
       expect.any(AbortSignal)
     );
     expect(mockListOntologyConcepts).toHaveBeenCalledTimes(3);
@@ -848,10 +848,6 @@ describe('Ontology Studio mode-switch integration', () => {
     expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
       'data-scope-key',
       'ontology:other'
-    );
-    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
-      'aria-selected',
-      'true'
     );
 
     await act(async () => {

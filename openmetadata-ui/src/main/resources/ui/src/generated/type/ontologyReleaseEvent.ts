@@ -1,30 +1,23 @@
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 /**
- * Append-only evidence committed with an ontology release capture, completed approval
- * workflow decision, or activation.
+ * Append-only evidence committed with an ontology release capture, review request or
+ * withdrawal, completed approval decision, or activation.
  */
 export interface OntologyReleaseEvent {
     /**
      * The new activation revision committed with an ACTIVATED event, including rollback.
      */
     activationRevision?: number;
-    contentDigest:       string;
-    createdAt:           number;
-    createdBy:           string;
-    eventType:           EventType;
-    id:                  string;
-    ontologyId:          string;
+    /**
+     * Recorded on an APPROVED event: whether reviewers decided the release or the ontology had
+     * none.
+     */
+    approvalBasis?: ApprovalBasis;
+    contentDigest:  string;
+    createdAt:      number;
+    createdBy:      string;
+    eventType:      EventType;
+    id:             string;
+    ontologyId:     string;
     /**
      * Previously active release, absent for the first activation.
      */
@@ -41,11 +34,26 @@ export interface OntologyReleaseEvent {
     workflowInstanceId?:   string;
 }
 
+/**
+ * Recorded on an APPROVED event: whether reviewers decided the release or the ontology had
+ * none.
+ *
+ * Why this release was approved. REVIEWED means the ontology's reviewers decided it;
+ * NO_REVIEWERS_CONFIGURED means the ontology had no reviewers when an author published it
+ * directly. Absent on releases approved before this field existed, which were all reviewed.
+ */
+export enum ApprovalBasis {
+    NoReviewersConfigured = "NO_REVIEWERS_CONFIGURED",
+    Reviewed = "REVIEWED",
+}
+
 export enum EventType {
     Activated = "ACTIVATED",
     Approved = "APPROVED",
     Captured = "CAPTURED",
     Rejected = "REJECTED",
+    ReviewRequested = "REVIEW_REQUESTED",
+    ReviewWithdrawn = "REVIEW_WITHDRAWN",
 }
 
 /**

@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyPublicationStatus } from '../../../../generated/type/ontologyPublicationStatus';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -26,20 +27,26 @@ import OntologyCreateForm from '../OntologyCreateForm/OntologyCreateForm';
 import OntologyGraphView, {
   OntologyModelStats,
 } from '../OntologyGraphView/OntologyGraphView';
+import OntologyOverview from '../OntologyOverview/OntologyOverview';
 
 interface OntologyStudioWorkspaceProps {
   ontology: Ontology;
+  /** Set when reading the published release, which freezes the definitions and hides editing. */
+  releaseId?: string;
+  publicationStatus?: OntologyPublicationStatus;
   createConceptRequestKey?: number;
   onRequestCreateConcept?: () => void;
   onAuthoringLockChange?: (locked: boolean) => void;
   initialDraftId?: string;
   mode: 'view' | 'edit' | 'definitions' | 'review';
-  viewSurface: 'graph' | 'tree';
+  viewSurface: 'graph' | 'tree' | 'ontology';
   selectedConceptId?: string;
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   settingsRequestKey?: number;
-  onRequestEdit?: () => void;
+  onRequestEdit?: (conceptId?: string) => void;
+  editConceptRequest?: string;
+  onEditConceptRequestHandled?: () => void;
   onRequestGraphSurface: () => void;
   onRequestTreeSurface?: () => void;
   onStatsChange?: (stats: OntologyModelStats) => void;
@@ -61,6 +68,8 @@ const getWorkspaceClassName = (
 
 const OntologyStudioWorkspace = ({
   ontology,
+  releaseId,
+  publicationStatus,
   createConceptRequestKey,
   onRequestCreateConcept,
   onAuthoringLockChange,
@@ -72,6 +81,8 @@ const OntologyStudioWorkspace = ({
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
+  editConceptRequest,
+  onEditConceptRequestHandled,
   onRequestGraphSurface,
   onRequestTreeSurface,
   onStatsChange,
@@ -123,11 +134,18 @@ const OntologyStudioWorkspace = ({
               </Box>
             ) : null}
             <Tabs.List aria-label={t('label.definition')} type="underline">
+              <Tabs.Item id="overview">{t('label.overview')}</Tabs.Item>
               <Tabs.Item id="concept">{t('label.concept-plural')}</Tabs.Item>
               <Tabs.Item id="property">{t('label.property-plural')}</Tabs.Item>
               <Tabs.Item id="axiom">{t('label.constraint-plural')}</Tabs.Item>
               <Tabs.Item id="settings">{t('label.setting-plural')}</Tabs.Item>
             </Tabs.List>
+            <Tabs.Panel id="overview">
+              <OntologyOverview
+                ontology={ontology}
+                status={publicationStatus}
+              />
+            </Tabs.Panel>
             <Tabs.Panel id="concept">
               <OntologyAuthoringWorkspace
                 ontology={ontology}
@@ -161,15 +179,28 @@ const OntologyStudioWorkspace = ({
         );
       case 'view':
       case 'edit':
+        if (viewSurface === 'ontology') {
+          return (
+            <OntologyOverview
+              ontology={ontology}
+              releaseId={releaseId}
+              status={publicationStatus}
+            />
+          );
+        }
+
         return (
           <OntologyGraphView
             createConceptRequestKey={createConceptRequestKey}
+            editConceptRequest={editConceptRequest}
             isEditing={mode === 'edit'}
             key={revision}
             ontology={ontology}
+            releaseId={releaseId}
             selectedConceptId={selectedConceptId}
             surface={viewSurface}
             onAuthoringLockChange={onAuthoringLockChange}
+            onEditConceptRequestHandled={onEditConceptRequestHandled}
             onRequestCreateConcept={onRequestCreateConcept}
             onRequestEdit={onRequestEdit}
             onRequestGraphSurface={onRequestGraphSurface}

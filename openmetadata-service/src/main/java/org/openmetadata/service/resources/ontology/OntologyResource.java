@@ -153,6 +153,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     releaseActivation =
         new OntologyReleaseActivation(
             repository,
+            (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE),
             Clock.systemUTC(),
             id -> RdfUpdater.enqueueOntologyGraph(repository.getDaoCollection(), id));
     releaseCapture =

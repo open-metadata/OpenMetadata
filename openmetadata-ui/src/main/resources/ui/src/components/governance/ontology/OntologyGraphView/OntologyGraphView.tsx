@@ -325,6 +325,8 @@ const RelationshipTypeDialog = ({
 
 interface OntologyGraphViewProps {
   readonly ontology: Ontology;
+  /** Reads the definitions this release froze instead of the working draft; nothing is editable. */
+  readonly releaseId?: string;
   readonly surface: 'graph' | 'tree';
   readonly onRequestGraphSurface: () => void;
   readonly onRequestTreeSurface?: () => void;
@@ -334,7 +336,11 @@ interface OntologyGraphViewProps {
   readonly isEditing?: boolean;
   readonly selectedConceptId?: string;
   readonly onSelectedConceptChange?: (id?: string) => void;
-  readonly onRequestEdit?: () => void;
+  /** Receives the concept whose Edit button was pressed, so the draft can open its editor. */
+  readonly onRequestEdit?: (conceptId?: string) => void;
+  /** A concept whose editor opens once Edit mode is on, set when Edit was pressed on a release. */
+  readonly editConceptRequest?: string;
+  readonly onEditConceptRequestHandled?: () => void;
   readonly onStatsChange?: (stats: OntologyModelStats) => void;
   readonly onWorkingChange?: () => void;
 }
@@ -352,8 +358,31 @@ interface ConceptEditorRequest {
   readonly position?: { readonly x: number; readonly y: number };
 }
 
+// A published release is read-only, so its edit and delete rights are forced off whatever the role allows.
+const useConceptRights = (
+  conceptId: string | undefined,
+  concepts: ReadonlyArray<{ id: string; deleted?: boolean }> | undefined,
+  releaseId: string | undefined
+) => {
+  const { canEditAll, canDelete } = useEntityPermissions(
+    ResourceEntity.ONTOLOGY_CONCEPT,
+    { id: conceptId ?? '' },
+    {
+      enabled: Boolean(conceptId),
+      deleted: concepts?.find((concept) => concept.id === conceptId)?.deleted,
+    }
+  );
+
+  return {
+    canEditByRights: canEditAll,
+    canEdit: canEditAll && !releaseId,
+    canDelete: canDelete && !releaseId,
+  };
+};
+
 const OntologyGraphView = ({
   ontology,
+  releaseId,
   surface,
   onRequestGraphSurface,
   onRequestTreeSurface,
@@ -364,6 +393,8 @@ const OntologyGraphView = ({
   selectedConceptId,
   onSelectedConceptChange,
   onRequestEdit,
+  editConceptRequest,
+  onEditConceptRequestHandled,
   onStatsChange,
   onWorkingChange,
 }: OntologyGraphViewProps) => {
@@ -382,11 +413,12 @@ const OntologyGraphView = ({
   const [nodePositions, setNodePositions] =
     useState<Record<string, { x: number; y: number }>>();
   const creationPositions = useRef<Record<string, { x: number; y: number }>>();
-  const { canEditAll: canEditOntology } = useEntityPermissions(
+  const { canEditAll: canEditOntologyByRights } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: ontology.id },
     { deleted: ontology.deleted }
   );
+  const canEditOntology = canEditOntologyByRights && !releaseId;
 
   const [search, setSearch] = useState('');
   const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
@@ -420,7 +452,7 @@ const OntologyGraphView = ({
     [guard, onSelectedConceptChange]
   );
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
-    useOntologyStudioModel(ontology);
+    useOntologyStudioModel(ontology, releaseId);
   const treeIndex = useMemo(
     () => buildNativeTreeIndex(graph, { ...FILTERS, searchQuery: search }, []),
     [graph, search]
@@ -521,7 +553,7 @@ const OntologyGraphView = ({
       permissions[resource] ?? DEFAULT_ENTITY_PERMISSION
     );
   const canCreateDefinition = (resource: ResourceEntity) =>
-    isEditing && !ontology.deleted && flagsOf(resource).canCreate;
+    isEditing && !releaseId && !ontology.deleted && flagsOf(resource).canCreate;
   const canCreateConcept = canCreateDefinition(ResourceEntity.ONTOLOGY_CONCEPT);
   const canCreateChangeSet = canCreateDefinition(
     ResourceEntity.ONTOLOGY_CHANGE_SET
@@ -541,18 +573,15 @@ const OntologyGraphView = ({
     ResourceEntity.ONTOLOGY_AXIOM,
   ].every(canCreateDefinition);
   const canLinkInverse = flagsOf(ResourceEntity.RELATIONSHIP_TYPE).canEditAll;
-  const conceptPermissionId = conceptEditor?.conceptId ?? selectedId;
-  const { canEditAll: canEditConcept, canDelete: canDeleteConcept } =
-    useEntityPermissions(
-      ResourceEntity.ONTOLOGY_CONCEPT,
-      { id: conceptPermissionId ?? '' },
-      {
-        enabled: Boolean(conceptPermissionId),
-        deleted: model?.concepts.find(
-          (concept) => concept.id === conceptPermissionId
-        )?.deleted,
-      }
-    );
+  const {
+    canEditByRights: canEditConceptByRights,
+    canEdit: canEditConcept,
+    canDelete: canDeleteConcept,
+  } = useConceptRights(
+    conceptEditor?.conceptId ?? selectedId,
+    model?.concepts,
+    releaseId
+  );
   const selected = model?.concepts.find((concept) => concept.id === selectedId);
   const {
     data: relationTypes = NO_RELATIONSHIP_TYPES,
@@ -922,6 +951,22 @@ const OntologyGraphView = ({
     relations.length,
   ]);
 
+  const canOpenRequestedEditor = [
+    Boolean(editConceptRequest),
+    isEditing,
+    canEditConceptByRights,
+    selectedId === editConceptRequest,
+    Boolean(
+      model?.concepts.some((concept) => concept.id === editConceptRequest)
+    ),
+  ].every(Boolean);
+  useEffect(() => {
+    if (canOpenRequestedEditor) {
+      setConceptEditor({ conceptId: editConceptRequest });
+      onEditConceptRequestHandled?.();
+    }
+  }, [canOpenRequestedEditor, editConceptRequest, onEditConceptRequestHandled]);
+
   useEffect(() => {
     if (
       isEditing &&
@@ -1157,10 +1202,12 @@ const OntologyGraphView = ({
         }
         onDeleteRelation={(relation) => deleteRelation(relation)}
         onEdit={
-          canEditConcept
+          canEditConceptByRights
             ? () => {
-                setConceptEditor({ conceptId: selected.id });
-                onRequestEdit?.();
+                if (!releaseId) {
+                  setConceptEditor({ conceptId: selected.id });
+                }
+                onRequestEdit?.(selected.id);
               }
             : undefined
         }
@@ -1436,6 +1483,20 @@ const OntologyGraphView = ({
       </Button>
     ) : null;
 
+  const renderMissingConcept = () =>
+    selectedId && !selected ? (
+      <div
+        className="tw:absolute tw:top-16 tw:left-3.5 tw:z-6 tw:max-w-sm"
+        data-testid="ontology-concept-not-found"
+        role="alert">
+        <Alert variant="warning">
+          {t('message.ontology-concept-not-found', {
+            version: t(releaseId ? 'label.published' : 'label.draft'),
+          })}
+        </Alert>
+      </div>
+    ) : null;
+
   const renderSearch = () => {
     const finder = (
       <OntologyConceptSearch
@@ -1477,11 +1538,12 @@ const OntologyGraphView = ({
     // Escape bubbles up from whichever control opened or sits in the panel.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
-      className="tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
+      className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
       ref={rootRef}
       onKeyDown={closeOnEscape}>
       <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
         {renderSearch()}
+        {renderMissingConcept()}
         {renderAddConcept()}
         {renderGraphMode()}
         {renderSurface()}
