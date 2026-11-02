@@ -18,6 +18,7 @@ import {
   EMAIL_REG_EX,
   TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
 } from '../../../../../constants/regex.constants';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
@@ -88,6 +89,7 @@ const TextPropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const config = getTextFieldConfig(property.propertyType.name);
@@ -95,6 +97,8 @@ const TextPropertyEdit = ({
     isNil(value) ? '' : String(value)
   );
   const [error, setError] = useState<string>();
+
+  useReportDirty(inputValue.trim(), onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

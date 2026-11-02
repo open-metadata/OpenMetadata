@@ -215,7 +215,11 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
       if (bulkFieldHydrator != null) {
         bulkFieldHydrator.hydrate(Entity.FIELD_TAGS); // one batch query for the whole bulk request
       } else {
-        entityRepository.setFieldsInternal(entity, entityRepository.getFields(Entity.FIELD_TAGS));
+        Fields tagFields = entityRepository.getFields(Entity.FIELD_TAGS);
+        entityRepository.setFieldsInternal(entity, tagFields);
+        // A tag a deny rule matches may be inherited from a parent (a service, a database), so a
+        // matchAnyTag rule must see inherited tags too, not only the entity's own.
+        entityRepository.setInheritedFieldsInternal(entity, tagFields);
       }
       loadedFieldNames.add(Entity.FIELD_TAGS);
     }

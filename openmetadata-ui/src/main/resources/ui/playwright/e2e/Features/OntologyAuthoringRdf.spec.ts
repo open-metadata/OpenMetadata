@@ -359,7 +359,12 @@ test.describe(
           })
           .toBe(true);
         await releaseOntologyEditLease(page, fixture.glossary.responseData.id);
-        await fixture.expectProjected(apiContext, broaderTarget);
+        await fixture.expectRelationProjected(
+          apiContext,
+          target,
+          'http://www.w3.org/2004/02/skos/core#broader',
+          broaderTarget
+        );
       } finally {
         await afterAction();
       }

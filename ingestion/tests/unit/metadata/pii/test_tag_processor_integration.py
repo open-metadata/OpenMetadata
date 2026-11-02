@@ -18,6 +18,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, create_autospec
+from uuid import uuid4
 
 import pytest
 from presidio_analyzer import RecognizerResult
@@ -64,6 +65,408 @@ from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalyzer
 from metadata.pii.tag_processor import TagProcessor
+
+
+def _load_shipped_pii(test_path: Path) -> dict[str, Any]:
+    relative_path = Path("openmetadata-service/src/main/resources/json/data/tags/piiTagsWithRecognizers.json")
+    for parent in test_path.resolve().parents:
+        resource = parent / relative_path
+        if resource.is_file():
+            return json.loads(resource.read_text())
+    pytest.skip("Shipped PII recognizers require the OpenMetadata monorepo resource: " + str(relative_path))
+
+
+@pytest.fixture(scope="session")
+def shipped_pii() -> dict[str, Any]:
+    return _load_shipped_pii(Path(__file__))
+
+
+def _processor(
+    classification: Classification,
+    tags: list[Tag],
+    language: ClassificationLanguage = ClassificationLanguage.en,
+    **kwargs,
+) -> TagProcessor:
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=language)
+    return TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+        **kwargs,
+    )
+
+
+def _shipped_classification(shipped_pii: dict[str, Any]) -> Classification:
+    settings = shipped_pii["createClassification"]
+    config = settings["autoClassificationConfig"]
+    return ClassificationFactory.create(
+        fqn="PII",
+        mutuallyExclusive=settings["mutuallyExclusive"],
+        autoClassificationConfig__enabled=config["enabled"],
+        autoClassificationConfig__conflictResolution=ConflictResolution(config["conflictResolution"]),
+        autoClassificationConfig__minimumConfidence=config["minimumConfidence"],
+        autoClassificationConfig__requireExplicitMatch=config["requireExplicitMatch"],
+    )
+
+
+def _shipped_tag(
+    shipped_pii: dict[str, Any], classification: Classification, tag_name: str, recognizer_names: set[str] | None = None
+) -> Tag:
+    tag_data = next(tag for tag in shipped_pii["createTags"] if tag["name"] == tag_name)
+    return TagFactory.create(
+        tag_name=tag_name,
+        tag_classification=classification,
+        autoClassificationEnabled=True,
+        autoClassificationPriority=tag_data["autoClassificationPriority"],
+        recognizers=[
+            Recognizer.model_validate({**config, "id": str(uuid4())})
+            for config in tag_data["recognizers"]
+            if recognizer_names is None or config["name"] in recognizer_names
+        ],
+    )
+
+
+def test_shipped_resource_absence_does_not_prevent_module_collection(tmp_path):
+    import runpy
+
+    relocated = tmp_path / "test_tag_processor_integration.py"
+    relocated.write_text(Path(__file__).read_text())
+    module = runpy.run_path(str(relocated))
+    assert "TestTagProcessorMultiClassification" in module
+    with pytest.raises(pytest.skip.Exception, match="require the OpenMetadata monorepo resource"):
+        module["_load_shipped_pii"](relocated)
+
+
+@pytest.mark.parametrize(
+    "language, recognizer_name",
+    [
+        ("en", "EnglishCreditCardRecognizer"),
+        ("es", "SpanishCreditCardRecognizer"),
+        ("it", "ItalianCreditCardRecognizer"),
+        ("pl", "PolishCreditCardRecognizer"),
+    ],
+)
+@pytest.mark.parametrize(
+    "card",
+    [
+        pytest.param("4111-1111-1111-1111", id="visa-dashes"),
+        pytest.param("3056 930902 5904", id="diners-spaces"),
+        pytest.param("3056-930902-5904", id="diners-dashes"),
+        pytest.param("3056  930902  5904", id="diners-repeated-spaces"),
+        pytest.param("3056  930902   5904", id="diners-uneven-spaces"),
+        pytest.param("4111  1111   1111    1111", id="visa-uneven-spaces"),
+        pytest.param("3782  822463   10005", id="amex-uneven-spaces"),
+        pytest.param("4322  7148   2639    4388  390", id="visa-19-uneven-spaces"),
+    ],
+)
+def test_shipped_card_evidence_and_default_tagging(shipped_pii, language, recognizer_name, card):
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, "Sensitive", {recognizer_name})
+    column = Column(
+        name="customer_card", fullyQualifiedName="db.schema.table.customer_card", dataType=DataType.VARCHAR, tags=[]
+    )
+    value = f"Card {card} issued"
+    language_enum = ClassificationLanguage(language)
+    analyzer = TagAnalyzer(tag, column, load_nlp_engine(classification_language=language_enum), language_enum)
+
+    analysis = analyzer.analyze([value])
+    assert [(value[result.start : result.end], result.score) for result in analysis.recognizer_results] == [(card, 1.0)]
+
+    processor = _processor(classification, [tag], language_enum)
+    labels = processor.create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == ["PII.Sensitive"]
+    assert labels[0].labelType == LabelType.Generated
+    assert labels[0].state == State.Suggested
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param("3056  930902   5905", id="diners-wrong-checksum"),
+        pytest.param("+ 3056  930902   5904", id="diners-plus-phone"),
+        pytest.param("1234  3056  930902   5904", id="diners-numeric-prefix"),
+        pytest.param("5018  000000   0009", id="maestro-14-grouping-not-expanded"),
+    ],
+)
+def test_full_shipped_recognizers_reject_invalid_card_groupings(shipped_pii, value):
+    classification = _shipped_classification(shipped_pii)
+    tags = [_shipped_tag(shipped_pii, classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
+    column = Column(name="payload", fullyQualifiedName="db.schema.table.payload", dataType=DataType.VARCHAR, tags=[])
+    nlp_engine = load_nlp_engine(classification_language=ClassificationLanguage.en)
+    evidence = [
+        result for tag in tags for result in TagAnalyzer(tag, column, nlp_engine).analyze([value]).recognizer_results
+    ]
+    assert all(result.entity_type != "CREDIT_CARD" for result in evidence)
+
+
+@pytest.mark.parametrize(
+    "tag_name, recognizer_name, value, expected, expected_labels",
+    [
+        ("NonSensitive", "UrlRecognizer", "Visit https://example.org/a?x=1", "https://example.org/a?x=1", []),
+        ("Sensitive", "IpRecognizer", "2001:db8::1", "2001:db8::1", []),
+        ("NonSensitive", "UrlRecognizer", "http://app.internal.local/path", None, []),
+        ("Sensitive", "IpRecognizer", "2001:db8::1g", None, []),
+    ],
+)
+def test_shipped_network_evidence_and_default_tagging(
+    shipped_pii, tag_name, recognizer_name, value, expected, expected_labels
+):
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, tag_name, {recognizer_name})
+    column = Column(
+        name="service_value", fullyQualifiedName="db.schema.table.service_value", dataType=DataType.VARCHAR, tags=[]
+    )
+    analyzer = TagAnalyzer(tag, column, load_nlp_engine(classification_language=ClassificationLanguage.en))
+    analysis = analyzer.analyze([value])
+    assert [value[result.start : result.end] for result in analysis.recognizer_results] == (
+        [expected] if expected else []
+    )
+
+    processor = _processor(classification, [tag], ClassificationLanguage.en)
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
+
+
+@pytest.mark.parametrize(
+    ("tag_name", "recognizer_name", "column_name", "value", "expected_tag"),
+    [
+        ("NonSensitive", "UrlRecognizer", "service_url", "https://example.company/path", "PII.NonSensitive"),
+        ("Sensitive", "IpRecognizer", "session_ip", "2001:db8::1", "PII.Sensitive"),
+        ("NonSensitive", "UrlRecognizer", "service_url", "'example.com,'", "PII.NonSensitive"),
+        ("NonSensitive", "UrlRecognizer", "service_url", "<https://example.com.>", "PII.NonSensitive"),
+    ],
+)
+def test_network_configured_context_preserves_recognizer_metadata(
+    shipped_pii, tag_name, recognizer_name, column_name, value, expected_tag
+):
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, tag_name, {recognizer_name})
+    column = Column(
+        name=column_name, fullyQualifiedName=f"db.schema.table.{column_name}", dataType=DataType.VARCHAR, tags=[]
+    )
+    processor = _processor(classification, [tag], ClassificationLanguage.en)
+
+    labels = processor.create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == [expected_tag]
+    assert labels[0].metadata is not None
+    assert labels[0].metadata.recognizer.recognizerId == tag.recognizers[0].id
+    assert labels[0].metadata.recognizer.recognizerName == recognizer_name
+
+
+@pytest.mark.parametrize(
+    ("value", "expected_card"),
+    [
+        ("é 2024-01-15 4111111111111111", "4111111111111111"),
+        ("2024-02-29   4111 1111 1111 1111", "4111 1111 1111 1111"),
+        ("2000-02-29 4111-1111-1111-1111", "4111-1111-1111-1111"),
+        ("Qty 2 4111 1111 1111 1111", "4111 1111 1111 1111"),
+        ("qTy 002 3056  930902   5904", "3056  930902   5904"),
+        ("QUANTITY 12 4322 7148 2639 4388 390", "4322 7148 2639 4388 390"),
+        ("Quantity\t2 4111111111111111", "4111111111111111"),
+        ("2024-01-15\n4111111111111111", "4111111111111111"),
+        ("2023-02-29\t4111111111111111", "4111111111111111"),
+        ("2023-02-29 4111111111111111", None),
+        ("1900-02-29 4111111111111111", None),
+        ("2024-13-01 4111111111111111", None),
+        ("2024-01-15 4111111111111112", None),
+        ("Qty 2 4111111111111112", None),
+        ("2 4111111111111111", None),
+        ("xQty 2 4111111111111111", None),
+        ("Qty +2 4111111111111111", None),
+        ("Phone +49 1512 3456787", None),
+        ("Qty 2 41 12 34 56 78 90 12 38", None),
+        ("4111111111111111 123", None),
+        ("4111 1111 1111 1111 123", None),
+        ("2024-01-15 4111111111111111 123", None),
+        ("Qty 2 4111 1111 1111 1111 123", None),
+        ("Qty 2 4111111111111111 2025", None),
+    ],
+)
+def test_shipped_card_prefix_recovery_preserves_spans_and_label_metadata(shipped_pii, value, expected_card):
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, "Sensitive", {"EnglishCreditCardRecognizer"})
+    column = Column(name="payload", fullyQualifiedName="db.schema.table.payload", dataType=DataType.VARCHAR, tags=[])
+    analysis = TagAnalyzer(tag, column, load_nlp_engine(classification_language=ClassificationLanguage.en)).analyze(
+        [value]
+    )
+    assert [(result.start, result.end, result.score) for result in analysis.recognizer_results] == (
+        [(value.index(expected_card), value.index(expected_card) + len(expected_card), 1.0)] if expected_card else []
+    )
+    labels = _processor(classification, [tag]).create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == (["PII.Sensitive"] if expected_card else [])
+    if expected_card:
+        assert labels[0].metadata is not None
+        metadata = labels[0].metadata.recognizer
+        assert metadata.recognizerId == tag.recognizers[0].id
+        assert metadata.recognizerName == "CreditCardRecognizer"
+        assert metadata.score == 1.0
+        assert metadata.patterns
+        assert [(pattern.name, pattern.score) for pattern in metadata.patterns] == [("Credit Card Number", 1.0)]
+
+
+def test_luhn_valid_operational_lookalike_receives_conservative_sensitive_tag(shipped_pii):
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, "Sensitive", {"EnglishCreditCardRecognizer"})
+    column = Column(
+        name="batch_reference", fullyQualifiedName="db.schema.table.batch_reference", dataType=DataType.VARCHAR, tags=[]
+    )
+    value = "Batch 4111111111111111 processed"
+    analyzer = TagAnalyzer(tag, column, load_nlp_engine(classification_language=ClassificationLanguage.en))
+    analysis = analyzer.analyze([value])
+    assert [(value[result.start : result.end], result.score) for result in analysis.recognizer_results] == [
+        ("4111111111111111", 1.0)
+    ]
+
+    processor = _processor(classification, [tag], ClassificationLanguage.en)
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == ["PII.Sensitive"]
+
+
+@pytest.mark.parametrize(
+    ("value", "expected_entities", "expected_labels"),
+    [
+        ("Card 3056 930902 5904 issued", {"CREDIT_CARD": "3056 930902 5904"}, ["PII.Sensitive"]),
+        ("Card 3056-930902-5904 issued", {"CREDIT_CARD": "3056-930902-5904"}, ["PII.Sensitive"]),
+        ("Card 3056  930902   5904 issued", {"CREDIT_CARD": "3056  930902   5904"}, ["PII.Sensitive"]),
+        ("Card 4111  1111   1111    1111 issued", {"CREDIT_CARD": "4111  1111   1111    1111"}, ["PII.Sensitive"]),
+        ("Card 4111111111111111 issued", {"CREDIT_CARD": "4111111111111111"}, ["PII.Sensitive"]),
+        ("Reference 4939323083746 recorded", {"CREDIT_CARD": "4939323083746"}, ["PII.Sensitive"]),
+        ("Reference 4924867307503760 recorded", {"CREDIT_CARD": "4924867307503760"}, ["PII.Sensitive"]),
+        ("Reference 4930582239178 recorded", {"CREDIT_CARD": "4930582239178"}, ["PII.Sensitive"]),
+        ("Card 4000000000000000006 issued", {"CREDIT_CARD": "4000000000000000006"}, ["PII.Sensitive"]),
+        ("user@example.com", {"EMAIL_ADDRESS": "user@example.com"}, ["PII.Sensitive"]),
+        (
+            "https://example.org/4111111111111111",
+            {"URL": "https://example.org/4111111111111111", "CREDIT_CARD": "4111111111111111"},
+            ["PII.Sensitive"],
+        ),
+        ("http://192.168.1.1:8080/123", {"IP_ADDRESS": "192.168.1.1"}, []),
+        ("10.0.0.5:8080/health", {"IP_ADDRESS": "10.0.0.5"}, []),
+        ("192.168.1.1/index.html", {"IP_ADDRESS": "192.168.1.1"}, []),
+        ("ftp://10.0.0.1/file", {"IP_ADDRESS": "10.0.0.1"}, []),
+        ("smb://10.0.0.1/share", {"IP_ADDRESS": "10.0.0.1"}, []),
+        ("src_ip:10.0.0.1", {"IP_ADDRESS": "10.0.0.1"}, []),
+        ("client_ip:10.0.0.1", {"IP_ADDRESS": "10.0.0.1"}, []),
+        ("dead_key:10.0.0.1:65535/health", {"IP_ADDRESS": "10.0.0.1"}, []),
+        ("10.0.0.0/abc", {"IP_ADDRESS": "10.0.0.0"}, []),
+        ("10.1.2.3:51234/abc", {"IP_ADDRESS": "10.1.2.3"}, []),
+        ('He said "visit https://example.com."', {"URL": "https://example.com"}, []),
+        ("'example.com,'", {}, []),
+        ("<https://example.com.>", {"URL": "https://example.com"}, []),
+        ('"https://example.com/?x=1."', {"URL": "https://example.com/?x=1."}, []),
+        ("<https://example.com#part,>", {"URL": "https://example.com#part,"}, []),
+        ("ftp://10.0.0.1/123", {"IP_ADDRESS": "10.0.0.1"}, []),
+        ("smb://10.0.0.1/123", {"IP_ADDRESS": "10.0.0.1"}, []),
+        ("10.0.0.1/24foo", {"IP_ADDRESS": "10.0.0.1"}, []),
+        ("10.0.0.1/2025.json", {"IP_ADDRESS": "10.0.0.1"}, ["PII.NonSensitive"]),
+        ("10.0.0.1/8.1", {"IP_ADDRESS": "10.0.0.1"}, []),
+        ("http://app.internal.local/path", {}, []),
+    ],
+    ids=[
+        "diners-spaces",
+        "diners-dashes",
+        "diners-uneven-spaces",
+        "visa-uneven-spaces",
+        "card-compact",
+        "card-phone-collision-13",
+        "card-phone-collision-16",
+        "card-phone-collision-alt-13",
+        "card-visa-19",
+        "email-address",
+        "url-nested-card",
+        "http-ipv4-port-numeric-path-no-context",
+        "ipv4-port-health-no-context",
+        "ipv4-html-path-no-context",
+        "ftp-ipv4-path-no-context",
+        "smb-ipv4-path-no-context",
+        "ipv4-src-label-no-context",
+        "ipv4-client-label-no-context",
+        "ipv4-label-port-path-no-context",
+        "ipv4-nonnumeric-path-no-context",
+        "ipv4-port-nonnumeric-path-no-context",
+        "url-quoted-prose-bare-host-dot",
+        "url-quoted-bare-host-below-threshold",
+        "url-delimited-bare-host-dot",
+        "url-quoted-query-dot",
+        "url-delimited-fragment-comma",
+        "ftp-ipv4-numeric-path-no-context",
+        "smb-ipv4-numeric-path-no-context",
+        "ipv4-numeric-word-path",
+        "cidr-looking-json-path-competing-date",
+        "ipv4-decimal-path",
+        "url-internal-host-rejected",
+    ],
+)
+def test_full_shipped_recognizer_interactions(shipped_pii, value, expected_entities, expected_labels):
+    classification = _shipped_classification(shipped_pii)
+    tags = [_shipped_tag(shipped_pii, classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
+    column = Column(name="payload", fullyQualifiedName="db.schema.table.payload", dataType=DataType.VARCHAR, tags=[])
+    nlp_engine = load_nlp_engine(classification_language=ClassificationLanguage.en)
+    evidence = [
+        result for tag in tags for result in TagAnalyzer(tag, column, nlp_engine).analyze([value]).recognizer_results
+    ]
+    for entity, expected_slice in expected_entities.items():
+        assert any(
+            result.entity_type == entity and value[result.start : result.end] == expected_slice for result in evidence
+        )
+    if not expected_entities:
+        assert all(result.entity_type != "URL" for result in evidence)
+
+    processor = _processor(classification, tags, ClassificationLanguage.en)
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
+
+
+@pytest.mark.parametrize(
+    ("column_name", "value", "expected_card", "expected_ip", "expected_labels"),
+    [
+        ("description", "Card 3056  930902   5904   2025", "3056  930902   5904", None, ["PII.Sensitive"]),
+        ("description", "3056-930902 5904", None, None, []),
+        ("description", "4111  1111   1111  1111  123", None, None, []),
+        ("description", "Scores 41  12   34 56 78 90 12 38 final", None, None, []),
+        ("description", "Batch 5  312   34567 8901233 done", None, None, []),
+        ("phone", "+49 1512 3456787", None, None, ["PII.NonSensitive"]),
+        ("notes", "Call me on +49 1512 3456787 tomorrow", None, None, []),
+        ("phone", "4991123456788", "4991123456788", None, ["PII.Sensitive"]),
+        ("notes", "Scores 41 12 34 56 78 90 12 38 final", None, None, []),
+        ("description", "Batch 5 312 34567 8901233 done", None, None, []),
+        ("description", "Card 4111111111111111 2025", "4111111111111111", None, ["PII.Sensitive"]),
+        ("description", "4111 1111 1111 1111 123", None, None, []),
+        ("description", "4322 7148 2639 4388 390", "4322 7148 2639 4388 390", None, ["PII.Sensitive"]),
+        ("ip_address", "10.1.2.3:51234", None, "10.1.2.3", ["PII.Sensitive"]),
+        ("ip_address", "10.0.0.0/8", None, "10.0.0.0", ["PII.Sensitive"]),
+        ("ip_address", "10.0.0.5:8080/health", None, "10.0.0.5", ["PII.Sensitive"]),
+        ("ip_address", "src_ip:10.0.0.1", None, "10.0.0.1", ["PII.Sensitive"]),
+        ("ip_address", "ftp://user@10.0.0.1/123", None, "10.0.0.1", ["PII.Sensitive"]),
+        ("ip_address", "ftp://@10.0.0.1/123", None, "10.0.0.1", ["PII.Sensitive"]),
+        ("ip_address", "smb://@10.0.0.1:8080/123", None, "10.0.0.1", ["PII.Sensitive"]),
+        ("ip_address", "ftp://" + "u" * 1000 + "@10.0.0.1/123", None, "10.0.0.1", ["PII.Sensitive"]),
+        ("ip_address", "smb://user:pass@10.0.0.1:8080/123", None, "10.0.0.1", ["PII.Sensitive"]),
+        ("ip_address", "client_ip:10.0.0.1", None, "10.0.0.1", ["PII.Sensitive"]),
+        ("ip_address", "::ffff:999.10.0.0.1", None, None, []),
+    ],
+)
+def test_shipped_recognizers_preserve_numeric_family_boundaries(
+    shipped_pii, column_name, value, expected_card, expected_ip, expected_labels
+):
+    classification = _shipped_classification(shipped_pii)
+    tags = [_shipped_tag(shipped_pii, classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
+    column = Column(
+        name=column_name,
+        fullyQualifiedName=f"db.schema.table.{column_name}",
+        dataType=DataType.VARCHAR,
+        tags=[],
+    )
+    nlp_engine = load_nlp_engine(classification_language=ClassificationLanguage.en)
+    evidence = [
+        result for tag in tags for result in TagAnalyzer(tag, column, nlp_engine).analyze([value]).recognizer_results
+    ]
+    for entity, expected in (("CREDIT_CARD", expected_card), ("IP_ADDRESS", expected_ip)):
+        spans = [value[result.start : result.end] for result in evidence if result.entity_type == entity]
+        assert spans == ([expected] if expected else [])
+
+    processor = _processor(classification, tags, ClassificationLanguage.en)
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
 
 
 class FakeScoreTagsForColumn:
@@ -722,21 +1125,6 @@ def shipped_pii_tags() -> tuple[Classification, list[Tag]]:
         for tag in config["createTags"]
     ]
     return classification, tags
-
-
-def _processor(
-    classification: Classification, tags: list[Tag], language: ClassificationLanguage, **kwargs
-) -> TagProcessor:
-    config = Mock(spec=OpenMetadataWorkflowConfig)
-    config.source = Mock(spec=SourceConfig)
-    config.source.sourceConfig = Mock()
-    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=language)
-    return TagProcessor(
-        config=config,
-        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
-        classification_manager=FakeClassificationManager((classification, tags)),
-        **kwargs,
-    )
 
 
 # F2601815M is a synthetic FIN checksum fixture.

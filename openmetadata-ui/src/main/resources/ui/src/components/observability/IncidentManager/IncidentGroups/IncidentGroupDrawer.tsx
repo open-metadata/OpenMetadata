@@ -224,7 +224,8 @@ const IncidentGroupDrawer = ({
                     </Button>
                   </Box>
                   <TableCard.Root
-                    className={`tw:flex tw:min-h-0 tw:flex-col ${INCIDENT_TABLE_CARD_CLASS}`}>
+                    className={`tw:flex tw:min-h-0 tw:flex-col ${INCIDENT_TABLE_CARD_CLASS}`}
+                    variant="muted">
                     {isError ? (
                       <IncidentGroupsLoadError
                         data-testid="incident-group-incidents-error"

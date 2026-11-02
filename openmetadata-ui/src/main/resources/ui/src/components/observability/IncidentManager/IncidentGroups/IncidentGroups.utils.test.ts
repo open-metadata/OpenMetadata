@@ -21,6 +21,7 @@ import {
 import { TestCaseResolutionStatusTypes as ResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
+  DEFAULT_INCIDENT_GROUP_SORT,
   INCIDENT_TREND_COLORS,
   SPARKLINE_HEIGHT,
   SPARKLINE_INSET,
@@ -42,6 +43,7 @@ import {
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
+  parseIncidentGroupSort,
 } from './IncidentGroups.utils';
 
 const group = (
@@ -507,5 +509,37 @@ describe('getIncidentGroupSortQuery', () => {
     expect(
       getIncidentGroupSortQuery({ field: 'severity', type: 'desc' })
     ).toEqual({ sortType: 'desc', sortField: 'severity' });
+  });
+});
+
+describe('parseIncidentGroupSort', () => {
+  it('should read a valid field and direction', () => {
+    expect(parseIncidentGroupSort('lastSeen', 'asc')).toEqual({
+      field: 'lastSeen',
+      type: 'asc',
+    });
+  });
+
+  it('should fall back to the default for missing or unknown values', () => {
+    expect(parseIncidentGroupSort(undefined, undefined)).toEqual(
+      DEFAULT_INCIDENT_GROUP_SORT
+    );
+    expect(parseIncidentGroupSort('name', 'sideways')).toEqual(
+      DEFAULT_INCIDENT_GROUP_SORT
+    );
+  });
+
+  it('should keep a valid field when only the direction is unknown', () => {
+    expect(parseIncidentGroupSort('severity', 'bogus')).toEqual({
+      field: 'severity',
+      type: DEFAULT_INCIDENT_GROUP_SORT.type,
+    });
+  });
+
+  it('should keep a valid direction when only the field is unknown', () => {
+    expect(parseIncidentGroupSort('bogus', 'asc')).toEqual({
+      field: DEFAULT_INCIDENT_GROUP_SORT.field,
+      type: 'asc',
+    });
   });
 });

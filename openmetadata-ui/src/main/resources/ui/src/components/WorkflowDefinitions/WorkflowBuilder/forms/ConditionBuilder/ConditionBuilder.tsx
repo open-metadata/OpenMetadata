@@ -31,6 +31,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useListData } from 'react-stately';
+import { FQN_SEPARATOR_CHAR } from '../../../../../constants/char.constants';
 import { useWorkflowModeContext } from '../../../../../contexts/WorkflowModeContext';
 import {
   fqnsToGlossaryTags,
@@ -69,6 +70,12 @@ const isGlossaryTermConditionField = (
 ): boolean =>
   Boolean(fieldDef && GLOSSARY_TERM_CONDITION_FIELDS.includes(fieldDef.value));
 
+// A chip has no room for supporting text, so the parent goes into its label.
+const getChipLabel = (option: ConditionBuilderOption | undefined) =>
+  option?.supportingText
+    ? `${option.supportingText}${FQN_SEPARATOR_CHAR}${option.label}`
+    : option?.label;
+
 const resolveMultiSelectItems = (
   hasFetchOptions: boolean,
   loading: boolean,
@@ -80,7 +87,11 @@ const resolveMultiSelectItems = (
     sourceOptions = loading ? [] : asyncOptions;
   }
 
-  return sourceOptions.map((o) => ({ id: o.value, label: o.label }));
+  return sourceOptions.map((o) => ({
+    id: o.value,
+    label: o.label,
+    supportingText: o.supportingText,
+  }));
 };
 
 function ConditionBuilderValueControl(
@@ -163,9 +174,12 @@ function ConditionBuilderValueControl(
       const currentIds = selectedItems.items.map((item) => item.id);
       currentIds.forEach((id) => selectedItems.remove(id));
       values.forEach((v) => {
-        const label = hasFetchOptions
-          ? asyncOptions.find((o) => o.value === v)?.label ?? v
-          : staticOptions.find((o) => o.value === v)?.label ?? v;
+        const label =
+          getChipLabel(
+            (hasFetchOptions ? asyncOptions : staticOptions).find(
+              (o) => o.value === v
+            )
+          ) ?? v;
         selectedItems.append({ id: v, label });
       });
       prevValuesRef.current = values;
@@ -249,7 +263,7 @@ function ConditionBuilderValueControl(
         const opt = options.find((o) => o.value === String(key));
         selectedItems.append({
           id: String(key),
-          label: opt?.label ?? String(key),
+          label: getChipLabel(opt) ?? String(key),
         });
         onChange([...selectedItems.items.map((i) => i.id), String(key)]);
       }}
@@ -260,6 +274,7 @@ function ConditionBuilderValueControl(
           isDisabled={item.isDisabled}
           key={item.id}
           label={item.label}
+          supportingText={item.supportingText}
         />
       )}
     </Autocomplete>
@@ -402,7 +417,7 @@ export const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
       data-testid={dataTestId}>
       {showCondition && (
         <div
-          className="tw:flex tw:justify-center tw:mb-1"
+          className="tw:flex tw:justify-start tw:mb-1"
           data-testid={`${dataTestId}-condition-radio`}>
           <div className="tw:flex tw:border tw:border-border-secondary tw:rounded-lg tw:overflow-hidden">
             <Button
@@ -441,7 +456,8 @@ export const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
             className="tw:flex tw:items-center tw:gap-4 tw:flex-nowrap"
             data-testid="advanced-search-field-select"
             key={row.id}>
-            <div className="tw:flex-1 tw:min-w-0">
+            {/* Fits the longest field label; the value control takes the rest. */}
+            <div className="tw:w-44 tw:shrink-0">
               <Select
                 data-testid={`${dataTestId}-row-${index}-field`}
                 isDisabled={isDisabled}

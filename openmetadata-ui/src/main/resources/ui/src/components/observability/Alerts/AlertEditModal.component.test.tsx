@@ -30,7 +30,6 @@ import {
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import AlertEditModal from './AlertEditModal.component';
-import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockUseAlertFormData = jest.fn();
 
@@ -114,11 +113,10 @@ const alert: ModifiedEventSubscription = {
 const getHookState = (overrides = {}) => ({
   alert,
   extraFormButtons: {},
-  filterResources: [],
   handleSave: jest.fn(),
   inlineAlertDetails: undefined,
   isLoading: false,
-  loadingState: { alerts: false, functions: false, templates: false },
+  loadingState: { alerts: false, templates: false },
   saving: false,
   shouldShowActionsSection: true,
   selection: { support: { supportedFilters: [], supportedTriggers: [] } },
@@ -134,7 +132,7 @@ describe('AlertEditModal', () => {
     mockUseAlertFormData.mockReturnValue(getHookState());
   });
 
-  it('passes fqn, save callback, close callback and the chosen sources to the alert form hook', async () => {
+  it('passes fqn, save callback, close callback and the chosen sources and rules to the alert form hook', async () => {
     const onClose = jest.fn();
     const onSaved = jest.fn();
 
@@ -151,6 +149,7 @@ describe('AlertEditModal', () => {
       afterSaveAction: onSaved,
       alertType: AlertType.Observability,
       fqn: 'service.alert',
+      input: { actions: [], filters: [] },
       onCancel: onClose,
       sources: [],
     });
@@ -160,6 +159,7 @@ describe('AlertEditModal', () => {
         afterSaveAction: onSaved,
         alertType: AlertType.Observability,
         fqn: 'service.alert',
+        input: undefined,
         onCancel: onClose,
         sources: ['table'],
       })
@@ -192,35 +192,6 @@ describe('AlertEditModal', () => {
     for (const [props] of ExtraButton.mock.calls) {
       expect(props).not.toHaveProperty('formRef');
     }
-  });
-
-  it('creates a notification alert when opened for notifications', () => {
-    const handleSave = jest.fn();
-    mockUseAlertFormData.mockReturnValue(getHookState({ handleSave }));
-
-    render(
-      <AlertEditModal
-        isOpen
-        kind={NOTIFICATION_ALERT_KIND}
-        mode="add"
-        onClose={jest.fn()}
-        onSaved={jest.fn()}
-      />
-    );
-
-    expect(mockUseAlertFormData).toHaveBeenCalledWith(
-      expect.objectContaining({ alertType: AlertType.Notification })
-    );
-    // Notification alerts have no trigger section, even before a source is picked.
-    expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent(
-      'false'
-    );
-
-    fireEvent.click(screen.getByTestId('submit-form'));
-
-    expect(handleSave).toHaveBeenCalledWith(
-      expect.objectContaining({ alertType: AlertType.Notification })
-    );
   });
 
   it('shows loader while edit alert details are loading', () => {
@@ -349,7 +320,7 @@ describe('AlertEditModal', () => {
   it('passes the template permission and loading state to the form', () => {
     mockUseAlertFormData.mockReturnValue(
       getHookState({
-        loadingState: { alerts: false, functions: false, templates: true },
+        loadingState: { alerts: false, templates: true },
         templateResourcePermission: { Create: true },
       })
     );

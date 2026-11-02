@@ -15,6 +15,8 @@ package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.ACTIVITY_FEED_ALERT_STEP;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.addContractAndStatusToActivityFeedAlert;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
@@ -29,6 +31,7 @@ import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignH
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill.backfillMlFeatureTags;
+import static org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration.copyConceptBindingsToRows;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
@@ -36,12 +39,15 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
+import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
+import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
@@ -62,6 +68,7 @@ public class Migration extends MigrationProcessImpl {
     alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, POSTGRES).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, POSTGRES);
+    copyConceptBindingsToRows(handle, POSTGRES);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the
     // packaged JSON default; existing installs only through this migration.
@@ -109,6 +116,11 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LifeCycleCreatedSentinelMigration.STEP_NAME,
         () -> removeCreatedSentinel(handle, POSTGRES));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        FirstTimeUserMigration.STEP_NAME,
+        () -> FirstTimeUserMigration.backfillFirstTimeUser(handle, POSTGRES));
     // Alerts the previous release stopped sending, because it could not build one of their
     // destinations, send again from this release; they start from the upgrade, not their backlog.
     runOnce(
@@ -122,5 +134,24 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ConsumerIdMigration.STEP_NAME,
         () -> ConsumerIdMigration.storeConsumerIds(collectionDAO));
+    // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
+    // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
+    // harmless.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ACTIVITY_FEED_ALERT_STEP,
+        () -> addContractAndStatusToActivityFeedAlert(handle));
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        GlossaryAutomationReviewMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
+        });
+    // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
+    AppCreatedAlerts.logForReviewOnPostgres(handle);
   }
 }

@@ -37,7 +37,6 @@ import {
 } from '../../../utils/TaskNavigationUtils';
 import ClassificationTagPicker from '../../common/ClassificationTagPicker/ClassificationTagPicker';
 import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
@@ -264,6 +263,7 @@ const TagsContainerV2 = ({
     () =>
       showAddTagButton ? (
         <WidgetPlusButton
+          compact={showBottomEditButton}
           data-testid="add-tag"
           title={t('label.add-entity', {
             entity: isGlossaryType
@@ -273,7 +273,7 @@ const TagsContainerV2 = ({
           onClick={handleAddClick}
         />
       ) : null,
-    [showAddTagButton, handleAddClick, t, isGlossaryType]
+    [showAddTagButton, handleAddClick, t, isGlossaryType, showBottomEditButton]
   );
 
   const renderTags = useMemo(
@@ -383,11 +383,10 @@ const TagsContainerV2 = ({
   const editTagButton = useMemo(
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
-        <EditIconButton
+        <WidgetEditButton
           className="hover-cell-icon"
+          compact={showBottomEditButton}
           data-testid="edit-button"
-          newLook={newLook}
-          size="small"
           title={t('label.edit-entity', {
             entity:
               tagType === TagSource.Classification
@@ -397,7 +396,7 @@ const TagsContainerV2 = ({
           onClick={handleAddClick}
         />
       ) : null,
-    [permission, tags, tagType, handleAddClick, newLook]
+    [permission, tags, tagType, handleAddClick, showBottomEditButton]
   );
 
   const horizontalLayout = useMemo(() => {
@@ -527,11 +526,11 @@ const TagsContainerV2 = ({
         <>
           {tagBody}
           {(children || showBottomEditButton) && (
-            <div className="m-t-xs w-full d-flex items-baseline">
+            <div className="m-t-xs w-full d-flex items-center">
               {showBottomEditButton && !showInlineEditButton && (
-                <p className="d-flex m-r-md">
+                <div className="d-flex m-r-xs">
                   {withSelectorPopover(editTagButton, 'body')}
-                </p>
+                </div>
               )}
               {children}
             </div>

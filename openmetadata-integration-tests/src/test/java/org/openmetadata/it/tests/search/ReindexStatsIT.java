@@ -2,6 +2,7 @@ package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -12,7 +13,9 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
+import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.search.SearchClusterResetExtension;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
@@ -106,12 +109,17 @@ class ReindexStatsIT {
               table.getFullyQualifiedName())
           .isZero();
     } finally {
-      // The schema row was force-deleted above, so the table is now orphaned. The namespace's
-      // recursive service cleanup (service -> db -> schema -> table) can't reach it through the
-      // broken chain, leaving a non-deleted, unindexable table on the shared cluster that later
-      // skews the cluster-wide DbToEsCountReconciliationIT (table db=2/es=1). Remove it directly,
-      // mirroring the DAO-level surgery used to create the orphan.
+      // The missing schema prevents namespace cleanup from reaching the table or its search doc.
       Entity.getCollectionDAO().tableDAO().delete(table.getId());
+      Entity.getSearchRepository().deleteEntityIndex(table);
+      final String alias = new IndexAliasInspector(server).aliasFor(Entity.TABLE);
+      final SearchAssertions search = new SearchAssertions(server);
+      Awaitility.await("orphaned table removed from search")
+          .atMost(ReindexHelpers.searchPropagationTimeout())
+          .untilAsserted(
+              () ->
+                  search.assertEntityNotIndexed(
+                      alias, Entity.TABLE, table.getFullyQualifiedName()));
     }
   }
 

@@ -148,15 +148,20 @@ public class UriUtils {
    * @return The endpoint URL
    */
   public static URI buildEndpointUrl(URI issuerUrl, String path) {
-    String baseUrl = issuerUrl.toString();
-    if (baseUrl.endsWith("/")) {
-      baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-    }
+    String baseUrl = withoutTrailingSlash(issuerUrl.toString());
 
     if (!path.startsWith("/")) {
       path = "/" + path;
     }
 
     return URI.create(baseUrl + path);
+  }
+
+  /**
+   * The MCP base URL as configured may end in a slash, the way BASE_PATH is written. Every MCP
+   * OAuth URL is built as baseUrl + "/mcp/...", so the slash has to go or it doubles.
+   */
+  public static String withoutTrailingSlash(final String url) {
+    return url != null && url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
   }
 }

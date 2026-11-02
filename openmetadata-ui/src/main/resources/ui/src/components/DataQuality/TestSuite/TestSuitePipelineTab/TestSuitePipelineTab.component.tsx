@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Skeleton,
   Table,
   TableCard,
@@ -36,7 +35,6 @@ import { DISABLED, NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
@@ -69,9 +67,9 @@ import { getTestSuiteIngestionPath } from '../../../../utils/RouterUtils';
 import { getSkeletonMockData } from '../../../../utils/Skeleton.utils';
 import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import AirflowSetupGuide from '../../../common/AirflowSetupGuide/AirflowSetupGuide';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
@@ -360,7 +358,7 @@ const TestSuitePipelineTab = ({
     () =>
       testSuite ? (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               createPermission
                 ? [
@@ -379,14 +377,15 @@ const TestSuitePipelineTab = ({
             description={t('message.no-table-pipeline')}
             icon={<Dataflow03 className="tw:text-fg-brand-primary" />}
             title={t('message.no-pipelines-yet')}
-            variant="blank"
           />
         </Box>
       ) : (
-        <ErrorPlaceHolder
-          placeholderText={t('message.no-test-suite-table-pipeline')}
-          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={t('message.no-test-suite-table-pipeline')}
+          />
+        </div>
       ),
     [testSuite, createPermission, t]
   );
@@ -415,7 +414,7 @@ const TestSuitePipelineTab = ({
   }, [fetchIngestionPipelineExtraDetails]);
 
   if (!isAirflowAvailable && !(isLoading || isFetchingStatus)) {
-    return <ErrorPlaceHolderIngestion />;
+    return <AirflowSetupGuide />;
   }
 
   return (
@@ -571,9 +570,8 @@ const TestSuitePipelineTab = ({
           </Table.Body>
         </Table>
 
-        {showPagination && (
+        {showPagination && paging.total > 0 && (
           <NextPrevious
-            isNumberBased
             currentPage={currentPage}
             isLoading={isLoading}
             pageSize={pageSize}

@@ -15,8 +15,8 @@ import {
   Badge,
   Box,
   Button,
+  ConfirmPopover,
   Dropdown,
-  EmptyPlaceholder,
   Skeleton,
   Tabs,
   Typography,
@@ -33,8 +33,17 @@ import {
 import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
-import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
+import { isEmpty, noop } from 'lodash';
+import {
+  FC,
+  ReactNode,
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { SEARCH_INDEXING_APPLICATION } from '../../../../../../constants/explore.constants';
@@ -66,15 +75,24 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import AppLiveIndexing from '../../../../../Settings/Applications/AppLiveIndexing/AppLiveIndexing.component';
 import AppRunsHistory from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.component';
+import type { AppRunRecordWithId } from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.interface';
 import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
-import McpApplicationConfiguration from '../../../../../Settings/Applications/McpApplicationConfiguration/McpApplicationConfiguration';
 import type { AppPlugin } from '../../../../../Settings/Applications/plugins/AppPlugin';
-import ConfirmDialog from '../platform-settings/ConfirmDialog';
 import { HintToggle } from './AppConfigForm';
+import {
+  SUB_PAGE_EDIT_SCHEDULE,
+  SUB_PAGE_RUN_CONFIG,
+  TAB_CONFIGURATION,
+  TAB_LABEL_KEYS,
+  TAB_LIVE_INDEXING,
+  TAB_RUNS,
+  TAB_SCHEDULE,
+} from './AppDetail.constants';
 import type { ApplicationsViewProps } from './Applications.types';
 import {
   getConfigTabKind,
@@ -82,13 +100,15 @@ import {
   isAppUnavailable,
   isRuntimeDisabled,
 } from './Applications.utils';
+import AppScheduleEdit from './AppScheduleEdit';
+import McpConfigForm from './McpConfigForm';
 
 type AppAction = 'restore' | 'disable' | 'uninstall';
 
-const TAB_SCHEDULE = 'schedule';
-const TAB_CONFIGURATION = 'configuration';
-const TAB_RUNS = 'recent-runs';
-const TAB_LIVE_INDEXING = 'live-indexing';
+/** A page shown in place of the tabs, one level under the app in the breadcrumb. */
+type AppSubPage =
+  | { type: typeof SUB_PAGE_RUN_CONFIG; record: AppRunRecordWithId }
+  | { type: typeof SUB_PAGE_EDIT_SCHEDULE };
 
 interface AppDetailProps extends ApplicationsViewProps {
   fqn: string;
@@ -96,7 +116,6 @@ interface AppDetailProps extends ApplicationsViewProps {
 
 interface DetailTab {
   id: string;
-  label: string;
   content: ReactNode;
 }
 
@@ -109,13 +128,14 @@ const getPluginDetails = (plugins: AppPlugin[], app?: App) =>
 /** Three-dot menu: Disable or Restore, plus Uninstall for non-system apps. */
 const AppManageMenu: FC<{
   app: App;
+  triggerRef: RefObject<HTMLButtonElement>;
   onAction: (action: AppAction) => void;
-}> = ({ app, onAction }) => {
+}> = ({ app, triggerRef, onAction }) => {
   const { t } = useTranslation();
 
   return (
     <Dropdown.Root>
-      <Dropdown.DotsButton data-testid="manage-button" />
+      <Dropdown.DotsButton data-testid="manage-button" ref={triggerRef} />
       <Dropdown.Popover className="tw:w-min">
         <Dropdown.Menu
           aria-label={t('label.manage-entity', {
@@ -152,31 +172,66 @@ const AppManageMenu: FC<{
   );
 };
 
+/** Confirms a manage-menu action, anchored to the menu's "..." button. */
+const AppActionConfirm: FC<{
+  action: AppAction;
+  app: App;
+  triggerRef: RefObject<HTMLButtonElement>;
+  onConfirm: () => Promise<boolean | undefined>;
+  onClose: () => void;
+}> = ({ action, app, triggerRef, onConfirm, onClose }) => {
+  const { t } = useTranslation();
+  const appName = getEntityName(app);
+
+  const messages: Record<AppAction, string> = {
+    restore: t('message.restore-action-description', { entityType: appName }),
+    disable: t('message.disable-app', { app: appName }),
+    uninstall: t('message.uninstall-app', { app: appName }),
+  };
+  const labels: Record<AppAction, string> = {
+    restore: t('label.restore'),
+    disable: t('label.disable'),
+    uninstall: t('label.uninstall'),
+  };
+
+  return (
+    <ConfirmPopover
+      isOpen
+      confirmText={labels[action]}
+      data-testid="app-action-confirm"
+      description={messages[action]}
+      title={t('message.are-you-sure')}
+      triggerRef={triggerRef}
+      variant={action === 'restore' ? 'primary' : 'destructive'}
+      onConfirm={onConfirm}
+      onOpenChange={(open) => !open && onClose()}
+    />
+  );
+};
+
+/** Tab strip shown in the modal header; the panel renders the active tab's content. */
 const AppDetailTabs: FC<{
-  tabs: DetailTab[];
+  tabIds: string[];
   activeTab?: Key;
   onSelectionChange: (key: Key) => void;
-}> = ({ tabs, activeTab, onSelectionChange }) =>
-  tabs.length > 0 ? (
+}> = ({ tabIds, activeTab, onSelectionChange }) => {
+  const { t } = useTranslation();
+
+  return (
     <Tabs
-      className="tw:gap-4"
       data-testid="tabs"
       selectedKey={activeTab}
       onSelectionChange={onSelectionChange}>
       <Tabs.List size="sm" type="underline">
-        {tabs.map(({ id, label }) => (
+        {tabIds.map((id) => (
           <Tabs.Item id={id} key={id}>
-            {label}
+            {t(TAB_LABEL_KEYS[id])}
           </Tabs.Item>
         ))}
       </Tabs.List>
-      {tabs.map(({ id, content }) => (
-        <Tabs.Panel id={id} key={id}>
-          {content}
-        </Tabs.Panel>
-      ))}
     </Tabs>
-  ) : null;
+  );
+};
 
 const MetaItem: FC<{
   icon: FC<{ className?: string }>;
@@ -198,8 +253,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [action, setAction] = useState<AppAction>();
+  // The action confirmation anchors to the "..." button in the page header.
+  const manageButtonRef = useRef<HTMLButtonElement>(null);
   const [selectedTab, setSelectedTab] = useState<Key>();
   const [showHint, setShowHint] = useState(false);
+  const [subPage, setSubPage] = useState<AppSubPage>();
   // Bumped by Cancel to remount the configuration form with the saved values.
   const [configFormKey, setConfigFormKey] = useState(0);
   const { canEditAll, canDelete, can } = useEntityPermissions(
@@ -228,17 +286,15 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       try {
         setJsonSchema(await applicationsClassBase.importSchema(fqn));
       } catch {
+        // Shown as the empty state when the app ends up with no tabs.
         setJsonSchema(undefined);
-        showErrorToast(
-          t('server.no-application-schema-found', { appName: fqn })
-        );
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [fqn, t]);
+  }, [fqn]);
 
   useEffect(() => {
     void fetchAppDetails();
@@ -289,6 +345,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     if (!appData) {
       return;
     }
+    setLoadingFor('schedule', true);
     try {
       await patchApp(
         {
@@ -302,8 +359,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
         },
         t('label.schedule')
       );
+      setSubPage(undefined);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingFor('schedule', false);
     }
   };
 
@@ -340,11 +400,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     }
   };
 
+  // Resolves false on failure so the confirmation stays open for a retry.
   const handleConfirmAction = async () => {
     if (!appData || !action) {
       return;
     }
-    setLoadingFor('action', true);
     try {
       if (action === 'restore') {
         await restoreApp(appData.id);
@@ -363,17 +423,29 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
             ? t('message.app-disabled-successfully')
             : t('message.app-uninstalled-successfully')
         );
-        // Update current count when Create / Delete operation performed
-        await getResourceLimit('app', true, true);
       }
-      setAction(undefined);
-      onNavigate({ type: 'list' });
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setLoadingFor('action', false);
+
+      return false;
     }
+    if (action !== 'restore') {
+      // Best-effort count refresh, kept out of the try: the app is already
+      // gone, so a failure here must not keep the confirmation open and invite
+      // a retry that would uninstall it again.
+      getResourceLimit('app', true, true).catch(noop);
+    }
+    setAction(undefined);
+    onNavigate({ type: 'list' });
+
+    return true;
   };
+
+  const handleViewRunConfig = (record: AppRunRecordWithId) =>
+    setSubPage({ type: SUB_PAGE_RUN_CONFIG, record });
+
+  const ConfigurationComponent =
+    applicationsClassBase.getModalAppConfigurationComponent();
 
   const getTabs = (): DetailTab[] => {
     if (!appData) {
@@ -386,14 +458,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       Boolean(isAdminUser),
       Boolean(jsonSchema)
     );
-    const ConfigurationComponent =
-      applicationsClassBase.getModalAppConfigurationComponent();
 
     const candidates: (DetailTab & { show: boolean })[] = [
       {
         id: TAB_SCHEDULE,
         show: showSchedule,
-        label: t('label.schedule'),
         content: (
           <AppSchedule
             appData={appData}
@@ -407,21 +476,26 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
               isRunLoading: Boolean(loading.run),
               isDeployLoading: Boolean(loading.deploy),
             }}
+            runsHistoryVariant="muted"
             onDemandTrigger={handleRunNow}
             onDeployTrigger={handleDeploy}
+            onEditSchedule={() => setSubPage({ type: SUB_PAGE_EDIT_SCHEDULE })}
             onSave={handleScheduleSave}
+            onViewRunConfig={handleViewRunConfig}
           />
         ),
       },
       {
         id: TAB_CONFIGURATION,
         show: Boolean(configKind),
-        label: t('label.configuration'),
         content:
           configKind === 'mcp' ? (
-            <McpApplicationConfiguration
-              appName={appData.name}
+            <McpConfigForm
+              appData={appData}
               jsonSchema={jsonSchema as RJSFSchema}
+              key={configFormKey}
+              showHint={showHint}
+              onCancel={() => setConfigFormKey((key) => key + 1)}
             />
           ) : (
             <ConfigurationComponent
@@ -440,13 +514,18 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       {
         id: TAB_RUNS,
         show: isAvailable && showSchedule,
-        label: t('label.recent-run-plural'),
-        content: <AppRunsHistory appData={appData} jsonSchema={jsonSchema} />,
+        content: (
+          <AppRunsHistory
+            appData={appData}
+            jsonSchema={jsonSchema}
+            variant="muted"
+            onViewRunConfig={handleViewRunConfig}
+          />
+        ),
       },
       {
         id: TAB_LIVE_INDEXING,
         show: isAvailable && appData.name === SEARCH_INDEXING_APPLICATION,
-        label: t('label.live-indexing'),
         content: <AppLiveIndexing appData={appData} />,
       },
     ];
@@ -457,6 +536,22 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const PluginDetails = getPluginDetails(plugins, appData);
 
   const activeTab = selectedTab ?? tabs[0]?.id;
+  // Joined to a string so the header effect only re-runs when the set of tabs changes.
+  const headerTabIds =
+    PluginDetails || subPage ? '' : tabs.map(({ id }) => id).join(',');
+  const subPageHeader = useMemo(() => {
+    if (!subPage) {
+      return undefined;
+    }
+
+    return {
+      label:
+        subPage.type === SUB_PAGE_RUN_CONFIG
+          ? t('label.entity-configuration', { entity: t('label.run') })
+          : t('label.update-entity', { entity: t('label.schedule') }),
+      onBack: () => setSubPage(undefined),
+    };
+  }, [subPage, t]);
 
   useEffect(() => {
     if (!appData) {
@@ -475,6 +570,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       description: '',
       icon: applicationsClassBase.getAppIcon(appData.name),
       crumb: appName,
+      subPage: subPageHeader,
       titleSuffix:
         appData.deleted || runtimeDisabled ? (
           <Badge
@@ -523,18 +619,31 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
             <HintToggle isSelected={showHint} onChange={setShowHint} />
           )}
           {canDelete && (
-            <AppManageMenu app={appData} onAction={(key) => setAction(key)} />
+            <AppManageMenu
+              app={appData}
+              triggerRef={manageButtonRef}
+              onAction={(key) => setAction(key)}
+            />
           )}
         </Box>
       ),
+      tabs: headerTabIds ? (
+        <AppDetailTabs
+          activeTab={activeTab}
+          tabIds={headerTabIds.split(',')}
+          onSelectionChange={setSelectedTab}
+        />
+      ) : undefined,
     });
   }, [
     activeTab,
     appData,
     canDelete,
     fqn,
+    headerTabIds,
     isLoading,
     onHeaderChange,
+    subPageHeader,
     runtimeDisabled,
     runtimeDisabledReason,
     showHint,
@@ -553,7 +662,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   if (!appData) {
     return (
       <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="app-not-found"
           description={fqn}
           icon={GridView}
@@ -563,46 +672,74 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     );
   }
 
-  const actionMessage: Record<AppAction, string> = {
-    restore: t('message.restore-action-description', {
-      entityType: getEntityName(appData),
-    }),
-    disable: t('message.disable-app', { app: getEntityName(appData) }),
-    uninstall: t('message.uninstall-app', { app: getEntityName(appData) }),
-  };
+  const renderContent = () => {
+    // Config is disabled without a schema, so a run-config page always has one.
+    if (subPage?.type === SUB_PAGE_RUN_CONFIG && jsonSchema) {
+      return (
+        <ConfigurationComponent
+          isReadOnly
+          appData={{ ...appData, appConfiguration: subPage.record.config }}
+          isSaving={false}
+          jsonSchema={jsonSchema}
+          showHint={false}
+          submitLabel={t('label.save')}
+          onSave={noop}
+        />
+      );
+    }
+    if (subPage?.type === SUB_PAGE_EDIT_SCHEDULE) {
+      return (
+        <AppScheduleEdit
+          appData={appData}
+          isSaving={Boolean(loading.schedule)}
+          onCancel={() => setSubPage(undefined)}
+          onSave={handleScheduleSave}
+        />
+      );
+    }
 
-  const actionLabel: Record<AppAction, string> = {
-    restore: t('label.restore'),
-    disable: t('label.disable'),
-    uninstall: t('label.uninstall'),
+    if (PluginDetails) {
+      return <PluginDetails />;
+    }
+
+    return (
+      tabs.find(({ id }) => id === activeTab)?.content ?? (
+        <Box className="tw:relative tw:flex-1 tw:min-h-90">
+          <NoDataPlaceholder
+            data-testid="app-detail-empty"
+            description={
+              jsonSchema
+                ? undefined
+                : t('server.no-application-schema-found', {
+                    appName: getEntityName(appData),
+                  })
+            }
+            icon={GridView}
+            title={t('label.no-entity', { entity: t('label.configuration') })}
+          />
+        </Box>
+      )
+    );
   };
 
   return (
     <Box
-      className="tw:px-8 tw:pt-4 tw:pb-8"
+      className="tw:flex-1 tw:px-8 tw:pb-8"
       data-testid="app-detail"
       direction="col">
-      {PluginDetails ? (
-        <PluginDetails />
-      ) : (
-        <AppDetailTabs
-          activeTab={activeTab}
-          tabs={tabs}
-          onSelectionChange={setSelectedTab}
+      {renderContent()}
+
+      {/* Mounted only while an action is pending: the label and colour derive
+          from `action`, which would otherwise flip during the exit animation. */}
+      {action && (
+        <AppActionConfirm
+          action={action}
+          app={appData}
+          triggerRef={manageButtonRef}
+          onClose={() => setAction(undefined)}
+          onConfirm={handleConfirmAction}
         />
       )}
-
-      <ConfirmDialog
-        confirmLabel={action ? actionLabel[action] : ''}
-        isDestructive={action !== 'restore'}
-        isLoading={Boolean(loading.action)}
-        isOpen={Boolean(action)}
-        message={action ? actionMessage[action] : ''}
-        testId="app-action-confirm"
-        title={t('message.are-you-sure')}
-        onCancel={() => setAction(undefined)}
-        onConfirm={handleConfirmAction}
-      />
     </Box>
   );
 };

@@ -448,22 +448,27 @@ class ChangeRequestImportAndBulkIT {
                         .withToEntity(downstream.getEntityReference())));
     admin.dataProducts().bulkAddOutputPorts(source.getFullyQualifiedName(), assets(held));
     assertTrue(lineageEdgeExists(source, target), "the products' lineage follows their tables'");
-    deployHookWorkflowFor(
+    deployWorkflowAssigning(
         ns,
         Entity.TABLE,
         "\"dataProducts\"",
         "",
-        filterScopedTo(Entity.TABLE, held.getFullyQualifiedName()));
+        filterScopedTo(Entity.TABLE, held.getFullyQualifiedName()),
+        SharedEntities.get().USER1.getEntityReference());
 
     BulkOperationResult removal =
         admin.dataProducts().bulkRemoveAssets(source.getFullyQualifiedName(), assets(held));
 
     assertEquals(1, removal.getNumberOfRowsPendingApproval());
     assertKeepsProduct(source, target, held, "before approval");
-    ChangeRequest request = onlyPendingRequest(held.getId());
+    ChangeRequest request =
+        Awaitility.await("approval task linked to the pending removal")
+            .atMost(Duration.ofSeconds(120))
+            .pollInterval(Duration.ofSeconds(2))
+            .until(() -> onlyPendingRequest(held.getId()), pending -> pending.getTaskId() != null);
     resolveAs(
         SdkClients.user1Client(),
-        awaitOpenApprovalTask(held.getFullyQualifiedName()),
+        admin.tasks().get(request.getTaskId().toString()),
         "reject",
         TaskResolutionType.Rejected,
         null);

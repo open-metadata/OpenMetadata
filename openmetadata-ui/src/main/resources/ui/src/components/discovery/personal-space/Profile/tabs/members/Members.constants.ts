@@ -22,7 +22,38 @@ import type {
   MembersLandingCard,
   StageState,
   TimeWindowOption,
+  UserDetailTab,
 } from './Members.types';
+
+// Order is the tab-strip order in the user-detail header.
+export const USER_DETAIL_TABS: UserDetailTab[] = [
+  'overview',
+  'access',
+  'activity',
+  'tasks',
+  'owned-assets',
+  'following',
+  'custom-properties',
+];
+
+// User-detail tabs whose list scrolls inside a bounded body; the rest grow so
+// the panel scrolls and the bottom padding stays below the content.
+export const USER_DETAIL_TAB_LABEL_KEYS: Record<UserDetailTab, string> = {
+  overview: 'label.overview',
+  access: 'label.access',
+  activity: 'label.activity',
+  tasks: 'label.task-plural',
+  'owned-assets': 'label.owned-asset-plural',
+  following: 'label.following',
+  'custom-properties': 'label.custom-property-plural',
+};
+
+export const SCROLLING_USER_DETAIL_TABS: ReadonlySet<UserDetailTab> = new Set([
+  'activity',
+  'tasks',
+  'owned-assets',
+  'following',
+]);
 
 export const LANDING_CARDS: MembersLandingCard[] = [
   {
@@ -73,7 +104,7 @@ export const IMPORT_RESULT_DETAILS_KEY = 'details';
 export const IMPORT_RESULT_EMPTY_PLACEHOLDER = '--';
 
 export const WIDGET_CLASS =
-  'tw:flex tw:flex-1 tw:flex-col tw:gap-1 tw:min-w-[120px] tw:p-3';
+  'tw:flex tw:flex-1 tw:flex-col tw:gap-1 tw:min-w-[120px] tw:overflow-hidden tw:p-3';
 
 // Status-chip utility pairs (bg-utility-{c}-50 + text-utility-{c}-700) — these flip
 // together for dark mode; the plain bg-/fg- status tokens collapse to adjacent shades
@@ -83,3 +114,12 @@ export const STAGE_ICON_CLASS: Record<StageState, string> = {
   active: 'tw:bg-utility-brand-50 tw:text-utility-brand-700',
   pending: 'tw:bg-tertiary tw:text-fg-quaternary',
 };
+
+// Team detail tabs whose content is a borderless table drawn edge to edge in
+// the tab card; the rest get padding.
+export const TABLE_TABS = new Set<string>([
+  'teams',
+  'users',
+  'roles',
+  'policies',
+]);

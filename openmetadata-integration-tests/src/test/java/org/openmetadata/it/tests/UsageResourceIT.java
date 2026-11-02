@@ -4,20 +4,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -35,6 +47,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.EntityUsage;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.fluent.Usage;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 
@@ -51,6 +64,9 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 public class UsageResourceIT {
 
   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+  private static final String TABLE_INDEX = "openmetadata_table_search_index";
+  private static final String COLUMN_INDEX = "openmetadata_column_search_index";
+  private static final Duration SEARCH_TIMEOUT = Duration.ofSeconds(60);
 
   @BeforeAll
   static void setup() {
@@ -440,6 +456,41 @@ public class UsageResourceIT {
     cleanupTable(table);
   }
 
+  @Test
+  void testReportUsageUpdatesSearchWithoutReindexingColumns(TestNamespace ns) throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Reads search documents through the embedded search container");
+    Table table = createTable(ns, "usage_table_search");
+    String today = LocalDate.now().format(DATE_FORMATTER);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Map<String, Long> columnSeqNos =
+          Awaitility.await("column docs indexed")
+              .atMost(SEARCH_TIMEOUT)
+              .ignoreExceptions()
+              .until(() -> columnSeqNos(searchClient, table.getId()), docs -> docs.size() == 2);
+
+      Usage.reportFor("table", table.getId()).onDate(today).withCount(7).report();
+
+      Awaitility.await("usageSummary in the table search doc")
+          .atMost(SEARCH_TIMEOUT)
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                JsonNode tableDoc = tableSource(searchClient, table.getId());
+                assertEquals(
+                    7, tableDoc.at("/usageSummary/dailyStats/count").asInt(), tableDoc.toString());
+              });
+      assertEquals(
+          columnSeqNos,
+          columnSeqNos(searchClient, table.getId()),
+          "A usage report must not delete and re-index the table's column docs");
+    }
+
+    cleanupTable(table);
+  }
+
   private Table createTable(TestNamespace ns, String tableName) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -453,6 +504,38 @@ public class UsageResourceIT {
             ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
 
     return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  private static JsonNode tableSource(Rest5Client searchClient, UUID tableId) throws Exception {
+    return searchHits(searchClient, TABLE_INDEX, "{\"term\": {\"_id\": \"%s\"}}".formatted(tableId))
+        .path(0)
+        .path("_source");
+  }
+
+  private static JsonNode searchHits(Rest5Client searchClient, String index, String query)
+      throws Exception {
+    searchClient.performRequest(new Request("POST", "/" + index + "/_refresh"));
+    Request request = new Request("POST", "/" + index + "/_search");
+    request.setJsonEntity(
+        "{\"seq_no_primary_term\": true, \"size\": 100, \"query\": %s}".formatted(query));
+    return JsonUtils.readTree(responseBody(searchClient, request)).at("/hits/hits");
+  }
+
+  private static Map<String, Long> columnSeqNos(Rest5Client searchClient, UUID tableId)
+      throws Exception {
+    Map<String, Long> seqNos = new HashMap<>();
+    for (JsonNode hit :
+        searchHits(
+            searchClient, COLUMN_INDEX, "{\"term\": {\"table.id\": \"%s\"}}".formatted(tableId))) {
+      seqNos.put(hit.path("_id").asText(), hit.path("_seq_no").asLong());
+    }
+    return seqNos;
+  }
+
+  private static String responseBody(Rest5Client searchClient, Request request) throws Exception {
+    return new String(
+        searchClient.performRequest(request).getEntity().getContent().readAllBytes(),
+        StandardCharsets.UTF_8);
   }
 
   private void cleanupTable(Table table) {

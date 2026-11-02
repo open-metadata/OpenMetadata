@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
-import { PagingResponse } from 'Models';
 import { MemorySortBy } from '../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
@@ -109,7 +108,7 @@ export const knowledgePageToArticleItem = (
 
 export const fetchContextCenterDocuments = async (
   params?: ListParams
-): Promise<PagingResponse<Asset[]>> => {
+): Promise<Asset[]> => {
   return listAssetsByFqn(
     CONTEXT_CENTER_DOCUMENTS_FQN,
     AssetType.External,

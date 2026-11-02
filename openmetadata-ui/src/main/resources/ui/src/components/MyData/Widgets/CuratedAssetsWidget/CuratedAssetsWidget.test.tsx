@@ -94,15 +94,6 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(({ children, icon, type, className }) => (
-    <div className={className} data-testid="error-placeholder" data-type={type}>
-      {icon}
-      {children}
-    </div>
-  ))
-);
-
 jest.mock(
   '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () =>

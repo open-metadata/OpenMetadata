@@ -84,9 +84,9 @@ they are worth stating plainly:
 - **Every timed drill starts from a settled map.** The untimed setup waits out the map's
   post-render work (the 300ms prefetch of adjacent bands and the semantic-zoom cooldown), so the
   timed drill does not share the browser and the server with it.
-- **Semantic zoom clicks until the threshold is crossed.** The threshold is an absolute zoom
-  level, and a root scene of a few hundred services fits the view much further out than one of
-  twenty. A fixed number of clicks therefore only crosses it on small graphs, so the benchmark
+- **Semantic zoom clicks until the band changes.** The map switches level by screen fill —
+  zoom out once the whole graph fills under a third of the viewport, zoom in once a card fills
+  most of it, with the zoom min/max as a fallback — not a fixed zoom level; the benchmark
   clicks until the band changes (at most 40 times).
 - **Zoom-in is not a band toggle.** Crossing the zoom-in threshold makes the map pick the expandable
   node nearest the viewport centre and *drill into it*, so focus changes as well as band. Zoom-out

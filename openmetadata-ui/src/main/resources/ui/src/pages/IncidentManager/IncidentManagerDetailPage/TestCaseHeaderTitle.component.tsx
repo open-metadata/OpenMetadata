@@ -26,6 +26,7 @@ import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import type { UseTestCaseDetailPageResult } from './useTestCaseDetailPage';
 
 interface TestCaseHeaderTitleProps {
+  deleted?: TestCase['deleted'];
   displayName: UseTestCaseDetailPageResult['displayName'];
   hasCopied: boolean;
   testCaseName: TestCase['name'];
@@ -37,6 +38,7 @@ const breakableTooltipText = (text?: ReactNode) => (
 );
 
 const TestCaseHeaderTitle = ({
+  deleted,
   displayName,
   hasCopied,
   testCaseName,
@@ -80,6 +82,13 @@ const TestCaseHeaderTitle = ({
           {testCaseName}
         </Typography>
       </Box>
+      {deleted && (
+        <span
+          className="deleted-badge-button tw:shrink-0"
+          data-testid="deleted-badge">
+          {t('label.deleted')}
+        </span>
+      )}
       <Tooltip
         placement="top"
         title={

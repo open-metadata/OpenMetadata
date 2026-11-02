@@ -24,6 +24,7 @@ import static org.openmetadata.service.util.EntityUtil.hash;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -405,6 +406,30 @@ class MigrationWorkflowTest {
 
     assertEquals(List.of("1.0.0", "1.1.0"), getMigrationVersions(workflow));
     assertEquals(Optional.empty(), getCurrentMaxVersion(workflow));
+  }
+
+  @Test
+  void loadMigrationsFailsWhenAPendingVersionCannotBeLoaded() throws Exception {
+    // Leaving the version out would also leave out every later one, and migrate would pass on a
+    // partial schema.
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    createMigrationDir(nativeRoot, "1.0.0", "SELECT 1;");
+    createMigrationDir(nativeRoot, "1.1.0", "");
+    createMigrationDir(nativeRoot, "1.2.0", "SELECT 3;");
+    Files.write(
+        nativeRoot.resolve("1.1.0").resolve("postgres").resolve("schemaChanges.sql"),
+        "SELECT 'caf\u00e9';".getBytes(StandardCharsets.ISO_8859_1));
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of());
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+
+    IllegalStateException error =
+        assertThrows(IllegalStateException.class, workflow::loadMigrations);
+    assertTrue(
+        error.getMessage().startsWith("Migration 1.1.0 cannot be loaded, so no migration was run"),
+        error.getMessage());
   }
 
   @Test

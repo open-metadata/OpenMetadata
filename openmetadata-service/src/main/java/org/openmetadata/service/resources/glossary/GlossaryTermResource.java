@@ -32,6 +32,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -54,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
@@ -68,11 +70,14 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateTermRelation;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -86,6 +91,7 @@ import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository.TermSearch;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -96,6 +102,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -123,8 +130,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   private final GlossaryMapper glossaryMapper = new GlossaryMapper();
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount,"
-          + "effectiveAttributes,realizedIn";
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
   // 100 keeps the query-string-encoded ids list (~37 chars per UUID +
   // separators) well below Jetty's default 8 KB request-header limit
   // and matches the client's BATCH_SIZE in useOntologyExplorer.ts.
@@ -385,7 +391,15 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               description =
                   "Filter by entity status (comma-separated: Approved,Draft,In Review,Rejected,Deprecated,Unprocessed)")
           @QueryParam("entityStatus")
-          String entityStatus) {
+          String entityStatus,
+      @Parameter(
+              description =
+                  "Only terms from this provider, such as `automation` for the terms an AI agent proposed")
+          @QueryParam("provider")
+          String provider,
+      @Parameter(description = "Leave out the terms from this provider")
+          @QueryParam("excludeProvider")
+          String excludeProvider) {
 
     Fields fields = getFields(fieldsParam);
     ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
@@ -401,32 +415,37 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
+    TermSearch search =
+        new TermSearch(
+            query,
+            limitParam,
+            offsetParam,
+            fieldsParam,
+            include,
+            entityStatus,
+            providerValue(provider),
+            providerValue(excludeProvider));
     ResultList<GlossaryTerm> result;
     if (glossaryId != null) {
-      result =
-          repository.searchGlossaryTermsById(
-              glossaryId, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsById(glossaryId, search);
     } else if (glossaryFqn != null) {
-      result =
-          repository.searchGlossaryTermsByFQN(
-              glossaryFqn, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByFQN(glossaryFqn, search);
     } else if (parentId != null) {
-      result =
-          repository.searchGlossaryTermsByParentId(
-              parentId, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByParentId(parentId, search);
     } else if (parentFqn != null) {
-      result =
-          repository.searchGlossaryTermsByParentFQN(
-              parentFqn, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByParentFQN(parentFqn, search);
     } else {
       // Search across all glossary terms without parent filter
       // Uses efficient database-level search and pagination
-      result =
-          repository.searchGlossaryTermsByParentFQN(
-              null, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByParentFQN(null, search);
     }
 
     return addHref(uriInfo, result);
+  }
+
+  // An unknown provider is a bad request rather than a filter that silently matches nothing.
+  private static String providerValue(String provider) {
+    return nullOrEmpty(provider) ? null : ProviderType.fromValue(provider).value();
   }
 
   @GET
@@ -867,29 +886,54 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "createManyGlossaryTerm",
       summary = "Create multiple glossary terms at once",
-      description = "Create multiple new glossary terms.",
+      description =
+          "Create glossary terms and return an ordered outcome for every input, with created,"
+              + " skipped, and failed counts when onConflict is specified. Without onConflict, the"
+              + " legacy created-entity array and validation errors are preserved. onConflict=skip"
+              + " skips existing and repeated"
+              + " FQNs; onConflict=fail reports them as failed. Both policies create other valid"
+              + " inputs and preserve existing and soft-deleted terms. Validation failures include"
+              + " a reason and message. Unexpected server failures remain HTTP errors; earlier"
+              + " transaction chunks may already have committed.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The glossary term",
+            description =
+                "Per-input outcomes when onConflict is specified; otherwise newly created entities",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = GlossaryTerm.class))),
+                    schema = @Schema(oneOf = {BulkCreateResult.class, GlossaryTerm[].class}))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createMany(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid List<CreateGlossaryTerm> creates) {
-    List<GlossaryTerm> terms =
-        creates.stream()
-            .map(
-                create ->
-                    mapper.createToEntity(create, securityContext.getUserPrincipal().getName()))
-            .toList();
-    List<GlossaryTerm> result = repository.createMany(uriInfo, terms);
-    return Response.ok(result).build();
+      @NotNull @Valid List<@NotNull CreateGlossaryTerm> creates,
+      @Parameter(
+              description =
+                  "Opt into per-input outcomes; conflicts skip or fail while other inputs continue.",
+              schema = @Schema(implementation = BulkCreateConflictPolicy.class))
+          @QueryParam("onConflict")
+          String onConflict) {
+    final BulkCreateConflictPolicy conflictPolicy =
+        onConflict == null ? null : BulkCreateConflictPolicy.fromValue(onConflict);
+    final Function<CreateGlossaryTerm, GlossaryTerm> toEntity =
+        create -> {
+          final GlossaryTerm term =
+              mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+          final CreateResourceContext<GlossaryTerm> context =
+              new CreateResourceContext<>(entityType, term);
+          final OperationContext operation =
+              new OperationContext(entityType, MetadataOperation.CREATE);
+          limits.enforceLimits(securityContext, context, operation);
+          authorizer.authorize(securityContext, operation, context);
+          return term;
+        };
+    return Response.ok(
+            conflictPolicy == null
+                ? repository.createMany(null, creates.stream().map(toEntity).toList())
+                : repository.createMany(creates, toEntity, conflictPolicy))
+        .build();
   }
 
   @PATCH

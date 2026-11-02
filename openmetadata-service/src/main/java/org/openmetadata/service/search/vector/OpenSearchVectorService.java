@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.vector;
 
+import static org.openmetadata.service.search.opensearch.OsUtils.loadVectorIndexMapping;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -1000,10 +1002,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     var mappings = MAPPER.createObjectNode().put("dynamic", false);
     mappings.set("properties", buildChunkProperties());
     mappings.set("_meta", chunkMeta());
-    var root = MAPPER.createObjectNode();
-    root.set(
-        "settings",
-        MAPPER.createObjectNode().set("index", MAPPER.createObjectNode().put("knn", true)));
+    var root = loadVectorIndexMapping();
     root.set("mappings", mappings);
     // Staged generations are created bare: attaching the search alias before promotion would make
     // the half-built generation searchable alongside the live one.

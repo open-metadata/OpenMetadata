@@ -22,6 +22,11 @@ public class Workflow {
   public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
   public static final String RESULT_VARIABLE = "result";
   public static final String UPDATED_BY_VARIABLE = "updatedBy";
+  // Global variables a rejected approval leaves for the steps after it: the reviewer's comment and
+  // who rejected
+  // (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+  public static final String REJECTION_COMMENT_VARIABLE = "rejectionComment";
+  public static final String REJECTED_BY_VARIABLE = "rejectedBy";
   public static final String CHANGE_REQUEST_ID_VARIABLE = "changeRequestId";
   public static final String CHANGE_REQUEST_REVISION_VARIABLE = "changeRequestRevision";
   public static final String CHANGE_REQUEST_WORKFLOW_VARIABLE = "changeRequestWorkflow";

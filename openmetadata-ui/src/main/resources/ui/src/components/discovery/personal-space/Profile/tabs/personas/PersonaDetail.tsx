@@ -48,13 +48,12 @@ import {
   getPersonaByName,
   updatePersona,
 } from '../../../../../../rest/PersonaAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -62,6 +61,7 @@ import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/Rich
 import SubCategoryGrid from './customize/SubCategoryGrid';
 import PersonaCustomizeGrid from './PersonaCustomizeGrid';
 import type { PersonaDetailTab } from './Personas.types';
+import { viewToSubPath } from './Personas.utils';
 import PersonaUsersTab from './PersonaUsersTab';
 
 interface PersonaDetailProps {
@@ -103,9 +103,9 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
 
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingDefault, setIsTogglingDefault] = useState(false);
+
+  const fetchRequestIdRef = useRef(0);
 
   // Personas are not soft-deletable here (ManageButton legacy passed deleted=false),
   // so the permission lookup is deliberately ungated.
@@ -117,25 +117,51 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
 
   // Deep link that reopens this persona in the personal-space modal.
   const { onCopyToClipBoard, hasCopied } = useClipboard(
-    `${globalThis.location.origin}${globalThis.location.pathname}#personas/${fqn}`
+    `${globalThis.location.origin}${
+      globalThis.location.pathname
+    }#personas/${viewToSubPath({ type: 'detail', fqn, name: fqn })}`
   );
 
   const fetchPersona = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
     try {
       const data = await getPersonaByName(fqn);
+      // Drop the response when a later fqn change has superseded this request,
+      // so persona A's data can never land after the prop has moved to persona B.
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       setPersona(data);
       onRename(getEntityName(data));
     } catch (error) {
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       showErrorToast(error as AxiosError);
+      // Clear the previously loaded persona so its body/actions cannot keep
+      // rendering under the new fqn's header when the refetch fails.
+      setPersona(undefined);
     } finally {
-      setIsLoading(false);
+      if (fetchRequestIdRef.current === requestId) {
+        setIsLoading(false);
+      }
     }
   }, [fqn, onRename]);
 
   useEffect(() => {
     void fetchPersona();
   }, [fetchPersona]);
+
+  // Discard persona-specific editing state when the persona changes. The
+  // parent re-mounts this component per fqn (key={fqn}); this guard also makes
+  // a no-key re-render safe, so an open rename/edit session for persona A can
+  // never be submitted against persona B after an fqn-only prop change.
+  useEffect(() => {
+    setIsEditingDesc(false);
+    setIsRenameOpen(false);
+    setRenameValue('');
+  }, [fqn]);
 
   const patchPersona = useCallback(
     async (data: Partial<Persona>) => {
@@ -201,23 +227,6 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       );
     }
   }, [persona, patchPersona, t]);
-
-  const handleDelete = useCallback(async () => {
-    if (!persona) {
-      return;
-    }
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(persona),
-      persona.id ?? '',
-      EntityType.PERSONA
-    );
-    setIsDeleting(false);
-    setIsDeleteOpen(false);
-    if (isSuccess) {
-      onDeleted();
-    }
-  }, [persona, onDeleted]);
 
   const handleUpdateUsers = useCallback(
     (users: EntityReference[]) => {
@@ -333,18 +342,25 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
             ? t('label.remove-default')
             : t('label.set-as-default')}
         </Button>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="delete-persona-btn"
-          icon={Delete}
-          isDisabled={!canDeletePersona}
-          size="sm"
-          tooltip={String(
-            canDeletePersona ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-          )}
-          tooltipPlacement="left"
-          onPress={() => setIsDeleteOpen(true)}
-        />
+        <DeleteEntityPopover
+          afterDeleteAction={onDeleted}
+          allowSoftDelete={false}
+          data-testid="delete-persona-popover"
+          entityId={persona.id}
+          entityName={getEntityName(persona)}
+          entityType={EntityType.PERSONA}>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="delete-persona-btn"
+            icon={Delete}
+            isDisabled={!canDeletePersona}
+            size="sm"
+            tooltip={String(
+              canDeletePersona ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
+            )}
+            tooltipPlacement="left"
+          />
+        </DeleteEntityPopover>
       </Box>
     );
   }, [
@@ -353,6 +369,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     canEditAll,
     hasDeletePermission,
     isTogglingDefault,
+    onDeleted,
     handleToggleDefault,
     t,
   ]);
@@ -486,17 +503,6 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       </Tabs>
 
       <Box className="tw:flex-1 tw:min-h-0 tw:p-1">{tabContent}</Box>
-
-      <DeleteModal
-        entityTitle={getEntityName(persona)}
-        isDeleting={isDeleting}
-        message={t('message.permanently-delete-common-message', {
-          entity: getEntityName(persona).toLowerCase(),
-        })}
-        open={isDeleteOpen}
-        onCancel={() => setIsDeleteOpen(false)}
-        onDelete={handleDelete}
-      />
     </Box>
   );
 };

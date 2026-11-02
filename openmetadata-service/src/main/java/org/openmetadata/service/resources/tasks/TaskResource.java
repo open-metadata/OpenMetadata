@@ -60,6 +60,7 @@ import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.tasks.CreateTaskComment;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.tasks.TaskCount;
+import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.BulkTaskOperationParams;
@@ -86,9 +87,11 @@ import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TaskListOrder;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.limits.Limits;
@@ -150,6 +153,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           + "reason in the payload, and the about-entity displayName / "
           + "fullyQualifiedName.";
 
+  private static final String TASK_SORT_ORDER_DESCRIPTION =
+      "Order by creation time: 'desc' (default) lists the newest tasks first, 'asc' the oldest. "
+          + "Keep the same sortOrder when following a paging cursor.";
+
   private static final String COUNT_VIEW_ALL = "all";
   private static final String COUNT_VIEW_VISIBLE = "visible";
   private static final String COUNT_VIEW_ASSIGNED = "assigned";
@@ -181,6 +188,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         Entity.TASK, "approvedById", MetadataOperation.RESOLVE_TASK);
     ResourceRegistry.mapEntityFieldOperation(
         Entity.TASK, "approvedAt", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, TaskRepository.FIELD_REVIEW_VOTES, MetadataOperation.RESOLVE_TASK);
     // PATCH on description must require EditAll, not the default EditDescription. `description`
     // is the task's body text, and DataConsumerPolicy grants EditDescription on every resource to
     // every authenticated user — without this any user could rewrite any task's text (issue
@@ -242,6 +251,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           UUID createdById,
       @Parameter(description = "Filter by entity FQN the task is about") @QueryParam("aboutEntity")
           String aboutEntity,
+      @Parameter(
+              description =
+                  "Comma-separated entity UUIDs; matches those entities exactly, excluding descendants")
+          @QueryParam("aboutEntityIds")
+          String aboutEntityIds,
       @Parameter(description = "Filter by parent service FQN of the entity the task is about")
           @QueryParam("aboutService")
           String aboutService,
@@ -270,6 +284,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -303,6 +326,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (aboutEntity != null) {
       filter.addQueryParam("aboutEntity", aboutEntity);
     }
+    if (aboutEntityIds != null) {
+      filter.addQueryParam(
+          "aboutEntityIds",
+          Arrays.stream(aboutEntityIds.split(","))
+              .map(String::trim)
+              .map(UUID::fromString)
+              .map(UUID::toString)
+              .collect(Collectors.joining(",")));
+    }
     if (aboutService != null) {
       filter.addQueryParam("aboutService", aboutService);
     }
@@ -317,6 +349,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     applyTaskSearch(filter, q);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -618,6 +651,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -627,6 +669,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
     applyTaskTimeRange(filter, startTs, endTs);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -681,6 +724,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -690,6 +742,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     addCurrentUserVisibleFilters(filter, uriInfo, securityContext);
     applyTaskTimeRange(filter, startTs, endTs);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -743,6 +796,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -764,6 +826,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     filter.addQueryParam("ownedByIds", String.join(",", ownerIds));
     applyTaskTimeRange(filter, startTs, endTs);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -815,6 +878,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -827,6 +899,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     filter.addQueryParam("createdById", user.getId().toString());
     applyTaskTimeRange(filter, startTs, endTs);
 
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -1043,6 +1116,17 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     OperationContext operationContext =
         new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (OntologyApprovalWorkflow.isReview(task)) {
+      EntityReference target = aboutRef;
+      if (Entity.ONTOLOGY_RELEASE.equals(aboutRef.getType())) {
+        OntologyRelease release = Entity.getEntity(aboutRef, "", Include.NON_DELETED);
+        target = release.getOntology();
+      }
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(target.getType(), MetadataOperation.EDIT_ALL),
+          new ResourceContext<>(target.getType(), target.getId(), null));
+    }
   }
 
   private void authorizeViewOnAboutEntity(
@@ -1277,6 +1361,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     if (!Objects.equals(original.getApprovedAt(), patched.getApprovedAt())) {
       throw workflowOwnedFieldRejection("approvedAt");
+    }
+    if (!Objects.equals(original.getReviewVotes(), patched.getReviewVotes())) {
+      throw workflowOwnedFieldRejection(TaskRepository.FIELD_REVIEW_VOTES);
     }
     if (!Objects.equals(original.getAboutFqnHash(), patched.getAboutFqnHash())) {
       throw workflowOwnedFieldRejection("aboutFqnHash");

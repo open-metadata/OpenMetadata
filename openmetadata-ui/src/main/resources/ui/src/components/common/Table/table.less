@@ -17,12 +17,6 @@
   background-color: var(--om-color-bg-surface);
   overflow: hidden;
 
-  .ant-table-body {
-    tr:last-child td {
-      border-bottom: none;
-    }
-  }
-
   .custom-column-dropdown-menu {
     border: none;
     display: flex;
@@ -30,21 +24,6 @@
     gap: var(--om-space-4);
     font-weight: var(--om-font-weight-medium);
     color: @grey-600;
-
-    .ant-dropdown-menu {
-      background-color: var(--om-color-bg-surface);
-      border-color: @border-color;
-    }
-
-    .ant-dropdown-menu-item {
-      padding-left: 0;
-      padding-right: 0;
-    }
-
-    .ant-dropdown-menu-item:hover {
-      background-color: var(--tw-color-bg-primary);
-      color: inherit;
-    }
     svg {
       height: 24px;
     }
@@ -61,13 +40,5 @@
     border: none;
     border-radius: var(--om-radius-none) var(--om-radius-none) @border-rad-sm
       @border-rad-sm;
-  }
-  .ant-table {
-    table > tbody > tr:last-child > td {
-      border-bottom: none;
-    }
-    tr > td:first-child.name-column {
-      padding-left: var(--om-space-16);
-    }
   }
 }

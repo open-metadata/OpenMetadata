@@ -25,7 +25,10 @@
   // ModalOverlay scroll the whole dialog.
   overflow: hidden;
 
-  > div {
+  // Only the Dialog's own wrapper: editors mount their tippy popups (link
+  // popup, suggestions) in the dialog so its focus trap keeps them usable, and
+  // a bare `> div` stretched those to the whole overlay, drawing them off-screen.
+  > div:not([data-tippy-root]) {
     width: 100%;
     max-width: 1600px;
     height: 100%;
@@ -38,7 +41,7 @@
     flex-direction: column;
   }
 
-  > div > div:first-child {
+  > div:not([data-tippy-root]) > div:first-child {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;

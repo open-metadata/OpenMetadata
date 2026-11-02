@@ -13,6 +13,7 @@
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import { EntityAttachmentProvider } from '../EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -253,11 +254,11 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         <div className="description-section">
           {descriptionHeader}
           <div className="description-content">
-            <span className="no-data-placeholder">
+            <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
               {t('label.no-entity-added', {
                 entity: t('label.description-lowercase'),
               })}
-            </span>
+            </Typography>
             {metadataBlock}
             {editorModal}
           </div>

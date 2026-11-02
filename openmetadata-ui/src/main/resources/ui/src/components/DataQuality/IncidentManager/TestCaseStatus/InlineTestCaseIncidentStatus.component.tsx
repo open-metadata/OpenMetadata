@@ -27,7 +27,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STATUS_COLORS } from '../../../../constants/Color.constants';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
-import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
+import {
+  INCIDENT_STATUS_MENU_OPTIONS,
+  TEST_CASE_RESOLUTION_STATUS_LABELS,
+} from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   EntityReference,
@@ -484,7 +487,7 @@ const InlineTestCaseIncidentStatus = ({
       onAction={(key) =>
         handleStatusChange(key as TestCaseResolutionStatusTypes)
       }>
-      {Object.values(TestCaseResolutionStatusTypes).map((status) => (
+      {INCIDENT_STATUS_MENU_OPTIONS[statusType].map((status) => (
         <Dropdown.Item
           className={SELECTED_ITEM_CLASS}
           data-testid={`status-item-${status}`}

@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { deleteEntity } from '../../../../../../rest/miscAPI';
 import NotificationAlertsPanel from './NotificationAlertsPanel';
 
 jest.mock('react-i18next', () => ({
@@ -30,11 +37,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest.fn().mockImplementation(({ children, onPress, ...props }) => (
     <button {...props} onClick={onPress}>
       {children}
-    </button>
-  )),
-  ButtonUtility: jest.fn().mockImplementation(({ onPress, ...props }) => (
-    <button {...props} onClick={onPress}>
-      {props['data-testid']}
     </button>
   )),
   Typography: jest
@@ -103,8 +105,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  Delete: jest.fn(() => <span>delete-icon</span>),
-  Edit: jest.fn(() => <span>edit-icon</span>),
+  Edit01: jest.fn(() => <span>edit-icon</span>),
+  Trash01: jest.fn(() => <span>delete-icon</span>),
 }));
 
 jest.mock('../../../../../../rest/alertsAPI', () => ({
@@ -151,12 +153,17 @@ jest.mock('../../../../../../utils/PermissionDerivation', () => ({
   }),
 }));
 
-jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
-  hardDeleteEntity: jest.fn().mockResolvedValue(true),
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: jest.fn().mockResolvedValue({ status: 200, data: {} }),
+}));
+
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({
@@ -173,18 +180,6 @@ jest.mock('../../../../../../hooks/useSettingsHash', () => ({
     setPage: jest.fn(),
   }),
 }));
-
-jest.mock('../../../../../common/DeleteModal/DeleteModal', () =>
-  jest.fn(({ open, onDelete }) =>
-    open ? (
-      <div data-testid="delete-modal">
-        <button data-testid="confirm-delete" onClick={onDelete}>
-          confirm
-        </button>
-      </div>
-    ) : null
-  )
-);
 
 jest.mock(
   '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1',
@@ -246,18 +241,46 @@ describe('NotificationAlertsPanel', () => {
     expect(dashes.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('should open delete modal when delete button is clicked', async () => {
+  it('deletes the alert once the delete popover is confirmed', async () => {
+    (deleteEntity as jest.Mock).mockClear();
     render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
 
-    const deleteBtn = await screen.findByTestId(
-      'alert-delete-user-alert',
-      undefined,
-      {
-        timeout: 5000,
-      }
-    );
-    act(() => deleteBtn.click());
+    fireEvent.click(await screen.findByTestId('alert-delete-user-alert'));
 
-    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('delete-alert-popover-title')
+    ).toHaveTextContent('label.delete-entity');
+
+    fireEvent.click(screen.getByTestId('delete-alert-popover-confirm'));
+
+    await waitFor(() =>
+      expect(deleteEntity).toHaveBeenCalledWith(
+        'events/subscriptions',
+        'alert-1',
+        false,
+        true
+      )
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-alert-popover')
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it('does not delete the alert when the popover is cancelled', async () => {
+    (deleteEntity as jest.Mock).mockClear();
+    render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
+
+    fireEvent.click(await screen.findByTestId('alert-delete-user-alert'));
+    fireEvent.click(await screen.findByTestId('delete-alert-popover-cancel'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-alert-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(deleteEntity).not.toHaveBeenCalled();
   });
 });

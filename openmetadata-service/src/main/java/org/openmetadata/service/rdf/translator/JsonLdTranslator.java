@@ -15,6 +15,7 @@ import java.io.StringReader;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,27 +49,49 @@ public class JsonLdTranslator {
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
   private final String baseUri;
-  // One mapper for the translator's lifetime. A per-entity mapper made the
-  // FQN→UUID and merged-context caches die with each entity — structurally
-  // zero cross-entity hits, i.e. one DB round trip per tag FQN per entity
-  // during reindexing.
+  // One mapper for the translator's lifetime, so its merged-context cache is
+  // shared across entities.
   private final RdfPropertyMapper propertyMapper;
   private final Function<EntityInterface<?>, String> entityTypeResolver;
 
+  /** A translator for the graph: references and labels that are not live are left out. */
   public JsonLdTranslator(ObjectMapper objectMapper, String baseUri) {
-    this(objectMapper, baseUri, entity -> entity.getEntityReference().getType());
+    this(objectMapper, baseUri, LiveTagLookup.database(), ReferenceScope.LIVE);
+  }
+
+  public JsonLdTranslator(
+      ObjectMapper objectMapper,
+      String baseUri,
+      LiveTagLookup tagLookup,
+      ReferenceScope referenceScope) {
+    this(
+        objectMapper,
+        baseUri,
+        entity -> entity.getEntityReference().getType(),
+        tagLookup,
+        referenceScope);
   }
 
   JsonLdTranslator(
       ObjectMapper objectMapper,
       String baseUri,
       Function<EntityInterface<?>, String> entityTypeResolver) {
+    this(objectMapper, baseUri, entityTypeResolver, LiveTagLookup.database(), ReferenceScope.LIVE);
+  }
+
+  private JsonLdTranslator(
+      ObjectMapper objectMapper,
+      String baseUri,
+      Function<EntityInterface<?>, String> entityTypeResolver,
+      LiveTagLookup tagLookup,
+      ReferenceScope referenceScope) {
     this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     this.contextCache = new HashMap<>();
     this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
     this.entityTypeResolver = Objects.requireNonNull(entityTypeResolver, "entityTypeResolver");
     loadContexts();
-    this.propertyMapper = new RdfPropertyMapper(baseUri, objectMapper, contextCache);
+    this.propertyMapper =
+        new RdfPropertyMapper(baseUri, objectMapper, contextCache, tagLookup, referenceScope);
   }
 
   private void loadContexts() {
@@ -195,6 +218,54 @@ public class JsonLdTranslator {
   }
 
   public Model toRdf(EntityInterface<?> entity) {
+    Model model = typedEntityModel(entity);
+    propertyMapper.mapEntityToRdf(entity, entityResource(entity, model), model);
+    LOG.debug(
+        "RDF model size for entity {}: {} triples", entity.getFullyQualifiedName(), model.size());
+    return model;
+  }
+
+  /**
+   * Translates a reindex page. The labels of all its entities are resolved up front, with one
+   * lookup per label type, and held only while the page is translated: the page is read as one
+   * snapshot, so the result is as current as resolving each entity on its own, at a fraction of
+   * the queries.
+   */
+  public Page page(List<? extends EntityInterface<?>> entities) {
+    Map<EntityInterface<?>, JsonNode> documents = new IdentityHashMap<>();
+    for (EntityInterface<?> entity : entities) {
+      documents.put(entity, propertyMapper.document(entity));
+    }
+    return new Page(documents, propertyMapper.resolveLabelsTogether(documents.values()));
+  }
+
+  /** A reindex page whose labels are resolved; translate each of its entities once. */
+  public final class Page {
+    private final Map<EntityInterface<?>, JsonNode> documents;
+    private final LiveTagLookup labels;
+
+    private Page(Map<EntityInterface<?>, JsonNode> documents, LiveTagLookup labels) {
+      this.documents = documents;
+      this.labels = labels;
+    }
+
+    public Model toRdf(EntityInterface<?> entity) {
+      JsonNode document = documents.remove(entity);
+      if (document == null) {
+        throw new IllegalArgumentException("Entity " + entity.getId() + " is not in this page");
+      }
+      Model model = typedEntityModel(entity);
+      propertyMapper.mapEntityToRdf(entity, document, labels, entityResource(entity, model), model);
+      return model;
+    }
+  }
+
+  private Resource entityResource(EntityInterface<?> entity, Model model) {
+    return model.createResource(
+        baseUri + "entity/" + resolveEntityType(entity) + "/" + entity.getId());
+  }
+
+  private Model typedEntityModel(EntityInterface<?> entity) {
     Model model = ModelFactory.createDefaultModel();
 
     model.setNsPrefix("om", "https://open-metadata.org/ontology/");
@@ -244,11 +315,6 @@ public class JsonLdTranslator {
       String provLocalName = provType.substring(provType.indexOf(':') + 1);
       entityResource.addProperty(RDF.type, model.createResource(provNamespace + provLocalName));
     }
-
-    propertyMapper.mapEntityToRdf(entity, entityResource, model);
-
-    LOG.debug(
-        "RDF model size for entity {}: {} triples", entity.getFullyQualifiedName(), model.size());
 
     return model;
   }

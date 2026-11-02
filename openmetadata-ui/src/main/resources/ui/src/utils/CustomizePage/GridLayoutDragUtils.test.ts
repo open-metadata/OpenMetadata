@@ -174,7 +174,7 @@ describe('getLeftPanelHeight', () => {
 
   it('fits the nested grid as the edit grid lays it out', () => {
     // Laid out, the glossary term defaults need 8 rows.
-    const nestedGridPixels = toPixels(8) + 2 * GRID_VERTICAL_MARGIN;
+    const nestedGridPixels = toPixels(8);
 
     expect(
       toPixels(getLeftPanelHeight(buildGlossaryTermChildren()))

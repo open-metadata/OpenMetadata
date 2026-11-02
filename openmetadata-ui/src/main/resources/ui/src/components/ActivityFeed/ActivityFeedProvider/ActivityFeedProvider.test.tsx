@@ -19,9 +19,11 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
+import { Conversation } from '../../../generated/entity/feed/conversation';
 import { ReactionType } from '../../../generated/type/reaction';
 import {
   DummyActivityCommentComponent,
+  DummyActivityDrawerComponent,
   DummyActivityFeedComponent,
   DummyActivityFilterSwitchComponent,
   DummyActivityReactionComponent,
@@ -55,6 +57,7 @@ import {
   createConversationReply,
   deleteConversation,
   deleteConversationReply,
+  listConversationReplies,
   listConversations,
   patchConversationReply,
 } from '../../../rest/conversationsAPI';
@@ -242,7 +245,7 @@ describe('ActivityFeedProvider', () => {
     );
   });
 
-  it('lists conversations through the conversation API', async () => {
+  it('lists the entity conversations, including those on its fields', async () => {
     render(
       <ActivityFeedProvider>
         <DummyChildrenEntityComponent />
@@ -251,7 +254,10 @@ describe('ActivityFeedProvider', () => {
 
     await waitFor(() =>
       expect(listConversations).toHaveBeenCalledWith(
-        expect.objectContaining({ entityLink: '<#E::table::admin>' })
+        expect.objectContaining({
+          entityLink: '<#E::table::admin>',
+          includeFields: true,
+        })
       )
     );
   });
@@ -407,6 +413,27 @@ describe('ActivityFeedProvider', () => {
 
       expect(screen.getByTestId('task-ids')).toHaveTextContent('task-closed');
       expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-2');
+    });
+
+    // An empty list after a failure must be told apart from an empty result.
+    it('exposes a failed fetch as listError until the next request succeeds', async () => {
+      (listTasks as jest.Mock)
+        .mockRejectedValueOnce({ response: { status: 500 } })
+        .mockResolvedValueOnce({ data: [], paging: {} });
+
+      renderTaskListState();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-open'));
+      });
+
+      expect(screen.getByTestId('list-error')).toHaveTextContent('500');
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-closed'));
+      });
+
+      expect(screen.getByTestId('list-error')).toHaveTextContent('none');
     });
 
     it('ignores a response that resolves after a newer request started', async () => {
@@ -810,6 +837,120 @@ describe('ActivityFeedProvider', () => {
       );
       expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('0');
     });
+  });
+
+  // The entity Activity tab's side panel reads the same selection the drawer
+  // opens on, so closing the drawer must not empty the panel.
+  it('keeps the activity and its replies selected when its drawer closes', async () => {
+    (listActivityReplies as jest.Mock).mockResolvedValue({
+      data: [activityReply],
+      paging: { total: 1 },
+    });
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={{ id: 'thread-1' } as Conversation}
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1')
+    );
+
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+
+    expect(screen.getByTestId('drawer-open')).toHaveTextContent('false');
+    expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+      activity.id
+    );
+    expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1');
+  });
+
+  // Closing keeps the activity selected, so reopening must still fetch: a
+  // failed first fetch, or replies posted meanwhile, would otherwise stay hidden.
+  it('refetches the replies when the selected activity drawer reopens', async () => {
+    (listActivityReplies as jest.Mock)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce({ data: [activityReply], paging: { total: 1 } });
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={{ id: 'thread-1' } as Conversation}
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+    await waitFor(() => expect(listActivityReplies).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('0');
+
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1')
+    );
+
+    expect(listActivityReplies).toHaveBeenCalledTimes(2);
+  });
+
+  // The drawer shows an activity ahead of a thread.
+  it('drops the selected activity when a conversation drawer opens', async () => {
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={{ id: 'thread-1' } as Conversation}
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+    fireEvent.click(screen.getByTestId('open-thread-drawer'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+        'none'
+      )
+    );
+
+    expect(screen.getByTestId('drawer-open')).toHaveTextContent('true');
+  });
+
+  it('keeps the replies loading while a conversation drawer fetches them', async () => {
+    (listConversationReplies as jest.Mock).mockReturnValue(
+      new Promise(() => undefined)
+    );
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={
+            {
+              id: 'thread-1',
+              replyCount: 10,
+              replies: [],
+            } as unknown as Conversation
+          }
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-thread-drawer'));
+
+    await waitFor(() =>
+      expect(listConversationReplies).toHaveBeenCalledWith('thread-1', {
+        limit: 100,
+      })
+    );
+
+    expect(screen.getByTestId('posts-loading')).toHaveTextContent('true');
   });
 
   describe('updateReactions rejection handling', () => {

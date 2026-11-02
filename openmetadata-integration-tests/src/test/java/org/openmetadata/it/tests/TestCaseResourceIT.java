@@ -41,6 +41,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
@@ -48,6 +50,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -55,10 +59,12 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
@@ -70,6 +76,11 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateItemResult;
+import org.openmetadata.schema.type.BulkCreateItemResult.Reason;
+import org.openmetadata.schema.type.BulkCreateItemResult.Status;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
@@ -83,6 +94,8 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.DatabaseServices;
+import org.openmetadata.sdk.fluent.TestCases;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -691,6 +704,161 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_nestedColumnLevelTest_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableWithNestedColumn(ns);
+    TagLabel nestedColumnTag = SharedEntities.get().PERSONAL_DATA_TAG_LABEL;
+    table.getColumns().getFirst().getChildren().getFirst().setTags(List.of(nestedColumnTag));
+    client.tables().update(table.getId().toString(), table);
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.city");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("nested_column_test"));
+    request.setEntityLink(columnLink);
+    // city is VARCHAR, so the definition must be one whose supportedDataTypes include it.
+    request.setTestDefinition("columnValuesToMatchRegex");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
+
+    TestCase created = createEntity(request);
+    assertTrue(
+        created.getEntityLink().contains("::columns::address.city"),
+        "Nested column link should be preserved, got " + created.getEntityLink());
+
+    long timestamp = System.currentTimeMillis();
+    CreateTestCaseResult result =
+        new CreateTestCaseResult()
+            .withTimestamp(timestamp)
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withResult("All nested city values match the regex");
+    client.testCaseResults().create(created.getFullyQualifiedName(), result);
+
+    List<TestCaseResult> storedResults = listTestCaseResults(created.getFullyQualifiedName());
+    assertEquals(1, storedResults.size());
+    assertEquals(timestamp, storedResults.getFirst().getTimestamp());
+    assertEquals(TestCaseStatus.Success, storedResults.getFirst().getTestCaseStatus());
+    assertEquals(result.getResult(), storedResults.getFirst().getResult());
+
+    TestCase fetched = client.testCases().get(created.getId().toString(), "tags,testCaseResult");
+    assertEquals(columnLink, fetched.getEntityLink());
+    assertNotNull(fetched.getTestCaseResult());
+    assertEquals(timestamp, fetched.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, fetched.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), fetched.getTestCaseResult().getResult());
+    assertNotNull(fetched.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        fetched.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "GET must inherit the tag attached only to the nested column");
+
+    ListResponse<TestCase> listed =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setFields("tags,testCaseResult")
+                    .setLimit(10)
+                    .addQueryParam("includeAllTests", "true")
+                    .addQueryParam("entityLink", tableEntityLink(table)));
+    assertEquals(List.of(created.getId()), idsOf(listed));
+    TestCase listedTestCase = listed.getData().getFirst();
+    assertEquals(columnLink, listedTestCase.getEntityLink());
+    assertNotNull(listedTestCase.getTestCaseResult());
+    assertEquals(timestamp, listedTestCase.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, listedTestCase.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), listedTestCase.getTestCaseResult().getResult());
+    assertNotNull(listedTestCase.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        listedTestCase.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "List responses must inherit the tag attached only to the nested column");
+  }
+
+  @Test
+  void post_testWithInvalidNestedColumn_4xx(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    String invalidNestedLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.state");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("invalid_nested_column"));
+    request.setEntityLink(invalidNestedLink);
+    request.setTestDefinition("columnValuesToMatchRegex");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
+
+    Exception error =
+        assertThrows(
+            Exception.class, () -> createEntity(request), "Should fail with missing nested column");
+    assertTrue(
+        error.getMessage().contains("Invalid column name address.state"), error.getMessage());
+  }
+
+  @Test
+  void post_testOnUnsupportedNestedColumnType_4xx(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("between_on_varchar_child"));
+    // city is VARCHAR; columnValuesToBeBetween supports only numeric and temporal types.
+    request.setEntityLink(
+        "<#E::table::" + table.getFullyQualifiedName() + "::columns::address.city>");
+    request.setTestDefinition("columnValuesToBeBetween");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("minValue").withValue("1"),
+            new TestCaseParameterValue().withName("maxValue").withValue("1000")));
+
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("does not support column type"), error.getMessage());
+  }
+
+  private Table createTableWithNestedColumn(TestNamespace ns) {
+    String shortId = ns.uniqueShortId();
+
+    PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
+
+    DatabaseService service =
+        DatabaseServices.builder()
+            .name("pg_" + shortId)
+            .connection(conn)
+            .description("Test Postgres service")
+            .create();
+
+    CreateDatabase dbReq = new CreateDatabase();
+    dbReq.setName("db_" + shortId);
+    dbReq.setService(service.getFullyQualifiedName());
+    Database database = SdkClients.adminClient().databases().create(dbReq);
+
+    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
+    schemaReq.setName("s_" + shortId);
+    schemaReq.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName("t_" + shortId);
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(List.of(nestedAddressColumn()));
+
+    return SdkClients.adminClient().tables().create(tableRequest);
+  }
+
+  private Column nestedAddressColumn() {
+    return new Column()
+        .withName("address")
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(
+            List.of(
+                new Column()
+                    .withName("city")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+  }
+
+  @Test
   void test_createMultipleTestsOnSameTable_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -972,7 +1140,147 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
-  void createMany_withOneUnofferedOptionValue_createsNone(TestNamespace ns) {
+  void createMany_reportsCreatedSkippedAndFailedInputs(TestNamespace ns) {
+    final Table table = createTable(ns);
+    final CreateTestCase existingRequest = rowCountRequest(table, ns.prefix("existing_outcome"));
+    createEntity(existingRequest);
+    final CreateTestCase fresh = rowCountRequest(table, ns.prefix("fresh_outcome"));
+    final CreateTestCase invalid =
+        rowCountRequest(table, ns.prefix("invalid_outcome")).withParameterValues(List.of());
+
+    final BulkCreateResult result =
+        TestCases.createMany(List.of(fresh, existingRequest, fresh, invalid)).execute();
+
+    assertEquals(1, result.getCreatedCount());
+    assertEquals(2, result.getSkippedCount());
+    assertEquals(1, result.getFailedCount());
+    assertEquals(
+        List.of(0, 1, 2, 3),
+        result.getResults().stream().map(BulkCreateItemResult::getIndex).toList());
+    assertEquals(
+        List.of(Status.CREATED, Status.SKIPPED, Status.SKIPPED, Status.FAILED),
+        result.getResults().stream().map(BulkCreateItemResult::getStatus).toList());
+    assertNull(result.getResults().get(1).getId());
+    assertEquals(Reason.ALREADY_EXISTS, result.getResults().get(1).getReason());
+    assertEquals(Reason.DUPLICATE_IN_REQUEST, result.getResults().get(2).getReason());
+    assertEquals(Reason.VALIDATION_ERROR, result.getResults().get(3).getReason());
+    assertFalse(result.getResults().get(3).getMessage().isBlank());
+    assertEquals(
+        fresh.getName(), getEntity(result.getResults().getFirst().getId().toString()).getName());
+  }
+
+  @Test
+  void createMany_firstValidOccurrenceWinsAfterPreparationFailure(TestNamespace ns) {
+    final Table table = createTable(ns);
+    final CreateTestCase valid = rowCountRequest(table, ns.prefix("first_valid"));
+    final CreateTestCase invalid =
+        rowCountRequest(table, valid.getName()).withParameterValues(List.of());
+    final BulkCreateResult result =
+        SdkClients.adminClient()
+            .testCases()
+            .createMany(List.of(invalid, valid, valid), BulkCreateConflictPolicy.SKIP);
+
+    assertEquals(1, result.getCreatedCount());
+    assertEquals(1, result.getSkippedCount());
+    assertEquals(1, result.getFailedCount());
+    assertEquals(
+        List.of(Status.FAILED, Status.CREATED, Status.SKIPPED),
+        result.getResults().stream().map(BulkCreateItemResult::getStatus).toList());
+    assertEquals(Reason.VALIDATION_ERROR, result.getResults().getFirst().getReason());
+    assertEquals(Reason.DUPLICATE_IN_REQUEST, result.getResults().getLast().getReason());
+    assertEquals(
+        valid.getName(), getEntity(result.getResults().get(1).getId().toString()).getName());
+  }
+
+  @Test
+  void createMany_failPolicyReportsConflictsAndCreatesOtherInputs(TestNamespace ns) {
+    final Table table = createTable(ns);
+    final CreateTestCase existingRequest = rowCountRequest(table, ns.prefix("existing_fail"));
+    createEntity(existingRequest);
+    final CreateTestCase fresh = rowCountRequest(table, ns.prefix("fresh_fail"));
+    final BulkCreateResult result =
+        TestCases.createMany(List.of(existingRequest, fresh, fresh))
+            .onConflict(BulkCreateConflictPolicy.FAIL)
+            .execute();
+
+    assertEquals(1, result.getCreatedCount());
+    assertEquals(0, result.getSkippedCount());
+    assertEquals(2, result.getFailedCount());
+    assertNull(result.getResults().getFirst().getId());
+    assertEquals(Reason.ALREADY_EXISTS, result.getResults().getFirst().getReason());
+    assertEquals(Reason.DUPLICATE_IN_REQUEST, result.getResults().getLast().getReason());
+    assertEquals(
+        List.of(Status.FAILED, Status.CREATED, Status.FAILED),
+        result.getResults().stream().map(BulkCreateItemResult::getStatus).toList());
+    assertEquals(
+        fresh.getName(), getEntity(result.getResults().get(1).getId().toString()).getName());
+  }
+
+  @Test
+  void createMany_rejectsUnknownConflictPolicyBeforeWriting(TestNamespace ns) {
+    final CreateTestCase request = rowCountRequest(createTable(ns), ns.prefix("invalid_policy"));
+    final OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.POST,
+                        "/v1/dataQuality/testCases/createMany",
+                        List.of(request),
+                        BulkCreateResult.class,
+                        RequestOptions.builder().queryParam("onConflict", "replace").build()));
+    assertEquals(400, error.getStatusCode());
+    assertEquals(request.getName(), createEntity(request).getName());
+  }
+
+  @Test
+  void createMany_withoutPolicyPreservesArrayAndValidationErrors(TestNamespace ns) {
+    final Table table = createTable(ns);
+    final CreateTestCase existing = rowCountRequest(table, ns.prefix("legacy_existing"));
+    createEntity(existing);
+    final CreateTestCase fresh = rowCountRequest(table, ns.prefix("legacy_fresh"));
+    final CreateTestCase invalid =
+        rowCountRequest(table, ns.prefix("legacy_invalid")).withParameterValues(List.of());
+    final OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().testCases().createMany(List.of(fresh, invalid)));
+    assertEquals(400, error.getStatusCode());
+
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/dataQuality/testCases/createMany",
+                List.of(fresh, existing, fresh));
+    final List<TestCase> created = JsonUtils.readObjects(response, TestCase.class);
+    assertEquals(List.of(fresh.getName()), created.stream().map(TestCase::getName).toList());
+    assertEquals(
+        created.getFirst().getId(), getEntity(created.getFirst().getId().toString()).getId());
+  }
+
+  @Test
+  void createMany_emptyRequestReportsNoOutcomes() {
+    final BulkCreateResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/dataQuality/testCases/createMany",
+                List.of(),
+                BulkCreateResult.class,
+                RequestOptions.builder().queryParam("onConflict", "skip").build());
+    assertEquals(0, result.getCreatedCount());
+    assertEquals(0, result.getSkippedCount());
+    assertEquals(0, result.getFailedCount());
+    assertTrue(result.getResults().isEmpty());
+  }
+
+  @Test
+  void createMany_withOneUnofferedOptionValue_createsValidInputs(TestNamespace ns) {
     Table table = createTable(ns);
     String tableLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
     CreateTestCase valid = new CreateTestCase();
@@ -991,11 +1299,116 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             new TestCaseParameterValue().withName("strategy").withValue("SUM")));
 
     OpenMetadataClient client = SdkClients.adminClient();
-    Exception error =
-        assertThrows(Exception.class, () -> client.testCases().createMany(List.of(valid, invalid)));
-    assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
-    // The batch wrote nothing: the valid test can still be created on its own.
-    assertEquals(valid.getName(), createEntity(valid).getName());
+    final BulkCreateResult result =
+        client.testCases().createMany(List.of(valid, invalid), BulkCreateConflictPolicy.SKIP);
+    assertEquals(1, result.getCreatedCount());
+    assertEquals(1, result.getFailedCount());
+    assertEquals(Reason.VALIDATION_ERROR, result.getResults().getLast().getReason());
+    assertTrue(result.getResults().getLast().getMessage().contains("must be one of"));
+    assertEquals(
+        valid.getName(), getEntity(result.getResults().getFirst().getId().toString()).getName());
+  }
+
+  @Test
+  void createMany_withDuplicateNamesInRequest_createsEachNameOnce(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = rowCountRequest(table, ns.prefix("duplicate_in_batch"));
+    request.setDescription("First occurrence");
+    CreateTestCase duplicate =
+        rowCountRequest(table, request.getName()).withDescription("Later occurrence");
+    CreateTestCase fresh = rowCountRequest(table, ns.prefix("new_in_batch"));
+
+    List<TestCase> created =
+        createdTests(
+            SdkClients.adminClient()
+                .testCases()
+                .createMany(List.of(request, duplicate, fresh), BulkCreateConflictPolicy.SKIP));
+
+    assertEquals(
+        List.of(request.getName(), fresh.getName()),
+        created.stream().map(TestCase::getName).toList());
+    for (TestCase testCase : created) {
+      TestCase stored =
+          SdkClients.adminClient()
+              .testCases()
+              .get(testCase.getId().toString(), "testSuite,testDefinition");
+      assertEquals(testCase.getFullyQualifiedName(), stored.getFullyQualifiedName());
+      assertNotNull(stored.getTestSuite());
+      assertNotNull(stored.getTestDefinition());
+    }
+    assertEquals(
+        request.getDescription(),
+        getEntity(created.getFirst().getId().toString()).getDescription());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void createMany_withExistingName_skipsDuplicateAndPreservesStoredTest(
+      boolean softDeleted, TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase existingRequest = rowCountRequest(table, ns.prefix("existing_in_batch"));
+    TestCase existing = createEntity(existingRequest);
+    if (softDeleted) {
+      deleteEntity(existing.getId().toString());
+    }
+    CreateTestCase freshRequest = rowCountRequest(table, ns.prefix("new_in_batch"));
+    existingRequest.setDescription("Must not overwrite the existing test");
+
+    List<TestCase> created =
+        createdTests(
+            SdkClients.adminClient()
+                .testCases()
+                .createMany(List.of(freshRequest, existingRequest), BulkCreateConflictPolicy.SKIP));
+
+    assertEquals(List.of(freshRequest.getName()), created.stream().map(TestCase::getName).toList());
+    assertEquals(
+        created.getFirst().getId(),
+        getEntityByName(created.getFirst().getFullyQualifiedName()).getId());
+    TestCase stored =
+        SdkClients.adminClient().testCases().get(existing.getId().toString(), "", "all");
+    assertEquals(existing.getDescription(), stored.getDescription());
+    assertEquals(softDeleted, stored.getDeleted());
+    final BulkCreateResult repeated =
+        SdkClients.adminClient()
+            .testCases()
+            .createMany(List.of(existingRequest), BulkCreateConflictPolicy.SKIP);
+    assertEquals(0, repeated.getCreatedCount());
+    assertEquals(1, repeated.getSkippedCount());
+    assertEquals(Reason.ALREADY_EXISTS, repeated.getResults().getFirst().getReason());
+    assertNull(repeated.getResults().getFirst().getId());
+  }
+
+  @Test
+  void createMany_withSameNameOnDifferentTables_createsBoth(TestNamespace ns) {
+    CreateTestCase first = rowCountRequest(createTable(ns), ns.prefix("same_name"));
+    CreateTestCase second = rowCountRequest(createTable(ns), first.getName());
+
+    List<TestCase> created =
+        createdTests(
+            SdkClients.adminClient()
+                .testCases()
+                .createMany(List.of(first, second), BulkCreateConflictPolicy.SKIP));
+
+    assertEquals(2, created.size());
+    assertNotEquals(
+        created.getFirst().getFullyQualifiedName(), created.getLast().getFullyQualifiedName());
+  }
+
+  private static CreateTestCase rowCountRequest(Table table, String name) {
+    return new CreateTestCase()
+        .withName(name)
+        .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+        .withTestDefinition("tableRowCountToEqual")
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+  }
+
+  private List<TestCase> createdTests(BulkCreateResult result) {
+    assertEquals(0, result.getFailedCount(), result.toString());
+    return result.getResults().stream()
+        .filter(item -> item.getStatus() == Status.CREATED)
+        .map(item -> getEntity(item.getId().toString()))
+        .toList();
   }
 
   @Test
@@ -2641,7 +3054,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
       // Fetch and verify
       TestCase fetched = client.testCases().get(testCase.getId().toString());
       assertNotNull(fetched);
-      assertEquals(testCase.getName(), fetched.getName());
+      assertEquals(createRequests.get(i).getName(), fetched.getName());
     }
   }
 

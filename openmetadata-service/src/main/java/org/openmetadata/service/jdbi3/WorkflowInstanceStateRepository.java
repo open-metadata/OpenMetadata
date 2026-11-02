@@ -58,6 +58,10 @@ public class WorkflowInstanceStateRepository
       int limitParam,
       boolean latest) {
     ListFilter filter = new ListFilter(null);
+    // workflowInstanceId is the indexed lookup: no index starts with entityFQNHash, so the hash
+    // alone scans every state row in the window. The hash stays so a workflowDefinitionName that
+    // doesn't own the instance matches nothing.
+    filter.addQueryParam("workflowInstanceId", workflowInstanceId.toString());
     filter.addQueryParam(
         "entityFQNHash",
         FullyQualifiedName.buildHash(workflowDefinitionName, workflowInstanceId.toString()));

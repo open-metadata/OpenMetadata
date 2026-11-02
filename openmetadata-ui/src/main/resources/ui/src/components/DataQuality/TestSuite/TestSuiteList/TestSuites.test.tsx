@@ -250,7 +250,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     title,
     description,
     actions,
+    'data-testid': testId = 'empty-placeholder',
   }: {
+    'data-testid'?: string;
     title?: React.ReactNode;
     description?: React.ReactNode;
     actions?: {
@@ -259,7 +261,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onPress?: () => void;
     }[];
   }) => (
-    <div data-testid="empty-placeholder">
+    <div data-testid={testId}>
       <span>{title}</span>
       <span>{description}</span>
       {(actions ?? []).map((action) => (
@@ -390,6 +392,7 @@ jest.mock(
 );
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   Search: () => <span data-testid="search-icon" />,
 }));
 
@@ -399,27 +402,6 @@ jest.mock('../../SummaryPannel/PieChartSummaryPanel.component', () => ({
     .fn()
     .mockImplementation(() => <div>SummaryPanel.component</div>),
 }));
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`}>
-        ErrorPlaceHolder.component
-      </div>
-    )),
-}));
-
-jest.mock(
-  '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => ({
-    __esModule: true,
-    default: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="filter-table-placeholder" />),
-  })
-);
 
 jest.mock(
   '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget',
@@ -627,7 +609,7 @@ describe('TestSuites component', () => {
     render(<TestSuites />, { wrapper: MemoryRouter });
 
     expect(
-      await screen.findByTestId('error-placeholder-type-PERMISSION')
+      await screen.findByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 

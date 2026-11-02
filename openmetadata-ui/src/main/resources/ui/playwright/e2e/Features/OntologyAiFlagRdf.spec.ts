@@ -144,7 +144,7 @@ test.describe('Ontology AI effective flag', { tag: ['@ontology-rdf'] }, () => {
       await expect(page.getByTestId('mode-tab-ai')).toBeVisible();
       expect(aiRequestCount).toBe(0);
 
-      await page.getByTestId('ontology-glossary-menu-trigger').click();
+      await page.getByTestId('ontology-scope-menu-trigger').click();
       await page
         .getByRole('menuitemradio')
         .filter({ hasText: aiGlossary.responseData.displayName })

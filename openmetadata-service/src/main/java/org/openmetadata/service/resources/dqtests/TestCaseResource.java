@@ -20,6 +20,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -43,6 +44,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +62,8 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -92,7 +96,6 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -745,25 +748,39 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "createManyTestCase",
       summary = "Create multiple test cases at once",
-      description = "Create multiple test cases at once up to a limit of 100 per request.",
+      description =
+          "Create up to 100 test cases and return an ordered outcome for every input, with created,"
+              + " skipped, and failed counts when onConflict is specified. Without onConflict, the"
+              + " legacy created-entity array and validation errors are preserved. onConflict=skip"
+              + " skips existing and repeated"
+              + " FQNs; onConflict=fail reports them as failed. Both policies create other valid"
+              + " inputs and preserve existing and soft-deleted tests. Validation failures include"
+              + " a reason and message. Unexpected server failures remain HTTP errors.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The test",
+            description =
+                "Per-input outcomes when onConflict is specified; otherwise newly created entities",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCase.class))),
+                    schema = @Schema(oneOf = {BulkCreateResult.class, TestCase[].class}))),
         @ApiResponse(responseCode = "400", description = "Bad request"),
         @ApiResponse(
             responseCode = "413",
             description = "Request entity too large (more than 100 test cases)")
       })
   public Response createMany(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid List<CreateTestCase> createTestCases) {
-    List<TestCase> testCases = new ArrayList<>();
+      @NotNull @Valid List<@NotNull CreateTestCase> createTestCases,
+      @Parameter(
+              description =
+                  "Opt into per-input outcomes; conflicts skip or fail while other inputs continue.",
+              schema = @Schema(implementation = BulkCreateConflictPolicy.class))
+          @QueryParam("onConflict")
+          String onConflict) {
+    final BulkCreateConflictPolicy conflictPolicy =
+        onConflict == null ? null : BulkCreateConflictPolicy.fromValue(onConflict);
     Set<String> entityLinks =
         createTestCases.stream().map(CreateTestCase::getEntityLink).collect(Collectors.toSet());
 
@@ -788,18 +805,21 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     limits.enforceBulkSizeLimit(entityType, createTestCases.size());
 
-    createTestCases.forEach(
+    final Function<CreateTestCase, TestCase> toEntity =
         create -> {
-          TestCase test =
+          final TestCase test =
               mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
           limits.enforceLimits(
               securityContext,
               new CreateResourceContext<>(entityType, test),
               new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
-          testCases.add(test);
-        });
-    repository.createMany(uriInfo, testCases);
-    return Response.ok(testCases).build();
+          return test;
+        };
+    return Response.ok(
+            conflictPolicy == null
+                ? repository.createMany(null, createTestCases.stream().map(toEntity).toList())
+                : repository.createMany(createTestCases, toEntity, conflictPolicy))
+        .build();
   }
 
   @PATCH
@@ -869,32 +889,29 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCase create) {
-    EntityLink entityLink = EntityLink.parse(create.getEntityLink());
-    OperationContext tableOpContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface tableResourceContext =
-        TestCaseResourceContext.builder().entityLink(entityLink).build();
-    OperationContext testCaseOpCreate =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE);
-    ResourceContextInterface testCaseRC =
-        TestCaseResourceContext.builder()
-            .name(FullyQualifiedName.add(entityLink.getEntityFQN(), create.getName()))
-            .build();
-    OperationContext testCaseOpUpdate =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
-
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(tableOpContext, tableResourceContext),
-            new AuthRequest(testCaseOpCreate, testCaseRC),
-            new AuthRequest(testCaseOpUpdate, testCaseRC));
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    // Only the FQN before authorizing: prepare creates the table's test suite if it is missing.
+    repository.setFullyQualifiedName(test);
+    List<AuthRequest> requests = createOrUpdateRequests(test);
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  /**
+   * A new test case is checked as a create, an existing one as an update. Checked by FQN first:
+   * AuthorizationLogic.ANY evaluates every request, so a new test case must not get the update
+   * requests, which look the test case up by name.
+   */
+  private List<AuthRequest> createOrUpdateRequests(TestCase test) {
+    boolean testCaseExists =
+        repository.findByNameOrNull(test.getFullyQualifiedName(), Include.ALL) != null;
+    return testCaseExists
+        ? TestCaseWriteAuthRequests.forUpdate(test)
+        : TestCaseWriteAuthRequests.forCreate(test);
   }
 
   @DELETE

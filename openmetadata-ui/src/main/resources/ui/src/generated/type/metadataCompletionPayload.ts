@@ -30,6 +30,12 @@ export interface MetadataCompletionPayload {
      */
     node: string;
     /**
+     * Present on a Revise and resubmit task: the stage's approval was rejected and the asset is
+     * to be revised
+     * (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+     */
+    revision?: Revision;
+    /**
      * Stage the asset has to be in for the task to apply.
      */
     stage: EntityStatus;
@@ -41,6 +47,22 @@ export interface MetadataCompletionPayload {
      * Name of the workflow definition whose stage asks for the fields.
      */
     workflow: string;
+}
+
+/**
+ * Present on a Revise and resubmit task: the stage's approval was rejected and the asset is
+ * to be revised
+ * (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+ */
+export interface Revision {
+    /**
+     * What the reviewer asked to change, when they left a comment.
+     */
+    comment?: string;
+    /**
+     * Name of the user who rejected the approval.
+     */
+    requestedBy?: string;
 }
 
 /**

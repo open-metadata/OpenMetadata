@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -279,6 +280,42 @@ def test_lane_membership_is_read_from_the_it_pom() -> None:
     assert planner.lane_for(by_name["TableResourceIT"]) == "parallel"
 
 
+def test_global_state_tests_run_only_in_the_isolated_fork_of_every_engine() -> None:
+    root = ET.fromstring(REPO.pom)
+    ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+    patterns = root.findtext(
+        "m:properties/m:integrationTests.globalStateTests", namespaces=ns
+    )
+    assert patterns
+    paths = [
+        path
+        for path, name in REPO.it_classes.items()
+        if any(fnmatch.fnmatchcase(name, pattern) for pattern in patterns.split(","))
+    ]
+    assert paths
+    checked = []
+    for profile in root.findall("m:profiles/m:profile", ns):
+        executions = {
+            execution.findtext("m:id", namespaces=ns): execution
+            for execution in profile.findall(".//m:execution", ns)
+        }
+        if not {"isolated-tests", "parallel-tests"} <= executions.keys():
+            continue
+        checked.append(profile.findtext("m:id", namespaces=ns))
+        for execution, selector in (
+            ("isolated-tests", "include"),
+            ("parallel-tests", "exclude"),
+        ):
+            selected = [
+                PLANNER.ant_to_fnmatch(element.text)
+                for element in executions[execution].findall(f".//m:{selector}", ns)
+                if element.text
+            ]
+            missing = [path for path in paths if not PLANNER.matches(path, selected)]
+            assert not missing, (checked[-1], execution, selector, missing)
+    assert checked
+
+
 def test_classes_no_lane_runs_are_read_from_the_code_and_the_pom() -> None:
     by_name = {name: relative for relative, name in REPO.it_classes.items()}
 
@@ -291,6 +328,80 @@ def test_classes_no_lane_runs_are_read_from_the_code_and_the_pom() -> None:
     )  # the search-it profile excludes it
     assert REPO.conditional[by_name["RdfCatalogScaleIT"]] == "rdfCatalogScale"
     assert by_name["TableResourceIT"] not in REPO.never_run
+
+
+@pytest.mark.parametrize("ref", [None, "HEAD"])
+def test_discovery_skips_placeholders_and_keeps_inherited_test_classes(
+    tmp_path: Path, ref: str | None
+) -> None:
+    def git(*args: str) -> None:
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                *args,
+            ],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+    sources = {
+        "Empty": "",
+        "PackageOnly": "package example;\n",
+        "TodoOnly": "package example;\n// TODO: Implement {name} extending BaseTest.\n",
+        "LineComment": "package example;\n// class {name} extends BaseTest {{}}\n",
+        "BlockComment": "package example;\n/* class {name} extends BaseTest {{}} */\n",
+        "Inherited": "package example;\nclass {name} extends BaseTest {{}}\n",
+    }
+    for prefix, suffix in (
+        ("it/src/test/java/example", "IT"),
+        ("service/src/test/java/example", "Test"),
+    ):
+        directory = tmp_path / prefix
+        directory.mkdir(parents=True)
+        for stem, source in sources.items():
+            name = stem + suffix
+            (directory / f"{name}.java").write_text(
+                source.format(name=name), encoding="utf-8"
+            )
+    (tmp_path / "it/pom.xml").write_text("<project/>", encoding="utf-8")
+    git("init", "-q")
+    git("add", ".")
+    git("commit", "-qm", "test sources")
+
+    repo = PLANNER.Repo(
+        tmp_path,
+        {
+            "maven": {
+                "integrationTestModule": "it",
+                "integrationTestSourceRoot": "it/src/test/java",
+                "unitTestModules": ["service"],
+                "lanes": {},
+            }
+        },
+        ref=ref,
+    )
+
+    assert repo.it_classes == {"example/InheritedIT.java": "InheritedIT"}
+    assert repo.unit_test_classes == {
+        "service": {"InheritedTest": "service/src/test/java/example/InheritedTest.java"}
+    }
+
+
+def test_ai_context_plan_selects_the_mcp_and_llm_service_its() -> None:
+    _, plan = plan_for(f"{SERVICE}/aicontext/AIContextMarkdown.java")
+
+    selected = its(plan)
+    assert "McpServerResourceIT" in selected
+    assert "LLMServiceResourceIT" in selected
 
 
 def test_an_abstract_unit_test_runs_through_the_classes_that_extend_it() -> None:

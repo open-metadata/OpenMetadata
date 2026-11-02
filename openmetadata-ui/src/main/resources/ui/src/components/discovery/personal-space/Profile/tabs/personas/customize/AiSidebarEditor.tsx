@@ -215,7 +215,7 @@ const AiSidebarEditor = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:w-[40%]"
+      className="tw:flex tw:flex-col tw:w-[30%]"
       data-testid="ai-sidebar-editor"
       variant="muted">
       <Tree

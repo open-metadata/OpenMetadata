@@ -149,15 +149,41 @@ def get_end_of_day_timestamp_mill(
 
 
 def convert_timestamp(timestamp: str) -> int | float:
-    """convert timestamp to int
+    """Convert a timestamp string to a Unix timestamp in seconds.
+
+    Accepted formats:
+        - epoch seconds (e.g. ``"1669852800"``)
+        - epoch milliseconds (e.g. ``"1669852800000"``)
+        - ISO-8601 datetime (e.g. ``"2022-12-01T00:00:00"``, ``"2022-12-01 00:00:00.123"``,
+          ``"2022-12-01T00:00:00Z"``). Naive datetimes are interpreted as UTC.
+
     Args:
-        timestamp (str):
-    Retunrs:
-        int
+        timestamp (str): timestamp value
+    Returns:
+        int | float: Unix timestamp in seconds
+    Raises:
+        ValueError: if the value matches none of the accepted formats
     """
-    if len(timestamp) < 13:  # check for ms timestamp
-        return int(timestamp)
-    return float(timestamp) / 1000
+    value = str(timestamp).strip()
+    try:
+        if len(value) < 13:  # check for ms timestamp
+            return int(value)
+        return float(value) / 1000
+    except ValueError:
+        pass
+
+    try:
+        iso_value = value[:-1] + "+00:00" if value.endswith(("Z", "z")) else value
+        parsed = datetime.fromisoformat(iso_value)
+    except ValueError as exc:
+        raise ValueError(
+            f"Could not convert timestamp {timestamp!r}: expected epoch seconds, "
+            "epoch milliseconds or an ISO-8601 datetime string"
+        ) from exc
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt_timezone.utc)
+    return parsed.timestamp()
 
 
 def utc_from_timestamp(ts: int | float) -> datetime:

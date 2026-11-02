@@ -41,6 +41,12 @@ export interface SelectCommonProps {
   emptyState?: ReactNode;
 }
 
+/**
+ * `xs` compacts the trigger only — 28px tall, matching Button `xs` — for a
+ * filter that sits in a dense header. Its menu keeps `sm` sizing.
+ */
+export type SelectSize = 'xs' | 'sm' | 'md';
+
 export const SelectEmptyState = ({
   emptyState,
 }: {
@@ -58,7 +64,8 @@ export const SelectEmptyState = ({
 interface SelectProps
   extends Omit<AriaSelectProps<SelectItemType>, 'children' | 'items'>,
     RefAttributes<HTMLDivElement>,
-    SelectCommonProps {
+    Omit<SelectCommonProps, 'size'> {
+  size?: SelectSize;
   items?: SelectItemType[];
   popoverClassName?: string;
   icon?: FC | ReactNode;
@@ -72,7 +79,7 @@ interface SelectProps
 
 interface SelectValueProps {
   isOpen: boolean;
-  size: 'sm' | 'md';
+  size: SelectSize;
   fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   isFocused: boolean;
   isDisabled: boolean;
@@ -82,6 +89,7 @@ interface SelectValueProps {
 }
 
 export const sizes = {
+  xs: { root: 'tw:py-1.25 tw:px-2', shortcut: 'tw:pr-2' },
   sm: { root: 'tw:py-2 tw:px-3', shortcut: 'tw:pr-2.5' },
   md: { root: 'tw:py-2.5 tw:px-3.5', shortcut: 'tw:pr-3' },
 };
@@ -103,7 +111,8 @@ const SelectValue = ({
           // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow, so
           // a ring thins/vanishes in Safari when zoomed out. `outline-hidden` is gone — the
           // outline IS the border and focus indicator here, as in input.tsx.
-          'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
+          'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
+          size === 'xs' ? 'tw:rounded-md' : 'tw:rounded-lg',
           (isFocused || isOpen) &&
             'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           isDisabled &&
@@ -115,10 +124,12 @@ const SelectValue = ({
       }>
       <AriaSelectValue<SelectItemType>
         className={cx(
-          'tw:flex tw:h-max tw:w-full tw:items-center tw:justify-start tw:gap-2 tw:truncate tw:text-left tw:align-middle',
+          'tw:flex tw:h-max tw:w-full tw:items-center tw:justify-start tw:truncate tw:text-left tw:align-middle',
+          size === 'xs' ? 'tw:gap-1.5' : 'tw:gap-2',
 
           // Icon styles
-          'tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:text-fg-quaternary tw:in-disabled:*:data-icon:text-fg-disabled',
+          'tw:*:data-icon:shrink-0 tw:*:data-icon:text-fg-quaternary tw:in-disabled:*:data-icon:text-fg-disabled',
+          size === 'xs' ? 'tw:*:data-icon:size-4' : 'tw:*:data-icon:size-5',
 
           sizes[size].root
         )}>
@@ -173,7 +184,7 @@ const SelectValue = ({
                 aria-hidden="true"
                 className={cx(
                   'tw:ml-auto tw:shrink-0 tw:text-fg-quaternary',
-                  size === 'sm' ? 'tw:size-4 tw:stroke-[2.5px]' : 'tw:size-5'
+                  size === 'md' ? 'tw:size-5' : 'tw:size-4 tw:stroke-[2.5px]'
                 )}
               />
             </>
@@ -216,9 +227,10 @@ const Select = forwardRef<HTMLDivElement, Omit<SelectProps, 'ref'>>(
   ) {
     const isVirtualized =
       (items?.length ?? 0) > SELECT_VIRTUALIZATION_THRESHOLD;
+    const menuSize = size === 'xs' ? 'sm' : size;
 
     return (
-      <SelectContext.Provider value={{ fontSize, size }}>
+      <SelectContext.Provider value={{ fontSize, size: menuSize }}>
         <AriaSelect
           {...rest}
           allowsEmptyCollection={allowsEmptyCollection}
@@ -249,13 +261,13 @@ const Select = forwardRef<HTMLDivElement, Omit<SelectProps, 'ref'>>(
                   isVirtualized && 'tw:overflow-hidden tw:py-0',
                   rest.popoverClassName
                 )}
-                size={size}>
+                size={menuSize}>
                 <SelectListBox
                   items={items}
                   renderEmptyState={() => (
                     <SelectEmptyState emptyState={emptyState} />
                   )}
-                  size={size}
+                  size={menuSize}
                   virtualize={isVirtualized}>
                   {children}
                 </SelectListBox>

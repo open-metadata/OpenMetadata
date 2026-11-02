@@ -21,7 +21,7 @@ import {
   Typography,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { Database01, Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -35,7 +35,6 @@ import {
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
 import { ServiceCategoryParam } from '../../../../../constants/ServiceType.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
@@ -45,7 +44,7 @@ import { errorMsg } from '../../../../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
 import { getServiceCategoryLabel } from '../../../../../utils/ServicePureUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
@@ -159,13 +158,13 @@ const SelectServiceType = ({
 
         {isEmpty(filteredConnectors) && (
           <div className="flex-center">
-            <ErrorPlaceHolder
-              className="border-none"
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography>
-                {t('message.no-connectors-available-for-service')}
-              </Typography>
-            </ErrorPlaceHolder>
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoDataPlaceholder
+                data-testid="no-data-placeholder"
+                description={t('message.no-connectors-available-for-service')}
+                icon={<Database01 />}
+              />
+            </div>
           </div>
         )}
 

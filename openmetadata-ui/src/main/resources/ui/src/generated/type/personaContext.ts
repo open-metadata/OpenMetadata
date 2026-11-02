@@ -57,8 +57,6 @@ export enum Reason {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Ancestor concept that declares this attribute. Only set when `inherited` is true.
- *
  * Resolved first-class relationship type.
  *
  * Reference to the related glossary term.
@@ -291,10 +289,6 @@ export interface AssetContext {
  * omitted by the response caps.
  */
 export interface ConceptContext {
-    /**
-     * Declared ontology attributes, including their units and ENUM values.
-     */
-    attributes?: OntologyAttribute[];
     bindings?:   ConceptBinding[];
     definition?: string;
     evidence?:   ConceptEvidence[];
@@ -320,67 +314,6 @@ export interface ConceptContext {
      * the 500-candidate scan cap stopped counting early.
      */
     truncated?: boolean;
-}
-
-/**
- * A typed attribute governed by an ontology concept.
- */
-export interface OntologyAttribute {
-    dataType: DataType;
-    /**
-     * Exact RDF datatype IRI preserved for ontology round trips.
-     */
-    datatypeIri?: string;
-    /**
-     * Ancestor concept that declares this attribute. Only set when `inherited` is true.
-     */
-    declaringTerm?: EntityReference;
-    /**
-     * Human-readable meaning of the attribute.
-     */
-    description?: string;
-    /**
-     * Allowed values when dataType is ENUM.
-     */
-    enumValues?: string[];
-    /**
-     * Stable identifier used by drafts and version diffs.
-     */
-    id: string;
-    /**
-     * True when the attribute is contributed by an ancestor concept rather than declared on the
-     * concept itself. Only set on computed `effectiveAttributes`; never valid inside a
-     * concept's own `attributes`.
-     */
-    inherited?: boolean;
-    /**
-     * Canonical IRI of the OWL datatype property.
-     */
-    iri?: string;
-    /**
-     * Whether the attribute identifies instances of the concept.
-     */
-    isIdentifier: boolean;
-    /**
-     * Name of the attribute within its concept.
-     */
-    name: string;
-    /**
-     * Optional unit IRI or display symbol.
-     */
-    unit?: string;
-}
-
-/**
- * Supported value type for an ontology attribute.
- */
-export enum DataType {
-    Boolean = "BOOLEAN",
-    Date = "DATE",
-    Decimal = "DECIMAL",
-    Enum = "ENUM",
-    Integer = "INTEGER",
-    String = "STRING",
 }
 
 /**

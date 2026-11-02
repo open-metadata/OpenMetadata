@@ -31,6 +31,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.End
 @Slf4j
 @Getter
 public class MainWorkflow {
+  public static final String ERROR_END_EVENT_ID = "Error";
   private final BpmnModel model;
   private final String workflowName;
   private final List<BoundaryEvent> runtimeExceptionBoundaryEvents = new ArrayList<>();
@@ -87,7 +88,7 @@ public class MainWorkflow {
   }
 
   private void configureRuntimeExceptionFlow(Process process) {
-    EndEvent errorEndEvent = new EndEvent("Error");
+    EndEvent errorEndEvent = new EndEvent(ERROR_END_EVENT_ID);
     process.addFlowElement(errorEndEvent.getEndEvent());
     for (BoundaryEvent event : runtimeExceptionBoundaryEvents) {
       process.addFlowElement(new SequenceFlow(event.getId(), errorEndEvent.getEndEvent().getId()));

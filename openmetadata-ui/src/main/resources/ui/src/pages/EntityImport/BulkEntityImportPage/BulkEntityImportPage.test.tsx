@@ -24,6 +24,7 @@ import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Include } from '../../../generated/type/include';
+import { getCsvHeaderKey } from '../../../utils/CSV/CSV.utils';
 import BulkEntityImportPage from './BulkEntityImportPage';
 
 // Mock data
@@ -606,7 +607,7 @@ describe('BulkEntityImportPage', () => {
         expect.objectContaining({
           fields: '*',
           limit: 1000,
-          include: Include.All,
+          include: Include.NonDeleted,
         }),
         expect.objectContaining({
           signal: expect.any(AbortSignal),
@@ -617,7 +618,8 @@ describe('BulkEntityImportPage', () => {
         expect.any(Array),
         { user: true, team: true },
         true,
-        true
+        true,
+        expect.any(Function)
       );
 
       const bulkEditEntityMock = BulkEditEntity as jest.Mock;
@@ -651,7 +653,7 @@ describe('BulkEntityImportPage', () => {
           expect.objectContaining({
             fields: '*',
             limit: 1000,
-            include: Include.All,
+            include: Include.NonDeleted,
           }),
           expect.objectContaining({
             signal: expect.any(AbortSignal),
@@ -664,7 +666,8 @@ describe('BulkEntityImportPage', () => {
         expect.any(Array),
         { user: true, team: true },
         true,
-        true
+        true,
+        expect.any(Function)
       );
 
       const bulkEditEntityMock = BulkEditEntity as jest.Mock;
@@ -721,6 +724,46 @@ describe('BulkEntityImportPage', () => {
   });
 
   describe('User Interactions - CSV Upload', () => {
+    it('downloads the CSV template as a BOM-prefixed UTF-8 file with the documented headers', async () => {
+      (getCsvHeaderKey as jest.Mock).mockImplementation(
+        jest.requireActual('../../../utils/CSV/CSV.utils').getCsvHeaderKey
+      );
+      const createObjectURL = jest.fn().mockReturnValue('blob:template');
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        value: createObjectURL,
+      });
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        value: jest.fn(),
+      });
+
+      renderComponent();
+
+      const templateButton = await screen.findByRole('button', {
+        name: 'label.download label.csv label.template',
+      });
+      await waitFor(() => expect(templateButton).toBeEnabled());
+
+      fireEvent.click(templateButton);
+
+      const template = createObjectURL.mock.calls[0][0] as Blob;
+      const bytes = await new Promise<Uint8Array>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () =>
+          resolve(new Uint8Array(reader.result as ArrayBuffer));
+        reader.readAsArrayBuffer(template);
+      });
+
+      expect(template.type).toBe('text/csv;charset=utf-8');
+      expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+      expect(new TextDecoder().decode(bytes.slice(3)).split(/\r?\n/)[0]).toBe(
+        'name*,description'
+      );
+
+      (getCsvHeaderKey as jest.Mock).mockReset();
+    });
+
     it('should handle CSV file upload successfully', async () => {
       renderComponent();
 

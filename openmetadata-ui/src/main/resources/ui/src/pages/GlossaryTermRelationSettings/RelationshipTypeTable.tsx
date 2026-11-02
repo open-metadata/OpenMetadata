@@ -16,6 +16,7 @@ import {
   ButtonUtility,
   Table,
   TableCard,
+  TableCardVariant,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -26,6 +27,7 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
+import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Category,
@@ -64,8 +66,10 @@ interface RelationshipTypeTableProps {
   isAdminUser: boolean;
   relationshipTypes: RelationshipType[];
   usageCounts: Record<string, number>;
-  onDelete: (relationshipType: RelationshipType) => void;
+  /** `trigger` is the pressed delete button, to anchor a confirmation to. */
+  onDelete: (relationshipType: RelationshipType, trigger?: HTMLElement) => void;
   onEdit: (relationshipType: RelationshipType) => void;
+  variant?: TableCardVariant;
 }
 
 const getColumnLabels = (t: TFunction): string[] => [
@@ -174,7 +178,8 @@ interface RelationshipTypeRowProps {
   isAdminUser: boolean;
   relationshipType: RelationshipType;
   usageCount: number;
-  onDelete: (relationshipType: RelationshipType) => void;
+  /** `trigger` is the pressed delete button, to anchor a confirmation to. */
+  onDelete: (relationshipType: RelationshipType, trigger?: HTMLElement) => void;
   onEdit: (relationshipType: RelationshipType) => void;
 }
 
@@ -198,8 +203,9 @@ const RelationshipTypeRow = ({
           ) : null}
           <Typography
             as="span"
-            className="tw:font-semibold tw:text-primary"
-            data-testid={`relation-name-${relationshipType.name}`}>
+            className="tw:text-primary"
+            data-testid={`relation-name-${relationshipType.name}`}
+            weight="medium">
             {relationshipType.name}
           </Typography>
         </div>
@@ -260,7 +266,9 @@ const RelationshipTypeRow = ({
             isDisabled={!canDelete}
             size="sm"
             tooltip={getDeleteTooltip(usageCount, t)}
-            onClick={() => onDelete(relationshipType)}
+            onClick={(event: MouseEvent<HTMLElement>) =>
+              onDelete(relationshipType, event.currentTarget)
+            }
           />
         </div>
       </Table.Cell>
@@ -274,11 +282,12 @@ const RelationshipTypeTable = ({
   usageCounts,
   onDelete,
   onEdit,
+  variant,
 }: RelationshipTypeTableProps) => {
   const { t } = useTranslation();
 
   return (
-    <TableCard.Root size="sm">
+    <TableCard.Root size="sm" variant={variant}>
       <Table
         aria-label={t('label.glossary-term-relation-plural')}
         data-testid="relation-types-table">

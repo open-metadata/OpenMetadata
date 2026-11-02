@@ -13,7 +13,8 @@
 Test PowerBI API Client
 """
 
-from unittest.mock import patch
+import logging
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -21,6 +22,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.powerBIConn
     PowerBIConnection,
 )
 from metadata.ingestion.source.dashboard.powerbi.client import PowerBiApiClient
+from metadata.utils.logger import utils_logger
 
 CONNECTION_CONFIG = {
     "clientId": "client_id",
@@ -40,3 +42,57 @@ def test_page_size_is_clamped_to_the_groups_ceiling(_msal, configured, expected)
     connection = PowerBIConnection(**CONNECTION_CONFIG, pagination_entity_per_page=configured)
 
     assert PowerBiApiClient(connection).pagination_entity_per_page == expected
+
+
+@pytest.mark.parametrize(
+    "response, expected",
+    [
+        (
+            {"@odata.context": "ctx", "value": [{"name": "ReportSection", "displayName": "Overview", "order": 0}]},
+            [("ReportSection", "Overview")],
+        ),
+        ({"@odata.context": "ctx", "value": None}, []),
+        ({"@odata.context": "ctx", "value": []}, []),
+        (None, None),
+        (ConnectionError("connection reset"), None),
+    ],
+    ids=["pages", "null-value", "no-pages", "error-status", "network-error"],
+)
+@patch("metadata.ingestion.source.dashboard.powerbi.client.msal")
+def test_fetch_report_pages_tells_no_pages_from_a_failed_read(_msal, response, expected):
+    """A report with no pages loses its page charts; one whose pages cannot be read keeps them."""
+    api_client = PowerBiApiClient(PowerBIConnection(**CONNECTION_CONFIG))
+    api_client.client = MagicMock()
+    api_client.client.get.side_effect = [response]
+
+    pages = api_client.fetch_report_pages("ws-1", "report-1")
+
+    assert (None if pages is None else [(page.name, page.displayName) for page in pages]) == expected
+    api_client.client.get.assert_called_once_with("/myorg/groups/ws-1/reports/report-1/pages")
+
+
+@pytest.mark.parametrize(
+    "response, logged",
+    [
+        ({"@odata.context": "ctx", "value": [{"name": "ReportSection", "displayName": "Overview"}]}, False),
+        ({"@odata.context": "ctx", "value": None}, True),
+        ({"@odata.context": "ctx", "value": []}, True),
+        (None, True),
+    ],
+    ids=["pages", "null-value", "no-pages", "empty-response"],
+)
+@patch("metadata.ingestion.source.dashboard.powerbi.client.msal")
+def test_fetch_report_pages_logs_an_empty_response(_msal, response, logged, caplog):
+    api_client = PowerBiApiClient(PowerBIConnection(**CONNECTION_CONFIG))
+    api_client.client = MagicMock()
+    api_client.client.get.return_value = response
+
+    with caplog.at_level(logging.DEBUG, logger=utils_logger().name):
+        api_client.fetch_report_pages("ws-1", "report-1")
+
+    empty_logs = [
+        record
+        for record in caplog.records
+        if record.levelno == logging.DEBUG and "for report [report-1] in workspace [ws-1]" in record.getMessage()
+    ]
+    assert bool(empty_logs) is logged

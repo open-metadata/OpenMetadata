@@ -26,9 +26,16 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableType,
 )
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
 )
@@ -43,6 +50,10 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.progress.modes import ManualProgress
 from metadata.ingestion.progress.registry import ProgressRegistry
+from metadata.profiler.metrics.system.system import (
+    DEFAULT_SYSTEM_METRICS_BATCH_SIZE,
+    TABLE_BATCH_WINDOW,
+)
 from metadata.profiler.source.fetcher.fetcher_strategy import DatabaseFetcherStrategy
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 
@@ -767,6 +778,115 @@ class TestFetch:
         assert entities == [ORDERS_TABLE]
 
 
+class TestFetchTableBatches:
+    """fetch() hands tables over in batches so system metrics can scan a batch at once"""
+
+    @pytest.fixture(autouse=True)
+    def isolated_batch_window(self):
+        TABLE_BATCH_WINDOW.clear()
+        yield
+        TABLE_BATCH_WINDOW.clear()
+
+    @staticmethod
+    def _snowflake_fetcher(batch_size):
+        fetcher = _make_fetcher()
+        fetcher.config.source.serviceConnection = ServiceConnection(
+            DatabaseConnection(
+                config=SnowflakeConnection(
+                    username="user",
+                    account="account",
+                    warehouse="warehouse",
+                    systemMetricsBatchSize=batch_size,
+                )
+            )
+        )
+        return fetcher
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_connectors_without_the_setting_use_the_default_batch_size(self, mock_factory):
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = _make_fetcher()
+        tables = [
+            Table(id=uuid.uuid4(), name=f"t{i}", fullyQualifiedName=f"my_service.prod.finance.t{i}", columns=[])
+            for i in range(DEFAULT_SYSTEM_METRICS_BATCH_SIZE + 1)
+        ]
+        fetcher.metadata.list_all_entities.side_effect = [iter([PROD_DB]), iter(tables)]
+
+        batches = [
+            TABLE_BATCH_WINDOW.batch_for(record.right.entity.fullyQualifiedName.root) for record in fetcher.fetch()
+        ]
+
+        assert len(batches[0].table_fqns) == DEFAULT_SYSTEM_METRICS_BATCH_SIZE
+        assert batches[-1].table_fqns == (f"my_service.prod.finance.t{DEFAULT_SYSTEM_METRICS_BATCH_SIZE}",)
+
+    @pytest.mark.parametrize("close_early", [False, True])
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_finished_fetcher_does_not_leave_a_batch_for_a_later_run(self, mock_factory, close_early):
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = self._snowflake_fetcher(batch_size=2)
+        fetcher.metadata.list_all_entities.side_effect = [iter([PROD_DB]), iter([ORDERS_TABLE])]
+        records = fetcher.fetch()
+        next(records)
+        table_fqn = ORDERS_TABLE.fullyQualifiedName.root
+        assert TABLE_BATCH_WINDOW.batch_for(table_fqn) is not None
+
+        if close_early:
+            records.close()
+        else:
+            list(records)
+
+        assert TABLE_BATCH_WINDOW.batch_for(table_fqn) is None
+
+    @staticmethod
+    def _listing(tables, listed, error=None):
+        for table in tables:
+            listed.append(table)
+            yield table
+        if error:
+            raise error
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_each_batch_is_registered_before_its_tables_are_handed_over(self, mock_factory):
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = self._snowflake_fetcher(batch_size=2)
+        listed = []
+        fetcher.metadata.list_all_entities.side_effect = [
+            iter([PROD_DB]),
+            self._listing([ORDERS_TABLE, CUSTOMERS_TABLE, EMPLOYEES_TABLE], listed),
+        ]
+
+        records = fetcher.fetch()
+        first = next(records)
+
+        assert first.right.entity == ORDERS_TABLE
+        assert listed == [ORDERS_TABLE, CUSTOMERS_TABLE]
+        assert TABLE_BATCH_WINDOW.batch_for("my_service.prod.finance.orders").table_fqns == (
+            "my_service.prod.finance.orders",
+            "my_service.prod.finance.customers",
+        )
+
+        assert next(records).right.entity == CUSTOMERS_TABLE
+        assert next(records).right.entity == EMPLOYEES_TABLE
+        assert TABLE_BATCH_WINDOW.batch_for("my_service.prod.hr.employees").table_fqns == (
+            "my_service.prod.hr.employees",
+        )
+        assert list(records) == []
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_tables_listed_before_a_paging_failure_are_still_handed_over(self, mock_factory):
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = self._snowflake_fetcher(batch_size=5)
+        fetcher.metadata.list_all_entities.side_effect = [
+            iter([PROD_DB]),
+            self._listing([ORDERS_TABLE], [], error=RuntimeError("page 2 failed")),
+        ]
+
+        results = list(fetcher.fetch())
+
+        assert [r.right.entity for r in results if r.right] == [ORDERS_TABLE]
+        assert ["page 2 failed" in r.left.error for r in results if r.left] == [True]
+
+
 def _db_strategy_with_progress(tables, server_total, capture=None):
     """DatabaseFetcherStrategy wired with a real ProgressRegistry, with its
     database/table enumeration and profiler_source stubbed so fetch() runs in
@@ -776,7 +896,7 @@ def _db_strategy_with_progress(tables, server_total, capture=None):
 
     strategy = DatabaseFetcherStrategy.__new__(DatabaseFetcherStrategy)
     strategy.progress = progress
-    strategy.config = SimpleNamespace(source=SimpleNamespace(type="mysql"))
+    strategy.config = SimpleNamespace(source=SimpleNamespace(type="mysql", serviceConnection=None))
     strategy.global_profiler_config = None
     strategy.metadata = MagicMock()
     strategy.metadata.list_entities.return_value = SimpleNamespace(total=server_total)
@@ -808,7 +928,7 @@ def _multi_db_strategy_with_progress(db_specs):
 
     strategy = DatabaseFetcherStrategy.__new__(DatabaseFetcherStrategy)
     strategy.progress = progress
-    strategy.config = SimpleNamespace(source=SimpleNamespace(type="mysql"))
+    strategy.config = SimpleNamespace(source=SimpleNamespace(type="mysql", serviceConnection=None))
     strategy.global_profiler_config = None
     strategy.metadata = MagicMock()
     strategy.metadata.list_entities.side_effect = [SimpleNamespace(total=seed) for seed, _ in db_specs.values()]

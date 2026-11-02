@@ -182,7 +182,7 @@ const NavigationEditor = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:w-[40%]"
+      className="tw:flex tw:flex-col tw:w-[30%]"
       data-testid="navigation-editor"
       variant="muted">
       <Tree

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { Column } from 'react-data-grid';
+import DataGrid, { Column } from 'react-data-grid';
 import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { EntityType } from '../../enums/entity.enum';
@@ -190,12 +190,19 @@ const defaultProps: BulkEditEntityProps = {
   handlePaste: jest.fn().mockReturnValue({}),
   pushToUndoStack: jest.fn(),
   handleOnRowsChange: jest.fn(),
+  searchText: '',
+  visibleRows: mockDataSource,
+  onSearchTextChange: jest.fn(),
 };
 
 const renderComponent = (props: Partial<BulkEditEntityProps> = {}) => {
   return render(
     <MemoryRouter>
-      <BulkEditEntity {...defaultProps} {...props} />
+      <BulkEditEntity
+        {...defaultProps}
+        visibleRows={props.dataSource ?? defaultProps.visibleRows}
+        {...props}
+      />
     </MemoryRouter>
   );
 };
@@ -257,6 +264,35 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+    });
+  });
+
+  describe('Search and editing', () => {
+    it('shows the no-results placeholder instead of an empty grid when search matches nothing', () => {
+      renderComponent({ searchText: 'zzz', visibleRows: [] });
+
+      expect(
+        screen.getByTestId('bulk-edit-no-search-results')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('data-grid')).not.toBeInTheDocument();
+    });
+
+    it('grows the row whose editor reports a taller height', async () => {
+      // No ids, like rows added in bulk edit: the lookup must key on the row, not row.id.
+      const rows = [{ col1: 'a' }, { col1: 'b' }];
+      renderComponent({
+        dataSource: rows,
+        visibleRows: rows,
+        editingRowHeight: { rowIdx: 1, height: 140 },
+      });
+      await screen.findByTestId('data-grid');
+
+      const { rowHeight, rows: gridRows } = (
+        DataGrid as unknown as jest.Mock
+      ).mock.calls.at(-1)[0];
+
+      expect(rowHeight(gridRows[0])).toBe(52);
+      expect(rowHeight(gridRows[1])).toBe(140);
     });
   });
 
@@ -618,6 +654,28 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalled();
+    });
+
+    it('labels the rows of a table bulk edit as columns', () => {
+      mockEntityType = EntityType.TABLE;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.column-plural`
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('labels the rows of a glossary bulk edit as glossary terms', () => {
+      mockEntityType = EntityType.GLOSSARY;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.glossary-term-plural`
+        )
+      ).toBeInTheDocument();
     });
 
     it('should handle DATABASE entity type', () => {
