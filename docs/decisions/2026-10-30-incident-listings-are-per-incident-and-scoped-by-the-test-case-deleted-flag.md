@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-10-30 (initial)
 - **Deciders:** Data Observability
 - **Guard:** `IncidentGroupsIT.testDrillDownListsEveryOpenIncidentOfATestCase`, `TestCaseSoftDeleteSearchIT`, `SearchListFilterTest.testResolutionStatusCondition_scopesByTestCaseDeleted`
-- **Related:** #34616, PR #36594 (database incident listing deletion scoping)
+- **Related:** #34616, ADR:2026-10-29-incident-listing-test-case-deletion-scoping-is-qualified (the database listing's deletion scoping)
 
 ## Context
 An incident is a `stateId` chain of `testCaseResolutionStatus` records. A test case can hold more
