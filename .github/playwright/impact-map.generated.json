@@ -5593,6 +5593,7 @@
       "specs": [
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
       ]
     },
