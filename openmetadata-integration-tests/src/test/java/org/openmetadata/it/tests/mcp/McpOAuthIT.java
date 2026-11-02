@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Execution(ExecutionMode.SAME_THREAD)
@@ -359,6 +362,100 @@ public class McpOAuthIT extends McpTestBase {
                 + "\"error\":{\"code\":-32001,\"message\":\"Invalid or expired bearer token\"}}");
     // RFC 6750 section 3.1: a token was supplied and rejected, so the challenge says so.
     assertThat(challengeOf(response)).contains("error=\"invalid_token\"");
+  }
+
+  /** A revoked access token is refused on the next call; clients often send no type hint. */
+  @Test
+  @Order(14)
+  void testRevokedAccessToken_isRefusedOnTheNextCall() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    String refreshToken =
+        seedRefreshToken(List.of(), System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+    HttpResponse<String> refreshed = refresh(refreshToken);
+    assertThat(refreshed.statusCode()).isEqualTo(200);
+    String accessToken = OBJECT_MAPPER.readTree(refreshed.body()).get("access_token").asText();
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(revoke(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+  }
+
+  /** Revoking a refresh token ends the access tokens of its grant too (RFC 7009 section 2.1). */
+  @Test
+  @Order(15)
+  void testRevokedRefreshToken_endsItsAccessTokens() throws Exception {
+    Assumptions.assumeTrue(
+        registeredClientId != null, "Skipped: dynamic client registration (Order 3) did not run");
+    String seeded =
+        seedRefreshToken(List.of(), System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+    JsonNode tokens = OBJECT_MAPPER.readTree(refresh(seeded).body());
+    String accessToken = tokens.get("access_token").asText();
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(200);
+
+    assertThat(revoke(tokens.get("refresh_token").asText()).statusCode()).isEqualTo(200);
+
+    assertThat(listTools(accessToken).statusCode()).isEqualTo(401);
+  }
+
+  private static String seedRefreshToken(List<String> scopes, long expiresAt) {
+    String value = UUID.randomUUID().toString();
+    new OAuthTokenRepository()
+        .storeRefreshToken(
+            new RefreshToken(value, registeredClientId, scopes, expiresAt),
+            registeredClientId,
+            "admin",
+            scopes);
+    return value;
+  }
+
+  private HttpResponse<String> refresh(String refreshToken) throws Exception {
+    String formBody =
+        "grant_type=refresh_token&refresh_token="
+            + refreshToken
+            + "&client_id="
+            + registeredClientId
+            + "&client_secret="
+            + registeredClientSecret;
+    return postForm("/mcp/token", formBody);
+  }
+
+  private HttpResponse<String> revoke(String token) throws Exception {
+    String formBody =
+        "token="
+            + token
+            + "&client_id="
+            + registeredClientId
+            + "&client_secret="
+            + registeredClientSecret;
+    return postForm("/mcp/revoke", formBody);
+  }
+
+  private HttpResponse<String> postForm(String path, String formBody) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl(path)))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString(formBody))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> listTools(String accessToken) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl("/mcp")))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json, text/event-stream")
+            .header("Authorization", "Bearer " + accessToken)
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}"))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private static String challengeOf(HttpResponse<String> response) {

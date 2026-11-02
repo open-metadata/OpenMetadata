@@ -18,7 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +50,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -59,6 +63,8 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -437,6 +443,110 @@ class JwtFilterTest {
 
     verify(context, times(1))
         .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+  }
+
+  @Test
+  void mcpAccessTokenNoLongerStoredIsRejected() throws Exception {
+    String token = mcpAccessToken();
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> filterMcpAccessToken(token, null));
+    assertTrue(exception.getMessage().contains("revoked"));
+  }
+
+  /** Signed with our key under an issuer the server has since changed: still looked up. */
+  @Test
+  void mcpAccessTokenFromAnEarlierIssuerIsStillLookedUp() throws Exception {
+    String token =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer("an-earlier-issuer")
+            .withExpiresAt(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)))
+            .withClaim("sub", "sam")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+            .withClaim(JWTTokenGenerator.CLIENT_ID_CLAIM, "mcp-client")
+            .sign(algorithm);
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> filterMcpAccessToken(token, null));
+    assertTrue(exception.getMessage().contains("revoked"));
+  }
+
+  @Test
+  void mcpAccessTokenStillStoredIsAccepted() throws Exception {
+    String token = mcpAccessToken();
+    OAuthAccessTokenRecord stored =
+        new OAuthAccessTokenRecord(
+            UUID.randomUUID(),
+            CollectionDAO.OAuthAccessTokenDAO.hashToken(token),
+            "encrypted",
+            "mcp-client",
+            "sam",
+            List.of(),
+            Long.MAX_VALUE);
+
+    ContainerRequestContext context = filterMcpAccessToken(token, stored);
+
+    verify(context).setSecurityContext(any(SecurityContext.class));
+  }
+
+  /** A provider's own token may carry client_id too; only a token OpenMetadata signed is looked up. */
+  @Test
+  void providerTokenWithAClientIdIsNotLookedUp() {
+    String token =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withAudience("openmetadata-client")
+            .withClaim(JWTTokenGenerator.CLIENT_ID_CLAIM, "openmetadata-client")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(token);
+
+    try (MockedStatic<Entity> entity =
+        mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      jwtFilter.filter(context);
+      entity.verify(Entity::getCollectionDAO, never());
+    }
+
+    verify(context).setSecurityContext(any(SecurityContext.class));
+  }
+
+  private static String mcpAccessToken() {
+    return JWT.create()
+        .withKeyId(OM_KEY_ID)
+        .withIssuer(OM_ISSUER)
+        .withExpiresAt(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)))
+        .withClaim("sub", "sam")
+        .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+        .withClaim(JWTTokenGenerator.CLIENT_ID_CLAIM, "mcp-client")
+        .sign(algorithm);
+  }
+
+  /** Runs an OpenMetadata-signed MCP access token through the filter with the given stored row. */
+  private static ContainerRequestContext filterMcpAccessToken(
+      String token, OAuthAccessTokenRecord storedRow) throws Exception {
+    JwtFilter filter =
+        new JwtFilter(jwkProviderForKeyId(OM_KEY_ID), List.of("sub", "email"), OM_ISSUER, false);
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.OAuthAccessTokenDAO accessTokens = mock(CollectionDAO.OAuthAccessTokenDAO.class);
+    when(dao.oauthAccessTokenDAO()).thenReturn(accessTokens);
+    when(accessTokens.findByTokenHash(CollectionDAO.OAuthAccessTokenDAO.hashToken(token)))
+        .thenReturn(storedRow);
+    ContainerRequestContext context = createRequestContextWithJwt(token);
+
+    try (MockedStatic<JWTTokenGenerator> generator =
+            mockStatic(JWTTokenGenerator.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+        MockedStatic<Entity> entity =
+            mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      JWTTokenGenerator instance = mock(JWTTokenGenerator.class);
+      when(instance.getIssuer()).thenReturn(OM_ISSUER);
+      when(instance.getKid()).thenReturn(OM_KEY_ID);
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(instance);
+      entity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+      filter.filter(context);
+    }
+    return context;
   }
 
   @Test
