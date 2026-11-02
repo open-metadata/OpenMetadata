@@ -60,6 +60,7 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRuleOutcome;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeam;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -2419,6 +2420,91 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testODCSSpecCompliantV310DocumentRoundTrips(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Every shape the published ODCS v3.1.0 schema mandates: team as an object with members,
+    // customProperties as {property, value} arrays, a numeric SLA value and quality rules.
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("v310_round_trip")
+            + "\n"
+            + "version: \"1.0.0\"\n"
+            + "status: active\n"
+            + "description:\n"
+            + "  purpose: Spec-compliant ODCS v3.1.0 document\n"
+            + "team:\n"
+            + "  members:\n"
+            + "    - username: admin\n"
+            + "      role: owner\n"
+            + "schema:\n"
+            + "  - name: "
+            + table.getName()
+            + "\n"
+            + "    logicalType: object\n"
+            + "    properties:\n"
+            + "      - name: id\n"
+            + "        logicalType: integer\n"
+            + "      - name: email\n"
+            + "        logicalType: string\n"
+            + "quality:\n"
+            + "  - id: row_count\n"
+            + "    type: library\n"
+            + "    metric: rowCount\n"
+            + "    mustBeGreaterThan: 0\n"
+            + "    customProperties:\n"
+            + "      - property: engine\n"
+            + "        value: soda\n"
+            + "slaProperties:\n"
+            + "  - property: latency\n"
+            + "    value: 1\n"
+            + "    unit: h\n"
+            + "servers:\n"
+            + "  - server: prod\n"
+            + "    type: snowflake\n"
+            + "    customProperties:\n"
+            + "      - property: account\n"
+            + "        value: svc-account\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table", false);
+
+    assertNotNull(imported);
+    assertEquals(EntityStatus.APPROVED, imported.getEntityStatus());
+    assertEquals(2, imported.getSchema().size());
+    assertEquals(1, imported.getSla().getMaxLatency().getValue());
+    assertTrue(
+        imported.getOdcsQualityRules().stream()
+            .anyMatch(
+                rule ->
+                    rule.getCustomProperties() != null
+                        && rule.getCustomProperties().stream()
+                            .anyMatch(property -> "engine".equals(property.getProperty()))));
+
+    String exported = SdkClients.adminClient().dataContracts().exportToODCSYaml(imported.getId());
+
+    assertTrue(exported.contains("team:"), exported);
+    assertTrue(exported.contains("members:"), exported);
+    assertTrue(
+        java.util.regex.Pattern.compile("contractCreatedTs: \"?\\d{4}-\\d{2}-\\d{2}T[0-9:.]+Z\"?")
+            .matcher(exported)
+            .find(),
+        exported);
+    assertTrue(exported.contains("value: 1"), exported);
+    assertFalse(exported.contains("value: '1'"), exported);
+    assertTrue(exported.contains("quality:"), exported);
+    assertTrue(exported.contains("property: engine"), exported);
+    assertFalse(exported.contains("[]"), exported);
+  }
+
+  @Test
   void testODCSExportWithSLA(TestNamespace ns) {
     Table table = createTestTable(ns);
 
@@ -2455,7 +2541,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .anyMatch(
                 p ->
                     "freshness".equals(p.getProperty())
-                        && "1".equals(p.getValue())); // ODCS uses "freshness"
+                        && Integer.valueOf(1).equals(p.getValue())); // ODCS uses "freshness"
     assertTrue(hasFreshness);
 
     boolean hasLatency =
@@ -2463,7 +2549,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .anyMatch(
                 p ->
                     "latency".equals(p.getProperty())
-                        && "2".equals(p.getValue())); // ODCS uses "latency"
+                        && Integer.valueOf(2).equals(p.getValue())); // ODCS uses "latency"
     assertTrue(hasLatency);
   }
 
@@ -5995,7 +6081,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     owner.setName("Admin User");
     owner.setRole("owner");
     team.add(owner);
-    odcs.setTeam(team);
+    odcs.setTeam(new ODCSTeam().withMembers(team));
 
     DataContract imported =
         SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
@@ -6036,7 +6122,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     reviewer.setRole("reviewer");
     team.add(reviewer);
 
-    odcs.setTeam(team);
+    odcs.setTeam(new ODCSTeam().withMembers(team));
 
     DataContract imported =
         SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
@@ -6075,7 +6161,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     owner.setUsername("admin");
     owner.setRole("owner");
     team.add(owner);
-    odcsWithOwner.setTeam(team);
+    odcsWithOwner.setTeam(new ODCSTeam().withMembers(team));
 
     DataContract updated =
         SdkClients.adminClient()
@@ -6088,9 +6174,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     assertNotNull(exported);
     assertNotNull(exported.getTeam());
-    assertFalse(exported.getTeam().isEmpty());
+    assertFalse(exported.getTeam().getMembers().isEmpty());
 
-    ODCSTeamMember exportedOwner = exported.getTeam().get(0);
+    ODCSTeamMember exportedOwner = exported.getTeam().getMembers().get(0);
     assertEquals("admin", exportedOwner.getUsername());
     assertEquals("owner", exportedOwner.getRole());
   }
@@ -6113,7 +6199,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     owner.setName("Admin User");
     owner.setRole("owner");
     team.add(owner);
-    odcs.setTeam(team);
+    odcs.setTeam(new ODCSTeam().withMembers(team));
 
     // Import
     DataContract imported =
@@ -6127,9 +6213,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
 
     assertNotNull(exported.getTeam());
-    assertEquals(1, exported.getTeam().size());
-    assertEquals("admin", exported.getTeam().get(0).getUsername());
-    assertEquals("owner", exported.getTeam().get(0).getRole());
+    assertEquals(1, exported.getTeam().getMembers().size());
+    assertEquals("admin", exported.getTeam().getMembers().get(0).getUsername());
+    assertEquals("owner", exported.getTeam().getMembers().get(0).getRole());
   }
 
   @Test
@@ -6185,7 +6271,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     owner.setUsername("admin");
     owner.setRole("owner");
     team.add(owner);
-    initialOdcs.setTeam(team);
+    initialOdcs.setTeam(new ODCSTeam().withMembers(team));
 
     DataContract created =
         SdkClients.adminClient()
@@ -7222,9 +7308,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(1, emailProp.getQuality().size());
     assertEquals("email_not_null", emailProp.getQuality().get(0).getName());
 
-    assertTrue(
-        exported.getQuality().isEmpty(),
-        "Top-level quality should be empty when all rules are column-level");
+    assertNull(
+        exported.getQuality(),
+        "Top-level quality should be absent when all rules are column-level");
   }
 
   @Test

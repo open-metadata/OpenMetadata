@@ -18,16 +18,22 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
-import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
 
 /**
- * Rewrites the ways of writing a field that ODCS allows but OpenMetadata's model does not, into
- * the form the model reads, without losing anything: an {@code implementation} written as a
- * mapping (ODCS 3.1.0 allows a string or an object), a plain-text {@code description}, and a single
- * tag written as a string.
+ * Rewrites the ways of writing a field that ODCS allows or that an older OpenMetadata accepted,
+ * into the form the model reads, without losing anything, recording each rewrite in the import
+ * report: a plain-text {@code description}, a single tag written as a string, an {@code
+ * implementation} written as a mapping (ODCS 3.1.0 allows a string or an object), a team written in
+ * the deprecated ODCS v3.0.2 bare-array form instead of the v3.1.0 object, arrays of approvers from
+ * legacy OpenMetadata exports instead of the scalar ODCS strings, and customProperties written in
+ * the deprecated map form instead of the ODCS array form.
  */
-final class ODCSShapeNormalizer {
+public final class ODCSShapeNormalizer {
   private static final String IMPLEMENTATION = "implementation";
   private static final String DESCRIPTION = "description";
   private static final String PURPOSE = "purpose";
@@ -36,14 +42,27 @@ final class ODCSShapeNormalizer {
   private static final String PROPERTIES = "properties";
   private static final String ITEMS = "items";
   private static final String QUALITY = "quality";
+  private static final String TEAM = "team";
+  private static final String MEMBERS = "members";
+  private static final String ROLES = "roles";
+  private static final String SERVERS = "servers";
+  private static final String CUSTOM_PROPERTIES = "customProperties";
+  private static final String PROPERTY = "property";
+  private static final String VALUE = "value";
+  private static final String FIRST_LEVEL_APPROVERS = "firstLevelApprovers";
+  private static final String SECOND_LEVEL_APPROVERS = "secondLevelApprovers";
 
   private ODCSShapeNormalizer() {}
 
-  static void normalize(ObjectNode root, ODCSImportIssues issues) {
+  public static void normalize(ObjectNode root, ODCSImportIssues issues) {
     normalizeDescription(root, issues);
     wrapScalarTags(root);
-    normalizeRules(root.get(QUALITY));
-    forEachElement(root.get(SCHEMA), ODCSShapeNormalizer::normalizeSchemaElement);
+    wrapBareArrayTeam(root, issues);
+    joinArrayApprovers(root, issues);
+    normalizeRules(root.get(QUALITY), QUALITY, issues);
+    normalizeElements(root.get(SCHEMA), SCHEMA, issues);
+    normalizeHolders(root.get(ROLES), ROLES, issues);
+    normalizeHolders(root.get(SERVERS), SERVERS, issues);
   }
 
   private static void normalizeDescription(ObjectNode root, ODCSImportIssues issues) {
@@ -60,23 +79,103 @@ final class ODCSShapeNormalizer {
     }
   }
 
-  private static void normalizeSchemaElement(JsonNode element) {
-    if (element instanceof ObjectNode object) {
-      wrapScalarTags(object);
-      normalizeRules(object.get(QUALITY));
-      forEachElement(object.get(PROPERTIES), ODCSShapeNormalizer::normalizeSchemaElement);
-      normalizeSchemaElement(object.get(ITEMS));
-    }
+  /** ODCS v3.0.2 wrote the team as a bare array of members; v3.1.0 wraps them in an object. */
+  private static void wrapBareArrayTeam(ObjectNode root, ODCSImportIssues issues) {
+    JsonNode team = root.get(TEAM);
+    if (!(team instanceof ArrayNode members)) return;
+    ObjectNode teamObject = root.objectNode();
+    teamObject.set(MEMBERS, members);
+    root.set(TEAM, teamObject);
+    issues.info(
+        ODCSImportIssueCategory.TEAM,
+        TEAM,
+        TEAM,
+        "The team is written in the deprecated ODCS v3.0.2 bare-array form; it is imported as the v3.1.0 object form.");
   }
 
-  private static void normalizeRules(JsonNode rules) {
-    forEachElement(
+  /** ODCS types each approvers field as one string; legacy OpenMetadata exports wrote an array. */
+  private static void joinArrayApprovers(ObjectNode root, ODCSImportIssues issues) {
+    forEachIndexed(
+        root.get(ROLES),
+        (index, roleNode) -> {
+          if (!(roleNode instanceof ObjectNode role)) return;
+          String rolePath = ODCSPaths.element(ROLES, index);
+          joinArrayApprovers(role, FIRST_LEVEL_APPROVERS, rolePath, issues);
+          joinArrayApprovers(role, SECOND_LEVEL_APPROVERS, rolePath, issues);
+        });
+  }
+
+  private static void joinArrayApprovers(
+      ObjectNode role, String field, String rolePath, ODCSImportIssues issues) {
+    JsonNode approvers = role.get(field);
+    if (!(approvers instanceof ArrayNode array)) return;
+    List<String> values = new ArrayList<>();
+    array.forEach(value -> values.add(value.asText()));
+    role.set(field, TextNode.valueOf(String.join(",", values)));
+    issues.info(
+        ODCSImportIssueCategory.ROLES,
+        field,
+        ODCSPaths.child(rolePath, field),
+        String.format(
+            "`%s` is written in the deprecated array form; it is imported as the ODCS string form.",
+            field));
+  }
+
+  private static void normalizeElements(JsonNode elements, String path, ODCSImportIssues issues) {
+    forEachIndexed(
+        elements,
+        (index, element) -> normalizeElement(element, ODCSPaths.element(path, index), issues));
+  }
+
+  private static void normalizeElement(JsonNode element, String path, ODCSImportIssues issues) {
+    if (!(element instanceof ObjectNode object)) return;
+    wrapScalarTags(object);
+    normalizeRules(object.get(QUALITY), ODCSPaths.child(path, QUALITY), issues);
+    rewriteMapFormCustomProperties(object, path, issues);
+    normalizeElements(object.get(PROPERTIES), ODCSPaths.child(path, PROPERTIES), issues);
+    normalizeElement(object.get(ITEMS), ODCSPaths.child(path, ITEMS), issues);
+  }
+
+  private static void normalizeRules(JsonNode rules, String path, ODCSImportIssues issues) {
+    forEachIndexed(
         rules,
-        rule -> {
-          if (rule instanceof ObjectNode ruleObject) {
-            stringifyImplementation(ruleObject);
+        (index, rule) -> {
+          if (!(rule instanceof ObjectNode object)) return;
+          stringifyImplementation(object);
+          rewriteMapFormCustomProperties(object, ODCSPaths.element(path, index), issues);
+        });
+  }
+
+  private static void normalizeHolders(JsonNode holders, String path, ODCSImportIssues issues) {
+    forEachIndexed(
+        holders,
+        (index, holder) -> {
+          if (holder instanceof ObjectNode object) {
+            rewriteMapFormCustomProperties(object, ODCSPaths.element(path, index), issues);
           }
         });
+  }
+
+  /**
+   * ODCS defines customProperties as an array of {property, value} pairs; an older OpenMetadata
+   * accepted a mapping. The mapping is rewritten, keeping every value verbatim.
+   */
+  private static void rewriteMapFormCustomProperties(
+      ObjectNode holder, String path, ODCSImportIssues issues) {
+    JsonNode customProperties = holder.get(CUSTOM_PROPERTIES);
+    if (!(customProperties instanceof ObjectNode mapForm)) return;
+    ArrayNode arrayForm = JsonNodeFactory.instance.arrayNode();
+    for (Map.Entry<String, JsonNode> field : mapForm.properties()) {
+      ObjectNode property = arrayForm.addObject();
+      property.put(PROPERTY, field.getKey());
+      property.set(VALUE, field.getValue());
+    }
+    holder.set(CUSTOM_PROPERTIES, arrayForm);
+    issues.info(
+        ODCSPaths.category(path),
+        CUSTOM_PROPERTIES,
+        ODCSPaths.child(path, CUSTOM_PROPERTIES),
+        "customProperties is written in the deprecated map form; it is imported as the ODCS array form.");
   }
 
   private static void stringifyImplementation(ObjectNode rule) {
@@ -95,9 +194,11 @@ final class ODCSShapeNormalizer {
     }
   }
 
-  private static void forEachElement(JsonNode array, Consumer<JsonNode> action) {
+  private static void forEachIndexed(JsonNode array, BiConsumer<Integer, JsonNode> action) {
     if (array != null && array.isArray()) {
-      array.forEach(action);
+      for (int index = 0; index < array.size(); index++) {
+        action.accept(index, array.get(index));
+      }
     }
   }
 }

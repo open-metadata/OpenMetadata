@@ -162,9 +162,15 @@ public final class ODCSSlaMapper {
     }
   }
 
+  /** The value is stored as text; other value shapes are rendered, null stays null. */
+  private static String text(Object value) {
+    if (value == null) return null;
+    return value instanceof String string ? string : String.valueOf(value);
+  }
+
   private static void applyAvailability(ContractSLA sla, Entry entry) {
-    sla.setAvailabilityTime(entry.property().getValue());
-    String timezone = entry.property().getValueExt();
+    sla.setAvailabilityTime(text(entry.property().getValue()));
+    String timezone = text(entry.property().getValueExt());
     if (TIMEZONES.contains(timezone)) {
       sla.setTimezone(ContractSLA.Timezone.fromValue(timezone));
     } else if (!nullOrEmpty(timezone)) {
@@ -177,13 +183,18 @@ public final class ODCSSlaMapper {
     }
   }
 
+  /** ODCS allows the value as any JSON type; only whole numbers map onto the contract SLA. */
   private static Integer wholeNumber(Entry entry) {
-    String value = entry.property().getValue();
+    Object value = entry.property().getValue();
     Integer number = null;
-    try {
-      number = value == null ? null : Integer.valueOf(value.trim());
-    } catch (NumberFormatException e) {
-      LOG.debug("ODCS SLA value '{}' is not a whole number", value);
+    if (value instanceof Number numeric) {
+      number = numeric.doubleValue() % 1 == 0 ? numeric.intValue() : null;
+    } else if (value instanceof String textual) {
+      try {
+        number = Integer.valueOf(textual.trim());
+      } catch (NumberFormatException e) {
+        LOG.debug("ODCS SLA value '{}' is not a whole number", value);
+      }
     }
     if (number == null) {
       warn(
@@ -223,10 +234,11 @@ public final class ODCSSlaMapper {
     return nullOrEmpty(element) ? null : element.substring(element.lastIndexOf('.') + 1);
   }
 
+  /** Exported as the number it is, so the document keeps the type the agreement was written in. */
   private static ODCSSlaProperty property(String name, Integer value, Enum<?> unit) {
     return new ODCSSlaProperty()
         .withProperty(name)
-        .withValue(String.valueOf(value))
+        .withValue(value)
         .withUnit(unit == null ? null : unit.toString());
   }
 

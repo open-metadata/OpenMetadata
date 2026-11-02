@@ -18,10 +18,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +41,7 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSLogicalTypeOptions;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSRole;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeam;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.datacontract.odcs.ODCSImportIssues;
+import org.openmetadata.service.datacontract.odcs.ODCSShapeNormalizer;
 import org.openmetadata.service.datacontract.odcs.ODCSSlaMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,7 +133,7 @@ public class ODCSConverter {
     }
 
     if (contract.getOwners() != null && !contract.getOwners().isEmpty()) {
-      odcs.setTeam(convertOwnersToTeam(contract.getOwners()));
+      odcs.setTeam(new ODCSTeam().withMembers(convertOwnersToTeam(contract.getOwners())));
     }
 
     if (contract.getSecurity() != null) {
@@ -143,7 +145,7 @@ public class ODCSConverter {
     }
 
     if (contract.getCreatedAt() != null) {
-      odcs.setContractCreatedTs(new Date(contract.getCreatedAt()));
+      odcs.setContractCreatedTs(Instant.ofEpochMilli(contract.getCreatedAt()).toString());
     }
 
     List<String> tags = new ArrayList<>();
@@ -238,8 +240,8 @@ public class ODCSConverter {
       contract.setSchema(columns);
     }
 
-    if (odcs.getTeam() != null && !odcs.getTeam().isEmpty()) {
-      contract.setOwners(convertTeamToOwners(odcs.getTeam(), issues));
+    if (odcs.getTeam() != null && !nullOrEmpty(odcs.getTeam().getMembers())) {
+      contract.setOwners(convertTeamToOwners(odcs.getTeam().getMembers(), issues));
     }
 
     if (odcs.getRoles() != null && !odcs.getRoles().isEmpty()) {
@@ -571,11 +573,11 @@ public class ODCSConverter {
   }
 
   private static List<EntityReference> convertTeamToOwners(
-      List<ODCSTeamMember> team, ODCSImportIssues issues) {
+      List<ODCSTeamMember> members, ODCSImportIssues issues) {
     List<EntityReference> owners = new ArrayList<>();
-    for (int index = 0; index < team.size(); index++) {
-      ODCSTeamMember member = team.get(index);
-      String path = "team[" + index + "]";
+    for (int index = 0; index < members.size(); index++) {
+      ODCSTeamMember member = members.get(index);
+      String path = "team.members[" + index + "]";
       if (!OWNER_ROLE.equalsIgnoreCase(member.getRole())) {
         issues.warning(
             ODCSImportIssueCategory.TEAM,
@@ -659,8 +661,8 @@ public class ODCSConverter {
         role.setRole(policy.getAccessPolicy() != null ? policy.getAccessPolicy() : "data-consumer");
         role.setAccess(ODCSRole.Access.READ);
 
-        if (policy.getIdentities() != null) {
-          role.setFirstLevelApprovers(new ArrayList<>(policy.getIdentities()));
+        if (!nullOrEmpty(policy.getIdentities())) {
+          role.setFirstLevelApprovers(String.join(",", policy.getIdentities()));
         }
 
         roles.add(role);
@@ -687,8 +689,8 @@ public class ODCSConverter {
       } else {
         Policy policy = new Policy();
         policy.setAccessPolicy(role.getRole());
-        if (role.getFirstLevelApprovers() != null) {
-          policy.setIdentities(new ArrayList<>(role.getFirstLevelApprovers()));
+        if (!nullOrEmpty(role.getFirstLevelApprovers())) {
+          policy.setIdentities(splitApprovers(role.getFirstLevelApprovers()));
         }
         policies.add(policy);
       }
@@ -699,6 +701,14 @@ public class ODCSConverter {
     }
 
     return security;
+  }
+
+  /** ODCS types the approvers as one string; the policy keeps them as a list. */
+  private static List<String> splitApprovers(String approvers) {
+    return Arrays.stream(approvers.split(","))
+        .map(String::trim)
+        .filter(identity -> !identity.isEmpty())
+        .collect(Collectors.toList());
   }
 
   private static UUID parseUUID(String id) {
@@ -899,48 +909,15 @@ public class ODCSConverter {
   }
 
   /**
-   * Normalizes ODCS input to handle flexible representations. Converts: - team from object form
-   * {members: [...]} to array form [...] - roles' firstLevelApprovers and secondLevelApprovers from
-   * scalar strings to arrays
+   * Normalizes ODCS input to handle flexible representations without reporting the changes, for
+   * callers like the parse endpoint that return no import report: a team written in the deprecated
+   * ODCS v3.0.2 bare-array form into the v3.1.0 object form, legacy arrays of approvers back into
+   * the conformant scalar strings, and the legacy map-form customProperties into the ODCS array
+   * form. Import endpoints that report use {@link ODCSShapeNormalizer#normalize} instead.
    */
   public static void normalizeODCSInput(JsonNode rootNode) {
     if (rootNode == null || !rootNode.isObject()) return;
-    ObjectNode root = (ObjectNode) rootNode;
-
-    normalizeTeamField(root);
-    normalizeApproverFields(root);
-  }
-
-  private static void normalizeTeamField(ObjectNode root) {
-    JsonNode teamNode = root.get("team");
-    if (teamNode == null || !teamNode.isObject()) return;
-
-    JsonNode membersNode = teamNode.get("members");
-    if (membersNode != null && membersNode.isArray()) {
-      root.set("team", membersNode);
-    }
-  }
-
-  private static void normalizeApproverFields(ObjectNode root) {
-    JsonNode rolesNode = root.get("roles");
-    if (rolesNode == null || !rolesNode.isArray()) return;
-
-    for (JsonNode roleNode : rolesNode) {
-      if (!roleNode.isObject()) continue;
-      ObjectNode role = (ObjectNode) roleNode;
-
-      wrapScalarAsArray(role, "firstLevelApprovers");
-      wrapScalarAsArray(role, "secondLevelApprovers");
-    }
-  }
-
-  private static void wrapScalarAsArray(ObjectNode node, String fieldName) {
-    JsonNode field = node.get(fieldName);
-    if (field != null && field.isTextual()) {
-      ArrayNode array = node.arrayNode();
-      array.add(field.asText());
-      node.set(fieldName, array);
-    }
+    ODCSShapeNormalizer.normalize((ObjectNode) rootNode, ODCSImportIssues.discarding());
   }
 
   private static void validateRequiredODCSFields(ODCSDataContract odcs) {

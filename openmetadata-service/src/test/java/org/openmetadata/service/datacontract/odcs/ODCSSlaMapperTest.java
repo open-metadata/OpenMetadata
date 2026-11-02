@@ -112,9 +112,18 @@ class ODCSSlaMapperTest {
             .getFirst();
 
     assertEquals("freshness", freshness.getProperty());
-    assertEquals("6", freshness.getValue());
+    assertEquals(6, freshness.getValue());
     assertEquals("hour", freshness.getUnit());
     assertEquals("updated_at", freshness.getElement());
+  }
+
+  @Test
+  void numericValueKeepsItsTypeInsteadOfBecomingText() {
+    ContractSLA sla =
+        toSla(new ODCSSlaProperty().withProperty("latency").withValue(1).withUnit("h"));
+
+    assertEquals(1, sla.getMaxLatency().getValue());
+    assertEquals(1, ODCSSlaMapper.toOdcs(sla).get(0).getValue());
   }
 
   private static ContractSLA toSla(ODCSSlaProperty property) {

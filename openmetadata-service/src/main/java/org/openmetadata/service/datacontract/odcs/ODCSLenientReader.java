@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssue;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
-import org.openmetadata.service.util.ODCSConverter;
 
 /**
  * Reads an ODCS document without letting one unreadable value fail the whole import. A value
@@ -61,7 +60,6 @@ public final class ODCSLenientReader {
     Optional<ODCSDataContract> contract = Optional.empty();
     if (!issues.hasBlocking()) {
       ObjectNode root = (ObjectNode) document;
-      ODCSConverter.normalizeODCSInput(root);
       ODCSShapeNormalizer.normalize(root, issues);
       contract = Optional.of(readRepairing(mapper, root, issues));
     }

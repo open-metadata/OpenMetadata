@@ -229,9 +229,9 @@ export interface OdcsQualityRule {
      */
     column?: string;
     /**
-     * Additional execution properties.
+     * Additional execution properties, each as a {property, value} pair.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Rule documentation.
      */
@@ -358,6 +358,21 @@ export interface OdcsQualityRuleArguments {
      * Values a property may take (`invalidValues` metric).
      */
     validValues?: string[];
+    [property: string]: any;
+}
+
+/**
+ * Custom property key-value pair.
+ */
+export interface OdcsCustomProperty {
+    /**
+     * Property name (camelCase).
+     */
+    property?: string;
+    /**
+     * Property value. ODCS allows any JSON value.
+     */
+    value?: any;
     [property: string]: any;
 }
 

@@ -204,7 +204,7 @@ export interface ODCSDataContract {
   quality?: ODCSQualityRule[];
   support?: ODCSSupportChannel[];
   price?: ODCSPricing;
-  team?: ODCSTeamMember[];
+  team?: ODCSTeam;
   roles?: ODCSRole[];
   slaProperties?: ODCSSlaProperty[];
   servers?: ODCSServer[];
@@ -291,18 +291,22 @@ export interface ODCSTeamMember {
   dateOut?: string;
 }
 
+export interface ODCSTeam {
+  members?: ODCSTeamMember[];
+}
+
 export interface ODCSRole {
   role: string;
   description?: string;
   access?: string;
-  firstLevelApprovers?: string[];
-  secondLevelApprovers?: string[];
+  firstLevelApprovers?: string;
+  secondLevelApprovers?: string;
 }
 
 export interface ODCSSlaProperty {
   property: string;
-  value: string;
-  valueExt?: string;
+  value?: unknown;
+  valueExt?: unknown;
   unit?: string;
   element?: string;
   driver?: string;
@@ -321,7 +325,7 @@ export interface ODCSServer {
 
 export interface ODCSCustomProperty {
   property?: string;
-  value?: string;
+  value?: unknown;
 }
 
 /**
