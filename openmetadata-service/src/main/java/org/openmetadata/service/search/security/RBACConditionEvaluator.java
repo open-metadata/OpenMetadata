@@ -279,7 +279,6 @@ public class RBACConditionEvaluator {
         hasAnyRole(roles, collector);
       }
       case "hasDomain" -> hasDomain(collector);
-      case "inUserDomains" -> inUserDomains(collector);
       case "inAnyTeam" -> {
         List<String> teams = extractMethodArguments(methodRef);
         inAnyTeam(teams, collector);
@@ -520,7 +519,17 @@ public class RBACConditionEvaluator {
       collector.addMustNot(queryBuilderFactory.existsQuery("domains.id"));
       collector.addMustNot(queryBuilderFactory.termQuery("entityType", Entity.DOMAIN));
     } else {
-      List<OMQueryBuilder> domainQueries = userDomainQueries(user);
+      List<OMQueryBuilder> domainQueries = new ArrayList<>();
+      List<String> userDomainIds = new ArrayList<>();
+      for (EntityReference domain : user.getDomains()) {
+        String domainId = domain.getId().toString();
+        domainQueries.add(queryBuilderFactory.termQuery("domains.id", domainId));
+        userDomainIds.add(domainId);
+      }
+      // A Domain entity is not itself domain-tagged, so the domains.id clauses never match a Domain
+      // document. Match the user's own domains by their id so the Domain index search does not leak
+      // other domains' names to a domain-restricted user.
+      domainQueries.add(queryBuilderFactory.termsQuery("id.keyword", userDomainIds));
       // Domainless entities stay visible, but a Domain document must not slip through here.
       domainQueries.add(
           queryBuilderFactory
@@ -531,32 +540,6 @@ public class RBACConditionEvaluator {
                       queryBuilderFactory.termQuery("entityType", Entity.DOMAIN))));
       collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
     }
-  }
-
-  // Every search document is a single resource, so this is hasDomain() without the domainless
-  // branch.
-  public void inUserDomains(ConditionCollector collector) {
-    User user = evaluatingUser.get();
-    if (user == null || nullOrEmpty(user.getDomains())) {
-      collector.setMatchNothing(true);
-      return;
-    }
-    collector.addMust(queryBuilderFactory.boolQuery().should(userDomainQueries(user)));
-  }
-
-  private List<OMQueryBuilder> userDomainQueries(User user) {
-    List<OMQueryBuilder> domainQueries = new ArrayList<>();
-    List<String> userDomainIds = new ArrayList<>();
-    for (EntityReference domain : user.getDomains()) {
-      String domainId = domain.getId().toString();
-      domainQueries.add(queryBuilderFactory.termQuery("domains.id", domainId));
-      userDomainIds.add(domainId);
-    }
-    // A Domain entity is not itself domain-tagged, so the domains.id clauses never match a Domain
-    // document. Match the user's own domains by their id so the Domain index search does not leak
-    // other domains' names to a domain-restricted user.
-    domainQueries.add(queryBuilderFactory.termsQuery("id.keyword", userDomainIds));
-    return domainQueries;
   }
 
   public void inAnyTeam(List<String> teamNames, ConditionCollector collector) {

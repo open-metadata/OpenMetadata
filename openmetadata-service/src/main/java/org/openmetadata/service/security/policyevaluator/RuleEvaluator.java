@@ -248,23 +248,6 @@ public class RuleEvaluator {
   }
 
   @Function(
-      name = "inUserDomains",
-      input = "none",
-      description =
-          "Returns true if the resource being accessed is in one of the user's domains. A listing "
-              + "or bulk request, which names no single resource, also returns true as its results "
-              + "are filtered per item. A resource in no domain returns false.",
-      examples = {"inUserDomains()", "!inUserDomains()"})
-  public boolean inUserDomains() {
-    if (!hasDomain()) {
-      return false;
-    }
-    // Unlike hasDomain(), a single resource in no domain (e.g. a policy or a bot) does not match
-    EntityInterface<?> entity = resourceContext.getEntity();
-    return entity == null || entity.getId() == null || !noDomain();
-  }
-
-  @Function(
       name = "matchAllTags",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has all the tags given as input",

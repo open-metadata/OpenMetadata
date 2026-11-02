@@ -43,9 +43,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Runs the 2.1.0 statement that narrows {@code DomainOnlyAccessPolicy} against real MySQL and
- * PostgreSQL. The statement is read from the shipped {@code schemaChanges.sql}, and the rewritten
- * rules are compared with the seeded policy, so neither can drift from what upgrades run.
+ * Runs the 2.1.0 statement that adds the administration deny rule to {@code DomainOnlyAccessPolicy}
+ * against real MySQL and PostgreSQL. The statement is read from the shipped {@code
+ * schemaChanges.sql}, and the added rule is compared with the seeded policy, so neither can drift
+ * from what upgrades run.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class DomainOnlyAccessPolicySqlMigrationTest {
@@ -53,6 +54,7 @@ class DomainOnlyAccessPolicySqlMigrationTest {
   private static final String DATABASE = "domain_policy_test";
   private static final String POLICY = "DomainOnlyAccessPolicy";
   private static final String OTHER_POLICY = "OtherPolicy";
+  private static final String ADMINISTRATION_RULE = "DomainAccessDenyAdministrationRule";
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
 
@@ -70,7 +72,7 @@ class DomainOnlyAccessPolicySqlMigrationTest {
           .withEnv("POSTGRES_PASSWORD", PASSWORD)
           .withExposedPorts(5432);
 
-  private record Scenario(String description, List<Rule> rules, boolean rewritten) {
+  private record Scenario(String description, List<Rule> rules, boolean appended) {
     @Override
     public String toString() {
       return description;
@@ -87,30 +89,21 @@ class DomainOnlyAccessPolicySqlMigrationTest {
                         // 1.9.10 wrote deny first; the repository stores rules sorted by name
                         new Scenario("as 1.9.10 migrated it", List.of(deny, allow), true),
                         new Scenario("as the repository stores it", List.of(allow, deny), true),
-                        new Scenario(
-                            "only descriptions changed",
-                            List.of(deny, shippedAllow().withDescription("Edited by an admin")),
-                            true),
+                        // A deny only removes access, so a customised policy gets it too
                         new Scenario(
                             "allow condition customised",
                             List.of(deny, shippedAllow().withCondition("hasDomain() && isOwner()")),
-                            false),
+                            true),
                         new Scenario(
-                            "allow narrowed to viewing",
-                            List.of(
-                                deny,
-                                shippedAllow().withOperations(List.of(MetadataOperation.VIEW_ALL))),
-                            false),
-                        new Scenario(
-                            "rule added",
-                            List.of(deny, allow, shippedAllow().withName("ExtraRule")),
+                            "rule already present",
+                            List.of(deny, allow, administrationRule()),
                             false))
                     .map(scenario -> Arguments.of(dialect, scenario)));
   }
 
   @ParameterizedTest(name = "{0}: {1}")
   @MethodSource("scenarios")
-  void rewritesOnlyTheShippedRules(String dialect, Scenario scenario) {
+  void addsTheAdministrationDenyRuleOnce(String dialect, Scenario scenario) {
     try (Handle handle = open(dialect)) {
       createPolicyTable(handle, dialect);
       insertPolicy(handle, dialect, POLICY, scenario.rules());
@@ -121,13 +114,16 @@ class DomainOnlyAccessPolicySqlMigrationTest {
       List<Rule> afterFirstRun = policy(handle, dialect, POLICY).getRules();
       handle.execute(statement);
 
-      List<Rule> expected = scenario.rewritten() ? seededRules() : scenario.rules();
+      List<Rule> expected = new ArrayList<>(scenario.rules());
+      if (scenario.appended()) {
+        expected.add(administrationRule());
+      }
       assertEquals(summary(expected), summary(afterFirstRun));
       assertEquals(afterFirstRun, policy(handle, dialect, POLICY).getRules(), "Second run changed");
       assertEquals(
           summary(List.of(shippedDeny(), shippedAllow())),
           summary(policy(handle, dialect, OTHER_POLICY).getRules()),
-          "Another policy with the same rules must be left alone");
+          "Another policy must be left alone");
     }
   }
 
@@ -161,18 +157,26 @@ class DomainOnlyAccessPolicySqlMigrationTest {
                     "|",
                     rule.getName(),
                     rule.getEffect().value(),
-                    rule.getResources().toString(),
-                    rule.getOperations().toString(),
+                    rule.getResources().stream().sorted().toList().toString(),
+                    rule.getOperations().stream()
+                        .map(MetadataOperation::value)
+                        .sorted()
+                        .toList()
+                        .toString(),
                     rule.getCondition()))
         .toList();
   }
 
-  private static List<Rule> seededRules() {
+  /** The rule as new installations are seeded with it. */
+  private static Rule administrationRule() {
     try (InputStream seed =
         DomainOnlyAccessPolicySqlMigrationTest.class
             .getClassLoader()
             .getResourceAsStream("json/data/policy/DomainAccessPolicy.json")) {
-      return JsonUtils.readValue(new String(seed.readAllBytes()), Policy.class).getRules();
+      return JsonUtils.readValue(new String(seed.readAllBytes()), Policy.class).getRules().stream()
+          .filter(rule -> ADMINISTRATION_RULE.equals(rule.getName()))
+          .findFirst()
+          .orElseThrow();
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
@@ -253,9 +257,9 @@ class DomainOnlyAccessPolicySqlMigrationTest {
         MYSQL_DIALECT.equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
     List<String> statements =
         MigrationFile.parseSQLFile(migrationFile(dialect).toFile(), connectionType).stream()
-            .filter(sql -> sql.contains("DomainAccessViewRule") && sql.contains(POLICY))
+            .filter(sql -> sql.contains(ADMINISTRATION_RULE) && sql.contains(POLICY))
             .toList();
-    assertEquals(1, statements.size(), "Expected one DomainOnlyAccessPolicy statement");
+    assertEquals(1, statements.size(), "Expected one " + ADMINISTRATION_RULE + " statement");
     return statements.getFirst();
   }
 

@@ -17,19 +17,19 @@
     },
     {
       "name": "DomainAccessAllowRule",
-      "description": "Allow access to resources in the user's domains",
+      "description": "Allow access when domain check passes",
       "effect": "allow",
       "resources": ["All"],
       "operations": ["All"],
-      "condition": "inUserDomains()"
+      "condition": "hasDomain()"
     },
     {
-      "name": "DomainAccessViewRule",
-      "description": "Allow viewing resources that are in no domain, such as policies, bots and settings",
-      "effect": "allow",
-      "resources": ["All"],
-      "operations": ["ViewAll"],
-      "condition": "hasDomain()"
+      "name": "DomainAccessDenyAdministrationRule",
+      "description": "Deny changing policies, roles, teams, users and bots that are in no domain, and any bot, as they grant access or credentials",
+      "effect": "deny",
+      "resources": ["policy", "role", "team", "user", "bot"],
+      "operations": ["Create", "Delete", "EditAll"],
+      "condition": "noDomain() || isBotUser()"
     }
   ]
 }

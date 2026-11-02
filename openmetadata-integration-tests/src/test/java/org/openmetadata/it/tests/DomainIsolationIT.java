@@ -596,13 +596,22 @@ public class DomainIsolationIT {
   }
 
   @Test
-  void test_domainOnlyUser_cannotEditPoliciesOrMintBotTokens(TestNamespace ns) throws Exception {
+  void test_domainOnlyUser_cannotChangeAdministrationResourcesInNoDomain(TestNamespace ns)
+      throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
       String p = ns.shortPrefix();
       Domain domain = createDomain(admin, p + "_gd", cleanup);
-      Table ownTable = createTable(admin, p + "_gt", createSchema(ns, cleanup), domain, cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table ownTable = createTable(admin, p + "_gt", schema, domain, cleanup);
+      Table domainlessTable = createTable(admin, p + "_gnt", schema, null, cleanup);
+      Team team =
+          admin
+              .teams()
+              .create(
+                  new CreateTeam().withName(p + "_gteam").withTeamType(CreateTeam.TeamType.GROUP));
+      cleanup.push(() -> admin.teams().delete(team.getId().toString()));
       createResourceDenyRole(admin, p, "chart", cleanup);
       Policy policy = admin.policies().getByName(p + "_chartDenyPolicy");
       createBotClient(admin, p + "_tok", null, List.of(), cleanup);
@@ -615,7 +624,7 @@ public class DomainIsolationIT {
       JsonNode rename =
           MAPPER.readTree("[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"changed\"}]");
 
-      // Policies and bots have no domain: the role still lets the user read them, not change them
+      // Domainless policies, teams and bots grant access: the user may read them, not change them
       assertEquals(policy.getId(), client.policies().get(policy.getId().toString()).getId());
       assertThrows(
           ForbiddenException.class,
@@ -623,10 +632,14 @@ public class DomainIsolationIT {
       assertThrows(
           ForbiddenException.class,
           () -> client.users().generateToken(bot.getId(), JWTTokenExpiry.OneHour));
+      assertThrows(
+          ForbiddenException.class, () -> client.teams().patch(team.getId().toString(), rename));
 
-      // Assets in the user's own domain stay fully editable
+      // Assets in the user's own domain, and assets in no domain, stay fully editable
       Table patched = client.tables().patch(ownTable.getId().toString(), rename);
       assertEquals("changed", patched.getDisplayName());
+      Table patchedDomainless = client.tables().patch(domainlessTable.getId().toString(), rename);
+      assertEquals("changed", patchedDomainless.getDisplayName());
     } finally {
       drain(cleanup);
     }
