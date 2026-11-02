@@ -45,6 +45,11 @@ interface OntologyDefinitionListProps<T> {
     signal?: AbortSignal
   ) => Promise<PagingResponse<T[]>>;
   onWorkingChange?: () => void;
+  /** Replaces the inline editor for a new definition; `saved` is set once, to keep the new one open. */
+  renderCreate?: (actions: {
+    close: () => void;
+    onCreated: (saved?: T) => void;
+  }) => ReactNode;
   children: (
     definition: T | undefined,
     canEdit: boolean,
@@ -85,6 +90,7 @@ const OntologyDefinitionList = <
   load,
   children,
   onWorkingChange,
+  renderCreate,
 }: OntologyDefinitionListProps<T>) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -173,6 +179,18 @@ const OntologyDefinitionList = <
   const renderEditor = () => {
     if (!selected) {
       return null;
+    }
+    if (selected === 'new' && renderCreate) {
+      return renderCreate({
+        close: () => guard(() => setSelected(undefined)),
+        onCreated: (saved) => {
+          if (saved) {
+            setSelected(saved);
+          }
+          void page.refetch();
+          onWorkingChange?.();
+        },
+      });
     }
     if (definition && permission.isLoading) {
       return <Typography role="status">{t('label.loading')}</Typography>;

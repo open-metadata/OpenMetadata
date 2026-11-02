@@ -1093,6 +1093,7 @@ const OntologyConceptInspector = ({
         />
         <OntologyConceptLiveData
           concept={concept}
+          isBound={Boolean(bindings.data?.assets.length)}
           key={`live-data:${concept.id}`}
           model={model}
           relations={relations}

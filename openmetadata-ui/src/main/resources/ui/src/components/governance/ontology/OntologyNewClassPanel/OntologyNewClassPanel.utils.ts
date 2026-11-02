@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ConceptMappingType } from '../../../../generated/api/data/createOntologyChangeSet';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { OwnPropertyDraft } from '../../../../utils/governance/ontology/OntologyNativeChangeSet.utils';
 import {
@@ -109,17 +110,94 @@ export const isAvailableClassName = (
     )
   );
 };
-export const isValidClassIdentity = (
-  model: OntologyStudioModel,
-  label: string,
+export type ClassIdentityIssue =
+  | 'name-required'
+  | 'name-invalid'
+  | 'name-taken'
+  | 'label-taken'
+  | 'iri-invalid'
+  | 'iri-taken'
+  | 'source-invalid';
+
+export interface ClassIdentityInput {
+  displayName: string;
+  localName: string;
+  iri: string;
+  source: string;
+}
+
+export const classIri = (
+  namespace: string,
   localName: string,
-  source: string
-): boolean =>
-  [
-    Boolean(label.trim()),
-    isAvailableClassName(model, localName),
-    !source.trim() || isAbsoluteOntologyIri(source.trim()),
-  ].every(Boolean);
+  customIri: string
+): string => customIri.trim() || namespace + localName.trim();
+
+const normalizedLabel = (value: string): string =>
+  value.trim().toLocaleLowerCase();
+
+export const classIdentityIssues = (
+  model: OntologyStudioModel,
+  input: ClassIdentityInput
+): ClassIdentityIssue[] => {
+  const name = input.localName.trim();
+  const issues: ClassIdentityIssue[] = [];
+  const nameIri = model.ontology.namespace + name;
+  const definitions = [...model.concepts, ...model.properties];
+  const nameTaken = definitions.some(
+    (definition) => definition.iri === nameIri
+  );
+  if (!name) {
+    issues.push('name-required');
+  } else if (!isValidLocalName(name)) {
+    issues.push('name-invalid');
+  } else if (nameTaken) {
+    issues.push('name-taken');
+  }
+  const label = input.displayName.trim() || name;
+  const labelTaken =
+    Boolean(label) &&
+    model.concepts.some(
+      (concept) =>
+        normalizedLabel(concept.displayName ?? concept.name) ===
+        normalizedLabel(label)
+    );
+  if (labelTaken && !(nameTaken && !input.displayName.trim())) {
+    issues.push('label-taken');
+  }
+  const customIri = input.iri.trim();
+  if (customIri && !isAbsoluteOntologyIri(customIri)) {
+    issues.push('iri-invalid');
+  } else if (
+    customIri &&
+    definitions.some((definition) => definition.iri === customIri)
+  ) {
+    issues.push('iri-taken');
+  }
+  if (input.source.trim() && !isAbsoluteOntologyIri(input.source.trim())) {
+    issues.push('source-invalid');
+  }
+
+  return issues;
+};
+export interface MappingInput {
+  mappingType: ConceptMappingType;
+  conceptIri: string;
+}
+export const isValidMapping = (
+  mappings: readonly MappingInput[],
+  row: MappingInput
+): boolean => {
+  const conceptIri = row.conceptIri.trim();
+
+  return (
+    isAbsoluteOntologyIri(conceptIri) &&
+    !mappings.some(
+      (mapping) =>
+        mapping.conceptIri === conceptIri &&
+        mapping.mappingType === row.mappingType
+    )
+  );
+};
 export interface NewPropertyInput {
   name: string;
   datatype: StudioDatatype | 'object';
@@ -163,4 +241,9 @@ export const ownPropertyTypeLabel = (property: OwnPropertyDraft): string => {
   }
 
   return property.rangeIri;
+};
+export const mappingTypeLabel = (type: ConceptMappingType): string => {
+  const words = type.toLocaleLowerCase().replace(/_/g, ' ');
+
+  return words[0].toLocaleUpperCase() + words.slice(1);
 };

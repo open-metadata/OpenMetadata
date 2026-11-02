@@ -30,7 +30,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyConceptEditor from './OntologyConceptEditor';
 
 jest.mock('../../../../rest/axiosClient', () => ({
-  post: jest.fn(),
   patch: jest.fn(),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -41,7 +40,6 @@ jest.mock('../../../../hooks/useAppMode', () => ({
   useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
-const post = APIClient.post as jest.MockedFunction<typeof APIClient.post>;
 const patch = APIClient.patch as jest.MockedFunction<typeof APIClient.patch>;
 const ontology: Ontology = {
   id: 'ontology-id',
@@ -66,9 +64,17 @@ describe('OntologyConceptEditor', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('saves the selected vocabulary kind as a schema enum', async () => {
-    post.mockResolvedValue({ data: concept });
+    patch.mockImplementation(async (_path, operations) => ({
+      data: applyPatch(structuredClone(concept), operations as Operation[])
+        .newDocument,
+    }));
     render(
-      <OntologyConceptEditor canEdit ontology={ontology} onSaved={jest.fn()} />
+      <OntologyConceptEditor
+        canEdit
+        concept={concept}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
     );
 
     expect(
@@ -79,48 +85,16 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(
       await screen.findByRole('option', { name: 'SKOS_CONCEPT' })
     );
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-      target: { value: 'Customer' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith(
-        '/ontologyConcepts',
-        expect.objectContaining({
-          conceptType: OntologyConceptType.SkosConcept,
-        })
+      expect(patch).toHaveBeenCalledWith(
+        '/ontologyConcepts/concept-id',
+        expect.arrayContaining([
+          { op: 'replace', path: '/conceptType', value: 'SKOS_CONCEPT' },
+        ]),
+        expect.anything()
       )
     );
-  });
-
-  it('creates an independent concept and leaves IRI minting to the server', async () => {
-    const saved = jest.fn();
-    post.mockResolvedValue({ data: concept });
-    render(
-      <OntologyConceptEditor canEdit ontology={ontology} onSaved={saved} />
-    );
-
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-      target: { value: ' Customer ' },
-    });
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.description' }),
-      { target: { value: 'A customer' } }
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
-
-    await waitFor(() => expect(saved).toHaveBeenCalledWith(concept));
-
-    expect(post).toHaveBeenCalledWith('/ontologyConcepts', {
-      name: 'Customer',
-      ontology: 'Sales',
-      conceptType: OntologyConceptType.OwlClass,
-      displayName: undefined,
-      description: 'A customer',
-      iri: undefined,
-      synonyms: [],
-      conceptMappings: [],
-    });
   });
 
   it('updates editable fields with a version precondition and preserves unrelated metadata', async () => {
@@ -172,34 +146,19 @@ describe('OntologyConceptEditor', () => {
     );
   });
 
-  it('rejects a relative IRI before saving', async () => {
-    render(
-      <OntologyConceptEditor canEdit ontology={ontology} onSaved={jest.fn()} />
-    );
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-      target: { value: 'Customer' },
-    });
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.concept-iri' }),
-      { target: { value: 'relative/iri' } }
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
-
-    expect(
-      await screen.findByText('message.invalid-concept-iri')
-    ).toBeInTheDocument();
-    expect(post).not.toHaveBeenCalled();
-  });
-
   it('validates and saves external mappings with their scheme and source', async () => {
-    post.mockResolvedValue({ data: concept });
-    const saved = jest.fn();
+    patch.mockImplementation(async (_path, operations) => ({
+      data: applyPatch(structuredClone(concept), operations as Operation[])
+        .newDocument,
+    }));
     render(
-      <OntologyConceptEditor canEdit ontology={ontology} onSaved={saved} />
+      <OntologyConceptEditor
+        canEdit
+        concept={concept}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
     );
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-      target: { value: 'Customer' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
     fireEvent.change(
@@ -213,7 +172,7 @@ describe('OntologyConceptEditor', () => {
     expect(
       await mapping.findByText('message.invalid-concept-iri')
     ).toBeVisible();
-    expect(post).not.toHaveBeenCalled();
+    expect(patch).not.toHaveBeenCalled();
 
     fireEvent.change(
       mapping.getByRole('textbox', { name: 'label.concept-iri' }),
@@ -237,18 +196,23 @@ describe('OntologyConceptEditor', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith(
-        '/ontologyConcepts',
-        expect.objectContaining({
-          conceptMappings: [
-            {
-              conceptIri: 'https://example.org/Customer',
-              mappingType: ConceptMappingType.ExactMatch,
-              schemeIri: 'https://example.org/vocabulary',
-              source: 'External vocabulary',
-            },
-          ],
-        })
+      expect(patch).toHaveBeenCalledWith(
+        '/ontologyConcepts/concept-id',
+        expect.arrayContaining([
+          {
+            op: 'add',
+            path: '/conceptMappings',
+            value: [
+              {
+                conceptIri: 'https://example.org/Customer',
+                mappingType: ConceptMappingType.ExactMatch,
+                schemeIri: 'https://example.org/vocabulary',
+                source: 'External vocabulary',
+              },
+            ],
+          },
+        ]),
+        expect.anything()
       )
     );
   });
@@ -439,10 +403,22 @@ describe('OntologyConceptEditor', () => {
     afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
 
     it('adds and removes a mapping and saves the concept', async () => {
-      post.mockResolvedValue({ data: concept });
+      patch.mockImplementation(async (_path, operations) => ({
+        data: applyPatch(structuredClone(concept), operations as Operation[])
+          .newDocument,
+      }));
       const onSaved = jest.fn();
       render(
-        <OntologyConceptEditor canEdit ontology={ontology} onSaved={onSaved} />
+        <OntologyConceptEditor
+          canEdit
+          concept={concept}
+          ontology={ontology}
+          onSaved={onSaved}
+        />
+      );
+
+      expect(screen.getByTestId('concept-save-status')).toHaveTextContent(
+        'label.all-changes-saved'
       );
 
       fireEvent.click(
@@ -460,18 +436,20 @@ describe('OntologyConceptEditor', () => {
         screen.getByRole('button', { name: 'label.add-mapping' })
       ).toHaveFocus();
 
-      fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
-        target: { value: 'Customer' },
-      });
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'label.display-name' }),
+        { target: { value: 'Customers' } }
+      );
 
-      expect(screen.getByText('label.unsaved-changes')).toBeVisible();
+      expect(screen.getByTestId('concept-save-status')).toHaveTextContent(
+        'label.unsaved-changes'
+      );
 
       fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
-      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(concept));
-
-      expect(post).toHaveBeenCalledWith(
-        '/ontologyConcepts',
-        expect.objectContaining({ name: 'Customer', ontology: 'Sales' })
+      await waitFor(() =>
+        expect(onSaved).toHaveBeenCalledWith(
+          expect.objectContaining({ displayName: 'Customers' })
+        )
       );
     });
 

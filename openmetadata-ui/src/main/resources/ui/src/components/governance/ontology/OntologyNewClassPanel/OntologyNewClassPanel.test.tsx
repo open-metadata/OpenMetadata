@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { toastQueue } from '@openmetadata/ui-core-components';
+import { render as renderNode } from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useState } from 'react';
 import { Link, MemoryRouter } from 'react-router-dom';
@@ -83,9 +91,12 @@ const setup = (
       onBeforeCreate={jest.fn()}
       onClose={jest.fn()}
       onCreated={reconcile}
+      onUndone={jest.fn()}
       {...props}
     />
   );
+const openAdvanced = () =>
+  fireEvent.click(screen.getByTestId('new-class-advanced-toggle'));
 const fill = (id: string, value: string) =>
   fireEvent.change(screen.getByTestId(id), { target: { value } });
 
@@ -121,8 +132,9 @@ beforeEach(() => {
   );
 });
 
-it('gates label, derives IRI, preserves manual local name, read-only layer and default owner', () => {
+it('gates the name, derives IRI, preserves manual local name, read-only layer and default owner', () => {
   setup({ canCreateProperty: false, canCreateAxiom: false });
+  openAdvanced();
 
   expect(screen.getByTestId('new-class-create')).toBeDisabled();
 
@@ -148,6 +160,7 @@ it('gates label, derives IRI, preserves manual local name, read-only layer and d
 
 it('commits synonyms on comma and Enter and requires two distinct enum chips', async () => {
   setup();
+  openAdvanced();
   fill('new-class-synonyms', 'Wire,');
   fill('new-class-synonyms', 'Transfer');
   fireEvent.keyDown(screen.getByTestId('new-class-synonyms'), { key: 'Enter' });
@@ -182,6 +195,7 @@ it('retains a completed atomic plan and only retries model reconciliation after 
   setup();
   fill('new-class-label', 'Funds Transfer');
   fill('new-class-description', 'Payment definition');
+  openAdvanced();
   fill('new-class-source', 'https://example.org/source');
   fill('new-class-synonyms', 'Wire,');
   fireEvent.click(screen.getByRole('checkbox', { name: 'label.abstract' }));
@@ -189,7 +203,12 @@ it('retains a completed atomic plan and only retries model reconciliation after 
     fireEvent.click(screen.getByTestId('new-class-create'));
   });
   await waitFor(() =>
-    expect(reconcile).toHaveBeenCalledWith(ontology.namespace + 'FundsTransfer')
+    expect(reconcile).toHaveBeenCalledWith(
+      ontology.namespace + 'FundsTransfer',
+      {
+        keepOpen: false,
+      }
+    )
   );
   const creates = () =>
     post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
@@ -228,6 +247,7 @@ it('retains a completed atomic plan and only retries model reconciliation after 
 
 it('adds a named own data property with Enter and its identifier flag', () => {
   setup();
+  openAdvanced();
   fill('new-class-property-name', 'reference');
   fireEvent.click(screen.getByRole('checkbox', { name: 'label.identifier' }));
   fireEvent.keyDown(screen.getByTestId('new-class-property-name'), {
@@ -257,6 +277,7 @@ it('shows polyhierarchy for multiple parents and never submits inherited propert
       ],
     },
   });
+  openAdvanced();
   const input = screen.getByRole('combobox', { name: 'label.subclass-of' });
   fireEvent.focus(input);
   fireEvent.change(input, { target: { value: 'Payment' } });
@@ -324,6 +345,7 @@ it('locks the panel through uncertain apply and retries the retained draft befor
           onBeforeCreate={jest.fn()}
           onClose={jest.fn()}
           onCreated={reconcile}
+          onUndone={jest.fn()}
           onLockChange={lockChanged}
         />
       </OntologyDraftProvider>
@@ -356,7 +378,12 @@ it('locks the panel through uncertain apply and retries the retained draft befor
     fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
   });
   await waitFor(() =>
-    expect(reconcile).toHaveBeenCalledWith(ontology.namespace + 'FundsTransfer')
+    expect(reconcile).toHaveBeenCalledWith(
+      ontology.namespace + 'FundsTransfer',
+      {
+        keepOpen: false,
+      }
+    )
   );
 
   expect(
@@ -486,7 +513,10 @@ describe('after a failed attempt', () => {
     });
     await waitFor(() =>
       expect(reconcile).toHaveBeenCalledWith(
-        ontology.namespace + 'FundsTransfer'
+        ontology.namespace + 'FundsTransfer',
+        {
+          keepOpen: false,
+        }
       )
     );
 
@@ -514,7 +544,10 @@ describe('after a failed attempt', () => {
     });
     await waitFor(() =>
       expect(reconcile).toHaveBeenCalledWith(
-        ontology.namespace + 'FundsTransfer'
+        ontology.namespace + 'FundsTransfer',
+        {
+          keepOpen: false,
+        }
       )
     );
 
@@ -640,7 +673,10 @@ describe('after a failed attempt', () => {
     });
     await waitFor(() =>
       expect(reconcile).toHaveBeenCalledWith(
-        ontology.namespace + 'WireTransfer'
+        ontology.namespace + 'WireTransfer',
+        {
+          keepOpen: false,
+        }
       )
     );
     const creates = post.mock.calls.filter(
@@ -672,15 +708,22 @@ describe('with the shipped English translations', () => {
 
   it('renders every label from en-us.json', async () => {
     setup();
+    openAdvanced();
 
-    expect(screen.getByText('Identity')).toBeVisible();
-    expect(screen.getByRole('textbox', { name: /^Label/ })).toBeVisible();
-    expect(screen.getByText('Axioms')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: /^Name/ })).toBeVisible();
+    expect(
+      screen.getByRole('textbox', { name: /^Display Name/ })
+    ).toBeVisible();
+    expect(screen.getByText('Advanced')).toBeVisible();
     expect(
       screen.getByRole('textbox', { name: /^Property name/ })
     ).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: /Type/ }));
+    fireEvent.click(
+      within(screen.getByTestId('new-class-advanced')).getByRole('button', {
+        name: /Type/,
+      })
+    );
     await screen.findByRole('listbox');
 
     expect(document.body.textContent).not.toContain(MISSING_TRANSLATION_MARKER);
@@ -688,7 +731,12 @@ describe('with the shipped English translations', () => {
 
   it('offers the property types by name', async () => {
     setup();
-    fireEvent.click(screen.getByRole('button', { name: /Type/ }));
+    openAdvanced();
+    fireEvent.click(
+      within(screen.getByTestId('new-class-advanced')).getByRole('button', {
+        name: /Type/,
+      })
+    );
     const options = await screen.findAllByRole('option');
 
     expect(options.map((option) => option.textContent)).toEqual([
@@ -705,6 +753,7 @@ describe('with the shipped English translations', () => {
 
   it('names the type of an added property', () => {
     setup();
+    openAdvanced();
     fill('new-class-property-name', 'reference');
     fireEvent.keyDown(screen.getByTestId('new-class-property-name'), {
       key: 'Enter',
@@ -733,23 +782,316 @@ describe('focus', () => {
             onBeforeCreate={jest.fn()}
             onClose={() => setOpen(false)}
             onCreated={reconcile}
+            onUndone={jest.fn()}
           />
         ) : null}
       </>
     );
   };
 
-  it('moves to the label when the panel opens and back to the trigger when it closes', async () => {
+  it('moves to the name when the panel opens and back to the trigger when it closes', async () => {
     render(<Harness />);
     screen.getByTestId('trigger').focus();
     fireEvent.click(screen.getByTestId('trigger'));
 
     await waitFor(() =>
-      expect(screen.getByTestId('new-class-label')).toHaveFocus()
+      expect(screen.getByTestId('new-class-local-name')).toHaveFocus()
     );
 
     fireEvent.click(screen.getByTestId('ontology-new-class-close'));
 
     expect(screen.getByTestId('trigger')).toHaveFocus();
+  });
+});
+
+describe('one drawer for every entry point', () => {
+  const textboxNames = () =>
+    screen
+      .getAllByRole('textbox')
+      .map((box) => box.getAttribute('aria-label') ?? box.id);
+
+  it('orders Name, Display name, Description, Type, IRI, Synonyms and Mappings, with the rest under Advanced', () => {
+    setup();
+
+    expect(
+      screen
+        .getAllByRole('textbox')
+        .map((box) => (box as HTMLInputElement).dataset.testid)
+    ).toEqual([
+      'new-class-local-name',
+      'new-class-label',
+      'new-class-description',
+      'new-class-iri-input',
+      'new-class-synonyms',
+      'new-class-mapping-iri',
+    ]);
+    expect(
+      screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))
+    ).toEqual(['OWL_CLASS', 'SKOS_CONCEPT', 'BOTH']);
+    expect(textboxNames()).toHaveLength(6);
+    expect(
+      screen.queryByRole('combobox', { name: 'label.subclass-of' })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('new-class-source')).not.toBeInTheDocument();
+
+    openAdvanced();
+
+    expect(
+      ['label.subclass-of', 'label.equivalent-to', 'label.disjoint-with'].map(
+        (name) => screen.getByRole('combobox', { name }).tagName
+      )
+    ).toEqual(['INPUT', 'INPUT', 'INPUT']);
+    expect(
+      screen.getByRole('checkbox', { name: 'label.abstract' })
+    ).toBeVisible();
+    expect(screen.getByTestId('new-class-source')).toBeVisible();
+    expect(screen.getByTestId('new-class-property-name')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: /label.layer/ })).toBeVisible();
+    expect(screen.getByText(/editor.*label.you/)).toBeVisible();
+  });
+
+  it('derives the name from the display name and refuses Spaced Name! with a message', () => {
+    setup();
+    fill('new-class-label', 'Spaced Name');
+
+    expect(screen.getByTestId('new-class-local-name')).toHaveValue(
+      'SpacedName'
+    );
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+
+    fill('new-class-local-name', 'Spaced Name!');
+
+    expect(
+      screen.getAllByText('message.ontology-concept-name-invalid')
+    ).toHaveLength(2);
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByTestId('new-class-create-another')).toBeDisabled();
+    expect(screen.getByTestId('new-class-iri')).toHaveTextContent(
+      ontology.namespace + 'Spaced Name!'
+    );
+  });
+
+  it('blocks a duplicate name and a duplicate label beside the field', () => {
+    setup();
+    fill('new-class-local-name', 'Payment');
+
+    expect(
+      screen.getAllByText('message.ontology-concept-name-taken')
+    ).toHaveLength(2);
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+
+    fill('new-class-local-name', 'Remittance');
+    fill('new-class-label', 'transaction');
+
+    expect(
+      screen.getAllByText('message.ontology-concept-label-taken')
+    ).toHaveLength(2);
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+
+    fill('new-class-label', 'Remittance advice');
+
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('rejects a relative IRI and an IRI already in use', () => {
+    setup();
+    fill('new-class-local-name', 'Remittance');
+    fill('new-class-iri-input', 'relative/iri');
+
+    expect(screen.getAllByText('message.invalid-concept-iri')).toHaveLength(2);
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+
+    fill('new-class-iri-input', parents[0].iri);
+
+    expect(
+      screen.getAllByText('message.ontology-concept-iri-taken')
+    ).toHaveLength(2);
+
+    fill('new-class-iri-input', 'https://example.org/other#Remittance');
+
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+    expect(screen.getByTestId('new-class-iri')).toHaveTextContent(
+      'https://example.org/other#Remittance'
+    );
+  });
+
+  it('states why Create is disabled', () => {
+    setup();
+
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByTestId('new-class-create-reason')).toHaveTextContent(
+      'message.ontology-concept-name-required'
+    );
+  });
+
+  it('states a missing permission as the reason', () => {
+    setup({ canCreate: false });
+    fill('new-class-label', 'Remittance');
+
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByTestId('new-class-create-reason')).toHaveTextContent(
+      'message.no-permission-for-action'
+    );
+  });
+
+  it('shows Unsaved changes once the form is touched', () => {
+    setup();
+
+    expect(screen.getByTestId('new-class-save-status')).toBeEmptyDOMElement();
+
+    fill('new-class-label', 'Remittance');
+
+    expect(screen.getByTestId('new-class-save-status')).toHaveTextContent(
+      'label.unsaved-changes'
+    );
+  });
+
+  it('plans the chosen type, IRI, synonyms and mappings', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    fireEvent.click(screen.getByRole('radio', { name: 'label.both-owl-skos' }));
+    fill('new-class-iri-input', 'https://example.org/other#Remittance');
+    fill('new-class-synonyms', 'Wire,');
+    fill('new-class-mapping-iri', 'https://schema.org/Payment');
+    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
+
+    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
+      'Exact match · https://schema.org/Payment'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() => expect(reconcile).toHaveBeenCalled());
+    const { concept } = post.mock.calls.find(
+      ([url]) => url === '/ontologyChangeSets'
+    )?.[1].operations[0];
+
+    expect(concept).toMatchObject({
+      name: 'Remittance',
+      iri: 'https://example.org/other#Remittance',
+      conceptType: 'BOTH',
+      displayName: 'Remittance',
+      synonyms: ['Wire'],
+      conceptMappings: [
+        {
+          mappingType: 'EXACT_MATCH',
+          conceptIri: 'https://schema.org/Payment',
+        },
+      ],
+    });
+    expect(reconcile).toHaveBeenCalledWith(
+      'https://example.org/other#Remittance',
+      { keepOpen: false }
+    );
+  });
+});
+
+describe('Create and add another', () => {
+  const creates = () =>
+    post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
+
+  it('clears the form, keeps the drawer open and refocuses Name each time', async () => {
+    reconcile.mockResolvedValue(true);
+    const onClose = jest.fn();
+    setup({ onClose });
+    for (const label of ['Remittance', 'Settlement']) {
+      fill('new-class-label', label);
+      fill('new-class-description', 'text');
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('new-class-create-another'));
+      });
+      await waitFor(() =>
+        expect(reconcile).toHaveBeenLastCalledWith(ontology.namespace + label, {
+          keepOpen: true,
+        })
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('new-class-local-name')).toHaveFocus()
+      );
+
+      expect(screen.getByTestId('new-class-label')).toHaveValue('');
+      expect(screen.getByTestId('new-class-local-name')).toHaveValue('');
+      expect(screen.getByTestId('new-class-description')).toHaveValue('');
+      expect(screen.getByTestId('new-class-label')).toBeEnabled();
+      expect(screen.getByTestId('new-class-save-status')).toHaveTextContent(
+        'label.all-changes-saved'
+      );
+    }
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ontology-new-class-panel')).toBeVisible();
+    expect(
+      creates().map(([, body]) => body.operations[0].concept.name)
+    ).toEqual(['Remittance', 'Settlement']);
+  });
+
+  it('does not release the change-set lease after it applied', async () => {
+    reconcile.mockResolvedValue(true);
+    setup();
+    fill('new-class-label', 'Remittance');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() => expect(reconcile).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(
+      (APIClient.delete as jest.Mock).mock.calls.filter(([url]) =>
+        String(url).includes('ontologyEditLocks')
+      )
+    ).toEqual([]);
+  });
+});
+
+describe('Undo after create', () => {
+  it('hard deletes what the change set created, dependents first, and refreshes', async () => {
+    reconcile.mockResolvedValue(true);
+    const onUndone = jest.fn();
+    const add = jest.spyOn(toastQueue, 'add').mockReturnValue('toast-key');
+    const close = jest.spyOn(toastQueue, 'close').mockImplementation();
+    (APIClient.delete as jest.Mock).mockResolvedValue({});
+    setup({ onUndone });
+    fill('new-class-label', 'Remittance');
+    openAdvanced();
+    const input = screen.getByRole('combobox', { name: 'label.subclass-of' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Payment' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: 'Payment' }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    const plan = post.mock.calls.find(
+      ([url]) => url === '/ontologyChangeSets'
+    )?.[1];
+    const message = add.mock.calls[0][0].message;
+    renderNode(<>{message}</>);
+
+    expect(screen.getByText('message.ontology-concept-created')).toBeVisible();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-undo'));
+    });
+
+    expect(close).toHaveBeenCalledWith('toast-key');
+    expect(
+      (APIClient.delete as jest.Mock).mock.calls.map(([url, config]) => [
+        url,
+        config.params,
+      ])
+    ).toEqual([
+      ['/ontologyAxioms/' + plan.operations[1].axiom.id, { hardDelete: true }],
+      [
+        '/ontologyConcepts/' + plan.operations[0].concept.id,
+        { hardDelete: true },
+      ],
+    ]);
+    expect(onUndone).toHaveBeenCalledTimes(1);
+    add.mockRestore();
+    close.mockRestore();
   });
 });

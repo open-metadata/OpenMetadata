@@ -832,7 +832,7 @@ const OntologyGraphView = ({
               graphRef.current?.getNodePositions() ?? {};
           }}
           onClose={() => guard(() => setConceptEditor(undefined))}
-          onCreated={async (iri) => {
+          onCreated={async (iri, { keepOpen }) => {
             const refreshed = await refetch();
             if (refreshed.error || !refreshed.data) {
               return false;
@@ -852,15 +852,21 @@ const OntologyGraphView = ({
               created.id
             );
             setNodePositions(positions);
-            runConfirmed(() =>
-              (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
-            );
-            setConceptEditor(undefined);
+            if (!keepOpen) {
+              runConfirmed(() =>
+                (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
+              );
+              setConceptEditor(undefined);
+            }
             noteWorkingChange();
 
             return true;
           }}
           onLockChange={onAuthoringLockChange}
+          onUndone={() => {
+            void refetch();
+            noteWorkingChange();
+          }}
         />
       );
     }
@@ -874,9 +880,7 @@ const OntologyGraphView = ({
           className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
           gap={2}>
           <Typography className="tw:flex-1" size="text-sm" weight="semibold">
-            {editingConcept
-              ? t('label.edit-entity', { entity: t('label.concept') })
-              : t('label.add-entity', { entity: t('label.concept') })}
+            {t('label.edit-entity', { entity: t('label.concept') })}
           </Typography>
           <ButtonUtility
             color="tertiary"
@@ -889,9 +893,9 @@ const OntologyGraphView = ({
         </Box>
         <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-5">
           <OntologyConceptEditor
-            canEdit={editingConcept ? canEditConcept : canCreateConcept}
+            canEdit={canEditConcept}
             concept={editingConcept}
-            key={editingConcept?.id ?? 'new'}
+            key={editingConcept.id}
             ontology={ontology}
             onSaved={(saved) => {
               setSelectedId(saved.id);
