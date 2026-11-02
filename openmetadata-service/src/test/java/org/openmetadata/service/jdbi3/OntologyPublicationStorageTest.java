@@ -58,6 +58,7 @@ class OntologyPublicationStorageTest {
         fixture -> {
           final var stale = request(fixture).withVersionBump(VersionBump.MAJOR);
           capture(fixture, stale);
+          fixture.addConcept("EditedAfterStaleRead");
           assertThrows(PreconditionFailedException.class, () -> capture(fixture, stale));
           assertEquals(
               1L, fixture.ontologies.getState(fixture.ontology.getId()).getLastReleaseRevision());
