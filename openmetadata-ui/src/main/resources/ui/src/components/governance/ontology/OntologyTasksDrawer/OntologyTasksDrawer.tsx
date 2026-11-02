@@ -545,8 +545,16 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
   const renderTasksAction = () => (
     <Button
       aria-haspopup="dialog"
+      className="tw:shrink-0 tw:whitespace-nowrap"
       color="secondary"
       data-testid="ontology-tasks-trigger"
+      iconTrailing={
+        <Badge color="error" size="sm">
+          {pending.isError
+            ? t('label.unavailable')
+            : pending.data?.paging?.total ?? t('label.unavailable')}
+        </Badge>
+      }
       ref={taskButton}
       size="sm"
       onPress={() => {
@@ -555,11 +563,6 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
         void created.refetch();
       }}>
       {t('label.task-plural')}
-      <Badge color="error">
-        {pending.isError
-          ? t('label.unavailable')
-          : pending.data?.paging?.total ?? t('label.unavailable')}
-      </Badge>
     </Button>
   );
   const renderBanner = () =>

@@ -110,6 +110,7 @@ import {
   getCsvGridRowHeight,
   getCSVStringFromColumnsAndDataSource,
   getFailedImportRowIds,
+  normalizeCsvLineBreaks,
   restoreFormula,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
@@ -887,7 +888,7 @@ const BulkEntityImportPage = () => {
 
   const handleLoadData = useCallback(
     (e: ProgressEvent<FileReader>, file?: File) => {
-      const result = String(e.target?.result ?? '');
+      const result = normalizeCsvLineBreaks(String(e.target?.result ?? ''));
 
       setSelectedCsvFile({
         content: result,
