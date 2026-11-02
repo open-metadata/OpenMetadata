@@ -1265,9 +1265,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                       mediaType = MediaType.APPLICATION_JSON,
                       schema = @Schema(implementation = MoveGlossaryTermRequest.class)))
           MoveGlossaryTermRequest moveRequest) {
-    if (moveRequest == null || moveRequest.getParent() == null) {
-      throw new BadRequestException("A move needs the parent the term moves under");
-    }
+    requireParent(moveRequest);
     // A move is authorized and admitted as the PATCH of parent and glossary that makes it
     // (ADR:2026-10-30-a-glossary-term-move-is-authorized-and-held-as-the-patch-that-makes-it).
     MovePlan plan = repository.planMove(id, moveRequest);
@@ -1282,6 +1280,15 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .submitHeldMove(plan, ChangeActor.fromRequest(securityContext))
         .map(changeRequestId -> heldMoveResponse(plan.original(), changeRequestId))
         .orElseGet(() -> startMove(uriInfo, securityContext, id, moveRequest));
+  }
+
+  // The parent is resolved by id and type before the move is authorized, so a reference missing
+  // either is refused here rather than failing the lookup.
+  private static void requireParent(MoveGlossaryTermRequest moveRequest) {
+    EntityReference parent = moveRequest == null ? null : moveRequest.getParent();
+    if (parent == null || parent.getId() == null || parent.getType() == null) {
+      throw new BadRequestException("A move needs the parent the term moves under");
+    }
   }
 
   // A held move is not started: the term stays where it is until the change request is approved.

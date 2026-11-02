@@ -2116,6 +2116,38 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .getFullyQualifiedName());
   }
 
+  @Test
+  void test_moveTermNeedsAParentWithIdAndType(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "mvParentGls");
+    GlossaryTerm parent = createChildTerm(glossary, null, "parent");
+    GlossaryTerm term = createChildTerm(glossary, null, "child");
+    String path = "/v1/glossaryTerms/%s/moveAsync".formatted(term.getId());
+
+    for (MoveGlossaryTermRequest move :
+        List.of(
+            new MoveGlossaryTermRequest(),
+            new MoveGlossaryTermRequest()
+                .withParent(new EntityReference().withType(Entity.GLOSSARY_TERM)),
+            new MoveGlossaryTermRequest()
+                .withParent(new EntityReference().withId(parent.getId())))) {
+      OpenMetadataException error =
+          assertThrows(
+              OpenMetadataException.class,
+              () ->
+                  SdkClients.adminClient()
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.PUT, path, move, RequestOptions.builder().build()));
+      assertEquals(400, error.getStatusCode(), JsonUtils.pojoToJson(move));
+    }
+    assertEquals(
+        term.getFullyQualifiedName(),
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .get(term.getId().toString(), "")
+            .getFullyQualifiedName());
+  }
+
   // task_entity.aboutFqnHash stores one 32-char hash per FQN level, so eight levels (263 chars)
   // need more than the varchar(256) the column was created with.
   @Test
