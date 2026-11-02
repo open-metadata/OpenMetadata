@@ -21100,10 +21100,10 @@
               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
             },
             "securityConfig": {
-              "mask": true,
               "description": "OpenMetadata Client security configuration.",
               "title": "openMetadataJWTClientConfig",
               "type": "object",
+              "mask": true,
               "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
               "properties": {
                 "jwtToken": {

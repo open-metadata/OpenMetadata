@@ -52,6 +52,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
@@ -365,6 +366,25 @@ class JsonUtilsTest {
             IllegalArgumentException.class,
             () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
     assertTrue(ex.getMessage().contains("Invalid value for field 'synonyms'"));
+  }
+
+  @Test
+  void applyPatchNeverQuotesTheRejectedValue() {
+    EventSubscription original =
+        new EventSubscription()
+            .withId(UUID.randomUUID())
+            .withName("alert")
+            .withDescription("value-from-elsewhere")
+            .withBatchSize(10);
+    JsonPatch patch = Json.createPatchBuilder().copy("/batchSize", "/description").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, EventSubscription.class));
+    assertTrue(ex.getMessage().contains("Invalid value for field 'batchSize'"), ex.getMessage());
+    assertTrue(ex.getMessage().contains("must be a valid Integer"), ex.getMessage());
+    assertFalse(ex.getMessage().contains("value-from-elsewhere"), ex.getMessage());
   }
 
   @Test
