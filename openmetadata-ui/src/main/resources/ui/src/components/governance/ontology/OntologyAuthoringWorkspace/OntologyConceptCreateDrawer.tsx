@@ -47,7 +47,7 @@ const OntologyConceptCreateDrawer = ({
     { deleted: ontology.deleted }
   );
   useEffect(() => {
-    void refetch();
+    void refetch({ cancelRefetch: false });
   }, [refetch]);
 
   if (!model) {

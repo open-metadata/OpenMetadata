@@ -5690,6 +5690,7 @@
     "ontology-data-graph-scope": "Assets you can view that are bound to each concept. Dashed lines are inferred from related concepts. Solid lines are observed lineage.",
     "ontology-data-graph-stale": "The bound data changed while loading. Retry to load it again.",
     "ontology-data-graph-unavailable": "The data graph could not load. Retry to load it.",
+    "ontology-definition-deleted": "{{name}} deleted.",
     "ontology-delete-counts-unavailable": "The counts could not be loaded.",
     "ontology-delete-removes": "This deletes {{name}} together with its concepts, properties, relationships, rules and releases. It leaves the ontology list at once.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",

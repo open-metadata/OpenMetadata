@@ -22,6 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { PagingResponse } from 'Models';
 import { Fragment, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +34,10 @@ import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/use
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { ListParams } from '../../../../interface/API.interface';
+import { restoreOntologyDefinition } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 
 interface OntologyDefinitionListProps<T> {
@@ -147,6 +151,24 @@ const OntologyDefinitionList = <
     );
   }
 
+  const offerUndo = (deleted: T) =>
+    showUndoToast(
+      t('message.ontology-definition-deleted', {
+        name: getEntityName(deleted),
+      }),
+      async () => {
+        try {
+          await restoreOntologyDefinition(definitionType, deleted.id);
+          void page.refetch();
+          onWorkingChange?.();
+        } catch (error) {
+          showErrorToast(
+            isAxiosError(error) ? error : t('server.unexpected-error')
+          );
+        }
+      }
+    );
+
   const renderDelete = () => (
     <>
       {definition && permission.canDelete && (
@@ -161,11 +183,14 @@ const OntologyDefinitionList = <
         <DeleteEntityModal
           allowSoftDelete
           visible
-          afterDeleteAction={() => {
+          afterDeleteAction={(isSoftDelete) => {
             setIsDeleting(false);
             setSelected(undefined);
             void page.refetch();
             onWorkingChange?.();
+            if (isSoftDelete) {
+              offerUndo(definition);
+            }
           }}
           entityId={definition.id}
           entityName={getEntityName(definition)}

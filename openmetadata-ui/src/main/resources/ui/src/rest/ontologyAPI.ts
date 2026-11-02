@@ -297,13 +297,16 @@ export const hardDeleteOntologyDefinition = async (
   }
 };
 
-export const restoreOntologyConcept = async (id: string) => {
-  const response = await APIClient.put<OntologyConcept>(
-    `${ONTOLOGY_CONCEPTS_PATH}/restore`,
-    { id }
-  );
-
-  return response.data;
+export const restoreOntologyDefinition = async (
+  type: 'concept' | 'property' | 'axiom',
+  id: string
+) => {
+  const path = {
+    concept: ONTOLOGY_CONCEPTS_PATH,
+    property: ONTOLOGY_PROPERTIES_PATH,
+    axiom: ONTOLOGY_AXIOMS_PATH,
+  }[type];
+  await APIClient.put(`${path}/restore`, { id });
 };
 
 export const patchOntologyConcept = async (id: string, patch: Operation[]) => {
