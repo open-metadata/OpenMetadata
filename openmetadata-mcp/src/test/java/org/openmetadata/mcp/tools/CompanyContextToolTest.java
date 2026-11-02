@@ -17,11 +17,13 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -392,6 +394,7 @@ class CompanyContextToolTest {
                 new MemorySharedPrincipal()
                     .withPrincipal(
                         new EntityReference()
+                            .withId(userId(userName))
                             .withType(Entity.USER)
                             .withName(userName)
                             .withFullyQualifiedName(userName))));
@@ -408,12 +411,19 @@ class CompanyContextToolTest {
 
   private <T> T withSubject(
       CatalogSecurityContext securityContext, String userName, Callable<T> body) throws Exception {
+    entityMock
+        .when(() -> Entity.getEntityByName(eq(Entity.USER), eq(userName), anyString(), any()))
+        .thenReturn(new User().withId(userId(userName)).withName(userName));
     try (MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       subjects
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(new SubjectContext(new User().withName(userName), null, null));
       return body.call();
     }
+  }
+
+  private static UUID userId(String userName) {
+    return UUID.nameUUIDFromBytes(userName.getBytes(StandardCharsets.UTF_8));
   }
 
   private ContextMemory memory(

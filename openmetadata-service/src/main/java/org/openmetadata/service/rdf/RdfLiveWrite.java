@@ -20,6 +20,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.PipelineRepository;
 
 /** Replayable live hooks. Entity payloads stay in the authoritative metadata tables. */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "operation")
@@ -27,7 +28,8 @@ import org.openmetadata.service.Entity;
   @JsonSubTypes.Type(value = RdfLiveWrite.EntityUpdate.class, name = "entity"),
   @JsonSubTypes.Type(value = RdfLiveWrite.EntityDelete.class, name = "delete"),
   @JsonSubTypes.Type(value = RdfLiveWrite.RelationshipChange.class, name = "relationship"),
-  @JsonSubTypes.Type(value = RdfLiveWrite.GlossaryRelationChange.class, name = "glossaryRelation")
+  @JsonSubTypes.Type(value = RdfLiveWrite.GlossaryRelationChange.class, name = "glossaryRelation"),
+  @JsonSubTypes.Type(value = RdfLiveWrite.PipelineExecution.class, name = "pipelineExecution")
 })
 public sealed interface RdfLiveWrite {
   void apply(RdfRepository repository);
@@ -77,6 +79,16 @@ public sealed interface RdfLiveWrite {
       } else {
         repository.addGlossaryTermRelation(fromId, toId, relationType);
       }
+    }
+  }
+
+  /** One pipeline run's PROV-O triples, read back from the run's stored status when applied. */
+  record PipelineExecution(UUID pipelineId, long timestamp) implements RdfLiveWrite {
+    @Override
+    public void apply(final RdfRepository repository) {
+      final PipelineRepository pipelines =
+          (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+      pipelines.writePipelineExecutionToRdf(repository, pipelineId, timestamp);
     }
   }
 }
