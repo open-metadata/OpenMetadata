@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.iometeConnection import IometeConnection
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import DatabaseServiceProfilerPipeline
+from metadata.ingestion.source.database.iomete.connection import IometeConnection as IometeSourceConnection
 from metadata.ingestion.source.database.iomete.service_spec import ServiceSpec
 from metadata.ingestion.source.database.iomete.utils import copy_connection_for_table
 from metadata.utils.importer import import_from_module
@@ -75,15 +76,15 @@ def adapter(kind):
     return import_from_module(getattr(ServiceSpec, kind + "_class"))
 
 
-@pytest.mark.parametrize("catalog", ["target", "decoy", None])
+@pytest.mark.parametrize("catalog", ["target", "decoy", "default", None, ""])
 @pytest.mark.parametrize("target", ["target", "default"])
 def test_catalog_copy_uses_resolved_database_and_preserves_settings(context, catalog, target):
     table, database, metadata = context
-    database.name = target
+    database.name = type(database.name)(target)
     original = connection(catalog)
     before = original.model_dump()
     copied = copy_connection_for_table(original, table, metadata)
-    assert copied.catalog == target
+    assert copied.catalog == (catalog if not catalog and target == "default" else target)
     assert original.model_dump() == before
     assert copied.model_dump(exclude={"catalog"}) == original.model_dump(exclude={"catalog"})
     copied.schemaFilterPattern.includes.append("other")
@@ -91,9 +92,21 @@ def test_catalog_copy_uses_resolved_database_and_preserves_settings(context, cat
 
 
 @pytest.mark.parametrize("kind", ["sampler", "test_suite", "profiler"])
-@pytest.mark.parametrize("catalog", ["target", "decoy", None])
-def test_all_observability_sessions_query_target_catalog(context, monkeypatch, kind, catalog):
-    table, _, metadata = context
+@pytest.mark.parametrize(
+    "catalog,target",
+    [
+        ("target", "target"),
+        ("decoy", "target"),
+        (None, "target"),
+        ("", "target"),
+        (None, "default"),
+        ("", "default"),
+        ("default", "default"),
+    ],
+)
+def test_all_observability_sessions_query_target_catalog(context, monkeypatch, kind, catalog, target):
+    table, database, metadata = context
+    database.name = type(database.name)(target)
     engines = {name: create_engine("sqlite://") for name in ["target", "decoy"]}
     for name, engine in engines.items():
         with engine.begin() as conn:
@@ -104,7 +117,9 @@ def test_all_observability_sessions_query_target_catalog(context, monkeypatch, k
 
     def get_engine(config):
         observed.append(config.catalog)
-        return engines[config.catalog or "decoy"]
+        assert IometeSourceConnection.get_connection_url(config).database == (config.catalog or None)
+        # The driver default is a real target catalog, not the metadata label "default".
+        return engines["target" if not config.catalog or config.catalog == "default" else config.catalog]
 
     for module in [
         "metadata.sampler.sqlalchemy.sampler",
@@ -124,7 +139,8 @@ def test_all_observability_sessions_query_target_catalog(context, monkeypatch, k
         session = interface.session
     assert session.execute(select(func.count()).select_from(sampler.raw_dataset)).scalar() == 3
     assert session.execute(text("SELECT COUNT(*) FROM amounts WHERE amount < :limit"), {"limit": 0}).scalar() == 1
-    assert observed == ["target"] * (1 if kind == "sampler" else 2)
+    expected = catalog if not catalog and target == "default" else target
+    assert observed == [expected] * (1 if kind == "sampler" else 2)
     assert original.catalog == catalog
     session.close()
     sampler.session_factory.remove()

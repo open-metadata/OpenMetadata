@@ -1,7 +1,7 @@
 # SQLAlchemy Rule Library queries use the runner's physical table and execution bind
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-02 (connector default context)
 - **Deciders:** Ingestion maintainers
 - **Guard:** `test_rule_library_sql_expression_validator.py`, `test_rule_library_thresholds.py`, `test_runner.py`, `test_physical_table_expression.py`
 - **Related:** https://github.com/open-metadata/openmetadata-collate/issues/7374
@@ -21,3 +21,11 @@ Connector adapters own database/catalog selection before execution. Missing phys
 ## Consequences
 
 SQL rules share the source identity already selected by the sampler and test-suite session. Metadata labels and dotted service names cannot alter the SQL address. New connectors must supply a physical Table and a correctly targeted session. Generic and Pandas validators retain their existing execution contracts.
+
+## Amendment: connector default context
+
+Connector-owned context selection must distinguish physical catalog names from synthetic metadata labels. When IOMETE has no configured catalog, ingestion uses the driver's default catalog but names its metadata Database `default`. Its sampler, test-suite and profiler preserve the unset connection catalog for that label. An explicitly configured `default` catalog remains physical, and a resolved Database with another name selects that catalog.
+
+BigQuery copies the attached Database's project into inline, key-file and ADC credentials before creating the test-suite session, including when the configured project is absent or scalar. Billing and authentication settings remain unchanged. External-account credentials have no project field and retain their existing default resolution.
+
+The connector `test_table_context.py` suites guard these cases, including original-config isolation and session selection.

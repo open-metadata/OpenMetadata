@@ -27,4 +27,8 @@ def copy_connection_for_table(
     _, database, _ = get_context_entities(entity=table, metadata=metadata)
     if database is None:
         raise ValueError("IOMETE table must resolve to a target database before connecting")
-    return config.model_copy(deep=True, update={"catalog": model_str(database.name)})
+    target_catalog = model_str(database.name)
+    # Unconfigured ingestion labels the driver's default catalog as "default".
+    if not config.catalog and target_catalog == "default":
+        return config.model_copy(deep=True)
+    return config.model_copy(deep=True, update={"catalog": target_catalog})
