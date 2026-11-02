@@ -15,7 +15,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -28,9 +28,10 @@ import OntologyGraphView, {
 } from '../OntologyGraphView/OntologyGraphView';
 
 interface OntologyStudioWorkspaceProps {
-  ontology?: Ontology;
-  canCreate: boolean;
+  ontology: Ontology;
   createConceptRequestKey?: number;
+  onRequestCreateConcept?: () => void;
+  onAuthoringLockChange?: (locked: boolean) => void;
   initialDraftId?: string;
   mode: 'view' | 'edit' | 'definitions' | 'review';
   viewSurface: 'graph' | 'tree';
@@ -38,6 +39,7 @@ interface OntologyStudioWorkspaceProps {
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: () => void;
+  onRequestGraphSurface: () => void;
   onStatsChange?: (stats: OntologyModelStats) => void;
   onWorkingChange?: () => void;
 }
@@ -57,8 +59,9 @@ const getWorkspaceClassName = (
 
 const OntologyStudioWorkspace = ({
   ontology,
-  canCreate,
   createConceptRequestKey,
+  onRequestCreateConcept,
+  onAuthoringLockChange,
   initialDraftId,
   mode,
   viewSurface,
@@ -66,30 +69,22 @@ const OntologyStudioWorkspace = ({
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
+  onRequestGraphSurface,
   onStatsChange,
   onWorkingChange,
 }: OntologyStudioWorkspaceProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const isAiMode = useIsAiMode();
+  const guard = useOntologyDraftGuard();
+  const [definitionTab, setDefinitionTab] = useState<string | number>(
+    'concept'
+  );
   const [revision, setRevision] = useState(0);
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
-    { id: ontology?.id ?? '' },
-    { enabled: Boolean(ontology), deleted: ontology?.deleted }
+    { id: ontology.id },
+    { deleted: ontology.deleted }
   );
-
-  if (!ontology) {
-    return (
-      <Box className="tw:overflow-auto tw:p-6" direction="col">
-        <OntologyCreateForm
-          canCreate={canCreate}
-          currentUserId={currentUser?.id}
-          onSaved={onSaved}
-        />
-      </Box>
-    );
-  }
 
   const renderContent = () => {
     switch (mode) {
@@ -97,7 +92,8 @@ const OntologyStudioWorkspace = ({
         return (
           <Tabs
             className={isAiMode ? 'tw:gap-5' : undefined}
-            defaultSelectedKey="concept">
+            selectedKey={definitionTab}
+            onSelectionChange={(key) => guard(() => setDefinitionTab(key))}>
             {isAiMode ? (
               <Box direction="col" gap={1}>
                 <Typography
@@ -144,7 +140,7 @@ const OntologyStudioWorkspace = ({
             </Tabs.Panel>
             <Tabs.Panel id="settings">
               <OntologyCreateForm
-                canCreate={canEditAll}
+                canEdit={canEditAll}
                 ontology={ontology}
                 onSaved={(saved) => {
                   onSaved(saved);
@@ -164,7 +160,10 @@ const OntologyStudioWorkspace = ({
             ontology={ontology}
             selectedConceptId={selectedConceptId}
             surface={viewSurface}
+            onAuthoringLockChange={onAuthoringLockChange}
+            onRequestCreateConcept={onRequestCreateConcept}
             onRequestEdit={onRequestEdit}
+            onRequestGraphSurface={onRequestGraphSurface}
             onSelectedConceptChange={onSelectedConceptChange}
             onStatsChange={onStatsChange}
             onWorkingChange={onWorkingChange}

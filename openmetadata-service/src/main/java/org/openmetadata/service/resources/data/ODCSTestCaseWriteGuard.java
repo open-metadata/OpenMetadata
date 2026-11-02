@@ -24,6 +24,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.datacontract.odcs.ODCSTestCaseMaterializer;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.dqtests.TestCaseWriteAuthRequests;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
@@ -31,8 +32,6 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 
 /**
  * Importing an ODCS contract may create or update test cases, so it has to pass the same checks as
@@ -76,7 +75,7 @@ final class ODCSTestCaseWriteGuard implements ODCSTestCaseMaterializer.WriteGuar
         new TestCase().withEntityLink(new EntityLink(Entity.TABLE, tableFqn).getLinkString());
     try {
       authorizer.authorizeRequests(
-          securityContext, createRequests(probe, tableContext(probe)), AuthorizationLogic.ANY);
+          securityContext, TestCaseWriteAuthRequests.forCreate(probe), AuthorizationLogic.ANY);
       allowed = true;
     } catch (AuthorizationException e) {
       LOG.debug("Caller may not create test cases on {}: {}", tableFqn, e.getMessage());
@@ -86,47 +85,16 @@ final class ODCSTestCaseWriteGuard implements ODCSTestCaseMaterializer.WriteGuar
 
   @Override
   public void authorize(TestCase testCase, boolean overwritesExisting) {
-    ResourceContextInterface tableContext = tableContext(testCase);
     List<AuthRequest> requests;
     if (overwritesExisting) {
-      requests = updateRequests(testCase, tableContext);
+      requests = TestCaseWriteAuthRequests.forUpdate(testCase);
     } else {
       limits.enforceLimits(
           securityContext,
           new CreateResourceContext<>(Entity.TEST_CASE, testCase),
           new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE_TESTS));
-      requests = createRequests(testCase, tableContext);
+      requests = TestCaseWriteAuthRequests.forCreate(testCase);
     }
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-  }
-
-  private static ResourceContextInterface tableContext(TestCase testCase) {
-    return TestCaseResourceContext.builder()
-        .entityLink(EntityLink.parse(testCase.getEntityLink()))
-        .build();
-  }
-
-  private static List<AuthRequest> createRequests(
-      TestCase testCase, ResourceContextInterface tableContext) {
-    CreateResourceContext<TestCase> testCaseContext =
-        new CreateResourceContext<>(Entity.TEST_CASE, testCase);
-    return List.of(
-        new AuthRequest(
-            new OperationContext(Entity.TABLE, MetadataOperation.CREATE_TESTS), tableContext),
-        new AuthRequest(
-            new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE), testCaseContext));
-  }
-
-  private static List<AuthRequest> updateRequests(
-      TestCase testCase, ResourceContextInterface tableContext) {
-    ResourceContextInterface testCaseContext =
-        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
-    return List.of(
-        new AuthRequest(
-            new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS), tableContext),
-        new AuthRequest(
-            new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE), testCaseContext),
-        new AuthRequest(
-            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL), testCaseContext));
   }
 }

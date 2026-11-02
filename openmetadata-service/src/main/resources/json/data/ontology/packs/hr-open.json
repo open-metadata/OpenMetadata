@@ -3,6 +3,8 @@
   "bundled": true,
   "description": "A compact OpenMetadata starter subset of HR Open Standards workforce concepts.",
   "id": "hr-open",
+  "industry": "human-resources",
+  "layer": "L2",
   "license": "MIT",
   "licenseUrl": "https://www.hropenstandards.org/",
   "modules": [

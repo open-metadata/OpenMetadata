@@ -315,6 +315,11 @@ const METRIC_CSV_VALUE_BY_COLUMN = new Map<
   ],
   ['entityStatus', (metric: Metric) => metric.entityStatus],
   ['extension', (metric: Metric) => formatMetricExtension(metric.extension)],
+  // Bulk edit posts every column back, so a column missing here is sent empty and the import
+  // clears it — that is how a description-only edit detached metrics from parent and group.
+  ['parent', (metric: Metric) => metric.parent?.fullyQualifiedName],
+  ['experts', (metric: Metric) => joinEntityReferences(metric.experts)],
+  ['metricGroup', (metric: Metric) => metric.metricGroup?.fullyQualifiedName],
 ]);
 
 const getMetricCsvValue = (metric: Metric, columnName: string) => {
@@ -674,7 +679,8 @@ export const getMetricColumnsAndDataSourceFromMetrics = (
     team: boolean;
   },
   cellEditable: boolean,
-  isBulkEdit: boolean
+  isBulkEdit: boolean,
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
 ) => ({
   columns: headers.map((header) =>
     getColumnConfig(
@@ -682,7 +688,9 @@ export const getMetricColumnsAndDataSourceFromMetrics = (
       EntityType.METRIC,
       multipleOwner,
       cellEditable,
-      isBulkEdit
+      isBulkEdit,
+      isBulkEdit,
+      onEditCellHeightChange
     )
   ),
   dataSource: getMetricCsvRowsFromMetrics(metrics, headers),
