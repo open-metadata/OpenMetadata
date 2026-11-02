@@ -1774,7 +1774,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     // query without it. Re-AND the memory guard so hierarchy search cannot become a bypass.
     Query originalQuery =
         restrictToOrgWideMemories(
-            hierarchyConstrained(baseQueryBuilder.build(), request, subjectContext, true));
+            hierarchyConstrained(baseQueryBuilder.build(), request, subjectContext));
     requestBuilder.query(originalQuery);
 
     // Add fqnParts aggregation to fetch parent terms
@@ -1827,8 +1827,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                                               pb ->
                                                   pb.should(parentTermQueries)
                                                       .minimumShouldMatch("1")));
-                          b.should(
-                              hierarchyConstrained(parentTerms, request, subjectContext, false));
+                          b.should(hierarchyConstrained(parentTerms, request, subjectContext));
                           if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
                             b.must(m -> m.match(ma -> ma.field("entityStatus").query("Approved")));
                           }
@@ -1940,27 +1939,21 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   /**
-   * The hierarchy rewrite folds the caller's query, which carried their access policies, query_filter
-   * and deleted flag, into one should clause among name matches, so they are applied again around
-   * each query it builds. The parents that only draw the tree skip the query_filter, which selects
-   * matches, but never the policies or the deleted flag. A policy that yields no filter matches
-   * nothing.
+   * The hierarchy rewrite folds the caller's query, which carried their access policies and deleted
+   * flag, into one should clause among name matches, so those are applied again around each query it
+   * builds. The caller's query_filter is not: it is their own filter, never an access control, and
+   * the navbar sends its selected domain through it, which would leave the domain picker unable to
+   * find any other domain. A policy that yields no filter matches nothing.
    */
   private Query hierarchyConstrained(
       Query query,
       org.openmetadata.schema.search.SearchRequest request,
-      SubjectContext subjectContext,
-      boolean applyQueryFilter) {
+      SubjectContext subjectContext) {
     List<Query> filters = new ArrayList<>();
     if (!nullOrEmpty(request.getDeleted())) {
       filters.add(
           Query.of(
               q -> q.term(t -> t.field("deleted").value(FieldValue.of(request.getDeleted())))));
-    }
-    String queryFilter = request.getQueryFilter();
-    if (applyQueryFilter && !nullOrEmpty(queryFilter) && !EMPTY_JSON_OBJECT.equals(queryFilter)) {
-      String queryDsl = QueryFilterShape.requireQueryDsl(queryFilter);
-      filters.add(Query.of(q -> q.withJson(new StringReader(queryDsl))));
     }
     Query filtered =
         filters.isEmpty() ? query : Query.of(q -> q.bool(b -> b.must(query).filter(filters)));
@@ -1998,8 +1991,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         hierarchyConstrained(
             Query.of(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
             request,
-            subjectContext,
-            false);
+            subjectContext);
     try {
       return client
           .search(s -> s.index(request.getIndex()).size(fqns.size()).query(parents), JsonData.class)
