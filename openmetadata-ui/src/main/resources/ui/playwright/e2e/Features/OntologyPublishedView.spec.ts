@@ -241,6 +241,76 @@ test.describe(
       });
     }
 
+    test('a concept owner without ontology rights reads the release, then edits their concept on the draft and keeps Edit after reload', async ({
+      isolatedUserPage: page,
+      isolatedUser: reviewer,
+      browser,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await publishWithNewerDraft(api, page, reviewer);
+      const owner = await openConsumerPage(browser, api);
+      try {
+        await okJson(
+          await api.patch(`/api/v1/ontologyConcepts/${fixture.alpha.id}`, {
+            data: [
+              {
+                op: 'add',
+                path: '/owners',
+                value: [{ id: owner.consumer.responseData.id, type: 'user' }],
+              },
+            ],
+            headers: { 'Content-Type': 'application/json-patch+json' },
+          }),
+          'Make the user the concept owner'
+        );
+        await owner.page.goto(studioUrl(fixture.ontology));
+        await expect(owner.page.getByTestId('mode-tab-edit')).toHaveCount(0);
+        await openConceptInTree(owner.page, fixture.alpha);
+
+        await expect(owner.page.getByText(RELEASED_WORDING)).toBeVisible();
+
+        await owner.page.getByTestId('ontology-concept-edit').click();
+
+        await expectSelected(owner.page, 'mode-tab-edit');
+        await expect(owner.page).toHaveURL(/mode=edit/);
+        await expect(owner.page).not.toHaveURL(/version=/);
+        const editor = owner.page.getByTestId('ontology-concept-authoring');
+        await expect(editor).toBeVisible();
+        await expect
+          .poll(() =>
+            editor
+              .locator('input, textarea, [contenteditable="true"]')
+              .evaluateAll((fields) =>
+                fields
+                  .map((field) =>
+                    'value' in field
+                      ? (field as HTMLInputElement).value
+                      : field.textContent
+                  )
+                  .join('|')
+              )
+          )
+          .toContain(DRAFT_WORDING);
+        await owner.page.screenshot({
+          path: 'test-results/g15-owner-edit.png',
+        });
+
+        await owner.page.reload();
+
+        await expectSelected(owner.page, 'mode-tab-edit');
+        await expect(owner.page).toHaveURL(/mode=edit/);
+
+        await owner.page.goto(studioUrl(fixture.ontology, '&mode=edit'));
+
+        await expectSelected(owner.page, 'mode-tab-view');
+        await expect(owner.page).not.toHaveURL(/mode=edit/);
+      } finally {
+        await owner.dispose();
+        await cleanUp(api, [fixture.ontology], fixture.tasks);
+      }
+    });
+
     test('a user without edit rights is told nothing is published when the ontology has no release', async ({
       browser,
     }) => {

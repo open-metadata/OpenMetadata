@@ -1655,24 +1655,96 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
-  it('shows a concept owner without ontology rights the published release, with no edit entry', async () => {
-    (useEntityPermissions as jest.Mock).mockImplementation((resource) => ({
-      canEditAll: resource === 'ontologyConcept',
-    }));
+  describe('concept owner without ontology rights', () => {
+    const asConceptOwner = (conceptId?: string) => {
+      (useEntityPermissions as jest.Mock).mockImplementation(
+        (resource, identifier, options) => ({
+          canEditAll:
+            resource === 'ontologyConcept' &&
+            options?.enabled !== false &&
+            Boolean(identifier?.id) &&
+            (!conceptId || identifier.id === conceptId),
+          isLoading: false,
+        })
+      );
+      mockUseAuth.mockReturnValue({
+        isAdminUser: false,
+        isFirstTimeUser: false,
+      });
+    };
+    const openCustomer = async () => {
+      fireEvent.click(await screen.findByTestId('submode-tab-tree'));
+      fireEvent.click(await screen.findByTestId('ontology-tree-term-Customer'));
+    };
+
+    it('reads the release, then enters Edit on the draft concept from the concept panel', async () => {
+      asConceptOwner();
+      renderNativeStudio('?ontology=native-sales');
+      await screen.findByTestId('native-canvas');
+
+      expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
+
+      await openCustomer();
+
+      expect(await screen.findByText('Customer as released')).toBeVisible();
+
+      fireEvent.click(screen.getByTestId('ontology-concept-edit'));
+
+      expect(
+        await screen.findByTestId('ontology-concept-editor')
+      ).toBeVisible();
+      expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.getByTestId('location')).toHaveTextContent('mode=edit');
+      expect(screen.getByTestId('location')).not.toHaveTextContent('version');
+    });
+
+    it('keeps Edit when the URL selects a concept the user owns', async () => {
+      asConceptOwner('Customer');
+      renderNativeStudio('?ontology=native-sales&mode=edit&concept=Customer');
+
+      await screen.findByTestId('native-canvas');
+
+      expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.getByTestId('location')).toHaveTextContent('mode=edit');
+    });
+
+    it('falls back to View when mode=edit selects no concept', async () => {
+      asConceptOwner();
+      renderNativeStudio('?ontology=native-sales&mode=edit');
+
+      await waitFor(() =>
+        expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+          'aria-selected',
+          'true'
+        )
+      );
+
+      expect(screen.getByTestId('location')).not.toHaveTextContent('mode=edit');
+    });
+  });
+
+  it('lands a user with no edit rights in View when the URL asks for mode=edit', async () => {
+    (useEntityPermissions as jest.Mock).mockReturnValue({
+      canEditAll: false,
+      isLoading: false,
+    });
     mockUseAuth.mockReturnValue({ isAdminUser: false, isFirstTimeUser: false });
-    renderNativeStudio('?ontology=native-sales');
-    (usePermissionProvider as jest.Mock).mockReturnValue({ permissions: {} });
-    await screen.findByTestId('native-canvas');
+    renderNativeStudio('?ontology=native-sales&mode=edit&concept=any');
 
-    expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      )
+    );
 
-    fireEvent.click(screen.getByTestId('submode-tab-tree'));
-    fireEvent.click(screen.getByTestId('ontology-tree-term-Customer'));
-
-    expect(await screen.findByText('Customer as released')).toBeVisible();
-    expect(
-      screen.queryByTestId('ontology-concept-edit')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('location')).not.toHaveTextContent('mode=edit');
   });
 
   describe('published version and URL state', () => {

@@ -491,11 +491,18 @@ function resolveStudioRead({
   };
 }
 
+/**
+ * Edit needs edit rights on the ontology, or on the concept the URL selects: a concept
+ * owner enters Edit from that concept's panel and stays only while it is selected.
+ */
 const canEnterEditMode = (
   canEditScope: boolean,
   isNativeOntology: boolean,
-  canEditNative: boolean
-) => canEditScope && (!isNativeOntology || canEditNative);
+  canEditNative: boolean,
+  canEditSelectedConcept: boolean
+) =>
+  canEditScope &&
+  (!isNativeOntology || canEditNative || canEditSelectedConcept);
 
 function getExplorerSurface(
   mode: StudioMode,
@@ -877,7 +884,7 @@ const OntologyExplorerContent: React.FC = () => {
   }, [queryClient, selectedOntologyId]);
   const {
     canEditAll: canEditNativeOntology,
-    isLoading: isNativePermissionLoading,
+    isLoading: isNativeOntologyPermissionLoading,
   } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: selectedOntologyId },
@@ -1138,6 +1145,20 @@ const OntologyExplorerContent: React.FC = () => {
     (glossary) => glossary.id === selectedGlossaryId
   );
   const isNativeOntology = isOntologyScope(studioScope);
+  // Same key as the graph view's read of this concept, so React Query makes one request.
+  const {
+    canEditAll: canEditSelectedConcept,
+    isLoading: isConceptPermissionLoading,
+  } = useEntityPermissions(
+    ResourceEntity.ONTOLOGY_CONCEPT,
+    { id: selectedConceptId ?? '' },
+    { enabled: isNativeOntology && Boolean(selectedConceptId) }
+  );
+  // Only Edit depends on the concept read; View must not unmount on each selection.
+  const isNativePermissionLoading =
+    isNativeOntologyPermissionLoading ||
+    (mode === 'edit' && isConceptPermissionLoading);
+  const [editConceptRequest, setEditConceptRequest] = useState<string>();
   const viewSurface = resolveViewSurface(urlState.view, isNativeOntology);
   const editSurface = resolveEditSurface(urlState.view, isNativeOntology);
   const querySurface = resolveQuerySurface(urlState.view);
@@ -1288,7 +1309,8 @@ const OntologyExplorerContent: React.FC = () => {
   const canEnterEdit = canEnterEditMode(
     canEditCurrentScope,
     isNativeOntology,
-    canEditNativeOntology
+    canEditNativeOntology,
+    canEditSelectedConcept
   );
 
   useEffect(() => {
@@ -2064,6 +2086,7 @@ const OntologyExplorerContent: React.FC = () => {
             ? nativeConceptRequest.key
             : 0
         }
+        editConceptRequest={editConceptRequest}
         initialDraftId={initialDraftId}
         key={`${ontology.id}:${nativeRefresh}:${publishedReleaseId ?? 'draft'}`}
         mode={
@@ -2080,8 +2103,12 @@ const OntologyExplorerContent: React.FC = () => {
         }
         viewSurface={explorerSurface}
         onAuthoringLockChange={setNativeAuthoringLocked}
+        onEditConceptRequestHandled={() => setEditConceptRequest(undefined)}
         onRequestCreateConcept={() => guard(handleAddConcept)}
-        onRequestEdit={() => handleModeChange('edit', 'graph')}
+        onRequestEdit={(conceptId) => {
+          setEditConceptRequest(conceptId);
+          handleModeChange('edit', 'graph');
+        }}
         onRequestGraphSurface={() => setViewSurface('graph')}
         onRequestTreeSurface={() => setViewSurface('tree')}
         onSaved={(ontology) => {

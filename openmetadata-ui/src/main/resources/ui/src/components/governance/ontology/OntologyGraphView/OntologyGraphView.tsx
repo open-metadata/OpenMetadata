@@ -322,7 +322,11 @@ interface OntologyGraphViewProps {
   readonly isEditing?: boolean;
   readonly selectedConceptId?: string;
   readonly onSelectedConceptChange?: (id?: string) => void;
-  readonly onRequestEdit?: () => void;
+  /** Receives the concept whose Edit button was pressed, so the draft can open its editor. */
+  readonly onRequestEdit?: (conceptId?: string) => void;
+  /** A concept whose editor opens once Edit mode is on, set when Edit was pressed on a release. */
+  readonly editConceptRequest?: string;
+  readonly onEditConceptRequestHandled?: () => void;
   readonly onStatsChange?: (stats: OntologyModelStats) => void;
   readonly onWorkingChange?: () => void;
 }
@@ -351,6 +355,8 @@ const OntologyGraphView = ({
   selectedConceptId,
   onSelectedConceptChange,
   onRequestEdit,
+  editConceptRequest,
+  onEditConceptRequestHandled,
   onStatsChange,
   onWorkingChange,
 }: OntologyGraphViewProps) => {
@@ -777,6 +783,20 @@ const OntologyGraphView = ({
     relations.length,
   ]);
 
+  const canOpenRequestedEditor = Boolean(
+    editConceptRequest &&
+      isEditing &&
+      canEditConceptByRights &&
+      selectedId === editConceptRequest &&
+      model?.concepts.some((concept) => concept.id === editConceptRequest)
+  );
+  useEffect(() => {
+    if (canOpenRequestedEditor) {
+      setConceptEditor({ conceptId: editConceptRequest });
+      onEditConceptRequestHandled?.();
+    }
+  }, [canOpenRequestedEditor, editConceptRequest, onEditConceptRequestHandled]);
+
   useEffect(() => {
     if (
       isEditing &&
@@ -937,10 +957,12 @@ const OntologyGraphView = ({
           }
           onClose={() => setSelectedId(undefined)}
           onEdit={
-            canEditConcept
+            canEditConceptByRights
               ? () => {
-                  setConceptEditor({ conceptId: selected.id });
-                  onRequestEdit?.();
+                  if (!releaseId) {
+                    setConceptEditor({ conceptId: selected.id });
+                  }
+                  onRequestEdit?.(selected.id);
                 }
               : undefined
           }
