@@ -35,7 +35,7 @@ import org.openmetadata.service.util.JsonPatchUtils;
 /**
  * The operations resolving a task needs on the entity the task is about. They match what a PATCH
  * making the same change to that entity needs, so resolving a task is never a weaker route to the
- * same write.
+ * same write (ADR:2026-11-02-resolving-a-task-takes-the-checks-of-the-equivalent-patch).
  */
 @Slf4j
 public final class TaskTargetOperations {

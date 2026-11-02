@@ -33,7 +33,8 @@ import org.openmetadata.service.util.FieldPathUtils;
 /**
  * A tag task writes tags onto the entity it is about, or onto one of that entity's fields. Its field
  * path therefore has to name the entity itself or a field of it that carries tags; any other path is
- * refused when the task is filed and when it is approved.
+ * refused when the task is filed and when it is approved
+ * (ADR:2026-11-02-resolving-a-task-takes-the-checks-of-the-equivalent-patch).
  */
 public final class TaskTagTarget {
   private static final String FIELD_PATH = "fieldPath";

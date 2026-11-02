@@ -409,7 +409,8 @@ public final class ApprovalGate {
 
   // The filter is judged on the stored entity as well as the proposed one: an edit that moves the
   // asset out of the filter is itself reviewed, and only an asset the filter leaves out both
-  // before and after the edit is not.
+  // before and after the edit is not
+  // (ADR:2026-11-02-the-approval-gate-judges-its-filter-before-and-after-an-edit).
   private static boolean isExcludedBeforeAndAfter(GatingRule rule, Edited edited) {
     return WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), edited.original())
         && WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), edited.published());
