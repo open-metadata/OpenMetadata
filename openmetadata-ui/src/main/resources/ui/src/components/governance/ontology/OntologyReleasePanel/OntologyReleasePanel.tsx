@@ -302,52 +302,94 @@ const OntologyReleasePanel = ({
       )
     );
   };
+  const getPublicationDisabledReason = () => {
+    if (!currentStage) {
+      return undefined;
+    }
+    if (!canEdit || !canWrite) {
+      return t('message.ontology-publication-needs-author-role');
+    }
+    if (currentStage.stage === Stage.InReview) {
+      return t('message.ontology-publication-awaiting-approval');
+    }
+    if (currentStage.stage === Stage.Approved) {
+      return undefined;
+    }
+    if (!changedSinceRejection()) {
+      return t('message.ontology-publication-change-before-retry');
+    }
+    if (!currentStage.unpublishedChanges) {
+      return t('message.ontology-publication-no-changes');
+    }
+    if (!currentStage.canRequestReview) {
+      return t('message.ontology-publication-needs-reviewer');
+    }
+
+    return undefined;
+  };
   const renderPublicationButtons = () => {
     if (!currentStage) {
       return null;
     }
 
+    const disabledReason = getPublicationDisabledReason();
+
     return (
-      <Box gap={2} wrap="wrap">
-        <Button
-          color="secondary"
-          data-testid="ontology-capture-release"
-          isDisabled={!canCapture}
-          onPress={() => {
-            if (canCapture && changes.data) {
-              void capture(changes.data.state, metadata);
-            }
-          }}>
-          {t('label.capture-release')}
-        </Button>
-        {currentStage.stage === Stage.Approved ||
-        currentStage.stage === Stage.InReview ? (
+      <Box direction="col" gap={2}>
+        <Box gap={2} wrap="wrap">
           <Button
-            color="secondary-success"
-            data-testid="ontology-publish-release"
-            isDisabled={currentStage.stage !== Stage.Approved || !canWrite}
-            isLoading={isBusy}
-            onPress={() => void activate({ kind: 'current' })}>
-            {t('label.publish')} {candidateLabel()}
-          </Button>
-        ) : (
-          <Button
-            color="primary"
-            data-testid="ontology-request-review"
-            isDisabled={!canCapture || !currentStage.canRequestReview}
-            isLoading={isBusy}
+            color="secondary"
+            data-testid="ontology-capture-release"
+            isDisabled={!canCapture}
             onPress={() => {
-              if (canCapture && currentStage.canRequestReview && working.data) {
-                void captureAndRequestApproval(working.data.state, metadata);
+              if (canCapture && changes.data) {
+                void capture(changes.data.state, metadata);
               }
             }}>
-            {t(
-              currentStage.stage === Stage.ChangesRequested
-                ? 'label.request-review-again'
-                : 'label.request-review'
-            )}
+            {t('label.capture-release')}
           </Button>
-        )}
+          {currentStage.stage === Stage.Approved ||
+          currentStage.stage === Stage.InReview ? (
+            <Button
+              color="secondary-success"
+              data-testid="ontology-publish-release"
+              isDisabled={currentStage.stage !== Stage.Approved || !canWrite}
+              isLoading={isBusy}
+              onPress={() => void activate({ kind: 'current' })}>
+              {t('label.publish')} {candidateLabel()}
+            </Button>
+          ) : (
+            <Button
+              color="primary"
+              data-testid="ontology-request-review"
+              isDisabled={!canCapture || !currentStage.canRequestReview}
+              isLoading={isBusy}
+              onPress={() => {
+                if (
+                  canCapture &&
+                  currentStage.canRequestReview &&
+                  working.data
+                ) {
+                  void captureAndRequestApproval(working.data.state, metadata);
+                }
+              }}>
+              {t(
+                currentStage.stage === Stage.ChangesRequested
+                  ? 'label.request-review-again'
+                  : 'label.request-review'
+              )}
+            </Button>
+          )}
+        </Box>
+        {disabledReason ? (
+          <Typography
+            color="secondary"
+            data-testid="ontology-publication-disabled-reason"
+            role="note"
+            size="text-xs">
+            {disabledReason}
+          </Typography>
+        ) : null}
       </Box>
     );
   };
