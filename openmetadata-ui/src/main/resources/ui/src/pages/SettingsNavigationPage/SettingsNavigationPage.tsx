@@ -112,13 +112,13 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
           {/* The icon and the hover group live on our own row content, not on core Tree internals. */}
           <Box
             align="center"
-            className="tw:group/nav-row tw:relative tw:flex-1"
+            className="tw:group/nav-row tw:flex-1"
             gap={3}
             justify="between">
             <ButtonUtility
               aria-label={t('label.move')}
-              // Out in the left gutter, past the expand chevron, so the hidden handle takes no space.
-              className="tw:absolute tw:-left-12 tw:invisible tw:group-hover/nav-row:visible tw:group-focus-within/nav-row:visible"
+              // Ahead of the icon so the hidden handle never sits between icon and label.
+              className="tw:invisible tw:group-hover/nav-row:visible tw:group-focus-within/nav-row:visible"
               color="tertiary"
               icon={DotsGrid}
               size="xs"
