@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Page } from '@playwright/test';
+import { EntityTabs } from '../../constant/customizeDetail';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { EntityTabs } from '../../constant/customizeDetail';
-import { GlobalSettingOptions } from '../../constant/settings';
-import { settingClick } from '../../utils/sidebar';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
+import { settingClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
-import { Page } from '@playwright/test';
 
 const persona = new PersonaClass();
 
