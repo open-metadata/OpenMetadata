@@ -162,6 +162,7 @@ import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.CustomPropertyReferences;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
+import org.openmetadata.service.jdbi3.ReferenceStyles;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
@@ -3511,7 +3512,8 @@ public class SearchRepository {
    * Documents copy the name and display name of the users, teams, domains and data products they
    * reference, and only the id identifies those copies, so a rename or a display-name change has to
    * overwrite them wherever the reference is held. The display name falls back to the name, as the
-   * index builder writes it.
+   * index builder writes it. Copies of a styled entity also carry its colour and icon, so a restyle
+   * rewrites them too. ADR:2026-11-02-references-to-styled-entities-carry-their-colour-and-icon
    */
   private void relabelReferenceCopies(
       String entityType, ChangeDescription changeDescription, EntityInterface<?> entity) {
@@ -3520,7 +3522,10 @@ public class SearchRepository {
       return;
     }
     Set<String> changedFields = getChangedFieldNames(changeDescription);
-    if (!changedFields.contains(FIELD_NAME) && !changedFields.contains(FIELD_DISPLAY_NAME)) {
+    boolean styled = ReferenceStyles.isStyledEntityType(entityType);
+    if (!changedFields.contains(FIELD_NAME)
+        && !changedFields.contains(FIELD_DISPLAY_NAME)
+        && !(styled && changedFields.contains(FIELD_STYLE))) {
       return;
     }
     String id = entity.getId().toString();
@@ -3530,6 +3535,11 @@ public class SearchRepository {
     label.put(
         FIELD_DISPLAY_NAME,
         nullOrEmpty(entity.getDisplayName()) ? entity.getName() : entity.getDisplayName());
+    if (styled) {
+      label.put(
+          FIELD_STYLE,
+          ReferenceStyles.toReferenceStyle(entity.getStyle()).map(JsonUtils::getMap).orElse(null));
+    }
     // owners is mapped nested in every index that has it; the other reference lists are objects.
     List<String> nestedPaths = fields.contains(FIELD_OWNERS) ? List.of(FIELD_OWNERS) : List.of();
     List<String> objectPaths =

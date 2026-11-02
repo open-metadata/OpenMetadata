@@ -36,7 +36,6 @@ import {
   domainQueryKey,
   DOMAIN_DEFAULT_FIELDS,
 } from '../../../rest/queries/domainQuery';
-import { cacheDomainStyle } from '../../../rest/queries/domainStyleQuery';
 import { getEntityMissingError } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -132,7 +131,6 @@ const DomainDetailPage = () => {
         const response = await patchDomains(activeDomain.id, jsonPatch);
 
         setActiveDomain(response);
-        cacheDomainStyle(queryClient, response);
         // Re-fetch with full fields so the cache includes extension,
         // votes, certification — fields the PATCH response omits.
         void queryClient.invalidateQueries({ queryKey: domainCacheKey });

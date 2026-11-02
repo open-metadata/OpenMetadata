@@ -1185,7 +1185,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * The descriptors of an entity that other documents hold in a reference list (domains[],
    * dataProducts[]) rather than under a field named after its type, where the nested display-name
    * script would fail. SearchRepository relabels those copies by id, so the name and the display
-   * name only have to open the propagation pass.
+   * name only have to open the propagation pass. Domains and data products, the two users, are
+   * styled entities whose copies also carry the colour and icon, so the style opens it too.
    */
   protected static List<PropagationDescriptor> relabeledByReference(
       List<PropagationDescriptor> descriptors) {
@@ -1200,6 +1201,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     relabeled.add(
         new PropagationDescriptor(
             FIELD_DISPLAY_NAME, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    relabeled.add(
+        new PropagationDescriptor(
+            Entity.FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     return relabeled;
   }
 

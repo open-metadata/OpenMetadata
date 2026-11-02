@@ -52,6 +52,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -62,8 +63,10 @@ import org.openmetadata.schema.services.connections.database.AthenaConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 /** This test provides examples of how to use applyPatch */
 @Slf4j
@@ -279,6 +282,30 @@ class JsonUtilsTest {
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
+  }
+
+  // Responses carry the style of domain references, the stored entity does not; a patch diffed
+  // against a response used to fail with "Non-existing name/value pair ... for key style".
+  @Test
+  void applyPatchSkipsReferenceStylesButNotTheEntityStyle() {
+    UUID oldDomain = UUID.randomUUID();
+    UUID newDomain = UUID.randomUUID();
+    Domain original =
+        new Domain()
+            .withId(UUID.randomUUID())
+            .withName("sales")
+            .withChildren(List.of(new EntityReference().withId(oldDomain).withType(Entity.DOMAIN)));
+    JsonPatch patch =
+        Json.createPatchBuilder()
+            .replace("/children/0/id", newDomain.toString())
+            .remove("/children/0/style")
+            .add("/style", Json.createObjectBuilder().add("color", "#F14C75").build())
+            .build();
+
+    Domain updated = JsonUtils.applyPatch(original, patch, Domain.class);
+
+    assertEquals(newDomain, updated.getChildren().get(0).getId());
+    assertEquals("#F14C75", updated.getStyle().getColor());
   }
 
   @Test

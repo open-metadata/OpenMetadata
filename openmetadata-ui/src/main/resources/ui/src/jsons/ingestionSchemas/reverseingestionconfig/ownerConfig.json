@@ -56,6 +56,40 @@
             "description": "Link to the entity resource.",
             "type": "string",
             "format": "uri"
+          },
+          "style": {
+            "description": "Colour and icon of the referenced entity, set on references to styled entities (domains, data products) in API responses and search documents, so a client can draw the reference without fetching the entity.",
+            "type": "object",
+            "javaType": "org.openmetadata.schema.entity.type.Style",
+            "properties": {
+              "color": {
+                "description": "Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.",
+                "type": "string"
+              },
+              "iconURL": {
+                "description": "An icon to associate with GlossaryTerm, Tag, Domain or Data Product.",
+                "type": "string",
+                "format": "url"
+              },
+              "coverImage": {
+                "description": "Cover image configuration for the entity.",
+                "type": "object",
+                "javaType": "org.openmetadata.schema.entity.type.CoverImage",
+                "properties": {
+                  "url": {
+                    "description": "URL of the cover image.",
+                    "type": "string",
+                    "format": "url"
+                  },
+                  "position": {
+                    "description": "Position of the cover image in CSS background-position format. Supports keywords (top, center, bottom) or pixel values (e.g., '20px 30px').",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [

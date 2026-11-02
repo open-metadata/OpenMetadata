@@ -198,7 +198,12 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state?:  State;
+    state?: State;
+    /**
+     * Colour and icon of the referenced entity, set on references to styled entities (domains,
+     * data products) in API responses and search documents, so a client can draw the reference
+     * without fetching the entity.
+     */
     style?:  Style;
     tagFQN?: string;
     /**
@@ -335,6 +340,10 @@ export enum State {
 /**
  * UI Style is used to associate a color code and/or icon to entity to customize the look of
  * that entity in UI.
+ *
+ * Colour and icon of the referenced entity, set on references to styled entities (domains,
+ * data products) in API responses and search documents, so a client can draw the reference
+ * without fetching the entity.
  */
 export interface Style {
     /**

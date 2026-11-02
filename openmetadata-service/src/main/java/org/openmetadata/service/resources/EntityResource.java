@@ -92,6 +92,7 @@ import org.openmetadata.service.jdbi3.AssetEditService;
 import org.openmetadata.service.jdbi3.ChildFieldPageReader;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.ReferenceStyles;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.monitoring.LatencyPhase;
@@ -178,6 +179,9 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       Entity.withHref(uriInfo, entity.getChildren());
       Entity.withHref(uriInfo, entity.getDomains());
       Entity.withHref(uriInfo, entity.getDataProducts());
+      ReferenceStyles.apply(entity.getChildren());
+      ReferenceStyles.apply(entity.getDomains());
+      ReferenceStyles.apply(entity.getDataProducts());
       return entity;
     }
   }

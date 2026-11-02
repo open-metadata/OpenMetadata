@@ -655,6 +655,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/domains/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Domain*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataProduct*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ReferenceStyles.java",
         "openmetadata-spec/src/main/resources/json/schema/entity/domains/**",
         "openmetadata-spec/src/main/resources/json/schema/api/domains/**"
       ],
