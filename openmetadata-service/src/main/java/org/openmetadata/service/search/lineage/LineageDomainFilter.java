@@ -149,10 +149,22 @@ public final class LineageDomainFilter {
     edges.addAll(edgesOf(result.getUpstreamEdges()));
     edges.addAll(edgesOf(result.getDownstreamEdges()));
     for (EsLineageData edge : edges) {
-      linkVisibleEndpoints(
-          adjacency, visible, edgeFqn(edge.getFromEntity()), edgeFqn(edge.getToEntity()));
+      String from = edgeFqn(edge.getFromEntity());
+      String to = edgeFqn(edge.getToEntity());
+      linkVisibleEndpoints(adjacency, visible, from, to);
+      // A pipeline shown as an edge is no end of it, yet its own lineage reaches assets only
+      // through the edges it carries, so it links to both ends.
+      String pipeline = pipelineFqn(edge.getPipeline());
+      linkVisibleEndpoints(adjacency, visible, pipeline, from);
+      linkVisibleEndpoints(adjacency, visible, pipeline, to);
     }
     return adjacency;
+  }
+
+  private static String pipelineFqn(Object pipeline) {
+    return pipeline instanceof Map<?, ?> ref && ref.get(FQN_FIELD) != null
+        ? ref.get(FQN_FIELD).toString()
+        : null;
   }
 
   private static Collection<EsLineageData> edgesOf(Map<String, EsLineageData> edges) {
