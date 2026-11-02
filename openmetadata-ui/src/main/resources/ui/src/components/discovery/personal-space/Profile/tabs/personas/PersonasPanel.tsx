@@ -377,6 +377,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
         <PersonaDetail
           activeTab={activeTab}
           fqn={view.fqn}
+          key={view.fqn}
           subCategory={subCategory}
           onDeleted={onPersonaDeleted}
           onRename={setResolvedName}

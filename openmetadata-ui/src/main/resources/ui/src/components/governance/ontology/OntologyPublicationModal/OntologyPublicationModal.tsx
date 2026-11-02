@@ -166,6 +166,7 @@ const PublicationAiHeader = ({ owner, onClose }: PublicationHeaderProps) => {
 type OntologyPublicationModalProps = {
   readonly canEdit: boolean;
   readonly onClose: () => void;
+  readonly onOpenTask?: (taskId: string) => void;
   readonly initialTab?: PublicationTab;
 } & (
   | {
@@ -189,6 +190,7 @@ const OntologyPublicationModal = ({
   initialOntology,
   initialTab = 'changes',
   onClose,
+  onOpenTask,
 }: OntologyPublicationModalProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -248,6 +250,7 @@ const OntologyPublicationModal = ({
                       key={owner.id}
                       ontology={owner}
                       view={activeTab}
+                      onOpenTask={onOpenTask}
                     />
                   </Tabs.Panel>
                 ) : (

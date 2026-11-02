@@ -14,6 +14,7 @@
 package org.openmetadata.service.governance.workflows.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,12 +24,33 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.FieldDiff;
 
 class ChangePreviewUtilsTest {
+
+  @Test
+  void mcpTaskPreviewMasksConnectionChangesWithoutChangingPendingValues() {
+    final ChangeDescription pending =
+        new ChangeDescription()
+            .withFieldsUpdated(
+                List.of(
+                    new FieldChange()
+                        .withName("connectionConfig")
+                        .withOldValue("old-secret")
+                        .withNewValue("new-secret")));
+    final String original = JsonUtils.pojoToJson(pending);
+
+    final Object payload =
+        ChangePreviewUtils.buildProposedChangesPayload(new McpServer(), null, pending);
+
+    assertFalse(JsonUtils.pojoToJson(payload).contains("-secret"));
+    assertEquals(original, JsonUtils.pojoToJson(pending));
+  }
 
   // ---------------------------------------------------------------------------
   // extractIdentifiers

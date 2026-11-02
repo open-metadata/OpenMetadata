@@ -34,7 +34,7 @@ export const CheckboxBase = ({
         (isSelected || isIndeterminate) &&
           'tw:bg-brand-solid tw:after:outline-brand-solid',
         isDisabled &&
-          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:after:outline-disabled',
+          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:dark:bg-disabled tw:after:outline-disabled',
         isFocusVisible &&
           'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',
         className

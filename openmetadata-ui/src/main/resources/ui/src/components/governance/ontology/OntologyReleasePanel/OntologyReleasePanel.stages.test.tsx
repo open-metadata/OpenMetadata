@@ -37,12 +37,18 @@ import {
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
 import OntologyReleasePanel from './OntologyReleasePanel';
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
@@ -89,6 +95,7 @@ const renderPanel = async (
 runQueryNotificationsSynchronously();
 
 beforeEach(() => {
+  (useIsAiMode as jest.Mock).mockReturnValue(false);
   historical = undefined;
   get.mockReset();
   (APIClient.post as jest.MockedFunction<typeof APIClient.post>).mockReset();
@@ -257,6 +264,32 @@ const setStage = (stage: Stage) => {
     };
   }
 };
+
+it('keeps independent reviewer configuration and the review stage available in AI mode', async () => {
+  (useIsAiMode as jest.Mock).mockReturnValue(true);
+  setStage(Stage.Draft);
+  await renderPanel();
+
+  expect(screen.getByTestId('ontology-release-reviewers')).toBeVisible();
+  expect(screen.getByTestId('ontology-release-stage')).toHaveTextContent(
+    'label.draft'
+  );
+});
+
+it('shows the rejection reason and review task in AI mode', async () => {
+  (useIsAiMode as jest.Mock).mockReturnValue(true);
+  setStage(Stage.ChangesRequested);
+  await renderPanel();
+
+  expect(screen.getByTestId('ontology-rejection-reason')).toHaveTextContent(
+    'Keep this literal.'
+  );
+  expect(screen.getByRole('link', { name: 'TASK-00042' })).toHaveAttribute(
+    'href',
+    `/tasks/${review.task.id}`
+  );
+  expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
+});
 
 it.each([
   [Stage.Draft, 'label.draft'],
@@ -612,6 +645,45 @@ it('persists user addition and keyboard removal with the current ontology versio
       { name: /New reviewer/ }
     )
   ).not.toBeInTheDocument();
+});
+
+it('keeps the reviewer list closed after a pick while the addition saves', async () => {
+  configureReviewerSearch();
+  let finishPatch: () => void = () => undefined;
+  (
+    APIClient.patch as jest.MockedFunction<typeof APIClient.patch>
+  ).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishPatch = () => resolve({ data: ontology });
+      })
+  );
+  await renderPanel();
+  const input = await openReviewerSearch();
+  fireEvent.change(input, { target: { value: 'new' } });
+  const option = await screen.findByRole('option', { name: /New reviewer/ });
+  await waitFor(() =>
+    expect(option).not.toHaveAttribute('aria-disabled', 'true')
+  );
+  await act(async () => {
+    fireEvent.click(option);
+  });
+
+  // Disabling the focused input blurs it, and focus restored after the save
+  // reopened the list over the dialog.
+  expect(input).toHaveValue('');
+  expect(input).toHaveFocus();
+  expect(input).not.toBeDisabled();
+  expect(input).toHaveAttribute('readonly');
+  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+  await act(async () => {
+    finishPatch();
+  });
+
+  expect(input).toHaveFocus();
+  expect(input).not.toHaveAttribute('readonly');
+  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 });
 
 it('allows one group team with All and disables adding another entry', async () => {
@@ -1044,7 +1116,7 @@ it('does not transfer an old settings failure or pending search to a new user', 
 
   expect(
     screen.getByRole('combobox', { name: /label.add-reviewer/ })
-  ).toBeDisabled();
+  ).toHaveAttribute('readonly');
 
   await act(async () => {
     useApplicationStore.setState({
@@ -1054,8 +1126,13 @@ it('does not transfer an old settings failure or pending search to a new user', 
   await waitFor(() =>
     expect(
       screen.getByRole('combobox', { name: /label.add-reviewer/ })
-    ).toBeEnabled()
+    ).not.toHaveAttribute('readonly')
   );
+
+  expect(
+    screen.getByRole('combobox', { name: /label.add-reviewer/ })
+  ).toBeEnabled();
+
   await act(async () => {
     rejectPatch?.({ isAxiosError: true, response: { status: 403 } });
   });

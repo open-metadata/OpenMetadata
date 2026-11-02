@@ -1972,6 +1972,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return entity.getParent() != null ? entity.getParent() : entity.getGlossary();
   }
 
+  /**
+   * A term's childrenCount counts every nested term by FQN prefix, so each ancestor term counts this
+   * one. The first FQN part is the glossary, which counts nothing.
+   */
+  @Override
+  protected List<EntityReference> getCountingParents(GlossaryTerm entity) {
+    String[] parts = FullyQualifiedName.split(entity.getFullyQualifiedName());
+    List<EntityReference> ancestors = new ArrayList<>();
+    for (int depth = 2; depth < parts.length; depth++) {
+      ancestors.add(
+          new EntityReference()
+              .withType(GLOSSARY_TERM)
+              .withFullyQualifiedName(
+                  FullyQualifiedName.build(Arrays.copyOfRange(parts, 0, depth))));
+    }
+    return ancestors;
+  }
+
   @Override
   public EntityInterface<?> getParentEntity(GlossaryTerm entity, String fields) {
     return entity.getParent() != null

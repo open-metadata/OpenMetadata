@@ -245,6 +245,9 @@ public class TestCaseResolutionStatusResource
 
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
+    // The include parameter is honored: its deletion scoping travels qualified on the test_case
+    // join (or an indexed EXISTS), via the DAO's incidentCondition — see
+    // ADR:2026-10-29-incident-listing-test-case-deletion-scoping-is-qualified.
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("incidentAssignee", assignee);

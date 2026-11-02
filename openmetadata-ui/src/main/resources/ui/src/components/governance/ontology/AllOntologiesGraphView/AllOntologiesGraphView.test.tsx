@@ -76,6 +76,7 @@ const renderTree = () =>
       surface="tree"
       onEditConcept={jest.fn()}
       onRefresh={jest.fn()}
+      onRequestGraphSurface={jest.fn()}
       onSelectedConceptChange={jest.fn()}
     />
   );
