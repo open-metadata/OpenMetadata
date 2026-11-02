@@ -60,7 +60,7 @@ const OntologyStudioHeader = <M extends string>({
   if (isAiMode) {
     return (
       <header
-        className="tw:shrink-0 tw:px-2 tw:pt-2"
+        className="tw:shrink-0 tw:p-2"
         data-testid="ontology-studio-header"
         data-tour-step="ontology-studio">
         <PageHeader
@@ -70,7 +70,7 @@ const OntologyStudioHeader = <M extends string>({
           // side panel it ran past the viewport; the tab row can wrap instead.
           footer={
             <Box
-              align="center"
+              align="end"
               className="tw:w-full"
               gap={2}
               justify="between"
@@ -85,7 +85,7 @@ const OntologyStudioHeader = <M extends string>({
               </Tabs>
               <Box
                 align="center"
-                className="tw:min-w-0"
+                className="tw:min-w-0 tw:pb-1.5"
                 gap={2}
                 justify="end"
                 wrap="wrap">
