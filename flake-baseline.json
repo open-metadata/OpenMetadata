@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-01T03:09:39Z",
+  "generatedAt": "2026-11-02T03:10:18Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "39891471813",
-      "sourceSha": "db2643864be8a6a12403d264c69cc3f1301b16df",
-      "recordedAt": "2026-10-23T03:23:39Z"
-    },
     {
       "runId": "40055442895",
       "sourceSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
@@ -53,6 +48,11 @@
       "runId": "41265802007",
       "sourceSha": "ae5963d0f5a4f5ab00e896b745842d332105cbfd",
       "recordedAt": "2026-11-01T03:09:39Z"
+    },
+    {
+      "runId": "41378543222",
+      "sourceSha": "c013852beb6f93c120575ee3b348738d75594f8e",
+      "recordedAt": "2026-11-02T03:10:18Z"
     }
   ],
   "entries": {
@@ -78,6 +78,16 @@
       "lastSeenSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
       "hardFailure": false
     },
+    "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it": {
+      "observations": [
+        "41378543222"
+      ],
+      "project": "Knowledge Graph",
+      "file": "Features/KnowledgeGraph.spec.ts",
+      "title": "Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it",
+      "lastSeenSha": "c013852beb6f93c120575ee3b348738d75594f8e",
+      "hardFailure": false
+    },
     "chromium :: Features/AIMode/AiObservabilityAlerts.spec.ts :: AI mode \u2014 observability alert form keeps every classic option \u203a saves every destination kind with its receivers and authentication": {
       "observations": [
         "40622038880"
@@ -86,16 +96,6 @@
       "file": "Features/AIMode/AiObservabilityAlerts.spec.ts",
       "title": "AI mode \u2014 observability alert form keeps every classic option \u203a saves every destination kind with its receivers and authentication",
       "lastSeenSha": "3e14a88747128ecb043e28f981530cb415f55b51",
-      "hardFailure": false
-    },
-    "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Draft Persistence \u203a multiple articles hold independent drafts simultaneously": {
-      "observations": [
-        "39891471813"
-      ],
-      "project": "chromium",
-      "file": "Features/ContextCenterArticles.spec.ts",
-      "title": "Context Center Articles \u203a Draft Persistence \u203a multiple articles hold independent drafts simultaneously",
-      "lastSeenSha": "db2643864be8a6a12403d264c69cc3f1301b16df",
       "hardFailure": false
     },
     "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card": {
@@ -117,16 +117,6 @@
       "file": "Features/DataQuality/TestLibrary.spec.ts",
       "title": "Test Library \u203a should display test platform badges correctly",
       "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": false
-    },
-    "chromium :: Features/GlobalPageSize.spec.ts :: Table & Data Model columns table pagination \u203a Page size should persist across different pages": {
-      "observations": [
-        "39891471813"
-      ],
-      "project": "chromium",
-      "file": "Features/GlobalPageSize.spec.ts",
-      "title": "Table & Data Model columns table pagination \u203a Page size should persist across different pages",
-      "lastSeenSha": "db2643864be8a6a12403d264c69cc3f1301b16df",
       "hardFailure": false
     },
     "chromium :: Features/OntologyFirstRun.spec.ts :: Ontology Studio first run \u203a creates an ontology from scratch and lands in Edit with the New class panel": {
