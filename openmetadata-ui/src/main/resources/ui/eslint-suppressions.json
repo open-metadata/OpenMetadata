@@ -900,7 +900,7 @@
   },
   "src/components/common/QueryViewer/QueryViewer.component.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/common/Table/TableV2.tsx": {

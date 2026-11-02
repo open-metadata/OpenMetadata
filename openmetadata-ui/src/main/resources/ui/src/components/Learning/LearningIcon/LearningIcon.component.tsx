@@ -43,6 +43,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
   pageId,
   title,
   className = '',
+  size = 'sm',
 }) => {
   const { t } = useTranslation();
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -129,6 +130,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
           )}
           data-testid="learning-icon"
           icon={Lightbulb01}
+          size={size}
           onClick={handleClick}
           onMouseEnter={openPopover}
           onMouseLeave={closePopover}
