@@ -13956,8 +13956,9 @@
                         },
                         "logdata": {
                           "title": "Extra data for the chosen logon authentication method (LOGDATA)",
-                          "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism.",
-                          "type": "string"
+                          "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism. The entire value is protected as a secret, including non-secret names. Secret references must resolve to the entire LOGDATA value.",
+                          "type": "string",
+                          "format": "password"
                         },
                         "hostPort": {
                           "title": "Host and Port",
@@ -19381,8 +19382,9 @@
                         },
                         "registryUri": {
                           "title": "Registry URI",
-                          "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments",
-                          "type": "string"
+                          "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected as a secret, including URIs without credentials. Secret references must resolve to the entire URI.",
+                          "type": "string",
+                          "format": "password"
                         },
                         "mlModelFilterPattern": {
                           "description": "Regex to only fetch MlModels with names matching the pattern.",
