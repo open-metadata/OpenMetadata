@@ -707,6 +707,20 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-CreateContextMemory-Rule'), '$.rules')
   AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('EditDescription')), '$.rules');
 
+-- DomainOnlyAccessPolicy: deny changes to policies, roles, teams, users, bots and apps that are in
+-- no domain.
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
+    'name', 'DomainAccessDenyAdministrationRule',
+    'description', 'Deny changing policies, roles, teams, users, bots and apps that are in no domain, and any bot, as they grant access or credentials',
+    'effect', 'deny',
+    'resources', JSON_ARRAY('app', 'bot', 'policy', 'role', 'team', 'user'),
+    'operations', JSON_ARRAY('Create', 'Delete', 'Deploy', 'EditAll', 'Trigger'),
+    'condition', 'noDomain() || isBotUser()'))
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
+    JSON_OBJECT('name', 'DomainAccessDenyAdministrationRule'));
+
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here
 -- rather than in one server's memory. pending_state holds the candidate configuration with its
@@ -1053,7 +1067,6 @@ CREATE TABLE IF NOT EXISTS ontology_release_member (
   PRIMARY KEY (releaseId, memberKind, memberId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-
 CREATE TABLE IF NOT EXISTS ontology_release_event (
   id VARCHAR(36) NOT NULL,
   ontologyId VARCHAR(36) NOT NULL,
@@ -1191,20 +1204,6 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   PRIMARY KEY (conceptId, assetId),
   KEY ontology_concept_binding_asset_index (assetId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- DomainOnlyAccessPolicy: deny changes to policies, roles, teams, users, bots and apps that are in
--- no domain.
-UPDATE policy_entity
-SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
-    'name', 'DomainAccessDenyAdministrationRule',
-    'description', 'Deny changing policies, roles, teams, users, bots and apps that are in no domain, and any bot, as they grant access or credentials',
-    'effect', 'deny',
-    'resources', JSON_ARRAY('app', 'bot', 'policy', 'role', 'team', 'user'),
-    'operations', JSON_ARRAY('Create', 'Delete', 'Deploy', 'EditAll', 'Trigger'),
-    'condition', 'noDomain() || isBotUser()'))
-WHERE name = 'DomainOnlyAccessPolicy'
-  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
-    JSON_OBJECT('name', 'DomainAccessDenyAdministrationRule'));
 
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
