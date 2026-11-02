@@ -46,6 +46,9 @@ jest.mock('utils/EntityNameUtils', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Avatar: (props: { 'data-testid'?: string }) => (
+    <span data-testid={props['data-testid']} />
+  ),
   Badge: ({
     children,
     ...rest
@@ -137,9 +140,8 @@ describe('InboxTaskListItem', () => {
       />
     );
 
-    expect(screen.getByTestId('agent-badge')).toHaveTextContent(
-      'Glossary Agent'
-    );
+    expect(screen.getByTestId('agent-avatar')).toBeInTheDocument();
+    expect(screen.getByText('Glossary Agent')).toBeInTheDocument();
     expect(
       screen.queryByText('aiautomationapplicationbot')
     ).not.toBeInTheDocument();
