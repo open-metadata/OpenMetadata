@@ -59,6 +59,15 @@ describe('OntologyHealthPanel', () => {
     expect(onConnect).toHaveBeenCalledWith(isolatedTerms[1]);
   });
 
+  it('lists isolated terms without a Connect action when the viewer cannot edit', () => {
+    render(<OntologyHealthPanel health={health} />);
+    fireEvent.click(screen.getByTestId('ontology-health-review'));
+
+    expect(screen.getByText('Account')).toBeInTheDocument();
+    expect(screen.queryByTestId('ontology-connect-term-1')).toBeNull();
+    expect(screen.queryByRole('button', { name: /label.connect/ })).toBeNull();
+  });
+
   it('prefers the explicit isolated count over the list length', () => {
     render(
       <OntologyHealthPanel

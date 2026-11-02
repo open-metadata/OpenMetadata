@@ -20,11 +20,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Cube02,
-  CubeOutline,
   GitBranch01,
   Grid01,
-  LayoutGrid01,
   Plus,
   Share07,
 } from '@openmetadata/ui-core-components/icons';
@@ -40,7 +37,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -55,7 +51,6 @@ import { OntologyModelStats } from '../../components/governance/ontology/Ontolog
 import OntologyNativeImportDialog from '../../components/governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog';
 import OntologyPublicationModal from '../../components/governance/ontology/OntologyPublicationModal/OntologyPublicationModal';
 import OntologyStudioHeader from '../../components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader';
-import OntologyShortcutList from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyShortcutList';
 import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
 import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
 import OntologyStudioWorkspace from '../../components/governance/ontology/OntologyStudioWorkspace/OntologyStudioWorkspace';
@@ -514,9 +509,13 @@ function getStudioStatsLabel(
   t: TFunction
 ): string {
   if (scope.kind === 'allOntologies') {
-    return `${aggregateGraph?.nodes.length ?? 0} ${t(
+    if (!aggregateGraph) {
+      return '';
+    }
+
+    return `${aggregateGraph.nodes.length} ${t(
       'label.concept-plural'
-    ).toLocaleLowerCase()} · ${aggregateGraph?.edges.length ?? 0} ${t(
+    ).toLocaleLowerCase()} · ${aggregateGraph.edges.length} ${t(
       'label.relation-plural'
     ).toLocaleLowerCase()}`;
   }
@@ -568,6 +567,45 @@ function canEditStudioScope(
   }
 
   return canEditGlossary;
+}
+
+function canShowEditTab(
+  scope: OntologyStudioScope,
+  rights: {
+    canEditAnyOntology: boolean;
+    canEditGlossary: boolean;
+    canEditSelectedOntology: boolean;
+    isEditing: boolean;
+  }
+): boolean {
+  if (rights.isEditing) {
+    return true;
+  }
+  if (scope.kind === 'allOntologies') {
+    return rights.canEditAnyOntology;
+  }
+  if (scope.kind === 'ontology') {
+    return rights.canEditSelectedOntology;
+  }
+
+  return rights.canEditGlossary;
+}
+
+function canShowPublicationTrigger(state: {
+  canEditAnyOntology: boolean;
+  canEditSelectedOntology: boolean;
+  isAllOntologies: boolean;
+  isBlocked: boolean;
+  selectedOntology: Ontology | undefined;
+}): boolean {
+  if (state.isBlocked) {
+    return false;
+  }
+  if (state.selectedOntology) {
+    return state.canEditSelectedOntology;
+  }
+
+  return state.isAllOntologies && state.canEditAnyOntology;
 }
 
 function nextConceptRequest(
@@ -662,6 +700,9 @@ const OntologyExplorerContent: React.FC = () => {
   const [ontologyLoadAttempt, setOntologyLoadAttempt] = useState(0);
   const selectedOntology = getSelectedOntology(ontologyId, loadedOntology);
   const canCreateOntology = canCreateNativeOntology(isAdminUser, permissions);
+  const canEditAnyOntology =
+    Boolean(isAdminUser) ||
+    checkPermission(Operation.EditAll, ResourceEntity.ONTOLOGY, permissions);
   const selectedOntologyId = selectedOntology?.id ?? '';
   const refreshNativeWorkingDiff = useCallback(() => {
     void queryClient.invalidateQueries({
@@ -1027,12 +1068,16 @@ const OntologyExplorerContent: React.FC = () => {
     selectedOntology,
     canEditOntology
   );
+  // A concept owner reaches Edit from the concept panel without ontology-level
+  // rights, so the tab also shows while that session is open.
+  const showEditTab = canShowEditTab(studioScope, {
+    canEditAnyOntology,
+    canEditGlossary: canEditOntology,
+    canEditSelectedOntology: canEditNativeOntology,
+    isEditing: mode === 'edit',
+  });
   const isOntologyAiAvailable = isGlossaryScope && isOntologyAiEnabled;
-  const modeTabs = computeModeTabs(
-    t,
-    canEditCurrentScope,
-    isOntologyAiAvailable
-  );
+  const modeTabs = computeModeTabs(t, showEditTab, isOntologyAiAvailable);
 
   useEffect(() => {
     if (ontologyId && !selectedOntology) {
@@ -1387,12 +1432,16 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }
 
+  const canShowPublication = canShowPublicationTrigger({
+    canEditAnyOntology,
+    canEditSelectedOntology: canEditNativeOntology,
+    isAllOntologies,
+    isBlocked: isCatalogEmpty || isFirstListLoading,
+    selectedOntology,
+  });
+
   function renderPublicationActions() {
-    if (
-      (!selectedOntology && !isAllOntologies) ||
-      isCatalogEmpty ||
-      isFirstListLoading
-    ) {
+    if (!canShowPublication) {
       return null;
     }
     const isolatedCount = isAllOntologies
@@ -1761,13 +1810,6 @@ const OntologyExplorerContent: React.FC = () => {
   };
 
   function renderAggregateError() {
-    const ontologyActions = availableOntologies.map((ontology) => ({
-      key: ontology.id,
-      label: getEntityName(ontology),
-      color: 'secondary' as const,
-      onPress: () => selectOntology(ontology),
-    }));
-
     return (
       <div
         className="tw:relative tw:min-h-70 tw:flex-1"
@@ -1776,12 +1818,6 @@ const OntologyExplorerContent: React.FC = () => {
         {allModels.isTooLarge ? (
           <NoDataPlaceholder
             description={t('message.ontology-aggregate-capacity')}
-            footer={
-              <OntologyShortcutList
-                ontologies={availableOntologies}
-                onSelect={(ontology) => selectOntology(ontology)}
-              />
-            }
           />
         ) : (
           <SomethingWentWrongPlaceholder
@@ -1794,7 +1830,6 @@ const OntologyExplorerContent: React.FC = () => {
                   void allModels.refetch();
                 },
               },
-              ...ontologyActions,
             ]}
           />
         )}
@@ -1803,62 +1838,10 @@ const OntologyExplorerContent: React.FC = () => {
   }
 
   function renderNoOntologies() {
-    const newOntologyLabel = t('label.new-entity', {
-      entity: t('label.ontology'),
-    });
-    const startCreating = () => setIsCreateDialogOpen(true);
-
-    if (isAiMode) {
-      return (
-        <div
-          className="tw:relative tw:h-full tw:min-h-70 tw:overflow-hidden tw:rounded-lg tw:bg-primary"
-          data-testid="all-ontologies-empty">
-          <FeaturesPlaceholder
-            description={t('message.ontology-empty-description')}
-            features={[
-              {
-                key: 'relationships',
-                icon: <LayoutGrid01 className="tw:text-fg-brand-primary" />,
-                title: t('label.relationship-plural'),
-                description: t(
-                  'message.ontology-relationships-feature-description'
-                ),
-              },
-              {
-                key: 'the-graph',
-                icon: <Cube02 className="tw:text-fg-warning-primary" />,
-                title: t('label.the-graph'),
-                description: t('message.ontology-graph-feature-description'),
-              },
-              {
-                key: 'what-it-unlocks',
-                icon: <CubeOutline className="tw:text-fg-success-primary" />,
-                title: t('label.what-it-unlocks'),
-                description: t('message.ontology-unlocks-feature-description'),
-              },
-            ]}
-            footer={
-              canCreateOntology ? (
-                <Button
-                  color="primary"
-                  data-testid="all-ontologies-new-ontology"
-                  iconLeading={Plus}
-                  size="sm"
-                  onPress={startCreating}>
-                  {newOntologyLabel}
-                </Button>
-              ) : undefined
-            }
-            title={t('message.ontology-empty-title')}
-          />
-        </div>
-      );
-    }
-
     return (
       <OntologyEmptyState
         canCreate={canCreateOntology}
-        onCreateFromScratch={startCreating}
+        onCreateFromScratch={() => setIsCreateDialogOpen(true)}
         onImportFile={() => setIsEmptyImportOpen(true)}
         onInstallFromLibrary={() => setIsLibraryOpen(true)}
       />

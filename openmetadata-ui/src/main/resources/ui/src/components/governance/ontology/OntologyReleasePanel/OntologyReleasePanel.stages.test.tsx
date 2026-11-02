@@ -328,6 +328,9 @@ it('shows the human task label, UUID route and frozen All decisions while public
     `/tasks/${review.task.id}`
   );
   expect(screen.queryByTestId('ontology-publish-release')).toBeDisabled();
+  expect(
+    screen.getByTestId('ontology-publication-disabled-reason')
+  ).toHaveTextContent('message.ontology-publication-awaiting-approval');
 
   const reviewers = screen.getByTestId('ontology-release-reviewers');
 
@@ -1410,3 +1413,13 @@ it.each(['user', 'ontology'])(
     ).not.toBeChecked();
   }
 );
+
+it('tells a user without the author role why capture and review are disabled', async () => {
+  setStage(Stage.Draft);
+  await renderPanel(false);
+
+  expect(screen.getByTestId('ontology-capture-release')).toBeDisabled();
+  expect(
+    screen.getByTestId('ontology-publication-disabled-reason')
+  ).toHaveTextContent('message.ontology-publication-needs-author-role');
+});

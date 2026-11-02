@@ -903,22 +903,35 @@ describe('OntologyExplorerPage', () => {
     ).toHaveTextContent('label.new-ontology');
   });
 
-  it('offers the first-run options without permission to create but disables them', async () => {
-    mockSearchParams = new URLSearchParams();
-    mockUseAuth.mockReturnValue({ isAdminUser: false, isFirstTimeUser: false });
-    render(
-      <MemoryRouter>
-        <OntologyExplorerPage />
-      </MemoryRouter>
-    );
+  it.each([false, true])(
+    'tells a user without Create to ask for the OntologyAuthor role instead of showing disabled options (AI mode %s)',
+    async (aiMode) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(aiMode);
+      mockSearchParams = new URLSearchParams();
+      mockUseAuth.mockReturnValue({
+        isAdminUser: false,
+        isFirstTimeUser: false,
+      });
+      render(
+        <MemoryRouter>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      );
 
-    expect(
-      await screen.findByRole('button', { name: 'label.create-from-scratch' })
-    ).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: 'label.install-from-library' })
-    ).toBeDisabled();
-  });
+      expect(
+        await screen.findByTestId('ontology-empty-no-create')
+      ).toHaveTextContent('message.ontology-create-requires-author-role');
+      expect(
+        screen.getByRole('heading', { name: 'label.no-ontologies-yet' })
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('button', { name: 'label.create-from-scratch' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'label.install-from-library' })
+      ).not.toBeInTheDocument();
+    }
+  );
 
   it('shows the no-concepts card only while the ontology has zero classes', async () => {
     renderNativeStudio('?ontology=native-sales', nativeOntology, undefined, []);
@@ -1033,24 +1046,33 @@ describe('OntologyExplorerPage', () => {
     }
   );
 
-  it('shows the feature placeholder for an empty catalog in AI mode', async () => {
-    (useIsAiMode as jest.Mock).mockReturnValue(true);
-    mockSearchParams = new URLSearchParams();
-    render(
-      <MemoryRouter>
-        <OntologyExplorerPage />
-      </MemoryRouter>
-    );
+  it.each([false, true])(
+    'shows the same three enabled first-run options to a user with Create (AI mode %s)',
+    async (aiMode) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(aiMode);
+      mockSearchParams = new URLSearchParams();
+      render(
+        <MemoryRouter>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      );
 
-    const empty = await screen.findByTestId('all-ontologies-empty');
+      const empty = await screen.findByTestId('ontology-empty-state');
+      const buttons = within(empty).getAllByRole('button');
 
-    expect(empty).toHaveTextContent('message.ontology-empty-title');
-    expect(empty).toHaveTextContent('label.the-graph');
+      expect(buttons.map((button) => button.textContent)).toEqual([
+        'label.install-from-library',
+        'label.import-a-file',
+        'label.create-from-scratch',
+      ]);
 
-    fireEvent.click(screen.getByTestId('all-ontologies-new-ontology'));
+      buttons.forEach((button) => expect(button).toBeEnabled());
 
-    expect(await screen.findByTestId('ontology-create-dialog')).toBeVisible();
-  });
+      fireEvent.click(screen.getByTestId('ontology-empty-scratch'));
+
+      expect(await screen.findByTestId('ontology-create-dialog')).toBeVisible();
+    }
+  );
 
   it('creates an ontology from the empty catalog and opens the New class panel in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
@@ -1064,7 +1086,7 @@ describe('OntologyExplorerPage', () => {
     });
     (createOntology as jest.Mock).mockResolvedValue(nativeOntology);
     renderNativeStudio('', nativeOntology, undefined, []);
-    fireEvent.click(await screen.findByTestId('all-ontologies-new-ontology'));
+    fireEvent.click(await screen.findByTestId('ontology-empty-scratch'));
 
     expect(await screen.findByTestId('ontology-create-dialog')).toBeVisible();
 
@@ -1223,7 +1245,7 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('ontology-publication-trigger')).toBeDisabled();
   });
 
-  it('keeps Reload beside the ontology shortcuts when only the aggregate graph fails', async () => {
+  it('keeps Reload and lists no ontology buttons when only the aggregate graph fails', async () => {
     (listOntologyConcepts as jest.Mock).mockRejectedValueOnce(
       new Error('aggregate failed')
     );
@@ -1232,14 +1254,39 @@ describe('OntologyExplorerPage', () => {
     const error = await screen.findByTestId('all-ontologies-load-error');
 
     expect(
-      within(error).getByRole('button', { name: 'Native sales' })
-    ).toBeVisible();
+      within(error).queryByRole('button', { name: 'Native sales' })
+    ).not.toBeInTheDocument();
 
     fireEvent.click(
       within(error).getByRole('button', { name: 'label.reload' })
     );
 
     expect(await screen.findByTestId('all-ontologies-graph')).toBeVisible();
+  });
+
+  it('shows only the message that points to the All ontologies menu when the catalog passes the aggregate limit', async () => {
+    const longName = 'L'.repeat(243);
+    const ontologies: Ontology[] = Array.from({ length: 21 }, (_, index) => ({
+      ...nativeOntology,
+      id: `ontology-${index}`,
+      name: index === 0 ? longName : `Ontology ${index}`,
+      fullyQualifiedName: index === 0 ? longName : `Ontology${index}`,
+    }));
+    renderNativeStudio('', ontologies[1], undefined, ['Party'], ontologies);
+
+    const message = await screen.findByTestId('all-ontologies-load-error');
+
+    expect(message).toHaveTextContent('message.ontology-aggregate-capacity');
+    expect(within(message).queryAllByRole('button')).toHaveLength(0);
+    expect(
+      screen.queryByTestId('ontology-shortcut-list')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-explorer-stats')).toHaveTextContent(
+      /^$/
+    );
+    expect(
+      screen.queryByText(/0 label\.concept-plural/i)
+    ).not.toBeInTheDocument();
   });
 
   it('defaults to a read-only native graph and opens the owning ontology', async () => {
@@ -1464,13 +1511,38 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('ontology-add-concept')).toBeVisible();
   });
 
+  it.each([
+    ['author', true, ['view', 'edit', 'query'], true],
+    ['reviewer', false, ['view', 'query'], false],
+    ['consumer', false, ['view', 'query'], false],
+  ])(
+    'offers the %s the matching tabs and Publish trigger',
+    async (_role, canEditAll, tabs, hasPublish) => {
+      (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll });
+      mockUseAuth.mockReturnValue({
+        isAdminUser: false,
+        isFirstTimeUser: false,
+      });
+      renderNativeStudio('?ontology=native-sales');
+      await screen.findByTestId('native-canvas');
+
+      expect(
+        ['view', 'edit', 'query'].filter((id) =>
+          screen.queryByTestId(`mode-tab-${id}`)
+        )
+      ).toEqual(tabs);
+      expect(
+        Boolean(screen.queryByTestId('ontology-publication-trigger'))
+      ).toBe(hasPublish);
+    }
+  );
+
   it('hides the sub-tab Add concept from a user who cannot edit the ontology', async () => {
     (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: false });
     renderNativeStudio('?ontology=native-sales');
     await screen.findByTestId('native-canvas');
 
-    fireEvent.click(screen.getByTestId('mode-tab-edit'));
-
+    expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('ontology-add-concept')
     ).not.toBeInTheDocument();
@@ -1537,14 +1609,8 @@ describe('OntologyExplorerPage', () => {
     (usePermissionProvider as jest.Mock).mockReturnValue({ permissions: {} });
     await screen.findByTestId('native-canvas');
 
-    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+    expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
 
-    expect(
-      screen.queryByTestId('ontology-add-concept')
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('submode-tab-definitions'));
-    fireEvent.click(screen.getByTestId('mode-tab-view'));
     fireEvent.click(screen.getByTestId('submode-tab-tree'));
     fireEvent.click(screen.getByTestId('ontology-tree-term-Customer'));
     fireEvent.click(screen.getByTestId('ontology-concept-edit'));

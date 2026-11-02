@@ -953,7 +953,7 @@ const OntologyGraphView = ({
       <OntologyHealthPanel
         health={health}
         placement="sidebar"
-        onConnect={connectNode}
+        onConnect={canEditOntology ? connectNode : undefined}
       />
     );
   };
@@ -1049,7 +1049,7 @@ const OntologyGraphView = ({
           metrics={metrics}
           selectedNodeId={selectedId}
           source={{ kind: 'native', index: treeIndex }}
-          onConnect={connectNode}
+          onConnect={canEditOntology ? connectNode : undefined}
           onSelect={selectNode}
         />
       );

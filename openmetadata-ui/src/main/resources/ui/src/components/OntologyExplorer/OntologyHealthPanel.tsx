@@ -53,7 +53,8 @@ interface OntologyHealthPanelProps {
   readonly health: OntologyHealthSummary;
   readonly isolatedTermCount?: number;
   readonly placement?: 'floating' | 'sidebar';
-  readonly onConnect: (node: OntologyNode) => void;
+  /** Omitted for viewers: connecting a term opens the editor, which they cannot use. */
+  readonly onConnect?: (node: OntologyNode) => void;
 }
 
 type HealthPanelView = 'minimized' | 'summary' | 'open';
@@ -232,15 +233,17 @@ const OntologyHealthPanel = ({
           {t('message.no-relations-yet')}
         </Typography>
       </div>
-      <Button
-        aria-label={`${t('label.connect')} ${term.label}`}
-        color="secondary"
-        data-testid={`ontology-connect-${term.id}`}
-        iconLeading={isAiMode ? Plus : Link01}
-        size="xs"
-        onPress={() => onConnect(term)}>
-        {t('label.connect')}
-      </Button>
+      {onConnect ? (
+        <Button
+          aria-label={`${t('label.connect')} ${term.label}`}
+          color="secondary"
+          data-testid={`ontology-connect-${term.id}`}
+          iconLeading={isAiMode ? Plus : Link01}
+          size="xs"
+          onPress={() => onConnect(term)}>
+          {t('label.connect')}
+        </Button>
+      ) : null}
     </li>
   );
 
