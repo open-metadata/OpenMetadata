@@ -113,6 +113,12 @@ Option to include/exclude draft dashboards. By default it will include draft das
 $$
 
 $$section
+### Include Custom Properties $(id="includeCustomProperties")
+
+Option to add source-specific custom properties to dashboards, such as the app views, last run status, run time and refresh time of Hex projects. The custom property definitions are shared by every dashboard in OpenMetadata, so this is disabled by default.
+$$
+
+$$section
 ### Override Metadata $(id="overrideMetadata")
 
 Set the `Override Metadata` toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source.
