@@ -2,6 +2,7 @@ package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyRestrictionKind;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.OntologyValidationException;
 
 class OntologyStructureValidatorTest {
   private static final URI PROPERTY = URI.create("urn:property");
@@ -402,6 +404,121 @@ class OntologyStructureValidatorTest {
     assertFalse(report.getValid());
     assertEquals(1001, report.getViolationCount());
     assertEquals(1000, report.getViolations().size());
+  }
+
+  @Test
+  void deletionImpactListsChildrenRelationshipsRulesAndBlockers() {
+    final var animal = named(concept("Animal"), "Animal");
+    final var dog = named(concept("Dog"), "Dog");
+    final var cat = named(concept("Cat"), "Cat");
+    final var plant = named(concept("Plant"), "Plant");
+    final var dogIsAnimal = named(subclass(dog, animal), "dog-is-animal");
+    final var catIsAnimal = named(subclass(cat, animal), "cat-is-animal");
+    final var animalOwnsPlant = named(subclass(animal, plant), "animal-is-plant-ish");
+    final var plantDisjointAnimal =
+        named(subclass(plant, animal).withAxiomType(OntologyAxiomType.DISJOINT_WITH), "plant-vs");
+    final var eats = named(property(URI.create("urn:eats"), OntologyPropertyKind.OBJECT), "eats");
+    eats.withRange(List.of(animal.getIri()));
+
+    final var impact =
+        OntologyStructureValidator.deletionImpact(
+            animal,
+            List.of(
+                animal,
+                dog,
+                cat,
+                plant,
+                dogIsAnimal,
+                catIsAnimal,
+                animalOwnsPlant,
+                plantDisjointAnimal,
+                eats));
+
+    assertEquals(List.of("Cat", "Dog"), names(impact.getChildren()));
+    assertEquals(
+        List.of("animal-is-plant-ish", "cat-is-animal", "dog-is-animal"),
+        names(impact.getRelationships()));
+    assertEquals(List.of("plant-vs"), names(impact.getRules()));
+    assertEquals(List.of("eats"), names(impact.getBlockers()));
+  }
+
+  @Test
+  void deletionImpactIgnoresDefinitionsThatDoNotNameTheConcept() {
+    final var animal = named(concept("Animal"), "Animal");
+    final var dog = named(concept("Dog"), "Dog");
+    final var plant = named(concept("Plant"), "Plant");
+    final var impact =
+        OntologyStructureValidator.deletionImpact(
+            animal, List.of(animal, dog, plant, named(subclass(dog, plant), "dog-is-plant")));
+
+    assertEquals(List.of(), impact.getChildren());
+    assertEquals(List.of(), impact.getRelationships());
+    assertEquals(List.of(), impact.getRules());
+    assertEquals(List.of(), impact.getBlockers());
+  }
+
+  @Test
+  void restrictionFillerIsARelationshipButNotAChild() {
+    final var animal = named(concept("Animal"), "Animal");
+    final var owner = named(concept("Owner"), "Owner");
+    final var owns = URI.create("urn:owns");
+    final var ownsAnimal =
+        named(
+            subclass(owner)
+                .withExpressions(
+                    List.of(
+                        new OntologyExpression()
+                            .withKind(OntologyExpressionKind.RESTRICTION)
+                            .withRestrictionKind(OntologyRestrictionKind.SOME)
+                            .withPropertyIri(owns)
+                            .withFiller(
+                                new OntologyExpression()
+                                    .withKind(OntologyExpressionKind.NAMED_CLASS)
+                                    .withClassIri(animal.getIri())))),
+            "owner-owns-animal");
+
+    final var impact =
+        OntologyStructureValidator.deletionImpact(animal, List.of(animal, owner, ownsAnimal));
+
+    assertEquals(List.of("owner-owns-animal"), names(impact.getRelationships()));
+    assertEquals(List.of(), impact.getChildren());
+  }
+
+  @Test
+  void removingTheListedAxiomsLeavesTheRestOfTheModelValid() {
+    final var animal = named(concept("Animal"), "Animal");
+    final var dog = named(concept("Dog"), "Dog");
+    final var plant = named(concept("Plant"), "Plant");
+    final var dogIsAnimal = named(subclass(dog, animal), "dog-is-animal");
+    final var plantDisjointAnimal =
+        named(subclass(plant, animal).withAxiomType(OntologyAxiomType.DISJOINT_WITH), "plant-vs");
+    final List<OntologyDefinition> model = List.of(dog, plant, dogIsAnimal, plantDisjointAnimal);
+
+    final var left =
+        assertThrows(
+            OntologyValidationException.class,
+            () -> OntologyStructureValidator.requireValidWorking(model));
+    assertEquals(2, left.getError().getViolationCount());
+
+    final var impact =
+        OntologyStructureValidator.deletionImpact(
+            animal, List.of(animal, dog, plant, dogIsAnimal, plantDisjointAnimal));
+    final var removed = new java.util.HashSet<UUID>();
+    impact.getRelationships().forEach(reference -> removed.add(reference.getId()));
+    impact.getRules().forEach(reference -> removed.add(reference.getId()));
+    final var remaining = model.stream().filter(value -> !removed.contains(value.getId())).toList();
+
+    assertEquals(List.of(dog, plant), remaining);
+    OntologyStructureValidator.requireValidWorking(remaining);
+  }
+
+  private static List<String> names(List<EntityReference> references) {
+    return references.stream().map(EntityReference::getName).toList();
+  }
+
+  private static <T extends OntologyDefinition> T named(T definition, String name) {
+    definition.setName(name);
+    return definition;
   }
 
   private static OntologyReleaseStructureReport validate(OntologyDefinition... definitions) {

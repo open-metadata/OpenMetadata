@@ -14,6 +14,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.jena.vocabulary.OWL2;
 import org.openmetadata.schema.OntologyDefinition;
+import org.openmetadata.schema.api.data.OntologyConceptDeleteImpact;
 import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.api.data.OntologyReleaseStructureReport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -21,6 +22,7 @@ import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyProfileViolation;
 import org.openmetadata.schema.type.OntologyProfileViolationCode;
@@ -154,6 +156,78 @@ public final class OntologyStructureValidator {
         .filter(definition -> affected.contains(definition.value().getId()))
         .forEach(validator::validate);
     return validator;
+  }
+
+  /**
+   * Classifies what deleting {@code concept} touches. {@code context} holds the definitions that
+   * name its IRI plus the concepts declared by the subjects of those axioms; anything else in it is
+   * ignored. Axioms are removed with the concept, so the caller deletes {@code relationships} and
+   * {@code rules} before the concept itself.
+   */
+  public static OntologyConceptDeleteImpact deletionImpact(
+      final OntologyConcept concept, final List<? extends OntologyDefinition> context) {
+    final String iri = concept.getIri().toString();
+    final var children = new ArrayList<EntityReference>();
+    final var relationships = new ArrayList<EntityReference>();
+    final var rules = new ArrayList<EntityReference>();
+    final var blockers = new ArrayList<EntityReference>();
+    final Map<String, List<OntologyConcept>> declared =
+        context.stream()
+            .filter(OntologyConcept.class::isInstance)
+            .map(OntologyConcept.class::cast)
+            .filter(other -> !other.getId().equals(concept.getId()))
+            .collect(Collectors.groupingBy(other -> other.getIri().toString()));
+    final var ordered =
+        context.stream()
+            .sorted(
+                Comparator.comparing(
+                    (OntologyDefinition value) -> String.valueOf(value.getName()),
+                    String.CASE_INSENSITIVE_ORDER))
+            .toList();
+    for (final OntologyDefinition value : ordered) {
+      if (value.getId().equals(concept.getId()) || Boolean.TRUE.equals(value.getDeleted())) {
+        continue;
+      }
+      switch (value) {
+        case OntologyAxiom axiom -> {
+          if (OntologyReferences.collect(axiom).stream()
+              .noneMatch(reference -> reference.getIri().toString().equals(iri))) {
+            break;
+          }
+          final boolean hierarchy = axiom.getAxiomType() == OntologyAxiomType.SUBCLASS_OF;
+          (hierarchy ? relationships : rules).add(axiom.getEntityReference());
+          if (hierarchy
+              && axiom.getSubjectIri() != null
+              && OntologyClassHierarchy.namedParents(axiom).stream()
+                  .anyMatch(parent -> parent.toString().equals(iri))) {
+            declared
+                .getOrDefault(axiom.getSubjectIri().toString(), List.of())
+                .forEach(child -> children.add(child.getEntityReference()));
+          }
+        }
+        case OntologyProperty property -> {
+          if (names(property.getDomain(), iri) || names(property.getRange(), iri)) {
+            blockers.add(property.getEntityReference());
+          }
+        }
+        case OntologyConcept other -> {
+          if (other.getReplacedBy() != null && other.getReplacedBy().toString().equals(iri)) {
+            blockers.add(other.getEntityReference());
+          }
+        }
+        default -> {}
+      }
+    }
+    return new OntologyConceptDeleteImpact()
+        .withConcept(concept.getEntityReference())
+        .withChildren(children.stream().distinct().toList())
+        .withRelationships(relationships)
+        .withRules(rules)
+        .withBlockers(blockers);
+  }
+
+  private static boolean names(final List<URI> iris, final String iri) {
+    return listOrEmpty(iris).stream().anyMatch(value -> value.toString().equals(iri));
   }
 
   private void validate(final Definition definition) {
