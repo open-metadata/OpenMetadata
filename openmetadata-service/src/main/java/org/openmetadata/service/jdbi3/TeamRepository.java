@@ -83,6 +83,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -103,8 +104,12 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver;
@@ -1386,6 +1391,8 @@ public class TeamRepository extends EntityRepository<Team> {
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEAM, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Team team;
+    // Teams this import creates; a team may be placed under them without an edit check.
+    private final Set<String> createdTeams = new HashSet<>();
 
     TeamCsv(Team team, String updatedBy) {
       super(Entity.TEAM, HEADERS, updatedBy);
@@ -1407,7 +1414,11 @@ public class TeamRepository extends EntityRepository<Team> {
               .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
               .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
 
-      rejectGrantsFromNonAdmin(printer, csvRecord, team);
+      Team stored =
+          SubjectContext.getSubjectContext(importedBy).isAdmin()
+              ? null
+              : findStoredGrants(team.getName());
+      rejectGrantsFromNonAdmin(printer, csvRecord, team, stored);
 
       // Pre-track the entity so getParents can find it for circular dependency detection
       if (processRecord) {
@@ -1416,6 +1427,10 @@ public class TeamRepository extends EntityRepository<Team> {
 
       // Field 5 - parent teams
       getParents(printer, csvRecord, team);
+      rejectParentsNotEditable(printer, csvRecord, team, stored);
+      if (processRecord && stored != null && stored.getId() == null) {
+        createdTeams.add(team.getName());
+      }
 
       if (processRecord) {
         createEntity(printer, csvRecord, team);
@@ -1425,13 +1440,13 @@ public class TeamRepository extends EntityRepository<Team> {
     /**
      * Members inherit a team's roles and policies, so only an admin may add them, as on the REST
      * paths. Ones the team already holds are let through so a re-import of an export still works.
+     * {@code stored} is null when an admin imports.
      */
-    private void rejectGrantsFromNonAdmin(CSVPrinter printer, CSVRecord csvRecord, Team team)
-        throws IOException {
-      if (!processRecord || SubjectContext.getSubjectContext(importedBy).isAdmin()) {
+    private void rejectGrantsFromNonAdmin(
+        CSVPrinter printer, CSVRecord csvRecord, Team team, Team stored) throws IOException {
+      if (!processRecord || stored == null) {
         return;
       }
-      Team stored = findStoredGrants(team.getName());
       if (addsReferences(stored.getDefaultRoles(), team.getDefaultRoles())) {
         importFailure(printer, grantRequiresAdmin(7, DEFAULT_ROLES), csvRecord);
         processRecord = false;
@@ -1439,6 +1454,54 @@ public class TeamRepository extends EntityRepository<Team> {
         importFailure(printer, grantRequiresAdmin(8, Entity.POLICIES), csvRecord);
         processRecord = false;
       }
+    }
+
+    /**
+     * Placing a team under another one needs the same permission as editing that parent, as on the
+     * REST paths. The import root was authorized by the endpoint, and parents created by this file
+     * or already held are let through.
+     */
+    private void rejectParentsNotEditable(
+        CSVPrinter printer, CSVRecord csvRecord, Team team, Team stored) throws IOException {
+      if (!processRecord || stored == null) {
+        return;
+      }
+      Set<UUID> storedParents =
+          listOrEmpty(stored.getParents()).stream()
+              .map(EntityReference::getId)
+              .collect(Collectors.toSet());
+      for (EntityReference parent : listOrEmpty(team.getParents())) {
+        boolean alreadyAllowed =
+            parent.getName().equals(this.team.getName())
+                || storedParents.contains(parent.getId())
+                || createdTeams.contains(parent.getName());
+        if (!alreadyAllowed && !canEditParent(parent)) {
+          importFailure(printer, parentNotEditable(4, team.getName(), parent.getName()), csvRecord);
+          processRecord = false;
+          return;
+        }
+      }
+    }
+
+    private boolean canEditParent(EntityReference parent) {
+      try {
+        Entity.getAuthorizer()
+            .authorizeActor(
+                ChangeActor.recorded(importedBy, null),
+                new OperationContext(TEAM, MetadataOperation.EDIT_ALL),
+                new ResourceContext<>(TEAM, parent.getId(), null, ALL));
+        return true;
+      } catch (AuthorizationException e) {
+        return false;
+      }
+    }
+
+    private static String parentNotEditable(int field, String team, String parent) {
+      String error =
+          String.format(
+              "Not allowed to place team %s under %s, which you cannot edit", team, parent);
+      return String.format(
+          "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
     }
 
     private static Team findStoredGrants(String name) {
@@ -1449,7 +1512,7 @@ public class TeamRepository extends EntityRepository<Team> {
           : repository.get(
               null,
               stored.getId(),
-              repository.getFields(DEFAULT_ROLES + "," + Entity.POLICIES),
+              repository.getFields(DEFAULT_ROLES + "," + Entity.POLICIES + ",parents"),
               ALL,
               false);
     }

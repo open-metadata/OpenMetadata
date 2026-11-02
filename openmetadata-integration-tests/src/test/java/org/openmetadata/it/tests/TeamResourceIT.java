@@ -1558,6 +1558,36 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
         OpenMetadataException.class, () -> SdkClients.adminClient().teams().getByName(group));
   }
 
+  @Test
+  void test_importCsv_ownerCannotPlaceTeamUnderTeamTheyCannotEdit(TestNamespace ns) {
+    User owner = createLoginUser(ns, "csvparentowner");
+    Team department = createOwnedTeam(ns, "csvParentDept", TeamType.DEPARTMENT, owner);
+    Team subTeam =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("csvParentSub"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(department.getId())));
+    Team group = createOwnedTeam(ns, "csvParentGroup", TeamType.GROUP, owner);
+    // Naming the existing sub-team in an earlier row must not count as creating it
+    String csv =
+        "name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n"
+            + String.format(
+                "%s,%s,,Department,%s,,false,,\n",
+                subTeam.getName(), subTeam.getName(), department.getName())
+            + String.format(
+                "%s,%s,,Group,%s,user:%s,false,,\n",
+                group.getName(), group.getName(), subTeam.getName(), owner.getName());
+
+    String result = clientFor(owner).teams().importCsv(department.getName(), csv, false);
+
+    assertTrue(result.contains("which you cannot edit"), result);
+    Team stored = SdkClients.adminClient().teams().get(group.getId().toString(), "parents");
+    assertTrue(
+        stored.getParents().stream().noneMatch(p -> p.getId().equals(subTeam.getId())),
+        "Group must not be placed under a team its owner cannot edit");
+  }
+
   // Signed in by email, so the name must match the email's local part to resolve the user.
   private User createLoginUser(TestNamespace ns, String base) {
     String localPart = base + ns.shortPrefix();

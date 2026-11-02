@@ -5,7 +5,8 @@
 - **Deciders:** Sonika Shah
 - **Guard:** `TeamResourceIT` (`test_ownerCannotAddRolesOrPoliciesToOwnTeam`,
   `test_ownerCannotAddRolesToOwnTeamThroughPut`, `test_ownerCanOnlyMoveOwnTeamUnderTeamTheyCanEdit`,
-  `test_importCsv_ownerCannotAddRolesToTeams`), `UserResourceIT`
+  `test_importCsv_ownerCannotAddRolesToTeams`, `test_importCsv_ownerCannotPlaceTeamUnderTeamTheyCannotEdit`),
+  `UserResourceIT`
   (`test_patchUser_joinClosedTeamWithReplace_forbiddenForNonAdmin`)
 
 ## Context
@@ -18,8 +19,8 @@ its members inherit.
 ## Decision
 - Adding a default role or a policy to a team needs an admin, on `POST`, `PUT`, `PATCH` and team CSV
   import. Removing one, or sending the ones the team already holds, does not.
-- Adding a parent to a team needs the same permission as editing that parent directly. The
-  organization is exempt, as every user already belongs to it.
+- Adding a parent to a team needs the same permission as editing that parent directly, on the REST
+  paths and in team CSV import. The organization is exempt, as every user already belongs to it.
 - A user `PATCH` that changes team membership is judged on the teams the patch leaves the user in,
   whatever the operation, so a closed team needs an admin however the change is written.
 
