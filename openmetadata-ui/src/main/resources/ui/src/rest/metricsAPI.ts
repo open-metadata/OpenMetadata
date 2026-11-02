@@ -328,14 +328,11 @@ export const getMetricSearchPaths = async (query: string) => {
       ),
     ].filter((id) => !ancestorIds.has(id));
     parentIds.forEach((id) => ancestorIds.add(id));
-    level = parentIds.length
-      ? (
-          await searchMetricDocs(
-            '',
-            getTermQuery({ 'id.keyword': parentIds }, 'should', 1)
-          )
-        ).docs
-      : [];
+    const parentFilter = getTermQuery({ 'id.keyword': parentIds }, 'should', 1);
+    const parentDocs = parentIds.length
+      ? await searchMetricDocs('', parentFilter) // NOSONAR each level needs the previous level's results
+      : undefined;
+    level = parentDocs?.docs ?? [];
     depth += 1;
   }
 
@@ -359,10 +356,8 @@ export const getMetricParentIds = async (ids: string[]) => {
   let depth = 0;
 
   while (level.length && depth < METRIC_SEARCH_PATH_MAX_DEPTH) {
-    const { docs } = await searchMetricDocs(
-      '',
-      getTermQuery({ 'id.keyword': level }, 'should', 1)
-    );
+    const levelFilter = getTermQuery({ 'id.keyword': level }, 'should', 1);
+    const { docs } = await searchMetricDocs('', levelFilter); // NOSONAR each level needs the previous level's results
     level = [];
     docs.forEach(({ id, parent }) => {
       if (parent?.id && !parentIdById.has(id)) {

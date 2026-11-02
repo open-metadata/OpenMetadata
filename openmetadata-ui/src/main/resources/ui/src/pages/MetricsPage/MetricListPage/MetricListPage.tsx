@@ -621,7 +621,9 @@ const MetricListPage = () => {
       setSelectedMetricIds([]);
       setIsDeleteDialogOpen(false);
       setPage(1);
-      queryClient.invalidateQueries({ queryKey: [METRIC_LISTING_QUERY_KEY] });
+      void queryClient.invalidateQueries({
+        queryKey: [METRIC_LISTING_QUERY_KEY],
+      });
       resetHierarchy();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -649,7 +651,9 @@ const MetricListPage = () => {
     }
     setPendingDeleteJobIds((ids) => ids.filter((id) => id !== jobId));
     if (status === 'COMPLETED' || status === 'FAILED') {
-      queryClient.invalidateQueries({ queryKey: [METRIC_LISTING_QUERY_KEY] });
+      void queryClient.invalidateQueries({
+        queryKey: [METRIC_LISTING_QUERY_KEY],
+      });
       resetHierarchy();
     }
   }, [asyncDeleteJob, pendingDeleteJobIds, queryClient, resetHierarchy]);
