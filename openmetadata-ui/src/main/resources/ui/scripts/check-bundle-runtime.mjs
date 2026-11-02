@@ -102,6 +102,12 @@ const checkPage = async ({ module, file }) => {
     }
   });
   try {
+    // External telemetry must not delay this local module-evaluation check.
+    await context.route('**/*', (route) =>
+      new URL(route.request().url()).origin === origin
+        ? route.continue()
+        : route.abort()
+    );
     await page.goto(`${origin}/signin`, { waitUntil: 'load' });
     const importError = await page.evaluate(async (chunkUrl) => {
       try {
