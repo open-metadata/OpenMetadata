@@ -113,7 +113,9 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
         <Box align="center" className="tw:flex-1" gap={2} justify="between">
           <ButtonUtility
             aria-label={t('label.move')}
-            className="tw:invisible tw:group-hover/tree-item:visible tw:group-focus-within/tree-item:visible"
+            // In the left gutter so it doesn't push the label off its icon. Revealed on the row's
+            // own :hover: a non-selectable react-aria tree item never gets `data-hovered`.
+            className="tw:absolute tw:-left-6 tw:invisible tw:in-[[role=row]:hover]:visible tw:group-focus-within/tree-item:visible"
             color="tertiary"
             icon={DotsGrid}
             size="xs"
