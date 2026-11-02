@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.context;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.google.common.cache.Cache;
@@ -21,7 +20,6 @@ import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -39,6 +37,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
@@ -298,11 +297,16 @@ public final class ContextMemoryVisibility {
     return admin;
   }
 
+  /**
+   * Whether {@code userName} is among the owners. Only an owner of type user can be the caller: a
+   * team owner named like the caller is a different principal.
+   */
   public static boolean isOwnedBy(ContextMemory memory, String userName) {
-    if (memory.getOwners() == null || memory.getOwners().isEmpty() || userName == null) {
+    if (nullOrEmpty(memory.getOwners()) || userName == null) {
       return false;
     }
     return memory.getOwners().stream()
+        .filter(o -> Entity.USER.equals(o.getType()))
         .anyMatch(o -> userName.equals(o.getName()) || userName.equals(o.getFullyQualifiedName()));
   }
 
@@ -315,6 +319,10 @@ public final class ContextMemoryVisibility {
    * Whether {@code userName} is named by a sharing list, directly or through a team or domain they
    * belong to. Public because Context Center shares files by the same vocabulary, and one matcher
    * is what keeps the two from drifting apart.
+   *
+   * <p>Principals are matched by id, as search matches them. Users, teams and domains are named
+   * independently of each other, so a name does not say which of them was shared with: a user who
+   * signs up under a team's name is not a member of that team.
    */
   public static boolean isSharedWith(List<MemorySharedPrincipal> sharedWith, String userName) {
     if (nullOrEmpty(sharedWith)) {
@@ -325,33 +333,26 @@ public final class ContextMemoryVisibility {
         .anyMatch(
             sp ->
                 sp.getPrincipal() != null
-                    && (principalIds.contains(sp.getPrincipal().getName())
-                        || principalIds.contains(sp.getPrincipal().getFullyQualifiedName())));
+                    && sp.getPrincipal().getId() != null
+                    && principalIds.contains(sp.getPrincipal().getId().toString()));
   }
 
+  /**
+   * The ids a sharing list may name to reach {@code userName}: their own, their teams' and their
+   * domains'. A user that cannot be resolved is shared nothing.
+   */
   static Set<String> resolvePrincipalIdentifiers(String userName) {
-    Set<String> ids = new HashSet<>();
-    ids.add(userName);
-    try {
-      User user =
-          Entity.getEntityByName(Entity.USER, userName, "teams,domains", Include.NON_DELETED);
-      addRefNames(ids, user.getTeams());
-      addRefNames(ids, user.getDomains());
-    } catch (Exception e) {
-      LOG.debug("Could not resolve teams/domains for user '{}'", userName, e);
+    Set<String> ids = Set.of();
+    if (!nullOrEmpty(userName)) {
+      try {
+        User user =
+            Entity.getEntityByName(Entity.USER, userName, "teams,domains", Include.NON_DELETED);
+        ids = Set.copyOf(ContextMemorySearchVisibility.sharedPrincipalIds(user));
+      } catch (RuntimeException e) {
+        LOG.debug("Could not resolve shared principal ids for user '{}'", userName, e);
+      }
     }
     return ids;
-  }
-
-  private static void addRefNames(Set<String> ids, List<EntityReference> refs) {
-    for (EntityReference ref : listOrEmpty(refs)) {
-      if (ref.getName() != null) {
-        ids.add(ref.getName());
-      }
-      if (ref.getFullyQualifiedName() != null) {
-        ids.add(ref.getFullyQualifiedName());
-      }
-    }
   }
 
   private static String getVisibilityDeniedMessage(ContextMemory memory) {

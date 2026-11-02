@@ -1748,7 +1748,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
       OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
     StepValidation result;
     try {
-      jwtFilter.validateJwtAndGetClaims(
+      jwtFilter.verifySignatureOnly(
           BotTokenCheck.decryptedToken(applicationConfig, Entity.INGESTION_BOT_NAME));
       result =
           new StepValidation()
@@ -1756,8 +1756,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
               .withPassed(Boolean.TRUE)
               .withMessage("Ingestion Bot token has been validated");
     } catch (Exception e) {
-      // validateJwtAndGetClaims is @SneakyThrows: a JWKS key lookup throws the checked
-      // JwkException through it.
+      // A JWKS key lookup throws the checked JwkException through verifySignatureOnly, which does
+      // not declare it.
       result =
           new StepValidation()
               .withDescription(ValidationStepDescription.JWT_TOKEN.key)

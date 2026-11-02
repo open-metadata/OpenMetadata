@@ -166,6 +166,7 @@ _bmad/
 
 # Claude Flow generated files
 .claude/*
+CLAUDE.local.md
 .mcp.json
 claude-flow.config.json
 .swarm/

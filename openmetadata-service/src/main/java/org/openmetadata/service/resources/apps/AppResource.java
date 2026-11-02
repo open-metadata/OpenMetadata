@@ -773,7 +773,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
     // Defense-in-depth: version snapshots are already stripped at storage time
-    // (AppRepository.serializeForVersionHistory) and by the 2.0.0 migration, but strip each
+    // (AppRepository.getFieldsHiddenFromHistory) and by the 2.0.0 migration, but strip each
     // returned snapshot too so this path never depends on those guarantees alone.
     List<Object> versions =
         entityHistory.getVersions().stream()

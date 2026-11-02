@@ -71,12 +71,20 @@ describe('OntologyDataAssetPicker', () => {
   });
 
   it('saves native associations without glossary tagging and excludes linked assets from select all', async () => {
-    const saveAssets = jest.fn().mockResolvedValue({ failedRequest: [] });
+    const saveAssets = jest.fn().mockResolvedValue({
+      completedIds: ['t-2'],
+      remaining: [],
+      stop: 'none',
+    });
     render(
       <OntologyDataAssetPicker
-        native={{ assetTypes: ['table'], linkedIds: ['t-1'], saveAssets }}
+        native={{
+          assetTypes: ['table'],
+          linkedIds: ['t-1'],
+          isDisabled: false,
+          saveAssets,
+        }}
         onCancel={jest.fn()}
-        onPartialSave={jest.fn()}
         onSave={jest.fn()}
       />
     );
@@ -366,14 +374,22 @@ describe('OntologyDataAssetPicker', () => {
 
   it('selects, saves and cancels in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
-    const saveAssets = jest.fn().mockResolvedValue({ failedRequest: [] });
+    const saveAssets = jest.fn().mockResolvedValue({
+      completedIds: ['t-2'],
+      remaining: [],
+      stop: 'none',
+    });
     const onSave = jest.fn();
     const onCancel = jest.fn();
     render(
       <OntologyDataAssetPicker
-        native={{ assetTypes: ['table'], linkedIds: ['t-1'], saveAssets }}
+        native={{
+          assetTypes: ['table'],
+          linkedIds: ['t-1'],
+          isDisabled: false,
+          saveAssets,
+        }}
         onCancel={onCancel}
-        onPartialSave={jest.fn()}
         onSave={onSave}
       />
     );
