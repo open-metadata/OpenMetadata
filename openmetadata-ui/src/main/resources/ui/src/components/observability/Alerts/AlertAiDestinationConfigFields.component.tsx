@@ -47,7 +47,10 @@ import {
   Type,
 } from '../../../generated/events/eventSubscription';
 import { ModifiedWebhookConfig } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { clearMaskedSecrets } from '../../../utils/Alerts/AlertsUtilPure';
+import {
+  clearMaskedSecrets,
+  withAuthType,
+} from '../../../utils/Alerts/AlertsUtilPure';
 import {
   ALERT_AI_FORM_CLASS_NAMES,
   ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER,
@@ -660,8 +663,11 @@ const WebhookDestinationFields = ({
                   size="sm"
                   onSelectionChange={(key) =>
                     updateDestinationConfig(
-                      ['authType', 'type'],
-                      key ? String(key) : Type.None
+                      [],
+                      withAuthType(
+                        destination?.config,
+                        (key ? String(key) : Type.None) as Type
+                      ) as AlertAiFormValue
                     )
                   }>
                   {renderSelectItem}

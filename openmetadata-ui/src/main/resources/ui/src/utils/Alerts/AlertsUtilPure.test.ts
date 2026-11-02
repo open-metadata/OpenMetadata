@@ -15,6 +15,7 @@ import {
   Destination,
   SubscriptionCategory,
   SubscriptionType,
+  Type,
 } from '../../generated/events/eventSubscription';
 import { Status } from '../../generated/events/testDestinationStatus';
 import { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
@@ -23,6 +24,7 @@ import {
   formatDiagnosticValue,
   formatEventCount,
   getDestinationsWithTestStatus,
+  withAuthType,
 } from './AlertsUtilPure';
 
 const webhookDestination = {
@@ -191,5 +193,54 @@ describe('clearMaskedSecrets', () => {
     const config = { endpoint: 'https://new.example.com/hook' };
 
     expect(clearMaskedSecrets(config)).toStrictEqual(config);
+  });
+});
+
+describe('withAuthType', () => {
+  const savedOauth2 = {
+    endpoint: '*********',
+    headers: [{ key: 'X-Api-Key', value: '*********' }],
+    authType: {
+      type: Type.Oauth2,
+      tokenUrl: 'https://auth.example.com/token',
+      clientId: '*********',
+      clientSecret: '*********',
+    },
+  } as ModifiedWebhookConfig;
+
+  it('keeps no credential of the old type and asks again for the hidden values when leaving OAuth2', () => {
+    expect(withAuthType(savedOauth2, Type.Bearer)).toEqual({
+      endpoint: '',
+      headers: [{ key: 'X-Api-Key', value: '' }],
+      authType: { type: Type.Bearer },
+    });
+  });
+
+  it('asks again for the hidden values when choosing OAuth2', () => {
+    const savedBearer = {
+      endpoint: '*********',
+      authType: { type: Type.Bearer, secretKey: '*********' },
+    } as ModifiedWebhookConfig;
+
+    expect(withAuthType(savedBearer, Type.Oauth2)).toEqual({
+      endpoint: '',
+      authType: { type: Type.Oauth2 },
+    });
+  });
+
+  it('keeps the hidden URL between authentication types without a token URL', () => {
+    const savedBearer = {
+      endpoint: '*********',
+      authType: { type: Type.Bearer, secretKey: '*********' },
+    } as ModifiedWebhookConfig;
+
+    expect(withAuthType(savedBearer, Type.None)).toEqual({
+      endpoint: '*********',
+      authType: { type: Type.None },
+    });
+  });
+
+  it('changes nothing when the same type is chosen again', () => {
+    expect(withAuthType(savedOauth2, Type.Oauth2)).toBe(savedOauth2);
   });
 });

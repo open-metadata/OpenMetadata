@@ -37,6 +37,7 @@ import {
   Destination,
   SubscriptionCategory,
   SubscriptionType,
+  Type,
   type Webhook,
 } from '../../generated/events/eventSubscription';
 import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
@@ -480,4 +481,23 @@ export const clearMaskedSecrets = (
       authType: { ...config.authType, ...clearedAuth },
     }),
   };
+};
+
+/**
+ * The webhook settings once the authentication type changes. Only the new type is kept, so no
+ * credential of the old type is stored beside it. OAuth2 alone sends through a token URL, so
+ * leaving or choosing it changes where the secrets go, and every hidden value is asked for again.
+ */
+export const withAuthType = (
+  config: ModifiedWebhookConfig | undefined,
+  type: Type
+): ModifiedWebhookConfig => {
+  const previousType = (config?.authType as { type?: Type } | undefined)?.type;
+  if (previousType === type) {
+    return config ?? {};
+  }
+  const switched = { ...config, authType: { type } };
+  const changesTokenUrl = previousType === Type.Oauth2 || type === Type.Oauth2;
+
+  return changesTokenUrl ? clearMaskedSecrets(switched) ?? switched : switched;
 };

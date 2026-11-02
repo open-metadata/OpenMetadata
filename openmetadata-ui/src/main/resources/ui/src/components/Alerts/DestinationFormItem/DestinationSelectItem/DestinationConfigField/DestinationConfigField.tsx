@@ -48,7 +48,11 @@ import {
   Type,
 } from '../../../../../generated/events/eventSubscription';
 import { searchEntity } from '../../../../../utils/Alerts/AlertsUtil';
-import { clearMaskedSecrets } from '../../../../../utils/Alerts/AlertsUtilPure';
+import {
+  clearMaskedSecrets,
+  withAuthType,
+} from '../../../../../utils/Alerts/AlertsUtilPure';
+import type { ModifiedWebhookConfig } from '../../../../../utils/AlertsClassBase.interface';
 import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import TeamAndUserSelectItem from '../../TeamAndUserSelectItem/TeamAndUserSelectItem';
 import {
@@ -317,25 +321,42 @@ function DestinationConfigField({
     type === SubscriptionType.GChat ||
     type === SubscriptionType.Webhook;
 
+  const configPath = `destinations.${fieldName}.config`;
+
   // A new URL or token URL sends the secrets somewhere else, so the hidden ones are emptied
   // and the advanced configuration opens on them, where the form asks for each one again.
+  const askAgainForHiddenValues = (
+    config: ModifiedWebhookConfig | undefined,
+    cleared: ModifiedWebhookConfig | undefined
+  ) => {
+    if (!isEqual(cleared, config)) {
+      setValue(`${configPath}.endpoint`, cleared?.endpoint);
+      cleared?.headers?.forEach((header, index) => {
+        setValue(`${configPath}.headers.${index}.value`, header.value);
+      });
+      Object.entries(cleared?.authType ?? {}).forEach(([key, secret]) => {
+        setValue(`${configPath}.authType.${key}`, secret);
+      });
+      onConfigExpandedChange?.(true);
+    }
+  };
+
   const changeWhereItSends =
     (onChange: (value: string) => void) => (value: string) => {
       onChange(value);
-      const configPath = `destinations.${fieldName}.config`;
       const config = getValues(configPath);
-      const cleared = clearMaskedSecrets(config);
-      if (!isEqual(cleared, config)) {
-        setValue(`${configPath}.endpoint`, cleared?.endpoint);
-        cleared?.headers?.forEach((header, index) => {
-          setValue(`${configPath}.headers.${index}.value`, header.value);
-        });
-        Object.entries(cleared?.authType ?? {}).forEach(([key, secret]) => {
-          setValue(`${configPath}.authType.${key}`, secret);
-        });
-        onConfigExpandedChange?.(true);
-      }
+      askAgainForHiddenValues(config, clearMaskedSecrets(config));
     };
+
+  const changeAuthType = (authType: Type) => {
+    const config = getValues(configPath);
+    const switched = withAuthType(config, authType);
+    setValue(`${configPath}.authType`, switched.authType);
+    askAgainForHiddenValues(
+      { ...config, authType: switched.authType },
+      switched
+    );
+  };
 
   if (isWebhookType) {
     const advancedConfigId = `advanced-config-${fieldName}`;
@@ -398,7 +419,9 @@ function DestinationConfigField({
                           label={`${t('label.authentication-type')}:`}
                           placeholder={t('label.authentication-type')}
                           selectedKey={field.value ?? null}
-                          onSelectionChange={(key) => field.onChange(key)}>
+                          onSelectionChange={(key) =>
+                            changeAuthType((key ?? Type.None) as Type)
+                          }>
                           <Select.Item id={Type.None}>
                             {t('label.no-authentication')}
                           </Select.Item>

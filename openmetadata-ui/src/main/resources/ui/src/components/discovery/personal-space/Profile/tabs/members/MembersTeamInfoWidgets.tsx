@@ -363,7 +363,9 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     if (webhook) {
       if (!endpoint.trim()) {
         setError(
-          t('message.field-required-plural', { field: t('label.endpoint') })
+          t('message.field-text-is-required', {
+            fieldText: t('label.endpoint'),
+          })
         );
 
         return;
@@ -390,6 +392,7 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     const ok = await onPatch({
       ...team,
       profile: {
+        ...team.profile,
         subscription: data
           ? { [data.webhook]: { endpoint: data.endpoint } }
           : undefined,

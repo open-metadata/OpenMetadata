@@ -32,11 +32,36 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div>{children}</div>
   );
   Grid.Item = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
-  const Select = ({ children }: { children?: ReactNode }) => (
-    <div>{children}</div>
+  const { Children, cloneElement, isValidElement } =
+    jest.requireActual('react');
+  // Clicking an item selects it, as choosing it from the open list would.
+  const Select = ({
+    children,
+    onSelectionChange,
+  }: {
+    children?: ReactNode;
+    onSelectionChange?: (key: string) => void;
+  }) => (
+    <div>
+      {Children.map(children, (child: ReactNode) =>
+        isValidElement(child)
+          ? cloneElement(child, { onSelect: onSelectionChange })
+          : child
+      )}
+    </div>
   );
-  Select.Item = ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
+  Select.Item = ({
+    children,
+    id,
+    onSelect,
+  }: {
+    children?: ReactNode;
+    id?: string;
+    onSelect?: (key: string) => void;
+  }) => (
+    <button type="button" onClick={() => id && onSelect?.(id)}>
+      {children}
+    </button>
   );
 
   return {
@@ -411,6 +436,29 @@ describe('DestinationConfigField', () => {
     expect(screen.getByTestId('token-url-input-field-0')).toHaveValue(
       'https://auth.example.com/new-token'
     );
+    expect(onConfigExpandedChange).toHaveBeenCalledWith(true);
+  });
+
+  it('asks again for the hidden URL and drops the OAuth2 credentials when switching to bearer', () => {
+    const onConfigExpandedChange = jest.fn();
+    renderSavedWebhookField(onConfigExpandedChange, {
+      endpoint: '*********',
+      authType: {
+        type: 'oauth2',
+        tokenUrl: 'https://auth.example.com/token',
+        clientId: '*********',
+        clientSecret: '*********',
+      },
+    });
+
+    fireEvent.click(screen.getByText('label.bearer-hmac-signature'));
+
+    expect(screen.getByTestId('endpoint-input-field-0')).toHaveValue('');
+    expect(
+      screen.queryByTestId('token-url-input-field-0')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('client-id-input-0')).not.toBeInTheDocument();
+    expect(screen.getByTestId('secret-key-input-0')).toBeInTheDocument();
     expect(onConfigExpandedChange).toHaveBeenCalledWith(true);
   });
 
