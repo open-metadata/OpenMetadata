@@ -26,6 +26,8 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useTabSearchMemory } from '../../hooks/observability/data-quality/useTabSearchMemory';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
@@ -36,6 +38,7 @@ const DataQualityPage = () => {
   const { tab: activeTab = DataQualityClassBase.getDefaultActiveTab() } =
     useParams<{ tab?: DataQualityPageTabs }>();
   const navigate = useNavigate();
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { testSuite: testSuitePermission, testCase: testCasePermission } =
@@ -112,13 +115,17 @@ const DataQualityPage = () => {
     [activeTab]
   );
 
+  const getTabSearch = useTabSearchMemory(activeTab, location.search);
+
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      navigate(
-        observabilityRouterClassBase.getDataQualityPagePath(
-          activeKey as DataQualityPageTabs
-        )
-      );
+      const targetTab = activeKey as DataQualityPageTabs;
+
+      void navigate({
+        pathname:
+          observabilityRouterClassBase.getDataQualityPagePath(targetTab),
+        search: getTabSearch(targetTab),
+      });
     }
   };
 
