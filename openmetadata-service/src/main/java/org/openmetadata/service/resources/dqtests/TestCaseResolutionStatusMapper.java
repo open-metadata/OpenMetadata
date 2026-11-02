@@ -42,7 +42,8 @@ public class TestCaseResolutionStatusMapper
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())
         .withTestCaseReference(testCase.getEntityReference())
-        .withSeverity(create.getSeverity());
+        .withSeverity(create.getSeverity())
+        .withStateId(create.getStateId());
   }
 
   /**

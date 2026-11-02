@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -627,6 +628,84 @@ public class IncidentGroupsIT {
             .map(TestCaseResolutionStatus::getStateId)
             .collect(Collectors.toSet()));
     assertEquals(2, client.testCaseResolutionStatuses().list(drillDown).getPaging().getTotal());
+  }
+
+  // The drill-down lists the older of two open incidents, so a bulk change picked from it has to
+  // move that incident, not the test case's latest.
+  @Test
+  void testBulkChangeUpdatesTheIncidentItNames() throws Exception {
+    long ts = System.currentTimeMillis();
+    TestCase testCase = createTestCaseWithIncidents("incident_groups_bulk_by_incident_" + ts);
+    UUID olderIncident = UUID.randomUUID();
+    UUID newerIncident = UUID.randomUUID();
+    insertStatusRecords(
+        testCase,
+        List.of(
+            seededRecord(
+                olderIncident.toString(), ts - 120_000, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(
+                newerIncident.toString(), ts - 60_000, TestCaseResolutionStatusTypes.New, null)));
+
+    BulkOperationResult ack =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, olderIncident)));
+    BulkOperationResult severity =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(
+                    incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, olderIncident)
+                        .withSeverity(Severity.Severity1)));
+
+    assertEquals(ApiStatus.SUCCESS, ack.getStatus());
+    assertEquals(ApiStatus.SUCCESS, severity.getStatus());
+    Map<UUID, TestCaseResolutionStatus> latest = latestRecordByIncident(testCase);
+    assertEquals(
+        TestCaseResolutionStatusTypes.Ack,
+        latest.get(olderIncident).getTestCaseResolutionStatusType());
+    assertEquals(Severity.Severity1, latest.get(olderIncident).getSeverity());
+    assertEquals(
+        TestCaseResolutionStatusTypes.New,
+        latest.get(newerIncident).getTestCaseResolutionStatusType(),
+        "the incident the change does not name stays as it was");
+    assertNotEquals(Severity.Severity1, latest.get(newerIncident).getSeverity());
+  }
+
+  @Test
+  void testStatusNamingAnIncidentOfAnotherTestCaseRejected() throws Exception {
+    long ts = System.currentTimeMillis();
+    TestCase testCase = createTestCaseWithIncidents("incident_groups_foreign_incident_" + ts);
+    TestCase otherTestCase =
+        createTestCaseWithIncidents("incident_groups_foreign_incident_other_" + ts);
+    UUID incident = UUID.randomUUID();
+    UUID otherIncident = UUID.randomUUID();
+    insertStatusRecords(
+        testCase,
+        List.of(seededRecord(incident.toString(), ts, TestCaseResolutionStatusTypes.New, null)));
+    insertStatusRecords(
+        otherTestCase,
+        List.of(
+            seededRecord(otherIncident.toString(), ts, TestCaseResolutionStatusTypes.New, null)));
+
+    List<CreateTestCaseResolutionStatus> rejected =
+        List.of(
+            incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, otherIncident),
+            incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, UUID.randomUUID()),
+            incidentEntry(testCase, TestCaseResolutionStatusTypes.New, incident));
+
+    for (CreateTestCaseResolutionStatus entry : rejected) {
+      assertEquals(
+          ApiStatus.FAILURE,
+          client.testCaseResolutionStatuses().bulkCreate(List.of(entry)).getStatus());
+    }
+    assertEquals(
+        TestCaseResolutionStatusTypes.New,
+        latestRecordByIncident(testCase).get(incident).getTestCaseResolutionStatusType());
+    assertEquals(
+        TestCaseResolutionStatusTypes.New,
+        latestRecordByIncident(otherTestCase).get(otherIncident).getTestCaseResolutionStatusType());
   }
 
   @Test
@@ -2142,6 +2221,33 @@ public class IncidentGroupsIT {
       groups.add(JsonUtils.convertValue(item, TestCaseIncidentGroup.class));
     }
     return groups;
+  }
+
+  private TestCase createTestCaseWithIncidents(String name) throws Exception {
+    Table table = createTable(schemaFqn, name);
+    TestDefinition definition = createTestDefinition(name + "_def", TestDefinitionEntityType.TABLE);
+    return createTestCase(name + "_case", tableLink(table), definition, List.of());
+  }
+
+  private static CreateTestCaseResolutionStatus incidentEntry(
+      TestCase testCase, TestCaseResolutionStatusTypes status, UUID stateId) {
+    return new CreateTestCaseResolutionStatus()
+        .withTestCaseReference(testCase.getFullyQualifiedName())
+        .withTestCaseResolutionStatusType(status)
+        .withStateId(stateId);
+  }
+
+  private Map<UUID, TestCaseResolutionStatus> latestRecordByIncident(TestCase testCase)
+      throws Exception {
+    return listStatuses(
+            new ListParams()
+                .withLimit(100)
+                .withLatest(true)
+                .addFilter("startTs", "0")
+                .addFilter("endTs", String.valueOf(System.currentTimeMillis() + 60_000))
+                .addFilter("testCaseFQN", testCase.getFullyQualifiedName()))
+        .stream()
+        .collect(Collectors.toMap(TestCaseResolutionStatus::getStateId, status -> status));
   }
 
   private List<TestCaseResolutionStatus> fetchStatuses(TestCase testCase) throws Exception {

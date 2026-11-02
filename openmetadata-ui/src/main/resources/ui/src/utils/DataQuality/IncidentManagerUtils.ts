@@ -106,6 +106,7 @@ export const reopenResolvedIncident = async ({
 
   const reopened = await postTestCaseIncidentStatus({
     testCaseReference: testCaseFqn,
+    stateId: currentStateId,
     testCaseResolutionStatusType: targetStatus,
     testCaseResolutionStatusDetails: getReopenStatusDetails(
       targetStatus,

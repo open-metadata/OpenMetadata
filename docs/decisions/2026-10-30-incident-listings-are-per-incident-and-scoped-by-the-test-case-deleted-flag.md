@@ -1,9 +1,9 @@
 # The database incident listing returns one record per incident; the search listing scopes on the embedded test case's deleted flag
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial); v2 2026-11-02 (a status write names its incident)
 - **Deciders:** Data Observability
-- **Guard:** `IncidentGroupsIT.testDrillDownListsEveryOpenIncidentOfATestCase`, `TestCaseSoftDeleteSearchIT`, `SearchListFilterTest.testResolutionStatusCondition_scopesByTestCaseDeleted`
+- **Guard:** `IncidentGroupsIT.testDrillDownListsEveryOpenIncidentOfATestCase`, `IncidentGroupsIT.testBulkChangeUpdatesTheIncidentItNames`, `TestCaseSoftDeleteSearchIT`, `SearchListFilterTest.testResolutionStatusCondition_scopesByTestCaseDeleted`
 - **Related:** #34616, ADR:2026-10-29-incident-listing-test-case-deletion-scoping-is-qualified (the database listing's deletion scoping)
 
 ## Context
@@ -35,6 +35,12 @@ documents, so incidents of soft-deleted test cases stayed listed.
   document per descendant test case, so the top-level update is the only one. An incident document
   therefore carries every ancestor reference that update matches on (`table`, `database`,
   `databaseSchema`, `service`, `testSuite`, `testCase`), and the strict read strips each of them.
+- A status write (`POST /testCaseIncidentStatus` and its bulk form) may name the incident it
+  applies to with `stateId`; without one it applies to the test case's latest incident, as before.
+  A listing that shows several incidents of one test case has to name the one picked, or the
+  change lands on another. The named incident must belong to the request's test case, and `New`
+  cannot name one, since it starts an incident. When the incident has no task of its own, the
+  status does not fall back to the test case's open task if that task drives another incident.
 
 ## Consequences
 Counts that read `paging.total` of a `latest` database listing now count incidents, so they can

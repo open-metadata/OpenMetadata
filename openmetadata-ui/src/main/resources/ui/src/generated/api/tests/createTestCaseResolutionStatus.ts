@@ -19,6 +19,12 @@ export interface CreateTestCaseResolutionStatus {
      */
     severity?: Severities;
     /**
+     * Incident this status applies to: the stateId of one of the test case's incidents. A test
+     * case can hold more than one open incident. When omitted, the status applies to the test
+     * case's latest incident. Not accepted with the New status, which starts an incident.
+     */
+    stateId?: string;
+    /**
      * Test case reference FQN
      */
     testCaseReference: string;

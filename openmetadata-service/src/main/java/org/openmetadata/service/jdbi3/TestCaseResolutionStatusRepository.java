@@ -303,7 +303,8 @@ public class TestCaseResolutionStatusRepository
    * it instead of counting it as applied.
    */
   public void applyBulkStatus(TestCaseResolutionStatus incoming, String testCaseFqn) {
-    TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
+    TestCaseResolutionStatus latest =
+        incidentToUpdate(incoming, testCaseFqn, getLatestRecord(testCaseFqn));
     boolean isOpen = Boolean.TRUE.equals(unresolvedIncident(latest));
     if (isOpen && isSameStatus(incoming, latest)) {
       if (incoming.getSeverity() == null || incoming.getSeverity() == latest.getSeverity()) {
@@ -318,6 +319,41 @@ public class TestCaseResolutionStatusRepository
     } else {
       createNewRecord(incoming, testCaseFqn);
     }
+  }
+
+  /**
+   * The incident a status applies to: the one its stateId names, or the test case's latest. A test
+   * case can hold more than one open incident (a task-first incident starts its own chain without
+   * closing an older one), so a client listing them names the one it picked.
+   */
+  private TestCaseResolutionStatus incidentToUpdate(
+      TestCaseResolutionStatus incoming,
+      String testCaseFqn,
+      TestCaseResolutionStatus latestOfTestCase) {
+    UUID stateId = incoming.getStateId();
+    rejectNewNamingAnIncident(incoming);
+    boolean namesAnotherIncident =
+        stateId != null
+            && (latestOfTestCase == null || !stateId.equals(latestOfTestCase.getStateId()));
+    return namesAnotherIncident ? requireIncidentOf(stateId, testCaseFqn) : latestOfTestCase;
+  }
+
+  // New starts an incident; naming an existing one would write the new chain under its stateId.
+  private static void rejectNewNamingAnIncident(TestCaseResolutionStatus incoming) {
+    if (incoming.getStateId() != null
+        && incoming.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New) {
+      throw new IllegalArgumentException("A New status starts an incident and cannot name one");
+    }
+  }
+
+  private TestCaseResolutionStatus requireIncidentOf(UUID stateId, String testCaseFqn) {
+    TestCaseResolutionStatus incident = getLatestRecordForStateId(stateId);
+    if (incident == null
+        || !testCaseFqn.equals(incident.getTestCaseReference().getFullyQualifiedName())) {
+      throw new IllegalArgumentException(
+          String.format("Test case %s has no incident %s", testCaseFqn, stateId));
+    }
+    return incident;
   }
 
   private static boolean isSameStatus(
@@ -404,10 +440,12 @@ public class TestCaseResolutionStatusRepository
   public void storeInternal(
       TestCaseResolutionStatus recordEntity, String recordFQN, String extension) {
 
-    TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
+    TestCaseResolutionStatus latestOfTestCase = getLatestRecord(recordFQN);
+    TestCaseResolutionStatus lastIncident =
+        incidentToUpdate(recordEntity, recordFQN, latestOfTestCase);
     long lastTimestamp =
-        lastIncident != null && lastIncident.getTimestamp() != null
-            ? lastIncident.getTimestamp()
+        latestOfTestCase != null && latestOfTestCase.getTimestamp() != null
+            ? latestOfTestCase.getTimestamp()
             : -1L;
     long incomingTimestamp =
         recordEntity.getTimestamp() != null
@@ -692,7 +730,18 @@ public class TestCaseResolutionStatusRepository
       }
     }
 
-    return taskRepository.findOpenTaskByEntityAndType(recordFQN, TaskEntityType.TestCaseResolution);
+    Task openTask =
+        taskRepository.findOpenTaskByEntityAndType(recordFQN, TaskEntityType.TestCaseResolution);
+    return drivesAnotherIncident(openTask, stateId) ? null : openTask;
+  }
+
+  // A task-first incident's task id is its stateId, so the test case's open task can belong to
+  // another of its incidents; a status for this incident must not move that one.
+  private boolean drivesAnotherIncident(Task task, UUID stateId) {
+    return task != null
+        && stateId != null
+        && !task.getId().equals(stateId)
+        && getLatestRecordForStateId(task.getId()) != null;
   }
 
   private String resolveLegacyTransitionId(Task task, TestCaseResolutionStatus recordEntity) {
