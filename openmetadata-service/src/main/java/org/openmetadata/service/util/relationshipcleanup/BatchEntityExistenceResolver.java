@@ -147,6 +147,8 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
       result = existsInConversationRepository(entityId);
     } else if (Entity.THREAD.equals(entityType)) {
       result = false;
+    } else if (Entity.SUGGESTION.equals(entityType)) {
+      result = existsInSuggestions(entityId);
     } else {
       result = true;
     }
@@ -163,6 +165,23 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
           Entity.CONVERSATION,
           entityId,
           ex.getMessage());
+      result = true;
+    }
+    return result;
+  }
+
+  /**
+   * Suggestions are not managed by an {@link EntityRepository}; they live in the {@code
+   * suggestions} table. Fails open (treats the suggestion as existing) when the lookup cannot be
+   * performed, so valid relationships are never deleted because of a transient failure.
+   */
+  private boolean existsInSuggestions(UUID entityId) {
+    boolean result;
+    try {
+      result = Entity.getCollectionDAO().suggestionDAO().findById(entityId) != null;
+    } catch (Exception ex) {
+      LOG.debug(
+          "Entity {}:{} existence check failed: {}", Entity.SUGGESTION, entityId, ex.getMessage());
       result = true;
     }
     return result;
