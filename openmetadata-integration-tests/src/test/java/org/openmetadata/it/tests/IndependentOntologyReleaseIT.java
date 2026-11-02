@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
@@ -109,8 +108,7 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void concurrentCapturesAllocateDistinctRevisionsForTheSameContent(TestNamespace ns)
-      throws Exception {
+  void concurrentCapturesAtOneRevisionReturnOneRelease(TestNamespace ns) throws Exception {
     Ontology ontology = createOntology(ns);
     long revision = state(ontology).getWorkingRevision();
     Callable<OntologyRelease> capture = () -> capture(ontology, revision);
@@ -119,12 +117,44 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
       var second = executor.submit(capture);
       OntologyRelease one = first.get(30, java.util.concurrent.TimeUnit.SECONDS);
       OntologyRelease two = second.get(30, java.util.concurrent.TimeUnit.SECONDS);
-      assertEquals(Set.of(1L, 2L), Set.of(one.getReleaseRevision(), two.getReleaseRevision()));
-      assertNotEquals(one.getId(), two.getId());
-      assertEquals(one.getContentDigest(), two.getContentDigest());
+      assertEquals(one.getId(), two.getId());
+      assertEquals(1L, one.getReleaseRevision());
     }
-    assertEquals(2L, state(ontology).getLastReleaseRevision());
+    assertEquals(1L, state(ontology).getLastReleaseRevision());
     assertEquals(revision, state(ontology).getWorkingRevision());
+  }
+
+  @Test
+  void repeatedCapturesAtOneWorkingRevisionReturnTheExistingDraft(TestNamespace ns) {
+    Ontology ontology = createOntology(ns);
+    long revision = state(ontology).getWorkingRevision();
+    OntologyRelease first = capture(ontology, revision);
+    for (int index = 0; index < 4; index++) {
+      assertEquals(first.getId(), capture(ontology, revision).getId());
+    }
+    assertEquals(1L, state(ontology).getLastReleaseRevision());
+    assertEquals(
+        1,
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/ontologyReleases?ontologyId=" + ontology.getId(),
+                null,
+                JsonNode.class)
+            .path("paging")
+            .path("total")
+            .asInt());
+  }
+
+  @Test
+  void aCaptureAfterAnEditSealsANewRelease(TestNamespace ns) {
+    Ontology ontology = createOntology(ns);
+    OntologyRelease first = capture(ontology, state(ontology).getWorkingRevision());
+    declareClass(ontology, "Edited", java.net.URI.create("https://example.org/model/Edited"));
+    OntologyRelease second = capture(ontology, state(ontology).getWorkingRevision());
+    assertNotEquals(first.getId(), second.getId());
+    assertEquals(2L, second.getReleaseRevision());
   }
 
   @Test

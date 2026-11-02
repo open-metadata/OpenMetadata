@@ -961,6 +961,205 @@ test.describe(
         );
       }
     });
+
+    test('reuses the unchanged Draft and sends the captured version to the reviewer', async ({
+      isolatedUserPage: author,
+      freshUserPage: { user },
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const name = `pw_draft_reuse_${uuid()}`;
+      const ontology = await okJson<Ontology>(
+        await api.post('/api/v1/ontologies', {
+          data: {
+            name,
+            iri: `https://example.org/${name}`,
+            namespace: `https://example.org/${name}/`,
+            reviewers: [{ id: user.responseData.id, type: 'user' }],
+          },
+        }),
+        'Create draft reuse fixture'
+      );
+      const tasks: string[] = [];
+      try {
+        await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Customer',
+              ontology: ontology.fullyQualifiedName,
+              conceptType: 'OWL_CLASS',
+            },
+          }),
+          'Create draft reuse concept'
+        );
+        await openPublication(author, ontology);
+
+        const captures: OntologyRelease[] = [];
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const capture = author.waitForResponse(
+            (response) =>
+              response
+                .url()
+                .endsWith(`/api/v1/ontologies/${ontology.id}/releases`) &&
+              response.request().method() === 'POST'
+          );
+          await author
+            .getByRole('button', { name: 'Capture release', exact: true })
+            .click();
+          captures.push(
+            await okJson<OntologyRelease>(
+              await capture,
+              'Capture unchanged working revision'
+            )
+          );
+          await expect(
+            author.getByRole('button', { name: 'Capture release', exact: true })
+          ).toBeEnabled();
+        }
+
+        expect(captures[0].semanticVersion).toBe('1.0.0');
+        expect(captures[1].id).toBe(captures[0].id);
+        const history = await okJson<{ data: OntologyRelease[] }>(
+          await api.get(`/api/v1/ontologies/${ontology.id}/releases`),
+          'List releases after repeated capture'
+        );
+        expect(history.data.map((release) => release.id)).toEqual([
+          captures[0].id,
+        ]);
+
+        await author.getByTestId('ontology-publication-tab-releases').click();
+        await expect(
+          author.getByTestId('ontology-release-history').getByRole('listitem')
+        ).toHaveCount(1);
+        await expect(
+          author.getByTestId(`ontology-release-select-${captures[0].id}`)
+        ).toHaveText('1.0.0');
+
+        await author.getByTestId('ontology-publication-tab-changes').click();
+        const submission = author.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === '/api/v1/tasks' &&
+            response.request().method() === 'POST'
+        );
+        await clickIgnoringToasts(
+          author.getByTestId('ontology-request-review')
+        );
+        const task = await okJson<Task>(
+          await submission,
+          'Request review of the reused Draft'
+        );
+        tasks.push(task.id);
+        expect(task.about?.id).toBe(captures[0].id);
+        const reviewed = await okJson<OntologyRelease>(
+          await api.get(`/api/v1/ontologyReleases/${captures[0].id}`),
+          'Read the release under review'
+        );
+        expect(reviewed.semanticVersion).toBe('1.0.0');
+        expect(reviewed.reviewTask).toBe(task.id);
+      } finally {
+        await cleanReviews(api, tasks);
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/ontologies/${ontology.id}?recursive=true`
+        );
+      }
+    });
+
+    test('refuses a second open review for another Draft of the same ontology', async ({
+      freshUserPage: { user },
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const name = `pw_one_review_${uuid()}`;
+      const ontology = await okJson<Ontology>(
+        await api.post('/api/v1/ontologies', {
+          data: {
+            name,
+            iri: `https://example.org/${name}`,
+            namespace: `https://example.org/${name}/`,
+            reviewers: [{ id: user.responseData.id, type: 'user' }],
+          },
+        }),
+        'Create single review fixture'
+      );
+      const tasks: string[] = [];
+      try {
+        const concept = await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Customer',
+              ontology: ontology.fullyQualifiedName,
+              conceptType: 'OWL_CLASS',
+            },
+          }),
+          'Create single review concept'
+        );
+        const capture = async () => {
+          const state = await okJson<OntologyState>(
+            await api.get(`/api/v1/ontologies/${ontology.id}/state`),
+            'Read working revision'
+          );
+
+          return okJson<OntologyRelease>(
+            await api.post(`/api/v1/ontologies/${ontology.id}/releases`, {
+              data: { expectedWorkingRevision: state.workingRevision },
+            }),
+            'Capture Draft'
+          );
+        };
+        const first = await capture();
+        await okJson<OntologyConcept>(
+          await api.patch(`/api/v1/ontologyConcepts/${concept.id}`, {
+            headers: { 'Content-Type': 'application/json-patch+json' },
+            data: [{ op: 'replace', path: '/description', value: 'Edited' }],
+          }),
+          'Edit between captures'
+        );
+        const second = await capture();
+        expect(second.id).not.toBe(first.id);
+
+        const open = await submitReview(
+          api,
+          'ontologyRelease',
+          first.fullyQualifiedName,
+          tasks
+        );
+        const refused = await api.post('/api/v1/tasks', {
+          data: {
+            name: `Review ${second.fullyQualifiedName}`,
+            category: 'Approval',
+            type: 'RequestApproval',
+            about: `<#E::ontologyRelease::${second.fullyQualifiedName}>`,
+          },
+        });
+
+        expect(refused.status()).toBe(409);
+        expect(await refused.text()).toContain(
+          `${first.name} already has an open review`
+        );
+
+        await okJson<Task>(
+          await api.post(`/api/v1/tasks/${open.id}/close`, { data: {} }),
+          'Close the open review'
+        );
+        tasks.splice(tasks.indexOf(open.id), 1);
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/tasks/${open.id}?hardDelete=true`
+        );
+        const next = await submitReview(
+          api,
+          'ontologyRelease',
+          second.fullyQualifiedName,
+          tasks
+        );
+        expect(next.id).not.toBe(open.id);
+      } finally {
+        await cleanReviews(api, tasks);
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/ontologies/${ontology.id}?recursive=true`
+        );
+      }
+    });
   }
 );
 

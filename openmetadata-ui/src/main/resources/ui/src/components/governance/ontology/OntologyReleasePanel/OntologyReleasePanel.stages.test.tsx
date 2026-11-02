@@ -189,6 +189,19 @@ beforeEach(() => {
     if (url === `/ontologyReleases/${release.id}`) {
       return { data: release };
     }
+    if (url === `/ontologyReleases/${id(10)}`) {
+      return {
+        data: {
+          ...release,
+          id: id(10),
+          releaseRevision: 1,
+          semanticVersion: '1.5.0',
+          entityStatus: EntityStatus.Approved,
+          baseReleaseId: undefined,
+          reviewTask: undefined,
+        },
+      };
+    }
     if (historical && url === `/ontologyReleases/${historical.id}`) {
       return { data: historical };
     }
@@ -1235,6 +1248,7 @@ it('counts only disjoint top-level changes and distinguishes latest from active'
     releaseRevision: 1,
     semanticVersion: '1.0.0',
     memberCount: 999,
+    entityStatus: EntityStatus.Approved,
   };
   await renderPanel(true, 'releases');
 
@@ -1280,6 +1294,7 @@ it('never labels an old first history row Latest when the current candidate is a
     id: id(4),
     releaseRevision: 4,
     semanticVersion: '1.4.0',
+    entityStatus: EntityStatus.Approved,
   };
   const previous = get.getMockImplementation();
   get.mockImplementation(async (url, config) => {
@@ -1301,8 +1316,20 @@ it('never labels an old first history row Latest when the current candidate is a
 it('preserves numeric server revision order for unversioned, 1.10, 1.9 and rejected history', async () => {
   const rows = [
     { ...release, id: id(12), releaseRevision: 12, semanticVersion: undefined },
-    { ...release, id: id(11), releaseRevision: 11, semanticVersion: '1.10.0' },
-    { ...release, id: id(10), releaseRevision: 10, semanticVersion: '1.9.0' },
+    {
+      ...release,
+      id: id(11),
+      releaseRevision: 11,
+      semanticVersion: '1.10.0',
+      entityStatus: EntityStatus.Approved,
+    },
+    {
+      ...release,
+      id: id(10),
+      releaseRevision: 10,
+      semanticVersion: '1.9.0',
+      entityStatus: EntityStatus.Approved,
+    },
     {
       ...release,
       id: id(9),

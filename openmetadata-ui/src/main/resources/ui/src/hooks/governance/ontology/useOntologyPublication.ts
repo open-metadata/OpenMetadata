@@ -62,7 +62,6 @@ import {
   isReviewableCandidate,
   isValidReviewSettings,
   joinPublicationReads,
-  latestVersionedOntologyRelease,
   matchesCapturedIdentity,
   matchesCaptureMetadata,
   matchesPublicationReview,
@@ -73,6 +72,7 @@ import {
   reusablePublicationCandidate,
   samePublicationState,
   savePublicationReceipt,
+  selectVersionBase,
 } from './useOntologyPublication.utils';
 import { ONTOLOGY_STUDIO_MODEL_QUERY_KEY } from './useOntologyStudioModel';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from './useOntologyStudioScopes';
@@ -170,18 +170,6 @@ export const useOntologyPublication = (
       return value;
     },
   });
-  const latestVersioned = useQuery({
-    queryKey: [
-      'ontology-latest-versioned-release',
-      ontologyId,
-      working.data?.state.lastReleaseRevision,
-      userId,
-    ],
-    enabled: working.isSuccess,
-    retry: false,
-    gcTime: 0,
-    queryFn: ({ signal }) => latestVersionedOntologyRelease(ontologyId, signal),
-  });
   const history = useInfiniteQuery({
     queryKey: [
       'ontology-release-history',
@@ -215,6 +203,7 @@ export const useOntologyPublication = (
     getNextPageParam: (last, pages) =>
       pages.length < 40 ? last.paging.after : undefined,
   });
+  const activeReleaseId = state.data?.activeReleaseId;
   const currentId = projection.data?.publicationStatus?.latest?.releaseId;
   const releaseId = selectedId ?? currentId;
   const readRelease = async (id: string | undefined, signal: AbortSignal) => {
@@ -242,6 +231,18 @@ export const useOntologyPublication = (
     gcTime: 0,
     queryFn: ({ signal }) => readRelease(releaseId, signal),
   });
+  const activeRelease = useQuery({
+    queryKey: [RELEASE_QUERY, ontologyId, activeReleaseId, userId],
+    enabled: [Boolean(activeReleaseId), working.isSuccess].every(Boolean),
+    retry: false,
+    gcTime: 0,
+    queryFn: ({ signal }) => readRelease(activeReleaseId, signal),
+  });
+  const versionBase = selectVersionBase(
+    activeRelease,
+    Boolean(activeReleaseId),
+    [state.isSuccess, working.isSuccess].every(Boolean)
+  );
   const review = useQuery({
     queryKey: [
       REVIEW_QUERY,
@@ -270,14 +271,12 @@ export const useOntologyPublication = (
           candidateRead,
           reviewRead
         );
-  const activeReleaseId = state.data?.activeReleaseId;
   const refresh = useCallback(async () => {
     const keys = [
       [PROJECTION_QUERY, ontologyId],
       ['ontology-state', ontologyId],
       [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontologyId],
       ['ontology-release-history', ontologyId],
-      ['ontology-latest-versioned-release', ontologyId],
       [RELEASE_QUERY, ontologyId],
       [REVIEW_QUERY, ontologyId],
     ];
@@ -549,7 +548,7 @@ export const useOntologyPublication = (
       metadata: { ...metadata },
       expectedVersion: metadata.versionBump
         ? nextPublicationVersion(
-            latestVersioned.data?.semanticVersion,
+            versionBase.data?.semanticVersion,
             metadata.versionBump
           )
         : undefined,
@@ -605,9 +604,7 @@ export const useOntologyPublication = (
       return false;
     }
     const available =
-      latestVersioned.isSuccess &&
-      !latestVersioned.isFetching &&
-      !working.isFetching;
+      versionBase.isSuccess && !versionBase.isFetching && !working.isFetching;
 
     return (
       available &&
@@ -814,7 +811,7 @@ export const useOntologyPublication = (
     review,
     projection,
     currentUser,
-    latestVersioned,
+    versionBase,
     history,
     setSelectedId,
     isBusy,

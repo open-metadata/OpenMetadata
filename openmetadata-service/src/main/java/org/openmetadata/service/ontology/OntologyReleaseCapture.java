@@ -4,14 +4,17 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyReleaseChangeSummary;
 import org.openmetadata.schema.type.OntologyReleaseMember;
@@ -77,10 +80,22 @@ public final class OntologyReleaseCapture {
       throw new PreconditionFailedException(
           "Ontology activation changed; reload its working diff before capture");
     }
-    OntologyReleasePublication.validate(request, state);
+    OntologyReleasePublication.validateRequest(request);
     final Ontology ontology = working.root();
+    final String version = targetVersion(request, state);
+    final OntologyRelease existing = reusableDraft(draftsOf(ontology.getId()), state, version);
+    if (existing != null) {
+      return releases.get(
+          null,
+          existing.getId(),
+          releases.getFields("owners,reviewers"),
+          Include.NON_DELETED,
+          false);
+    }
+    OntologyReleasePublication.requireLatestRevision(request, state);
     final OntologyRelease release = header(ontology, state, access.user());
-    setPublicationMetadata(release, request);
+    release.setReleaseNotes(request.getReleaseNotes());
+    release.setSemanticVersion(version);
     final Members members = new Members(release.getId());
     working.entries().forEach(entry -> members.add(entry.kind(), entry.definition()));
     OntologyStructureValidator.requireValid(release, members.values);
@@ -107,15 +122,45 @@ public final class OntologyReleaseCapture {
     return OntologyReleaseComparison.summarize(base, proposed);
   }
 
-  private void setPublicationMetadata(
-      final OntologyRelease release, final CaptureOntologyRelease request) {
-    release.setReleaseNotes(request.getReleaseNotes());
-    if (request.getVersionBump() != null) {
-      final String latest =
-          dao.ontologyReleaseDAO().findLatestSemanticVersion(release.getOntology().getId());
-      release.setSemanticVersion(
-          OntologyReleasePublication.nextVersion(latest, request.getVersionBump()));
+  /** The bump applies to the active release, so a draft never moves the next suggestion. */
+  private String targetVersion(final CaptureOntologyRelease request, final OntologyState state) {
+    if (request.getVersionBump() == null) {
+      return null;
     }
+    final String active =
+        state.getActiveReleaseId() == null
+            ? null
+            : releases
+                .get(
+                    null,
+                    state.getActiveReleaseId(),
+                    releases.getFields(""),
+                    Include.NON_DELETED,
+                    false)
+                .getSemanticVersion();
+    return OntologyReleasePublication.nextVersion(active, request.getVersionBump());
+  }
+
+  private List<OntologyRelease> draftsOf(final UUID ontologyId) {
+    return dao.ontologyReleaseDAO().listByStatus(ontologyId, EntityStatus.DRAFT.value()).stream()
+        .map(json -> JsonUtils.readValue(json, OntologyRelease.class))
+        .toList();
+  }
+
+  /**
+   * A capture that would seal the same working revision on the same base under the same version
+   * as an open draft is that draft; sealing it again only mints a release nobody asked for.
+   */
+  static OntologyRelease reusableDraft(
+      final List<OntologyRelease> drafts, final OntologyState state, final String version) {
+    return drafts.stream()
+        .filter(draft -> draft.getSealedAt() != null)
+        .filter(
+            draft -> Objects.equals(draft.getSourceWorkingRevision(), state.getWorkingRevision()))
+        .filter(draft -> Objects.equals(draft.getBaseReleaseId(), state.getActiveReleaseId()))
+        .filter(draft -> Objects.equals(draft.getSemanticVersion(), version))
+        .max(Comparator.comparing(OntologyRelease::getReleaseRevision))
+        .orElse(null);
   }
 
   private OntologyRelease header(

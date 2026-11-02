@@ -432,6 +432,28 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
         && !Objects.equals(entity.getReviewTask(), task.getId())) {
       throw TaskStateConflictException.of("This ontology definition already has an open review");
     }
+    requireNoOtherOpenReview(entity);
+  }
+
+  private void requireNoOtherOpenReview(final OntologyRelease entity) {
+    if (entity.getOntology() == null) {
+      return;
+    }
+    daoCollection
+        .ontologyReleaseDAO()
+        .listByStatus(entity.getOntology().getId(), EntityStatus.IN_REVIEW.value())
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyRelease.class))
+        .filter(open -> !Objects.equals(open.getId(), entity.getId()))
+        .filter(open -> open.getReviewTask() != null)
+        .findFirst()
+        .ifPresent(
+            open -> {
+              throw TaskStateConflictException.of(
+                  "Ontology release "
+                      + open.getName()
+                      + " already has an open review; close it before requesting another");
+            });
   }
 
   public void validateReview(final Task task, final String user) {

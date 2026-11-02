@@ -17,6 +17,11 @@ final class OntologyReleasePublication {
   private OntologyReleasePublication() {}
 
   static void validate(final CaptureOntologyRelease request, final OntologyState state) {
+    validateRequest(request);
+    requireLatestRevision(request, state);
+  }
+
+  static void validateRequest(final CaptureOntologyRelease request) {
     if (request.getReleaseNotes() != null
         && request.getReleaseNotes().length() > MAX_NOTES_LENGTH) {
       throw new BadRequestException("Ontology release notes exceed the 16384 character limit");
@@ -24,6 +29,14 @@ final class OntologyReleasePublication {
     if (request.getVersionBump() != null && request.getExpectedLatestReleaseRevision() == null) {
       throw new BadRequestException("A semantic version bump requires the latest release revision");
     }
+  }
+
+  /**
+   * Checked after draft reuse: a second session holding the pre-capture revision is asking for the
+   * draft the first one just sealed, not for a competing version.
+   */
+  static void requireLatestRevision(
+      final CaptureOntologyRelease request, final OntologyState state) {
     if (request.getExpectedLatestReleaseRevision() != null
         && !Objects.equals(
             request.getExpectedLatestReleaseRevision(), state.getLastReleaseRevision())) {

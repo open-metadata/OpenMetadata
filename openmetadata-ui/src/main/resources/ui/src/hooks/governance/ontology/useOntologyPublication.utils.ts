@@ -75,37 +75,24 @@ export const eligiblePublicationReviewers = (
     ].every(Boolean);
   });
 
-export const latestVersionedOntologyRelease = async (
-  ontologyId: string,
-  signal: AbortSignal
-) => {
-  let after: string | undefined;
-  for (let page = 0; page < 10; page++) {
-    const response = await listOntologyReleaseHistory(
-      ontologyId,
-      { limit: 100, after },
-      signal
-    );
-    if (response.data.some((release) => release.ontology.id !== ontologyId)) {
-      throw new Error('Ontology release owner does not match the selection');
-    }
-    const versioned = response.data.find((release) => release.semanticVersion);
-    if (versioned) {
-      return versioned;
-    }
-    if (!response.paging.after) {
-      return null;
-    }
-    if (response.paging.after === after) {
-      throw new Error('Ontology release cursor did not advance');
-    }
-    after = response.paging.after;
-  }
-
-  throw new Error(
-    'Latest versioned ontology release exceeds the bounded history lookup'
-  );
-};
+/**
+ * The version a bump applies to is the active release's. Before anything is
+ * active there is no base, which is ready once the state it depends on is read.
+ */
+export const selectVersionBase = <T extends { data?: OntologyRelease }>(
+  activeRelease: T,
+  hasActive: boolean,
+  stateReady: boolean
+) =>
+  hasActive
+    ? activeRelease
+    : {
+        data: undefined,
+        isSuccess: stateReady,
+        isFetching: false,
+        isError: false,
+        refetch: () => Promise.resolve(),
+      };
 
 export const readPublicationQuery = <T>(query: {
   isPending: boolean;

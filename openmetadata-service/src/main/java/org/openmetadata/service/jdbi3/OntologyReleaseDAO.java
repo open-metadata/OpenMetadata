@@ -95,21 +95,6 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
       @Define("ownerColumn") String ownerColumn,
       @BindList("ontologyIds") List<String> ontologyIds);
 
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json_unquote(json_extract(json, '$.semanticVersion')) FROM ontology_release_entity "
-              + "WHERE ontologyId = :ontologyId AND sealedAt IS NOT NULL "
-              + "AND json_unquote(json_extract(json, '$.semanticVersion')) IS NOT NULL "
-              + "ORDER BY releaseRevision DESC LIMIT 1 FOR UPDATE",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json ->> 'semanticVersion' FROM ontology_release_entity "
-              + "WHERE ontologyId = :ontologyId AND sealedAt IS NOT NULL "
-              + "AND json ->> 'semanticVersion' IS NOT NULL ORDER BY releaseRevision DESC LIMIT 1 FOR UPDATE",
-      connectionType = POSTGRES)
-  String findLatestSemanticVersion(@BindUUID("ontologyId") UUID ontologyId);
-
   @SqlQuery(
       "SELECT json FROM ontology_release_entity WHERE ontologyId = :ontologyId "
           + "AND entityStatus = :entityStatus AND (deleted IS NULL OR deleted = false) "

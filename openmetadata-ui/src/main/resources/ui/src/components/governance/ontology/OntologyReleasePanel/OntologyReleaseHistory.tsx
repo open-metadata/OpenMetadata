@@ -25,7 +25,10 @@ import { useOntologyPublication } from '../../../../hooks/governance/ontology/us
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import OntologyReleaseExport from './OntologyReleaseExport';
-import { releaseChangeCount } from './OntologyReleasePanel.utils';
+import {
+  releaseChangeCount,
+  visibleHistoryReleases,
+} from './OntologyReleasePanel.utils';
 
 interface OntologyReleaseHistoryProps {
   history: ReturnType<typeof useOntologyPublication>['history'];
@@ -44,7 +47,10 @@ const OntologyReleaseHistory = ({
 }: OntologyReleaseHistoryProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const releases = history.data?.pages.flatMap((page) => page.data) ?? [];
+  const releases = visibleHistoryReleases(
+    history.data?.pages.flatMap((page) => page.data) ?? [],
+    latestReleaseId
+  );
 
   const renderVersionButton = (release: OntologyRelease) => (
     <Button
