@@ -921,6 +921,72 @@ test.describe(
       }
     });
 
+    test('offers Restore when a new concept reuses the name of a deleted one', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'reuse');
+      try {
+        const customer = await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Customer',
+              ontology: fixture.fqn,
+              conceptType: 'OWL_CLASS',
+              description: 'A party that buys from us.',
+            },
+          }),
+          'Create Customer'
+        );
+        await fixture.concept('Anchor');
+
+        await openStudio(page, fixture.ontology, true);
+        await clickGraphNode(page, customer.id);
+        await page.getByTestId('ontology-concept-delete').click();
+        await page.getByTestId('ontology-concept-delete-confirm').click();
+        await expect(
+          page.getByTestId('ontology-concept-delete-dialog')
+        ).toHaveCount(0);
+        await expect(page.getByTestId('ontology-undo')).toBeVisible();
+        await expect(page.getByTestId('ontology-undo')).toHaveCount(0, {
+          timeout: 30_000,
+        });
+
+        const empty = await findEmptyCanvasPoint(page);
+        await page.mouse.dblclick(empty.x, empty.y);
+        await page.getByTestId('new-class-local-name').fill('Customer');
+        await expect(page.getByTestId('new-class-name-deleted')).toContainText(
+          'A deleted concept named Customer exists in this ontology.'
+        );
+        await expect(page.getByTestId('new-class-create')).toBeDisabled();
+
+        await page.getByTestId('new-class-restore').click();
+        await expect(page.getByTestId('ontology-new-class-panel')).toHaveCount(
+          0
+        );
+        await expect
+          .poll(async () => Object.keys(await readGraphPoints(page, 'node')))
+          .toContain(customer.id);
+        await expect(
+          page.getByTestId('ontology-concept-inspector')
+        ).toContainText('A party that buys from us.');
+
+        await page.reload();
+        await expect
+          .poll(async () => Object.keys(await readGraphPoints(page, 'node')))
+          .toContain(customer.id);
+        const restored = await okJson<OntologyConcept>(
+          await api.get(`/api/v1/ontologyConcepts/${customer.id}`),
+          'Read Customer'
+        );
+        expect(restored.deleted).toBe(false);
+        expect(restored.description).toBe('A party that buys from us.');
+      } finally {
+        await fixture.cleanup();
+      }
+    });
+
     test('lists Broader and Narrower under Relationships, not Properties', async ({
       isolatedUserPage: page,
     }) => {

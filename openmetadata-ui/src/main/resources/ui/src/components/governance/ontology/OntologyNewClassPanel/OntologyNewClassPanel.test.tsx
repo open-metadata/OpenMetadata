@@ -33,11 +33,13 @@ import {
   useEnUsTranslations,
   useKeyEchoTranslations,
 } from '../../../../test/unit/enUsTranslation';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import OntologyNewClassPanel from './OntologyNewClassPanel';
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
+  put: jest.fn(),
   delete: jest.fn(),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -63,6 +65,7 @@ const parents = ['Payment', 'Transaction'].map((name) => ({
 const model = { ontology, concepts: parents, properties: [], axioms: [] };
 const post = APIClient.post as jest.Mock;
 const get = APIClient.get as jest.Mock;
+const put = APIClient.put as jest.Mock;
 let retained: Record<string, unknown>;
 let applied = false;
 
@@ -107,9 +110,23 @@ beforeEach(() => {
   useApplicationStore.setState({
     currentUser: { id: 'u', name: 'editor', email: 'editor@example.org' },
   });
-  get.mockImplementation(async (url: string) => ({
-    data: url.endsWith('/state') ? { workingRevision: 7 } : readDraft(url),
-  }));
+  get.mockImplementation(async (url: string) => {
+    if (url.includes('/ontologyConcepts/name/')) {
+      throw new AxiosError(
+        'Not found',
+        AxiosError.ERR_BAD_REQUEST,
+        undefined,
+        undefined,
+        {
+          status: 404,
+        } as AxiosResponse
+      );
+    }
+
+    return {
+      data: url.endsWith('/state') ? { workingRevision: 7 } : readDraft(url),
+    };
+  });
   post.mockImplementation(
     async (url: string, body: Record<string, unknown>) => {
       if (url.endsWith('/acquire')) {
@@ -1157,5 +1174,129 @@ describe('Ontology field for All ontologies', () => {
     expect(screen.getByTestId('new-class-create-reason')).toHaveTextContent(
       'message.ontology-concept-ontology-required'
     );
+  });
+});
+
+describe('a name held by a deleted concept', () => {
+  beforeEach(() => {
+    jest.useRealTimers();
+    useEnUsTranslations();
+    put.mockResolvedValue({ data: {} });
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  const settle = () =>
+    act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+  const typeName = async (name: string) => {
+    fill('new-class-local-name', name);
+    await settle();
+    await settle();
+  };
+
+  const holdName = (name: string) =>
+    get.mockImplementation(async (url: string) => {
+      if (url.includes('/ontologyConcepts/name/')) {
+        return {
+          data: {
+            id: 'deleted-id',
+            name,
+            deleted: true,
+            iri: ontology.namespace + name,
+          },
+        };
+      }
+
+      return {
+        data: url.endsWith('/state') ? { workingRevision: 7 } : readDraft(url),
+      };
+    });
+
+  it('names the deleted concept, offers Restore and keeps Create disabled', async () => {
+    holdName('Customer');
+    setup();
+    await typeName('Customer');
+
+    expect(
+      await screen.findByTestId('new-class-name-deleted')
+    ).toHaveTextContent(
+      'A deleted concept named Customer exists in this ontology.'
+    );
+    expect(screen.getByTestId('new-class-restore')).toHaveTextContent(
+      'Restore'
+    );
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(get).toHaveBeenCalledWith(
+      '/ontologyConcepts/name/Finance.Customer',
+      { params: { include: 'all' } }
+    );
+  });
+
+  it('restores through the concept resource and hands the concept to the host', async () => {
+    holdName('Customer');
+    reconcile.mockResolvedValue(true);
+    setup();
+    await typeName('Customer');
+    fireEvent.click(await screen.findByTestId('new-class-restore'));
+
+    await waitFor(() =>
+      expect(reconcile).toHaveBeenCalledWith(ontology.namespace + 'Customer', {
+        keepOpen: false,
+      })
+    );
+    expect(put).toHaveBeenCalledWith('/ontologyConcepts/restore', {
+      id: 'deleted-id',
+    });
+  });
+
+  it('does not warn for a name nothing holds', async () => {
+    setup();
+    await typeName('Supplier');
+
+    expect(get).toHaveBeenCalledWith(
+      '/ontologyConcepts/name/Finance.Supplier',
+      {
+        params: { include: 'all' },
+      }
+    );
+
+    expect(screen.queryByTestId('new-class-name-deleted')).toBeNull();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('shows the server sentence beside the name on a plain 409, without a toast', async () => {
+    const normalPost = post.getMockImplementation();
+    post.mockImplementation(
+      async (url: string, body: Record<string, unknown>) => {
+        if (url === '/ontologyChangeSets') {
+          throw new AxiosError(
+            'Request failed with status code 409',
+            AxiosError.ERR_BAD_REQUEST,
+            undefined,
+            undefined,
+            {
+              status: 409,
+              data: { message: 'Entity already exists.' },
+            } as AxiosResponse
+          );
+        }
+
+        return normalPost?.(url, body);
+      }
+    );
+    setup();
+    await typeName('Supplier');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+
+    expect(
+      await screen.findByTestId('new-class-name-conflict')
+    ).toHaveTextContent('Entity already exists.');
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });
