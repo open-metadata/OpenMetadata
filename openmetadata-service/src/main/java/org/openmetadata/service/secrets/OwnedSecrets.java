@@ -91,6 +91,10 @@ public final class OwnedSecrets {
    * in place. A field whose old secret is missing or cannot be read keeps its reference, so it
    * resolves exactly as before. The old secret is never deleted: deployed copies of a configuration
    * may still point at it.
+   *
+   * <p>It copies whatever value a reference holds and does not check who wrote it. Pass only
+   * references known to belong to this owner. When that is uncertain, do not rekey a credential
+   * that works on its own, such as an access token: drop it, so its owner signs in again.
    */
   public RekeyResult rekey(Object value, SecretOwner owner, List<String> path) {
     Rekeying rekeying = new Rekeying(owner);

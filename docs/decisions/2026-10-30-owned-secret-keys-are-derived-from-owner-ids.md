@@ -27,6 +27,9 @@ whole life, and it has to be valid as it is on every supported provider.
   rather than failing the write it belongs to.
 - `rekey` copies a secret from another key of the managed namespace to the owner's key and never
   deletes the source, because copies of a configuration outside the database may still point at it.
+  It copies whatever value the reference holds and does not check who wrote it, so a caller passes
+  only references it knows belong to the owner. When that is uncertain, a credential that works on
+  its own, such as an access token, is dropped rather than rekeyed, and its owner signs in again.
 - A key longer than the provider accepts fails before anything is written.
 
 ## Consequences
