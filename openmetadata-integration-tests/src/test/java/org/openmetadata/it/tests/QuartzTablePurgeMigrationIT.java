@@ -306,8 +306,9 @@ class QuartzTablePurgeMigrationIT {
             ? """
               SELECT (SELECT COUNT(*) FROM information_schema.processlist
                        WHERE db = DATABASE() AND state LIKE 'Waiting for%lock')
-                   + (SELECT COUNT(*) FROM information_schema.innodb_trx
-                       WHERE trx_state = 'LOCK WAIT')"""
+                   + (SELECT COUNT(*) FROM information_schema.innodb_trx trx
+                       JOIN information_schema.processlist p ON p.id = trx.trx_mysql_thread_id
+                       WHERE p.db = DATABASE() AND trx.trx_state = 'LOCK WAIT')"""
             : """
               SELECT COUNT(*) FROM pg_stat_activity
               WHERE datname = current_database() AND wait_event_type = 'Lock'""";
