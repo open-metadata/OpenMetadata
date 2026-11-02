@@ -127,6 +127,7 @@ export const createChunkClassifier = ({
   // is dropped by Vite), and modules /silent-callback also reaches get their
   // own chunk: a group captures its members' dependencies, so leaving them
   // unnamed would pull the whole shell into that iframe.
+  // ADR:2026-11-02-ui-bundle-groups-the-entry-graph-and-isolates-silent-callback
   const appShellChunk = (
     id: string,
     graph?: ModuleGraph

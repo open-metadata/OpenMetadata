@@ -352,6 +352,7 @@ export default defineConfig(async ({ mode }) => {
               // dependencies, so whichever group claims a module first keeps
               // it. Below them, `app-shell` would otherwise swallow React,
               // the router and react-aria.
+              // ADR:2026-11-02-ui-bundle-groups-the-entry-graph-and-isolates-silent-callback
               {
                 name: (id: string, graph: ModuleGraph) => {
                   const chunk = classifyChunk(id, graph);

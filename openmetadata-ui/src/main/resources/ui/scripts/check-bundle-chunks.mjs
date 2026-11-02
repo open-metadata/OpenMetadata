@@ -48,6 +48,7 @@ const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 900 * 1024;
 // oidc-client and the token storage it shares with the app (292290 bytes in the
 // reference build). A chunk-group change that lets the app shell capture those
 // shared modules pulls the whole shell into the iframe; this catches it.
+// ADR:2026-11-02-ui-bundle-groups-the-entry-graph-and-isolates-silent-callback
 const MAX_SILENT_CALLBACK_JS_BYTES = 320 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
