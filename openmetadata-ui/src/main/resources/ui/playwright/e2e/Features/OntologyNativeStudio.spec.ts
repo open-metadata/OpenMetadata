@@ -20,16 +20,16 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
-  clickIgnoringToasts,
-  getWorkerAdminAPIContext,
-  scrollIntoViewAndSettle,
-  selectOptionWithRetry,
-  uuid,
+    clickIgnoringToasts,
+    getWorkerAdminAPIContext,
+    scrollIntoViewAndSettle,
+    selectOptionWithRetry,
+    uuid
 } from '../../utils/common';
 import {
-  clickGraphNode,
-  readGraphEdges,
-  readNodePositions,
+    clickGraphNode,
+    readGraphEdges,
+    readNodePositions
 } from '../../utils/ontologyStudio';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 
@@ -73,7 +73,7 @@ test.describe(
           await expect(
             page.getByTestId('ontology-scope-menu-trigger')
           ).toHaveAttribute('data-scope-key', 'ontology:all');
-          // A catalog past the aggregate-graph limit shows the capacity alert instead of the graph.
+          // The graph and the over-limit alert each have a dedicated spec, so either state is a valid scope.
           await expect(
             page
               .getByTestId('all-ontologies-graph')
@@ -95,9 +95,7 @@ test.describe(
           await expect(page.getByTestId('ontology-create')).toBeVisible();
           await page.keyboard.press('Escape');
           const owner = ontologies[1];
-          if (await page.getByTestId('all-ontologies-load-error').isVisible()) {
-            await page.goto('/governance/ontology?ontology=' + owner.id);
-          }
+          await page.goto('/governance/ontology?ontology=' + owner.id);
           await page.getByTestId('submode-tab-tree').click();
           await page
             .getByTestId('ontology-tree-term-' + concepts[1].id)

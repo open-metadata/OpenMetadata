@@ -12,18 +12,18 @@
  */
 
 import {
-  Badge,
-  BadgeWithDot,
-  Box,
-  Button,
-  Select,
-  Typography,
+    Badge,
+    BadgeWithDot,
+    Box,
+    Button,
+    Select,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  GitBranch01,
-  Grid01,
-  Plus,
-  Share07,
+    GitBranch01,
+    Grid01,
+    Plus,
+    Share07
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
@@ -37,8 +37,10 @@ import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlacehol
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../components/common/Loader/Loader';
+import AggregateConceptInspector from '../../components/governance/ontology/AllOntologiesGraphView/AggregateConceptInspector';
 import AllOntologiesGraphView from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView';
 import { FILTERS as NATIVE_FILTERS } from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView.constants';
+import OntologyAllOntologiesConceptDrawer from '../../components/governance/ontology/OntologyAuthoringWorkspace/OntologyAllOntologiesConceptDrawer';
 import OntologyCreateDialog from '../../components/governance/ontology/OntologyCreateDialog/OntologyCreateDialog';
 import OntologyEmptyState from '../../components/governance/ontology/OntologyEmptyState/OntologyEmptyState';
 import { OntologyGraphSearchSlotContext } from '../../components/governance/ontology/OntologyGraphView/OntologyGraphSearchSlot.context';
@@ -48,7 +50,6 @@ import OntologyPublicationModal from '../../components/governance/ontology/Ontol
 import OntologyStudioHeader from '../../components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader';
 import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
 import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
-import OntologyAllOntologiesConceptDrawer from '../../components/governance/ontology/OntologyAuthoringWorkspace/OntologyAllOntologiesConceptDrawer';
 import OntologyStudioWorkspace from '../../components/governance/ontology/OntologyStudioWorkspace/OntologyStudioWorkspace';
 import OntologyTasksDrawer from '../../components/governance/ontology/OntologyTasksDrawer/OntologyTasksDrawer';
 import OntologyVersionChip from '../../components/governance/ontology/OntologyVersionChip/OntologyVersionChip';
@@ -72,23 +73,23 @@ import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
-import { OntologyPublicationStatus } from '../../generated/type/ontologyPublicationStatus';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
+import { OntologyPublicationStatus } from '../../generated/type/ontologyPublicationStatus';
 import { useAuth } from '../../hooks/authHooks';
 import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
-  OntologyEditLeaseState,
-  useOntologyEditLease,
+    OntologyEditLeaseState,
+    useOntologyEditLease
 } from '../../hooks/governance/ontology/useOntologyEditLease';
 import { ONTOLOGY_WORKING_DIFF_QUERY_KEY } from '../../hooks/governance/ontology/useOntologyPublication';
 import {
-  ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
-  useAllOntologyStudioModels,
+    ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
+    useAllOntologyStudioModels
 } from '../../hooks/governance/ontology/useOntologyStudioModel';
 import {
-  ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
-  useOntologyStudioScopes,
+    ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
+    useOntologyStudioScopes
 } from '../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useOntologyUnpublishedCount } from '../../hooks/governance/ontology/useOntologyUnpublishedCount';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -97,29 +98,29 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { getOntology } from '../../rest/ontologyAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-  ALL_ONTOLOGIES_SCOPE,
-  getScopeKey,
-  getStudioScope,
-  isOntologyScope,
-  OntologyStudioScope,
+    ALL_ONTOLOGIES_SCOPE,
+    getScopeKey,
+    getStudioScope,
+    isOntologyScope,
+    OntologyStudioScope
 } from '../../utils/governance/ontology/OntologyStudioScope.utils';
+import {
+    parseStudioUrlState,
+    patchStudioUrlParams,
+    StudioUrlState,
+    StudioUrlVersion,
+    StudioUrlView
+} from '../../utils/governance/ontology/OntologyStudioUrlState.utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
+    checkPermission,
+    DEFAULT_ENTITY_PERMISSION
 } from '../../utils/PermissionsUtils';
-import {
-  parseStudioUrlState,
-  patchStudioUrlParams,
-  StudioUrlState,
-  StudioUrlVersion,
-  StudioUrlView,
-} from '../../utils/governance/ontology/OntologyStudioUrlState.utils';
 import { generateUUID } from '../../utils/StringUtils';
 import {
-  showErrorToast,
-  showInfoToast,
-  showSuccessToast,
+    showErrorToast,
+    showInfoToast,
+    showSuccessToast
 } from '../../utils/ToastUtils';
 
 // 'review' has no tab; a memory's "view draft" link (?draft=) still opens it.
@@ -732,10 +733,26 @@ function canShowPublicationTrigger(state: {
   return state.isAllOntologies && state.canEditAnyOntology;
 }
 
-function nextConceptRequest(
-  current: { key: number; ontologyId: string } | undefined,
+interface NativeConceptRequest {
+  key: number;
+  ontologyId: string;
+  handled?: boolean;
+}
+
+// A remounted graph must not replay a request it already opened, so a handled one reads as 0.
+function pendingConceptRequestKey(
+  request: NativeConceptRequest | undefined,
   ontologyId: string
 ) {
+  return request?.ontologyId === ontologyId && !request.handled
+    ? request.key
+    : 0;
+}
+
+function nextConceptRequest(
+  current: NativeConceptRequest | undefined,
+  ontologyId: string
+): NativeConceptRequest {
   return {
     key: current?.ontologyId === ontologyId ? current.key + 1 : 1,
     ontologyId,
@@ -975,10 +992,8 @@ const OntologyExplorerContent: React.FC = () => {
   const [nativeRefresh, setNativeRefresh] = useState(0);
   const [nativeAuthoringLocked, setNativeAuthoringLocked] = useState(false);
   const [isAggregateCreateOpen, setIsAggregateCreateOpen] = useState(false);
-  const [nativeConceptRequest, setNativeConceptRequest] = useState<{
-    key: number;
-    ontologyId: string;
-  }>();
+  const [nativeConceptRequest, setNativeConceptRequest] =
+    useState<NativeConceptRequest>();
   const [searchSlot, setSearchSlot] = useState<HTMLDivElement | null>(null);
   const [conceptDraft, setConceptDraft] = useState<{
     defaultGlossaryId?: string;
@@ -2081,11 +2096,10 @@ const OntologyExplorerContent: React.FC = () => {
 
     return (
       <OntologyStudioWorkspace
-        createConceptRequestKey={
-          nativeConceptRequest?.ontologyId === ontology.id
-            ? nativeConceptRequest.key
-            : 0
-        }
+        createConceptRequestKey={pendingConceptRequestKey(
+          nativeConceptRequest,
+          ontology.id
+        )}
         editConceptRequest={editConceptRequest}
         initialDraftId={initialDraftId}
         key={`${ontology.id}:${nativeRefresh}:${publishedReleaseId ?? 'draft'}`}
@@ -2103,6 +2117,11 @@ const OntologyExplorerContent: React.FC = () => {
         }
         viewSurface={explorerSurface}
         onAuthoringLockChange={setNativeAuthoringLocked}
+        onCreateConceptRequestHandled={() =>
+          setNativeConceptRequest((current) =>
+            current ? { ...current, handled: true } : current
+          )
+        }
         onEditConceptRequestHandled={() => setEditConceptRequest(undefined)}
         onRequestCreateConcept={() => guard(handleAddConcept)}
         onRequestEdit={(conceptId) => {
@@ -2126,7 +2145,7 @@ const OntologyExplorerContent: React.FC = () => {
   };
 
   function renderAggregateError() {
-    return (
+    const alert = (
       <div
         className="tw:relative tw:min-h-70 tw:flex-1"
         data-testid="all-ontologies-load-error"
@@ -2149,6 +2168,27 @@ const OntologyExplorerContent: React.FC = () => {
             ]}
           />
         )}
+      </div>
+    );
+
+    if (!allModels.isTooLarge || !selectedConceptId) {
+      return alert;
+    }
+
+    return (
+      <div className="tw:flex tw:min-h-0 tw:flex-1">
+        {alert}
+        <AggregateConceptInspector
+          conceptId={selectedConceptId}
+          onClose={() => selectNativeConcept(undefined)}
+          onEditConcept={(ontology, conceptId) =>
+            selectOntology(ontology, conceptId, 'edit')
+          }
+          onOpenOwner={(ontology, conceptId) =>
+            selectOntology(ontology, conceptId)
+          }
+          onSelectConcept={selectNativeConcept}
+        />
       </div>
     );
   }

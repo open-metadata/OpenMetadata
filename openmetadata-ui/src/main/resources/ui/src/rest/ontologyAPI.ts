@@ -17,8 +17,8 @@ import { PagingResponse } from 'Models';
 import { InferenceMaterializationResult } from '../generated/api/configuration/rdf/inferenceMaterializationResult';
 import { InferenceRuleList } from '../generated/api/configuration/rdf/inferenceRuleList';
 import {
-  InferenceRule,
-  InferenceRuleStatus,
+    InferenceRule,
+    InferenceRuleStatus
 } from '../generated/api/configuration/rdf/inferenceRuleStatus';
 import { AcquireOntologyEditLock } from '../generated/api/data/acquireOntologyEditLock';
 import { ActivateOntologyRelease } from '../generated/api/data/activateOntologyRelease';
@@ -41,18 +41,18 @@ import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyBulkResultArtifact } from '../generated/api/data/ontologyBulkResultArtifact';
 import { OntologyBulkSubmission } from '../generated/api/data/ontologyBulkSubmission';
-import { OntologyConceptDeleteImpact } from '../generated/api/data/ontologyConceptDeleteImpact';
 import { OntologyBulkTemplate } from '../generated/api/data/ontologyBulkTemplate';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { OntologyConceptDeleteImpact } from '../generated/api/data/ontologyConceptDeleteImpact';
 import type {
-  Hop,
-  OntologyConceptQuery,
+    Hop,
+    OntologyConceptQuery
 } from '../generated/api/data/ontologyConceptQuery';
 import { OntologyDeleteResult } from '../generated/api/data/ontologyDeleteResult';
 import { OntologyDomainDraftRequest } from '../generated/api/data/ontologyDomainDraftRequest';
 import {
-  CreateOntologyChangeSetRequest,
-  OntologyDomainDraftResult,
+    CreateOntologyChangeSetRequest,
+    OntologyDomainDraftResult
 } from '../generated/api/data/ontologyDomainDraftResult';
 import { OntologyImpactReport } from '../generated/api/data/ontologyImpactReport';
 import { OntologyInferenceExplanation } from '../generated/api/data/ontologyInferenceExplanation';
@@ -82,8 +82,8 @@ import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyCha
 import type { Ontology } from '../generated/entity/data/ontology';
 import { OntologyAxiom } from '../generated/entity/data/ontologyAxiom';
 import {
-  OntologyChangeSet,
-  OntologyChangeSetState,
+    OntologyChangeSet,
+    OntologyChangeSetState
 } from '../generated/entity/data/ontologyChangeSet';
 import type { OntologyConcept } from '../generated/entity/data/ontologyConcept';
 import type { OntologyProperty } from '../generated/entity/data/ontologyProperty';
@@ -93,21 +93,21 @@ import { OntologyConceptBindingsResponse } from '../generated/type/ontologyConce
 import { OntologyEditLock } from '../generated/type/ontologyEditLock';
 import { OntologyReleaseEvent } from '../generated/type/ontologyReleaseEvent';
 import {
-  MemberKind,
-  OntologyReleaseMember,
+    MemberKind,
+    OntologyReleaseMember
 } from '../generated/type/ontologyReleaseMember';
 import { OntologyState } from '../generated/type/ontologyState';
 import { ListParams } from '../interface/API.interface';
 import {
-  BindingSnapshot,
-  RemoveAsset,
-  ReplaceAsset,
+    BindingSnapshot,
+    RemoveAsset,
+    ReplaceAsset
 } from '../interface/governance/ontology/ontologyConceptBindings.types';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 import {
-  NATIVE_EXPORT_MEDIA_TYPES,
-  OntologyReleaseExportFormat,
+    NATIVE_EXPORT_MEDIA_TYPES,
+    OntologyReleaseExportFormat
 } from './ontologyExport.constants';
 
 const RELATIONSHIP_TYPES_PATH = '/relationshipTypes';
@@ -263,6 +263,19 @@ export const patchOntology = async (id: string, patch: Operation[]) => {
     `${ONTOLOGIES_PATH}/${encodeURIComponent(id)}`,
     patch,
     { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
+
+  return response.data;
+};
+
+export const getOntologyConcept = async (
+  id: string,
+  fields?: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyConcept>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}`,
+    { params: { fields }, signal }
   );
 
   return response.data;

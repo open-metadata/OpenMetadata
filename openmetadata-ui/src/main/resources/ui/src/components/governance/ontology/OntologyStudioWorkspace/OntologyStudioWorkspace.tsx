@@ -25,7 +25,7 @@ import OntologyAuthoringWorkspace from '../OntologyAuthoringWorkspace/OntologyAu
 import OntologyAxiomWorkspace from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace';
 import OntologyCreateForm from '../OntologyCreateForm/OntologyCreateForm';
 import OntologyGraphView, {
-  OntologyModelStats,
+    OntologyModelStats
 } from '../OntologyGraphView/OntologyGraphView';
 import OntologyOverview from '../OntologyOverview/OntologyOverview';
 
@@ -35,6 +35,7 @@ interface OntologyStudioWorkspaceProps {
   releaseId?: string;
   publicationStatus?: OntologyPublicationStatus;
   createConceptRequestKey?: number;
+  onCreateConceptRequestHandled?: () => void;
   onRequestCreateConcept?: () => void;
   onAuthoringLockChange?: (locked: boolean) => void;
   initialDraftId?: string;
@@ -71,6 +72,7 @@ const OntologyStudioWorkspace = ({
   releaseId,
   publicationStatus,
   createConceptRequestKey,
+  onCreateConceptRequestHandled,
   onRequestCreateConcept,
   onAuthoringLockChange,
   initialDraftId,
@@ -200,6 +202,7 @@ const OntologyStudioWorkspace = ({
             selectedConceptId={selectedConceptId}
             surface={viewSurface}
             onAuthoringLockChange={onAuthoringLockChange}
+            onCreateConceptRequestHandled={onCreateConceptRequestHandled}
             onEditConceptRequestHandled={onEditConceptRequestHandled}
             onRequestCreateConcept={onRequestCreateConcept}
             onRequestEdit={onRequestEdit}

@@ -12,31 +12,31 @@
  */
 
 import {
-  Alert,
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  Checkbox,
-  Dialog,
-  Input,
-  Modal,
-  ModalOverlay,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    ButtonUtility,
+    Card,
+    Checkbox,
+    Dialog,
+    Input,
+    Modal,
+    ModalOverlay,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
-  KeyboardEvent,
-  lazy,
-  Suspense,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    KeyboardEvent,
+    lazy,
+    Suspense,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -45,8 +45,8 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
-  PaletteKey,
-  RelationshipType,
+    PaletteKey,
+    RelationshipType
 } from '../../../../generated/entity/data/relationshipType';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
@@ -54,82 +54,82 @@ import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
-  createOntologyAxiom,
-  createOntologyProperty,
-  createRelationshipType,
-  listRelationshipTypes,
-  patchOntologyAxiom,
-  patchOntologyProperty,
-  patchRelationshipType,
-  restoreOntologyDefinition,
-  softDeleteOntologyDefinition,
+    createOntologyAxiom,
+    createOntologyProperty,
+    createRelationshipType,
+    listRelationshipTypes,
+    patchOntologyAxiom,
+    patchOntologyProperty,
+    patchRelationshipType,
+    restoreOntologyDefinition,
+    softDeleteOntologyDefinition
 } from '../../../../rest/ontologyAPI';
 import {
-  buildInverseBackLink,
-  buildNativeRelationCatalog,
-  buildNativeRelationGroups,
-  findNativeRelationTypeByLabel,
-  MAX_RELATIONSHIP_TYPE_PAGES,
-  NativeRelationStep,
-  NativeRelationType,
-  planNativeProperties,
-  planNativeRelation,
-  planRelationshipType,
-  RelationshipTypeDraft,
-  RelationshipTypePlan,
-  toNativeRelationType,
+    buildInverseBackLink,
+    buildNativeRelationCatalog,
+    buildNativeRelationGroups,
+    findNativeRelationTypeByLabel,
+    MAX_RELATIONSHIP_TYPE_PAGES,
+    NativeRelationStep,
+    NativeRelationType,
+    planNativeProperties,
+    planNativeRelation,
+    planRelationshipType,
+    RelationshipTypeDraft,
+    RelationshipTypePlan,
+    toNativeRelationType
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
 import {
-  checkNativeRelation,
-  describeRelationIssue,
+    checkNativeRelation,
+    describeRelationIssue
 } from '../../../../utils/governance/ontology/OntologyRelationCheck.utils';
-import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import {
-  buildDataPropertyRequest,
-  buildOntologyStudioGraph,
-  DataPropertyInput,
-  OntologyModelRelation,
+    buildDataPropertyRequest,
+    buildOntologyStudioGraph,
+    DataPropertyInput,
+    OntologyModelRelation
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
-  LayoutType,
-  RELATION_COLORS,
+    LayoutType,
+    RELATION_COLORS
 } from '../../../OntologyExplorer/OntologyExplorer.constants';
 import {
-  OntologyGraphData,
-  OntologyGraphHandle,
+    OntologyGraphData,
+    OntologyGraphHandle
 } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
 import {
-  buildNativeTreeIndex,
-  buildOntologyTreeMetrics,
-  getOntologyHealthSummary,
+    buildNativeTreeIndex,
+    buildOntologyTreeMetrics,
+    getOntologyHealthSummary
 } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/RelationshipTypePicker.constants';
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
-import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptDeleteDialog from '../OntologyAuthoringWorkspace/OntologyConceptDeleteDialog';
+import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
 import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
-import OntologyRelationDetail from '../OntologyRelationControls/OntologyRelationDetail';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
+import OntologyRelationDetail from '../OntologyRelationControls/OntologyRelationDetail';
 import OntologyConceptSearch from './OntologyConceptSearch';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
 import OntologyGraphNodeList from './OntologyGraphNodeList';
 import { useOntologyGraphSearchSlot } from './OntologyGraphSearchSlot.context';
 import {
-  AI_GRAPH_BACKDROP_CLASS,
-  AI_GRAPH_CONTROLS_CLASS,
+    AI_GRAPH_BACKDROP_CLASS,
+    AI_GRAPH_CONTROLS_CLASS
 } from './OntologyGraphView.constants';
 
 const OntologyGraphG6 = lazy(
@@ -331,6 +331,7 @@ interface OntologyGraphViewProps {
   readonly onRequestGraphSurface: () => void;
   readonly onRequestTreeSurface?: () => void;
   readonly createConceptRequestKey?: number;
+  readonly onCreateConceptRequestHandled?: () => void;
   readonly onRequestCreateConcept?: () => void;
   readonly onAuthoringLockChange?: (locked: boolean) => void;
   readonly isEditing?: boolean;
@@ -387,6 +388,7 @@ const OntologyGraphView = ({
   onRequestGraphSurface,
   onRequestTreeSurface,
   createConceptRequestKey = 0,
+  onCreateConceptRequestHandled,
   onRequestCreateConcept,
   onAuthoringLockChange,
   isEditing = false,
@@ -409,7 +411,7 @@ const OntologyGraphView = ({
   // The inverse this view registered and has not linked back yet. A retry reuses or links it, since
   // a delete needs a right the dialog never checks and a soft delete leaves its name taken.
   const unlinkedInverseId = useRef<string>();
-  const handledCreateConceptRequest = useRef(createConceptRequestKey);
+  const handledCreateConceptRequest = useRef(0);
   const [nodePositions, setNodePositions] =
     useState<Record<string, { x: number; y: number }>>();
   const creationPositions = useRef<Record<string, { x: number; y: number }>>();
@@ -974,6 +976,7 @@ const OntologyGraphView = ({
       handledCreateConceptRequest.current !== createConceptRequestKey
     ) {
       handledCreateConceptRequest.current = createConceptRequestKey;
+      onCreateConceptRequestHandled?.();
       runConfirmed(() =>
         (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
       );
@@ -984,6 +987,7 @@ const OntologyGraphView = ({
   }, [
     createConceptRequestKey,
     isEditing,
+    onCreateConceptRequestHandled,
     onRequestGraphSurface,
     onSelectedConceptChange,
     runConfirmed,

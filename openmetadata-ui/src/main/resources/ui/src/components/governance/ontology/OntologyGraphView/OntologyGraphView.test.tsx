@@ -12,60 +12,61 @@
  */
 
 import {
-  act,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
+    act,
+    fireEvent,
+    screen,
+    waitFor,
+    within
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
+import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
-  AxiomType,
-  ExpressionKind,
-  OntologyAxiom,
-  Provenance,
+    AxiomType,
+    ExpressionKind,
+    OntologyAxiom,
+    Provenance
 } from '../../../../generated/entity/data/ontologyAxiom';
 import {
-  ConceptMappingType,
-  OntologyConcept,
-  OntologyConceptType,
+    ConceptMappingType,
+    OntologyConcept,
+    OntologyConceptType
 } from '../../../../generated/entity/data/ontologyConcept';
 import {
-  Kind,
-  OntologyProperty,
+    Kind,
+    OntologyProperty
 } from '../../../../generated/entity/data/ontologyProperty';
 import {
-  Category,
-  PaletteKey,
-  RelationshipType,
+    Category,
+    PaletteKey,
+    RelationshipType
 } from '../../../../generated/entity/data/relationshipType';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
-  acquireOntologyEditLock,
-  applyOntologyChangeSet,
-  createOntologyAxiom,
-  createOntologyChangeSet,
-  createOntologyProperty,
-  createRelationshipType,
-  getNativeOntologyDataGraphPage,
-  getOntologyChangeSet,
-  getOntologyState,
-  getRelationshipTypeByName,
-  listRelationshipTypes,
-  patchOntologyConcept,
-  patchOntologyProperty,
-  patchRelationshipType,
-  releaseOntologyEditLock,
+    acquireOntologyEditLock,
+    applyOntologyChangeSet,
+    createOntologyAxiom,
+    createOntologyChangeSet,
+    createOntologyProperty,
+    createRelationshipType,
+    getNativeOntologyDataGraphPage,
+    getOntologyChangeSet,
+    getOntologyState,
+    getRelationshipTypeByName,
+    listRelationshipTypes,
+    patchOntologyConcept,
+    patchOntologyProperty,
+    patchRelationshipType,
+    releaseOntologyEditLock
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import { pageFixture } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import {
-  buildOntologyStudioGraph,
-  getModelRelations,
-  OntologyStudioModel,
+    buildOntologyStudioGraph,
+    getModelRelations,
+    OntologyStudioModel
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
@@ -2315,23 +2316,27 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-property-name')).toBeVisible();
   });
 
-  it('does not replay an old add-concept request after the graph remounts', async () => {
-    const view = (createConceptRequestKey: number) => (
-      <OntologyGraphView
-        isEditing
-        createConceptRequestKey={createConceptRequestKey}
-        ontology={ontology}
-        surface="graph"
-        onRequestGraphSurface={jest.fn()}
-      />
-    );
-    const first = render(view(0));
-    first.rerender(view(4));
+  it('does not replay an add-concept request the page marked handled after the graph remounts', async () => {
+    const Page = ({ remountKey }: { remountKey: string }) => {
+      const [handled, setHandled] = useState(false);
+
+      return (
+        <OntologyGraphView
+          isEditing
+          createConceptRequestKey={handled ? 0 : 4}
+          key={remountKey}
+          ontology={ontology}
+          surface="graph"
+          onCreateConceptRequestHandled={() => setHandled(true)}
+          onRequestGraphSurface={jest.fn()}
+        />
+      );
+    };
+    const view = render(<Page remountKey="first" />);
 
     expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
 
-    first.unmount();
-    render(view(4));
+    view.rerender(<Page remountKey="second" />);
     await screen.findByTestId('native-ontology-graph');
 
     expect(
@@ -2339,7 +2344,7 @@ describe('OntologyGraphView', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('does not open the New class panel for an old add-concept request at first mount', async () => {
+  it('opens the New class panel for a pending add-concept request when the graph mounts after it was made', async () => {
     render(
       <OntologyGraphView
         isEditing
@@ -2350,11 +2355,7 @@ describe('OntologyGraphView', () => {
       />
     );
 
-    await screen.findByTestId('native-ontology-graph');
-
-    expect(
-      screen.queryByTestId('ontology-new-class-panel')
-    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
   it('keeps a pending class attempt mounted when another canvas node is selected', async () => {

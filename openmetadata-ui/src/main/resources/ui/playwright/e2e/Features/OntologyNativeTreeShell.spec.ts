@@ -12,10 +12,10 @@
  */
 import { APIRequestContext, Locator, Page, Response } from '@playwright/test';
 import {
-  AxiomType,
-  CreateOntologyAxiom,
-  ExpressionKind,
-  Provenance,
+    AxiomType,
+    CreateOntologyAxiom,
+    ExpressionKind,
+    Provenance
 } from '../../../src/generated/api/data/createOntologyAxiom';
 import { SparqlQuerySettings } from '../../../src/generated/configuration/sparqlQuerySettings';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
@@ -436,20 +436,9 @@ test.describe(
           await page.goto(
             '/governance/ontology?concept=' + shared.id + '&source=tree-shell'
           );
-          // Past the aggregate-graph limit the page shows the capacity alert and no inspector, so
-          // the selection is only checked while the aggregate loads.
           await expect(
-            page
-              .getByTestId('ontology-concept-inspector')
-              .or(page.getByTestId('all-ontologies-load-error'))
-          ).toBeVisible();
-          if (
-            await page.getByTestId('ontology-concept-inspector').isVisible()
-          ) {
-            await expect(
-              page.getByTestId('ontology-concept-inspector')
-            ).toContainText(shared.iri);
-          }
+            page.getByTestId('ontology-concept-inspector')
+          ).toContainText(shared.iri);
           await page.getByTestId('ontology-publication-trigger').click();
           await expect(
             page.getByTestId('ontology-publication-picker')
