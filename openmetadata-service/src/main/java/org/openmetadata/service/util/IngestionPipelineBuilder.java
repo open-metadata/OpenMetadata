@@ -36,7 +36,7 @@ public final class IngestionPipelineBuilder {
    * Build `IngestionPipeline` object with concrete class for the config which by definition it is a `Object`.
    *
    * <p>Only the configs that can hold secrets are typed; any other config stays a map, which the
-   * password masker and the secrets manager skip.
+   * password masker and the secrets manager skip. ADR:2026-11-02-oneof-secrets-are-typed-by-ordered-converter-candidates
    */
   public static void addDefinedConfig(IngestionPipeline ingestionPipeline) {
     SourceConfig sourceConfig = ingestionPipeline.getSourceConfig();

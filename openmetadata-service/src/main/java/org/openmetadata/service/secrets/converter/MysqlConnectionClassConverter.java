@@ -27,6 +27,8 @@ import org.openmetadata.schema.utils.JsonUtils;
  */
 public class MysqlConnectionClassConverter extends ClassConverter {
 
+  // First match wins, so Cloud SQL stays last: its password-only form is also a valid basicAuth.
+  // ADR:2026-11-02-oneof-secrets-are-typed-by-ordered-converter-candidates
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
       List.of(basicAuth.class, IamAuthConfig.class, AzureConfig.class, GcpCloudSqlConfig.class);
 

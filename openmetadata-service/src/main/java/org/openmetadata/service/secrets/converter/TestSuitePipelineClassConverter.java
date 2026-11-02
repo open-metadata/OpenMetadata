@@ -32,7 +32,8 @@ import org.openmetadata.service.util.ReflectionUtil;
  * oneOf} over every service's connection, so its config class is resolved from the config's {@code
  * type}. Connection type names are unique across service types, and every service's connection
  * wraps nothing but that config, so the database wrapper the test suite workflow reads them as fits
- * them all.
+ * them all. A config whose {@code type} is missing (it is optional, with a default) or unknown is
+ * left as it is: failing here would also fail every read of the stored pipeline.
  */
 public class TestSuitePipelineClassConverter extends ClassConverter {
 
@@ -61,19 +62,17 @@ public class TestSuitePipelineClassConverter extends ClassConverter {
   }
 
   private static Object convertConfig(Map<?, ?> config) {
-    String connectionType = String.valueOf(config.get(CONNECTION_TYPE));
-    Class<?> configClass =
-        Arrays.stream(ServiceType.values())
-            .map(serviceType -> findConnectionConfigClass(connectionType, serviceType))
-            .flatMap(Optional::stream)
-            .findFirst()
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        String.format(
-                            "Test suite service connection has an unknown connection type [%s]",
-                            connectionType)));
-    return ClassConverterFactory.getConverter(configClass).convert(config);
+    return Optional.ofNullable(config.get(CONNECTION_TYPE))
+        .flatMap(connectionType -> findConnectionConfigClass(String.valueOf(connectionType)))
+        .map(configClass -> ClassConverterFactory.getConverter(configClass).convert(config))
+        .orElse(config);
+  }
+
+  private static Optional<Class<?>> findConnectionConfigClass(String connectionType) {
+    return Arrays.stream(ServiceType.values())
+        .map(serviceType -> findConnectionConfigClass(connectionType, serviceType))
+        .flatMap(Optional::stream)
+        .findFirst();
   }
 
   private static Optional<Class<?>> findConnectionConfigClass(

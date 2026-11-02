@@ -284,7 +284,8 @@ public final class ClassConverterFactory {
               QlikSenseConnection.class,
               new NestedConfigClassConverter(
                   QlikSenseConnection.class,
-                  // Neither branch forbids additional properties, so values must be tried first
+                  // Neither branch forbids additional properties, so values must be tried first.
+                  // ADR:2026-11-02-oneof-secrets-are-typed-by-ordered-converter-candidates
                   Map.of(
                       "certificates",
                       List.of(QlikCertificateValues.class, QlikCertificatePath.class)))),
