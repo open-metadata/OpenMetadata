@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Locator, Page } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { readFile } from 'fs/promises';
 import { SearchIndex } from '../../../src/enums/search.enum';
 import { ContextMemory } from '../../../src/generated/entity/context/contextMemory';
@@ -416,22 +416,6 @@ test.describe(
         await author.getByTestId('ontology-publication-trigger').click();
         const card = author.getByTestId('ontology-release-reviewers');
         const picker = card.getByRole('combobox', { name: 'Add reviewer' });
-        // The picker searches only once focused, and React Aria opens its list
-        // only on a text change while options are already loaded. Typing before
-        // that first search returns leaves the list closed; that is current
-        // product behaviour, kept as-is here, so load the options first.
-        const loadReviewerOptions = async (combobox: Locator) => {
-          const loaded = author.waitForResponse((response) => {
-            const url = new URL(response.url());
-
-            return (
-              url.pathname === '/api/v1/search/query' &&
-              url.searchParams.get('index') === SearchIndex.USER
-            );
-          });
-          await combobox.click();
-          expect((await loaded).status()).toBe(200);
-        };
         const searchFor = async (name: string) => {
           const users = author.waitForResponse((response) => {
             const url = new URL(response.url());
@@ -459,7 +443,6 @@ test.describe(
 
         await test.step('Add a user and exclude the current user, added user and teams', async () => {
           await expect(picker).toBeEnabled();
-          await loadReviewerOptions(picker);
           await searchFor(reviewer.responseData.name);
           const firstAddition = author.waitForResponse(
             (response) =>
@@ -525,7 +508,6 @@ test.describe(
           const emptyPicker = emptyCard.getByRole('combobox', {
             name: 'Add reviewer',
           });
-          await loadReviewerOptions(emptyPicker);
           await emptyPicker.fill(reviewer.responseData.name);
           const addition = author.waitForResponse(
             (response) =>
