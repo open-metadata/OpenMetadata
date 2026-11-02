@@ -674,16 +674,25 @@ public class IncidentGroupsIT {
   }
 
   @Test
-  void testStatusNamingAnIncidentOfAnotherTestCaseRejected() throws Exception {
+  void testStatusNamingAnIncidentItCannotApplyToRejected() throws Exception {
     long ts = System.currentTimeMillis();
     TestCase testCase = createTestCaseWithIncidents("incident_groups_foreign_incident_" + ts);
     TestCase otherTestCase =
         createTestCaseWithIncidents("incident_groups_foreign_incident_other_" + ts);
+    UUID resolvedIncident = UUID.randomUUID();
     UUID incident = UUID.randomUUID();
     UUID otherIncident = UUID.randomUUID();
     insertStatusRecords(
         testCase,
-        List.of(seededRecord(incident.toString(), ts, TestCaseResolutionStatusTypes.New, null)));
+        List.of(
+            seededRecord(
+                resolvedIncident.toString(), ts - 120_000, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(
+                resolvedIncident.toString(),
+                ts - 60_000,
+                TestCaseResolutionStatusTypes.Resolved,
+                null),
+            seededRecord(incident.toString(), ts, TestCaseResolutionStatusTypes.New, null)));
     insertStatusRecords(
         otherTestCase,
         List.of(
@@ -693,7 +702,7 @@ public class IncidentGroupsIT {
         List.of(
             incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, otherIncident),
             incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, UUID.randomUUID()),
-            incidentEntry(testCase, TestCaseResolutionStatusTypes.New, incident));
+            incidentEntry(testCase, TestCaseResolutionStatusTypes.New, resolvedIncident));
 
     for (CreateTestCaseResolutionStatus entry : rejected) {
       assertEquals(
@@ -1342,12 +1351,12 @@ public class IncidentGroupsIT {
         createTestCase(
             "incident_groups_bulk_severity_case", tableLink(table), definition, List.of());
     createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
-    Severity current = fetchStatuses(testCase).getFirst().getSeverity();
+    TestCaseResolutionStatus incident = fetchStatuses(testCase).getFirst();
+    Severity current = incident.getSeverity();
     Severity target = current == Severity.Severity5 ? Severity.Severity4 : Severity.Severity5;
+    // As the grouped view sends it: the incident's own status and stateId, with the new severity.
     CreateTestCaseResolutionStatus severityOnly =
-        new CreateTestCaseResolutionStatus()
-            .withTestCaseReference(testCase.getFullyQualifiedName())
-            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+        incidentEntry(testCase, TestCaseResolutionStatusTypes.New, incident.getStateId())
             .withSeverity(target);
 
     BulkOperationResult result =

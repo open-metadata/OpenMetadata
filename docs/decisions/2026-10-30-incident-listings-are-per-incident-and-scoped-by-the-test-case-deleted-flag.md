@@ -38,9 +38,11 @@ documents, so incidents of soft-deleted test cases stayed listed.
 - A status write (`POST /testCaseIncidentStatus` and its bulk form) may name the incident it
   applies to with `stateId`; without one it applies to the test case's latest incident, as before.
   A listing that shows several incidents of one test case has to name the one picked, or the
-  change lands on another. The named incident must belong to the request's test case, and `New`
-  cannot name one, since it starts an incident. When the incident has no task of its own, the
-  status does not fall back to the test case's open task if that task drives another incident.
+  change lands on another. The named incident must belong to the request's test case. `New` may
+  name only an open incident, where it restates the status (a severity change re-sends it); on a
+  resolved incident it would start a new one under the old `stateId`. When the incident has no
+  task of its own, the status does not fall back to the test case's open task if that task drives
+  another incident.
 
 ## Consequences
 Counts that read `paging.total` of a `latest` database listing now count incidents, so they can

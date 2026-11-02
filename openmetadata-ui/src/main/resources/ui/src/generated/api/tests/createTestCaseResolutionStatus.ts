@@ -21,7 +21,9 @@ export interface CreateTestCaseResolutionStatus {
     /**
      * Incident this status applies to: the stateId of one of the test case's incidents. A test
      * case can hold more than one open incident. When omitted, the status applies to the test
-     * case's latest incident. Not accepted with the New status, which starts an incident.
+     * case's latest incident. With the New status it must name an open incident, whose status
+     * New only restates (as a severity change does): New on a resolved incident starts a new
+     * one.
      */
     stateId?: string;
     /**

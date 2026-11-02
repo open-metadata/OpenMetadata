@@ -331,18 +331,24 @@ public class TestCaseResolutionStatusRepository
       String testCaseFqn,
       TestCaseResolutionStatus latestOfTestCase) {
     UUID stateId = incoming.getStateId();
-    rejectNewNamingAnIncident(incoming);
     boolean namesAnotherIncident =
         stateId != null
             && (latestOfTestCase == null || !stateId.equals(latestOfTestCase.getStateId()));
-    return namesAnotherIncident ? requireIncidentOf(stateId, testCaseFqn) : latestOfTestCase;
+    TestCaseResolutionStatus incident =
+        namesAnotherIncident ? requireIncidentOf(stateId, testCaseFqn) : latestOfTestCase;
+    rejectNewNamingAClosedIncident(incoming, incident);
+    return incident;
   }
 
-  // New starts an incident; naming an existing one would write the new chain under its stateId.
-  private static void rejectNewNamingAnIncident(TestCaseResolutionStatus incoming) {
+  // New on an open incident only restates its status, as a severity change does. On a resolved
+  // one it would start a new incident, and naming it would write that chain under its stateId.
+  private void rejectNewNamingAClosedIncident(
+      TestCaseResolutionStatus incoming, TestCaseResolutionStatus incident) {
     if (incoming.getStateId() != null
-        && incoming.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New) {
-      throw new IllegalArgumentException("A New status starts an incident and cannot name one");
+        && incoming.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New
+        && !Boolean.TRUE.equals(unresolvedIncident(incident))) {
+      throw new IllegalArgumentException(
+          "A New status starts an incident and cannot name a resolved one");
     }
   }
 
