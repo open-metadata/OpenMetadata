@@ -1,10 +1,10 @@
 # Hex dashboard usage is derived so OpenMetadata's weekly count equals Hex's seven-day app views
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial)
+- **Revisions:** v1 2026-11-02 (initial); v2 2026-11-02 (a day with no row gets a zero)
 - **Deciders:** Hex connector maintainers (review of the Hex components, run history and app views PR)
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_hex_components_runs_usage.py`
-  (`test_weekly_usage_follows_hex`)
+  (`test_weekly_usage_follows_hex`, `test_views_that_age_out_still_write_the_day`)
 - **Related:** ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard
 
 ## Context
@@ -19,8 +19,9 @@ a daily figure from a cumulative one and goes wrong from the third run.
 
 - Today's count is `max(0, lastSevenDays − the six previous days already stored)`, read through
   `GET /v1/usage/dashboard/{id}?days=7`.
-- Because a PUT adds, only what today doesn't hold yet is sent; nothing is sent when that is zero
-  or negative. A second run on the same day sends nothing.
+- Because a PUT adds, only what today doesn't hold yet is sent. A second run on the same day sends
+  nothing when that is zero or negative, but the first run of a day sends a zero: the dashboard's
+  usage summary is its latest row's, so without a row for today views that aged out keep showing.
 
 ## Consequences
 

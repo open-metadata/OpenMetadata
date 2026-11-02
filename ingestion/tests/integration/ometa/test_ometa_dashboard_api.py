@@ -192,3 +192,21 @@ class TestOMetaDashboardAPI:
         usage = metadata.get_dashboard_usage(created, date="2026-01-08", days=7)
 
         assert {model_str(day.date): day.dailyStats.count for day in usage} == {"2026-01-02": 2, "2026-01-08": 7}
+
+    def test_zero_usage_ages_out_the_weekly_count(self, metadata, dashboard_request, create_dashboard):
+        """
+        The usage summary is the latest row's, so only a zero row lets views age out
+        (ADR:2026-11-02-hex-daily-usage-follows-its-seven-day-app-views)
+        """
+        created = create_dashboard(dashboard_request)
+
+        def weekly_count():
+            return metadata.get_by_name(
+                entity=Dashboard, fqn=created.fullyQualifiedName, fields=["usageSummary"]
+            ).usageSummary.weeklyStats.count
+
+        metadata.publish_dashboard_usage(created, UsageRequest(date="2026-01-01", count=10))
+        assert weekly_count() == 10
+
+        metadata.publish_dashboard_usage(created, UsageRequest(date="2026-01-09", count=0))
+        assert weekly_count() == 0
