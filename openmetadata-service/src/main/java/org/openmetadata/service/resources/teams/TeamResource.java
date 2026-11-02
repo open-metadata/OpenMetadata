@@ -212,8 +212,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   /**
-   * Team grants are closed to impersonated callers, as user privileges are in UserResource. Team CSV
-   * import is refused to them, as its rows run without the request's impersonation.
+   * Team grants and team CSV import are not available to impersonated callers, as with user
+   * privileges in UserResource.
    */
   private static void rejectImpersonated(String action) {
     if (ImpersonationContext.getImpersonatedBy() != null) {

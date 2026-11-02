@@ -15,17 +15,16 @@
 Members hold a team's `defaultRoles` as inherited roles and are governed by its `policies`, and by
 those of every team above it. Assigning a role to a user is admin-only, and so is joining a team
 that is not open to everyone (ADR:2026-10-21-only-admins-change-a-users-domains lists the others).
-A team's own fields were authorized as an ordinary edit of the team, so its owner could change what
-its members inherit.
+A team's roles, policies and place in the hierarchy decide what its members inherit, so they follow
+the same rule as a user's roles rather than the rules for an ordinary team edit.
 
 ## Decision
 - Adding a default role or a policy to a team needs an admin, on `POST`, `PUT`, `PATCH` and team CSV
   import. Removing one, or sending the ones the team already holds, does not.
 - Adding a parent to a team needs the same permission as editing that parent directly, on the REST
   paths and in team CSV import. The organization is exempt, as every user already belongs to it.
-- An impersonated request cannot add a role or policy to a team, even when the impersonated user is
-  an admin, as for user privileges; team CSV import is refused to impersonated callers, because its
-  rows run without the request's impersonation.
+- An impersonated request cannot add a role or policy to a team, as for user privileges, and team CSV
+  import is not available to impersonated callers.
 - A user `PATCH` that changes team membership is judged on the teams the patch leaves the user in,
   whatever the operation, so a closed team needs an admin however the change is written.
 

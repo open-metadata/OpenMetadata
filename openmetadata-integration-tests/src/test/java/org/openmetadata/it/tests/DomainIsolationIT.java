@@ -624,8 +624,7 @@ public class DomainIsolationIT {
       JsonNode rename =
           MAPPER.readTree("[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"changed\"}]");
 
-      // An app runs as its bot, so configuring or triggering one acts with the bot's roles. Checked
-      // first so an unfixed policy fails before a real run is started.
+      // Apps are checked first, so a failing check stops before any run is started
       String app = "/v1/apps/name/SearchIndexingApplication";
       assertThrows(
           ForbiddenException.class,
