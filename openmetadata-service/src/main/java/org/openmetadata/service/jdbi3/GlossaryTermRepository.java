@@ -930,6 +930,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate glossary
     Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
+    requireParentInGlossary(entity, parentTerm, update);
     validateHierarchy(entity);
     // Validate related terms
     populateTermRelations(
@@ -941,6 +942,35 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     IntakeFormValidator.validate(entity, Entity.GLOSSARY_TERM);
+  }
+
+  /**
+   * A term's fully qualified name is built from its parent, so the parent must be in the term's
+   * glossary. Checked when a term is created or a write sets its parent or glossary; a term already
+   * stored under a parent from another glossary stays editable.
+   */
+  private void requireParentInGlossary(GlossaryTerm term, GlossaryTerm parentTerm, boolean update) {
+    boolean otherGlossary =
+        parentTerm != null && !parentTerm.getGlossary().getId().equals(term.getGlossary().getId());
+    if (otherGlossary && (!update || placementChanges(term))) {
+      throw new IllegalArgumentException(
+          "Parent term %s is in glossary %s, not in the term's glossary %s"
+              .formatted(
+                  parentTerm.getFullyQualifiedName(),
+                  parentTerm.getGlossary().getFullyQualifiedName(),
+                  term.getGlossary().getFullyQualifiedName()));
+    }
+  }
+
+  // Whether the write gives the stored term a different parent or glossary.
+  private static boolean placementChanges(GlossaryTerm term) {
+    GlossaryTerm stored = Entity.getEntity(GLOSSARY_TERM, term.getId(), "parent", Include.ALL);
+    return !Objects.equals(refId(stored.getParent()), refId(term.getParent()))
+        || !Objects.equals(refId(stored.getGlossary()), refId(term.getGlossary()));
+  }
+
+  private static UUID refId(EntityReference ref) {
+    return ref == null ? null : ref.getId();
   }
 
   /**

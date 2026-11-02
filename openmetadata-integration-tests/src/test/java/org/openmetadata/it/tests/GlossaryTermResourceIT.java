@@ -2148,6 +2148,42 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .getFullyQualifiedName());
   }
 
+  @Test
+  void test_parentMustBeInTheTermsGlossary(TestNamespace ns) {
+    Glossary source = createGlossary(ns, "parentGlsA");
+    Glossary target = createGlossary(ns, "parentGlsB");
+    GlossaryTerm term = createChildTerm(source, null, "moving");
+    GlossaryTerm parent = createChildTerm(target, null, "parent");
+    String parentOp =
+        "{\"op\":\"add\",\"path\":\"/parent\",\"value\":{\"id\":\"%s\",\"type\":\"glossaryTerm\"}}"
+            .formatted(parent.getId());
+    String glossaryOp =
+        "{\"op\":\"replace\",\"path\":\"/glossary\",\"value\":{\"id\":\"%s\",\"type\":\"glossary\"}}"
+            .formatted(target.getId());
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class, () -> patchTerm(term, "[%s]".formatted(parentOp)));
+    assertEquals(400, error.getStatusCode());
+    GlossaryTerm unchanged =
+        SdkClients.adminClient().glossaryTerms().get(term.getId().toString(), "");
+    assertEquals(term.getFullyQualifiedName(), unchanged.getFullyQualifiedName());
+    assertEquals(source.getId(), unchanged.getGlossary().getId());
+
+    // Moving it with its glossary is the same move made consistently, and is published.
+    GlossaryTerm moved = patchTerm(term, "[%s,%s]".formatted(parentOp, glossaryOp));
+    assertEquals(
+        "%s.%s".formatted(parent.getFullyQualifiedName(), term.getName()),
+        moved.getFullyQualifiedName());
+    assertEquals(target.getId(), moved.getGlossary().getId());
+  }
+
+  private static GlossaryTerm patchTerm(GlossaryTerm term, String operations) {
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .patch(term.getId().toString(), JsonUtils.readTree(operations));
+  }
+
   // task_entity.aboutFqnHash stores one 32-char hash per FQN level, so eight levels (263 chars)
   // need more than the varchar(256) the column was created with.
   @Test

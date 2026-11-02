@@ -6453,6 +6453,38 @@ public class WorkflowDefinitionResourceIT {
         termById(fixture.grandchild()).getFullyQualifiedName());
   }
 
+  // Parent and glossary place a term together; approving the parent alone would file it under
+  // the target glossary while it still belongs to its own.
+  @Test
+  void test_approvingOnlyTheParentOfACrossGlossaryMoveIsRefused(TestNamespace ns) throws Exception {
+    MoveFixture fixture = moveFixture(ns, "moveSplit");
+    Glossary target = createReviewedGlossary(ns, "moveSplitTarget");
+    GlossaryTerm targetParent = createTerm(target, null, "Pipeline");
+    awaitGlossaryTermStatus(SdkClients.adminClient(), targetParent, EntityStatus.IN_REVIEW);
+    deployTermGateWorkflow(fixture.moved(), List.of("parent", "glossary"), true);
+
+    HttpResponse<String> response = moveTerm(fixture.moved(), "glossaryTerm", targetParent);
+
+    assertEquals(202, response.statusCode(), response.body());
+    String requestId = response.headers().firstValue(PENDING_CHANGE_HEADER).orElseThrow();
+    assertEquals(List.of("glossary", "parent"), changedFields(changeRequest(requestId)));
+    Task task = awaitRequestTask(requestId, fixture.moved().getFullyQualifiedName());
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolveChanges(
+                    task, TaskResolutionType.Approved, approve("parent"), reject("glossary")));
+    assertEquals(409, refused.getStatusCode(), refused.getMessage());
+
+    GlossaryTerm unchanged = termById(fixture.moved());
+    assertEquals(fixture.moved().getFullyQualifiedName(), unchanged.getFullyQualifiedName());
+    assertEquals(fixture.moved().getGlossary().getId(), unchanged.getGlossary().getId());
+    assertEquals(
+        fixture.grandchild().getFullyQualifiedName(),
+        termById(fixture.grandchild()).getFullyQualifiedName());
+  }
+
   @Test
   void test_glossaryTermMoveOutsideTheGatedFieldsRunsAsAJob(TestNamespace ns) throws Exception {
     MoveFixture fixture = moveFixture(ns, "moveUngated");
@@ -8677,6 +8709,11 @@ public class WorkflowDefinitionResourceIT {
   // A gate on one glossary term matched by id: a move rewrites the fully qualified name, and the
   // gate judges its filter on the proposed term.
   private String deployTermGateWorkflow(GlossaryTerm term, List<String> include) throws Exception {
+    return deployTermGateWorkflow(term, include, false);
+  }
+
+  private String deployTermGateWorkflow(
+      GlossaryTerm term, List<String> include, boolean partialDecisions) throws Exception {
     String workflowName = "termGate" + UUID.randomUUID().toString().substring(0, 8);
     ObjectNode workflow =
         (ObjectNode)
@@ -8686,6 +8723,8 @@ public class WorkflowDefinitionResourceIT {
     ((ObjectNode) workflow.path("trigger").path("config"))
         .putObject("filter")
         .put("glossaryTerm", "{\"!=\":[{\"var\":\"id\"},\"%s\"]}".formatted(term.getId()));
+    ((ObjectNode) workflow.get("nodes").get(1).get("config"))
+        .put("allowPartialDecisions", partialDecisions);
     return createWorkflow(SdkClients.adminClient(), workflowName, workflow);
   }
 
