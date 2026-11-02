@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.docstore.PersonaLayoutDocument;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -221,7 +222,9 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   @Operation(
       operationId = "getDocumentByFQN",
       summary = "Get a Document by name",
-      description = "Get a Document by `name`.",
+      description =
+          "Get a Document by `name`. A persona's UI customization `persona.<personaFqn>` is also "
+              + "readable by the users the persona is assigned to, without Document permissions.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -246,7 +249,13 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, "", include);
+    return PersonaLayoutDocument.isAssignedToCaller(securityContext, name)
+        ? getAssignedPersonaLayout(uriInfo, name, include)
+        : getByNameInternal(uriInfo, securityContext, name, "", include);
+  }
+
+  private Document getAssignedPersonaLayout(UriInfo uriInfo, String name, Include include) {
+    return addHref(uriInfo, repository.getByName(uriInfo, name, getFields(""), include, false));
   }
 
   @GET
