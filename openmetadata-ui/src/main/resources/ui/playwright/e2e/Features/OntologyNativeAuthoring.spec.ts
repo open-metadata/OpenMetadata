@@ -36,9 +36,13 @@ const pick = async (page: Page, label: string, name: string) => {
   const input = page.getByRole('combobox', { name: label, exact: true });
   await scrollIntoViewAndSettle(input);
   await input.fill(name);
-  await page.getByRole('option', { name, exact: true }).click();
+  const listboxId = await input.getAttribute('aria-controls');
+  await page
+    .locator(`[id="${listboxId}"]`)
+    .getByRole('option', { name, exact: true })
+    .click();
   await input.press('Escape');
-  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
 };
 test.use({ isolatedUserOptions: { isAdmin: true } });
 test.describe(
