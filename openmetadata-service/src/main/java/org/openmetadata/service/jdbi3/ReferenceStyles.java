@@ -94,10 +94,14 @@ public final class ReferenceStyles {
   }
 
   // L1 miss: find() goes through the negative cache, Redis L2 and the load-race guard, and fills L1
-  // so the next reference to the same entity reads the cached JSON.
+  // so the next reference to the same entity reads the cached JSON. A style only decorates a chip,
+  // so a repository that is not registered yet (startup, tests) gives no style rather than failing
+  // the response or the search document.
   private static Optional<Style> styleOfEntity(String entityType, UUID id) {
     try {
-      return toReferenceStyle(Entity.getEntityRepository(entityType).find(id, ALL).getStyle());
+      return Optional.ofNullable(Entity.getEntityRepository(entityType))
+          .map(repository -> repository.find(id, ALL))
+          .flatMap(entity -> toReferenceStyle(entity.getStyle()));
     } catch (EntityNotFoundException e) {
       return Optional.empty();
     }
