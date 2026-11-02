@@ -10,7 +10,9 @@ import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
 import java.time.Duration;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.DenyPolicyPrincipals;
@@ -35,6 +38,7 @@ import org.openmetadata.schema.api.ai.CreateAIGovernanceFramework;
 import org.openmetadata.schema.api.ai.CreateAuditReport;
 import org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkRequest;
 import org.openmetadata.schema.api.data.CreateDataContract;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest;
 import org.openmetadata.schema.api.dataInsight.kpi.KpiDataInsightChart;
@@ -53,6 +57,7 @@ import org.openmetadata.schema.entity.ai.AuditReportStatus;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -67,6 +72,7 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.TagLabel;
@@ -728,6 +734,52 @@ public class SubResourceAuthorizationIT {
     return client.getHttpClient().executeForString(HttpMethod.GET, jobPath + "/result", null);
   }
 
+  /**
+   * A pipeline shown as an edge is no end of the edges it carries, so its own lineage reaches its
+   * assets only through them: a caller who can view those assets sees them, as an admin does.
+   */
+  @Test
+  void lineageSearch_aPipelineReachesTheAssetsItsEdgesConnect(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table source = createTable(ns, schema, "pl_source", List.of());
+    Table target = createTable(ns, schema, "pl_target", List.of());
+    Pipeline pipeline =
+        SdkClients.adminClient()
+            .pipelines()
+            .create(
+                new CreatePipeline()
+                    .withName(ns.prefix("pl_edge"))
+                    .withService(
+                        PipelineServiceTestFactory.createAirflow(ns).getFullyQualifiedName()));
+    addLineage(source, target, pipeline);
+    OpenMetadataClient restricted =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("pipelineroot"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+    String path =
+        "/v1/lineage/getLineage?type=pipeline&upstreamDepth=1&downstreamDepth=1&fqn="
+            + encodeURIComponent(pipeline.getFullyQualifiedName());
+    List<String> tables = List.of(source.getFullyQualifiedName(), target.getFullyQualifiedName());
+    Awaitility.await("the admin finds both tables in the pipeline's lineage")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertTrue(nodeKeys(adminGet(path)).containsAll(tables)));
+
+    Set<String> nodes =
+        nodeKeys(restricted.getHttpClient().executeForString(HttpMethod.GET, path, null));
+
+    assertTrue(nodes.containsAll(tables), nodes.toString());
+  }
+
+  private static Set<String> nodeKeys(String lineage) {
+    Set<String> keys = new HashSet<>();
+    JsonUtils.readTree(lineage).path("nodes").fieldNames().forEachRemaining(keys::add);
+    return keys;
+  }
+
   /** Platform lineage is every asset's lineage at once, unfiltered, so it is admin only. */
   @Test
   void platformLineage_isAdminOnly() {
@@ -801,12 +853,22 @@ public class SubResourceAuthorizationIT {
   }
 
   private static void addLineage(Table from, Table to) {
-    AddLineage addLineage =
-        new AddLineage()
-            .withEdge(
-                new EntitiesEdge()
-                    .withFromEntity(from.getEntityReference())
-                    .withToEntity(to.getEntityReference()));
+    addLineage(
+        new EntitiesEdge()
+            .withFromEntity(from.getEntityReference())
+            .withToEntity(to.getEntityReference()));
+  }
+
+  private static void addLineage(Table from, Table to, Pipeline through) {
+    addLineage(
+        new EntitiesEdge()
+            .withFromEntity(from.getEntityReference())
+            .withToEntity(to.getEntityReference())
+            .withLineageDetails(new LineageDetails().withPipeline(through.getEntityReference())));
+  }
+
+  private static void addLineage(EntitiesEdge edge) {
+    AddLineage addLineage = new AddLineage().withEdge(edge);
     Awaitility.await("lineage edge between freshly created tables")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(1))
