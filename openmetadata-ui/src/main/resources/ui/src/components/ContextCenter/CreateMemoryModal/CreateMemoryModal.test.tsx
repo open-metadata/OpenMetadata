@@ -89,22 +89,6 @@ jest.mock(
   () => jest.fn(() => <div data-testid="data-asset-select-list" />)
 );
 
-jest.mock('antd', () => ({
-  ConfigProvider: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  )),
-  Form: Object.assign(
-    jest.fn(({ children }: { children: React.ReactNode }) => (
-      <form>{children}</form>
-    )),
-    {
-      Item: jest.fn(({ children }: { children: React.ReactNode }) => (
-        <>{children}</>
-      )),
-    }
-  ),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   Alert: jest.fn(({ title }: { title: string }) => (
     <div role="alert">{title}</div>

@@ -49,6 +49,48 @@ describe('withDomainFilter', () => {
       headers: {},
     } as InternalAxiosRequestConfig);
 
+  describe('data quality report batch', () => {
+    const batchConfig = (requests: Record<string, unknown>[]) =>
+      ({
+        method: 'post',
+        url: '/dataQuality/testSuites/dataQualityReport/batch',
+        data: { requests },
+        headers: {},
+      } as unknown as InternalAxiosRequestConfig);
+
+    beforeEach(() => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue(
+        '/data-quality'
+      );
+    });
+
+    it('should scope each item to the navbar domain unless it names one', () => {
+      mockGetState.mockReturnValue({ activeDomain: 'Finance' });
+
+      const result = withDomainFilter(
+        batchConfig([
+          { key: '0', index: 'table' },
+          { key: '1', index: 'table', domain: 'Marketing' },
+        ])
+      );
+
+      expect(result.data.requests).toEqual([
+        { key: '0', index: 'table', domain: 'Finance' },
+        { key: '1', index: 'table', domain: 'Marketing' },
+      ]);
+    });
+
+    it('should leave the batch unscoped under All Domains', () => {
+      mockGetState.mockReturnValue({ activeDomain: DEFAULT_DOMAIN_VALUE });
+
+      const result = withDomainFilter(
+        batchConfig([{ key: '0', index: 'table' }])
+      );
+
+      expect(result.data.requests).toEqual([{ key: '0', index: 'table' }]);
+    });
+  });
+
   describe('should not intercept requests', () => {
     it('should leave every request unfiltered while a product tour runs', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(

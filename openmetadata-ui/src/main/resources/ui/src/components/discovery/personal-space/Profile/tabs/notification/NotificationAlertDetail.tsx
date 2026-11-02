@@ -59,6 +59,7 @@ import {
   getDiagnosticInfo,
   syncOffset,
 } from '../../../../../../rest/observabilityAPI';
+import { formatEventCount } from '../../../../../../utils/Alerts/AlertsUtilPure';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
@@ -180,7 +181,10 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.total-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {eventsRecord.totalEventsCount ?? 0}
+          {formatEventCount(
+            eventsRecord.totalEventsCount,
+            eventsRecord.countsAreLowerBound
+          )}
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
@@ -188,7 +192,10 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.pending-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {eventsRecord.pendingEventsCount ?? 0}
+          {formatEventCount(
+            eventsRecord.pendingEventsCount,
+            eventsRecord.countsAreLowerBound
+          )}
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>

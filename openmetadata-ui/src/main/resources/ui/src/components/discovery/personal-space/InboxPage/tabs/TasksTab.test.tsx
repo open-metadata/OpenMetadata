@@ -106,6 +106,7 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
     onSearchChange,
     onGroupingChange,
     onTypeFilterChange,
+    onSortOrderChange,
   }: {
     statusTabs: ReactNode;
     statusOptions: string[];
@@ -114,6 +115,7 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
     onSearchChange: (value: string) => void;
     onGroupingChange: (value: string) => void;
     onTypeFilterChange: (value: string[]) => void;
+    onSortOrderChange: (value: string) => void;
   }) => (
     <div
       data-status={statusFilter.join(',')}
@@ -144,6 +146,11 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
         data-testid="toolbar-filter-tag"
         onClick={() => onTypeFilterChange(['label.tag-request'])}>
         filter tag
+      </button>
+      <button
+        data-testid="toolbar-sort-oldest"
+        onClick={() => onSortOrderChange('asc')}>
+        oldest first
       </button>
     </div>
   ),
@@ -562,6 +569,7 @@ describe('TasksTab', () => {
       fields: 'assignees,createdBy,about,comments,payload,resolution',
       limit: 25,
       after: 'cur',
+      sortOrder: 'desc',
     });
     // Never the unscoped /tasks endpoint for the personal inbox.
     expect(mockListTasks).not.toHaveBeenCalled();
@@ -578,6 +586,7 @@ describe('TasksTab', () => {
       fields: 'assignees,createdBy,about,comments,payload,resolution',
       limit: 25,
       after: 'cur',
+      sortOrder: 'desc',
     });
   });
 
@@ -735,7 +744,13 @@ describe('TasksTab', () => {
 
     renderTab();
 
-    expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
+    expect(capturedQueryKey).toEqual([
+      'inbox-task-list',
+      'me',
+      'open',
+      '',
+      'desc',
+    ]);
   });
 
   it('invalidates the sidebar open-task count after a task is resolved', () => {
@@ -832,7 +847,31 @@ describe('TasksTab', () => {
 
       expect(screen.getByTestId('task-t1')).toBeInTheDocument();
       expect(screen.queryByTestId('task-t2')).not.toBeInTheDocument();
-      expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
+      expect(capturedQueryKey).toEqual([
+        'inbox-task-list',
+        'me',
+        'open',
+        '',
+        'desc',
+      ]);
+    });
+
+    it('lists oldest first, under its own cache key, once asked to', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-sort-oldest'));
+      capturedFetchPage();
+
+      expect(capturedQueryKey).toEqual([
+        'inbox-task-list',
+        'me',
+        'open',
+        '',
+        'asc',
+      ]);
+      expect(mockListVisibleTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ sortOrder: 'asc' })
+      );
     });
 
     it('sends the search text to the server once typing settles', () => {

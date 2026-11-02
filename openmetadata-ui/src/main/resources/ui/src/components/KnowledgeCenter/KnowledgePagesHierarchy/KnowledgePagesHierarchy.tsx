@@ -1059,7 +1059,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 if (deletePage.pageType === PageType.QUICK_LINK) {
                   await deleteKnowledgePage(deletePage.id, false, true);
                 } else {
-                  await deleteKnowledgePage(deletePage.id);
+                  await deleteKnowledgePage(deletePage.id, true, true);
                 }
                 queryClient.invalidateQueries({
                   queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,

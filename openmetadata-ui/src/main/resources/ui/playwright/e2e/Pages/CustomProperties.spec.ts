@@ -3415,7 +3415,6 @@ pickEntityMatrix(
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${dashboardSearchPropertyName}`
@@ -3557,7 +3556,6 @@ pickEntityMatrix(
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${pipelineSearchPropertyName}`

@@ -342,7 +342,9 @@ class PatchEntityToolTest {
   @ParameterizedTest
   @ValueSource(
       strings = {
+        "announcement",
         "app",
+        "contextFile",
         "document",
         "eventsubscription",
         "ingestionPipeline",

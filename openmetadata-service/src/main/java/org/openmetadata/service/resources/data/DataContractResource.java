@@ -809,20 +809,25 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    final long start = startTs != null ? startTs : 0L;
+    final long end = endTs != null ? endTs : System.currentTimeMillis();
     List<String> jsonResults =
-        timeSeriesDAO.listBetweenTimestampsByOrder(
-            dataContract.getFullyQualifiedName(),
-            "dataContract.dataContractResult",
-            startTs != null ? startTs : 0L,
-            endTs != null ? endTs : System.currentTimeMillis(),
-            EntityTimeSeriesDAO.OrderBy.DESC);
+        limitParam > 0
+            ? timeSeriesDAO.listBetweenTimestampsByOrderWithLimit(
+                dataContract.getFullyQualifiedName(),
+                "dataContract.dataContractResult",
+                start,
+                end,
+                EntityTimeSeriesDAO.OrderBy.DESC,
+                limitParam)
+            : timeSeriesDAO.listBetweenTimestampsByOrder(
+                dataContract.getFullyQualifiedName(),
+                "dataContract.dataContractResult",
+                start,
+                end,
+                EntityTimeSeriesDAO.OrderBy.DESC);
 
     List<DataContractResult> results = JsonUtils.readObjects(jsonResults, DataContractResult.class);
-
-    // Apply limit
-    if (limitParam > 0 && results.size() > limitParam) {
-      results = results.subList(0, limitParam);
-    }
 
     return new ResultList<>(
         results, String.valueOf(startTs), String.valueOf(endTs), results.size());
@@ -1028,18 +1033,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    // Get the effective contract (with inherited properties from data products) for validation
     EntityInterface<?> entity =
         Entity.getEntity(
             dataContract.getEntity().getType(),
             dataContract.getEntity().getId(),
             "*",
             Include.NON_DELETED);
-    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
+    DataContract effectiveContract = repository.getEffectiveDataContract(entity, dataContract);
 
-    // Use the effective contract for validation to include inherited semantics
     RestUtil.PutResponse<DataContractResult> result =
-        repository.validateContract(effectiveContract != null ? effectiveContract : dataContract);
+        repository.validateContractWithEffective(dataContract, effectiveContract);
     return result.toResponse();
   }
 

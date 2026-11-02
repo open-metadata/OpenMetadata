@@ -37,6 +37,7 @@ import { OntologyConcept } from '../../../../generated/entity/data/ontologyConce
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getInverseRelationLabel } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
   DataPropertyInput,
   getConceptAncestors,
@@ -60,6 +61,8 @@ import {
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import OntologyConceptAssets from './OntologyConceptAssets';
+import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
+import OntologyConceptLiveData from './OntologyConceptLiveData';
 import {
   ConceptEmptyState,
   ConceptFormCard,
@@ -85,6 +88,8 @@ interface OntologyConceptInspectorProps {
   readonly onEdit?: () => void;
   readonly onEditMappings?: () => void;
   readonly canEditBindings?: boolean;
+  readonly isEditing?: boolean;
+  readonly onOpenData: () => void;
   readonly onSelectConcept: (concept: OntologyConcept) => void;
 }
 
@@ -483,6 +488,8 @@ const OntologyConceptInspector = ({
   onEdit,
   onEditMappings,
   canEditBindings = false,
+  isEditing = false,
+  onOpenData,
   onSelectConcept,
 }: OntologyConceptInspectorProps) => {
   const { t } = useTranslation();
@@ -625,28 +632,33 @@ const OntologyConceptInspector = ({
     direction,
     other,
     relation,
-  }: (typeof conceptRelations)[number]) => (
-    <InspectorRow key={`${direction}:${relation.key}`}>
-      {direction === 'outgoing' ? (
-        <Badge color="brand" size="sm" type="pill-color">
-          {humanizeName(getModelRelationLabel(relation))}
-        </Badge>
-      ) : null}
-      <Button
-        noTextPadding
-        className="tw:min-w-0 tw:flex-1 tw:justify-start"
-        color="tertiary"
-        data-testid={`ontology-concept-relation-${other.id}`}
-        onPress={() => onSelectConcept(other)}>
-        <span className="tw:truncate">{other.displayName ?? other.name}</span>
-      </Button>
-      {direction === 'incoming' ? (
-        <Badge color="brand" size="sm" type="pill-color">
-          {humanizeName(getModelRelationLabel(relation))}
-        </Badge>
-      ) : null}
-    </InspectorRow>
-  );
+  }: (typeof conceptRelations)[number]) => {
+    const inverseLabel =
+      direction === 'incoming'
+        ? getInverseRelationLabel(relation, model)
+        : undefined;
+    const readsForward = direction === 'outgoing' || !!inverseLabel;
+    const badge = (
+      <Badge color="brand" size="sm" type="pill-color">
+        {humanizeName(inverseLabel ?? getModelRelationLabel(relation))}
+      </Badge>
+    );
+
+    return (
+      <InspectorRow key={`${direction}:${relation.key}`}>
+        {readsForward ? badge : null}
+        <Button
+          noTextPadding
+          className="tw:min-w-0 tw:flex-1 tw:justify-start"
+          color="tertiary"
+          data-testid={`ontology-concept-relation-${other.id}`}
+          onPress={() => onSelectConcept(other)}>
+          <span className="tw:truncate">{other.displayName ?? other.name}</span>
+        </Button>
+        {readsForward ? null : badge}
+      </InspectorRow>
+    );
+  };
 
   const renderRelationAuthoring = () =>
     onAddRelation ? (
@@ -922,9 +934,76 @@ const OntologyConceptInspector = ({
           canEdit={canEditBindings}
           conceptId={concept.id}
           key={concept.id}
+          presentation={
+            isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
+          }
         />
       </div>
     </aside>
+  );
+
+  const renderConceptIdentity = () => (
+    <Box direction="col" gap={2}>
+      <Typography as="h2" size="text-lg" weight="semibold">
+        {concept.displayName ?? concept.name}
+      </Typography>
+      <Typography
+        ellipsis
+        className="tw:font-mono tw:text-xs"
+        color="secondary">
+        {concept.iri}
+      </Typography>
+      <Box gap={2} wrap="wrap">
+        <Badge
+          color="gray"
+          data-testid="ontology-concept-lifecycle"
+          size="sm"
+          type="pill-color">
+          {t(
+            concept.lifecycleStatus
+              ? CONCEPT_STATUS_LABELS[concept.lifecycleStatus]
+              : 'label.unavailable'
+          )}
+        </Badge>
+        <Typography
+          color="secondary"
+          data-testid="ontology-concept-owner"
+          size="text-xs">
+          {getEntityName(model.ontology)}
+        </Typography>
+        <Badge color="brand" size="sm" type="pill-color">
+          {humanizeName(concept.conceptType)}
+        </Badge>
+        {concept.abstract ? (
+          <Badge color="gray" size="sm" type="pill-color">
+            {t('label.abstract')}
+          </Badge>
+        ) : null}
+        {concept.provider ? (
+          <Badge color="gray" size="sm" type="pill-color">
+            {concept.provider}
+          </Badge>
+        ) : null}
+      </Box>
+      <Box gap={1} wrap="wrap">
+        {concept.synonyms?.map((synonym) => (
+          <Badge key={synonym} size="sm">
+            {synonym}
+          </Badge>
+        ))}
+      </Box>
+      {concept.definitionSource ? (
+        <Typography
+          className="tw:break-all"
+          data-testid="ontology-concept-definition-source"
+          size="text-xs">
+          {t('label.definition-source')} · {concept.definitionSource}
+        </Typography>
+      ) : null}
+      <Typography as="p" color="secondary" size="text-sm">
+        {concept.description || t('label.no-description')}
+      </Typography>
+    </Box>
   );
 
   const renderClassicPanel = () => (
@@ -965,30 +1044,7 @@ const OntologyConceptInspector = ({
         className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-4"
         direction="col"
         gap={3}>
-        <Box direction="col" gap={2}>
-          <Typography as="h2" size="text-lg" weight="semibold">
-            {concept.displayName ?? concept.name}
-          </Typography>
-          <Typography
-            ellipsis
-            className="tw:font-mono tw:text-xs"
-            color="secondary">
-            {concept.iri}
-          </Typography>
-          <Box gap={2} wrap="wrap">
-            <Badge color="brand" size="sm" type="pill-color">
-              {humanizeName(concept.conceptType)}
-            </Badge>
-            {concept.provider ? (
-              <Badge color="gray" size="sm" type="pill-color">
-                {concept.provider}
-              </Badge>
-            ) : null}
-          </Box>
-          <Typography as="p" color="secondary" size="text-sm">
-            {concept.description || t('label.no-description')}
-          </Typography>
-        </Box>
+        {renderConceptIdentity()}
 
         {renderProperties()}
 
@@ -1031,6 +1087,15 @@ const OntologyConceptInspector = ({
           canEdit={canEditBindings}
           conceptId={concept.id}
           key={concept.id}
+          presentation={
+            isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
+          }
+        />
+        <OntologyConceptLiveData
+          concept={concept}
+          key={`live-data:${concept.id}`}
+          model={model}
+          relations={relations}
         />
       </Box>
     </aside>

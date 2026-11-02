@@ -1454,7 +1454,7 @@ test.describe('Context Center Articles', () => {
       // The reply count opens the conversation inside the drawer. That view
       // already lists the replies, so it shows no reply count of its own.
       await mainMessage.getByTestId('reply-button').click();
-      await expect(page.getByTestId('thread-panel-comments')).toBeVisible();
+      await expect(page.getByTestId('comments-input-field')).toBeVisible();
       await expect(mainMessage.getByTestId('reply-button')).toHaveCount(0);
       await page.getByTestId('thread-back').click();
       await expect(mainMessage.getByTestId('reply-button')).toBeVisible();
@@ -2009,7 +2009,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, articleToDelete.fullyQualifiedName);
 
         const deleteResponse = page.waitForResponse(
-          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=false`
+          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=true`
         );
 
         await page.getByTestId('manage-button').first().click();

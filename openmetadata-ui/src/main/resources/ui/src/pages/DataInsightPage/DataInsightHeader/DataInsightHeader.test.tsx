@@ -83,11 +83,14 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../DataInsightProvider', () => ({
-  useDataInsightProvider: jest
-    .fn()
-    .mockReturnValue({ chartFilter: {}, kpi: {} }),
-}));
+jest.mock(
+  '../../../components/DataInsight/DataInsightProvider/DataInsightProvider',
+  () => ({
+    useDataInsightProvider: jest
+      .fn()
+      .mockReturnValue({ chartFilter: {}, kpi: {} }),
+  })
+);
 
 jest.mock('../../../constants/constants', () => ({
   ...jest.requireActual('../../../constants/constants'),

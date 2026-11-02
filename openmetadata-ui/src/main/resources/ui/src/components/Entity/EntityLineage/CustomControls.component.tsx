@@ -25,6 +25,7 @@ import {
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { isEqual } from 'lodash';
 import QueryString from 'qs';
 import {
   FC,
@@ -341,7 +342,11 @@ const CustomControls: FC<{
   }, [activeTab, handleImpactAnalysisExport, onExportClick]);
 
   const handleDialogSave = (newConfig: LineageConfig) => {
-    setLineageConfig(newConfig);
+    // An unchanged config would still refetch; the dialog may only have changed
+    // the temp-table preference, which redraws without one.
+    if (!isEqual(newConfig, lineageConfig)) {
+      setLineageConfig(newConfig);
+    }
     if (activeTab === 'impact_analysis') {
       updateURLParams({
         depth:
@@ -574,6 +579,7 @@ const CustomControls: FC<{
 
       <LineageConfigModal
         config={lineageConfig}
+        showTempTablesToggle={activeTab !== 'impact_analysis'}
         visible={dialogVisible}
         onCancel={() => setDialogVisible(false)}
         onSave={handleDialogSave}

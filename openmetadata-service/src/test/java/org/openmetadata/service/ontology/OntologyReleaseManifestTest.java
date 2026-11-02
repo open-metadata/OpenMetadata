@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -18,6 +19,15 @@ import org.openmetadata.service.exception.BadRequestException;
 class OntologyReleaseManifestTest {
   private static final UUID RELEASE = UUID.fromString("916e6b9f-ea75-41a8-bd77-b81a04879243");
   private static final UUID MEMBER = UUID.fromString("7f4ef690-aedc-4ed4-b00b-41cd042f24b4");
+
+  @Test
+  void releaseHeadersAreNotCapturedDefinitionContent() {
+    final var failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> OntologyReleaseContent.project(new OntologyRelease().withId(RELEASE)));
+    assertEquals("Unsupported ontology content: " + OntologyRelease.class, failure.getMessage());
+  }
 
   @Test
   void memberDigestsIgnoreJsonObjectOrderButPreserveIriSpelling() {
