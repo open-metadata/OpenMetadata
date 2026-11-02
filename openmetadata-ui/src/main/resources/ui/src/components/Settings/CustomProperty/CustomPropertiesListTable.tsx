@@ -16,6 +16,7 @@ import {
   Box,
   Dropdown,
   FilterSelect,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit05, Trash01 } from '@openmetadata/ui-core-components/icons';
@@ -70,7 +71,7 @@ const CustomPropertyConfigCell: FC<CustomPropertyConfigCellProps> = ({
   }
 
   const visibleValues = summary.values.slice(0, MAX_VISIBLE_CONFIG_VALUES);
-  const hiddenCount = summary.values.length - visibleValues.length;
+  const hiddenValues = summary.values.slice(MAX_VISIBLE_CONFIG_VALUES);
 
   return (
     <Box className="tw:gap-1.5" data-testid={summary.testId} direction="col">
@@ -89,15 +90,19 @@ const CustomPropertyConfigCell: FC<CustomPropertyConfigCellProps> = ({
             {value}
           </Badge>
         ))}
-        {hiddenCount > 0 && (
-          <Badge
-            className="tw:font-medium tw:text-tertiary"
-            color="gray"
-            data-testid="config-hidden-count"
-            size="sm"
-            type="color">
-            {t('label.plus-count', { count: hiddenCount })}
-          </Badge>
+        {hiddenValues.length > 0 && (
+          <Tooltip
+            title={hiddenValues.join(', ')}
+            triggerClassName="tw:inline-flex">
+            <Badge
+              className="tw:font-medium tw:text-tertiary"
+              color="gray"
+              data-testid="config-hidden-count"
+              size="sm"
+              type="color">
+              {t('label.plus-count', { count: hiddenValues.length })}
+            </Badge>
+          </Tooltip>
         )}
       </Box>
     </Box>

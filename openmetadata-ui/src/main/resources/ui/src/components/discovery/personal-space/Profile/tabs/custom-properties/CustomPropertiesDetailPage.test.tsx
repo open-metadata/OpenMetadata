@@ -20,17 +20,24 @@ import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
 import type { CustomPropertiesDetailPageProps } from './CustomPropertiesPanel.types';
 
-// The add button is pushed up to the modal header, so render it alongside.
+// The add button is pushed up to the modal header and the entity type is
+// owned by the panel, so stand in for both.
 const DetailPageWithHeader = (
-  props: Omit<CustomPropertiesDetailPageProps, 'onSetHeaderActions'>
+  props: Omit<
+    CustomPropertiesDetailPageProps,
+    'onSetHeaderActions' | 'onEntityTypeChange'
+  >
 ) => {
   const [headerActions, setHeaderActions] = useState<ReactNode>();
+  const [entityType, setEntityType] = useState(props.entityType);
 
   return (
     <>
       {headerActions}
       <CustomPropertiesDetailPage
         {...props}
+        entityType={entityType}
+        onEntityTypeChange={setEntityType}
         onSetHeaderActions={setHeaderActions}
       />
     </>
@@ -63,7 +70,6 @@ const mockEntityType = {
   customProperties: [mockProperty1, mockProperty2],
 };
 
-const mockGetTypeByFQN = jest.fn().mockResolvedValue(mockEntityType);
 const mockDeleteCustomPropertyByName = jest
   .fn()
   .mockResolvedValue(mockEntityType);
@@ -79,7 +85,6 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
   deleteCustomPropertyByName: (fqn: string, name: string) =>
     mockDeleteCustomPropertyByName(fqn, name),
 }));
@@ -316,7 +321,6 @@ describe('CustomPropertiesDetailPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetTypeByFQN.mockResolvedValue(mockEntityType);
     mockGetEntityPermission.mockResolvedValue({
       Create: true,
       EditAll: true,
@@ -455,9 +459,9 @@ describe('CustomPropertiesDetailPage', () => {
     expect(mockDeleteCustomPropertyByName).not.toHaveBeenCalled();
   });
 
-  it('shows error toast when getTypeByFQN fails', async () => {
+  it('shows error toast when the permission fetch fails', async () => {
     const mockError = new Error('API Error');
-    mockGetTypeByFQN.mockRejectedValueOnce(mockError);
+    mockGetEntityPermission.mockRejectedValueOnce(mockError);
 
     render(<DetailPageWithHeader {...defaultProps} />);
 
@@ -515,7 +519,6 @@ describe('CustomPropertiesDetailPage', () => {
 
   it('shows empty placeholder when entity has no custom properties', async () => {
     const emptyEntityType = { ...mockEntityType, customProperties: [] };
-    mockGetTypeByFQN.mockResolvedValueOnce(emptyEntityType);
 
     render(
       <DetailPageWithHeader

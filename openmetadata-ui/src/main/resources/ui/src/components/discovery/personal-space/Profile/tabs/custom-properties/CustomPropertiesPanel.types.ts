@@ -65,9 +65,10 @@ export interface CustomPropertiesDetailPageProps {
   entityType: Type;
   onAddProperty: () => void;
   onEditProperty: (property: CustomProperty) => void;
+  onEntityTypeChange: (entityType: Type) => void;
   onSetHeaderActions: (actions: ReactNode) => void;
 }
 
 export interface CustomPropertiesLandingPageProps {
-  onSelectEntityType: (entityType: Type) => void;
+  onSelectEntityType: (entityTypeFqn: string) => void;
 }

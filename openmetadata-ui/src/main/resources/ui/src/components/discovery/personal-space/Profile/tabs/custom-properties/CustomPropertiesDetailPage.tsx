@@ -24,13 +24,9 @@ import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
-import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
-import {
-  deleteCustomPropertyByName,
-  getTypeByFQN,
-} from '../../../../../../rest/metadataTypeAPI';
+import { deleteCustomPropertyByName } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
@@ -51,12 +47,12 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
   entityType,
   onAddProperty,
   onEditProperty,
+  onEntityTypeChange,
   onSetHeaderActions,
 }) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
 
-  const [typeDetail, setTypeDetail] = useState<Type | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('custom-properties');
   const [permission, setPermission] = useState<OperationPermission>(
@@ -68,32 +64,29 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
     popoverProps,
   } = useAnchoredConfirm<CustomProperty>();
 
-  const fetchTypeAndPermission = useCallback(async () => {
-    if (!entityType.fullyQualifiedName || !entityType.id) {
+  const fetchPermission = useCallback(async () => {
+    if (!entityType.id) {
       return;
     }
     setIsLoading(true);
     try {
-      const [detail, perm] = await Promise.all([
-        getTypeByFQN(entityType.fullyQualifiedName),
-        getEntityPermission(ResourceEntity.TYPE, entityType.id),
-      ]);
-      setTypeDetail(detail);
-      setPermission(perm);
+      setPermission(
+        await getEntityPermission(ResourceEntity.TYPE, entityType.id)
+      );
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [entityType.fullyQualifiedName, entityType.id, getEntityPermission]);
+  }, [entityType.id, getEntityPermission]);
 
   useEffect(() => {
-    fetchTypeAndPermission();
-  }, [fetchTypeAndPermission]);
+    fetchPermission();
+  }, [fetchPermission]);
 
   const customProperties = useMemo(
-    () => typeDetail?.customProperties ?? [],
-    [typeDetail]
+    () => entityType.customProperties ?? [],
+    [entityType.customProperties]
   );
 
   const { canCreate, canDelete, canEditAll } =
@@ -110,15 +103,13 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
           propertyToDelete.name
         );
         // `undefined`: someone else already removed it, so drop it locally.
-        setTypeDetail(
-          (prev) =>
-            updated ??
-            (prev && {
-              ...prev,
-              customProperties: prev.customProperties?.filter(
-                (property) => property.name !== propertyToDelete.name
-              ),
-            })
+        onEntityTypeChange(
+          updated ?? {
+            ...entityType,
+            customProperties: entityType.customProperties?.filter(
+              (property) => property.name !== propertyToDelete.name
+            ),
+          }
         );
         showSuccessToast(
           t('server.entity-deleted-success', {
@@ -133,7 +124,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
         return false;
       }
     },
-    [entityType.fullyQualifiedName, t]
+    [entityType, onEntityTypeChange, t]
   );
 
   useEffect(() => {
@@ -212,7 +203,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
             <SchemaEditor
               className="custom-properties-schemaEditor tw:dark:[&_.cm-editor]:bg-primary_alt!"
               editorClass="custom-entity-schema"
-              value={typeDetail?.schema ?? '{}'}
+              value={entityType.schema ?? '{}'}
             />
           </Tabs.Panel>
         </Tabs>

@@ -20,6 +20,11 @@ import CustomPropertiesPanel from './CustomPropertiesPanel';
 const mockGetTypeByFQN = getTypeByFQN as jest.Mock;
 const mockOnHeaderChange = jest.fn();
 
+// replaceState, unlike assigning location.hash, queues no popstate that would
+// reset the settings hash store mid-test.
+const setLocationHash = (hash: string) =>
+  window.history.replaceState(null, '', hash);
+
 const renderPanel = () =>
   render(
     <MemoryRouter>
@@ -27,17 +32,18 @@ const renderPanel = () =>
     </MemoryRouter>
   );
 
+const mockProperty = {
+  name: 'myProp',
+  displayName: 'My Property',
+  propertyType: { id: 'string-type', name: 'string' },
+};
+
 const mockEntityType = {
   id: 'type-1',
   name: 'table',
   displayName: 'Table',
   fullyQualifiedName: 'table',
-};
-
-const mockProperty = {
-  name: 'myProp',
-  displayName: 'My Property',
-  propertyType: { id: 'string-type', name: 'string' },
+  customProperties: [mockProperty],
 };
 
 jest.mock('./CustomPropertiesLandingPage', () => ({
@@ -46,12 +52,12 @@ jest.mock('./CustomPropertiesLandingPage', () => ({
     ({
       onSelectEntityType,
     }: {
-      onSelectEntityType: (entityType: unknown) => void;
+      onSelectEntityType: (entityTypeFqn: string) => void;
     }) => (
       <div data-testid="landing-page">
         <button
           data-testid="select-entity-btn"
-          onClick={() => onSelectEntityType(mockEntityType)}>
+          onClick={() => onSelectEntityType('table')}>
           Select Table
         </button>
       </div>
@@ -196,6 +202,8 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 describe('CustomPropertiesPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // The settings hash store is module-level; reset it to the bare tab.
+    setLocationHash('#custom-properties');
     mockGetTypeByFQN.mockResolvedValue(mockEntityType);
   });
 
@@ -231,6 +239,54 @@ describe('CustomPropertiesPanel', () => {
     expect(mockOnHeaderChange.mock.calls.length).toBeGreaterThan(
       callCountAfterMount
     );
+  });
+
+  it('fetches the entity type once when it is selected', async () => {
+    renderPanel();
+    // Drop a fetch for a sub-path a previous test left in the hash store.
+    mockGetTypeByFQN.mockClear();
+
+    fireEvent.click(screen.getByTestId('select-entity-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-cancel-btn'));
+    await screen.findByTestId('detail-page');
+
+    expect(mockGetTypeByFQN).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the edit form from an edit-property link', async () => {
+    setLocationHash('#custom-properties/table/edit-property/myProp');
+    renderPanel();
+
+    expect(await screen.findByTestId('edit-page')).toBeInTheDocument();
+    expect(mockGetTypeByFQN).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the add form from an add-property link', async () => {
+    setLocationHash('#custom-properties/table/add-property');
+    renderPanel();
+
+    expect(await screen.findByTestId('add-page')).toBeInTheDocument();
+  });
+
+  it('falls back to the list when the linked property does not exist', async () => {
+    setLocationHash('#custom-properties/table/edit-property/missing');
+    renderPanel();
+
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-page')).not.toBeInTheDocument();
+  });
+
+  it('refetches the entity type after a property is added', async () => {
+    renderPanel();
+    // Drop a fetch for a sub-path a previous test left in the hash store.
+    mockGetTypeByFQN.mockClear();
+    fireEvent.click(screen.getByTestId('select-entity-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-success-btn'));
+    await screen.findByTestId('detail-page');
+
+    expect(mockGetTypeByFQN).toHaveBeenCalledTimes(2);
   });
 
   it('transitions to add page when onAddProperty is triggered from detail', async () => {

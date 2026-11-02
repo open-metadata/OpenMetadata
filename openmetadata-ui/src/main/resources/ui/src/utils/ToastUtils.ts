@@ -18,6 +18,8 @@ import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
 
+const STALE_PATCH_MESSAGE = /contains no mapping for the name/;
+
 interface AxiosErrorResolution {
   errorMessage: string | JSX.Element;
   isRuleViolation: boolean;
@@ -37,7 +39,12 @@ const resolveAxiosErrorMessage = (
     fallbackText && fallbackText.length > 0
       ? fallbackText
       : i18n.t('server.unexpected-error');
-  const errorMessage = getErrorText(error, fallback);
+  const serverMessage = getErrorText(error, fallback);
+  // A JSON patch built from a stale copy targets fields the server no longer
+  // has; the raw message dumps the whole entity, so say what to do instead.
+  const errorMessage = STALE_PATCH_MESSAGE.test(serverMessage)
+    ? i18n.t('server.entity-changed-refresh-and-retry')
+    : serverMessage;
   const isRuleViolation =
     get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
   const isUnauthorizedOrForbiddenGet =
