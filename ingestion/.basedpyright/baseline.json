@@ -17410,14 +17410,6 @@
             {
                 "code": "reportArgumentType",
                 "range": {
-                    "startColumn": 20,
-                    "endColumn": 35,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
                     "startColumn": 28,
                     "endColumn": 48,
                     "lineCount": 1
@@ -17543,14 +17535,6 @@
                     "startColumn": 18,
                     "endColumn": 13,
                     "lineCount": 7
-                }
-            },
-            {
-                "code": "reportReturnType",
-                "range": {
-                    "startColumn": 8,
-                    "endColumn": 14,
-                    "lineCount": 1
                 }
             }
         ],
