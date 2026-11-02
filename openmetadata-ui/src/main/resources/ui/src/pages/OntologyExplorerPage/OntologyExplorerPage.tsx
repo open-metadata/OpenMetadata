@@ -41,8 +41,11 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import Loader from '../../components/common/Loader/Loader';
 import AllOntologiesGraphView from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView';
 import { FILTERS as NATIVE_FILTERS } from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView.constants';
 import OntologyCreateDialog from '../../components/governance/ontology/OntologyCreateDialog/OntologyCreateDialog';
@@ -1734,38 +1737,39 @@ const OntologyExplorerContent: React.FC = () => {
   };
 
   function renderAggregateError() {
+    const ontologyActions = availableOntologies.map((ontology) => ({
+      key: ontology.id,
+      label: getEntityName(ontology),
+      color: 'secondary' as const,
+      onPress: () => selectOntology(ontology),
+    }));
+
     return (
-      <Box
-        className="tw:p-6"
+      <div
+        className="tw:relative tw:min-h-70 tw:flex-1"
         data-testid="all-ontologies-load-error"
-        direction="col"
-        gap={3}>
-        <Typography role="alert">
-          {t(
-            allModels.isTooLarge
-              ? 'message.ontology-aggregate-capacity'
-              : 'message.temporary-error-try-reloading'
-          )}
-        </Typography>
-        {!allModels.isTooLarge ? (
-          <Button
-            color="secondary"
-            onPress={() => {
-              void studioScopes.refetchOntologies();
-              void allModels.refetch();
-            }}>
-            {t('label.retry')}
-          </Button>
-        ) : null}
-        {availableOntologies.map((ontology) => (
-          <Button
-            color="secondary"
-            key={ontology.id}
-            onPress={() => selectOntology(ontology)}>
-            {getEntityName(ontology)}
-          </Button>
-        ))}
-      </Box>
+        role="alert">
+        {allModels.isTooLarge ? (
+          <NoDataPlaceholder
+            actions={ontologyActions}
+            description={t('message.ontology-aggregate-capacity')}
+          />
+        ) : (
+          <SomethingWentWrongPlaceholder
+            actions={[
+              {
+                key: 'reload',
+                label: t('label.reload'),
+                onPress: () => {
+                  void studioScopes.refetchOntologies();
+                  void allModels.refetch();
+                },
+              },
+              ...ontologyActions,
+            ]}
+          />
+        )}
+      </div>
     );
   }
 
@@ -1834,7 +1838,7 @@ const OntologyExplorerContent: React.FC = () => {
 
   function renderAllOntologies() {
     if (studioScopes.isOntologyLoading || allModels.isLoading) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader />;
     }
     if (studioScopes.isOntologyError || allModels.isError) {
       return renderAggregateError();
@@ -1878,25 +1882,27 @@ const OntologyExplorerContent: React.FC = () => {
 
   const renderOwnerLoading = () => {
     return ontologyLoadFailed ? (
-      <Box className="tw:p-6" direction="col" gap={3}>
-        <Typography role="alert">
-          {t('message.temporary-error-try-reloading')}
-        </Typography>
-        <Button
-          color="secondary"
-          onPress={() => setOntologyLoadAttempt((attempt) => attempt + 1)}>
-          {t('label.retry')}
-        </Button>
-        <Button
-          color="secondary"
-          onPress={() => handleScopeChange(ALL_ONTOLOGIES_SCOPE)}>
-          {t('label.all-entity', {
-            entity: t('label.ontology-plural').toLocaleLowerCase(),
-          })}
-        </Button>
-      </Box>
+      <div className="tw:relative tw:min-h-70 tw:flex-1" role="alert">
+        <SomethingWentWrongPlaceholder
+          actions={[
+            {
+              key: 'reload',
+              label: t('label.reload'),
+              onPress: () => setOntologyLoadAttempt((attempt) => attempt + 1),
+            },
+            {
+              key: 'all-ontologies',
+              label: t('label.all-entity', {
+                entity: t('label.ontology-plural').toLocaleLowerCase(),
+              }),
+              color: 'secondary',
+              onPress: () => handleScopeChange(ALL_ONTOLOGIES_SCOPE),
+            },
+          ]}
+        />
+      </div>
     ) : (
-      <Typography role="status">{t('label.loading')}</Typography>
+      <Loader />
     );
   };
 
@@ -2104,10 +2110,19 @@ const OntologyExplorerContent: React.FC = () => {
           {({ tasksAction, banner }) => (
             <>
               {renderHeader(tasksAction)}
-              {banner}
-              <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
-                {renderWorkspace()}
-              </OntologyGraphSearchSlotContext.Provider>
+              {/* The AI header is an inset card; the workspace below takes the
+                  same inset and card frame so their edges line up. */}
+              <div
+                className={classNames(
+                  'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+                  isAiMode &&
+                    'tw:mx-2 tw:mb-2 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+                )}>
+                {banner}
+                <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
+                  {renderWorkspace()}
+                </OntologyGraphSearchSlotContext.Provider>
+              </div>
               {renderOverlays()}
             </>
           )}

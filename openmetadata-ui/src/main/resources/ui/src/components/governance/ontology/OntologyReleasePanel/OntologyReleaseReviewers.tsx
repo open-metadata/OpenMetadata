@@ -215,6 +215,14 @@ const OntologyReleaseReviewers = ({
   const renderReviewerSearch = () => (
     <>
       <Select.ComboBox
+        // Focus opens the list before the first search returns. Closing it then
+        // for being empty races text typed right after the focus (Chrome runs
+        // the input first), and that text no longer reopens it, so stay open
+        // while a search is pending. Not while saving: the pick clears the
+        // text and starts a search, which must not reopen the list.
+        allowsEmptyCollection={
+          !saving && (searchText !== '' || search.isFetching)
+        }
         disabledKeys={
           searchUnavailable ? options.map((option) => option.id) : []
         }
