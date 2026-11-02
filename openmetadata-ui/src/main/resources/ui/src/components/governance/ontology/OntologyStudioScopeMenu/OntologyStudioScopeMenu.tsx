@@ -41,6 +41,7 @@ interface OntologyStudioScopeMenuProps {
   readonly glossaries: Glossary[];
   readonly onScopeChange: (scope: OntologyStudioScope) => void;
   readonly onCreateOntology?: () => void;
+  readonly onEditOntology?: () => void;
   readonly onOpenChange?: (isOpen: boolean) => void;
   readonly isLoading?: boolean;
   readonly isError?: boolean;
@@ -75,6 +76,7 @@ const OntologyStudioScopeMenu = ({
   glossaries,
   onScopeChange,
   onCreateOntology,
+  onEditOntology,
   onOpenChange,
   isLoading,
   isError,
@@ -88,6 +90,11 @@ const OntologyStudioScopeMenu = ({
   const conceptLabel = t('label.concept-plural').toLocaleLowerCase();
 
   const handleAction = (key: string) => {
+    if (key === 'edit-ontology') {
+      onEditOntology?.();
+
+      return;
+    }
     if (key === RETRY_SCOPE_LOAD_KEY) {
       onRetry?.();
 
@@ -234,7 +241,8 @@ const OntologyStudioScopeMenu = ({
   return (
     <Dropdown.Root onOpenChange={handleOpenChange}>
       <Button
-        className="tw:max-w-64 tw:shrink-0"
+        ellipsis
+        className="tw:min-w-0 tw:max-w-full"
         color="secondary"
         data-scope-key={getScopeKey(scope)}
         data-testid="ontology-scope-menu-trigger"
@@ -306,6 +314,15 @@ const OntologyStudioScopeMenu = ({
                   />
                 ) : null}
               </Dropdown.Section>
+              {onEditOntology ? (
+                <Dropdown.Item
+                  data-testid="ontology-edit-ontology"
+                  id="edit-ontology"
+                  label={t('label.edit-entity', {
+                    entity: t('label.ontology'),
+                  })}
+                />
+              ) : null}
               {scope.kind === 'glossaries' ? (
                 <>
                   <Dropdown.Separator />

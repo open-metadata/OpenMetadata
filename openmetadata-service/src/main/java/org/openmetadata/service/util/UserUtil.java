@@ -465,8 +465,8 @@ public final class UserUtil {
             user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
       }
 
-      // Insert directly into change event DAO
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      // Change events never carry a user's authentication mechanism.
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
     } catch (Exception e) {
       // Don't fail user creation if ChangeEvent fails
       LOG.error("Failed to create ChangeEvent for user {}: {}", user.getName(), e.getMessage(), e);

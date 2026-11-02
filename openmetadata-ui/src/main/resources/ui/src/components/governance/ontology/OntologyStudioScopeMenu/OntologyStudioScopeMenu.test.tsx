@@ -14,6 +14,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import OntologyStudioScopeMenu from './OntologyStudioScopeMenu';
 
 jest.mock('../../../../hooks/useAppMode', () => ({
@@ -61,6 +62,41 @@ const renderMenu = (
 
   return handlers;
 };
+
+it('dispatches Edit, Create and Retry once without selecting a synthetic scope', () => {
+  const onEditOntology = jest.fn(),
+    onCreateOntology = jest.fn(),
+    onRetry = jest.fn(),
+    onScopeChange = jest.fn();
+  renderWithQueryClient(
+    <OntologyStudioScopeMenu
+      isError
+      glossaries={[]}
+      label="Sales"
+      ontologies={[]}
+      scope={{ kind: 'allOntologies' }}
+      onCreateOntology={onCreateOntology}
+      onEditOntology={onEditOntology}
+      onRetry={onRetry}
+      onScopeChange={onScopeChange}
+    />
+  );
+  fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+  fireEvent.click(screen.getByTestId('ontology-edit-ontology'));
+
+  expect(onEditOntology).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+  fireEvent.click(screen.getByTestId('ontology-create'));
+
+  expect(onCreateOntology).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+  fireEvent.click(screen.getByText('label.retry'));
+
+  expect(onRetry).toHaveBeenCalledTimes(1);
+  expect(onScopeChange).not.toHaveBeenCalled();
+});
 
 describe('OntologyStudioScopeMenu in AI mode', () => {
   beforeEach(() => {

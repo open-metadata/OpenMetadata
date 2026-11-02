@@ -12,17 +12,19 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { OntologyReleaseExportOptions } from '../../../generated/api/data/ontologyReleaseExportOptions';
 import { OntologyRelease } from '../../../generated/entity/data/ontologyRelease';
 import {
   exportOntologyRelease,
   getOntologyRelease,
   getOntologyState,
 } from '../../../rest/ontologyAPI';
-import { OntologyExportFormat } from '../../../rest/rdfAPI';
+import { OntologyReleaseExportFormat } from '../../../rest/ontologyExport.constants';
 
 export const useOntologyReleaseExport = (
   ontologyId: string,
-  format: OntologyExportFormat
+  format: OntologyReleaseExportFormat,
+  options: OntologyReleaseExportOptions
 ) => {
   const activeRelease = useQuery<OntologyRelease | null>({
     gcTime: 0,
@@ -46,14 +48,24 @@ export const useOntologyReleaseExport = (
   const releaseContent = useQuery({
     enabled: Boolean(activeRelease.data),
     gcTime: 0,
-    queryKey: ['ontology-release-export', activeRelease.data?.id, format],
+    queryKey: [
+      'ontology-release-export',
+      activeRelease.data?.id,
+      format,
+      options,
+    ],
     retry: false,
     queryFn: ({ signal }) => {
       if (!activeRelease.data) {
         throw new Error('Missing active ontology release');
       }
 
-      return exportOntologyRelease(activeRelease.data.id, format, signal);
+      return exportOntologyRelease(
+        activeRelease.data.id,
+        format,
+        options,
+        signal
+      );
     },
   });
 

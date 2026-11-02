@@ -46,19 +46,24 @@ interface ApplicationCardProps {
 const AppIconTile = ({ appName }: { appName: string }) => {
   const ColoredIcon = applicationsClassBase.getAppColoredIcon(appName);
   if (ColoredIcon) {
-    return <ColoredIcon className="tw:size-10 tw:shrink-0" />;
+    return <ColoredIcon className="tw:mt-1 tw:size-10 tw:shrink-0" />;
   }
   const Icon = applicationsClassBase.getAppIcon(appName);
 
   return (
     <Box
       align="center"
-      className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
+      className="tw:mt-1 tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
       justify="center">
       <Icon className="tw:size-5 tw:text-fg-secondary" />
     </Box>
   );
 };
+
+// Runtime-blocked apps are "Unavailable"; "Disabled" is kept for soft-deleted
+// apps, which the "Show Disabled" toggle lists.
+const getBadgeLabelKey = (isAvailable: boolean) =>
+  isAvailable ? 'label.disabled' : 'label.unavailable';
 
 const ApplicationCard: FC<ApplicationCardProps> = ({
   appName,
@@ -107,7 +112,7 @@ const ApplicationCard: FC<ApplicationCardProps> = ({
                   data-testid="disabled-badge"
                   size="sm"
                   type="pill-color">
-                  {t('label.disabled')}
+                  {t(getBadgeLabelKey(isAvailable))}
                 </Badge>
               )}
             </Box>

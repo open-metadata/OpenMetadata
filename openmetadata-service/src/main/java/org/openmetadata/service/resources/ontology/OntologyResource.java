@@ -20,6 +20,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -50,6 +52,14 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraph;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraphPage;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraphPageRequest;
+import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
+import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
+import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
@@ -65,27 +75,38 @@ import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.jdbi3.OntologyConceptRepository;
 import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.NativeOntologyDataGraphPager;
+import org.openmetadata.service.ontology.NativeOntologyDataGraphService;
+import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Query;
+import org.openmetadata.service.ontology.NativeOntologyTopologyCursorCodec;
+import org.openmetadata.service.ontology.OntologyConceptBindingService;
+import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
+import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
+import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
 import org.openmetadata.service.ontology.OntologyReleaseHistory;
 import org.openmetadata.service.ontology.OntologyReleaseQuery;
+import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
-import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -105,9 +126,27 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   private final OntologyReleaseHistory releaseHistory;
   private final OntologyPackCatalog packCatalog;
   private final OntologyPackContentLoader packContentLoader;
+  private final OntologyConceptBindingStore bindingStore =
+      new OntologyConceptBindingStore(
+          Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables());
+  private final NativeOntologyDataGraphService dataGraph =
+      new NativeOntologyDataGraphService(
+          Entity.getCollectionDAO(),
+          bindingStore,
+          (OntologyConceptRepository) Entity.getEntityRepository(Entity.ONTOLOGY_CONCEPT),
+          authorizer,
+          Entity::getEntityReferencesByIds);
+  private final NativeOntologyDataGraphPager dataGraphPages =
+      new NativeOntologyDataGraphPager(
+          dataGraph,
+          Entity.getCollectionDAO(),
+          bindingStore,
+          new OntologyConceptBindingService(bindingStore, authorizer, Entity::getEntityRepository),
+          NativeOntologyTopologyCursorCodec.forServerKeys(Fernet.getInstance().getCachedKeys()));
 
   public OntologyResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY, authorizer, limits);
+    addViewOperation("publicationStatus", MetadataOperation.VIEW_BASIC);
     packCatalog = new OntologyPackCatalog(getClass().getClassLoader());
     packContentLoader = new OntologyPackContentLoader(getClass().getClassLoader());
     releaseHistory = new OntologyReleaseHistory(repository.getDaoCollection().ontologyReleaseDAO());
@@ -230,10 +269,14 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       @QueryParam("limit") @DefaultValue("25") @Min(1) @Max(1000) final int limit,
-      @QueryParam("after") final String after) {
+      @QueryParam("after") final String after,
+      @QueryParam("groupBy")
+          @Pattern(regexp = "concept", message = "Invalid groupBy. Allowed value: concept.")
+          final String groupBy) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
-    final var releases =
-        (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE);
+    final var comparison =
+        new OntologyReleaseComparison(
+            (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE));
     final Consumer<List<? extends OntologyDefinition>> authorize =
         definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions);
     return releaseCapture
@@ -242,8 +285,9 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
             id,
             authorize,
             working ->
-                new OntologyReleaseComparison(releases)
-                    .compareWorking(working, limit, after, authorize));
+                groupBy == null
+                    ? comparison.compareWorking(working, limit, after, authorize)
+                    : comparison.compareWorkingByConcept(working, limit, after, authorize));
   }
 
   @POST
@@ -261,40 +305,70 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     final var selected =
         packContentLoader.loadSelected(packCatalog, packId, request.getModuleIds());
     return previewImport(
-        uriInfo,
-        securityContext,
-        id,
-        new PreviewNativeOntologyImport()
-            .withFormat(PreviewNativeOntologyImport.Format.fromValue(selected.format()))
-            .withData(selected.body()));
+            uriInfo,
+            securityContext,
+            id,
+            new PreviewNativeOntologyImport()
+                .withFormat(NativeOntologyImportFormat.fromValue(selected.format()))
+                .withData(selected.body()))
+        .getChangeSet()
+        .withSourcePack(OntologyPackInstallations.sourcePack(selected));
   }
 
   @POST
   @Path("/{id}/imports/preview")
   @Operation(
       operationId = "previewNativeOntologyImport",
-      summary = "Preview local RDF as native ontology draft operations")
-  public CreateOntologyChangeSet previewImport(
+      summary = "Preview a local RDF or native CSV file as native ontology draft operations",
+      description =
+          "Dry run against this ontology's working revision: the detected format, per-kind counts of what the file would add, update, or repeat, and the change-set request that applies it. Nothing is persisted.")
+  public NativeOntologyImportPreview previewImport(
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       @NotNull @Valid final PreviewNativeOntologyImport request) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
     final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
-    final var model =
-        importer.parse(
-            request.getData(), RdfSerializationFormat.parse(request.getFormat().value()));
-    try {
-      return releaseCapture
-          .snapshot()
-          .read(
-              id,
-              definitions ->
-                  OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
-              working -> importer.reconcile(model, working));
-    } finally {
-      model.close();
-    }
+    final NativeOntologyRdfImporter.Source source = importer.read(request);
+    return releaseCapture
+        .snapshot()
+        .read(
+            id,
+            definitions ->
+                OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
+            working -> importer.preview(source, working));
+  }
+
+  @POST
+  @Path("/imports/preview")
+  @Operation(
+      operationId = "previewNativeOntologyImportWithoutTarget",
+      summary = "Count what a local RDF or native CSV file would import into a new ontology",
+      description =
+          "Parses the file against an empty target and returns the detected format, the source ontology's label, and per-kind counts. Nothing is persisted and no ontology is created.")
+  public NativeOntologyImportSummary previewImportWithoutTarget(
+      @Context final SecurityContext securityContext,
+      @NotNull @Valid final PreviewNativeOntologyImport request) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.ONTOLOGY, MetadataOperation.CREATE),
+        getResourceContext());
+    final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
+    return importer.summarize(importer.read(request));
+  }
+
+  @POST
+  @Path("/imports/detect")
+  @Operation(
+      operationId = "detectNativeOntologyImportFormat",
+      summary = "Name the format of a local ontology file",
+      description =
+          "Reads at most the first 65536 characters of the file and returns the format the preview would parse it with, from the content first and the file name second. Nothing is persisted.")
+  public NativeOntologyImportDetection detectImportFormat(
+      @Context final SecurityContext securityContext,
+      @NotNull @Valid final PreviewNativeOntologyImport request) {
+    return new NativeOntologyImportDetection()
+        .withDetectedFormat(OntologyFormatDetector.resolve(request).orElse(null));
   }
 
   @GET
@@ -323,6 +397,106 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       reference.setSource(context.getEntity().getEntityReference());
     }
     return references;
+  }
+
+  @GET
+  @Path("/{id}/dataGraph")
+  @Operation(
+      operationId = "getNativeOntologyDataGraph",
+      summary =
+          "Get one page of bound concepts ranked by binding count, each with the assets the caller may view")
+  public NativeOntologyDataGraph getDataGraph(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @Valid @BeanParam final DataGraphQuery query) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    return dataGraph.graph(new Access(uriInfo, securityContext), id, query.toQuery());
+  }
+
+  /** The data graph page shape; JAX-RS fills the fields, so they cannot be final. */
+  public static final class DataGraphQuery {
+    @QueryParam("limit")
+    @DefaultValue("12")
+    @Min(1)
+    @Max(12)
+    private int limit;
+
+    @QueryParam("offset")
+    @DefaultValue("0")
+    @Min(0)
+    private int offset;
+
+    @QueryParam("assetsPerConcept")
+    @DefaultValue("4")
+    @Min(1)
+    @Max(4)
+    private int assetsPerConcept;
+
+    @QueryParam("edgeLimit")
+    @DefaultValue("100")
+    @Min(1)
+    @Max(500)
+    private int edgeLimit;
+
+    @QueryParam("lineageEdgeLimit")
+    @DefaultValue("100")
+    @Min(1)
+    @Max(500)
+    private int lineageEdgeLimit;
+
+    Query toQuery() {
+      return new Query(limit, offset, assetsPerConcept, edgeLimit, lineageEdgeLimit);
+    }
+  }
+
+  @POST
+  @Path("/{id}/dataGraph/pages")
+  @Operation(
+      operationId = "getNativeOntologyDataGraphPage",
+      summary = "Read a graph page with bounded topology over loaded concept prefixes")
+  public NativeOntologyDataGraphPage getDataGraphPage(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @Valid final NativeOntologyDataGraphPageRequest request) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    return dataGraphPages.page(new Access(uriInfo, securityContext), id, request);
+  }
+
+  @GET
+  @Path("/reviews")
+  @Operation(
+      operationId = "listOntologyReleaseReviews",
+      summary = "List the open release reviews the calling user is part of",
+      description =
+          "view=assigned lists open reviews with an assignee entry for the caller or one of their teams, view=created lists the open reviews the caller requested, and view=pending lists the assigned reviews the caller can still vote on. A decided review is read through its release.")
+  public ResultList<OntologyReleaseReview> listReviews(
+      @Context final SecurityContext securityContext,
+      @QueryParam("view") @DefaultValue("assigned") final String view,
+      @QueryParam("limit") @DefaultValue("25") @Min(1) @Max(100) final int limit,
+      @QueryParam("after") final String after) {
+    final var releases =
+        (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE);
+    return releases.listReviews(
+        OntologyReleaseReviewReader.View.parse(view),
+        user(securityContext),
+        limit,
+        after,
+        release -> canViewRelease(securityContext, release));
+  }
+
+  private boolean canViewRelease(
+      final SecurityContext securityContext, final OntologyRelease release) {
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(Entity.ONTOLOGY_RELEASE, MetadataOperation.VIEW_ALL),
+          new ResourceContext<>(Entity.ONTOLOGY_RELEASE, release.getId(), null));
+      return true;
+    } catch (AuthorizationException denied) {
+      return false;
+    }
   }
 
   @GET

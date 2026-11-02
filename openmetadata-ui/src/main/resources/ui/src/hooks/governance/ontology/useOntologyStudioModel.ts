@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useMemo } from 'react';
 import { Ontology } from '../../../generated/entity/data/ontology';
 import {
@@ -37,6 +38,19 @@ class AggregateCapacityError extends Error {}
 const MAX_AGGREGATE_ONTOLOGIES = 20;
 const MAX_AGGREGATE_DEFINITIONS = 2000;
 
+// Another session can delete an ontology between the list and its definition requests.
+const skipDeleted = async <T>(load: () => Promise<T>) => {
+  try {
+    return await load();
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return undefined;
+    }
+
+    throw error;
+  }
+};
+
 const loadOntologyStudioModel = async (
   ontology: Ontology,
   signal: AbortSignal,
@@ -60,7 +74,8 @@ const loadOntologyStudioModel = async (
           {
             ...params,
             after,
-            fields: 'conceptMappings,owners,subClasses,superClasses',
+            fields:
+              'conceptMappings,lifecycleStatus,owners,subClasses,superClasses',
           },
           signal
         ),
@@ -80,6 +95,43 @@ const loadOntologyStudioModel = async (
   return { ontology, axioms, concepts, properties };
 };
 
+/** Checks the aggregate budget and returns the ontologies that still exist. */
+const countAggregateOntologies = async (
+  ontologies: Ontology[],
+  signal: AbortSignal
+) => {
+  let total = 0;
+  const present: Ontology[] = [];
+  for (const ontology of ontologies) {
+    if (!ontology.fullyQualifiedName) {
+      throw new Error('Missing ontology name');
+    }
+    const params = { ontology: ontology.fullyQualifiedName, limit: 1 };
+    const countPages = () =>
+      Promise.all([
+        listOntologyConcepts(params, signal),
+        listOntologyProperties(params, signal),
+        listOntologyAxioms(ontology.id, { limit: 1 }, signal),
+      ]);
+    const pages = await skipDeleted(countPages); // NOSONAR sequential: the budget check stops further requests
+    if (!pages) {
+      continue;
+    }
+    present.push(ontology);
+    for (const page of pages) {
+      if (!Number.isFinite(page.paging.total) || page.paging.total < 0) {
+        throw new Error('Missing definition count');
+      }
+      total += page.paging.total;
+    }
+    if (total > MAX_AGGREGATE_DEFINITIONS) {
+      throw new AggregateCapacityError();
+    }
+  }
+
+  return present;
+};
+
 export const useAllOntologyStudioModels = (
   ontologies: Ontology[],
   enabled: boolean
@@ -97,27 +149,7 @@ export const useAllOntologyStudioModels = (
       if (ontologies.length > MAX_AGGREGATE_ONTOLOGIES) {
         throw new AggregateCapacityError();
       }
-      let total = 0;
-      for (const ontology of ontologies) {
-        if (!ontology.fullyQualifiedName) {
-          throw new Error('Missing ontology name');
-        }
-        const params = { ontology: ontology.fullyQualifiedName, limit: 1 };
-        const pages = await Promise.all([
-          listOntologyConcepts(params, signal),
-          listOntologyProperties(params, signal),
-          listOntologyAxioms(ontology.id, { limit: 1 }, signal),
-        ]);
-        for (const page of pages) {
-          if (!Number.isFinite(page.paging.total) || page.paging.total < 0) {
-            throw new Error('Missing definition count');
-          }
-          total += page.paging.total;
-        }
-        if (total > MAX_AGGREGATE_DEFINITIONS) {
-          throw new AggregateCapacityError();
-        }
-      }
+      const present = await countAggregateOntologies(ontologies, signal);
       let loaded = 0;
       const consume = (count: number) => {
         loaded += count;
@@ -126,8 +158,13 @@ export const useAllOntologyStudioModels = (
         }
       };
       const models: OntologyStudioModel[] = [];
-      for (const ontology of ontologies) {
-        models.push(await loadOntologyStudioModel(ontology, signal, consume));
+      for (const ontology of present) {
+        const loadModel = () =>
+          loadOntologyStudioModel(ontology, signal, consume);
+        const model = await skipDeleted(loadModel); // NOSONAR sequential: the definition budget stops further loads
+        if (model) {
+          models.push(model);
+        }
       }
 
       return models;
