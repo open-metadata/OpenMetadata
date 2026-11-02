@@ -122,6 +122,7 @@ describe('OntologyConceptDeleteDialog', () => {
     expect(
       screen.queryByTestId('ontology-delete-remove-references')
     ).not.toBeInTheDocument();
+
     await waitFor(() =>
       expect(
         screen.getByTestId('ontology-concept-delete-confirm')

@@ -965,6 +965,8 @@ describe('OntologyConceptInspector relationship authoring', () => {
   };
   const customerIsParty: OntologyAxiom = {
     axiomType: AxiomType.SubclassOf,
+    description: 'Customer is a Party',
+    displayName: 'Customer is a Party',
     expressions: [{ classIri: party.iri, kind: ExpressionKind.NamedClass }],
     fullyQualifiedName: 'Sales.CustomerIsParty',
     id: 'axiom-customer-party',
