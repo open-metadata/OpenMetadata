@@ -3,7 +3,6 @@ package org.openmetadata.service.mapper;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.jdbi3.EntityRepository.validateOwners;
 import static org.openmetadata.service.jdbi3.EntityRepository.validateReviewers;
-import static org.openmetadata.service.jdbi3.EntityRepository.withDomainStyles;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
 import java.util.List;
@@ -45,11 +44,8 @@ public interface EntityMapper<T extends EntityInterface<?>, C extends CreateEnti
     if (CommonUtil.nullOrEmpty(domainFqns)) {
       return null;
     }
-    // The created entity is indexed from these references, so they carry the domain's style.
-    return withDomainStyles(
-        domainFqns.stream()
-            .map(
-                domainFqn -> Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED))
-            .toList());
+    return domainFqns.stream()
+        .map(domainFqn -> Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED))
+        .toList();
   }
 }

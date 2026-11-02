@@ -43,7 +43,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -257,11 +256,6 @@ public interface SearchIndex {
               : cloneEntity.getDisplayName());
       clone.add(cloneEntity);
     }
-    // Every document's domains pass through here, whichever path built the entity (create, update,
-    // reindex), so this is where their colour and icon are guaranteed in search.
-    // ADR:2026-10-28-domain-references-carry-the-domain-style
-    EntityRepository.withDomainStyles(
-        clone.stream().filter(ref -> Entity.DOMAIN.equals(ref.getType())).toList());
     return clone;
   }
 

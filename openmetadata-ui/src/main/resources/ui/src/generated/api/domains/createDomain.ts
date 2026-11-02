@@ -118,11 +118,6 @@ export interface EntityReference {
      */
     name?: string;
     /**
-     * Style (color and icon) of the referenced entity. Set only on domain references, from the
-     * domain's own style, so a client can render the domain without fetching it.
-     */
-    style?: Style;
-    /**
      * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
      * `dashboardService`...
      */
@@ -130,9 +125,6 @@ export interface EntityReference {
 }
 
 /**
- * Style (color and icon) of the referenced entity. Set only on domain references, from the
- * domain's own style, so a client can render the domain without fetching it.
- *
  * UI Style is used to associate a color code and/or icon to entity to customize the look of
  * that entity in UI.
  */

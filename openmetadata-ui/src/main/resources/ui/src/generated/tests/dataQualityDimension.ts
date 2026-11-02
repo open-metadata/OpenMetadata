@@ -197,11 +197,6 @@ export interface EntityReference {
      */
     name?: string;
     /**
-     * Style (color and icon) of the referenced entity. Set only on domain references, from the
-     * domain's own style, so a client can render the domain without fetching it.
-     */
-    style?: Style;
-    /**
      * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
      * `dashboardService`...
      */
@@ -209,13 +204,25 @@ export interface EntityReference {
 }
 
 /**
- * Style (color and icon) of the referenced entity. Set only on domain references, from the
- * domain's own style, so a client can render the domain without fetching it.
+ * System dimensions ship with OpenMetadata and can neither be edited nor deleted. User
+ * dimensions are fully editable.
+ *
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
+}
+
+/**
+ * UI style, holding the colour the dimension is rendered with.
  *
  * UI Style is used to associate a color code and/or icon to entity to customize the look of
  * that entity in UI.
- *
- * UI style, holding the colour the dimension is rendered with.
  */
 export interface Style {
     /**
@@ -248,19 +255,4 @@ export interface CoverImage {
      * URL of the cover image.
      */
     url?: string;
-}
-
-/**
- * System dimensions ship with OpenMetadata and can neither be edited nor deleted. User
- * dimensions are fully editable.
- *
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
 }
