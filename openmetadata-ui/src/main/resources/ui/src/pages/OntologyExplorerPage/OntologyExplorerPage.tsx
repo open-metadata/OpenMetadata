@@ -575,8 +575,12 @@ function canShowEditTab(
     canEditAnyOntology: boolean;
     canEditGlossary: boolean;
     canEditSelectedOntology: boolean;
+    isEditing: boolean;
   }
 ): boolean {
+  if (rights.isEditing) {
+    return true;
+  }
   if (scope.kind === 'allOntologies') {
     return rights.canEditAnyOntology;
   }
@@ -585,6 +589,23 @@ function canShowEditTab(
   }
 
   return rights.canEditGlossary;
+}
+
+function canShowPublicationTrigger(state: {
+  canEditAnyOntology: boolean;
+  canEditSelectedOntology: boolean;
+  isAllOntologies: boolean;
+  isBlocked: boolean;
+  selectedOntology: Ontology | undefined;
+}): boolean {
+  if (state.isBlocked) {
+    return false;
+  }
+  if (state.selectedOntology) {
+    return state.canEditSelectedOntology;
+  }
+
+  return state.isAllOntologies && state.canEditAnyOntology;
 }
 
 function nextConceptRequest(
@@ -1049,13 +1070,12 @@ const OntologyExplorerContent: React.FC = () => {
   );
   // A concept owner reaches Edit from the concept panel without ontology-level
   // rights, so the tab also shows while that session is open.
-  const showEditTab =
-    mode === 'edit' ||
-    canShowEditTab(studioScope, {
-      canEditAnyOntology,
-      canEditGlossary: canEditOntology,
-      canEditSelectedOntology: canEditNativeOntology,
-    });
+  const showEditTab = canShowEditTab(studioScope, {
+    canEditAnyOntology,
+    canEditGlossary: canEditOntology,
+    canEditSelectedOntology: canEditNativeOntology,
+    isEditing: mode === 'edit',
+  });
   const isOntologyAiAvailable = isGlossaryScope && isOntologyAiEnabled;
   const modeTabs = computeModeTabs(t, showEditTab, isOntologyAiAvailable);
 
@@ -1412,15 +1432,13 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }
 
-  const hasPublicationScope = Boolean(selectedOntology) || isAllOntologies;
-  const canPublishScope = selectedOntology
-    ? canEditNativeOntology
-    : canEditAnyOntology;
-  const canShowPublication =
-    hasPublicationScope &&
-    canPublishScope &&
-    !isCatalogEmpty &&
-    !isFirstListLoading;
+  const canShowPublication = canShowPublicationTrigger({
+    canEditAnyOntology,
+    canEditSelectedOntology: canEditNativeOntology,
+    isAllOntologies,
+    isBlocked: isCatalogEmpty || isFirstListLoading,
+    selectedOntology,
+  });
 
   function renderPublicationActions() {
     if (!canShowPublication) {
