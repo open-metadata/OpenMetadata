@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Box, Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useState } from 'react';
@@ -95,24 +95,26 @@ export const CustomPropertyListItem = ({
       data-testid={`custom-property-${property.name}-row`}
       ref={itemRef}>
       {/* The tile names the type, so the name gets the row width a type badge would take. */}
-      <Tooltip title={typeLabel}>
-        <TooltipTrigger
-          aria-label={typeLabel}
-          className={`tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring ${
+      <Tooltip
+        title={typeLabel}
+        triggerClassName="tw:shrink-0 tw:rounded-lg tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring">
+        <span
+          className={`tw:flex tw:size-8 tw:items-center tw:justify-center tw:rounded-lg ${
             TYPE_ICON_TILE_CLASS[meta.color]
           }`}>
           <TypeIcon aria-hidden className="tw:size-4" />
-        </TooltipTrigger>
+          <span className="tw:sr-only">{typeLabel}</span>
+        </span>
       </Tooltip>
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-        <Tooltip title={propertyLabel}>
-          <TooltipTrigger className="tw:block tw:w-full tw:min-w-0 tw:rounded-xs tw:text-left tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring">
-            <span
-              className="tw:block tw:truncate tw:text-xs tw:text-secondary"
-              data-testid="property-name">
-              {propertyLabel}
-            </span>
-          </TooltipTrigger>
+        <Tooltip
+          title={propertyLabel}
+          triggerClassName="tw:block tw:w-full tw:min-w-0 tw:rounded-xs tw:text-left tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring">
+          <span
+            className="tw:block tw:truncate tw:text-xs tw:text-secondary"
+            data-testid="property-name">
+            {propertyLabel}
+          </span>
         </Tooltip>
         {valueContent ? (
           <div
