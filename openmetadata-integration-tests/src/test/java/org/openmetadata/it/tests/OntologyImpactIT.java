@@ -427,7 +427,10 @@ public class OntologyImpactIT {
             .withEffect(Rule.Effect.ALLOW)
             .withResources(List.of(Entity.GLOSSARY, Entity.GLOSSARY_TERM))
             .withOperations(
-                List.of(MetadataOperation.DELETE, MetadataOperation.EDIT_GLOSSARY_TERMS)),
+                List.of(
+                    MetadataOperation.DELETE,
+                    MetadataOperation.EDIT_GLOSSARY_TERMS,
+                    MetadataOperation.EDIT_ALL)),
         new Rule()
             .withName("DenyProtectedTerms")
             .withEffect(Rule.Effect.DENY)

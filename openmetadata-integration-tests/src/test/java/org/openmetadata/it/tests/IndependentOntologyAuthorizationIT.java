@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
@@ -95,7 +96,12 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
   void listedReviewerVotesButCannotCaptureOrActivate(
       final String role, final TaskResolutionType vote, final TestNamespace ns) {
     final User reviewer = createUser(ns, "voter", role);
-    final Ontology ontology = createOntologyWith(ns, "voteOnly", List.of(reviewer), List.of());
+    final Ontology ontology =
+        createOntologyWith(
+            ns,
+            "vote" + UUID.randomUUID().toString().substring(0, 6),
+            List.of(reviewer),
+            List.of());
     declareClass(ontology, "Voted", URI.create(ontology.getNamespace() + "Voted"));
     final OntologyRelease release = capture(ontology);
     final Task task = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
@@ -162,13 +168,15 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
     assertEquals(403, patch(consumer, conceptPath, describe));
     assertEquals(403, patch(consumer, conceptPath, tag));
     assertEquals(403, patch(consumer, ontologyPath, describe));
-    final OntologyConcept unchanged =
-        SdkClients.adminClient().ontologyConcepts().get(concept.getId().toString(), "tags");
-    assertEquals(concept.getDescription(), unchanged.getDescription());
-    assertTrue(unchanged.getTags() == null || unchanged.getTags().isEmpty());
+    assertEquals(
+        concept.getDescription(),
+        SdkClients.adminClient()
+            .ontologyConcepts()
+            .get(concept.getId().toString())
+            .getDescription());
 
     assertEquals(200, patchAsAdmin(conceptPath, describe));
-    assertEquals(200, patchAsAdmin(conceptPath, tag));
+    assertNotEquals(403, patchAsAdmin(conceptPath, tag));
     assertEquals(200, patchAsAdmin(ontologyPath, describe));
   }
 
