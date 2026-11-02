@@ -77,8 +77,10 @@ import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.JsonPatchUtils;
@@ -196,6 +198,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         !addedIds(stored.getDefaultRoles(), updated.getDefaultRoles()).isEmpty()
             || !addedIds(stored.getPolicies(), updated.getPolicies()).isEmpty();
     if (addsRoleOrPolicy) {
+      rejectImpersonated("add roles or policies to a team");
       authorizer.authorizeAdmin(securityContext);
     }
     for (UUID parentId : addedIds(stored.getParents(), updated.getParents())) {
@@ -205,6 +208,17 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
             new OperationContext(TEAM, MetadataOperation.EDIT_ALL),
             getResourceContextById(parentId));
       }
+    }
+  }
+
+  /**
+   * An admin reached through impersonation keeps what it grants after the impersonation ends, so
+   * team grants are closed to impersonated callers, as user privileges are in UserResource. Team
+   * CSV import is refused outright because its rows run without the request's impersonation.
+   */
+  private static void rejectImpersonated(String action) {
+    if (ImpersonationContext.getImpersonatedBy() != null) {
+      throw new AuthorizationException("Impersonated requests cannot " + action);
     }
   }
 
@@ -909,6 +923,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
+    rejectImpersonated("import teams");
     return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
@@ -1002,6 +1017,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
+    rejectImpersonated("import teams");
     return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
