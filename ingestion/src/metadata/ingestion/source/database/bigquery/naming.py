@@ -14,7 +14,10 @@ from dataclasses import replace
 
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.table import TableServiceBinding
-from metadata.ingestion.source.database.bigquery.resolution import resolve_bigquery_reference
+from metadata.ingestion.source.database.bigquery.resolution import (
+    resolve_bigquery_reference,
+    resolve_unscoped_bigquery_reference,
+)
 from metadata.ingestion.source.database.bigquery.sharding import strip_partition_decorator
 
 
@@ -23,4 +26,6 @@ def normalize_table_reference(reference: TableReference) -> TableReference:
 
 
 def table_service_binding(service_name: str) -> TableServiceBinding:
-    return TableServiceBinding(service_name, normalize_table_reference, resolve_bigquery_reference)
+    return TableServiceBinding(
+        service_name, normalize_table_reference, resolve_bigquery_reference, resolve_unscoped_bigquery_reference
+    )

@@ -23,6 +23,7 @@ from metadata.entity_resolution.engine import (
     ResolutionTier,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 
 
@@ -47,6 +48,7 @@ class TableServiceBinding:
     resolve_reference: (
         Callable[[EntityResolver, str, TableReference, tuple[str, ...], str | None], tuple[Table, ...]] | None
     ) = None
+    resolve_unscoped_reference: Callable[[OpenMetadata, TableReference], tuple[Table, ...]] | None = None
 
 
 def table_lookup_tiers(service: str, reference: TableReference, include: str | None) -> tuple[ResolutionTier, ...]:

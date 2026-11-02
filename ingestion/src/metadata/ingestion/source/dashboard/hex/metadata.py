@@ -19,6 +19,7 @@ from collections.abc import Iterable
 
 from sqlglot import exp
 
+from metadata.domain.table_reference import TableReference
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -38,6 +39,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.hexConnecti
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -79,6 +81,7 @@ from metadata.ingestion.source.database.column_helpers import truncate_column_na
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.fqn import build_es_fqn_search_string
+from metadata.utils.importer import import_table_service_binding
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
 
@@ -658,11 +661,18 @@ class HexSource(DashboardServiceSource):
             searched_database = reference.catalog or (connection.default_database if connection else None)
             searched_schema = reference.db or (connection.default_schema if connection else None)
             if "*" in reference.name:
-                self._add_wildcard_tables(lineage, searched_database, searched_schema, reference.name)
+                self._add_wildcard_tables(
+                    lineage, searched_database, searched_schema, reference.name, connection.type if connection else None
+                )
                 reference.meta[UNRESOLVED] = True
                 continue
             if key not in resolved_tables:
-                resolved_tables.put(key, self._resolve_table(searched_database, searched_schema, reference.name))
+                resolved_tables.put(
+                    key,
+                    self._resolve_table(
+                        searched_database, searched_schema, reference.name, connection.type if connection else None
+                    ),
+                )
             resolved = resolved_tables.get(key)
             if not resolved:
                 # A later cell inlining this one lacks this connection's defaults and
@@ -714,7 +724,36 @@ class HexSource(DashboardServiceSource):
             )
         return lineage
 
-    def _add_wildcard_tables(self, lineage, searched_database, searched_schema, table_name):
+    def _search_unscoped_tables(
+        self, database: str | None, schema: str | None, table: str, connection_type: str | None
+    ) -> tuple[Table, ...] | None:
+        if not connection_type:
+            return None
+        try:
+            binding = import_table_service_binding(ServiceType.Database, connection_type, "*")
+            if binding.resolve_unscoped_reference is None:
+                return None
+            return binding.resolve_unscoped_reference(self.metadata, TableReference(database, schema, table))
+        except Exception as exc:
+            raise TableSearchError(f"searching unscoped table reference {table}: {exc}") from exc
+
+    def _add_wildcard_tables(
+        self,
+        lineage: HexCellLineage,
+        searched_database: str | None,
+        searched_schema: str | None,
+        table_name: str,
+        connection_type: str | None = None,
+    ) -> None:
+        if not self.get_db_service_prefixes():
+            if not searched_schema:
+                return
+            matches = self._search_unscoped_tables(searched_database, searched_schema, table_name, connection_type)
+            scopes = {tuple(fqn.split(model_str(table.fullyQualifiedName))[:-1]) for table in matches or ()}
+            if len(scopes) == 1:
+                for match in matches or ():
+                    lineage.tables[model_str(match.id)] = (match, None)
+            return
         for prefix in self.get_db_service_prefixes() or []:
             service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
             if not service or get_service_table_binding(self.metadata, service).resolve_reference is None:
@@ -741,13 +780,19 @@ class HexSource(DashboardServiceSource):
             for match in matches:
                 lineage.tables[model_str(match.id)] = (match, prefix)
 
-    def _resolve_table(self, database: str | None, schema: str | None, table: str) -> tuple[Table, str | None] | None:
+    def _resolve_table(
+        self, database: str | None, schema: str | None, table: str, connection_type: str | None = None
+    ) -> tuple[Table, str | None] | None:
         """
         The one table the reference names across the db service prefixes (any service
         when none is set), with the prefix it was found under. Lineage must not guess,
         so a reference without a schema, or matching several tables (the same
         schema.table in two services), resolves to none.
         """
+        if not self.get_db_service_prefixes() and schema:
+            unscoped = self._search_unscoped_tables(database, schema, table, connection_type)
+            if unscoped is not None:
+                return (unscoped[0], None) if len(unscoped) == 1 else None
         matches: dict[str, tuple[Table, str | None]] = {}
         for prefix in self.get_db_service_prefixes() or [None]:
             service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)

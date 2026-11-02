@@ -16,6 +16,9 @@ from dataclasses import replace
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.engine import EntityResolutionPlan, FqnCandidate, FqnLookupMode, ResolutionTier
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.bigquery.sharding import (
     get_table_sharding,
     logical_shard_name,
@@ -23,6 +26,86 @@ from metadata.ingestion.source.database.bigquery.sharding import (
     strip_partition_decorator,
 )
 from metadata.utils import fqn
+
+
+def resolve_unscoped_bigquery_reference(metadata: OpenMetadata, reference: TableReference) -> tuple[Table, ...]:
+    """Resolve physical and logical candidates across services in one bounded search."""
+    name = strip_partition_decorator(reference.table)
+    wildcard = "*" in name
+    if wildcard and (name.count("*") != 1 or not name.endswith("*") or re.search(r"[0-9]+\*", name)):
+        raise ValueError("BigQuery wildcard requires member inventory evidence; resolution incomplete")
+    parsed = parse_shard_name(name)
+    scope = [
+        {"term": {field: value}}
+        for field, value in (
+            ("database.name.keyword", reference.database),
+            ("databaseSchema.name.keyword", reference.schema),
+        )
+        if value
+    ]
+    service_type = {"term": {"serviceType": "BigQuery"}}
+    alternatives: list[dict]
+    if wildcard:
+        escaped = name[:-1].replace("\\", "\\\\").replace("?", "\\?") + "*"
+        alternatives = [{"bool": {"filter": [service_type, {"wildcard": {"name.keyword": escaped.lower()}}]}}]
+    else:
+        alternatives = [{"term": {"name.keyword": reference.table}}]
+        if name != reference.table:
+            alternatives.append({"bool": {"filter": [service_type, {"term": {"name.keyword": name}}]}})
+        if parsed:
+            alternatives.append(
+                {
+                    "bool": {
+                        "filter": [
+                            service_type,
+                            {"term": {"tableType": "Sharded"}},
+                            {"term": {"name.keyword": logical_shard_name(parsed[0])}},
+                        ]
+                    }
+                }
+            )
+    names = metadata.search_filtered_fqns(
+        Table, {"query": {"bool": {"filter": scope, "should": alternatives, "minimum_should_match": 1}}}
+    )
+    physical, families = {}, {}
+    for candidate in dict.fromkeys(names):
+        table = metadata.get_by_name(Table, candidate)
+        if table is None or table.deleted or model_str(table.fullyQualifiedName) != candidate:
+            raise ValueError("Table changed during candidate search; resolution incomplete")
+        parts = fqn.split(candidate)
+        if len(parts) != 4:
+            continue
+        service, database, schema, table_name = parts
+        if any(
+            expected and expected.lower() != actual.lower()
+            for expected, actual in ((reference.database, database), (reference.schema, schema))
+        ):
+            continue
+        key = (service, database, schema)
+        is_bigquery = table.serviceType == DatabaseServiceType.BigQuery
+        descriptor = get_table_sharding(table)
+        if wildcard:
+            physical_match = is_bigquery and table_name.lower().startswith(name[:-1].lower())
+        else:
+            physical_match = table_name.lower() == reference.table.lower() or (
+                is_bigquery and table_name.lower() == name.lower()
+            )
+        if physical_match and not (wildcard and descriptor):
+            physical[model_str(table.id)] = (key, table)
+        elif (
+            is_bigquery
+            and descriptor
+            and descriptor.representative.databaseName == database
+            and descriptor.representative.schemaName == schema
+            and table_name == logical_shard_name(descriptor.prefix)
+            and ((wildcard and descriptor.prefix.startswith(name[:-1])) or (parsed and descriptor.prefix == parsed[0]))
+        ):
+            families[model_str(table.id)] = (key, table)
+    # A physical identity wins only within its namespace, never across unrelated services.
+    physical_scopes = {key for key, _ in physical.values()}
+    return tuple(table for _, table in physical.values()) + tuple(
+        table for key, table in families.values() if wildcard or key not in physical_scopes
+    )
 
 
 def resolve_bigquery_reference(resolver, service: str, reference: TableReference, fields=(), include=None):
