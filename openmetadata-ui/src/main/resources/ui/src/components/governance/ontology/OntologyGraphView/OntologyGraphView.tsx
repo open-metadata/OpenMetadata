@@ -84,13 +84,13 @@ import {
   checkNativeRelation,
   describeRelationIssue,
 } from '../../../../utils/governance/ontology/OntologyRelationCheck.utils';
-import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import {
   buildDataPropertyRequest,
   buildOntologyStudioGraph,
   DataPropertyInput,
   OntologyModelRelation,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -115,14 +115,14 @@ import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/Relationship
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
-import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptDeleteDialog from '../OntologyAuthoringWorkspace/OntologyConceptDeleteDialog';
+import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
 import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
-import OntologyRelationDetail from '../OntologyRelationControls/OntologyRelationDetail';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
+import OntologyRelationDetail from '../OntologyRelationControls/OntologyRelationDetail';
 import OntologyConceptSearch from './OntologyConceptSearch';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
 import OntologyGraphNodeList from './OntologyGraphNodeList';
@@ -331,6 +331,7 @@ interface OntologyGraphViewProps {
   readonly onRequestGraphSurface: () => void;
   readonly onRequestTreeSurface?: () => void;
   readonly createConceptRequestKey?: number;
+  readonly onCreateConceptRequestHandled?: () => void;
   readonly onRequestCreateConcept?: () => void;
   readonly onAuthoringLockChange?: (locked: boolean) => void;
   readonly isEditing?: boolean;
@@ -387,6 +388,7 @@ const OntologyGraphView = ({
   onRequestGraphSurface,
   onRequestTreeSurface,
   createConceptRequestKey = 0,
+  onCreateConceptRequestHandled,
   onRequestCreateConcept,
   onAuthoringLockChange,
   isEditing = false,
@@ -409,7 +411,7 @@ const OntologyGraphView = ({
   // The inverse this view registered and has not linked back yet. A retry reuses or links it, since
   // a delete needs a right the dialog never checks and a soft delete leaves its name taken.
   const unlinkedInverseId = useRef<string>();
-  const handledCreateConceptRequest = useRef(createConceptRequestKey);
+  const handledCreateConceptRequest = useRef(0);
   const [nodePositions, setNodePositions] =
     useState<Record<string, { x: number; y: number }>>();
   const creationPositions = useRef<Record<string, { x: number; y: number }>>();
@@ -974,6 +976,7 @@ const OntologyGraphView = ({
       handledCreateConceptRequest.current !== createConceptRequestKey
     ) {
       handledCreateConceptRequest.current = createConceptRequestKey;
+      onCreateConceptRequestHandled?.();
       runConfirmed(() =>
         (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
       );
@@ -984,6 +987,7 @@ const OntologyGraphView = ({
   }, [
     createConceptRequestKey,
     isEditing,
+    onCreateConceptRequestHandled,
     onRequestGraphSurface,
     onSelectedConceptChange,
     runConfirmed,

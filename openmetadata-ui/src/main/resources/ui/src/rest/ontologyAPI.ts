@@ -41,9 +41,9 @@ import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyBulkResultArtifact } from '../generated/api/data/ontologyBulkResultArtifact';
 import { OntologyBulkSubmission } from '../generated/api/data/ontologyBulkSubmission';
-import { OntologyConceptDeleteImpact } from '../generated/api/data/ontologyConceptDeleteImpact';
 import { OntologyBulkTemplate } from '../generated/api/data/ontologyBulkTemplate';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { OntologyConceptDeleteImpact } from '../generated/api/data/ontologyConceptDeleteImpact';
 import type {
   Hop,
   OntologyConceptQuery,
@@ -263,6 +263,19 @@ export const patchOntology = async (id: string, patch: Operation[]) => {
     `${ONTOLOGIES_PATH}/${encodeURIComponent(id)}`,
     patch,
     { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
+
+  return response.data;
+};
+
+export const getOntologyConcept = async (
+  id: string,
+  fields?: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyConcept>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}`,
+    { params: { fields }, signal }
   );
 
   return response.data;
