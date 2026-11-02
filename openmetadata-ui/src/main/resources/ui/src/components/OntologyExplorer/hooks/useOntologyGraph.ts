@@ -103,6 +103,7 @@ import {
   STUDIO_EDIT_PORT_CLASS_NAME,
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
+import { STUDIO_EDIT_PORT_OUTER_OFFSET } from '../utils/studioEditPortStyles';
 import { computeAssetRingPositions } from '../utils/layoutCalculations';
 import {
   EdgeRoute,
@@ -2028,9 +2029,29 @@ export function useOntologyGraph({
           }
         })
       );
+      const portPositions = isEditModeRef.current
+        ? Object.fromEntries(
+            graph.getNodeData().flatMap((node) => {
+              try {
+                const { max, min } = graph.getElementRenderBounds(
+                  String(node.id)
+                );
+                const [x, y] = graph.getClientByCanvas([
+                  max[0] - STUDIO_EDIT_PORT_OUTER_OFFSET,
+                  (min[1] + max[1]) / 2,
+                ]);
+
+                return [[String(node.id), { x, y }]];
+              } catch {
+                return [];
+              }
+            })
+          )
+        : {};
       container.dataset.graphZoom = String(zoom);
       container.dataset.nodePositions = JSON.stringify(positions);
       container.dataset.edgePositions = JSON.stringify(edgePositions);
+      container.dataset.portPositions = JSON.stringify(portPositions);
     };
 
     graph.on(NodeEvent.CLICK, handleNodeClick);
@@ -2048,12 +2069,12 @@ export function useOntologyGraph({
       setClickedEdgeIdRef.current(null);
       onPaneClickRef.current();
     });
-    graph.on(CanvasEvent.DBLCLICK, (e: IElementEvent & MouseEvent) => {
+    graph.on(CanvasEvent.DBLCLICK, (e: IElementEvent) => {
       const handler = onCanvasDoubleClickRef.current;
       if (!handler || !studioMode) {
         return;
       }
-      const [x, y] = graph.getCanvasByClient([e.clientX, e.clientY]);
+      const [x, y] = graph.getCanvasByClient([e.client.x, e.client.y]);
       handler({ x, y });
     });
     graph.on(NodeEvent.POINTER_DOWN, (e: IElementEvent & PointerEvent) => {
