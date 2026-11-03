@@ -9,7 +9,8 @@
     "logicalCheck": {
       "type": "string",
       "javaType": "org.openmetadata.schema.type.OntologyReleaseLogicalCheck",
-      "enum": ["NOT_RUN"]
+      "description": "NOT_APPLICABLE when no inference is materialized, so there is no logical consequence to check. NOT_RUN when inference exists but no consistency check has run.",
+      "enum": ["NOT_RUN", "NOT_APPLICABLE"]
     },
     "severity": {
       "type": "string",

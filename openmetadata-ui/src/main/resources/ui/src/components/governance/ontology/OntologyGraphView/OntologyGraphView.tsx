@@ -1069,6 +1069,16 @@ const OntologyGraphView = ({
     runConfirmed,
   ]);
 
+  const dataConcepts = useMemo(
+    () =>
+      (model?.concepts ?? []).map((concept) => ({
+        id: concept.id,
+        name: getEntityName(concept),
+        synonyms: concept.synonyms,
+      })),
+    [model?.concepts]
+  );
+
   if ([isError, !model].every(Boolean)) {
     return (
       <Alert variant="error">
@@ -1319,6 +1329,10 @@ const OntologyGraphView = ({
       return renderInspector(selected);
     }
 
+    if (graphMode === 'data') {
+      return null;
+    }
+
     return (
       <>
         {releaseId ? null : (
@@ -1356,6 +1370,8 @@ const OntologyGraphView = ({
         }
         hidden={graphMode !== 'data'}>
         <OntologyNativeDataMode
+          canEditBindings={canEditConcept}
+          concepts={dataConcepts}
           isActive={graphMode === 'data'}
           ontologyId={ontology.id}
           revision={dataRevision}

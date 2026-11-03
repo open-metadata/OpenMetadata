@@ -222,6 +222,37 @@ beforeEach(() => {
 
     return undefined;
   };
+  const emptyPage = () => ({ data: { data: [], paging: { total: 0 } } });
+  const reviewResponse = () => {
+    if (reviewMissing) {
+      throw new AxiosError('No open review', '404');
+    }
+
+    return { data: review };
+  };
+  const suffixResponses: [string, () => unknown][] = [
+    [
+      '/working/diff',
+      () => ({ data: { state, data: [], paging: { total: 1 } } }),
+    ],
+    ['/working/validation', () => ({ data: { valid: true, violations: [] } })],
+    ['/state', () => ({ data: state })],
+    ['/review', reviewResponse],
+    [
+      '/structure',
+      () => ({
+        data: {
+          releaseId: release.id,
+          contentDigest: release.contentDigest,
+          valid: true,
+          violationCount: 0,
+          violations: [],
+        },
+      }),
+    ],
+    ['/events', emptyPage],
+    ['/diff', emptyPage],
+  ];
   get.mockImplementation(async (url) => {
     const captured = releaseResponse(url);
     if (captured) {
@@ -230,35 +261,14 @@ beforeEach(() => {
     if (url === `/ontologies/${ontology.id}`) {
       return { data: ontology };
     }
-    if (url.endsWith('/working/diff')) {
-      return { data: { state, data: [], paging: { total: 1 } } };
-    }
-    if (url.endsWith('/state')) {
-      return { data: state };
-    }
-    if (url.endsWith('/review')) {
-      if (reviewMissing) {
-        throw new AxiosError('No open review', '404');
-      }
-
-      return { data: review };
-    }
-    if (url.endsWith('/structure')) {
-      return {
-        data: {
-          releaseId: release.id,
-          contentDigest: release.contentDigest,
-          valid: true,
-          violationCount: 0,
-          violations: [],
-        },
-      };
-    }
-    if (url.endsWith('/events') || url.endsWith('/diff')) {
-      return { data: { data: [], paging: { total: 0 } } };
+    const respond = suffixResponses.find(([suffix]) =>
+      url.endsWith(suffix)
+    )?.[1];
+    if (!respond) {
+      throw new Error(`Unexpected read ${url}`);
     }
 
-    throw new Error(`Unexpected read ${url}`);
+    return respond();
   });
 });
 
@@ -918,7 +928,7 @@ it('renders a fresh working Draft and the initial semantic version without a cap
     'label.draft'
   );
   expect(screen.getByTestId('ontology-version-preview')).toHaveTextContent(
-    '0.0.0 → 1.0.0'
+    'label.draft → v0.1.0'
   );
   expect(screen.getByTestId('ontology-request-review')).toBeEnabled();
   expect(screen.queryByText('label.loading')).not.toBeInTheDocument();
@@ -1467,7 +1477,7 @@ describe('publication state table', () => {
     setStage(Stage.Draft);
     const original = get.getMockImplementation();
     get.mockImplementation(async (url, config) =>
-      url.endsWith('/validation')
+      url.endsWith('/validation') && !url.includes('/working/')
         ? {
             data: {
               releaseId: release.id,

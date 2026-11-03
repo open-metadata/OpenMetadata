@@ -52,7 +52,7 @@ import {
   getModelRelations,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
-import { showSuccessToast } from '../../../../utils/ToastUtils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import {
   RelationWarningCheck,
   RelationWarningContext,
@@ -61,6 +61,9 @@ import OntologyConceptInspector from './OntologyConceptInspector';
 
 jest.mock('../../../../rest/ontologyAPI');
 jest.mock('../../../../rest/permissionAPI');
+jest.mock('../../../../utils/governance/ontology/OntologyUndoToast', () => ({
+  showUndoToast: jest.fn(),
+}));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -1007,10 +1010,13 @@ describe('OntologyConceptInspector in AI mode', () => {
     expect(deleteOntologyConceptBinding).not.toHaveBeenCalled();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'label.remove' })
+      await screen.findByRole('button', { name: 'label.unlink' })
     );
     await waitFor(() =>
-      expect(showSuccessToast).toHaveBeenCalledWith('label.saved')
+      expect(showUndoToast).toHaveBeenCalledWith(
+        'message.ontology-asset-unlinked',
+        expect.any(Function)
+      )
     );
 
     expect(deleteOntologyConceptBinding).toHaveBeenCalledWith(concept.id, {

@@ -82,6 +82,8 @@ interface OntologyDataGraphProps {
   data: OntologyGraphData;
   glossaryColorMap: Record<string, string>;
   hasMoreTerms: boolean;
+  /** One concept is drawn, so the multi-concept heading and inferred-edge legend do not apply. */
+  isSingleConcept?: boolean;
   isLoadingMoreTerms: boolean;
   limitMessage?: string;
   relationTypes: RelationshipType[];
@@ -308,76 +310,182 @@ function AssetTypeBadge({ entityType }: { entityType: string }) {
 
 interface AssetRowsProps {
   assets: OntologyNode[];
+  expandedColumnIds?: ReadonlySet<string>;
+  isNative: boolean;
+  onSelectNode: (node: OntologyNode) => void;
+  onToggleColumns?: (asset: OntologyNode) => void;
+}
+
+function BoundColumnList({
+  asset,
+  isOpen,
+  onToggle,
+}: {
+  asset: OntologyNode;
+  isOpen: boolean;
+  onToggle: (asset: OntologyNode) => void;
+}) {
+  const { t } = useTranslation();
+  const columns = asset.boundColumns ?? [];
+
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-1 tw:pr-5 tw:pb-3 tw:pl-16">
+      <Button
+        aria-expanded={isOpen}
+        className="tw:self-start"
+        color="link-gray"
+        data-testid={`ontology-data-asset-columns-toggle-${asset.id}`}
+        size="xs"
+        onPress={() => onToggle(asset)}>
+        {t('label.bound-column-count', { count: columns.length })}
+      </Button>
+      {isOpen ? (
+        <ul
+          className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-1 tw:border-l tw:border-dashed tw:border-secondary tw:p-0 tw:pl-3"
+          data-testid={`ontology-data-asset-columns-${asset.id}`}>
+          {columns.map((column) => (
+            <li
+              className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2"
+              data-testid="ontology-data-column"
+              key={column.path.join('.')}>
+              <Typography
+                ellipsis
+                className="tw:font-mono tw:text-primary"
+                size="text-xs"
+                weight="medium">
+                {column.path.join('.')}
+              </Typography>
+              {column.type ? (
+                <Typography color="secondary" size="text-xs">
+                  {column.type}
+                </Typography>
+              ) : null}
+              <Typography
+                ellipsis
+                className="tw:ml-auto"
+                color={column.isResolved ? 'secondary' : 'danger'}
+                size="text-xs">
+                {column.propertyLabel}
+              </Typography>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+interface AssetRowButtonProps {
+  asset: OntologyNode;
+  index: number;
   isNative: boolean;
   onSelectNode: (node: OntologyNode) => void;
 }
 
-function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
+function AssetRowButton({
+  asset,
+  index,
+  isNative,
+  onSelectNode,
+}: AssetRowButtonProps) {
   const { t } = useTranslation();
+  const entityType = getAssetEntityType(asset);
+  const lineageNotes = isNative ? getLineageNotes(asset, t) : [];
+  const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
 
+  return (
+    // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
+    <Button
+      noTextPadding
+      aria-describedby={lineageNotes.length > 0 ? descriptionId : undefined}
+      className={classNames(
+        'tw:flex tw:min-h-16 tw:w-full tw:items-center tw:gap-3 tw:rounded-none tw:px-5 tw:py-3 tw:text-left tw:whitespace-normal',
+        'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
+        index > 0 && 'tw:border-t tw:border-secondary'
+      )}
+      color="tertiary"
+      data-testid={`ontology-data-asset-${asset.id}`}
+      onClick={() => onSelectNode(asset)}>
+      <AssetLogo asset={asset} entityType={entityType} />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Typography
+          ellipsis
+          className="tw:text-primary"
+          data-testid="ontology-data-asset-name"
+          size="text-sm"
+          weight="medium">
+          {asset.originalLabel ?? asset.label}
+        </Typography>
+        <Typography ellipsis color="secondary" size="text-xs">
+          {isNative
+            ? getNativeAssetSummary(asset, lineageNotes, t)
+            : getAssetPath(asset)}
+        </Typography>
+      </Box>
+      {isNative && entityType === 'table' ? null : (
+        <AssetTypeBadge entityType={entityType} />
+      )}
+      {lineageNotes.length > 0 ? (
+        <span hidden id={descriptionId}>
+          {lineageNotes.join(' · ')}
+        </span>
+      ) : null}
+    </Button>
+  );
+}
+
+function AssetRowList({
+  assets,
+  expandedColumnIds,
+  isNative,
+  onSelectNode,
+  onToggleColumns,
+}: AssetRowsProps) {
   return (
     <>
       {assets.map((asset, index) => {
-        const entityType = getAssetEntityType(asset);
-        const lineageNotes = isNative ? getLineageNotes(asset, t) : [];
-        const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
-
-        return (
-          // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
-          <Button
-            noTextPadding
-            aria-describedby={
-              lineageNotes.length > 0 ? descriptionId : undefined
-            }
-            className={classNames(
-              'tw:flex tw:min-h-16 tw:w-full tw:items-center tw:gap-3 tw:rounded-none tw:px-5 tw:py-3 tw:text-left tw:whitespace-normal',
-              'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
-              index > 0 && 'tw:border-t tw:border-secondary'
-            )}
-            color="tertiary"
-            data-testid={`ontology-data-asset-${asset.id}`}
+        const row = (
+          <AssetRowButton
+            asset={asset}
+            index={index}
+            isNative={isNative}
             key={asset.id}
-            onClick={() => onSelectNode(asset)}>
-            <AssetLogo asset={asset} entityType={entityType} />
-            <Box className="tw:min-w-0 tw:flex-1" direction="col">
-              <Typography
-                ellipsis
-                className="tw:text-primary"
-                data-testid="ontology-data-asset-name"
-                size="text-sm"
-                weight="medium">
-                {asset.originalLabel ?? asset.label}
-              </Typography>
-              <Typography ellipsis color="secondary" size="text-xs">
-                {isNative
-                  ? getNativeAssetSummary(asset, lineageNotes, t)
-                  : getAssetPath(asset)}
-              </Typography>
-            </Box>
-            {isNative && entityType === 'table' ? null : (
-              <AssetTypeBadge entityType={entityType} />
-            )}
-            {lineageNotes.length > 0 ? (
-              <span hidden id={descriptionId}>
-                {lineageNotes.join(' · ')}
-              </span>
-            ) : null}
-          </Button>
+            onSelectNode={onSelectNode}
+          />
+        );
+        const hasColumns = isNative && (asset.boundColumns?.length ?? 0) > 0;
+
+        return hasColumns && onToggleColumns ? (
+          <div key={asset.id}>
+            {row}
+            <BoundColumnList
+              asset={asset}
+              isOpen={expandedColumnIds?.has(asset.id) ?? false}
+              onToggle={onToggleColumns}
+            />
+          </div>
+        ) : (
+          row
         );
       })}
     </>
   );
 }
 
+const hasSameAssets = (previous: OntologyNode[], next: OntologyNode[]) =>
+  previous.length === next.length &&
+  previous.every((asset, index) => asset === next[index]);
+
+const areSameRowProps = (previous: AssetRowsProps, next: AssetRowsProps) =>
+  [
+    previous.isNative === next.isNative,
+    previous.onSelectNode === next.onSelectNode,
+    previous.expandedColumnIds === next.expandedColumnIds,
+    previous.onToggleColumns === next.onToggleColumns,
+  ].every(Boolean) && hasSameAssets(previous.assets, next.assets);
+
 // Rows keep their render while the graph re-renders for a scroll or a drag.
-const AssetRows = memo(
-  AssetRowList,
-  (previous, next) =>
-    previous.isNative === next.isNative &&
-    previous.onSelectNode === next.onSelectNode &&
-    previous.assets.length === next.assets.length &&
-    previous.assets.every((asset, index) => asset === next.assets[index])
-);
+const AssetRows = memo(AssetRowList, areSameRowProps);
 
 // jsdom and a card that is not laid out read 0, so the CSS sizes stand in.
 function measureRows(container: HTMLElement): RowMetrics | undefined {
@@ -721,6 +829,7 @@ const OntologyDataGraph = ({
   data,
   glossaryColorMap,
   hasMoreTerms,
+  isSingleConcept = false,
   isLoadingMoreTerms,
   limitMessage,
   relationTypes,
@@ -756,6 +865,19 @@ const OntologyDataGraph = ({
     () => new Set()
   );
   const [rowWindows, setRowWindows] = useState<Record<string, RowWindow>>({});
+  const [expandedColumnIds, setExpandedColumnIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const toggleColumns = useCallback((asset: OntologyNode) => {
+    setExpandedColumnIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(asset.id)) {
+        next.add(asset.id);
+      }
+
+      return next;
+    });
+  }, []);
   const cardHeightOf = useCallback(
     (term: OntologyNode) =>
       measuredHeights[term.id] ??
@@ -901,21 +1023,42 @@ const OntologyDataGraph = ({
     rowsInView,
     t,
   ]);
+  const hasBoundColumns = useMemo(
+    () =>
+      data.nodes.some(
+        (node) => node.type === 'dataAsset' && node.boundColumns?.length
+      ),
+    [data.nodes]
+  );
   const legendEntries = useMemo((): LegendEntry[] => {
     if (isNative) {
       return [
-        {
-          color: INFERRED_EDGE_COLOR,
-          isSolid: false,
-          key: 'inferred',
-          label: t('label.ontology-inferred-relation'),
-        },
+        ...(isSingleConcept
+          ? []
+          : [
+              {
+                color: INFERRED_EDGE_COLOR,
+                isSolid: false,
+                key: 'inferred',
+                label: t('label.ontology-inferred-relation'),
+              },
+            ]),
         {
           color: LINEAGE_EDGE_COLOR,
           isSolid: true,
           key: 'lineage',
           label: t('label.observed-lineage'),
         },
+        ...(hasBoundColumns
+          ? [
+              {
+                color: INFERRED_EDGE_COLOR,
+                isSolid: false,
+                key: 'column-binding',
+                label: t('label.ontology-column-binding'),
+              },
+            ]
+          : []),
       ];
     }
 
@@ -932,7 +1075,7 @@ const OntologyDataGraph = ({
         ])
       ).values(),
     ];
-  }, [isNative, renderedSemanticEdges, t]);
+  }, [hasBoundColumns, isNative, isSingleConcept, renderedSemanticEdges, t]);
   const linkedAssetTotal = useMemo(
     () =>
       visibleTerms.reduce(
@@ -1127,7 +1270,13 @@ const OntologyDataGraph = ({
         ? current
         : { ...current, ...Object.fromEntries(changed) };
     });
-  }, [assetsByTerm, expandedCardIds, isNative, measuredHeights]);
+  }, [
+    assetsByTerm,
+    expandedCardIds,
+    expandedColumnIds,
+    isNative,
+    measuredHeights,
+  ]);
 
   const layoutKey = useMemo(
     () => visibleTerms.map((term) => term.id).join('|'),
@@ -1558,7 +1707,9 @@ const OntologyDataGraph = ({
             <AssetRows
               isNative
               assets={assetState.shownAssets}
+              expandedColumnIds={expandedColumnIds}
               onSelectNode={onSelectNode}
+              onToggleColumns={toggleColumns}
             />
           </div>
         ) : (
@@ -1714,11 +1865,13 @@ const OntologyDataGraph = ({
         />
       </div>
 
-      <DataLayerHeading
-        assetCount={linkedAssetTotal}
-        conceptCount={visibleTerms.length}
-        isNative={isNative}
-      />
+      {isSingleConcept ? null : (
+        <DataLayerHeading
+          assetCount={linkedAssetTotal}
+          conceptCount={visibleTerms.length}
+          isNative={isNative}
+        />
+      )}
 
       {renderControls()}
     </div>

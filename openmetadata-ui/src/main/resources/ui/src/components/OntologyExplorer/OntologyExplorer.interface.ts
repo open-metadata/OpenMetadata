@@ -63,6 +63,15 @@ export interface OntologyProposalRef {
   operationId: string;
 }
 
+/** A column of a bound asset, with the property it is bound to. */
+export interface BoundColumn {
+  path: string[];
+  type?: string;
+  propertyLabel: string;
+  /** False when the exact column or the property is gone. */
+  isResolved: boolean;
+}
+
 export interface OntologyNode {
   id: string;
   label: string;
@@ -71,6 +80,7 @@ export interface OntologyNode {
   loadedAssetCount?: number;
   isLoadingAssets?: boolean;
   columnCount?: number;
+  boundColumns?: BoundColumn[];
   serviceLabel?: string;
   type: string;
   fullyQualifiedName?: string;
