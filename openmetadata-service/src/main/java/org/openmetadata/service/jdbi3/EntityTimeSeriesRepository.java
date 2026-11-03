@@ -72,11 +72,12 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   /**
-   * The search document field that marks a record deleted, or null when it carries none. Read once
-   * at registration, from the constructor, so an override returns a constant.
+   * The search document field that marks a record deleted, or null when it carries none: its own
+   * {@code deleted} when the schema has one. Read once at registration, from the constructor, so an
+   * override returns a constant.
    */
   public String getSearchDeletedField() {
-    return null;
+    return allowedFields.contains(Entity.FIELD_DELETED) ? Entity.FIELD_DELETED : null;
   }
 
   @Transaction
