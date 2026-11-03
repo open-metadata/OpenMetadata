@@ -164,13 +164,14 @@ public class AIContextFinder {
   }
 
   /**
-   * Draft / in-review glossary terms are untrusted as business-rule context — mirror the Approved
-   * filter the asset-anchored path applies in {@link AIContextBuilder}. Other knowledge types keep
-   * their existing behavior (a missing status means no review workflow applies).
+   * Draft / in-review glossary terms and metrics are untrusted as business-rule context — mirror the
+   * Approved filter the asset-anchored path applies in {@link AIContextBuilder}. Articles keep their
+   * existing behavior, and a missing status means no review workflow applies
+   * (ADR:2026-11-03-only-approved-definitions-reach-ai-context-as-governed-knowledge).
    */
   static boolean isApprovedForContext(Map<String, Object> hit, KnowledgeItem.Type kind) {
     String status = asString(hit.get("entityStatus"));
-    return kind != KnowledgeItem.Type.GLOSSARY_TERM
+    return (kind != KnowledgeItem.Type.GLOSSARY_TERM && kind != KnowledgeItem.Type.METRIC)
         || nullOrEmpty(status)
         || EntityStatus.APPROVED.value().equals(status);
   }

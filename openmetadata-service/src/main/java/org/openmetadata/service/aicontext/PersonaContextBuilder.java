@@ -42,7 +42,6 @@ import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
@@ -830,7 +829,7 @@ public class PersonaContextBuilder {
   }
 
   static KnowledgeItem fullKnowledgeItem(String entityType, EntityInterface<?> entity) {
-    if (entity instanceof GlossaryTerm term && term.getEntityStatus() != EntityStatus.APPROVED) {
+    if (!AIContextBuilder.isGovernedDefinition(entity)) {
       return null;
     }
     KnowledgeItem.Type type =
