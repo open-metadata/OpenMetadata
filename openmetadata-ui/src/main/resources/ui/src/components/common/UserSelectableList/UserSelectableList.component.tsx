@@ -172,8 +172,8 @@ export const UserSelectableList = ({
     (item: EntityReference) => (
       <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
         <UserTag
+          truncateName
           avatarType="outlined"
-          className="tw:min-w-0 tw:[&>span]:truncate"
           id={item.name ?? ''}
           name={getEntityName(item)}
         />
