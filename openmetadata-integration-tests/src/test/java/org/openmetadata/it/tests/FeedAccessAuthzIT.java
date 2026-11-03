@@ -75,6 +75,7 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Regression coverage for issue #18158 ("Users without access can fetch & perform patch on the
@@ -486,6 +487,82 @@ class FeedAccessAuthzIT {
 
     Task updated = SdkClients.adminClient().tasks().get(task.getId().toString());
     assertEquals("Conditional write", updated.getDescription());
+  }
+
+  // ==================== Reads by id carry their target's check ====================
+
+  @Test
+  void conversationById_aboutATableTheCallerCannotView_isNotFound(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns, "conv_by_id");
+    Conversation conversation = createConversation(entityLink(table), "About a hidden table");
+    OpenMetadataClient denied = clientDeniedViewOn(ns, "convbyid", Entity.TABLE);
+
+    for (String path :
+        List.of(
+            CONVERSATIONS_PATH + "/" + conversation.getId(),
+            CONVERSATIONS_PATH + "/" + conversation.getId() + "/replies")) {
+      ApiException failure = assertThrows(ApiException.class, () -> get(denied, path), path);
+      assertEquals(404, failure.getStatusCode(), path);
+    }
+  }
+
+  @Test
+  void taskById_aboutATableTheCallerCannotView_isRefused(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "task_by_id");
+    Task task = createTaskAbout(ns, table);
+    OpenMetadataClient denied = clientDeniedViewOn(ns, "taskbyid", Entity.TABLE);
+
+    for (String path :
+        List.of(
+            TASKS_PATH + "/" + task.getId(),
+            TASKS_PATH + "/" + task.getId() + "?fields=assignees",
+            TASKS_PATH + "/" + task.getId() + "/versions")) {
+      assertThrows(ForbiddenException.class, () -> get(denied, path), path);
+    }
+  }
+
+  @Test
+  void activityAboutALink_returnsOnlyEventsOfTheLinksEntityType(TestNamespace ns) throws Exception {
+    String sharedName = "act_" + UUID.randomUUID().toString().substring(0, 8);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgresWithName(sharedName, ns);
+    User namesake =
+        ns.trackRoot(
+            Entity.USER,
+            SdkClients.adminClient()
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(sharedName)
+                        .withEmail(sharedName + "@test.openmetadata.org")));
+    ActivityEvent serviceEvent =
+        new ActivityEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(ActivityEventType.ENTITY_UPDATED)
+            .withEntity(service.getEntityReference())
+            .withAbout("<#E::databaseService::" + sharedName + ">")
+            .withActor(namesake.getEntityReference())
+            .withTimestamp(System.currentTimeMillis())
+            .withSummary("Updated " + sharedName);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            ACTIVITY_PATH + "/test-insert",
+            MAPPER.writeValueAsString(serviceEvent),
+            RequestOptions.builder().build());
+    OpenMetadataClient denied = clientDeniedViewOn(ns, "actlink", Entity.DATABASE_SERVICE);
+
+    List<String> ids =
+        eventIds(
+            denied,
+            ACTIVITY_PATH
+                + "/about?entityLink="
+                + java.net.URLEncoder.encode(
+                    "<#E::user::" + namesake.getName() + ">",
+                    java.nio.charset.StandardCharsets.UTF_8));
+
+    assertFalse(ids.contains(serviceEvent.getId().toString()), ids.toString());
   }
 
   // ==================== Helpers ====================

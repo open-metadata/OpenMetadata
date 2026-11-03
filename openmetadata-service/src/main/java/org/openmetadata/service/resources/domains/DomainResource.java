@@ -71,6 +71,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -700,6 +701,10 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @QueryParam("offset")
           int offset) {
 
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
     return repository.buildHierarchy(
         fieldsParam, limitParam, directChildrenOf, offset, securityContext);
   }

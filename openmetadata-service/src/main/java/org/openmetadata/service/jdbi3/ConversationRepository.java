@@ -1192,13 +1192,33 @@ public class ConversationRepository {
         && !subject.hasDomains(conversation.getDomains())) {
       throw conversationNotFound(conversation.getId());
     }
+    List<AuthRequest> requests = new ArrayList<>();
+    requests.add(
+        request(
+            Entity.CONVERSATION,
+            MetadataOperation.VIEW_BASIC,
+            new ConversationResourceContext(conversation)));
+    // A conversation discloses what it is about, so reading it by id needs what reading that
+    // entity needs, as the scoped listing does
+    // (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+    liveTarget(conversation).ifPresent(target -> requests.add(targetViewRequest(target)));
     try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.CONVERSATION, MetadataOperation.VIEW_BASIC),
-          new ConversationResourceContext(conversation));
+      authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ALL);
     } catch (AuthorizationException exception) {
       throw conversationNotFound(conversation.getId());
+    }
+  }
+
+  /** The entity a conversation is about, while it exists; a deleted one has nothing to honour. */
+  private static Optional<EntityReference> liveTarget(Conversation conversation) {
+    EntityReference target = conversation.getEntityRef();
+    if (target == null || target.getType() == null || target.getId() == null) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(Entity.getEntityReferenceById(target.getType(), target.getId(), ALL));
+    } catch (EntityNotFoundException exception) {
+      return Optional.empty();
     }
   }
 

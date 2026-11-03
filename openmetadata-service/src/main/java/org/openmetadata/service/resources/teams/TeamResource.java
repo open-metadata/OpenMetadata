@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -45,10 +46,13 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
@@ -64,6 +68,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
@@ -72,8 +77,11 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 @Path("/v1/teams")
@@ -164,7 +172,62 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("isJoinable")
           Boolean isJoinable) {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    return new ResultList<>(repository.listHierarchy(filter, limitParam, isJoinable));
+    // Someone signing up has no user yet and picks from the joinable teams; everyone else reads
+    // the hierarchy as they read teams
+    // (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+    if (Boolean.TRUE.equals(isJoinable) && isSigningUp(securityContext)) {
+      return new ResultList<>(repository.listHierarchy(filter, limitParam, true));
+    }
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
+    List<TeamHierarchy> hierarchy = repository.listHierarchy(filter, limitParam, isJoinable);
+    if (rowsMayDiffer(securityContext, Fields.EMPTY_FIELDS)) {
+      hierarchy = viewableHierarchy(securityContext, hierarchy);
+    }
+    return new ResultList<>(hierarchy);
+  }
+
+  private static boolean isSigningUp(SecurityContext securityContext) {
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    if (authConfig == null || !Boolean.TRUE.equals(authConfig.getEnableSelfSignup())) {
+      return false;
+    }
+    try {
+      Entity.getEntityReferenceByName(
+          Entity.USER, securityContext.getUserPrincipal().getName(), Include.ALL);
+      return false;
+    } catch (EntityNotFoundException e) {
+      return true;
+    }
+  }
+
+  /** The hierarchy without the teams the caller may not view, and without what lies below them. */
+  private List<TeamHierarchy> viewableHierarchy(
+      SecurityContext securityContext, List<TeamHierarchy> hierarchy) {
+    List<EntityReference> teams = new ArrayList<>();
+    collectTeams(hierarchy, teams);
+    Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, teams);
+    return prune(hierarchy, viewable);
+  }
+
+  private static void collectTeams(List<TeamHierarchy> nodes, List<EntityReference> teams) {
+    for (TeamHierarchy node : listOrEmpty(nodes)) {
+      teams.add(new EntityReference().withId(node.getId()).withType(Entity.TEAM));
+      collectTeams(node.getChildren(), teams);
+    }
+  }
+
+  private static List<TeamHierarchy> prune(List<TeamHierarchy> nodes, Set<UUID> viewable) {
+    List<TeamHierarchy> kept = new ArrayList<>();
+    for (TeamHierarchy node : listOrEmpty(nodes)) {
+      if (viewable.contains(node.getId())) {
+        node.setChildren(prune(node.getChildren(), viewable));
+        kept.add(node);
+      }
+    }
+    return kept;
   }
 
   @GET
