@@ -40,7 +40,7 @@ export const OwnerInheritedBadge = ({
         aria-label={t('label.inherited-entity', {
           entity: t('label.owner'),
         })}
-        className="tw:absolute tw:z-1 tw:-right-0.5 tw:-bottom-0.5 tw:flex tw:size-3 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:text-fg-secondary"
+        className="tw:absolute tw:z-1 tw:-right-0.5 tw:-bottom-0.5 tw:flex tw:size-3 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-primary"
         data-testid="inherited-owner-icon"
         role="img">
         <InheritIcon height={8} width={8} />
