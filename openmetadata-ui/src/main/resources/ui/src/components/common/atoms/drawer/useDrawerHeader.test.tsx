@@ -35,4 +35,34 @@ describe('useDrawerHeader', () => {
     expect(header).toHaveClass('tw:flex', 'tw:mt-0', 'tw:py-5!');
     expect(header).not.toHaveClass('tw:mt-6');
   });
+
+  it('renders the icon, then the title, then the subtitle', () => {
+    const Icon = () => <svg data-testid="header-icon" />;
+    render(<Header icon={Icon} subtitle="Subtitle" title="Title" />);
+
+    const header = screen.getByRole('banner');
+    const icon = screen.getByTestId('header-icon');
+    const title = screen.getByTestId('form-heading');
+    const subtitle = screen.getByText('Subtitle');
+
+    expect(header).toContainElement(subtitle);
+    expect(title).toHaveTextContent('Title');
+    expect(
+      icon.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      title.compareDocumentPosition(subtitle) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('renders only the title without a subtitle or icon', () => {
+    render(<Header title="Title" />);
+
+    const titleRow = screen
+      .getByTestId('form-heading')
+      .closest('.tw\\:flex-1') as HTMLElement;
+
+    expect(titleRow).toHaveTextContent(/^Title$/);
+    expect(titleRow.querySelector('svg')).toBeNull();
+  });
 });

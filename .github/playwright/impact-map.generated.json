@@ -7027,7 +7027,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/TableProfiler/QualityTab/QualityTab.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/TableTestCaseExportFilters.spec.ts"
+        "playwright/e2e/Features/DataQuality/TableTestCaseExportFilters.spec.ts",
+        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts"
       ]
     },
     {
@@ -7984,7 +7985,6 @@
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
-        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
@@ -7998,7 +7998,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
-        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts"
       ]
     },
@@ -8828,6 +8827,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
+        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
         "playwright/e2e/Pages/DataInsightSettings.spec.ts",
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
@@ -9008,6 +9008,17 @@
       "specs": [
         "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
         "playwright/e2e/Features/CronValidations.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleIntervalStep.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
       ]
     },
     {
@@ -10414,14 +10425,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/SuccessScreen/SuccessScreen.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts"
       ]
     },
     {
@@ -13964,6 +13967,17 @@
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/AppInstall/AppInstall.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
       ]
     },
     {
