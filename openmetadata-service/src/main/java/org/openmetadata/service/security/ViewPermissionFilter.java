@@ -20,6 +20,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 /**
  * Decides which of many entity references the caller may {@link MetadataOperation#VIEW_BASIC}, for
@@ -74,7 +75,8 @@ public class ViewPermissionFilter {
       LOG.debug("Hiding reference {}: {}", reference.getId(), e.getMessage());
       return false;
     }
-    return authorizeQuietly(securityContext, reference.getType(), VIEW_BASIC, reference, context);
+    return authorizeQuietly(
+        securityContext, reference.getType(), VIEW_BASIC, reference.getId(), context);
   }
 
   /**
@@ -95,12 +97,24 @@ public class ViewPermissionFilter {
     List<T> permitted = new ArrayList<>(rows.size());
     for (T row : rows) {
       ResourceContext<T> context = new ResourceContext<>(entityType, row, repository, hydrator);
-      if (authorizeQuietly(
-          securityContext, entityType, operations, row.getEntityReference(), context)) {
+      if (authorizeQuietly(securityContext, entityType, operations, row.getId(), context)) {
         permitted.add(row);
       }
     }
     return permitted;
+  }
+
+  /**
+   * Whether the caller may perform {@code operations} on {@code resource} as {@code context}
+   * describes it, for a row whose item endpoint authorizes it through another entity, as a test
+   * case is authorized through the table it tests. Never throws; anything but a clear allow denies.
+   */
+  public boolean isPermitted(
+      SecurityContext securityContext,
+      String resource,
+      List<MetadataOperation> operations,
+      ResourceContextInterface context) {
+    return authorizeQuietly(securityContext, resource, operations, resource, context);
   }
 
   /** One batch load and one hydrator per entity type, so cost scales with types, not references. */
@@ -117,8 +131,7 @@ public class ViewPermissionFilter {
     BulkFieldHydrator hydrator = tagHydrator(repository, entities);
     for (T entity : entities) {
       ResourceContext<T> context = new ResourceContext<>(entityType, entity, repository, hydrator);
-      if (authorizeQuietly(
-          securityContext, entityType, VIEW_BASIC, entity.getEntityReference(), context)) {
+      if (authorizeQuietly(securityContext, entityType, VIEW_BASIC, entity.getId(), context)) {
         viewable.add(entity.getId());
       }
     }
@@ -168,8 +181,8 @@ public class ViewPermissionFilter {
       SecurityContext securityContext,
       String entityType,
       List<MetadataOperation> operations,
-      EntityReference reference,
-      ResourceContext<?> context) {
+      Object checked,
+      ResourceContextInterface context) {
     boolean viewable = false;
     try {
       authorizer.authorize(
@@ -180,7 +193,7 @@ public class ViewPermissionFilter {
           context);
       viewable = true;
     } catch (RuntimeException e) {
-      LOG.debug("Hiding reference {}: {}", reference.getId(), e.getMessage());
+      LOG.debug("Hiding {}: {}", checked, e.getMessage());
     }
     return viewable;
   }

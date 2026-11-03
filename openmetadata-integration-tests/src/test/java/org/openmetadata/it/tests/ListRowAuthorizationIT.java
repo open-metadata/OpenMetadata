@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -23,19 +24,26 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -44,6 +52,7 @@ import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 
@@ -122,6 +131,96 @@ public class ListRowAuthorizationIT {
         ForbiddenException.class, () -> restricted.pipelines().get(pipeline.getId().toString()));
   }
 
+  @Test
+  void aTestSuiteListingLeavesOutTestCasesTheirItemEndpointRefuses(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String secret = secretTag(ns, "suite");
+    OpenMetadataClient restricted = cleanedUpRestrictedUser(ns, "suite", secret, Entity.TABLE);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    TestCase hidden =
+        tableTest(ns, createTable(admin, schema, "suite_secret", List.of(tag(secret)), List.of()));
+    TestCase shown = tableTest(ns, createTable(admin, schema, "suite_open", List.of(), List.of()));
+    TestSuite suite =
+        ns.trackRoot(
+            Entity.TEST_SUITE,
+            admin
+                .testSuites()
+                .create(new CreateTestSuite().withName("lra_suite_" + ns.uniqueShortId())));
+    admin
+        .testCases()
+        .addToLogicalTestSuite(
+            new CreateLogicalTestCases()
+                .withTestSuiteId(suite.getId())
+                .withTestCaseIds(List.of(hidden.getId(), shown.getId())));
+
+    assertThrows(
+        ForbiddenException.class, () -> restricted.testCases().get(hidden.getId().toString()));
+    assertEquals(
+        List.of(shown.getName()),
+        names(
+            list(
+                restricted,
+                "/v1/dataQuality/testCases?testSuiteId="
+                    + suite.getId()
+                    + "&fields=testCaseResult&limit=10")));
+  }
+
+  @Test
+  void aQueryListingOfATableLeavesOutQueriesTheirItemEndpointRefuses(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String secret = secretTag(ns, "query");
+    OpenMetadataClient restricted = cleanedUpRestrictedUser(ns, "query", secret, Entity.QUERY);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Table table =
+        createTable(
+            admin,
+            DatabaseSchemaTestFactory.createSimple(ns, service),
+            "queried",
+            List.of(),
+            List.of());
+    Query hidden = queryOn(ns, service, table, List.of(tag(secret)));
+    Query shown = queryOn(ns, service, table, List.of());
+
+    assertThrows(
+        ForbiddenException.class, () -> restricted.queries().get(hidden.getId().toString()));
+    assertEquals(
+        List.of(shown.getName()),
+        names(
+            list(
+                restricted,
+                "/v1/queries?entityId=" + table.getId() + "&entityType=table&limit=10")));
+  }
+
+  private static TestCase tableTest(TestNamespace ns, Table table) {
+    return TestCaseBuilder.create(SdkClients.adminClient())
+        .name("lra_test_" + ns.uniqueShortId())
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+  }
+
+  private static Query queryOn(
+      TestNamespace ns, DatabaseService service, Table table, List<TagLabel> tags) {
+    String name = "lra_query_" + ns.uniqueShortId();
+    return SdkClients.adminClient()
+        .queries()
+        .create(
+            new CreateQuery()
+                .withName(name)
+                .withQuery("SELECT id FROM " + table.getFullyQualifiedName() + " -- " + name)
+                .withService(service.getFullyQualifiedName())
+                .withQueryUsedIn(List.of(table.getEntityReference()))
+                .withQueryDate(System.currentTimeMillis())
+                .withTags(tags));
+  }
+
+  private static JsonNode list(OpenMetadataClient client, String path) throws Exception {
+    return JsonUtils.readTree(client.getHttpClient().executeForString(HttpMethod.GET, path, null));
+  }
+
   private static String secretTag(TestNamespace ns, String suffix) {
     OpenMetadataClient admin = SdkClients.adminClient();
     Classification classification =
@@ -144,6 +243,22 @@ public class ListRowAuthorizationIT {
   }
 
   private static OpenMetadataClient restrictedUser(
+      TestNamespace ns, String suffix, String secretTag, String resource) {
+    return userWithRole(ns, suffix, denySecretRole(ns, suffix, secretTag, resource).role());
+  }
+
+  /** {@link #restrictedUser} whose policy and role are deleted after the test as well. */
+  private static OpenMetadataClient cleanedUpRestrictedUser(
+      TestNamespace ns, String suffix, String secretTag, String resource) {
+    DenySecretRole denySecret = denySecretRole(ns, suffix, secretTag, resource);
+    ns.trackRoot(Entity.POLICY, denySecret.policy());
+    ns.trackRoot(Entity.ROLE, denySecret.role());
+    return userWithRole(ns, suffix, denySecret.role());
+  }
+
+  private record DenySecretRole(Policy policy, Role role) {}
+
+  private static DenySecretRole denySecretRole(
       TestNamespace ns, String suffix, String secretTag, String resource) {
     OpenMetadataClient admin = SdkClients.adminClient();
     Policy policy =
@@ -169,6 +284,11 @@ public class ListRowAuthorizationIT {
                     .withName(ns.prefix(suffix + "DenySecretRole"))
                     .withDescription("Role hiding the secret tag")
                     .withPolicies(List.of(policy.getFullyQualifiedName())));
+    return new DenySecretRole(policy, role);
+  }
+
+  private static OpenMetadataClient userWithRole(TestNamespace ns, String suffix, Role role) {
+    OpenMetadataClient admin = SdkClients.adminClient();
     String name = "lra_" + suffix + "_" + UUID.randomUUID().toString().substring(0, 8);
     String email = name + "@test.openmetadata.org";
     ns.trackRoot(
