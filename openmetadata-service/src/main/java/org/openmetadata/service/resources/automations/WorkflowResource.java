@@ -80,7 +80,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -729,7 +728,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       // in case of test connection type, we get the original connection values from the service
       // name
       originalWorkflow = buildFromOriginalServiceConnection(workflow);
-      if (!readsStoredSecrets(securityContext)) {
+      if (!ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
         requireSecretsReenteredOnRetarget(workflow, originalWorkflow);
       }
     } else {
@@ -737,12 +736,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
-  }
-
-  /** Admins and bots may already read or replace any connection's secrets. */
-  private static boolean readsStoredSecrets(SecurityContext securityContext) {
-    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    return subject.isAdmin() || subject.isBot();
   }
 
   /** A test against another endpoint may not borrow the stored secrets it would be sent. */
