@@ -104,6 +104,41 @@ class NativeOntologyImportItemsTest {
   }
 
   @Test
+  void aRelationshipNamesTheNewConceptsItNeedsOnItsItemAndOperation() {
+    final var preview = importer.preview(read(NEXT), imported(root(), BASE));
+
+    final NativeOntologyImportItem link = byLabel(preview).get("C is a kind of A");
+    assertEquals(List.of(URI.create("https://example.org/items/C")), link.getDependsOnIris());
+    final OntologyChangeOperation operation =
+        preview.getChangeSet().getOperations().stream()
+            .filter(candidate -> candidate.getId().equals(link.getOperationId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(
+        List.of(URI.create("https://example.org/items/C")), operation.getRequiresConceptIris());
+    assertTrue(byLabel(preview).get("C").getDependsOnIris().isEmpty());
+  }
+
+  @Test
+  void aRuleOverTwoNewConceptsNeedsBothInIriOrder() {
+    final var preview =
+        importer.preview(
+            read(
+                PREFIXES
+                    + """
+                    ex:Y a owl:Class ; rdfs:label "Y" .
+                    ex:X a owl:Class ; rdfs:label "X" .
+                    ex:X owl:disjointWith ex:Y .
+                    """),
+            emptySnapshot(root()));
+
+    assertEquals(
+        List.of(
+            URI.create("https://example.org/items/X"), URI.create("https://example.org/items/Y")),
+        byLabel(preview).get("X is disjoint with Y").getDependsOnIris());
+  }
+
+  @Test
   void itemIdsFollowTheContentSoASelectionSurvivesASecondPreview() {
     final Ontology root = root();
 

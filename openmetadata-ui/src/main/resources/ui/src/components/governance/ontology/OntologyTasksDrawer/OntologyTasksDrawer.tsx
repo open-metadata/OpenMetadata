@@ -87,9 +87,7 @@ type Detail = {
 // ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
 const PAGE_SIZE = 25;
 const CURSOR_HISTORY_LIMIT = 40;
-// The reviews endpoint cannot filter by ontology, so the banner reads the
-// server's largest page and picks the selected ontology's reviews from it.
-const BANNER_SCAN_LIMIT = 100;
+const BANNER_LIMIT = 100;
 
 // The trim keeps page 1 first, so Previous can still walk back to it.
 const pushCursor = (cursors: (string | undefined)[], after?: string) => {
@@ -200,22 +198,29 @@ const OntologyTasksDrawer = ({
     wasOpen.current = isOpen;
   }, [isOpen]);
   const pending = useQuery({
-    queryKey: [...queuesKey, account, 'pending'],
+    queryKey: [...queuesKey, account, 'pending', ontologyId],
     gcTime: 0,
     retry: false,
     queryFn: ({ signal }) =>
       getOntologyReleaseReviews(
-        { view: 'pending', limit: BANNER_SCAN_LIMIT },
+        { view: 'pending', ontologyId, limit: BANNER_LIMIT },
         signal
       ),
   });
+  const pendingTotal = useQuery({
+    queryKey: [...queuesKey, account, 'pending-total'],
+    gcTime: 0,
+    retry: false,
+    queryFn: ({ signal }) =>
+      getOntologyReleaseReviews({ view: 'pending', limit: 1 }, signal),
+  });
   const created = useQuery({
-    queryKey: [...queuesKey, account, 'created-banner'],
+    queryKey: [...queuesKey, account, 'created-banner', ontologyId],
     gcTime: 0,
     retry: false,
     queryFn: ({ signal }) =>
       getOntologyReleaseReviews(
-        { view: 'created', limit: BANNER_SCAN_LIMIT },
+        { view: 'created', ontologyId, limit: BANNER_LIMIT },
         signal
       ),
   });
@@ -239,11 +244,7 @@ const OntologyTasksDrawer = ({
         signal
       ),
   });
-  const openReviews = getOpenReviews(
-    ontologyId,
-    pending.data?.data,
-    created.data?.data
-  );
+  const openReviews = getOpenReviews(pending.data?.data, created.data?.data);
   const openBannerReview = openReviews[0];
   const decided = useDecidedReview({
     account,
@@ -625,15 +626,16 @@ const OntologyTasksDrawer = ({
       data-testid="ontology-tasks-trigger"
       iconTrailing={
         <Badge color="error" size="sm">
-          {pending.isError
+          {pendingTotal.isError
             ? t('label.unavailable')
-            : pending.data?.paging?.total ?? t('label.unavailable')}
+            : pendingTotal.data?.paging?.total ?? t('label.unavailable')}
         </Badge>
       }
       ref={taskButton}
       size="sm"
       onPress={() => {
         setListOpen(true);
+        void pendingTotal.refetch();
         void pending.refetch();
         void created.refetch();
       }}>

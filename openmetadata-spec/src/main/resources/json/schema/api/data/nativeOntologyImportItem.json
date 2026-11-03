@@ -58,6 +58,15 @@
       },
       "default": []
     },
+    "dependsOnIris": {
+      "description": "IRIs of the NEW concepts of this same import that the item states a fact about. A relationship or rule applies only with every one of them.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyIri.json"
+      },
+      "default": [],
+      "existingJavaType": "java.util.List<java.net.URI>"
+    },
     "operationId": {
       "description": "The change set operation that applies this item. Absent for ALREADY_EXISTS, DUPLICATE, and SKIPPED.",
       "$ref": "../../type/basic.json#/definitions/uuid"

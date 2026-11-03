@@ -248,6 +248,25 @@ public class NativeOntologyImportReviewIT extends BaseOntologyApprovalIT {
     }
   }
 
+  @Test
+  void aConceptWithoutADisplayNameExportsItsNameAsTheLabelInEveryFormat(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns, "reviewLabel");
+    final String name = "Settlement" + ns.shortPrefix();
+    declareClass(ontology, name, java.net.URI.create("https://example.org/label/" + name));
+
+    final java.util.Map<String, String> label =
+        java.util.Map.of(
+            "turtle", "\"" + name + "\"",
+            "rdfxml", ">" + name + "<",
+            "jsonld", "\"" + name + "\"",
+            "csv", "/" + name + "," + name + ",",
+            "skos", "\"" + name + "\"");
+    label.forEach(
+        (format, needle) ->
+            assertTrue(
+                exportDraft(ontology, format).contains(needle), format + " lacks " + needle));
+  }
+
   private static String exportDraft(Ontology ontology, String format) {
     return SdkClients.adminClient()
         .getHttpClient()

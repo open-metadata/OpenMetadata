@@ -439,6 +439,40 @@ describe('OntologyLibrary native installation', () => {
     );
   });
 
+  it('keeps the modules the user selected when the target changes to an existing ontology', async () => {
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await openPack();
+
+    expect(screen.getByTestId('ontology-pack-concept-count')).toHaveTextContent(
+      '2'
+    );
+
+    await chooseExisting();
+
+    expect(screen.getByTestId('ontology-pack-concept-count')).toHaveTextContent(
+      '2'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-module-clinical'));
+
+    expect(screen.getByTestId('ontology-pack-concept-count')).toHaveTextContent(
+      '5'
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /label.install-to/ }));
+    await user.click(
+      await screen.findByRole('option', { name: /label.new-ontology-for-pack/ })
+    );
+
+    expect(screen.getByTestId('ontology-pack-concept-count')).toHaveTextContent(
+      '5'
+    );
+    expect(
+      screen.getByTestId('ontology-pack-relationship-count')
+    ).toHaveTextContent('3');
+  });
+
   it('installs into an explicitly chosen owner and completes no-op without a draft', async () => {
     post.mockResolvedValue({ data: { ...preview, operations: [] } });
     const native = nativeProps();

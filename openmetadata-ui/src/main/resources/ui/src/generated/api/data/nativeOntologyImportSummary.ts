@@ -85,6 +85,11 @@ export interface NativeOntologyImportItem {
      */
     conceptIds?: string[];
     /**
+     * IRIs of the NEW concepts of this same import that the item states a fact about. A
+     * relationship or rule applies only with every one of them.
+     */
+    dependsOnIris?: string[];
+    /**
      * For UPDATE, what changes, for example `Description: none to A customer.`.
      */
     detail?: string;

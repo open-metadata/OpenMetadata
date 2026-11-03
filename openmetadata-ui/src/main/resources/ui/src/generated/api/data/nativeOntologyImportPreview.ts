@@ -83,6 +83,11 @@ export interface OntologyChangeOperation {
     rationale?:    string;
     relationship?: OntologyRelationship;
     /**
+     * IRIs of concepts that an import expects to create in the same change set. Applying the
+     * operation without an UPSERT_CONCEPT operation for each of them is refused.
+     */
+    requiresConceptIris?: string[];
+    /**
      * Published context memories that support this AI suggestion.
      */
     sourceMemoryIds?: string[];
@@ -1314,6 +1319,11 @@ export interface NativeOntologyImportItem {
      * Concepts the warning names, the clashing concept first.
      */
     conceptIds?: string[];
+    /**
+     * IRIs of the NEW concepts of this same import that the item states a fact about. A
+     * relationship or rule applies only with every one of them.
+     */
+    dependsOnIris?: string[];
     /**
      * For UPDATE, what changes, for example `Description: none to A customer.`.
      */

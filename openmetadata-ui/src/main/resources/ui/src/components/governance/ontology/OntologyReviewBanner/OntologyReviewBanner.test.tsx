@@ -249,6 +249,23 @@ describe('pending banner text', () => {
     expect(screen.getByRole('alert')).not.toHaveTextContent(/waiting on\s*$/);
   });
 
+  it('says no reviewer is assigned when the ontology lists reviewers but the review has none left', () => {
+    render(
+      <OntologyReviewBanner
+        release={{ ...release, reviewers: [bob] }}
+        review={{ ...review, callerCanVote: false, assignees: [] }}
+        viewerId="author"
+        viewerName="Author"
+        onOpenTask={jest.fn()}
+      />
+    );
+
+    const banner = screen.getByRole('alert');
+
+    expect(banner).toHaveTextContent('In review · no reviewer assigned');
+    expect(banner).not.toHaveTextContent('ready to publish');
+  });
+
   it('keeps the reviewer-facing title when the viewer can vote', () => {
     render(
       <OntologyReviewBanner
@@ -309,6 +326,20 @@ describe('open reviews in All ontologies', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'View task' })[1]);
 
     expect(open).toHaveBeenCalledWith('uuid-TASK-2');
+  });
+
+  it('names a review with no reviewer left instead of calling it ready', () => {
+    render(
+      <OntologyOpenReviewsBanner
+        reviews={[{ ...reviewOn('Sales', 'TASK-1'), assignees: [] }]}
+        onOpenList={jest.fn()}
+        onOpenTask={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('ontology-open-reviews-banner')
+    ).toHaveTextContent('Sales · In review · no reviewer assigned · TASK-1');
   });
 
   it('shows a count with a link to the list when there are many', () => {
