@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Locator } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/userPages';
@@ -854,28 +853,25 @@ test.describe('Curated Assets – Description filter', () => {
       await selectAssetTypes(adminPage, ['Table']);
 
       const rule0 = adminPage.getByTestId('query-builder-rule-0');
-      const selectRuleOption = async (
-        select: Locator,
-        option: string,
-        isSearchable = false
-      ) => {
-        await expect(async () => {
-          await selectOption(adminPage, select, option, isSearchable);
-          await expect(select.getByRole('combobox')).toHaveValue(option, {
-            timeout: 2_000,
-          });
-        }).toPass({ timeout: 30_000 });
-      };
+      const fieldSelect = rule0.getByTestId('advanced-search-field-select');
+      const operatorSelect = rule0.getByTestId(
+        'advanced-search-operator-select'
+      );
 
-      await selectRuleOption(
-        rule0.getByTestId('advanced-search-field-select'),
-        'Description',
-        true
-      );
-      await selectRuleOption(
-        rule0.getByTestId('advanced-search-operator-select'),
-        'Contains'
-      );
+      await expect(async () => {
+        await selectOption(adminPage, fieldSelect, 'Description', true);
+        await expect(fieldSelect.getByRole('combobox')).toHaveValue(
+          'Description',
+          { timeout: 2_000 }
+        );
+      }).toPass({ timeout: 30_000 });
+      await expect(async () => {
+        await selectOption(adminPage, operatorSelect, 'Contains');
+        await expect(operatorSelect.getByRole('combobox')).toHaveValue(
+          'Contains',
+          { timeout: 2_000 }
+        );
+      }).toPass({ timeout: 30_000 });
       await rule0
         .locator(
           '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
