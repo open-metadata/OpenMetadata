@@ -1,9 +1,11 @@
 # An event-triggered workflow run judges the change its event made
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial)
+- **Revisions:** v1 2026-11-02 (initial) · v2 2026-11-03 (only a create may carry no change)
 - **Deciders:** yan-3005
-- **Guard:** `FilterEntityImplTest#eventPath_judgesTheChangeOfTheVersionTheEventProduced`
+- **Guard:** `FilterEntityImplTest#eventPath_judgesTheChangeOfTheVersionTheEventProduced`,
+  `FilterEntityImplTest#eventPath_updateThatLeftNoChange_doesNotFire`,
+  `WorkflowDefinitionResourceIT#test_updateThatLeavesNoChangeDescriptionIsJudgedNotTreatedAsCreate`
 - **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v210)
 
 ## Context
@@ -33,3 +35,18 @@ governance workflow once (`WorkflowRedeployMigration`).
 - Batch-triggered runs judge each entity's current change, as before: they have no triggering event.
 - Until a workflow is redeployed, its main-workflow nodes do not receive the version and read the
   current change; the trigger filter, which runs Java code, uses the version at once.
+
+## Amendment
+
+v2 2026-11-03. The trigger filter treated a missing change as a create and passed it without
+checking `include`/`exclude`. An `Updated` event can leave no change to judge: an edit undone within
+its session makes consolidation revert the entity to a version with no change (and delete the
+version the first edit produced), and a follow never stores one. Both started the workflow on an
+entity whose tags never changed, so a tag-gated approval opened with only the workflow's own status
+change.
+
+The event consumer also puts the event type on the trigger signal as `global_triggeringEventType`.
+When the change to judge is missing, the trigger filter passes only a `Created` event, or a run
+that carries no event type (one started before this change). The `checkChangeDescription` node is
+left as it is: the filter gates every event-triggered run, so no workflow needs redeploying.
+

@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAME
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
@@ -268,6 +269,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
             getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE),
             event.getCurrentVersion());
       }
+
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE),
+          eventType.value());
     }
     return variables;
   }
