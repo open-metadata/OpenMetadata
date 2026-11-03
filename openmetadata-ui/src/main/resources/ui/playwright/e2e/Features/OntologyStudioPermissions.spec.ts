@@ -231,6 +231,17 @@ test.describe(
         throw new Error('fixture missing');
       }
       await grantRole(api, user, 'OntologyAuthor');
+      // The panel offers no capture while the working copy equals the published release.
+      await okJson(
+        await api.post('/api/v1/ontologyConcepts', {
+          data: {
+            name: 'Invoice',
+            ontology: fixture.ontology.fullyQualifiedName,
+            conceptType: 'OWL_CLASS',
+          },
+        }),
+        'Create an unpublished concept'
+      );
       await openOntology(page, fixture);
 
       await expect(page.getByTestId('mode-tab-edit')).toBeVisible();

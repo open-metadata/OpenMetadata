@@ -2020,9 +2020,7 @@ test.describe(
             .poll(
               () =>
                 author
-                  .getByText(
-                    /rejected (v1\.0\.0|release-1): Add a label to Customer\./
-                  )
+                  .getByText(/rejected release #1: Add a label to Customer\./)
                   .count(),
               { timeout: 10_000 }
             )
@@ -2066,11 +2064,9 @@ test.describe(
         await expect(async () => {
           await author.goto('/inbox/activity');
           await expect
-            .poll(
-              () =>
-                author.getByText(/approved (v\d+\.\d+\.\d+|release-2)/).count(),
-              { timeout: 10_000 }
-            )
+            .poll(() => author.getByText(/approved release #2/).count(), {
+              timeout: 10_000,
+            })
             .toBeGreaterThan(0);
         }).toPass({ timeout: 60_000 });
         await g6Shot(author, testInfo, 'inbox-approved');

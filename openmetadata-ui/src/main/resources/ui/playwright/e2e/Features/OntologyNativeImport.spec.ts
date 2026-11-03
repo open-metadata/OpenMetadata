@@ -30,10 +30,10 @@ const CUSTOMER_RDF_XML = (namespace: string) =>
 const CSV_HEADER =
   'kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy';
 
-const csvOf = (namespace: string) =>
+const csvOf = (namespace: string, label = 'Shop CSV') =>
   [
     CSV_HEADER,
-    `ONTOLOGY,${namespace}shop,Shop CSV,,,,,,,,,,,,,,,,,,,,,,,,`,
+    `ONTOLOGY,${namespace}shop,${label},,,,,,,,,,,,,,,,,,,,,,,,`,
     `CONCEPT,${namespace}Party,Party,,OWL_CLASS,,,,,,,,,,,,,,,,,,,,,,`,
     `CONCEPT,${namespace}Customer,Customer,,OWL_CLASS,${namespace}Party,,,,,,,,,,,,,,,,,,true,${namespace}standard,true,${namespace}Party`,
   ].join('\r\n') + '\r\n';
@@ -217,7 +217,13 @@ test.describe(
       try {
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
         await openImportTab(page);
-        await chooseFile(page, 'shop.csv', csvOf(namespace));
+        // The new ontology is named from the file's title, and an ontology left under the same
+        // title answers the create with 409, so each run brings its own title.
+        await chooseFile(
+          page,
+          'shop.csv',
+          csvOf(namespace, `Shop CSV ${uuid()}`)
+        );
         await page.getByTestId('ontology-native-import-target').click();
         await page.getByRole('option', { name: /new ontology/i }).click();
         await page.getByTestId('ontology-native-import-parse').click();
