@@ -2499,6 +2499,7 @@
     "ontology-source-count_one": "{{count}} source",
     "ontology-source-count_other": "{{count}} sources",
     "ontology-studio": "Ontology Studio",
+    "ontology-suggested-column": "Suggested",
     "ontology-unpublished-count": "{{count}} unpublished",
     "ontology-version-switch": "Ontology version",
     "open": "Open",

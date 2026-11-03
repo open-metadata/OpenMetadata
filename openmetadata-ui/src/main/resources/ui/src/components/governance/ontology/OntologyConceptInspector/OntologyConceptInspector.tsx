@@ -649,8 +649,10 @@ const OntologyConceptInspector = ({
           bindings={bindings}
           canEdit={canEditBindings}
           conceptId={concept.id}
+          isIdentifier={property.isIdentifier}
           key={concept.id}
           propertyId={property.id}
+          propertyLabel={getPropertyLabel(property)}
         />
       </Box>
       <Typography
