@@ -182,6 +182,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getOntologyIdCondition(tableName));
     conditions.add(getOntologyChangeSetStateCondition(tableName));
     conditions.add(getMemorySourcedChangeSetCondition(tableName));
+    conditions.add(getChangeSetOntologyCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -232,6 +233,23 @@ public class ListFilter extends Filter<ListFilter> {
               qualifyColumn(tableName, "id"), Relationship.DERIVED_FROM.ordinal());
     }
     return condition;
+  }
+
+  /** Keeps only the native change sets scoped to one ontology (ontology --CONTAINS--> changeSet). */
+  private String getChangeSetOntologyCondition(String tableName) {
+    final String ontologyId = queryParams.get("changeSetOntologyId");
+    if (nullOrEmpty(ontologyId) || !tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
+      return "";
+    }
+    queryParams.put("changeSetOntologyIdParam", ontologyId);
+    return String.format(
+        "%s IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromEntity = 'ontology' "
+            + "AND entity_relationship.fromId = :changeSetOntologyIdParam "
+            + "AND entity_relationship.toEntity = 'ontologyChangeSet' "
+            + "AND entity_relationship.relation = %d "
+            + "AND entity_relationship.deleted = FALSE)",
+        qualifyColumn(tableName, "id"), Relationship.CONTAINS.ordinal());
   }
 
   private static String qualifyColumn(String tableName, String column) {

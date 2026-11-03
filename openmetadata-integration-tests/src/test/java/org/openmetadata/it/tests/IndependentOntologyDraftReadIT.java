@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -10,6 +11,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,9 +19,19 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 
 /**
@@ -93,6 +105,131 @@ class IndependentOntologyDraftReadIT extends BaseOntologyApprovalIT {
         call -> assertEquals(200, statusOf(token(consumer), call), "consumer " + call));
   }
 
+  @Test
+  void changeSetsOfTheWorkingDraftAreReadWithEditAllOnTheirScope(final TestNamespace ns) {
+    final User consumer = createConsumer(ns);
+    final User editor = createEditor(ns);
+    final Ontology ontology = createOntology(ns, "changeSetRead");
+    final Ontology other = createOntology(ns, "changeSetOther");
+    activate(ns, ontology);
+    final OntologyChangeSet nativeDraft = nativeChangeSet(ns, ontology);
+    final OntologyChangeSet otherDraft = nativeChangeSet(ns, other);
+    final Glossary glossary =
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            SdkClients.adminClient()
+                .glossaries()
+                .create(
+                    new CreateGlossary()
+                        .withName(ns.prefix("changeSetGlossary"))
+                        .withDescription("Glossary scope")));
+    final OntologyChangeSet glossaryDraft =
+        ns.trackRoot(
+            "ontologyChangeSet",
+            SdkClients.adminClient()
+                .ontologyChangeSets()
+                .create(
+                    new CreateOntologyChangeSet()
+                        .withName(ns.prefix("glossaryDraft"))
+                        .withDisplayName("Glossary draft")
+                        .withDescription("Glossary-scope change set")
+                        .withGlossaries(Set.of(glossary.getFullyQualifiedName()))));
+
+    final String base = "/v1/ontologyChangeSets";
+    final String nativeId = nativeDraft.getId().toString();
+    final List<String> gated =
+        List.of(
+            "GET " + base,
+            "GET " + base + "?ontologyId=" + ontology.getId(),
+            "GET " + base + "?ontology=" + ontology.getFullyQualifiedName(),
+            "GET " + base + "?memorySourced=true",
+            "GET " + base + "?memorySourced=true&ontologyId=" + ontology.getId(),
+            "GET " + base + "/" + nativeId,
+            "GET " + base + "/" + nativeId + "/versions",
+            "GET " + base + "/" + nativeId + "/versions/" + nativeDraft.getVersion(),
+            "GET " + base + "/" + glossaryDraft.getId(),
+            "GET " + base + "/" + glossaryDraft.getId() + "/versions");
+    gated.forEach(
+        call -> {
+          assertEquals(403, statusOf(token(consumer), call), "consumer " + call);
+          assertEquals(200, statusOf(SdkClients.getAdminToken(), call), "admin " + call);
+        });
+
+    final String scoped = bodyOf(token(editor), "GET " + base + "?ontologyId=" + ontology.getId());
+    assertTrue(scoped.contains(nativeId), "the ontology's own change set is listed");
+    assertFalse(scoped.contains(otherDraft.getId().toString()), "another ontology's is not");
+    assertEquals(200, statusOf(token(editor), "GET " + base + "/" + nativeId));
+    assertEquals(200, statusOf(token(editor), "GET " + base + "/" + nativeId + "/versions"));
+    assertEquals(
+        400,
+        statusOf(
+            token(editor),
+            "GET "
+                + base
+                + "?ontologyId="
+                + other.getId()
+                + "&ontology="
+                + ontology.getFullyQualifiedName()));
+  }
+
+  private static OntologyChangeSet nativeChangeSet(final TestNamespace ns, final Ontology o) {
+    return ns.trackRoot(
+        "ontologyChangeSet",
+        SdkClients.adminClient()
+            .ontologyChangeSets()
+            .create(
+                new CreateOntologyChangeSet()
+                    .withName(ns.prefix("draft") + java.util.UUID.randomUUID())
+                    .withDisplayName("Native draft")
+                    .withDescription("Native change set")
+                    .withOntology(o.getFullyQualifiedName())
+                    .withBaseWorkingRevision(
+                        SdkClients.adminClient().ontologies().state(o.getId()).getWorkingRevision())
+                    .withOperations(List.of())));
+  }
+
+  private static User createEditor(final TestNamespace ns) {
+    final var admin = SdkClients.adminClient();
+    final String name = ns.shortPrefix("draftEditor");
+    final Policy policy =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy()
+                        .withName(name + "Policy")
+                        .withRules(
+                            List.of(
+                                new Rule()
+                                    .withName("EditEverything")
+                                    .withEffect(Rule.Effect.ALLOW)
+                                    .withResources(List.of("All"))
+                                    .withOperations(
+                                        List.of(
+                                            MetadataOperation.EDIT_ALL,
+                                            MetadataOperation.VIEW_ALL))))));
+    final Role role =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(name + "Role")
+                        .withPolicies(List.of(policy.getFullyQualifiedName()))));
+    return ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new org.openmetadata.schema.api.teams.CreateUser()
+                    .withName(name)
+                    .withEmail(name + "@test.om.org")
+                    .withDescription("v7 user")
+                    .withRoles(List.of(role.getId()))));
+  }
+
   private static int[] expected(final int consumer, final int admin) {
     return new int[] {consumer, admin};
   }
@@ -123,6 +260,14 @@ class IndependentOntologyDraftReadIT extends BaseOntologyApprovalIT {
   }
 
   private static int statusOf(final String token, final String call) {
+    return send(token, call).statusCode();
+  }
+
+  private static String bodyOf(final String token, final String call) {
+    return send(token, call).body();
+  }
+
+  private static HttpResponse<String> send(final String token, final String call) {
     final int space = call.indexOf(' ');
     final String method = call.substring(0, space);
     final String path = call.substring(space + 1);
@@ -141,7 +286,7 @@ class IndependentOntologyDraftReadIT extends BaseOntologyApprovalIT {
                           : HttpRequest.BodyPublishers.noBody())
                   .build(),
               HttpResponse.BodyHandlers.ofString());
-      return response.statusCode();
+      return response;
     } catch (java.io.IOException | InterruptedException e) {
       throw new IllegalStateException(call, e);
     }
