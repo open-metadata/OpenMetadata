@@ -448,8 +448,15 @@ jest.mock(
     )
 );
 
+const mockT = jest.fn((key: string) => key);
+
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: mockT }),
+}));
+
+jest.mock('./AgentAvatar', () => ({
+  __esModule: true,
+  default: () => <span data-testid="agent-avatar" />,
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -579,10 +586,12 @@ describe('TaskDetailPanel', () => {
 
     const byline = screen.getByTestId('task-byline');
 
-    expect(within(byline).getByTestId('agent-badge')).toHaveTextContent(
-      'Glossary Agent'
-    );
+    expect(within(byline).getByTestId('agent-avatar')).toBeInTheDocument();
     expect(byline).toHaveTextContent('message.task-opened-by');
+    expect(mockT).toHaveBeenCalledWith(
+      'message.task-opened-by',
+      expect.objectContaining({ user: 'Glossary Agent' })
+    );
   });
 
   it('falls back to the description when the name is only the taskId', async () => {

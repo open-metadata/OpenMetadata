@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Avatar,
-  Badge,
-  Box,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import {
-  AiAgent,
-  MessageDotsCircle,
-} from '@openmetadata/ui-core-components/icons';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { MessageDotsCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +22,7 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getProposingAgent, getTaskTypeBadge } from '../taskDetail.utils';
 import { TaskStatusBadge } from '../taskResolution.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
+import AgentAvatar from './AgentAvatar';
 import TaskTitle from './TaskTitle';
 import TaskTypeIcon from './TaskTypeIcon';
 
@@ -45,8 +38,6 @@ export interface InboxTaskListItemProps {
 // the full "TASK-00357".
 const TASK_ID_PREFIX = 'TASK-';
 
-const AgentAvatarIcon = () => <AiAgent className="tw:size-2.5" />;
-
 /** Who raised the task: the AI agent that proposed its subject, else the person. */
 const TaskRequester: React.FC<{ task: Task }> = ({ task }) => {
   const { t } = useTranslation();
@@ -57,12 +48,7 @@ const TaskRequester: React.FC<{ task: Task }> = ({ task }) => {
   return requesterName ? (
     <Box align="center" className="tw:gap-1.5">
       {agent ? (
-        <Avatar
-          className="tw:bg-primary"
-          data-testid="agent-avatar"
-          placeholderIcon={AgentAvatarIcon}
-          size="xxs"
-        />
+        <AgentAvatar size="xxs" />
       ) : (
         <ProfilePicture
           matchRingToFill

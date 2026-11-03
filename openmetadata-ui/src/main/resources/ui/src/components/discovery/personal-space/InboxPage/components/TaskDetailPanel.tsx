@@ -24,7 +24,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import AgentBadge from '../../../../../components/common/AgentBadge/AgentBadge';
 import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
@@ -83,6 +82,7 @@ import { getTaskTitleParts } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
+import AgentAvatar from './AgentAvatar';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
 import TaskAssetCard from './TaskAssetCard';
@@ -236,38 +236,6 @@ const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
   return titleText;
 };
 
-// Marks where the requester sits in a translated byline, whatever the language's word order.
-const REQUESTER_SLOT = '\u0000';
-
-/** "Opened by <agent> 2 minutes ago", with the AI agent's badge where a person's name would be. */
-const AgentByline: React.FC<{
-  agent: string;
-  task: Task;
-  subtitleKey: string;
-}> = ({ agent, task, subtitleKey }) => {
-  const { t } = useTranslation();
-  const [before, after] = t(subtitleKey, {
-    user: REQUESTER_SLOT,
-    time: getRelativeTime(task.createdAt),
-  }).split(REQUESTER_SLOT);
-
-  return (
-    <Box align="center" data-testid="task-byline" gap={1} wrap="wrap">
-      {before.trim() && (
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {before.trim()}
-        </Typography>
-      )}
-      <AgentBadge name={agent} />
-      {after?.trim() && (
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {after.trim()}
-        </Typography>
-      )}
-    </Box>
-  );
-};
-
 /** Who raised the task and when, led by their avatar. */
 const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
   task,
@@ -286,23 +254,23 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
         date: formatInboxDate(task.resolution?.resolvedAt),
       })
     : t(subtitleKey, {
-        user: getEntityName(task.createdBy),
+        user: agent ?? getEntityName(task.createdBy),
         time: getRelativeTime(task.createdAt),
       });
 
-  if (agent) {
-    return <AgentByline agent={agent} subtitleKey={subtitleKey} task={task} />;
-  }
-
   return (
-    <Box align="center" gap={2}>
-      {person && (
-        <ProfilePicture
-          matchRingToFill
-          displayName={getEntityName(person)}
-          name={person.name ?? ''}
-          width="20"
-        />
+    <Box align="center" data-testid="task-byline" gap={2}>
+      {agent ? (
+        <AgentAvatar size="xs" />
+      ) : (
+        person && (
+          <ProfilePicture
+            matchRingToFill
+            displayName={getEntityName(person)}
+            name={person.name ?? ''}
+            width="20"
+          />
+        )
       )}
       <Typography className="tw:text-tertiary" size="text-sm">
         {text}
