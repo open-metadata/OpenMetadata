@@ -666,7 +666,7 @@ test.describe('AI Profile Members user detail', () => {
 
     await test.step('Delete soft deletes the user', async () => {
       await page.getByTestId('user-detail-delete-button').click();
-      await expect(page.getByTestId('delete-modal')).toBeVisible();
+      await expect(page.getByTestId('delete-user-popover')).toBeVisible();
       const deleted = waitForResponseWithStatus(
         page,
         (response) =>
@@ -674,7 +674,7 @@ test.describe('AI Profile Members user detail', () => {
           response.request().method() === 'DELETE',
         200
       );
-      await page.getByTestId('confirm-button').click();
+      await page.getByTestId('delete-user-popover-confirm').click();
       await deleted;
 
       await expect(page.getByTestId('user-deleted-banner')).toBeVisible();

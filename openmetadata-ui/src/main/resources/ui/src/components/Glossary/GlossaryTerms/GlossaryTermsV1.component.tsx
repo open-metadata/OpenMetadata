@@ -352,7 +352,7 @@ const GlossaryTermsV1 = ({
                 className={
                   key === EntityTabs.RELATIONS_GRAPH
                     ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden'
-                    : 'tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:overflow-y-auto tw:has-[.glossary-terms-empty-container]:flex tw:has-[.glossary-terms-empty-container]:flex-col'
+                    : 'tw:h-[calc(100vh-176px-var(--navbar-height))] tw:overflow-y-auto tw:has-[.glossary-terms-empty-container]:flex tw:has-[.glossary-terms-empty-container]:flex-col'
                 }
                 id={key}
                 key={key}>

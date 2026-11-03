@@ -9,9 +9,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,13 +57,18 @@ import org.openmetadata.service.context.center.ContextMemoryReconciler;
 import org.openmetadata.service.context.center.DocumentMemoryExtractor;
 import org.openmetadata.service.context.center.PageContextProcessingEngine;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
+import org.openmetadata.service.context.center.SemanticMemoryDuplicateFinder;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.CompletionOptions;
+import org.openmetadata.service.llm.CompletionResult;
 import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.LLMCompletionClient;
+import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.llm.NoopCompletionClient;
 
 /** Persistent sources and queue rows, scripting only the document-provider boundary. */
@@ -206,6 +213,107 @@ class ContextMemoryExtractionIT {
     assertGone(FILES + "/" + first.getId());
     assertGone(FILES + "/" + second.getId());
     assertGone("v1/contextCenter/memories/" + pill.getId());
+  }
+
+  @Test
+  void invalidDuplicateResponsePreservesPersistedMemoriesAndSourceLinks(TestNamespace ns)
+      throws Exception {
+    ContextFile source = file(ns, "comparison-failure", "Source content");
+    ContextFile other = file(ns, "other-source", "Other content");
+    ContextMemory changed = persistedPill(source, "What is GDPR?", "Original definition.");
+    persistedPill(
+        source, "Which protocol carries billing alerts?", "PagerDuty pages the operator.");
+    ContextMemory shared =
+        persistedPill(source, "How long is data retained?", "Keep it for 90 days.");
+    memoryRepository().linkExtractedMemory(shared.getId(), other.getEntityReference());
+    ContextMemory reusable = persistedPill(other, "What is churn?", "The share of customers lost.");
+    Map<UUID, String> originalSource = persistedAnswers(source);
+    Map<UUID, String> originalOther = persistedAnswers(other);
+    ContextMemory fresh =
+        pill(
+                "All data is encrypted.",
+                source.getEntityReference(),
+                ContextMemorySourceType.FILE_EXTRACTION)
+            .withQuestion("How is storage secured?");
+    ContextMemory reuse =
+        pill(
+                reusable.getAnswer(),
+                source.getEntityReference(),
+                ContextMemorySourceType.FILE_EXTRACTION)
+            .withQuestion(reusable.getQuestion());
+    ContextMemory failing =
+        pill(
+                "Use explicit consent.",
+                source.getEntityReference(),
+                ContextMemorySourceType.FILE_EXTRACTION)
+            .withQuestion("How is consent collected?");
+    AtomicInteger attempts = new AtomicInteger();
+    LLMCompletionClient client = invalidJsonClient(attempts);
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(
+            memoryRepository(),
+            memory -> {
+              if (memory.getId().equals(failing.getId())) {
+                client.completeStructured(
+                    "Return only a JSON array",
+                    "Compare the supplied facts",
+                    SemanticMemoryDuplicateFinder.MatchChoice.class);
+              }
+              return memory.getId().equals(reuse.getId()) ? reusable : null;
+            });
+    List<ContextMemory> derived =
+        List.of(
+            pill(
+                    "Revised definition.",
+                    source.getEntityReference(),
+                    ContextMemorySourceType.FILE_EXTRACTION)
+                .withQuestion(changed.getQuestion()),
+            pill(
+                    "Keep it for 30 days.",
+                    source.getEntityReference(),
+                    ContextMemorySourceType.FILE_EXTRACTION)
+                .withQuestion(shared.getQuestion()),
+            fresh,
+            reuse,
+            failing);
+
+    assertThrows(
+        LLMCompletionException.class,
+        () -> reconciler.reconcile(source.getEntityReference(), Entity.CONTEXT_FILE, derived));
+
+    assertEquals(2, attempts.get());
+    assertEquals(originalSource, persistedAnswers(source));
+    assertEquals(originalOther, persistedAnswers(other));
+    assertGone("v1/contextCenter/memories/" + fresh.getId());
+  }
+
+  private ContextMemory persistedPill(ContextFile file, String question, String answer) {
+    ContextMemory memory =
+        pill(answer, file.getEntityReference(), ContextMemorySourceType.FILE_EXTRACTION)
+            .withQuestion(question);
+    memoryRepository().create(null, memory);
+    return memory;
+  }
+
+  private Map<UUID, String> persistedAnswers(ContextFile file) {
+    return extracted(file.getEntityReference()).stream()
+        .collect(Collectors.toMap(ContextMemory::getId, ContextMemory::getAnswer));
+  }
+
+  private LLMCompletionClient invalidJsonClient(AtomicInteger attempts) {
+    return new LLMCompletionClient(1) {
+      @Override
+      protected CompletionResult doComplete(
+          String systemPrompt, String userPrompt, CompletionOptions options) {
+        attempts.incrementAndGet();
+        return new CompletionResult("I cannot identify an equivalent fact.", 0, 0);
+      }
+
+      @Override
+      public String getModelId() {
+        return "invalid-json-test";
+      }
+    };
   }
 
   private void installPageWorker(long quietPeriod) {

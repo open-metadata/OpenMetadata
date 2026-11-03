@@ -103,7 +103,10 @@ export const AppToggleCardField = ({
   const label = schema.title ?? getFormDisplayLabel(name);
 
   return (
-    <Card data-testid={`toggle-card-${getFieldName(idSchema.$id)}`} size="sm">
+    <Card
+      data-testid={`toggle-card-${getFieldName(idSchema.$id)}`}
+      size="sm"
+      variant="muted">
       <Card.Content>
         <Box align="center" direction="row" gap={4} justify="between">
           <Box className="tw:min-w-0" direction="col">
@@ -214,8 +217,14 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
           </Button>
         </AppFooter>
       )}
-      {/* Full-width fields leave no room beside them, so the hint opens above. */}
-      <FieldDocPopover placement="top end" />
+      {/* Full-width fields leave no room beside them, so the hint opens below
+          the field. Never flipped above, where the first field's hint covered
+          the modal header; short of room below, the card shrinks and scrolls. */}
+      <FieldDocPopover
+        placement="bottom end"
+        shouldFlip={false}
+        variant="muted"
+      />
     </FieldDocProvider>
   );
 };

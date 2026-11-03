@@ -104,7 +104,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
         `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
-        'tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
@@ -125,8 +125,8 @@ export const styles = sortCx({
         'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
     },
-    // Primary text for a link that is the heading of a tinted surface (e.g. the
-    // lineage base node), where link-gray's tertiary text washes out.
+    // Primary text for a link that is the heading of a card (e.g. lineage node
+    // titles), where link-gray's tertiary text washes out.
     'link-primary': {
       root: [
         'tw:text-primary tw:hover:text-secondary_hover',
@@ -168,7 +168,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
         `${borderAfter} tw:after:outline-error_subtle`,
         // Disabled styles
-        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-fg-error-secondary tw:hover:*:data-icon:text-fg-error-primary',
       ].join(' '),
@@ -194,7 +194,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-success-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-success-300`,
         'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
-        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-success-primary',
       ].join(' '),
     },
@@ -203,7 +203,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-warning-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
-        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-warning-primary',
       ].join(' '),
     },
@@ -212,7 +212,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-brand`,
         'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
-        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-brand-secondary',
       ].join(' '),
     },

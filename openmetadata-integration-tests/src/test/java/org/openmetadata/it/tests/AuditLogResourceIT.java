@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,9 +39,15 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -64,6 +71,80 @@ public class AuditLogResourceIT {
   private static final Logger LOG = LoggerFactory.getLogger(AuditLogResourceIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String AUDIT_LOGS_PATH = "/v1/audit/logs";
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  @ExtendWith(TestNamespaceExtension.class)
+  void test_csvImportAuditLogMasksServiceConnection(boolean async, TestNamespace ns)
+      throws Exception {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final String password = "audit-import-password";
+    final String host = "warehouse.internal:3306";
+    final DatabaseService service =
+        ns.trackRoot(
+            Entity.DATABASE_SERVICE,
+            admin
+                .databaseServices()
+                .create(
+                    new CreateDatabaseService()
+                        .withName(ns.prefix("csv_audit_" + async))
+                        .withServiceType(DatabaseServiceType.Mysql)
+                        .withConnection(
+                            new DatabaseConnection()
+                                .withConfig(
+                                    new MysqlConnection()
+                                        .withHostPort(host)
+                                        .withUsername("etl")
+                                        .withAuthType(new basicAuth().withPassword(password))))));
+    for (String name : List.of("sales", "finance")) {
+      admin
+          .databases()
+          .create(
+              new CreateDatabase()
+                  .withName(name)
+                  .withService(service.getFullyQualifiedName())
+                  .withDescription("Before import"));
+    }
+    final String csv =
+        admin
+            .databaseServices()
+            .exportCsv(service.getFullyQualifiedName())
+            .replace("Before import", "After import");
+    if (async) {
+      admin.databaseServices().importCsvAsync(service.getFullyQualifiedName(), csv, false);
+    } else {
+      admin.databaseServices().importCsv(service.getFullyQualifiedName(), csv, false);
+    }
+
+    final Map<String, String> filters =
+        Map.of(
+            "entityType", Entity.DATABASE_SERVICE,
+            "entityFQN", service.getFullyQualifiedName(),
+            "eventType", EventType.ENTITY_UPDATED.value());
+    final JsonNode entries =
+        await()
+            .atMost(Duration.ofSeconds(60))
+            .until(
+                () ->
+                    MAPPER
+                        .readTree(executeGet(SdkClients.testUserClient(), AUDIT_LOGS_PATH, filters))
+                        .path("data"),
+                data -> data.size() == 1);
+    final JsonNode entry = entries.get(0);
+    assertFalse(entry.toString().contains(password));
+    assertFalse(entry.toString().contains("fernet:"));
+    assertFalse(entry.toString().contains(host));
+    for (JsonNode event :
+        List.of(entry.path("changeEvent"), MAPPER.readTree(entry.path("rawEventJson").asText()))) {
+      assertEquals(service.getId().toString(), event.path("entityId").asText());
+      assertEquals("bulkImport", event.at("/changeDescription/fieldsUpdated/0/name").asText());
+      assertTrue(event.path("entity").isTextual());
+      final JsonNode entity = MAPPER.readTree(event.path("entity").asText());
+      assertEquals(service.getName(), entity.path("name").asText());
+      assertTrue(entity.path("connection").isObject());
+      assertTrue(entity.at("/connection/config").isMissingNode());
+    }
+  }
 
   /**
    * Wait for the AuditLogConsumer to become active by creating a test entity and waiting for it to

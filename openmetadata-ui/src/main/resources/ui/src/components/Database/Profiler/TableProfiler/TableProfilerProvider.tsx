@@ -10,6 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Column,
+  CreatedTime,
+  ProfileSampleType as ProfileSampleTypeIcon,
+  RowCount,
+  Size,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
@@ -24,11 +31,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { ReactComponent as ColumnCountIcon } from '../../../../assets/svg/data-observability/column-count.svg';
-import { ReactComponent as CreatedDateIcon } from '../../../../assets/svg/data-observability/created-date.svg';
-import { ReactComponent as ProfileSampleIcon } from '../../../../assets/svg/data-observability/profile-sample.svg';
-import { ReactComponent as RowCountIcon } from '../../../../assets/svg/data-observability/row-count.svg';
-import { ReactComponent as TotalSizeIcon } from '../../../../assets/svg/data-observability/total-size.svg';
 import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { CustomMetric, Table } from '../../../../generated/entity/data/table';
@@ -165,7 +167,7 @@ export const TableProfilerProvider = ({
         }),
         key: 'row-count',
         value: formatNumberWithComma(profile?.rowCount ?? 0),
-        icon: RowCountIcon,
+        icon: RowCount,
       },
       {
         title: t('label.column-entity', {
@@ -175,19 +177,19 @@ export const TableProfilerProvider = ({
         value: formatNumberWithComma(
           profile?.columnCount ?? tableProfiler?.columns?.length ?? 0
         ),
-        icon: ColumnCountIcon,
+        icon: Column,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
         key: 'profile-sample-type',
         value: getProfileSampleValue(),
-        icon: ProfileSampleIcon,
+        icon: ProfileSampleTypeIcon,
       },
       {
         title: t('label.size'),
         key: 'size',
         value: bytesToSize(profile?.sizeInByte ?? 0),
-        icon: TotalSizeIcon,
+        icon: Size,
       },
       {
         title: t('label.created-date'),
@@ -202,7 +204,7 @@ export const TableProfilerProvider = ({
               new Date(profile?.timestamp)
             ).toLocaleString(DateTime.DATETIME_MED)}`
           : undefined,
-        icon: CreatedDateIcon,
+        icon: CreatedTime,
       },
     ];
   }, [tableProfiler, t]);

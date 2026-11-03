@@ -289,37 +289,53 @@ def test_get_datatransforms_respects_lower_pagination_limit():
 
 
 def test_get_metadata_by_type_passes_dataspace_and_entity_type():
-    client = _client(restful_return_value={"totalSize": 0, "metadata": []})
+    client = _client(restful_return_value={"metadata": []})
     result = get_metadata_by_type(
         client,
         entity_type="DataLakeObject",
         dataspace_name="customer_360",
-        pagination_limit=50,
         log_warning=MagicMock(),
     )
     assert result == []
     called_kwargs = client.restful.call_args.kwargs
-    assert called_kwargs["params"]["dataspace"] == "customer_360"
-    assert called_kwargs["params"]["entityType"] == "DataLakeObject"
+    assert called_kwargs["params"] == {"dataspace": "customer_360", "entityType": "DataLakeObject"}
 
 
-def test_get_metadata_by_type_walks_multiple_pages():
-    page_one = {
-        "totalSize": 3,
-        "metadata": [{"name": "a"}, {"name": "b"}],
-    }
-    page_two = {"totalSize": 3, "metadata": [{"name": "c"}]}
-    client = _client()
-    client.restful.side_effect = [page_one, page_two]
+def test_get_metadata_by_type_reads_the_full_listing_in_one_call():
+    # The live endpoint ignores limit/offset and omits totalSize: paging it re-requested
+    # the same full listing once per page and yielded every object that many times.
+    listing = {"metadata": [{"name": f"obj_{i}__dll"} for i in range(25)]}
+    client = _client(restful_return_value=listing)
     result = get_metadata_by_type(
         client,
         entity_type="DataLakeObject",
         dataspace_name="customer_360",
-        pagination_limit=2,
         log_warning=MagicMock(),
     )
-    assert result == [{"name": "a"}, {"name": "b"}, {"name": "c"}]
-    assert client.restful.call_count == 2
+    assert [item["name"] for item in result] == [f"obj_{i}__dll" for i in range(25)]
+    assert client.restful.call_count == 1
+
+
+def test_get_metadata_by_type_raises_when_listing_is_truncated():
+    client = _client(restful_return_value={"totalSize": 3, "metadata": [{"name": "a"}]})
+    with pytest.raises(Data360ResponseError):
+        get_metadata_by_type(
+            client,
+            entity_type="DataLakeObject",
+            dataspace_name="customer_360",
+            log_warning=MagicMock(),
+        )
+
+
+def test_get_metadata_by_type_raises_when_listing_is_not_found():
+    client = _client(side_effect=SalesforceResourceNotFound("session", 404, "resource", "content"))
+    with pytest.raises(Data360ResponseError):
+        get_metadata_by_type(
+            client,
+            entity_type="DataLakeObject",
+            dataspace_name="customer_360",
+            log_warning=MagicMock(),
+        )
 
 
 def test_get_metadata_by_type_raises_on_fatal_api_error():
@@ -329,7 +345,6 @@ def test_get_metadata_by_type_raises_on_fatal_api_error():
             client,
             entity_type="DataLakeObject",
             dataspace_name="customer_360",
-            pagination_limit=50,
             log_warning=MagicMock(),
         )
 

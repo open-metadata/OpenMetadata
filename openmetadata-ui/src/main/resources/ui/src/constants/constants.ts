@@ -407,6 +407,7 @@ export const ENTITY_PATH = {
   files: 'file',
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
+  articles: 'page',
   dataProductsTab: 'dataProductsTab',
   column: 'tableColumn',
   aiApplications: 'aiApplication',

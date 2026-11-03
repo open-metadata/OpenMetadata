@@ -229,7 +229,7 @@ const providerConfig = {
 };
 
 async function init() {
-  const { generateKeyPair, exportJWK } = await import('jose');
+  const { generateKeyPair, exportJWK, SignJWT } = await import('jose');
   const { privateKey, publicKey } = await generateKeyPair('RS256');
   const privateJwk = await exportJWK(privateKey);
   const publicJwk = await exportJWK(publicKey);
@@ -427,6 +427,35 @@ async function init() {
 
   app.get('/test/state', (_req, res) => {
     res.json({ ...testState });
+  });
+
+  // Signs an ID token for a seeded account with the key published at /jwks,
+  // without a browser login. For fixtures that mock the IdP's browser SDK
+  // (msal-mock) but still need a token the OM server verifies. `tenantId`
+  // adds the `tid` claim every Entra ID token carries; the server checks it
+  // against a public client's configured tenant.
+  app.post('/test/id-token', async (req, res) => {
+    const {
+      account = DEFAULT_LOGIN_ACCOUNT,
+      expiresInSeconds = 300,
+      audience,
+      tenantId,
+    } = req.body || {};
+    const claims = TEST_ACCOUNTS.get(account);
+    if (!claims) {
+      return res.status(404).json({ error: `unknown account ${account}` });
+    }
+    const idToken = await new SignJWT(
+      tenantId ? { ...claims, tid: tenantId } : claims
+    )
+      .setProtectedHeader({ alg: 'RS256', kid: privateJwk.kid })
+      .setIssuer(ISSUER)
+      .setAudience(audience || 'msal-mock-client')
+      .setIssuedAt()
+      .setExpirationTime(Math.floor(Date.now() / 1000) + expiresInSeconds)
+      .sign(privateKey);
+
+    res.json({ idToken });
   });
 
   // Metrics endpoints

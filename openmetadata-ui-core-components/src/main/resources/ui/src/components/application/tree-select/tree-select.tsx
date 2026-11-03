@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, Search, XClose } from '../../../icons';
+import {
+  ChevronDown,
+  Folder,
+  NoSearch,
+  RefreshCw01,
+  Search,
+  XClose,
+} from '../../../icons';
 import {
   DropdownSearchField,
   DropdownStagedFooter,
@@ -36,6 +43,7 @@ import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
+import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { sizes } from '@/components/base/select/select';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
@@ -1008,9 +1016,13 @@ export const TreeSelect = <T = unknown,>({
     <div
       className="tw:contents"
       data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
-      ref={popoverRef}>
+      ref={popoverRef}
+      // Portaled, but still a React child of the trigger: keys typed here must
+      // not reach an ancestor menu's arrow-key and typeahead handlers.
+      onKeyDown={(event) => event.stopPropagation()}>
       {usesDropdownChrome && searchable && (
         <DropdownSearchField
+          autoFocus={isCustomTrigger}
           inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
           placeholder={searchPlaceholder ?? t('label.search')}
           value={inputValue}
@@ -1048,7 +1060,15 @@ export const TreeSelect = <T = unknown,>({
             {resolvedLoadingMessage}
           </div>
         ) : filteredTreeData.length === 0 ? (
-          <div className="tw:px-4 tw:py-2 tw:text-center tw:text-xs tw:text-tertiary">
+          <div
+            className="tw:flex tw:flex-col tw:items-center tw:gap-2 tw:px-4 tw:py-4 tw:text-center tw:text-xs tw:text-tertiary"
+            data-testid="tree-select-empty">
+            <FeaturedIcon
+              color="gray"
+              icon={searchTerm ? NoSearch : Folder}
+              size="sm"
+              theme="modern"
+            />
             {resolvedNoDataMessage}
           </div>
         ) : (

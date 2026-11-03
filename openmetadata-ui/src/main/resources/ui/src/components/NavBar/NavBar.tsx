@@ -528,7 +528,7 @@ const NavBar = () => {
       isDataMarketplacePage
         ? {
             background: 'transparent',
-            marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+            marginBottom: 'calc(-1 * var(--navbar-height))',
             position: 'relative' as const,
             zIndex: 10,
           }

@@ -16,11 +16,17 @@ import {
   Category,
   PaletteKey,
 } from '../../generated/entity/data/relationshipType';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { listRelationshipTypes } from '../../rest/ontologyAPI';
 import RelationshipTypePicker from './RelationshipTypePicker.component';
 
 jest.mock('../../rest/ontologyAPI', () => ({
   listRelationshipTypes: jest.fn(),
+}));
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -30,6 +36,9 @@ jest.mock('../../utils/ToastUtils', () => ({
 const mockListRelationshipTypes = listRelationshipTypes as jest.MockedFunction<
   typeof listRelationshipTypes
 >;
+
+const PART_OF = 'https://open-metadata.org/ontology/partOf';
+const HAS_PART = 'https://open-metadata.org/ontology/hasPart';
 
 const RELATION_TYPES = [
   {
@@ -44,6 +53,20 @@ const RELATION_TYPES = [
     inverse: { id: 'narrower-id', name: 'narrower', type: 'relationshipType' },
     paletteKey: PaletteKey.Green,
     rdfPredicate: 'http://www.w3.org/2004/02/skos/core#broader',
+    systemDefined: true,
+  },
+  {
+    name: 'narrower',
+    displayName: 'Narrower',
+    category: Category.OwlSkos,
+    characteristics: [],
+    crossGlossaryAllowed: true,
+    description: 'Narrower concept',
+    fullyQualifiedName: 'narrower',
+    id: 'narrower-id',
+    inverse: { id: 'broader-id', name: 'broader', type: 'relationshipType' },
+    paletteKey: PaletteKey.Indigo,
+    rdfPredicate: 'http://www.w3.org/2004/02/skos/core#narrower',
     systemDefined: true,
   },
   {
@@ -93,6 +116,75 @@ describe('RelationshipTypePicker', () => {
     expect(screen.getByTestId('relation-type-governedBy')).toBeInTheDocument();
     expect(screen.getByTestId('group-system-defined')).toBeInTheDocument();
     expect(screen.getByTestId('group-custom')).toBeInTheDocument();
+    expect(screen.getByTestId('relation-type-broader')).toHaveTextContent(
+      'Broaderlabel.inverse: Narrower'
+    );
+  });
+
+  it('renders native groups keyed by predicate IRI with their inverse labels', () => {
+    const onSelect = jest.fn();
+    render(
+      <RelationshipTypePicker
+        groups={[
+          {
+            id: 'core',
+            title: 'Core · OWL / SKOS',
+            options: [
+              {
+                id: PART_OF,
+                label: 'Part Of',
+                inverseLabel: 'Has Part',
+                paletteKey: PaletteKey.Teal,
+              },
+              {
+                id: HAS_PART,
+                label: 'Has Part',
+                inverseLabel: 'Part Of',
+                paletteKey: PaletteKey.Blue,
+              },
+            ],
+          },
+          {
+            id: 'custom',
+            title: 'Custom · Admin-defined',
+            options: [
+              {
+                id: 'urn:retail:servedBy',
+                label: 'served by',
+                inverseLabel: 'serves',
+                paletteKey: PaletteKey.Blue,
+              },
+            ],
+          },
+        ]}
+        sourceLabel="Account"
+        targetLabel="Customer"
+        onSelect={onSelect}
+      />
+    );
+
+    expect(screen.getByTestId(`relation-type-${PART_OF}`)).toHaveTextContent(
+      'Part Oflabel.inverse: Has Part'
+    );
+    expect(screen.getByTestId('group-custom')).toHaveTextContent(
+      'served bylabel.inverse: serves'
+    );
+
+    fireEvent.change(screen.getByTestId('relation-type-search'), {
+      target: { value: 'ships to' },
+    });
+
+    expect(screen.getByTestId('no-relation-types')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('relation-type-create')
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('relation-type-search'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByTestId(`relation-type-${PART_OF}`));
+
+    expect(onSelect).toHaveBeenCalledWith(PART_OF);
   });
 
   it('calls onSelect with the relation type name when a type is clicked', async () => {
@@ -217,5 +309,35 @@ describe('RelationshipTypePicker', () => {
     fireEvent.click(screen.getByTestId('relation-type-cancel'));
 
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('keeps filtering, selection and cancel', async () => {
+      const onSelect = jest.fn();
+      const onCancel = jest.fn();
+      renderPicker({ onCancel, onSelect });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('relation-type-broader')).toBeInTheDocument()
+      );
+      fireEvent.change(screen.getByTestId('relation-type-search'), {
+        target: { value: 'govern' },
+      });
+      fireEvent.click(screen.getByTestId('relation-type-governedBy'));
+
+      expect(onSelect).toHaveBeenCalledWith('governedBy');
+
+      fireEvent.click(screen.getByTestId('relation-type-cancel'));
+
+      expect(onCancel).toHaveBeenCalled();
+    });
   });
 });

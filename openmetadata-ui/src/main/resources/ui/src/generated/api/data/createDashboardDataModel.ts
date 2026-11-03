@@ -745,6 +745,7 @@ export interface CoverImage {
  * This schema defines the type used for describing different types of data models.
  */
 export enum DataModelType {
+    HexDataModel = "HexDataModel",
     LookMlExplore = "LookMlExplore",
     LookMlView = "LookMlView",
     MetabaseDataModel = "MetabaseDataModel",

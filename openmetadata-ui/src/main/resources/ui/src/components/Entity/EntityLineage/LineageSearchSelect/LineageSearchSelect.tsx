@@ -23,6 +23,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { Collection, Key, ListBoxLoadMoreItem } from 'react-aria-components';
@@ -43,6 +44,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useLineageHandlers } from '../../../Lineage/Lineage/LineageHandlersContext';
+import { getVisibleOptions } from './LineageSearchSelect.utils';
 
 type LineageSearchOption = SelectItemType & {
   label: string;
@@ -52,20 +54,34 @@ type LineageSearchOption = SelectItemType & {
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
   const { onNodeClick } = useLineageHandlers();
-  const { nodes, reactFlowInstance } = useLineageStore(
+  // `nodes` itself is read when needed, not subscribed to: it changes every
+  // drag frame. The id key changes only when nodes are added or removed.
+  const nodeIdsKey = useLineageStore((s) =>
+    s.nodes.map((node) => node.id).join('|')
+  );
+  const {
+    reactFlowInstance,
+    zoomValue,
+    isPlatformLineage,
+    platformView,
+    setSelectedColumn,
+  } = useLineageStore(
     useShallow((s) => ({
-      nodes: s.nodes,
       reactFlowInstance: s.reactFlowInstance,
+      zoomValue: s.zoomValue,
+      isPlatformLineage: s.isPlatformLineage,
+      platformView: s.platformView,
+      setSelectedColumn: s.setSelectedColumn,
     }))
   );
-  const { zoomValue, isPlatformLineage, platformView, setSelectedColumn } =
-    useLineageStore();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [allOptions, setAllOptions] = useState<LineageSearchOption[]>([]);
   const [renderedOptions, setRenderedOptions] = useState<LineageSearchOption[]>(
     []
   );
   const [searchValue, setSearchValue] = useState<string>('');
+  const searchValueRef = useRef(searchValue);
+  searchValueRef.current = searchValue;
+  const isOpenRef = useRef(false);
   const [inputValue, setInputValue] = useState<string>('');
   const [selectedOption, setSelectedOption] =
     useState<LineageSearchOption | null>(null);
@@ -73,7 +89,7 @@ const LineageSearchSelect = () => {
   const generateNodeOptions = useCallback(() => {
     const optionsMap: Map<string, LineageSearchOption> = new Map();
 
-    nodes.forEach((nodeObj) => {
+    useLineageStore.getState().nodes.forEach((nodeObj) => {
       const { node } = nodeObj.data;
       if (!node) {
         return;
@@ -152,33 +168,10 @@ const LineageSearchSelect = () => {
     });
 
     return Array.from(optionsMap.values());
-  }, [nodes]);
-
-  useEffect(() => {
-    if (isDropdownOpen && allOptions.length === 0) {
-      const options = generateNodeOptions();
-      setAllOptions(options);
-      setRenderedOptions(options.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-    }
-  }, [isDropdownOpen, allOptions.length, generateNodeOptions]);
-
-  useEffect(() => {
-    setAllOptions([]);
-    setRenderedOptions([]);
-    setSearchValue('');
-  }, [nodes]);
+  }, []);
 
   const filterOptions = useCallback(
-    (value: string) => {
-      if (value) {
-        const filteredOptions = allOptions.filter((option) =>
-          option.label.toLowerCase().includes(value.toLowerCase())
-        );
-        setRenderedOptions(filteredOptions);
-      } else {
-        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-      }
-    },
+    (value: string) => setRenderedOptions(getVisibleOptions(allOptions, value)),
     [allOptions]
   );
 
@@ -202,23 +195,44 @@ const LineageSearchSelect = () => {
     );
   };
 
+  // Rebuilding replaces `allOptions`, which cancels a queued filter (typing
+  // into the focused input reopens the menu after queueing one), so the
+  // current text is applied here.
+  const refreshOptions = useCallback(() => {
+    const options = generateNodeOptions();
+    setAllOptions(options);
+    setRenderedOptions(getVisibleOptions(options, searchValueRef.current));
+  }, [generateNodeOptions]);
+
+  // While open, follow nodes being added or removed, but not drag updates.
+  useEffect(() => {
+    if (isOpenRef.current) {
+      refreshOptions();
+    }
+  }, [nodeIdsKey, refreshOptions]);
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      setIsDropdownOpen(open);
-      if (!open) {
-        setSearchValue('');
-        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-        debouncedFilterOptions.cancel();
+      isOpenRef.current = open;
+      if (open) {
+        refreshOptions();
+
+        return;
       }
+      setSearchValue('');
+      setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
+      debouncedFilterOptions.cancel();
     },
-    [allOptions, debouncedFilterOptions]
+    [allOptions, debouncedFilterOptions, refreshOptions]
   );
 
   const onOptionSelect = useCallback(
     (value?: string) => {
-      const selectedNode = nodes.find(
-        (node: Node) => node.data.node.fullyQualifiedName === value
-      );
+      const selectedNode = useLineageStore
+        .getState()
+        .nodes.find(
+          (node: Node) => node.data.node.fullyQualifiedName === value
+        );
       if (selectedNode) {
         onNodeClick(selectedNode);
 
@@ -246,7 +260,7 @@ const LineageSearchSelect = () => {
         setSelectedColumn(value ?? '');
       }
     },
-    [onNodeClick, reactFlowInstance, setSelectedColumn, nodes, zoomValue]
+    [onNodeClick, reactFlowInstance, setSelectedColumn, zoomValue]
   );
 
   // Both inputValue and value are controlled, so react-aria never

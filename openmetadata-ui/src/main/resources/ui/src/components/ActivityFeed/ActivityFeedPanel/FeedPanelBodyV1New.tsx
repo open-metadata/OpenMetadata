@@ -34,6 +34,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isOpenInDrawer = false,
   isFeedWidget = false,
   isFullSizeWidget = false,
+  isThreadPanel,
 }) => {
   const isActivityEvent = !isUndefined(activity);
 
@@ -77,6 +78,26 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
 
   if (!feed) {
     return null;
+  }
+
+  // In the thread panel only Reply opens the conversation; the card itself is
+  // not a button.
+  if (isThreadPanel) {
+    return (
+      <Card
+        className={`activity-feed-card-container ${CARD_CONTAINER_CLASS_NAME}`}
+        data-testid="message-container"
+        variant="ghost">
+        <ActivityFeedCardNew
+          isThreadPanel
+          feed={feed}
+          isActive={isActive}
+          isPost={false}
+          showThread={showThread}
+          onReplyPress={handleFeedClick}
+        />
+      </Card>
+    );
   }
 
   return (

@@ -114,6 +114,7 @@ import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
 import LineageSkeleton from '../LineageSkeleton.component';
 import {
   buildLineagePathHighlightIndex,
+  getBoxNearestPoint,
   getBreadcrumbSceneRequest,
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
@@ -136,6 +137,7 @@ import {
   getSemanticZoomDirection,
   isContainerSceneNode,
   isSceneNodeDrillable,
+  isSceneNodeDrillableWithChildren,
   LineageMapEmptyState,
   LINEAGE_MAP_RAIL_STOPS,
   type LineageSceneRequest,
@@ -155,6 +157,13 @@ type ZoomGestureEvent = MouseEvent | TouchEvent;
 
 const LINEAGE_MAP_ONBOARDING_COOKIE = 'lineageMapsOnboardingSeen';
 const SEMANTIC_ZOOM_COOLDOWN = 450;
+// A drill waits for the zoom gesture to settle, so overshooting a pinch while
+// zooming in to read a card does not open the next level.
+// ADR:2026-10-27-lineage-semantic-zoom-drills-at-35-percent-after-settling
+const SEMANTIC_ZOOM_IN_SETTLE_MS = 250;
+// Button and keyboard zoom drill the drillable node nearest the canvas centre,
+// looking only inside this share of the canvas on each axis.
+const ZOOM_TARGET_CENTRE_REGION = 0.5;
 const PROGRAMMATIC_ZOOM_SUPPRESSION_MS = 1200;
 const SCENE_MUTATION_MAX_ATTEMPTS = 5;
 const SCENE_MUTATION_RETRY_DELAY_MS = 500;
@@ -480,12 +489,15 @@ const getHydratedSceneEdge = async (
   return hydrateSelectedEdge(edge, sceneEdge, nodeById, details);
 };
 
+// Zooming in is measured on the card being zoomed into; without one, on the
+// widest card.
 const getSemanticZoomBand = (
   band: LineageBand,
   previousZoom: number,
   zoom: number,
   flowNodes: Node<SceneFlowNodeData>[],
-  screen?: DOMRect
+  screen?: DOMRect,
+  zoomTarget?: Node<SceneFlowNodeData>
 ) => {
   const graph = getSceneNodeBounds(flowNodes);
   if (!graph || !screen) {
@@ -493,7 +505,7 @@ const getSemanticZoomBand = (
   }
   const card = {
     width: Math.max(
-      ...flowNodes.map(
+      ...(zoomTarget ? [zoomTarget] : flowNodes).map(
         (node) => node.width ?? getNodeWidth(node.data.sceneNode)
       )
     ),
@@ -1030,6 +1042,7 @@ const LineageMapCanvas = ({
   const semanticZoomSuppressedRef = useRef(false);
   const semanticZoomSuppressedUntilRef = useRef(0);
   const semanticZoomResumeTimerRef = useRef<number>();
+  const semanticZoomInTimerRef = useRef<number>();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {
     activeLayer,
@@ -1521,8 +1534,9 @@ const LineageMapCanvas = ({
   }, [fitViewWithoutSemanticZoom, pendingFitNodeIds]);
 
   // Only drill into a node the user is plainly zooming into: the one under the
-  // pointer for wheel and pinch, otherwise the selected node or the only
-  // drillable node in view. Anything else stays a plain zoom.
+  // pointer for wheel and pinch, otherwise the selected node or the drillable
+  // node with children nearest the canvas centre. Anything else stays a plain
+  // zoom, and the rail falls back to getRailDrillFallbackNode.
   const pickZoomTargetNode = useCallback(
     (event?: ZoomGestureEvent | null) => {
       if (!reactFlowInstance || !wrapperRef.current) {
@@ -1553,27 +1567,34 @@ const LineageMapCanvas = ({
         return { target: selected.data.sceneNode };
       }
       const rect = wrapperRef.current.getBoundingClientRect();
-      const topLeft = reactFlowInstance.screenToFlowPosition({
-        x: rect.left,
-        y: rect.top,
+      const centre = reactFlowInstance.screenToFlowPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
       });
-      const bottomRight = reactFlowInstance.screenToFlowPosition({
-        x: rect.right,
-        y: rect.bottom,
-      });
-      const visibleDrillable = reactFlowInstance
-        .getIntersectingNodes({
-          ...topLeft,
-          width: bottomRight.x - topLeft.x,
-          height: bottomRight.y - topLeft.y,
-        })
-        .filter(isDrillable);
+      const zoom = reactFlowInstance.getZoom();
+      const region = {
+        width: (rect.width * ZOOM_TARGET_CENTRE_REGION) / zoom,
+        height: (rect.height * ZOOM_TARGET_CENTRE_REGION) / zoom,
+      };
+      const nearCentre = (
+        reactFlowInstance.getIntersectingNodes({
+          x: centre.x - region.width / 2,
+          y: centre.y - region.height / 2,
+          ...region,
+        }) as Node<SceneFlowNodeData>[]
+      )
+        .filter((node) => isSceneNodeDrillableWithChildren(node.data.sceneNode))
+        .map((node) => ({
+          node,
+          ...(node.positionAbsolute ?? node.position),
+          width: node.width ?? getNodeWidth(node.data.sceneNode),
+          height:
+            node.height ??
+            getNodeHeight(node.data.sceneNode, node.data.sceneBand),
+        }));
 
       return {
-        target:
-          visibleDrillable.length === 1
-            ? visibleDrillable[0].data.sceneNode
-            : undefined,
+        target: getBoxNearestPoint(nearCentre, centre)?.node.data.sceneNode,
       };
     },
     [nodes, reactFlowInstance]
@@ -1697,6 +1718,8 @@ const LineageMapCanvas = ({
 
   const handleMove = useCallback(
     (event: ZoomGestureEvent | null, viewport: { zoom: number }) => {
+      // Any further move, a pan included, restarts or cancels a pending drill.
+      window.clearTimeout(semanticZoomInTimerRef.current);
       // Zoom only changes band on the main Lineage page.
       if (!isPlatformLineage || !scene || semanticZoomSuppressedRef.current) {
         previousZoomRef.current = viewport.zoom;
@@ -1709,20 +1732,32 @@ const LineageMapCanvas = ({
       if (now - lastSemanticZoomAtRef.current < SEMANTIC_ZOOM_COOLDOWN) {
         return;
       }
+      const { target, leaf } =
+        viewport.zoom > previousZoom ? pickZoomTargetNode(event) : {};
+      const zoomTarget = nodesRef.current.find(
+        (node) => node.data.sceneNode === (target ?? leaf)
+      );
       const nextBand = getSemanticZoomBand(
         scene.band,
         previousZoom,
         viewport.zoom,
         nodesRef.current,
-        wrapperRef.current?.getBoundingClientRect()
+        wrapperRef.current?.getBoundingClientRect(),
+        zoomTarget
       );
       if (nextBand === scene.band) {
         return;
       }
-      lastSemanticZoomAtRef.current = now;
       if (isDeeperBand(scene.band, nextBand)) {
-        handleSemanticZoomIn(event);
+        semanticZoomInTimerRef.current = window.setTimeout(() => {
+          if (semanticZoomSuppressedRef.current || sceneRef.current !== scene) {
+            return;
+          }
+          lastSemanticZoomAtRef.current = Date.now();
+          handleSemanticZoomIn(event);
+        }, SEMANTIC_ZOOM_IN_SETTLE_MS);
       } else {
+        lastSemanticZoomAtRef.current = now;
         const parentRequest = getParentSceneRequest(scene);
         if (parentRequest) {
           updateRequest(parentRequest);
@@ -1736,9 +1771,15 @@ const LineageMapCanvas = ({
       handleBandChange,
       handleSemanticZoomIn,
       isPlatformLineage,
+      pickZoomTargetNode,
       scene,
       updateRequest,
     ]
+  );
+
+  useEffect(
+    () => () => window.clearTimeout(semanticZoomInTimerRef.current),
+    []
   );
 
   const handleBreadcrumbFocus = useCallback(
