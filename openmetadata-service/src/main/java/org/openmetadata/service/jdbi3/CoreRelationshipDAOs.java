@@ -14,7 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeLikeBindValue;
 import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
@@ -2334,20 +2334,29 @@ public interface CoreRelationshipDAOs {
         @Bind("newToFQNHash") String newToFQNHash);
 
     default void renameByToFQNPrefix(String oldToFQNPrefix, String newToFQNPrefix) {
-      String update =
-          String.format(
-              "UPDATE field_relationship SET toFQN  = REPLACE(toFQN, '%s.', '%s.') , toFQNHash  = REPLACE(toFQNHash, '%s.', '%s.') where fromtype = 'THREAD' AND relation='3' AND  toFQN like '%s.%%' and toFQNHash like '%s.%%' ",
-              escapeApostrophe(oldToFQNPrefix),
-              escapeApostrophe(newToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(newToFQNPrefix),
-              escapeApostrophe(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix));
-      renameByToFQNPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldToFQNPrefix);
+      String newHash = FullyQualifiedName.buildHash(newToFQNPrefix);
+      renameByToFQNPrefixInternal(
+          oldToFQNPrefix + Entity.SEPARATOR,
+          newToFQNPrefix + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          escapeLikeBindValue(oldToFQNPrefix) + Entity.SEPARATOR + "%",
+          oldHash + Entity.SEPARATOR + "%");
     }
 
-    @SqlUpdate("<update>")
-    void renameByToFQNPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        "UPDATE field_relationship SET toFQN = REPLACE(toFQN, :oldPrefix, :newPrefix), "
+            + "toFQNHash = REPLACE(toFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE fromtype = 'THREAD' AND relation = '3' "
+            + "AND toFQN LIKE :oldPrefixLike AND toFQNHash LIKE :oldHashLike")
+    void renameByToFQNPrefixInternal(
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldPrefixLike") String oldPrefixLike,
+        @Bind("oldHashLike") String oldHashLike);
 
     class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override

@@ -553,6 +553,33 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Test
+  void list_tagsWithUsageCount_countsTheAssetsTheGetCounts(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("it's \\ counted"))
+            .withClassification(classification.getFullyQualifiedName())
+            .withDescription("Tag whose usage count is listed");
+    Tag tag = createEntity(request);
+    createTableTaggedWith(ns, tag, "usage_count");
+
+    ListResponse<Tag> listed =
+        listEntities(
+            new ListParams()
+                .setFields("usageCount")
+                .setParent(classification.getFullyQualifiedName())
+                .setLimit(10));
+
+    Tag listedTag =
+        listed.getData().stream()
+            .filter(t -> t.getId().equals(tag.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(1, listedTag.getUsageCount());
+    assertEquals(1, getEntityWithFields(tag.getId().toString(), "usageCount").getUsageCount());
+  }
+
+  @Test
   void test_nestedTagFQN(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Classification classification = createClassification(ns);
