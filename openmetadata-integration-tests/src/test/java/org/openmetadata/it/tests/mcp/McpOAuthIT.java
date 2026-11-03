@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
@@ -194,6 +195,52 @@ public class McpOAuthIT extends McpTestBase {
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
     assertThat(response.statusCode()).isEqualTo(400);
+  }
+
+  @Test
+  @Order(5)
+  void authorizeErrorForAnHttpsCallbackIsALinkNotARedirect() throws Exception {
+    String callback = "https://client.example/cb";
+    Map<String, Object> registration =
+        Map.of(
+            "client_name", "Hosted Client",
+            "redirect_uris", List.of(callback),
+            "token_endpoint_auth_method", "none");
+    HttpRequest register =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl("/mcp/register")))
+            .header("Content-Type", "application/json")
+            // Its own rate-limit bucket, so this registration never uses up the other tests' quota.
+            .header("X-Forwarded-For", "198.51.100.14")
+            .POST(
+                HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(registration)))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    HttpResponse<String> registered =
+        HTTP_CLIENT.send(register, HttpResponse.BodyHandlers.ofString());
+    assertThat(registered.statusCode()).isEqualTo(201);
+    String clientId = OBJECT_MAPPER.readTree(registered.body()).get("client_id").asText();
+
+    // A malformed code_challenge fails after the redirect URI check, which used to 302 to it.
+    HttpRequest authorize =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    getMcpUrl("/mcp/authorize")
+                        + "?client_id="
+                        + clientId
+                        + "&response_type=code&code_challenge=x&code_challenge_method=S256"
+                        + "&state=s1&redirect_uri="
+                        + URLEncoder.encode(callback, StandardCharsets.UTF_8)))
+            .GET()
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    HttpResponse<String> response =
+        HTTP_CLIENT.send(authorize, HttpResponse.BodyHandlers.ofString());
+
+    assertThat(response.statusCode()).isEqualTo(400);
+    assertThat(response.headers().firstValue("Location")).isEmpty();
+    assertThat(response.body()).contains("href=\"" + callback + "?");
   }
 
   @Test

@@ -31,6 +31,7 @@ import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
+import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
@@ -730,11 +731,26 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             "Cannot send MCP OAuth redirect — response already committed by SSO provider. "
                 + "Redirect target (sanitized): {}",
             sanitizeRedirectUrlForLogging(redirectUrl));
-      } else if (redirectUrl != null) {
+      } else if (redirectUrl != null && authResponse.isRedirect()) {
         response.setHeader("Location", redirectUrl);
         response.setHeader("Cache-Control", "no-store");
         setCorsHeaders(request, response);
         response.sendRedirect(redirectUrl);
+      } else if (redirectUrl != null) {
+        // An error for a remote web callback: the user follows it by clicking, never by itself.
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        response.setContentType("text/html; charset=UTF-8");
+        response.setHeader("Cache-Control", "no-store");
+        response
+            .getWriter()
+            .write(
+                HtmlTemplates.generateErrorReturnPage(
+                    "Authorization Failed",
+                    "The application's sign-in request could not be completed ("
+                        + authResponse.getError().getError()
+                        + ").",
+                    redirectUrl,
+                    UriUtils.describeRedirectTarget(URI.create(redirectUrl))));
       } else if (response.isCommitted()) {
         // SSO_REDIRECT_INITIATED: the provider (e.g. SAML AuthnRequest, or OIDC handleLogin)
         // already wrote the login redirect straight to the browser and committed the response.
