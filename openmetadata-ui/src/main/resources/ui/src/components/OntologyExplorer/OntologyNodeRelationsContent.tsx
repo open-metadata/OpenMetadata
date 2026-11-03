@@ -247,7 +247,7 @@ export const OntologyNodeRelationsContent: React.FC<
             {String(count).padStart(2, '0')}
           </Badge>
         </div>
-        <Card className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:p-4">
+        <Card className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:p-4">
           <ul className="tw:m-0 tw:list-none tw:p-0">
             {rows.map((rel, rowIndex) => {
               const labelText = relatedDisplayName(rel);
@@ -364,7 +364,7 @@ export const OntologyNodeRelationsContent: React.FC<
     }
 
     return (
-      <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border tw:border-dashed tw:border-utility-gray-blue-200 tw:p-3 tw:shadow-sm">
+      <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border tw:border-dashed tw:border-primary tw:p-3 tw:shadow-sm">
         <Select
           aria-label={t('label.mapping-type')}
           items={Object.values(ConceptMappingType).map((type) => ({
@@ -433,16 +433,20 @@ export const OntologyNodeRelationsContent: React.FC<
         className="tw:flex tw:flex-col tw:gap-2"
         data-testid="ontology-mappings">
         <div className="tw:flex tw:items-center tw:gap-2">
-          <Typography as="h3" size="text-sm" weight="semibold">
+          <Typography
+            as="h3"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-sm"
+            weight="semibold">
             {t('label.mapping-plural')}
           </Typography>
-          <Badge color="gray" size="sm" type="color">
+          <Badge color="gray" type="color">
             {conceptMappings.length}
           </Badge>
         </div>
         {conceptMappings.map((mapping) => (
           <Card
-            className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:p-3 tw:shadow-sm"
+            className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:p-3 tw:shadow-sm"
             key={`${mapping.mappingType}-${mapping.conceptIri}`}>
             <Badge
               color={mappingBadgeColors[mapping.mappingType]}
