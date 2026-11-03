@@ -56,6 +56,40 @@ def test_extract_column_refs_handles_quoted_and_qualified():
     assert extract_column_refs('SUM("orders".amount)') == [("orders", "amount")]
 
 
+def test_extract_column_refs_returns_unqualified_names_without_a_table():
+    assert extract_column_refs("CUSTOMER_ID") == [(None, "CUSTOMER_ID")]
+    assert extract_column_refs("SUM(amount)") == [(None, "amount")]
+    assert extract_column_refs("orders.a + b") == [("orders", "a"), (None, "b")]
+    # keywords, function names and string literals are not column references
+    assert extract_column_refs("CASE WHEN status = 'OPEN' THEN 1 ELSE 0 END") == [(None, "status")]
+    assert extract_column_refs("DATE_TRUNC('MONTH', event_at)") == [(None, "event_at")]
+    # a quoted identifier is a column even when it spells a keyword
+    assert extract_column_refs('"end"') == [(None, "end")]
+    assert extract_column_refs('"a""b"') == [(None, 'a"b')]
+    # a function name is skipped only where it is called
+    assert extract_column_refs("DATE(date)") == [(None, "date")]
+    # cast targets, path steps and exponents are not columns
+    assert extract_column_refs("amount::NUMBER(10, 2) * 1e5") == [(None, "amount")]
+    assert extract_column_refs("payload:region::string") == [(None, "payload")]
+
+
+# Snowflake's normal form: each object's expression is relative to its own logical table.
+BARE_COLUMNS = {
+    ("CUSTOMERS", "CUSTOMER_NAME"): {"logical_table": "CUSTOMERS", "expression": "C_NAME"},
+    ("ORDERS", "LINE_AMOUNT"): {"logical_table": "ORDERS", "expression": "O_TOTALPRICE"},
+    ("ORDERS", "O_ORDERSTATUS"): {"logical_table": "ORDERS", "expression": "O_ORDERSTATUS"},
+    ("ORDERS", "TOTAL_REVENUE"): {"logical_table": "ORDERS", "expression": "SUM(LINE_AMOUNT)"},
+}
+
+
+def test_resolve_base_columns_resolves_unqualified_names_on_the_owning_logical_table():
+    assert resolve_base_columns(("CUSTOMERS", "CUSTOMER_NAME"), BARE_COLUMNS, TABLE_MAP) == [(CUSTOMERS_TBL, "C_NAME")]
+    # an object named after the column it reads resolves to that column, not to itself
+    assert resolve_base_columns(("ORDERS", "O_ORDERSTATUS"), BARE_COLUMNS, TABLE_MAP) == [(ORDERS_TBL, "O_ORDERSTATUS")]
+    # a metric over a fact follows the fact to its physical column
+    assert resolve_base_columns(("ORDERS", "TOTAL_REVENUE"), BARE_COLUMNS, TABLE_MAP) == [(ORDERS_TBL, "O_TOTALPRICE")]
+
+
 def test_match_semantic_name_is_case_insensitive():
     assert match_semantic_name("orders", "line_amount", COLUMNS) == ("ORDERS", "LINE_AMOUNT")
     assert match_semantic_name("orders", "NOT_THERE", COLUMNS) is None
@@ -223,6 +257,38 @@ def test_iter_database_lineage_emits_table_and_column_edges():
     assert len(requests) == 2
     # column lineage is attached (every base table here has resolvable columns)
     assert all(r.right.edge.lineageDetails.columnsLineage for r in requests)
+
+
+def test_iter_database_lineage_attaches_column_lineage_for_unqualified_expressions():
+    extractor = _extractor()
+    view_entity, orders_entity, customers_entity = MagicMock(), MagicMock(), MagicMock()
+    view_entity.id = Uuid(root=UUID("11111111-1111-1111-1111-111111111111"))
+    orders_entity.id = Uuid(root=UUID("22222222-2222-2222-2222-222222222222"))
+    customers_entity.id = Uuid(root=UUID("33333333-3333-3333-3333-333333333333"))
+    entities = {"SALES_ANALYSIS": view_entity, "ORDERS_TBL": orders_entity, "CUSTOMERS_TBL": customers_entity}
+
+    extractor.resolve_table_by_fqn = MagicMock(
+        side_effect=lambda table_fqn: next((e for name, e in entities.items() if name in table_fqn), None)
+    )
+    extractor._fetch_table_maps = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): TABLE_MAP})
+    extractor._fetch_columns = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): BARE_COLUMNS})
+
+    with patch.object(sml, "get_column_fqn", side_effect=lambda entity, column: f"{id(entity)}.{column}"):
+        requests = list(extractor._iter_database_lineage("DB"))
+
+    lineage = {
+        r.right.edge.fromEntity.id.root: {
+            (c.toColumn.root.split(".")[-1], tuple(f.root.split(".")[-1] for f in c.fromColumns))
+            for c in r.right.edge.lineageDetails.columnsLineage
+        }
+        for r in requests
+    }
+    assert lineage[orders_entity.id.root] == {
+        ("LINE_AMOUNT", ("O_TOTALPRICE",)),
+        ("O_ORDERSTATUS", ("O_ORDERSTATUS",)),
+        ("TOTAL_REVENUE", ("O_TOTALPRICE",)),
+    }
+    assert lineage[customers_entity.id.root] == {("CUSTOMER_NAME", ("C_NAME",))}
 
 
 def test_iter_database_lineage_emits_table_level_edge_without_columns():

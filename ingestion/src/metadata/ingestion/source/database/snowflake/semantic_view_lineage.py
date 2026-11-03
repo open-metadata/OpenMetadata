@@ -30,10 +30,12 @@ from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.semantic_metric_lineage import (
+    SQL_KEYWORDS,
     column_lineage,
     metric_lineage_request,
     view_lineage_request,
 )
+from metadata.ingestion.source.database.semantic_metrics import unquote_name_part
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB,
@@ -56,12 +58,19 @@ ViewKey = tuple[str, str]
 # is not unique -- Snowflake declares every object as ``<table_alias>.<name>``.
 SemanticKey = tuple[str, str]
 
-# A single identifier segment: a double-quoted name or a bare name.
-_IDENTIFIER = r'"[^"]*"|[A-Za-z_][\w$]*'
+# A single identifier segment: a double-quoted name (``""`` escapes a quote) or a bare
+# name. A bare name never starts inside a number, so ``1e5`` offers no ``e5``.
+_IDENTIFIER = r'"(?:[^"]|"")*"|(?<![\w$])[A-Za-z_][\w$]*'
 # A dotted chain of two or more identifier segments (e.g. ``orders.amount``,
 # ``"orders"."o amount"``, ``db.schema.orders.amount``).
 _COLUMN_REF_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))+")
 _SEGMENT_RE = re.compile(_IDENTIFIER)
+# A function name with its opening parenthesis, such as ``SUM(``.
+_FUNCTION_HEAD_RE = re.compile(rf"(?:{_IDENTIFIER})\s*\(")
+# A cast target (``::VARCHAR``) or a semi-structured path step (``payload:key``).
+_CAST_OR_PATH_RE = re.compile(rf"::?\s*(?:{_IDENTIFIER})(?:\s*\([^)]*\))?")
+# A string literal. Double quotes delimit identifiers in Snowflake, not strings.
+_STRING_LITERAL_RE = re.compile(r"'(?:[^']|'')*'")
 _MAX_RESOLUTION_DEPTH = 5
 SEMANTIC_COLUMN_CATALOG_VIEWS = (
     "semantic_dimensions",
@@ -75,25 +84,23 @@ def _quote_db(database: str) -> str:
     return database.replace('"', '""')
 
 
-def _unquote_identifier(identifier: str) -> str:
-    """Strip surrounding double quotes from a Snowflake identifier segment."""
-    unquoted = identifier
-    if len(identifier) >= 2 and identifier[0] == '"' and identifier[-1] == '"':
-        unquoted = identifier[1:-1]
-    return unquoted
-
-
-def extract_column_refs(expression: str | None) -> list[tuple[str, str]]:
+def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
     """Extract ``(table, column)`` references from a semantic object's expression.
 
-    Handles bare, double-quoted, and multi-part qualified identifiers, always
-    taking the last two segments of each dotted chain as ``(table, column)``.
+    A dotted chain contributes its last two segments. An unqualified name comes back
+    with table ``None``: it refers to the semantic object's own logical table.
     """
-    refs = []
-    for chain in _COLUMN_REF_RE.findall(expression or ""):
+    text = _STRING_LITERAL_RE.sub(" ", expression or "")
+    text = _CAST_OR_PATH_RE.sub(" ", text)
+    text = _FUNCTION_HEAD_RE.sub("(", text)
+    refs: list[tuple[str | None, str]] = []
+    for chain in _COLUMN_REF_RE.findall(text):
         segments = _SEGMENT_RE.findall(chain)
-        if len(segments) >= 2:
-            refs.append((_unquote_identifier(segments[-2]), _unquote_identifier(segments[-1])))
+        refs.append((unquote_name_part(segments[-2]), unquote_name_part(segments[-1])))
+    for identifier in _SEGMENT_RE.findall(_COLUMN_REF_RE.sub(" ", text)):
+        if not identifier.startswith('"') and identifier.lower() in SQL_KEYWORDS:
+            continue
+        refs.append((None, unquote_name_part(identifier)))
     return refs
 
 
@@ -147,7 +154,8 @@ def resolve_base_columns(
     results: list[tuple[BaseTable, str]] = []
     info = columns.get(column_key)
     if info is not None and depth <= _MAX_RESOLUTION_DEPTH:
-        for table_ref, column_ref in extract_column_refs(info.get("expression")):
+        for qualifier, column_ref in extract_column_refs(info.get("expression")):
+            table_ref = qualifier or column_key[0]
             matched = match_semantic_name(table_ref, column_ref, columns)
             if matched is not None and matched != column_key:
                 for item in resolve_base_columns(matched, columns, table_map, depth + 1):
