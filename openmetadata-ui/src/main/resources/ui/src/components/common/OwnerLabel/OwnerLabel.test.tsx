@@ -59,6 +59,10 @@ jest.mock('../UserTeamSelectableList/UserTeamSelectableList.component', () => {
   };
 });
 
+jest.mock('../PopOverCard/UserPopOverCard', () =>
+  jest.fn().mockImplementation(({ children }) => children)
+);
+
 describe('OwnerLabel component', () => {
   it('owner name with profile picture should render', async () => {
     render(<OwnerLabel owners={mockOwner} />, { wrapper: MemoryRouter });
@@ -121,6 +125,45 @@ describe('OwnerLabel component', () => {
 
     expect(
       await screen.findByText('UserTeamSelectableList.component')
+    ).toBeInTheDocument();
+  });
+
+  it('should mark inherited owners in the non-compact view', async () => {
+    render(
+      <OwnerLabel
+        isCompactView={false}
+        owners={[
+          { ...mockOwner[0], inherited: true },
+          { ...mockTeamOwner[0], id: 'team-id', inherited: true },
+          { id: 'direct-id', type: 'user', name: 'Direct Owner' },
+        ]}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(await screen.findAllByTestId('inherited-owner-icon')).toHaveLength(
+      2
+    );
+  });
+
+  it('should not mark a directly assigned owner in the non-compact view', async () => {
+    render(<OwnerLabel isCompactView={false} owners={mockOwner} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(await screen.findByText(mockOwner[0].name)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('inherited-owner-icon')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should mark an inherited team owner in the compact view', async () => {
+    render(<OwnerLabel owners={[{ ...mockTeamOwner[0], inherited: true }]} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(
+      await screen.findByTestId('inherited-owner-icon')
     ).toBeInTheDocument();
   });
 });

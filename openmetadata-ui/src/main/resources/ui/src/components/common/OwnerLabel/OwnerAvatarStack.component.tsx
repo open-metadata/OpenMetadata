@@ -22,6 +22,7 @@ import { getOwnerPath } from '../../../utils/ownerUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerAvatarStackProps } from './OwnerAvatarStack.interface';
+import { OwnerInheritedBadge } from './OwnerInheritedBadge.component';
 import { OwnerStackOverflow } from './OwnerStackOverflow.component';
 
 const DEFAULT_MAX_VISIBLE_AVATARS = 2;
@@ -99,7 +100,9 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
         className="owner-avatar-stack-link"
         data-testid="owner-link"
         to={ownerPath}>
-        {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        <OwnerInheritedBadge owner={owner}>
+          {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        </OwnerInheritedBadge>
       </Link>
     );
 
@@ -123,7 +126,9 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
         className="owner-avatar-stack-row"
         data-testid="owner-link"
         to={ownerPath}>
-        {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        <OwnerInheritedBadge owner={owner}>
+          {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        </OwnerInheritedBadge>
         <Typography
           ellipsis
           as="span"
