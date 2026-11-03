@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import ReactFlow, { OnNodesChange, ReactFlowProps } from 'reactflow';
+import ReactFlow, { Node, OnNodesChange, ReactFlowProps } from 'reactflow';
 import { useUncontrolledNodeDrag } from '../../../hooks/lineage/useUncontrolledNodeDrag';
 
 interface UncontrolledDragFlowProps extends ReactFlowProps {
+  nodes: Node[];
   onNodesChange: OnNodesChange;
 }
 
@@ -23,13 +24,19 @@ interface UncontrolledDragFlowProps extends ReactFlowProps {
  * caller's `ReactFlowProvider` rather than above it.
  */
 const UncontrolledDragFlow = ({
+  nodes,
   onNodesChange,
   ...props
-}: UncontrolledDragFlowProps) => (
-  <ReactFlow
-    {...props}
-    onNodesChange={useUncontrolledNodeDrag(onNodesChange)}
-  />
-);
+}: UncontrolledDragFlowProps) => {
+  const flow = useUncontrolledNodeDrag(nodes, onNodesChange);
+
+  return (
+    <ReactFlow
+      {...props}
+      nodes={flow.nodes}
+      onNodesChange={flow.onNodesChange}
+    />
+  );
+};
 
 export default UncontrolledDragFlow;

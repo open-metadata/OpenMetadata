@@ -1023,13 +1023,6 @@ const LineageMapCanvas = ({
   const [loading, setLoading] = useState(true);
   const [sceneError, setSceneError] = useState<AxiosError>();
   const [nodes, setNodes] = useState<Node<SceneFlowNodeData>[]>([]);
-  const handleNodesChange = useUncontrolledNodeDrag(
-    useCallback(
-      (changes: NodeChange[]) =>
-        setNodes((currentNodes) => applyNodeChanges(changes, currentNodes)),
-      []
-    )
-  );
   const [edges, setEdges] = useState<Edge[]>([]);
   const [hoveredEdge, setHoveredEdge] = useState<Edge | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string>();
@@ -1866,6 +1859,14 @@ const LineageMapCanvas = ({
       }),
     [nodes, pathHighlight]
   );
+  const flow = useUncontrolledNodeDrag(
+    renderedNodes,
+    useCallback(
+      (changes: NodeChange[]) =>
+        setNodes((currentNodes) => applyNodeChanges(changes, currentNodes)),
+      []
+    )
+  );
 
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node<SceneFlowNodeData>) => {
@@ -2033,7 +2034,7 @@ const LineageMapCanvas = ({
       maxZoom={MAX_ZOOM_VALUE}
       minZoom={MIN_ZOOM_VALUE}
       nodeTypes={nodeTypes}
-      nodes={renderedNodes}
+      nodes={flow.nodes}
       nodesConnectable={false}
       onlyRenderVisibleElements={!renderAllNodes}
       ref={wrapperRef}
@@ -2044,7 +2045,7 @@ const LineageMapCanvas = ({
       onNodeClick={handleNodeClick}
       onNodeMouseEnter={handleNodeMouseEnter}
       onNodeMouseLeave={handleNodeMouseLeave}
-      onNodesChange={handleNodesChange}
+      onNodesChange={flow.onNodesChange}
       onPaneClick={handlePaneClick}>
       {loading && (
         <div

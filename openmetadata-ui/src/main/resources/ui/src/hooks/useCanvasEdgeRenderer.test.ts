@@ -709,4 +709,35 @@ describe('useCanvasEdgeRenderer', () => {
     expect(result.current.visibleEdgesRef.current).toEqual([]);
     expect(result.current.getEdgeAtPoint(50, 50, rect)).toBeNull();
   });
+
+  it('skips only the edges of a node that is being dragged', () => {
+    const { isEdgeInViewport } = require('../utils/CanvasUtils');
+    isEdgeInViewport.mockReturnValue(true);
+    const draggedEdge = createMockEdge();
+    const siblingEdge = createMockEdge({
+      id: 'edge-2',
+      source: 'node-3',
+      target: 'node-4',
+    });
+    mockGetNode.mockImplementation((id: string) =>
+      id === 'node-1'
+        ? { ...createMockNode(id), dragging: true }
+        : createMockNode(id)
+    );
+
+    const { result } = renderHook(() =>
+      useCanvasEdgeRenderer({
+        canvasRef,
+        edges: [draggedEdge, siblingEdge],
+        dqHighlightedEdges: new Set(),
+        colors: createMockColors(),
+        containerWidth: 800,
+        containerHeight: 600,
+        theme: 'light',
+      })
+    );
+
+    expect(result.current.visibleEdgesRef.current).toEqual([siblingEdge]);
+    expect(mockCtx.stroke).toHaveBeenCalledTimes(1);
+  });
 });

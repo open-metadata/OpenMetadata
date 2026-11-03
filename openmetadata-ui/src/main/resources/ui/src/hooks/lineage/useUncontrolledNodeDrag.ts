@@ -10,13 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import {
   applyNodeChanges,
+  Node,
   NodeChange,
   OnNodesChange,
   useStoreApi,
+  XYPosition,
 } from 'reactflow';
+
+interface DragPosition {
+  position: XYPosition;
+  positionAbsolute?: XYPosition;
+}
 
 const isDragFrame = (change: NodeChange) =>
   change.type === 'position' && Boolean(change.dragging);
@@ -28,66 +35,67 @@ const isDragFrame = (change: NodeChange) =>
  * into React Flow's store; with auto-pan that happens several times per frame
  * and can exceed React's nested-update limit. Drag frames are applied to React
  * Flow's store only, and the drag-end change, which carries no position, is
- * filled in from it so the caller receives the final position once.
+ * filled in so the caller receives the final position once.
  *
- * Any other change the caller receives mid-drag (say, React Flow measuring a
- * node auto-pan just revealed) makes React Flow re-sync from the caller's
- * nodes, which still hold the pre-drag positions. Those batches therefore also
- * carry the dragged nodes' current positions, so the re-sync cannot snap a
- * dragged node back or let the drop save its start position.
+ * The caller's nodes keep their pre-drag positions until the drop, and any
+ * re-render of them mid-drag (a hover highlight, a measured node) re-syncs
+ * React Flow's store. Pass the returned `nodes` to `<ReactFlow>`: they carry
+ * the in-flight drag positions, so such a re-sync cannot snap a dragged node
+ * back or let the drop save its start position.
  *
  * Must be called inside a `ReactFlowProvider`.
  */
-export const useUncontrolledNodeDrag = (
+export const useUncontrolledNodeDrag = <T extends Node>(
+  nodes: T[],
   onNodesChange: OnNodesChange
-): OnNodesChange => {
+) => {
   const store = useStoreApi();
+  const dragPositions = useRef(new Map<string, DragPosition>());
 
-  return useCallback(
+  const handleNodesChange: OnNodesChange = useCallback(
     (changes) => {
-      const { getNodes, setNodes, nodeInternals } = store.getState();
       const dragFrames = changes.filter(isDragFrame);
       if (dragFrames.length) {
+        for (const change of dragFrames) {
+          if (change.type === 'position' && change.position) {
+            dragPositions.current.set(change.id, {
+              position: change.position,
+              positionAbsolute: change.positionAbsolute,
+            });
+          }
+        }
+        const { getNodes, setNodes } = store.getState();
         setNodes(applyNodeChanges(dragFrames, getNodes()));
       }
 
       const committed = changes
         .filter((change) => !isDragFrame(change))
         .map((change) => {
-          const node =
-            change.type === 'position' && !change.position
-              ? nodeInternals.get(change.id)
-              : undefined;
+          if (change.type !== 'position') {
+            return change;
+          }
+          const dragged = dragPositions.current.get(change.id);
+          dragPositions.current.delete(change.id);
 
-          return node
-            ? {
-                ...change,
-                position: node.position,
-                positionAbsolute: node.positionAbsolute,
-              }
+          return dragged && !change.position
+            ? { ...change, ...dragged }
             : change;
         });
-      if (!committed.length) {
-        return;
+      if (committed.length) {
+        onNodesChange(committed);
       }
-      const endingIds = new Set(
-        committed.flatMap((change) =>
-          change.type === 'position' ? [change.id] : []
-        )
-      );
-      const inFlight: NodeChange[] = store
-        .getState()
-        .getNodes()
-        .filter((node) => node.dragging && !endingIds.has(node.id))
-        .map((node) => ({
-          id: node.id,
-          type: 'position',
-          dragging: true,
-          position: node.position,
-          positionAbsolute: node.positionAbsolute,
-        }));
-      onNodesChange([...inFlight, ...committed]);
     },
     [onNodesChange, store]
   );
+
+  const drags = dragPositions.current;
+  const flowNodes = drags.size
+    ? nodes.map((node) => {
+        const dragged = drags.get(node.id);
+
+        return dragged ? { ...node, ...dragged, dragging: true } : node;
+      })
+    : nodes;
+
+  return { nodes: flowNodes, onNodesChange: handleNodesChange };
 };
