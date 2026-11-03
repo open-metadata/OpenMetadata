@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "Das Löschen dieser {{entityType}} würde seine Metadaten dauerhaft löschen.",
     "delete-intake-form-confirmation": "Möchten Sie dieses Aufnahmeformular wirklich löschen? Die Durchsetzung wird für den betreffenden Entitätstyp sofort beendet.",
     "delete-message-question-mark": "Nachricht löschen?",
+    "delete-metric-children-message": "Alle untergeordneten Metriken unter \"{{metricName}}\" werden ebenfalls {{deleteType}} gelöscht.",
     "delete-metrics-warning": "Dadurch werden die ausgewählten Metriken einschließlich ihrer untergeordneten Metriken vorläufig gelöscht. Vorläufig gelöschte Metriken können später wiederhergestellt werden.",
     "delete-persona-context-rule-confirmation": "Diese KI-Kontextregel löschen?",
     "delete-scim-token": "SCIM-Token löschen",

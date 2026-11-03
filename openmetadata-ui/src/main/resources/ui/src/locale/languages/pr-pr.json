@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "حذف این {{entityType}} به طور دائمی متادیتای آن را از {{brandName}} حذف خواهد کرد.",
     "delete-intake-form-confirmation": "آیا مطمئن هستید که می‌خواهید این فرم پذیرش را حذف کنید؟ اعمال آن بلافاصله برای نوع موجودیت موردنظر متوقف می‌شود.",
     "delete-message-question-mark": "حذف پیام؟",
+    "delete-metric-children-message": "هر معیار فرزندی تحت \"{{metricName}}\" نیز {{deleteType}} حذف خواهد شد.",
     "delete-metrics-warning": "این کار معیارهای انتخاب‌شده را همراه با معیارهای فرزندشان به‌صورت موقت حذف می‌کند. معیارهای حذف‌شدهٔ موقت را می‌توان بعداً بازیابی کرد.",
     "delete-persona-context-rule-confirmation": "این قانون زمینه هوش مصنوعی حذف شود؟",
     "delete-scim-token": "حذف توکن SCIM",

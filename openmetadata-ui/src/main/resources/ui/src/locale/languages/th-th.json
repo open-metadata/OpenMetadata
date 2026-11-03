@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "การลบ {{entityType}} นี้จะเป็นการลบเมตาดาต้าอย่างถาวร",
     "delete-intake-form-confirmation": "คุณแน่ใจหรือไม่ว่าต้องการลบแบบฟอร์มรับนี้? การบังคับใช้จะหยุดทันทีสำหรับประเภทเอนทิตีที่เกี่ยวข้อง",
     "delete-message-question-mark": "ลบข้อความ?",
+    "delete-metric-children-message": "เมตริกย่อยใด ๆ ที่อยู่ภายใต้ \"{{metricName}}\" จะถูก {{deleteType}} ลบด้วย",
     "delete-metrics-warning": "การดำเนินการนี้จะลบเมตริกที่เลือกพร้อมเมตริกย่อยแบบชั่วคราว เมตริกที่ถูกลบแบบชั่วคราวสามารถกู้คืนได้ในภายหลัง",
     "delete-persona-context-rule-confirmation": "ลบกฎบริบท AI นี้หรือไม่?",
     "delete-scim-token": "ลบโทเค็น SCIM",

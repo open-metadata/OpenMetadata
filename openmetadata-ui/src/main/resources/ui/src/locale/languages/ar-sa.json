@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "سيؤدي حذف {{entityType}} هذا إلى حذف بياناته الوصفية بشكل دائم.",
     "delete-intake-form-confirmation": "هل أنت متأكد من أنك تريد حذف نموذج الاستقبال هذا؟ سيتوقف التطبيق فورًا لنوع الكيان المستهدف.",
     "delete-message-question-mark": "حذف الرسالة؟",
+    "delete-metric-children-message": "سيتم حذف أي مقاييس فرعية تحت \"{{metricName}}\" {{deleteType}} أيضًا.",
     "delete-metrics-warning": "سيؤدي هذا إلى الحذف المؤقت للمقاييس المحددة مع المقاييس الفرعية التابعة لها. يمكن استعادة المقاييس المحذوفة مؤقتًا لاحقًا.",
     "delete-persona-context-rule-confirmation": "هل تريد حذف قاعدة سياق الذكاء الاصطناعي هذه؟",
     "delete-scim-token": "حذف رمز SCIM",

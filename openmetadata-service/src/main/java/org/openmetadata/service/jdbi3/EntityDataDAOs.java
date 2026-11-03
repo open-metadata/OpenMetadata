@@ -218,6 +218,12 @@ public interface EntityDataDAOs {
   }
 
   interface MetricGroupDAO extends EntityDAO<MetricGroup> {
+    // A soft-deleted parent keeps its CONTAINS row, so a metric restored on its own reads as a
+    // root.
+    String LIVE_METRIC_PARENT =
+        " AND EXISTS (SELECT 1 FROM metric_entity live_parent "
+            + "WHERE live_parent.id = parent_rel.fromId "
+            + "AND (live_parent.deleted = FALSE OR live_parent.deleted IS NULL))";
     String MEMBER_MATCH_MYSQL =
         "(LOWER(me.name) LIKE :nameLike ESCAPE '!' "
             + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(me.json, '$.displayName')), '')) "
@@ -305,7 +311,9 @@ public interface EntityDataDAOs {
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
             + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
-            + "AND parent_rel.deleted = FALSE) "
+            + "AND parent_rel.deleted = FALSE"
+            + LIVE_METRIC_PARENT
+            + ") "
             + "ORDER BY me.name, me.id LIMIT :limit OFFSET :offset")
     List<String> listRootMemberIds(
         @BindUUID("groupId") UUID groupId,
@@ -325,7 +333,9 @@ public interface EntityDataDAOs {
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
             + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
-            + "AND parent_rel.deleted = FALSE)")
+            + "AND parent_rel.deleted = FALSE"
+            + LIVE_METRIC_PARENT
+            + ")")
     int countRootMembers(
         @BindUUID("groupId") UUID groupId,
         @BindUUID("excludeId") UUID excludeId,
@@ -364,7 +374,9 @@ public interface EntityDataDAOs {
                 + " AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
                 + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
                 + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
-                + "AND parent_rel.deleted = FALSE) "
+                + "AND parent_rel.deleted = FALSE"
+                + LIVE_METRIC_PARENT
+                + ") "
                 + "ORDER BY me.name, me.id LIMIT :limit OFFSET :offset",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -379,7 +391,9 @@ public interface EntityDataDAOs {
                 + " AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
                 + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
                 + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
-                + "AND parent_rel.deleted = FALSE) "
+                + "AND parent_rel.deleted = FALSE"
+                + LIVE_METRIC_PARENT
+                + ") "
                 + "ORDER BY me.name, me.id LIMIT :limit OFFSET :offset",
         connectionType = POSTGRES)
     List<String> listRootMemberJsonsPage(
@@ -402,7 +416,9 @@ public interface EntityDataDAOs {
                 + " AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
                 + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
                 + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
-                + "AND parent_rel.deleted = FALSE)",
+                + "AND parent_rel.deleted = FALSE"
+                + LIVE_METRIC_PARENT
+                + ")",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -416,7 +432,9 @@ public interface EntityDataDAOs {
                 + " AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
                 + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
                 + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
-                + "AND parent_rel.deleted = FALSE)",
+                + "AND parent_rel.deleted = FALSE"
+                + MetricGroupDAO.LIVE_METRIC_PARENT
+                + ")",
         connectionType = POSTGRES)
     int countRootMembersPage(
         @BindUUID("groupId") UUID groupId,
@@ -433,7 +451,9 @@ public interface EntityDataDAOs {
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = root.id AND parent_rel.fromEntity = 'metric' "
             + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
-            + "AND parent_rel.deleted = FALSE) "
+            + "AND parent_rel.deleted = FALSE"
+            + MetricGroupDAO.LIVE_METRIC_PARENT
+            + ") "
             + "UNION SELECT tree.root_id, child.id FROM metric_tree tree "
             + "JOIN entity_relationship child_rel ON child_rel.fromId = tree.member_id "
             + "AND child_rel.fromEntity = 'metric' AND child_rel.toEntity = 'metric' "
@@ -454,7 +474,9 @@ public interface EntityDataDAOs {
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = m.id AND parent_rel.fromEntity = 'metric' "
             + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
-            + "AND parent_rel.deleted = FALSE) "
+            + "AND parent_rel.deleted = FALSE"
+            + MetricGroupDAO.LIVE_METRIC_PARENT
+            + ") "
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship group_rel "
             + "JOIN metric_group_entity active_group ON active_group.id = group_rel.fromId "
             + "WHERE group_rel.toId = m.id AND group_rel.fromEntity = 'metricGroup' "
@@ -470,7 +492,9 @@ public interface EntityDataDAOs {
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = m.id AND parent_rel.fromEntity = 'metric' "
             + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
-            + "AND parent_rel.deleted = FALSE) "
+            + "AND parent_rel.deleted = FALSE"
+            + MetricGroupDAO.LIVE_METRIC_PARENT
+            + ") "
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship group_rel "
             + "JOIN metric_group_entity active_group ON active_group.id = group_rel.fromId "
             + "WHERE group_rel.toId = m.id AND group_rel.fromEntity = 'metricGroup' "

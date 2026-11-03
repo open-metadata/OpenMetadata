@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "Eliminando questo {{entityType}} ne eliminerai definitivamente i metadati.",
     "delete-intake-form-confirmation": "Sei sicuro di voler eliminare questo modulo di intake? L'applicazione delle regole si interromperà immediatamente per il tipo di entità interessato.",
     "delete-message-question-mark": "Eliminare il Messaggio?",
+    "delete-metric-children-message": "Anche tutte le metriche figlie sotto \"{{metricName}}\" verranno eliminate in modo {{deleteType}}.",
     "delete-metrics-warning": "Questa operazione eliminerà temporaneamente le metriche selezionate insieme alle relative metriche figlie. Le metriche eliminate temporaneamente possono essere ripristinate in seguito.",
     "delete-persona-context-rule-confirmation": "Eliminare questa regola di contesto AI?",
     "delete-scim-token": "Elimina Token SCIM",

@@ -1254,6 +1254,7 @@ public class MetricRepository extends EntityRepository<Metric> {
       Predicate<EntityReference> canViewMetric,
       Predicate<EntityReference> canViewGroup) {
     Metric current = get(null, metricId, getFields(HIERARCHY_FIELDS));
+    current.setParent(liveParent(current.getParent()));
     List<Metric> ancestors = getAncestors(current, canViewMetric, canViewGroup);
     MetricPage children = childPage(current, childLimit, childOffset, canViewMetric, canViewGroup);
     MetricPage siblings =
@@ -1283,10 +1284,15 @@ public class MetricRepository extends EntityRepository<Metric> {
         ancestors.add(
             sanitizeHierarchyMetricWithVisibleCount(ancestor, canViewMetric, canViewGroup));
       }
-      parent = ancestor.getParent();
+      parent = liveParent(ancestor.getParent());
     }
     Collections.reverse(ancestors);
     return ancestors;
+  }
+
+  // A soft-deleted parent keeps its CONTAINS edge; a metric restored without it reads as a root.
+  private static EntityReference liveParent(EntityReference parent) {
+    return parent == null || Boolean.TRUE.equals(parent.getDeleted()) ? null : parent;
   }
 
   private MetricGroup loadGroup(

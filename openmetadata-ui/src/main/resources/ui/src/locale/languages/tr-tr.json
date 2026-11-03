@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "Bu {{entityType}} silinmesi, metadatasını kalıcı olarak silecektir.",
     "delete-intake-form-confirmation": "Bu giriş formunu silmek istediğinizden emin misiniz? Hedeflenen varlık türü için uygulama hemen duracaktır.",
     "delete-message-question-mark": "Mesaj Silinsin mi?",
+    "delete-metric-children-message": "\"{{metricName}}\" altındaki tüm alt metrikler de {{deleteType}} olarak silinecektir.",
     "delete-metrics-warning": "Bu işlem seçilen metrikleri alt metrikleriyle birlikte geçici olarak silecektir. Geçici olarak silinen metrikler daha sonra geri yüklenebilir.",
     "delete-persona-context-rule-confirmation": "Bu yapay zekâ bağlam kuralı silinsin mi?",
     "delete-scim-token": "SCIM Token Sil",

@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "この {{entityType}} を削除すると、そのメタデータは永久に削除されます。",
     "delete-intake-form-confirmation": "この受付フォームを削除してもよろしいですか？対象のエンティティタイプに対する適用は直ちに停止されます。",
     "delete-message-question-mark": "このメッセージを削除しますか？",
+    "delete-metric-children-message": "\"{{metricName}}\" の下にあるすべての子メトリクスも {{deleteType}} により削除されます。",
     "delete-metrics-warning": "選択したメトリクスとその子メトリクスを論理削除します。論理削除したメトリクスは後で復元できます。",
     "delete-persona-context-rule-confirmation": "この AI コンテキストルールを削除しますか？",
     "delete-scim-token": "SCIM トークンを削除",

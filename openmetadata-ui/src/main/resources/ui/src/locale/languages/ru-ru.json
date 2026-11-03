@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "Удаление объекта «{{entityType}}» навсегда удалит его метаданные из {{brandName}}.",
     "delete-intake-form-confirmation": "Вы уверены, что хотите удалить эту форму приёма? Применение немедленно прекратится для соответствующего типа сущности.",
     "delete-message-question-mark": "Удалить сообщение?",
+    "delete-metric-children-message": "Все дочерние метрики под «{{metricName}}» также будут {{deleteType}} удалены.",
     "delete-metrics-warning": "Выбранные метрики вместе с дочерними метриками будут удалены с возможностью восстановления. Такие метрики можно восстановить позже.",
     "delete-persona-context-rule-confirmation": "Удалить это правило контекста ИИ?",
     "delete-scim-token": "Удалить токен SCIM",
