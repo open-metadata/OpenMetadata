@@ -31,6 +31,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.PIPELINE;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
@@ -712,8 +713,34 @@ public class LineageRepository {
     return String.format("%s--->%s", fromEntity.getId().toString(), toEntity.getId().toString());
   }
 
+  /**
+   * Only a pipeline or a stored procedure may annotate an edge. The edge copies it, as stored, into
+   * the downstream entity's search document, which any user can read, so any other entity would
+   * hand out fields its own API masks or denies — a service's connection, for one.
+   */
+  public static boolean isEdgePipelineType(String entityType) {
+    return PIPELINE.equals(entityType) || STORED_PROCEDURE.equals(entityType);
+  }
+
+  /**
+   * The edge pipeline a write newly links and therefore must be authorized to view, or null when no
+   * view check is owed. A pipeline the stored edge already carries is not re-checked: ingestion
+   * re-sends it on every write and it may have been deleted since. A non-pipeline type needs no view
+   * check here because the repository refuses to store it at all.
+   */
+  public static EntityReference newlyLinkedEdgePipeline(
+      EntityReference requested, LineageDetails storedDetails) {
+    EntityReference stored = storedDetails == null ? null : storedDetails.getPipeline();
+    boolean isLinkable = requested != null && isEdgePipelineType(requested.getType());
+    boolean isAlreadyOnEdge =
+        isLinkable && stored != null && Objects.equals(stored.getId(), requested.getId());
+    return isLinkable && !isAlreadyOnEdge ? requested : null;
+  }
+
   public static void addPipelineDetails(EsLineageData lineageData, EntityReference pipelineRef) {
-    if (nullOrEmpty(pipelineRef)) {
+    // An edge stored before pipelines were restricted can still name another entity type: it is
+    // indexed without that entity, never with a copy of it.
+    if (nullOrEmpty(pipelineRef) || !isEdgePipelineType(pipelineRef.getType())) {
       lineageData.setPipeline(null);
     } else {
       Pair<String, Map<String, Object>> pipelineOrStoredProcedure =
@@ -749,15 +776,40 @@ public class LineageRepository {
    * Resolves the pipeline a lineage write carries. Ingestion copies an edge's stored pipeline onto
    * writes that carry none, so a pipeline the edge already references is kept even if it was deleted
    * after the edge was written, and dropped once it no longer exists. Only a pipeline newly linked to
-   * the edge must exist and not be deleted.
+   * the edge must exist and not be deleted. See {@link #isEdgePipelineType} for the types allowed.
    */
   private static EntityReference resolveEdgePipeline(
       EntityReference requested, EntityReference stored) {
     boolean isAlreadyOnEdge = stored != null && Objects.equals(stored.getId(), requested.getId());
+    if (!isEdgePipelineType(requested.getType())) {
+      return rejectUnsupportedPipeline(requested, isAlreadyOnEdge);
+    }
     return isAlreadyOnEdge
         ? findPipelineIncludingDeleted(requested)
         : Entity.getEntityReferenceById(
             requested.getType(), requested.getId(), Include.NON_DELETED);
+  }
+
+  /**
+   * A new link to an unsupported entity type is refused. One the edge already carries predates the
+   * restriction, and since ingestion re-sends an edge's stored pipeline, refusing it would fail
+   * every later write of the edge: it is dropped instead, which also clears the copy from search.
+   */
+  private static EntityReference rejectUnsupportedPipeline(
+      EntityReference requested, boolean isAlreadyOnEdge) {
+    if (!isAlreadyOnEdge) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Lineage pipeline must be a %s or a %s, not a %s",
+              PIPELINE, STORED_PROCEDURE, requested.getType()));
+    }
+    LOG.warn(
+        "Dropping {} {} from a lineage edge: only a {} or a {} may annotate an edge",
+        requested.getType(),
+        requested.getId(),
+        PIPELINE,
+        STORED_PROCEDURE);
+    return null;
   }
 
   private static EntityReference findPipelineIncludingDeleted(EntityReference pipelineRef) {
@@ -1665,11 +1717,16 @@ public class LineageRepository {
     }
   }
 
-  public Response getLineageEdge(UUID fromId, UUID toId) {
+  /** The stored details of the upstream edge between two entities, or null when there is none. */
+  public LineageDetails getLineageDetails(UUID fromId, UUID toId) {
     String json = dao.relationshipDAO().getRelation(fromId, toId, Relationship.UPSTREAM.ordinal());
-    if (json != null) {
+    return json == null ? null : JsonUtils.readValue(json, LineageDetails.class);
+  }
+
+  public Response getLineageEdge(UUID fromId, UUID toId) {
+    LineageDetails lineageDetails = getLineageDetails(fromId, toId);
+    if (lineageDetails != null) {
       Map<String, Object> responseMap = new HashMap<>();
-      LineageDetails lineageDetails = JsonUtils.readValue(json, LineageDetails.class);
       responseMap.put("edge", lineageDetails);
       return Response.status(OK).entity(responseMap).build();
     } else {
