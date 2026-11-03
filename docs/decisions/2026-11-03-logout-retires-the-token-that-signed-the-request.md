@@ -8,9 +8,9 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-`POST /api/v1/users/logout` added the `token` field of its body to the logout cache, whatever it was,
-and the cache took each entry's lifetime from that token's own `exp` claim. The cache held at most
-1000 entries and kept the whole token as its value.
+Logout puts a token on a server-side list of retired tokens until it expires. The token to retire
+is the one the request was authenticated with, which `JwtFilter` has verified. The list lives in
+memory, so it holds digests rather than tokens, under a size cap.
 
 ## Decision
 - Logout retires the bearer token `JwtFilter` verified for the request. The body's `token` is

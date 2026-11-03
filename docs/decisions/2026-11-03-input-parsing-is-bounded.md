@@ -9,14 +9,11 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-Several inputs a caller controls were parsed with no bound on the work they could make the server
-do, each reachable before any authorization:
-- the `email` pattern and the `MessageParser` entity-link pattern backtracked super-linearly;
-- a JSON Patch body was read with no size, token or operation cap, and `copy` operations could
-  double a growing document;
-- a JSON Patch on the document root replaced the whole entity, skipping the per-field checks;
-- the description sanitizer restored entity-link tokens with a quadratic scan and put them back even
-  in attribute positions.
+Some inputs are parsed before any authorization decision: values matched by the `email` and
+`MessageParser` entity-link patterns, JSON Patch bodies, and descriptions passed through the
+sanitizer. The work each one makes the server do stays proportional to its size and within fixed
+caps. Per-field patch authorization also needs every operation to name a location below the
+document root.
 
 ## Decision
 - The `email` pattern and the entity-link pattern match in linear time, accepting the same inputs as
@@ -33,5 +30,5 @@ do, each reachable before any authorization:
 ## Consequences
 A deployment with a document, patch or description larger than these bounds must split it. The bounds
 are judgment calls sized well above any legitimate request; lowering them risks refusing real edits,
-raising them re-opens the resource-exhaustion they exist for. Column-description sanitizing on
-create/CSV import (ANT-2026-MPK5AZH6, a non-security bug) is a separate follow-up.
+raising them loosens the limit on server work they exist for. Column-description sanitizing on
+create/CSV import is a separate follow-up.

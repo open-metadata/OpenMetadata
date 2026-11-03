@@ -8,17 +8,19 @@
 
 ## Context
 The identity provider's response reaches the ACS as a cross-site POST, which does not carry the
-`SameSite=Lax` `OM_SESSION` cookie. So the ACS found the pending login by the `RelayState` field alone
-and activated a session for whichever browser posted the form. The response was also never matched to
-the AuthnRequest that login had sent.
+`SameSite=Lax` `OM_SESSION` cookie, so the ACS cannot tell which browser posted it. A login
+therefore finishes in two steps: the ACS checks that the response answers the AuthnRequest this
+login sent, and a same-site navigation, which carries the cookie, activates the session in the
+browser that started the login.
 
 ## Decision
 - `/api/v1/saml/login` stores the AuthnRequest id on the pending session (`state`).
 - The ACS accepts only a response whose verified assertion answers that id, in the `InResponseTo`
   of its bearer subject confirmation, in strict mode or not. The response element's own
-  `InResponseTo` is not read: when only the assertion is signed, whoever posts the response can
-  rewrite it. The ACS then attaches the account to the pending session, clears the id, and answers
-  `303` to `/api/v1/saml/complete`.
+  `InResponseTo` is not read, because no signature covers it when only the assertion is signed.
+  The ACS then attaches the account to the pending session, clears the id, and answers `303` to
+  `/api/v1/saml/complete` on the origin of the login's validated redirect URI, where the login
+  started and its host-only cookie lives, not on the ACS host.
 - `GET /api/v1/saml/complete` is a same-site top-level navigation, so it carries the session cookie. It
   activates the pending session named by that cookie, provided the ACS attached an account to it,
   and redirects to the callback with the token as before. It reads that session from the session
@@ -27,6 +29,6 @@ the AuthnRequest that login had sent.
 - MCP logins over SAML keep their own correlation for now.
 
 ## Consequences
-A SAML login takes one more redirect. Unsolicited (IdP-initiated) responses are refused. The ACS no
-longer starts sessions or mints tokens itself. An identity provider's response is usable once, by
+A SAML login takes one more redirect. Unsolicited (IdP-initiated) responses are refused. The ACS
+starts no session and mints no token itself. An identity provider's response is usable once, by
 the browser that started the login.

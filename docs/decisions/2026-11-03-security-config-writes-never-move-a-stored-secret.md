@@ -7,11 +7,11 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-Admins only ever read the security configuration with its secrets masked: the OIDC client secret,
-the LDAP bind and trust store passwords, the SAML SP key and key store password. The `PATCH`, however,
-applied the admin's operations to the stored configuration, secrets in clear, and both `PATCH` and
-`PUT` put a masked secret back whatever else had changed around it. The live-secret rules the
-validate and Test Login endpoints use (`TestLoginCandidates`) were not applied to writes.
+Admins read the security configuration with its secrets masked: the OIDC client secret, the LDAP
+bind and trust store passwords, the SAML SP key and key store password. A write sends that masked
+form back, so the server decides when a masked value stands for the stored secret. A stored secret
+belongs to the endpoint it was entered for, the rule the validate and Test Login endpoints apply
+(`TestLoginCandidates`).
 
 ## Decision
 - `GET /system/security/config` masks the secrets for every caller, bots included.

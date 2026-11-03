@@ -7,22 +7,20 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-Every hard delete removed the `tag_usage` rows whose target FQN started with the deleted entity's
-FQN, the `field_relationship` rows under it, and the `tag_usage` rows whose tag FQN equalled it.
-Those tables are keyed by FQN alone, and an FQN is unique only within a type, so deleting a user
-named like a service stripped the service's tags, deleting a user named like an entity type
-removed that type's custom property definitions, and deleting a glossary term named like a
-classification tag removed that tag from every asset.
+A hard delete also removes rows that point at the deleted entity by FQN: tag labels in `tag_usage`
+and field relationships in `field_relationship`. Those tables are keyed by FQN alone, and an FQN is
+unique only within a type, so a user, a service and an entity type can share one. The cleanup
+therefore covers only the rows the deleted entity's type can own.
 
 ## Decision
 - The FQN-prefix cleanup runs only for types that carry such rows: taggable types, and `type`,
   whose custom property definitions are field relationships under its name
   (`EntityRepository.shouldCleanupFqnDependents()` defaults to `supportsTags`).
 - `field_relationship` rows of type `type` are removed only when a type is deleted.
-- The tag-FQN delete without a source is gone; tags and glossary terms remove their own labels,
+- No delete removes labels by tag FQN alone; tags and glossary terms remove their own labels,
   bound to their source, in `postDelete`.
 
 ## Consequences
-Users, teams, roles, policies and bots no longer touch FQN-keyed rows when deleted. Two taggable
-entities of different types that share an FQN can still collide in `tag_usage`; closing that needs
-the target's entity type recorded on each row, which is a schema change left for later.
+Deleting a user, team, role, policy or bot touches no FQN-keyed rows. `tag_usage` does not record
+the target's entity type, so two taggable entities of different types that share an FQN share
+their rows there; recording the type on each row is a schema change left for later.

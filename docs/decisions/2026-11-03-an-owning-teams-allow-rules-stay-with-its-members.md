@@ -9,8 +9,8 @@
 
 ## Context
 When an entity is owned by a team, `SubjectContext.getPolicies` adds that team's policies (and its
-parents') to the caller's own. For a caller outside the team, this applied the team's allow rules
-too, so owning an asset handed the team's grants to everyone who touched it.
+parents') to the caller's own, so a team can fence its assets off with deny rules. A team's allow
+rules are grants to its members; owning an asset does not extend them to other callers.
 
 ## Decision
 For owner teams the caller does not belong to, only the deny rules of the team's policies are

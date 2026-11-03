@@ -9,10 +9,10 @@
 
 ## Context
 `getAllTags` merges the tags of a table's columns, a pipeline's tasks, a topic's schema fields and
-the like into what `matchAnyTag` and `matchAllTags` read. The authorization load fetched only the
-entity's own tags, and children that a request did not ask for had been cleared, so a deny rule on
-a column tag applied only when a request happened to load columns and tags together. The bulk path
-loaded entity-level tags only, and nested struct columns were never merged.
+the like into what `matchAnyTag` and `matchAllTags` read. The entity a request returns is loaded
+with the fields that request asked for, which need not include the children or their tags, and a
+bulk request loads many entities at once. So tag conditions read from a copy loaded for
+authorization, on every path, with children nested at any depth.
 
 ## Decision
 - Each repository whose inline children carry tags declares the fields `getAllTags` needs

@@ -72,6 +72,6 @@ spellings of a blocked URL reached the handler without matching the list.
   imports carry `@IdentityEndpoint`: a row sets both, and the async import runs where the
   request's impersonation cannot be seen. Other team edits stay open to impersonation.
 - **`BotNonAdminImpersonationPolicy` also denies bot targets** (`isBotUser()`). System and
-  application bots can edit every policy and role, this one included, so acting as one undid the
-  admin-target deny rule. The 2.1.0 data migration adds the rule to a stored policy that still
-  carries the admin-target deny rule; a policy an admin loosened is left alone.
+  application bots can edit every policy and role, this one included, so the policy treats a bot
+  target as it treats an admin target. The 2.1.0 data migration adds the rule to a stored policy
+  that still carries the admin-target deny rule; a policy an admin loosened is left alone.

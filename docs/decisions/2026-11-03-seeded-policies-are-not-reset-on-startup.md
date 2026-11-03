@@ -7,9 +7,10 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-`CollectionRegistry` calls `upgrade()` on every resource at each start. `PolicyResource.upgrade()`,
-written for 1.2.0, set the operations of `OrganizationPolicy-Owner-Rule` back to `All` whenever
-they differed, so an admin who narrowed that rule had the change undone on the next restart.
+`CollectionRegistry` calls `upgrade()` on every resource at each start, so whatever an `upgrade()`
+writes is written again on every restart. A seeded policy is the admin's to change once it exists,
+for example to narrow the operations of `OrganizationPolicy-Owner-Rule`. A one-time change to a
+seed, such as the 1.2.0 change to that rule, belongs in a data migration that runs once.
 
 ## Decision
 `PolicyResource` has no `upgrade()`. A seeded policy is created when missing and never edited at

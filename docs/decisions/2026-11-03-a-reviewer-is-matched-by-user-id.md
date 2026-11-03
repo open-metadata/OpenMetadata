@@ -8,10 +8,9 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-`DefaultAuthorizer` lets the reviewers of an entity act on it without policy evaluation. It
-compared the caller's name with each reviewer's name or FQN. Reviewers can be teams, and user and
-team names live in separate namespaces, so a user whose name equals a reviewer team's name was
-treated as that reviewer.
+`DefaultAuthorizer` lets the reviewers of an entity act on it without policy evaluation. Reviewers
+can be users or teams, and user and team names live in separate namespaces, so a name does not
+identify a reviewer; a user id does.
 
 ## Decision
 The caller is a reviewer only when a reviewer reference has type `user` and the caller's user id.

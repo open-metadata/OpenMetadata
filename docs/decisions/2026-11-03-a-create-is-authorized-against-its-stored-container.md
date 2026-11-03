@@ -8,18 +8,18 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-`CreateResourceContext.getDomains()` merged the domains named in the request with those of the
-stored parent, and `hasDomain()` passes on one match, so naming one's own domain unlocked a create
-inside another domain's container. A tag's classification arrived as a name-only reference, which
-the context skipped, so the tag was authorized as if it had no parent. A PUT authorized on a
-context that could not see a soft-deleted entity, although the write restores it.
+Domain conditions confine a caller's creates to containers of its domains. A create is decided
+before the entity exists, on what the request names: its parents and the domains it asks for.
+Since `hasDomain()` passes on a single match, the two are checked separately. A parent can arrive
+as a name-only reference, as a tag's classification does, and a PUT can restore a soft-deleted
+entity, so the context resolves the entities the write will actually touch.
 
 ## Decision
 - On create, `hasDomain()` needs a domain of the container (the stored parents; a parent domain is
   its own) and every domain the request names. `getDomains()` keeps returning the union for the
   other conditions.
 - A root parent reference without an id is loaded by name; one that cannot be loaded fails the
-  request instead of being skipped. `TagMapper` resolves the classification by name.
+  request. `TagMapper` resolves the classification by name.
 - A tag's parent must belong to the tag's classification.
 - A PUT context loads the entity with `Include.ALL`, the include the write uses. PATCH keeps
   `NON_DELETED`.

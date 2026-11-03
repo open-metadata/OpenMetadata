@@ -8,12 +8,11 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-`JsonPatchUtils.getMetadataOperations` picks the operations a PATCH needs. It read each
-operation's `path` only, although `move` removes its `from` location and `copy` reads it. It took
-the first segment with a mapped name anywhere in the path, so a map key such as a webhook header
-named `description` selected EditDescription. It compared tag labels as one flat set, so moving a
-label, or touching `tags` without a net change, needed no operation at all, and an empty patch
-needed none either.
+`JsonPatchUtils.getMetadataOperations` picks the operations a PATCH needs from the locations it
+touches. An operation can touch two locations (`move` removes its `from` location, `copy` reads
+it), a field name can recur as a map key deeper in the entity, and a tag label's operation depends
+on its source and on the object that carries it. So every touched location counts, a field name
+counts only where the entity's type declares that field, and labels are compared where they sit.
 
 ## Decision
 - Every location an operation touches is authorized: `path`, and `from` for `move` and `copy`.
@@ -36,7 +35,7 @@ needed none either.
   sharing, conversations) look at every touched location too.
 - A caller who reads stored secrets masked cannot copy or move a value out of a service's
   `connection` or an ingestion pipeline's `sourceConfig` (400).
-- A date field refuses an object or array value instead of reading it as null.
+- A date field accepts only a scalar value; an object or array is refused.
 
 ## Consequences
 Clients that send `move` or `copy` keep working when the caller may write both locations. The

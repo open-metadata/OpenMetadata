@@ -5,15 +5,16 @@
 - **Deciders:** Mohit Yadav
 - **Guard:** `UserResourceIT` (`test_selfPut_keepsStoredRolesAndCannotChangeThem`,
   `test_patchUser_cannotJoinClosedTeamThroughAnyOperation`, `test_nonAdmin_cannotLeaveClosedTeam`,
-  self sign-up tests), `UserResourceSignUpTest`
+  self sign-up tests), `UserResourceSignUpTest`,
+  `UserTeamAssignmentPrivilegeIT.test_selfUpdate_namingOwnRolesWithoutTeams_keepsClosedTeam`
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-`PUT /api/v1/users` skipped the authorizer whenever the body named the caller's own account. That let
-a soft-deleted user PUT itself back to life, and let an unknown principal create an account while self
-sign-up was off. Separately, a non-admin self PUT could shed roles (a PUT carries the whole user, and
-omitting or emptying the role list replaced the stored set), reversing a deny role the point of which
-is that the user cannot drop it (this had been loosened by #32323).
+`PUT /api/v1/users` creates or updates a user, and its body often names the caller's own account.
+That self case covers a user that exists, one that is soft-deleted and one that does not exist yet,
+so each is decided as the operation it amounts to: an update, a restore or a sign-up. A PUT carries
+the whole user, so a non-admin's PUT is compared with the stored privileged fields, which only an
+admin changes; a deny role binds only while its holder cannot drop it.
 
 ## Decision
 - The self branch of `createOrUpdateUser` is explicit: a deleted self is refused with 404 (the
@@ -24,10 +25,9 @@ is that the user cannot drop it (this had been loosened by #32323).
 - A non-admin PUT keeps the stored privileged fields: the admin and bot flags always, and the roles
   and teams when the request omits them.
 - Joining or leaving a team that is not joinable is admin-only, like a role change, because members
-  hold the team's default roles and policies, deny rules included. PUT compares the requested teams
-  with the stored ones; PATCH compares the teams the patched user is left in, whatever the
-  operations' shape (`replace` of an entry, of the whole list or of a reference's `id`, `remove`).
-  The organization, which every user belongs to, is never left.
+  hold the team's default roles and policies, deny rules included. PUT compares the teams it names
+  with the stored ones; PATCH compares the teams the patched user is left in, whatever operations
+  produced them. The organization, which every user belongs to, is never left.
 - A user CSV row from a non-admin is refused for a stored (or requested) admin or bot, or when it
   names roles.
 

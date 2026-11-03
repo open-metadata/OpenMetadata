@@ -7,16 +7,15 @@
   `JWTTokenGeneratorTest.defaultClaimOrderPreservesStoredUsername`,
   `SecurityUtilTest.testGetUserNameIsTheWholePrincipalName`,
   `DefaultAuthorizerTest.aUserWhoseNameStartsWithAnotherUsersNameIsAuthorizedAsItself`,
-  `EmailFirstIdentityIT`, `UserResourceIT.test_userNamedLikeTheAdminWithASlash_cannotMakeItselfAdmin`
+  `EmailFirstIdentityIT`, `UserResourceIT.test_aUserIsAuthorizedAsItsWholeName_notAsTheAdmin`
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-`jwtPrincipalClaims` describes the identity provider's tokens. Without `emailClaim`, the legacy flow
-applied it to OpenMetadata's own tokens as well. Under the default order the email claim comes first,
-so the user name was the email's local part. An account's name is not always that local part:
-sign-up and provisioning add a suffix when the local part is taken. Separately,
-`SecurityUtil.getUserName` cut the principal at the first `/` or `@`, so the subject the authorizer
-loaded could differ from the principal `JwtFilter` built.
+`jwtPrincipalClaims` describes the identity provider's tokens. OpenMetadata mints its own tokens for
+an account by name, and an account's name is not always the local part of its email: sign-up and
+provisioning add a suffix when the local part is taken. So an OpenMetadata token resolves to the
+account it names, and the authorizer loads the principal exactly as the authentication filter built
+it.
 
 ## Decision
 - On the legacy flow, a token verified against OpenMetadata's own signing key resolves to

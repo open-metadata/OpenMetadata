@@ -8,9 +8,11 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-A user's `owns` and `follows`, a team's `owns`, `children`, `descendantTeams` and `parents`, a
-schema's `tables` and a database's `databaseSchemas` were returned as the repository filled them,
-so a caller read the names and descriptions of entities its policies refused it.
+Some fields list references to other entities: a user's `owns` and `follows`, a team's `owns`,
+`children`, `descendantTeams` and `parents`, a schema's `tables` and a database's
+`databaseSchemas`. Each reference carries its target's name and description, so a list names only
+the targets the caller may view, as their own endpoints decide. A write keeps the entries its
+caller was not shown.
 
 ## Decision
 A resource declares its reference-list fields whose targets are filtered

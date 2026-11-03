@@ -11,10 +11,9 @@
 ## Context
 A GET of `/{collection}/{id}?fields=…` needs the view operation of each field (ViewTests for
 custom metrics, ViewUsage for usage, ViewAll for an unmapped field) and authorizes an entity
-loaded with the attributes policy conditions read. `POST /lineage/hydrate` returned the requested
-fields after a ViewBasic check, on entities loaded with only those fields, so a condition on
-domains saw none. The column read and the ontology endpoints also authorized copies they had
-loaded without domains.
+loaded with the attributes policy conditions read. `POST /lineage/hydrate`, the column read and
+the ontology endpoints return the same fields by other paths, so each applies the checks of the
+GET it mirrors, on an entity loaded the same way.
 
 ## Decision
 - `ViewOperations.forFields(type, fields)` is the one mapping from requested fields to view
@@ -32,13 +31,13 @@ constructor still trusts the entity it is given; a new call site must load the a
 fields or pass an id.
 
 ## Amendment (v2, 2026-11-04)
-Matching a GET's checks was not enough: several GETs also redact what they return. A service's
-GET drops its connection for callers without EditAll, a user's drops a basic-auth password hash
-and masks emails, an MCP server's masks its environment, arguments and URL, and ingestion
-pipelines and workflows redact their secrets. Hydrate ran none of that, so any caller who could
-view one of those entities read its secrets through it.
+Several GETs also redact what they return, beyond their field checks. A service's GET drops its
+connection for callers without EditAll, a user's drops a basic-auth password hash and masks
+emails, an MCP server's masks its environment, arguments and URL, and ingestion pipelines and
+workflows redact their secrets. Rather than repeat each type's redaction, hydrate is limited to
+the types lineage needs.
 
-Hydrate now serves only the data assets lineage draws as nodes (`LineageHydrator.HYDRATABLE_TYPES`:
+Hydrate serves only the data assets lineage draws as nodes (`LineageHydrator.HYDRATABLE_TYPES`:
 table, topic, dashboard, data model, chart, pipeline, ML model, container, search index, stored
 procedure, API endpoint, metric, and the drive directory, file, spreadsheet and worksheet), whose
 GETs redact nothing beyond the field checks above. A request naming any other type is refused with

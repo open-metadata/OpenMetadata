@@ -46,9 +46,9 @@ all of the entities it names are gone.
 
 ## Amendment: team and role conditions are rewritten on hard delete only (v2)
 
-Point 3 rewrote `inAnyTeam()`, `matchTeam()` and `hasAnyRole()` calls on a soft delete as well.
-A restore brought the team or role back but not the conditions, so a rule silently lost its scope.
+Point 3 no longer rewrites `inAnyTeam()`, `matchTeam()` and `hasAnyRole()` calls on a soft delete.
 A soft-deleted team or role already drops out of every membership, so the unchanged condition
-matches nothing while it is deleted, and matches again after a restore. Team and role conditions
-are therefore rewritten only on hard delete, like services, classifications and glossaries. Soft
-delete and restore of a team or role drop the cached policies of every user.
+matches nothing while it is deleted, and a restore brings the team or role back to conditions
+that still name it. Team and role conditions are therefore rewritten only on hard delete, like
+services, classifications and glossaries. Soft delete and restore of a team or role drop the
+cached policies of every user.

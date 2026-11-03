@@ -8,8 +8,9 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-A policy carries `enabled`, and the UI offers to turn a policy off, but the evaluator compiled the
-rules of every attached policy whatever the flag said.
+A policy carries `enabled`, and the UI offers to turn a policy off. Rules are compiled for
+evaluation in several places (the subject cache, the team-of-the-resource path, the permissions
+listing), so the flag is honored in the one place they share.
 
 ## Decision
 `CompiledRule.enforcedRules(policy)` is the one place a policy's rules are compiled for

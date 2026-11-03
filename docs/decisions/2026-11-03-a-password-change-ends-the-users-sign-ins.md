@@ -7,9 +7,9 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-Basic authentication stored a new password hash and left everything signed in with the old one in
-place: refresh tokens kept minting access tokens, server sessions stayed active, and MCP grants
-stayed valid.
+With basic authentication, a user's sign-ins (refresh tokens, server sessions, MCP grants) all
+start from the password, so they last only as long as it does. A new password ends them, whichever
+path sets it.
 
 ## Decision
 After a new password is stored, by a reset link, by the user, by an admin, or by the `reset-password`

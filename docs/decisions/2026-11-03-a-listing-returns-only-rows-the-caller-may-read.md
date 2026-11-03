@@ -10,22 +10,27 @@
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
-List endpoints authorized the listing once, against a context that names only the entity type, and
-returned every row. A deny rule that reads the row (its tags, owners, domains, the owning team's
-policies) never fired, so a row the item endpoint refused was readable through the list, and
-`/history` returned versions of entities the caller could not view.
+A listing is authorized once for its type, while a rule can decide on what a row carries: its tags,
+owners and domains, or its owning team's policies. So whenever such a rule could change the
+outcome, each row is checked as its item endpoint checks it. `/history` lists versions across
+entities and keeps only those the caller may view.
 
 ## Decision
-- When a row-dependent rule could change the outcome (`RowDecisionGate`: some enabled policy has a
-  deny rule for the type and operations, or the caller's own policies do not grant them without a
-  condition), each row is checked as its item endpoint checks it (`EntityResource.rowAuthorization`).
+- Rows are checked only when a rule could refuse one (`RowDecisionGate`): when a deny rule for the
+  type and operations is among the caller's own policies or in a policy attached to a team, since
+  an owning team brings its deny rules to callers outside it, or when the caller's own policies do
+  not grant the operations without a condition. A policy attached to no team, such as the seeded
+  `TeamOnlyPolicy`, reaches a caller only through their own roles, so it makes rows checked only
+  for callers who hold it. A checked row is checked as its item endpoint checks it
+  (`EntityResource.rowAuthorization`).
   By default that is the entity itself with the operations its requested fields need, on a copy
   loaded with the authorization fields; a test case is checked for ViewTests on the entity it
   tests, once per tested entity on a page. The gate is asked about that resource and those
   operations. Otherwise rows are not checked.
 - Cursor listings refill a page from the following pages, up to 5 reads or 1000 scanned rows, and
   then return short. Their cursors are sealed with the Fernet key, since one may point at a hidden
-  row; a sealed cursor is accepted wherever a plain one is. Offset listings drop rows without
+  row; a sealed cursor is accepted wherever a plain one is. On a first page `before` stays null, as
+  the repository returns it, so a client offers no previous page. Offset listings drop rows without
   refilling. `paging.total` still counts every row.
 - In an `AuthRequest` listing (queries, test cases) a request on another entity, such as the table
   whose queries are listed or the test suite whose test cases are, allows the listing but not its
@@ -36,8 +41,8 @@ policies) never fired, so a row the item endpoint refused was readable through t
 
 ## Consequences
 A listing never shows a row its item endpoint refuses. A caller who may ViewQueries on a table but
-not view one of its queries no longer sees that query in the table's query listing, as
+may not view one of its queries does not see that query in the table's query listing, as
 `GET /queries/{id}` refuses it. Listings under row-dependent rules cost one authorization load and
-evaluation per page read; a test-case page costs one load of each entity it tests. Totals reveal
-how many rows exist; making them exact needs the conditions in SQL, which is left for later.
-Without a Fernet key cursors stay plain.
+evaluation per page read; a test-case page costs one load of each entity it tests. Totals count
+every row; making them count only readable rows needs the conditions in SQL, which is left for
+later. Without a Fernet key cursors stay plain.
