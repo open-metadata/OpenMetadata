@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
+import { APIRequestContext, Browser, Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
+import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
+import { Task } from '../../../src/generated/entity/tasks/task';
+import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { okJson } from '../../utils/apiResponse';
@@ -24,6 +27,8 @@ import {
 import {
   attachStudioShot,
   clickGraphNode,
+  createUserWithRoles,
+  openPageAs,
   createFlowOntology,
   findEmptyCanvasPoint,
   openOntologyInStudio,
@@ -410,6 +415,272 @@ test.describe(
           expect(unchanged.description).toBe('First definition');
         } finally {
           await removeFlowOntologies(api, [ontology]);
+        }
+      });
+    }
+
+    const isActivation =
+      (ontologyId: string) =>
+      (response: { url(): string; request(): { method(): string } }) =>
+        response
+          .url()
+          .endsWith(`/api/v1/ontologies/${ontologyId}/activation`) &&
+        response.request().method() === 'PUT';
+
+    const openPublicationDialog = async (page: Page, ontology: Ontology) => {
+      await openOntologyInStudio(page, ontology.id);
+      await page.getByTestId('ontology-publication-trigger').click();
+      await expect(
+        page.getByTestId('ontology-publication-modal')
+      ).toBeVisible();
+      await expect(page.getByTestId('ontology-publication-text')).toBeVisible();
+    };
+
+    const closePublicationDialog = async (page: Page) => {
+      await page
+        .getByTestId('ontology-publication-modal')
+        .getByRole('button', { name: 'Close', exact: true })
+        .click();
+      await expect(page.getByTestId('ontology-publication-modal')).toHaveCount(
+        0
+      );
+    };
+
+    const reviewActors = async (
+      api: APIRequestContext,
+      browser: Browser,
+      reviewerIds: (id: string) => string[] = () => []
+    ) => {
+      const author = await createUserWithRoles(api, ['OntologyAuthor']);
+      const reviewer = await createUserWithRoles(api, ['OntologyReviewer']);
+      const { ontology, concepts } = await createFlowOntology(api, {
+        prefix: 'pw_p1_publish',
+        ownerIds: [author.responseData.id],
+        reviewerIds: reviewerIds(reviewer.responseData.id),
+        concepts: ['Customer'],
+      });
+      const authorPage = await openPageAs(browser, author);
+      const reviewerPage = await openPageAs(browser, reviewer);
+      const tasks: string[] = [];
+      const cleanup = async () => {
+        await authorPage.close();
+        await reviewerPage.close();
+        for (const id of tasks) {
+          const task = await okJson<Task>(
+            await api.get(`/api/v1/tasks/${id}`),
+            'Read the review task'
+          );
+          if (!task.resolution) {
+            await api.post(`/api/v1/tasks/${id}/close`, { data: {} });
+          }
+          await api.delete(`/api/v1/tasks/${id}?hardDelete=true`);
+        }
+        await removeFlowOntologies(api, [ontology]);
+        await author.delete(api);
+        await reviewer.delete(api);
+      };
+
+      return {
+        author,
+        reviewer,
+        ontology,
+        concept: concepts[0],
+        authorPage,
+        reviewerPage,
+        tasks,
+        cleanup,
+      };
+    };
+
+    const requestReview = async (page: Page, tasks: string[]) => {
+      const submission = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/tasks' &&
+          response.request().method() === 'POST'
+      );
+      await clickIgnoringToasts(page.getByTestId('ontology-request-review'));
+      const task = await okJson<Task>(await submission, 'Request review');
+      tasks.push(task.id);
+
+      return task;
+    };
+
+    const reviewNow = async (page: Page, ontology: Ontology) => {
+      await openOntologyInStudio(page, ontology.id);
+      await page
+        .getByRole('button', { name: 'Review now', exact: true })
+        .click();
+      await expect(page.getByTestId('ontology-task-detail')).toBeVisible();
+    };
+
+    const decide = async (page: Page, button: string) => {
+      const resolved = page.waitForResponse(
+        (response) =>
+          /\/api\/v1\/tasks\/[^/]+\/resolve$/.test(response.url()) &&
+          response.request().method() === 'POST'
+      );
+      await clickIgnoringToasts(
+        page
+          .getByTestId('ontology-task-detail')
+          .getByRole('button', { name: button, exact: true })
+      );
+      expect((await resolved).status()).toBe(200);
+    };
+
+    for (const mode of MODES) {
+      test(`flow 5: an author publishes in one click when no reviewers are set and View shows the new version, in ${mode} mode`, async ({
+        browser,
+      }, testInfo) => {
+        test.slow();
+        const api = await getWorkerAdminAPIContext();
+        const actors = await reviewActors(api, browser);
+        const { authorPage: page, ontology } = actors;
+        try {
+          await useMode(page, mode);
+          await openPublicationDialog(page, ontology);
+          await expect(page.getByTestId('ontology-publish-release')).toHaveText(
+            'Publish v0.1.0'
+          );
+          await expect(page.getByTestId('ontology-request-review')).toHaveCount(
+            0
+          );
+          const activation = page.waitForResponse(isActivation(ontology.id));
+          await clickIgnoringToasts(
+            page.getByTestId('ontology-publish-release')
+          );
+          const state = await okJson<OntologyState>(
+            await activation,
+            'Publish directly'
+          );
+          await expect(
+            page.getByTestId('ontology-publication-notice-published')
+          ).toContainText(`v0.1.0 published. Everyone using ${ontology.name}`);
+          await attachStudioShot(page, testInfo, `p1-direct-${mode}`);
+          await closePublicationDialog(page);
+
+          await page.getByTestId('mode-tab-view').click();
+          await page.getByTestId('ontology-version-published').click();
+          await expect(page).toHaveURL(/version=published/);
+          await expect(
+            page.getByTestId('ontology-release-history-trigger')
+          ).toContainText('v0.1.0');
+          await page.getByTestId('submode-tab-tree').click();
+          await expect(
+            page.getByTestId(`ontology-tree-term-${actors.concept.id}`)
+          ).toBeVisible();
+          const release = await okJson<OntologyRelease>(
+            await api.get(`/api/v1/ontologyReleases/${state.activeReleaseId}`),
+            'Read the release'
+          );
+          expect(release.semanticVersion).toBe('0.1.0');
+          expect(release.approvalBasis).toBe('NO_REVIEWERS_CONFIGURED');
+        } finally {
+          await actors.cleanup();
+        }
+      });
+
+      test(`flow 6: a reviewer added in the publish dialog approves from Tasks, the author sees it in the Inbox and publishes, in ${mode} mode`, async ({
+        browser,
+      }, testInfo) => {
+        test.slow();
+        const api = await getWorkerAdminAPIContext();
+        const actors = await reviewActors(api, browser);
+        const { authorPage: author, reviewerPage: reviewer, ontology } = actors;
+        const reviewerName =
+          actors.reviewer.responseData.displayName ??
+          actors.reviewer.responseData.name;
+        try {
+          await useMode(author, mode);
+          await openPublicationDialog(author, ontology);
+          await expect(
+            author.getByTestId('ontology-publish-release')
+          ).toBeVisible();
+          const picker = author
+            .getByTestId('ontology-release-reviewers')
+            .getByRole('combobox', { name: 'Add reviewer' });
+          const option = author
+            .getByRole('option')
+            .filter({ hasText: reviewerName });
+          await expect(async () => {
+            await picker.click();
+            await picker.fill('');
+            await picker.fill(reviewerName);
+            await expect(option).toBeVisible({ timeout: 5_000 });
+          }).toPass({ timeout: 30_000 });
+          await option.click();
+          await expect(
+            author.getByTestId('ontology-request-review')
+          ).toBeEnabled();
+          await expect(
+            author.getByTestId('ontology-publish-release')
+          ).toHaveCount(0);
+
+          const task = await requestReview(author, actors.tasks);
+          await expect(
+            author.getByTestId('ontology-publication-notice-requested')
+          ).toContainText(`sent to ${reviewerName} for review`);
+          await expect(author).toHaveURL(/\/governance\/ontology/);
+
+          await reviewNow(reviewer, ontology);
+          await expect(
+            reviewer.getByTestId('ontology-review-panel')
+          ).toBeVisible();
+          await decide(reviewer, 'Approve');
+          await expect(
+            reviewer.getByTestId('ontology-task-detail')
+          ).toContainText('Approved');
+          expect(
+            (
+              await okJson<Task>(
+                await api.get(`/api/v1/tasks/${task.id}`),
+                'Read the approved task'
+              )
+            ).resolution?.type
+          ).toBeTruthy();
+
+          // Classic mode has no Inbox route, so its author reads the decision in Studio.
+          if (mode === 'ai') {
+            await expect(async () => {
+              await author.goto('/inbox/activity');
+              await expect
+                .poll(
+                  () =>
+                    author.getByText(`${reviewerName} approved v0.1.0`).count(),
+                  { timeout: 10_000 }
+                )
+                .toBeGreaterThan(0);
+            }).toPass({ timeout: 60_000 });
+          } else {
+            await openOntologyInStudio(author, ontology.id);
+            await expect(
+              author.getByTestId('ontology-review-decision-banner')
+            ).toContainText(`${reviewerName} approved`);
+          }
+          await attachStudioShot(author, testInfo, `p1-reviewed-inbox-${mode}`);
+
+          await openPublicationDialog(author, ontology);
+          const activation = author.waitForResponse(isActivation(ontology.id));
+          await clickIgnoringToasts(
+            author.getByTestId('ontology-publish-release')
+          );
+          const state = await okJson<OntologyState>(
+            await activation,
+            'Publish the approved release'
+          );
+          const release = await okJson<OntologyRelease>(
+            await api.get(`/api/v1/ontologyReleases/${state.activeReleaseId}`),
+            'Read the published release'
+          );
+          expect(release.approvalBasis).toBe('REVIEWED');
+          await closePublicationDialog(author);
+          await author.getByTestId('mode-tab-view').click();
+          await author.getByTestId('ontology-version-published').click();
+          await expect(
+            author.getByTestId('ontology-release-history-trigger')
+          ).toContainText(`v${release.semanticVersion}`);
+          await attachStudioShot(author, testInfo, `p1-reviewed-${mode}`);
+        } finally {
+          await actors.cleanup();
         }
       });
     }
