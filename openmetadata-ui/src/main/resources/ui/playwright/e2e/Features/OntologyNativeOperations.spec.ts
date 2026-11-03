@@ -195,17 +195,26 @@ test.describe(
               )
             ).assets[0].columns
           ).toEqual([]);
+          const removeTable = inspector.getByTestId(
+            `ontology-native-asset-remove-${table.entityResponseData.id}`
+          );
+          await clickIgnoringToasts(removeTable);
+          await page.getByTestId('ontology-unlink-cancel').click();
+          const retained = await okJson<OntologyConceptBindingsResponse>(
+            await api.get(bindingPath),
+            'Read cancelled unlink'
+          );
+          expect(retained.assets.map((asset) => asset.assetId)).toContain(
+            table.entityResponseData.id
+          );
+          await clickIgnoringToasts(removeTable);
           const unlinked = page.waitForResponse(
             (response) =>
               new URL(response.url()).pathname ===
                 `${bindingPath}/table/${table.entityResponseData.id}` &&
               response.request().method() === 'DELETE'
           );
-          await clickIgnoringToasts(
-            inspector.getByTestId(
-              `ontology-native-asset-remove-${table.entityResponseData.id}`
-            )
-          );
+          await page.getByTestId('ontology-unlink-confirm').click();
           expect(
             (
               await okJson<OntologyConceptBindingsResponse>(

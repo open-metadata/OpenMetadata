@@ -790,7 +790,7 @@ public class CreateTask implements TaskListener {
     return task;
   }
 
-  private void supersedePriorApprovalTask(
+  void supersedePriorApprovalTask(
       DelegateTask delegateTask,
       TaskRepository taskRepository,
       EntityInterface<?> entity,
@@ -807,9 +807,12 @@ public class CreateTask implements TaskListener {
         // reviews survive. Every other run keeps the entity-level supersede (requesterToMatch =
         // null).
         String requesterToMatch = reviewsChangeRequest(delegateTask) ? updatedBy : null;
-        taskRepository
-            .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
-            .stream()
+        List<Task> priors =
+            reviewsStaleRevision(delegateTask)
+                ? List.of()
+                : taskRepository.listNonTerminalTasksByEntityAndCategory(
+                    entity.getFullyQualifiedName(), taskCategory);
+        priors.stream()
             .filter(
                 prior ->
                     isSupersedablePriorApprovalTask(
@@ -1239,6 +1242,17 @@ public class CreateTask implements TaskListener {
   }
 
   // Whether this run reviews a change request: such a run carries the request in its variables.
+  // A change request's runs can finish out of order. The run of a revision the request has since
+  // replaced must leave the newer revision's live review alone; attachTask then closes its own
+  // task.
+  static boolean reviewsStaleRevision(DelegateTask delegateTask) {
+    return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask))
+        .filter(
+            run ->
+                !ChangeRequestService.isActiveRevision(run.changeRequestId(), run.revisionNumber()))
+        .isPresent();
+  }
+
   private static boolean reviewsChangeRequest(DelegateTask delegateTask) {
     return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask)).isPresent();
   }

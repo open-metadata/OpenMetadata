@@ -64,6 +64,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -80,6 +81,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ApiStatus;
@@ -90,6 +92,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -112,7 +115,16 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.PolicyDeniedException;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
@@ -980,7 +992,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   public List<CSVRecord> parse(String csv) {
     Reader in = new StringReader(csv);
     try {
-      return CSVFormat.DEFAULT.parse(in).stream().toList();
+      return restoreFormulas(CSVFormat.DEFAULT.parse(in).getRecords());
     } catch (IOException e) {
       documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
@@ -1011,8 +1023,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       for (CSVRecord record : parser) {
         List<String> fixedRow = new ArrayList<>();
         for (String value : record) {
-          // Preserve the raw value without additional processing
-          fixedRow.add(value);
+          fixedRow.add(CsvUtil.restoreFormula(value));
         }
         // Pad or trim the row to match the number of columns in headers
         fixedRow = padOrTrimColumns(fixedRow);
@@ -1027,6 +1038,24 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     }
 
     return records;
+  }
+
+  // CSVRecord is immutable, so records with escaped formula cells are re-printed and re-parsed.
+  private static List<CSVRecord> restoreFormulas(List<CSVRecord> records) throws IOException {
+    boolean anyEscaped =
+        records.stream()
+            .flatMap(CSVRecord::stream)
+            .anyMatch(value -> !value.equals(CsvUtil.restoreFormula(value)));
+    if (!anyEscaped) {
+      return records;
+    }
+    StringWriter writer = new StringWriter();
+    try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT)) {
+      for (CSVRecord csvRecord : records) {
+        printer.printRecord(csvRecord.stream().map(CsvUtil::restoreFormula).toList());
+      }
+    }
+    return CSVFormat.DEFAULT.parse(new StringReader(writer.toString())).getRecords();
   }
 
   private List<CSVRecord> convertToCSVRecords(List<List<String>> fixedRows, List<String> headers)
@@ -1131,6 +1160,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       // In case of updating entity, prepareInternal as update=True
       T original = repository.findMatchForImport(entity);
       boolean isUpdate = original != null;
+      authorizeRow(entityType, original, entity);
 
       // Validate entity against platform rules (for BOTH dry run and actual import)
       if (isUpdate) {
@@ -1181,14 +1211,12 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
       }
     } catch (Exception ex) {
-      pendingCsvResults.put(csvRecord, ex.getMessage());
-      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
-      importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
-      importResult.setStatus(ApiStatus.FAILURE);
+      failRow(csvRecord, ex.getMessage());
       return;
     }
 
     if (Response.Status.CREATED.equals(responseStatus)) {
+      recordCreated(entity);
       pendingCsvResults.put(csvRecord, ENTITY_CREATED);
       importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
       // For dry run, count as passed immediately since no batch operations occur
@@ -1232,6 +1260,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       // In case of updating entity, prepareInternal as update=True
       T original = (T) repository.findMatchForImport(entity);
       boolean isUpdate = original != null;
+      authorizeRow(type, original, entity);
 
       // Validate entity against platform rules (for BOTH dry run and actual import)
       if (isUpdate) {
@@ -1279,14 +1308,12 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
       }
     } catch (Exception ex) {
-      pendingCsvResults.put(csvRecord, ex.getMessage());
-      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
-      importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
-      importResult.setStatus(ApiStatus.FAILURE);
+      failRow(csvRecord, ex.getMessage());
       return;
     }
 
     if (Response.Status.CREATED.equals(responseStatus)) {
+      recordCreated(entity);
       pendingCsvResults.put(csvRecord, ENTITY_CREATED);
       importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
       // For dry run, count as passed immediately since no batch operations occur
@@ -1401,6 +1428,188 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
                 LOG.error("Error batch inserting change events", e);
               }
             });
+  }
+
+  // Entities this import created, as their child rows see them: the parent may not be stored yet
+  // (writes are batched, and a dry run stores nothing), so the same record serves both runs.
+  // Entities this import created, by canonical FQN; the row entity itself, not a copy
+  private final Map<String, EntityInterface<?>> createdByImport = new HashMap<>();
+  // A created entity as its child rows see it, built once for each one that has child rows
+  private final Map<String, EntityInterface<?>> createdParentViews = new HashMap<>();
+  private Boolean checksRowWrites;
+
+  /**
+   * Whether rows are authorized one by one. The authorizer lets an admin through without evaluating
+   * any policy, so an admin's import skips the per-row work too.
+   */
+  protected boolean checksRowWrites() {
+    if (checksRowWrites == null) {
+      checksRowWrites = !importerIsAdmin();
+    }
+    return checksRowWrites;
+  }
+
+  private boolean importerIsAdmin() {
+    try {
+      return SubjectContext.getSubjectContext(importedBy).isAdmin();
+    } catch (EntityNotFoundException e) {
+      return false; // the authorizer refuses the first row
+    }
+  }
+
+  /**
+   * The import endpoint authorizes only its root, but a row can name any entity by FQN, so each row
+   * is authorized as its own write: EDIT_ALL on an existing entity, as a PUT is, CREATE for a new one.
+   */
+  protected void authorizeRow(String type, EntityInterface<?> original, EntityInterface<?> entity) {
+    if (!checksRowWrites()) {
+      return;
+    }
+    if (original != null) {
+      authorize(
+          new OperationContext(type, MetadataOperation.EDIT_ALL),
+          new ResourceContext<>(type, original.getId(), null, Include.ALL));
+      return;
+    }
+    authorize(new OperationContext(type, MetadataOperation.CREATE), createContext(type, entity));
+  }
+
+  /**
+   * Authorizes the importer for any one of the requests, as AuthorizationLogic.ANY does: every
+   * request is checked, and an explicit deny on any of them refuses the row.
+   */
+  protected void authorizeRowForAny(Supplier<List<AuthRequest>> requests) {
+    if (!checksRowWrites()) {
+      return;
+    }
+    boolean allowed = false;
+    PolicyDeniedException denied = null;
+    RuntimeException refused = new IllegalStateException("No write to authorize the row against");
+    for (AuthRequest request : requests.get()) {
+      try {
+        authorize(request.operationContext(), request.resourceContext());
+        allowed = true;
+      } catch (PolicyDeniedException e) {
+        denied = e;
+      } catch (AuthorizationException e) {
+        refused = e;
+      }
+    }
+    if (denied != null) {
+      throw denied;
+    }
+    if (!allowed) {
+      throw refused;
+    }
+  }
+
+  /** Records a row's new entity once the row has succeeded, so its child rows find it. */
+  protected void recordCreated(EntityInterface<?> entity) {
+    if (checksRowWrites()) {
+      createdByImport.put(createdKey(entity.getFullyQualifiedName()), entity);
+    }
+  }
+
+  // Column rows are written as one PATCH of their table, so they are checked as that PATCH. A table
+  // this import created was authorized with its columns; another type with the same FQN was not.
+  private void authorizeColumnPatch(TableUpdateContext context, Supplier<JsonPatch> patch) {
+    String tableFqn = createdKey(context.updatedTable.getFullyQualifiedName());
+    if (checksRowWrites() && !(createdByImport.get(tableFqn) instanceof Table)) {
+      authorize(
+          new OperationContext(TABLE, patch.get()),
+          new ResourceContext<>(TABLE, context.originalTable.getId(), null, Include.ALL));
+    }
+  }
+
+  private void authorize(OperationContext operation, ResourceContextInterface resource) {
+    importAuthorizer().authorizeActor(ChangeActor.recorded(importedBy, null), operation, resource);
+  }
+
+  private Authorizer importAuthorizer() {
+    Authorizer authorizer = Entity.getAuthorizer();
+    if (authorizer == null) {
+      throw new IllegalStateException(
+          "No authorizer is registered to check the import by " + importedBy);
+    }
+    return authorizer;
+  }
+
+  private CreateResourceContext<?> createContext(String type, EntityInterface<?> entity) {
+    List<EntityInterface<?>> parents = parentsCreatedHere(entity);
+    return parents.isEmpty()
+        ? new CreateResourceContext<>(type, entity)
+        : new CreateResourceContext<>(type, entity, parents);
+  }
+
+  // Parents this import created; a stored parent is left to CreateResourceContext, as on REST
+  private List<EntityInterface<?>> parentsCreatedHere(EntityInterface<?> entity) {
+    if (entity instanceof Team team) {
+      return teamParents(team);
+    }
+    EntityInterface<?> parent = createdParent(createdKey(parentFqn(entity)));
+    return parent == null ? List.of() : List.of(parent);
+  }
+
+  // Teams name their parents rather than nesting under them in the FQN, and REST checks all of them
+  private List<EntityInterface<?>> teamParents(Team team) {
+    List<EntityReference> refs = listOrEmpty(team.getParents());
+    List<EntityInterface<?>> parents = new ArrayList<>();
+    if (refs.stream().anyMatch(ref -> createdByImport.containsKey(teamKey(ref)))) {
+      for (EntityReference ref : refs) {
+        EntityInterface<?> parent = createdParent(teamKey(ref));
+        parents.add(parent != null ? parent : Entity.getEntity(ref, "owners,domains", Include.ALL));
+      }
+    }
+    return parents;
+  }
+
+  private EntityInterface<?> createdParent(String key) {
+    EntityInterface<?> view = key == null ? null : createdParentViews.get(key);
+    EntityInterface<?> created = key == null ? null : createdByImport.get(key);
+    if (view == null && created != null) {
+      createdParentViews.put(key, created); // ends a cycle of team parents
+      view = asParent(created);
+      createdParentViews.put(key, view);
+    }
+    return view;
+  }
+
+  // A created entity as a child row sees it: its own owners, or its parent's where the type
+  // inherits
+  // owners (e.g. a schema, not a database), and its parents' domains too
+  private EntityInterface<?> asParent(EntityInterface<?> created) {
+    String type = Entity.getEntityTypeFromObject(created);
+    CreateResourceContext<?> context = createContext(type, created);
+    EntityInterface<?> parent =
+        JsonUtils.readValue(JsonUtils.pojoToJson(created), created.getClass());
+    if (nullOrEmpty(parent.getOwners()) && Entity.getEntityRepository(type).inheritsOwners()) {
+      parent.setOwners(context.getOwners());
+    }
+    parent.setDomains(context.getDomains());
+    return parent;
+  }
+
+  private String teamKey(EntityReference ref) {
+    return createdKey(FullyQualifiedName.quoteName(ref.getName()));
+  }
+
+  // A dry run stands in for a parent it has not stored with a stub named by the parent's whole FQN,
+  // so its children quote that FQN as one part (e.g. "svc.db".schema). A dry run writes nothing, so
+  // it matches without quotes; a real run matches each FQN in one spelling.
+  private String createdKey(String fqn) {
+    return Boolean.TRUE.equals(importResult.getDryRun()) && fqn != null
+        ? fqn.replace("\"", "")
+        : canonicalFqn(fqn);
+  }
+
+  // One spelling per FQN, so "svc"."db" and svc.db match while svc."a.b" and svc.a.b do not
+  private static String canonicalFqn(String fqn) {
+    return fqn == null ? null : FullyQualifiedName.build(FullyQualifiedName.split(fqn));
+  }
+
+  private static String parentFqn(EntityInterface<?> entity) {
+    String fqn = entity.getFullyQualifiedName();
+    return fqn == null ? null : FullyQualifiedName.getParentFQN(fqn);
   }
 
   /** Write pending CSV results to output */
@@ -2170,6 +2379,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       if (Boolean.FALSE.equals(importResult.getDryRun())) {
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(context.originalTable, context.updatedTable);
+          authorizeColumnPatch(context, () -> jsonPatch);
           UUID pendingChangeRequestId =
               tableRepo
                   .patch(null, context.updatedTable.getId(), importedBy, jsonPatch)
@@ -2181,17 +2391,16 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
               "Batch patched table {} with {} column updates", tableFQN, context.csvRecords.size());
         } catch (Exception ex) {
           LOG.error("Failed to batch patch table {}: {}", tableFQN, ex.getMessage());
-          // Mark these CSV records as failures - they'll be written as failures in
-          // flushPendingCsvResults
-          for (CSVRecord record : context.csvRecords) {
-            pendingCsvResults.put(record, ex.getMessage());
-            // These were previously counted as passed, now move to failed count
-            importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() - 1);
-            importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
-          }
-          importResult.setStatus(ApiStatus.PARTIAL_SUCCESS);
+          failTableRows(context, ex.getMessage());
         }
       } else {
+        try {
+          authorizeColumnPatch(
+              context, () -> JsonUtils.getJsonPatch(context.originalTable, context.updatedTable));
+        } catch (Exception ex) {
+          failTableRows(context, ex.getMessage());
+          continue;
+        }
         // Dry run mode: track the updated table
         tableRepo.setFullyQualifiedName(context.updatedTable);
         dryRunCreatedEntities.put(
@@ -2203,6 +2412,24 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     }
 
     pendingTableUpdates.clear();
+  }
+
+  // A failed row is reported with the batch, and the rest of the import continues
+  private void failRow(CSVRecord csvRecord, String message) {
+    pendingCsvResults.put(csvRecord, message);
+    importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
+    importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+    importResult.setStatus(ApiStatus.FAILURE);
+  }
+
+  // The column rows of one table were counted as passed when queued; a failed patch fails them all
+  private void failTableRows(TableUpdateContext context, String message) {
+    for (CSVRecord record : context.csvRecords) {
+      pendingCsvResults.put(record, message);
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() - 1);
+      importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+    }
+    importResult.setStatus(ApiStatus.PARTIAL_SUCCESS);
   }
 
   // The column rows of one table are written as a single patch; when that patch is held for

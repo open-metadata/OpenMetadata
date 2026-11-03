@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
 import { MemoryRouter } from 'react-router-dom';
+import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   AxiomType,
@@ -2132,6 +2133,50 @@ describe('OntologyGraphView', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('keeps a pending class attempt mounted when another canvas node is selected', async () => {
+    let rejectPreparation: (reason: Error) => void = (_reason: Error) =>
+      undefined;
+    (getOntologyState as jest.Mock).mockReturnValue(
+      new Promise((_, reject) => {
+        rejectPreparation = reject;
+      })
+    );
+    const view = (key: number) => (
+      <MemoryRouter>
+        <OntologyDraftProvider>
+          <OntologyGraphView
+            isEditing
+            createConceptRequestKey={key}
+            ontology={ontology}
+            surface="graph"
+            onRequestGraphSurface={jest.fn()}
+          />
+        </OntologyDraftProvider>
+      </MemoryRouter>
+    );
+    const { rerender } = render(view(0));
+    rerender(view(1));
+    fireEvent.change(await screen.findByTestId('new-class-label'), {
+      target: { value: 'Funds Transfer' },
+    });
+    fireEvent.click(screen.getByTestId('new-class-create'));
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-new-class-close')).toBeDisabled()
+    );
+    fireEvent.click(screen.getByTestId(`native-graph-node-${customer.id}`));
+
+    expect(
+      screen.getByRole('button', { name: 'label.discard' })
+    ).toBeDisabled();
+    expect(screen.getByTestId('ontology-new-class-panel')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+    await act(async () => rejectPreparation(new Error('Preparation failed')));
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-new-class-close')).toBeEnabled()
+    );
+  });
+
   it('closes the New class panel and releases the page after an applied class the canvas cannot place', async () => {
     const created = concept('FundsTransfer');
     const refreshed = { ...model, concepts: [...model.concepts, created] };
@@ -2415,7 +2460,7 @@ describe('OntologyGraphView', () => {
     }
     await act(() => created);
     await waitFor(() =>
-      expect(screen.queryByText('label.loading')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument()
     );
 
     expect(createOntologyProperty).toHaveBeenCalledTimes(2);

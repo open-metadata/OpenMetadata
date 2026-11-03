@@ -239,14 +239,15 @@ public final class TestLoginOidcHandler {
     return redeemed;
   }
 
-  /** Mirrors the live callback: redeem the code when there is one, else use the returned token. */
+  /** Mirrors the live callback: only a code is accepted, and the token endpoint answers for it. */
   private static OidcCredentials credentialsFor(
       ReceivedCallback received, TestLoginHandshake.Oidc handshake) {
     OidcCredentials credentials =
         AuthenticationCodeFlowHandler.buildCredentials(received.response());
-    if (credentials.getCode() != null) {
-      redeemCode(received.configuration(), credentials, handshake);
+    if (credentials.getCode() == null) {
+      throw new TechnicalException(AuthenticationCodeFlowHandler.AUTHORIZATION_CODE_REQUIRED);
     }
+    redeemCode(received.configuration(), credentials, handshake);
     return credentials;
   }
 

@@ -197,7 +197,7 @@ test('Classification Page', async ({ page }) => {
     await table.visitEntityPage(page);
 
     const disabledTrigger = page.locator(
-      '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+      '[data-testid="classification-tags-0"] [data-testid="add-tag"]'
     );
     await openClassificationTagPicker(page, disabledTrigger);
 

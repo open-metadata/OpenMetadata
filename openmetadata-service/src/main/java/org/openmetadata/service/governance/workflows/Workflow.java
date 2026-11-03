@@ -16,6 +16,9 @@ public class Workflow {
   // that the gate raises when it holds a change. The trigger filter reads it to evaluate the fields
   // and the proposed entity for exactly that edit, rather than the requester's accumulated hold.
   public static final String PENDING_HELD_CHANGE_VARIABLE = "pendingHeldChange";
+  // The entity version the triggering event produced. Its change, read from the entity's history,
+  // is the edit the run judges, even when a later edit has replaced the entity's current change.
+  public static final String TRIGGERING_VERSION_VARIABLE = "triggeringVersion";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";

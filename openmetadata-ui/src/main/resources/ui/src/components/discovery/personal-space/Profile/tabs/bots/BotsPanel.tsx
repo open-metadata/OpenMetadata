@@ -213,7 +213,9 @@ const BotsPanel: FC<BotsPanelProps> = ({ onHeaderChange }) => {
   }, [view, onNavigate, listRefreshKey]);
 
   return (
-    <div className="tw:flex tw:flex-1 tw:flex-col tw:min-h-0">{content}</div>
+    <div className="tw:flex tw:flex-1 tw:flex-col tw:min-h-0 tw:overflow-y-auto">
+      {content}
+    </div>
   );
 };
 

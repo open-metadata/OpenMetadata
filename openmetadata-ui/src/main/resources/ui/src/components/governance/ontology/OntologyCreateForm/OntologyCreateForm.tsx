@@ -27,6 +27,7 @@ import { RegisterOptions, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Layer } from '../../../../generated/api/data/createOntology';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { patchOntology } from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -92,6 +93,7 @@ const OntologyCreateForm = ({
   const form = useForm<OntologyFormValues>({
     defaultValues: ontologyFormValues(ontology),
   });
+  const markSaved = useOntologyDirtyForm(form.formState.isDirty);
   const [isSaving, setIsSaving] = useState(false);
   const save = async (values: OntologyFormValues) => {
     if (!canEdit) {
@@ -99,9 +101,13 @@ const OntologyCreateForm = ({
     }
     setIsSaving(true);
     try {
-      onSaved(
-        await patchOntology(ontology.id, ontologyPatch(ontology, values))
+      const saved = await patchOntology(
+        ontology.id,
+        ontologyPatch(ontology, values)
       );
+      form.reset(ontologyFormValues(saved));
+      markSaved();
+      onSaved(saved);
     } catch (error) {
       showErrorToast(
         isAxiosError(error) ? error : t('server.unexpected-error')

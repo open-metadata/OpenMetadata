@@ -27,8 +27,11 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.util.*;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,8 +39,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -1197,5 +1205,80 @@ class LineageRepositoryTest {
     LineageRepository lineageRepository = new LineageRepository();
     assertThrows(
         EntityNotFoundException.class, () -> lineageRepository.getLineageEdgeEnds(fromId, toId));
+  }
+
+  @Test
+  void testExportCsvAsync_NeutralizesFormulaCells() throws Exception {
+    when(searchRepository.searchLineage(any(), any())).thenReturn(pipelineEdgeWithFormulas());
+
+    String csv =
+        new LineageRepository().exportCsvAsync("db.schema.from", 1, 1, null, "table", false);
+
+    assertFormulaCellsNeutralized(csv);
+  }
+
+  @Test
+  void testExportByEntityCountCsvAsync_NeutralizesFormulaCells() throws Exception {
+    when(searchRepository.searchLineageByEntityCount(any(), any()))
+        .thenReturn(pipelineEdgeWithFormulas());
+
+    String csv =
+        new LineageRepository()
+            .exportByEntityCountCsvAsync(
+                "db.schema.from",
+                LineageDirection.DOWNSTREAM,
+                0,
+                10,
+                1,
+                1,
+                null,
+                false,
+                "table",
+                "*");
+
+    assertFormulaCellsNeutralized(csv);
+  }
+
+  private static SearchLineageResult pipelineEdgeWithFormulas() {
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    Map<String, Object> pipeline =
+        Map.of(
+            "name", "etl",
+            "displayName", "+SUM(1,1)",
+            "description", "=HYPERLINK(\"http://example.com\")");
+    EsLineageData edge =
+        new EsLineageData()
+            .withFromEntity(new RelationshipRef().withId(fromId))
+            .withToEntity(new RelationshipRef().withId(toId))
+            .withPipeline(pipeline);
+    return new SearchLineageResult()
+        .withNodes(
+            Map.of(
+                "from", lineageNode(fromId, "db.schema.from"),
+                "to", lineageNode(toId, "db.schema.to")))
+        .withUpstreamEdges(Map.of("edge", edge))
+        .withDownstreamEdges(Map.of());
+  }
+
+  private static NodeInformation lineageNode(UUID id, String fqn) {
+    return new NodeInformation().withEntity(Map.of("id", id.toString(), "fullyQualifiedName", fqn));
+  }
+
+  private static void assertFormulaCellsNeutralized(String csv) throws Exception {
+    List<CSVRecord> records =
+        CSVFormat.DEFAULT
+            .builder()
+            .setHeader()
+            .setSkipHeaderRecord(true)
+            .build()
+            .parse(new StringReader(csv))
+            .getRecords();
+    assertEquals(1, records.size());
+    CSVRecord row = records.getFirst();
+    assertEquals("db.schema.from", row.get("fromEntityFQN"));
+    assertEquals("etl", row.get("pipelineName"));
+    assertEquals("'+SUM(1,1)", row.get("pipelineDisplayName"));
+    assertEquals("'=HYPERLINK(\"http://example.com\")", row.get("pipelineDescription"));
   }
 }
