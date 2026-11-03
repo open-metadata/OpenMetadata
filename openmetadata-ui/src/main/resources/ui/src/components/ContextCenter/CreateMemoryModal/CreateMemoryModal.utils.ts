@@ -14,10 +14,13 @@ import { compare } from 'fast-json-patch';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/type';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getQueryPath } from '../../../utils/RouterUtils';
-import { MEMORY_TYPE_OPTIONS } from '../../../constants/ContextCenter.constants';
+import {
+  CONTEXT_FILE_ENTITY_TYPE,
+  MEMORY_TYPE_OPTIONS,
+} from '../../../constants/ContextCenter.constants';
 import {
   ContextMemory,
   EntityReference,
@@ -41,8 +44,9 @@ import {
 const MEMORY_LABEL_KEY = 'label.memory';
 
 /**
- * Where a linked asset opens. A Query has no page of its own: it opens full screen on the table it
- * was linked from, so without one in the memory it stays unlinked.
+ * Where a linked asset opens, or undefined when it has nowhere to open. A Query has no page of its
+ * own: it opens full screen on the table it was linked from. A document opens in Context Center. A
+ * type with no route of its own stays unlinked rather than opening as a table.
  */
 export const getLinkedAssetPath = (
   reference?: EntityReference,
@@ -56,11 +60,18 @@ export const getLinkedAssetPath = (
       ? getQueryPath(tableFqn, reference.id)
       : undefined;
   }
+  if (reference.type === CONTEXT_FILE_ENTITY_TYPE) {
+    return reference.id
+      ? contextCenterClassBase.getDocumentPath(reference.id)
+      : undefined;
+  }
 
-  return entityUtilClassBase.getEntityLink(
-    reference.type,
-    reference.fullyQualifiedName
-  );
+  return entityUtilClassBase.hasEntityLink(reference.type)
+    ? entityUtilClassBase.getEntityLink(
+        reference.type,
+        reference.fullyQualifiedName
+      )
+    : undefined;
 };
 
 export const getAssetKey = (asset: DataAssetOption): string =>

@@ -21,6 +21,7 @@ import {
 import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
+export const CONTEXT_FILE_ENTITY_TYPE = 'contextFile';
 
 // Quick-filter fields shown above the Context Center Articles list. Options are
 // fetched from the `page` search-index aggregations by ExploreQuickFilters.

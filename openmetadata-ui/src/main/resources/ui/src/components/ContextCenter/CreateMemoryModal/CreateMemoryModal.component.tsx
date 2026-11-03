@@ -131,8 +131,9 @@ const DEFAULT_FORM_VALUES: MemoryFormValues = {
 const LinkedAssetCard: FC<{
   asset: DataAssetOption;
   href?: string;
+  onNavigate?: () => void;
   onRemove?: (fqn: string) => void;
-}> = ({ asset, href, onRemove }) => {
+}> = ({ asset, href, onNavigate, onRemove }) => {
   const displayName =
     asset.displayName || (typeof asset.label === 'string' ? asset.label : '');
 
@@ -165,7 +166,10 @@ const LinkedAssetCard: FC<{
                 className="tw:text-brand-secondary tw:hover:underline"
                 data-testid="linked-asset-link"
                 to={href}
-                onClick={(event) => event.stopPropagation()}>
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onNavigate?.();
+                }}>
                 {displayName}
               </Link>
             ) : (
@@ -225,9 +229,11 @@ const EmptyTags: FC = () => {
   );
 };
 
-const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
-  assets,
-}) => {
+// The modal outlives a route change in AI mode, so following a link closes it.
+const LinkedAssetsReadOnly: FC<{
+  assets: DataAssetOption[];
+  onNavigate: () => void;
+}> = ({ assets, onNavigate }) => {
   if (assets.length === 0) {
     return <EmptyLinkedAssets />;
   }
@@ -243,6 +249,7 @@ const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
           asset={asset}
           href={getLinkedAssetPath(asset.reference, tableFqn)}
           key={asset.reference?.fullyQualifiedName ?? String(asset.value ?? '')}
+          onNavigate={onNavigate}
         />
       ))}
     </div>
@@ -260,6 +267,7 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
   memoryToEdit,
   memorySource,
   memorySourceLink,
+  onNavigate,
   t,
 }) => (
   <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0 tw:px-6">
@@ -308,7 +316,8 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           <Link
             className="tw:text-xs tw:font-medium tw:text-brand-secondary tw:hover:underline tw:truncate"
             data-testid="memory-source-file-link"
-            to={memorySourceLink}>
+            to={memorySourceLink}
+            onClick={onNavigate}>
             {getEntityName(memorySource)}
           </Link>
         </div>
@@ -363,6 +372,7 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
   linkedAssets,
   setLinkedAssets,
   handleAssetChange,
+  onNavigate,
   t,
 }) => (
   <div className="tw:flex tw:flex-col tw:gap-2">
@@ -393,7 +403,7 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
     </Box>
 
     {isViewOnly ? (
-      <LinkedAssetsReadOnly assets={linkedAssets} />
+      <LinkedAssetsReadOnly assets={linkedAssets} onNavigate={onNavigate} />
     ) : (
       <>
         {linkedAssets.length === 0 ? (
@@ -899,7 +909,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       ? contextCenterClassBase.getArticlePath(
           memorySource.fullyQualifiedName ?? ''
         )
-      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
+      : contextCenterClassBase.getDocumentPath(memorySource.id);
   }, [memorySource]);
 
   const submitLabel = isEditMode
@@ -1162,6 +1172,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 memoryToEdit={memoryToEdit}
                 modalTitle={modalTitle}
                 t={t}
+                onNavigate={handleClose}
               />
 
               {/* Scrollable body */}
@@ -1257,6 +1268,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   linkedAssets={linkedAssets}
                   setLinkedAssets={setLinkedAssets}
                   t={t}
+                  onNavigate={handleClose}
                 />
 
                 {/* Section 5: Metadata */}

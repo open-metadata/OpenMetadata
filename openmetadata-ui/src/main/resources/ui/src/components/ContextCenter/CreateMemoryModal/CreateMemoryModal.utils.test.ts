@@ -84,6 +84,37 @@ describe('getLinkedAssetPath', () => {
       })
     ).toBe('/table/svc.db.sch.fct_fee_revenue');
   });
+
+  // A memory extracted from a document links that document.
+  it('opens a document in Context Center', () => {
+    expect(
+      getLinkedAssetPath({
+        id: 'file-id',
+        type: 'contextFile',
+        fullyQualifiedName: 'policies.expense_policy.pdf',
+      })
+    ).toBe('/context-center/documents?document=file-id');
+  });
+
+  it('opens an article in Context Center', () => {
+    expect(
+      getLinkedAssetPath({
+        id: 'page-id',
+        type: EntityType.KNOWLEDGE_PAGE,
+        fullyQualifiedName: 'expense_policy',
+      })
+    ).toBe('/context-center/articles/expense_policy');
+  });
+
+  it('leaves a type with no page of its own unlinked', () => {
+    expect(
+      getLinkedAssetPath({
+        id: 'memory-id',
+        type: 'contextMemory',
+        fullyQualifiedName: 'refund-window',
+      })
+    ).toBeUndefined();
+  });
 });
 
 describe('submitMemoryUpdate', () => {

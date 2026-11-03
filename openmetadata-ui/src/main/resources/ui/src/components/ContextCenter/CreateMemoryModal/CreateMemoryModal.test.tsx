@@ -64,6 +64,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn(() => null),
+  getEntityIconWithBg: jest.fn(() => null),
 }));
 
 jest.mock('../../../utils/TagClassBase', () => ({
@@ -367,6 +368,86 @@ describe('CreateMemoryModal', () => {
     );
 
     fireEvent.click(termLink);
+
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // In AI mode the modal outlives a route change, so following a link closes it.
+  it('opens linked assets where they live and closes on the way', () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'expense-limit',
+      title: 'Expense limit',
+      memory: 'Meals are reimbursed up to 50 EUR.',
+      primaryEntity: {
+        id: 'table-id',
+        type: 'table',
+        name: 'fct_expenses',
+        fullyQualifiedName: 'svc.db.sch.fct_expenses',
+      },
+      relatedEntities: [
+        {
+          id: 'file-id',
+          type: 'contextFile',
+          name: 'expense_policy.pdf',
+          fullyQualifiedName: 'policies.expense_policy.pdf',
+        },
+        {
+          id: 'other-memory-id',
+          type: 'contextMemory',
+          name: 'refund-window',
+          displayName: 'Refund window',
+          fullyQualifiedName: 'refund-window',
+        },
+      ],
+    } as ContextMemory;
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    const links = screen.getAllByTestId('linked-asset-link');
+
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/table/svc.db.sch.fct_expenses',
+      '/context-center/documents?document=file-id',
+    ]);
+    expect(screen.getByText('Refund window').closest('a')).toBeNull();
+
+    fireEvent.click(links[1]);
+
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes when the document a memory came from is opened', () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'expense-limit',
+      memory: 'Meals are reimbursed up to 50 EUR.',
+      sourceEntity: {
+        id: 'file-id',
+        type: 'contextFile',
+        name: 'expense_policy.pdf',
+        fullyQualifiedName: 'policies.expense_policy.pdf',
+      },
+    } as ContextMemory;
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    const source = screen.getByTestId('memory-source-file-link');
+
+    expect(source).toHaveAttribute(
+      'href',
+      '/context-center/documents?document=file-id'
+    );
+
+    fireEvent.click(source);
 
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });

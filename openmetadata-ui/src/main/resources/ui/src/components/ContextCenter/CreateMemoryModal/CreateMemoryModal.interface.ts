@@ -51,6 +51,7 @@ export interface MemoryModalHeaderProps {
   memoryToEdit?: ContextMemory;
   memorySource?: EntityReference;
   memorySourceLink?: string;
+  onNavigate: () => void;
   t: TFunc;
 }
 
@@ -67,6 +68,7 @@ export interface LinkedAssetsSectionProps {
   linkedAssets: DataAssetOption[];
   setLinkedAssets: Dispatch<SetStateAction<DataAssetOption[]>>;
   handleAssetChange: (option?: DataAssetOption | DataAssetOption[]) => void;
+  onNavigate: () => void;
   t: TFunc;
 }
 
