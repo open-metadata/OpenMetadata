@@ -30,6 +30,10 @@ const mockTeamOwner = [
 ];
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Avatar: jest
+    .fn()
+    .mockImplementation(({ placeholder }) => <span>{placeholder}</span>),
+  Divider: jest.fn().mockImplementation(() => <hr />),
   Typography: jest
     .fn()
     .mockImplementation(({ children, 'data-testid': testId }) => (
@@ -46,6 +50,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     Menu: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     Item: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   },
+}));
+
+// Render the overflow tooltip open so its owner list can be asserted on.
+jest.mock('react-aria-components', () => ({
+  ...jest.requireActual('react-aria-components'),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <>{children}</>),
+  Tooltip: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 jest.mock('../ProfilePicture/ProfilePicture', () => {
@@ -165,5 +180,44 @@ describe('OwnerLabel component', () => {
     expect(
       await screen.findByTestId('inherited-owner-icon')
     ).toBeInTheDocument();
+  });
+
+  it('should mark and name a single inherited owner in the non-compact view', async () => {
+    render(
+      <OwnerLabel
+        isCompactView={false}
+        owners={[{ ...mockOwner[0], inherited: true }]}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(
+      await screen.findByTestId('inherited-owner-icon')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: `${mockOwner[0].name}, label.inherited-entity`,
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('should mark inherited owners in the non-compact overflow popover', async () => {
+    render(
+      <OwnerLabel
+        isCompactView={false}
+        maxVisibleOwners={1}
+        owners={[
+          { ...mockOwner[0], inherited: true },
+          { id: 'second-id', type: 'user', name: 'Second', inherited: true },
+        ]}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const popover = await screen.findByTestId('owners-overflow-popover');
+
+    expect(
+      popover.querySelectorAll('[data-testid="inherited-owner-icon"]')
+    ).toHaveLength(2);
   });
 });

@@ -21,7 +21,8 @@ interface OwnerInheritedBadgeProps {
 }
 
 // The avatar badges clip to a circle (overflow: hidden), so the corner icon
-// sits on a wrapper outside the clipped element.
+// sits on a wrapper outside the clipped element; z-1 keeps it above the next
+// avatar in an overlapping stack.
 export const OwnerInheritedBadge = ({
   owner,
   children,
@@ -39,7 +40,7 @@ export const OwnerInheritedBadge = ({
         aria-label={t('label.inherited-entity', {
           entity: t('label.owner'),
         })}
-        className="tw:absolute tw:-right-0.5 tw:-bottom-0.5 tw:flex tw:size-3 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:text-fg-secondary"
+        className="tw:absolute tw:z-1 tw:-right-0.5 tw:-bottom-0.5 tw:flex tw:size-3 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:text-fg-secondary"
         data-testid="inherited-owner-icon"
         role="img">
         <InheritIcon height={8} width={8} />
