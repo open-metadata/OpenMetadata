@@ -1071,9 +1071,13 @@ public class MetricRepository extends EntityRepository<Metric> {
       Optional<Set<UUID>> pickedGroups, Predicate<EntityReference> canViewMetric) {
     MetricGroupRepository groups =
         (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+    // The hierarchy tests a group once per row and again per metric in it, so each group's member
+    // scan is kept for the request.
+    Map<UUID, Boolean> holdsVisibleMetric = new java.util.concurrent.ConcurrentHashMap<>();
     return group ->
         pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
-            || groups.hasVisibleMemberMatching(group.getId(), null, canViewMetric);
+            || holdsVisibleMetric.computeIfAbsent(
+                group.getId(), id -> groups.hasVisibleMemberMatching(id, null, canViewMetric));
   }
 
   /**
