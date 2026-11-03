@@ -25,7 +25,6 @@ import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
@@ -421,15 +420,23 @@ class ContextMemoryExtractionIT {
   }
 
   private ContextFile file(TestNamespace ns, String label, String text) throws Exception {
+    UUID contentId = UUID.randomUUID();
     ContextFile file =
         ns.trackRoot(
             Entity.CONTEXT_FILE,
-            RestClient.admin()
+            fileRepository()
                 .create(
-                    FILES, new CreateContextFile().withName(ns.prefix(label)), ContextFile.class));
+                    null,
+                    new ContextFile()
+                        .withId(UUID.randomUUID())
+                        .withName(ns.prefix(label))
+                        .withHeadContentId(contentId.toString())
+                        .withProcessingStatus(ProcessingStatus.ExtractingContext)
+                        .withUpdatedBy(Entity.ADMIN_USER_NAME)
+                        .withUpdatedAt(System.currentTimeMillis())));
     ContextFileContent content =
         new ContextFileContent()
-            .withId(UUID.randomUUID())
+            .withId(contentId)
             .withName(UUID.randomUUID().toString())
             .withContextFile(file.getEntityReference())
             .withChecksum(DigestUtils.sha256Hex(text))
@@ -438,12 +445,7 @@ class ContextMemoryExtractionIT {
             .withUpdatedAt(System.currentTimeMillis())
             .withProcessingStatus(ProcessingStatus.Processed);
     fileRepository().getContentRepository().create(null, content);
-    ContextFile updated =
-        JsonUtils.deepCopy(file, ContextFile.class)
-            .withHeadContentId(content.getId().toString())
-            .withProcessingStatus(ProcessingStatus.ExtractingContext);
-    fileRepository().update(null, file, updated, Entity.ADMIN_USER_NAME);
-    return updated;
+    return file;
   }
 
   private List<ContextMemory> extracted(EntityReference source) {

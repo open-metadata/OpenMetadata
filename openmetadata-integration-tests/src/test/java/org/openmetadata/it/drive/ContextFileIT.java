@@ -20,6 +20,8 @@ import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
@@ -97,6 +99,22 @@ class ContextFileIT {
   }
 
   // --- CRUD ---
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testMetadataRequestsRejectAssetId(boolean createOrUpdate, TestNamespace ns) {
+    RestClient rest = RestClient.admin();
+    CreateContextFile request =
+        new CreateContextFile().withName(ns.prefix("metadata-file")).withAssetId("stored-asset");
+
+    try (Response response =
+        createOrUpdate ? rest.rawPut(FILE_PATH, request) : rest.rawPost(FILE_PATH, request)) {
+      assertEquals(400, response.getStatus());
+      assertEquals(
+          "File content must be assigned through the upload endpoint.",
+          JsonUtils.readTree(response.readEntity(String.class)).get("message").asText());
+    }
+  }
 
   @Test
   void testCreateContextFile(TestNamespace ns) throws HttpResponseException {
