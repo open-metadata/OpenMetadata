@@ -118,7 +118,13 @@ public class ContextMemorySearchVisibility {
     return buildVisibilityFilter(subjectContext, SEARCHABLE_STATUSES);
   }
 
-  /** As above, admitting memories in any of {@code statuses} instead of Approved only. */
+  /**
+   * As above, admitting memories in any of {@code statuses} instead of Approved only. A stage
+   * awaiting review ({@link #OWNER_PENDING_STATUSES}) is admitted for the subject's own memories
+   * only, admins included: a pending memory is its author's until reviewed, and its reviewers reach
+   * it through the review task
+   * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+   */
   public OMQueryBuilder buildVisibilityFilter(
       SubjectContext subjectContext, List<ContextMemoryStatus> statuses) {
     return buildVisibilityFilter(subjectContext, statuses, List.of());
@@ -134,7 +140,11 @@ public class ContextMemorySearchVisibility {
       SubjectContext subjectContext,
       List<ContextMemoryStatus> statuses,
       Collection<String> pinnedAnchorIds) {
-    return buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds, List.of());
+    return buildVisibilityFilter(
+        subjectContext,
+        statuses.stream().filter(status -> !OWNER_PENDING_STATUSES.contains(status)).toList(),
+        pinnedAnchorIds,
+        statuses.stream().filter(OWNER_PENDING_STATUSES::contains).toList());
   }
 
   /**

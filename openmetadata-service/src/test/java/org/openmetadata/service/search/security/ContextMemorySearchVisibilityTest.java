@@ -612,6 +612,30 @@ class ContextMemorySearchVisibilityTest {
         "the admin's own Unprocessed memories are admitted");
   }
 
+  /**
+   * The Context Center listing asks for pending stages through its status list: they reach the
+   * subject's own memories only, exactly as a search asking for them does, admins included.
+   */
+  @Test
+  void aListingAskingForPendingStagesAdmitsOnlyTheSubjectsOwn() {
+    List<ContextMemoryStatus> listed =
+        List.of(
+            ContextMemoryStatus.APPROVED,
+            ContextMemoryStatus.UNPROCESSED,
+            ContextMemoryStatus.DRAFT);
+    SubjectContext admin =
+        new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
+    for (SubjectContext subject : List.of(nonAdminSubject(), admin)) {
+      OMQueryBuilder listing =
+          new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
+              .buildVisibilityFilter(subject, listed);
+
+      assertEquals(
+          ownerPendingJson(subject, OWNER_PENDING_REQUESTED),
+          serializeElasticQuery(((ElasticQueryBuilder) listing).build()));
+    }
+  }
+
   @Test
   void noPendingStageRequestedBuildsTheUnwidenedFilter() {
     SubjectContext admin =

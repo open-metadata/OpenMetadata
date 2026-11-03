@@ -37,7 +37,10 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
       "You extract reusable company knowledge from a document as a JSON array. Each element is an "
           + "object with keys: title, question, answer, summary, memoryType (one of Faq, Note, "
           + "Runbook, UseCase, Preference). Capture durable facts, definitions, policies, and "
-          + "how-to guidance. Return ONLY the JSON array, no prose.";
+          + "how-to guidance. Never extract personal data (names, email addresses, phone "
+          + "numbers or other contact details of a person), nor credentials, tokens, keys or "
+          + "connection strings: describe the role or team instead. Return ONLY the JSON array, "
+          + "no prose.";
 
   private final LLMCompletionClient llmClient;
 

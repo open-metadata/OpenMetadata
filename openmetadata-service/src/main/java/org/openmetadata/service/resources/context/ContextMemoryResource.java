@@ -98,6 +98,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   static final String COUNTED_AT_REQUIRED = "countedAt is required: it orders the recounts";
   static final String COUNTED_AT_AHEAD = "countedAt %d is ahead of the server clock";
   static final Duration COUNTED_AT_CLOCK_SKEW = Duration.ofMinutes(1);
+
+  /** Rows read to count a list page's visible total; a judgment call between cost and accuracy. */
+  static final int MAX_VISIBLE_COUNT_SCAN = 10_000;
+
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
 
@@ -262,12 +266,35 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                 after));
     List<ContextMemory> visible =
         ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
-    // Keep the cursor so clients can page past hidden rows.
+    // Keep the cursor so clients can page past hidden rows, but never count them.
     return withVisibleEvidence(
         securityContext,
         visible.size() == memories.getData().size()
             ? memories
-            : new ResultList<>(visible).setPaging(memories.getPaging()));
+            : new ResultList<>(visible)
+                .setPaging(
+                    memories
+                        .getPaging()
+                        .withTotal(visibleTotal(uriInfo, securityContext, filter))));
+  }
+
+  /**
+   * How many memories under {@code filter} the caller may read, counted over at most {@link
+   * #MAX_VISIBLE_COUNT_SCAN} rows: past that it is a lower bound, never a count of hidden rows
+   * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+   */
+  private int visibleTotal(UriInfo uriInfo, SecurityContext securityContext, ListFilter filter) {
+    List<ContextMemory> scanned =
+        listInternal(
+                uriInfo,
+                securityContext,
+                ContextMemoryVisibility.guardFields(entityType, null),
+                filter,
+                MAX_VISIBLE_COUNT_SCAN,
+                null,
+                null)
+            .getData();
+    return ContextMemoryVisibility.filterByVisibility(scanned, securityContext).size();
   }
 
   private ResultList<ContextMemory> withVisibleEvidence(
