@@ -15,10 +15,12 @@ public final class LLMClientHolder {
   private static volatile LLMCompletionClient instance;
   private static volatile boolean enabled;
   private static volatile boolean memoryExtractionEnabled;
+  private static volatile String unavailableReason;
 
   private LLMClientHolder() {}
 
   public static synchronized void initialize(LLMConfiguration config) {
+    unavailableReason = null;
     final boolean requested = config != null && Boolean.TRUE.equals(config.getEnabled());
     final Optional<LLMCompletionClient> client = requested ? buildClient(config) : Optional.empty();
     enabled = client.isPresent();
@@ -36,12 +38,18 @@ public final class LLMClientHolder {
     try {
       client = Optional.of(LLMCompletionClientFactory.create(config));
     } catch (IllegalArgumentException e) {
+      unavailableReason = e.getMessage();
       LOG.error(
           "LLM features are disabled: the {} completion client could not be built: {}",
           config.getProvider(),
           e.getMessage());
     }
     return client;
+  }
+
+  /** Why LLM was requested but its client could not be built, for the system status page. */
+  public static Optional<String> getUnavailableReason() {
+    return Optional.ofNullable(unavailableReason);
   }
 
   public static LLMCompletionClient get() {
@@ -71,5 +79,6 @@ public final class LLMClientHolder {
     instance = client;
     enabled = client != null;
     memoryExtractionEnabled = client != null;
+    unavailableReason = null;
   }
 }
