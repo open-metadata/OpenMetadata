@@ -562,4 +562,21 @@ describe('TestSuite Pipeline component', () => {
     expect(drawer.getAttribute('data-pipeline')).toMatch(/^svc\.pipeline\d$/);
     expect(mockNavigate).not.toHaveBeenCalled();
   });
+
+  it('should report the pipeline total to the host once the list has loaded', async () => {
+    const onPipelinesChange = jest.fn();
+    await act(async () => {
+      render(
+        <TestSuitePipelineTab
+          testSuite={mockTestSuite}
+          onPipelinesChange={onPipelinesChange}
+        />
+      );
+    });
+
+    await waitFor(() => expect(onPipelinesChange).toHaveBeenCalledWith(10));
+
+    // The initial pre-load state is never reported.
+    expect(onPipelinesChange).not.toHaveBeenCalledWith(0);
+  });
 });

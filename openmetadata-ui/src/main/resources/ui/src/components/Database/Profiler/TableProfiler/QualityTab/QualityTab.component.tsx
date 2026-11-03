@@ -237,10 +237,8 @@ export const QualityTab = () => {
 
   const handleAddPipeline = () => setIsPipelineDrawerOpen(true);
 
-  const handlePipelineCreated = () => {
-    fetchIngestionPipelineCount();
-    setPipelineListKey((key) => key + 1);
-  };
+  // The remounted list refetches and reports the new total.
+  const handlePipelineCreated = () => setPipelineListKey((key) => key + 1);
 
   const handleSearchTestCase = (value?: string) => {
     setSearchValue(value);
@@ -583,6 +581,7 @@ export const QualityTab = () => {
             showAddPipelineButton={false}
             testSuite={testSuite}
             onAddPipeline={handleAddPipeline}
+            onPipelinesChange={setIngestionPipelineCount}
           />
         )}
 

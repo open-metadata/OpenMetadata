@@ -87,6 +87,9 @@ interface Props {
   showAddPipelineButton?: boolean;
   // Lets a host with its own add drawer (and toolbar button) take over Add.
   onAddPipeline?: () => void;
+  // Reports the pipeline total after each load or delete, so a host that shows
+  // its own count or toolbar action stays in sync with the list.
+  onPipelinesChange?: (total: number) => void;
 }
 
 interface SelectedRowDetails {
@@ -105,6 +108,7 @@ const TestSuitePipelineTab = ({
   testSuite,
   showAddPipelineButton = true,
   onAddPipeline,
+  onPipelinesChange,
 }: Props) => {
   const airflowInformation = useAirflowStatus();
   const { t } = useTranslation();
@@ -444,6 +448,13 @@ const TestSuitePipelineTab = ({
   useEffect(() => {
     fetchIngestionPipelineExtraDetails();
   }, [fetchIngestionPipelineExtraDetails]);
+
+  useEffect(() => {
+    // Skip the initial 0 before the first load lands.
+    if (!isLoading) {
+      onPipelinesChange?.(paging.total);
+    }
+  }, [isLoading, paging.total]);
 
   if (!isAirflowAvailable && !(isLoading || isFetchingStatus)) {
     return <AirflowSetupGuide />;
