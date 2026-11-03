@@ -8198,6 +8198,116 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(0, changeRequestsOf(admin, product.getId()).size());
   }
 
+  @Test
+  void test_patchingTheWorkflowGraphNeedsEditAll(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient nonAdmin = SdkClients.user3Client();
+    String workflowId =
+        deployHookWorkflow(admin, "table", ns.prefix("graphPatchTable"), List.of("description"));
+    String workflowPath = "%s/%s".formatted(BASE_PATH, workflowId);
+
+    for (String path :
+        List.of(
+            "/trigger/config/filter/description",
+            "/nodes/1/description",
+            "/edges/1/condition",
+            "/config/storeStageStatus")) {
+      JsonNode patch =
+          MAPPER.readTree(
+              """
+              [{"op": "add", "path": "%s", "value": "edited by a non-admin user"}]
+              """
+                  .formatted(path));
+      OpenMetadataException forbidden =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> executeWorkflowRequest(nonAdmin, HttpMethod.PATCH, workflowPath, patch));
+      assertEquals(403, forbidden.getStatusCode(), path);
+    }
+
+    String described =
+        executeWorkflowRequest(
+            nonAdmin,
+            HttpMethod.PATCH,
+            workflowPath,
+            MAPPER.readTree(
+                """
+                [{"op": "replace", "path": "/description", "value": "edited by a non-admin user"}]
+                """));
+    assertEquals(
+        "edited by a non-admin user", MAPPER.readTree(described).get("description").asText());
+  }
+
+  @Test
+  void test_triggerFilterEntriesMustBeStrings(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String workflowId =
+        deployHookWorkflow(admin, "table", ns.prefix("filterEntryTable"), List.of("description"));
+    String workflowPath = "%s/%s".formatted(BASE_PATH, workflowId);
+
+    for (String value : List.of("{\"nested\": \"value\"}", "[\"value\"]")) {
+      JsonNode patch =
+          MAPPER.readTree(
+              """
+              [{"op": "add", "path": "/trigger/config/filter/dashboard", "value": %s}]
+              """
+                  .formatted(value));
+      OpenMetadataException rejected =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> executeWorkflowRequest(admin, HttpMethod.PATCH, workflowPath, patch));
+      assertEquals(400, rejected.getStatusCode(), value);
+    }
+
+    JsonNode stored =
+        MAPPER.readTree(executeWorkflowRequest(admin, HttpMethod.GET, workflowPath, null));
+    assertTrue(stored.at("/trigger/config/filter/dashboard").isMissingNode());
+  }
+
+  @Test
+  void test_anEditThatLeavesTheFilterIsHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary = createReviewedGlossary(ns, "leavesFilter");
+    deployHookWorkflow(
+        admin,
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description"),
+        List.of(),
+        NO_APPROVAL_MARKER_RULE);
+
+    submitDescription(glossary, "Draft notes, no-approval");
+
+    assertEquals(
+        PUBLISHED_DESCRIPTION,
+        admin.glossaries().get(glossary.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_anEditThatStaysOutsideTheFilterIsNotHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary = createReviewedGlossary(ns, "staysOutsideFilter");
+    admin
+        .glossaries()
+        .patch(
+            glossary.getId().toString(),
+            JsonUtils.readTree(descriptionPatch("First, no-approval")));
+    deployHookWorkflow(
+        admin,
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description"),
+        List.of(),
+        NO_APPROVAL_MARKER_RULE);
+
+    patchAs(SdkClients.user2Client(), glossary, descriptionPatch("Second, no-approval"));
+
+    assertEquals(
+        "Second, no-approval",
+        admin.glossaries().get(glossary.getId().toString()).getDescription());
+    assertEquals(0, changeRequestsOf(admin, glossary.getId()).size());
+  }
+
   private static final String NO_APPROVAL_MARKER_RULE =
       "{\"in\":[\"no-approval\",{\"var\":\"description\"}]}";
 
