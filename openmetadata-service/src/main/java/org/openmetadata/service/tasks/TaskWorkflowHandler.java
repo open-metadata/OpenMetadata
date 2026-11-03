@@ -61,7 +61,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
-import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
@@ -898,12 +897,9 @@ public class TaskWorkflowHandler {
           fieldPath,
           newDescription.length() > 50 ? newDescription.substring(0, 50) + "..." : newDescription);
 
-      // Use FieldPathUtils for clean field update
-      boolean success =
-          FieldPathUtils.updateFieldDescription(
-              entity, repository, user, fieldPath, newDescription);
-
-      if (success) {
+      String before = JsonUtils.pojoToJson(entity);
+      if (FieldPathUtils.setFieldDescription(entity, fieldPath, newDescription)) {
+        saveChange(entity, repository, user, before, null);
         LOG.info(
             "[TaskWorkflowHandler] Successfully applied description update for task '{}'",
             task.getId());
@@ -974,13 +970,9 @@ public class TaskWorkflowHandler {
       EntityRepository<?> repository,
       String user,
       List<TagLabel> updatedTags) {
-    String originalJson = JsonUtils.pojoToJson(entity);
+    String before = JsonUtils.pojoToJson(entity);
     entity.setTags(updatedTags);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
-    if (patch != null && !patch.toJsonArray().isEmpty()) {
-      PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
-      recordChangeEvent(response, user);
-    }
+    saveChange(entity, repository, user, before, null);
   }
 
   // Approval refuses a field path that names no tagged field (TaskTagTarget), so a field that is
@@ -1001,23 +993,38 @@ public class TaskWorkflowHandler {
       return;
     }
     try {
-      String originalJson = JsonUtils.pojoToJson(entity);
+      String before = JsonUtils.pojoToJson(entity);
       Object field = target.get();
       Method getTags = field.getClass().getMethod("getTags");
       Method setTags = field.getClass().getMethod("setTags", List.class);
       List<TagLabel> current = (List<TagLabel>) getTags.invoke(field);
       setTags.invoke(field, mergeTags(current, tagsToAdd, tagsToRemove));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
-      if (patch != null && !patch.toJsonArray().isEmpty()) {
-        PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
-        recordChangeEvent(response, user);
-      }
+      saveChange(entity, repository, user, before, null);
     } catch (NoSuchMethodException e) {
       LOG.warn(
           "[TaskWorkflowHandler] Field at '{}' has no tags setter; no tags applied", fieldPath);
     } catch (Exception e) {
       LOG.warn(
           "[TaskWorkflowHandler] patchFieldTags failed at '{}': {}", fieldPath, e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Saves what an approved task changed on its entity and records it as the entity's own change
+   * event, as a direct edit would. The write runs inside the task's request, so no response filter
+   * records it. The description, tag, tier, owner, domain and suggestion writes all save through
+   * here (ADR:2026-10-30-an-approved-tasks-change-is-the-entitys-own-change-event).
+   */
+  private void saveChange(
+      EntityInterface<?> entity,
+      EntityRepository<?> repository,
+      String user,
+      String before,
+      ChangeSource changeSource) {
+    JsonPatch patch = JsonUtils.getJsonPatch(before, JsonUtils.pojoToJson(entity));
+    if (patch != null && !patch.toJsonArray().isEmpty()) {
+      recordChangeEvent(
+          repository.patch(null, entity.getId(), user, patch, changeSource, null), user);
     }
   }
 
@@ -1035,10 +1042,7 @@ public class TaskWorkflowHandler {
     }
     try {
       ChangeEvent changeEvent =
-          ChangeEvents.createChangeEventForEntity(user, changeType, entityInterface);
-      Object entityForEvent = changeEvent.getEntity();
-      changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
-      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));
+          ChangeEventHandler.entityChangeEvent(user, changeType, entityInterface);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     } catch (Exception e) {
       LOG.warn(
@@ -1129,18 +1133,13 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      String originalJson = JsonUtils.pojoToJson(entity);
+      String before = JsonUtils.pojoToJson(entity);
       entity.setOwners(newOwners);
-      String updatedJson = JsonUtils.pojoToJson(entity);
-
-      jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      if (patch != null && !patch.toJsonArray().isEmpty()) {
-        repository.patch(null, entity.getId(), user, patch, null, null);
-        LOG.info(
-            "[TaskWorkflowHandler] Applied OwnershipUpdate for entity '{}': {} owners",
-            entity.getName(),
-            newOwners.size());
-      }
+      saveChange(entity, repository, user, before, null);
+      LOG.info(
+          "[TaskWorkflowHandler] Applied OwnershipUpdate for entity '{}': {} owners",
+          entity.getName(),
+          newOwners.size());
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply OwnershipUpdate: {}", e.getMessage(), e);
     }
@@ -1197,18 +1196,13 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      String originalJson = JsonUtils.pojoToJson(entity);
+      String before = JsonUtils.pojoToJson(entity);
       entity.setDomains(newDomains);
-      String updatedJson = JsonUtils.pojoToJson(entity);
-
-      jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      if (patch != null && !patch.toJsonArray().isEmpty()) {
-        repository.patch(null, entity.getId(), user, patch, null, null);
-        LOG.info(
-            "[TaskWorkflowHandler] Applied DomainUpdate for entity '{}': domain={}",
-            entity.getName(),
-            newDomains.get(0).getFullyQualifiedName());
-      }
+      saveChange(entity, repository, user, before, null);
+      LOG.info(
+          "[TaskWorkflowHandler] Applied DomainUpdate for entity '{}': domain={}",
+          entity.getName(),
+          newDomains.get(0).getFullyQualifiedName());
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply DomainUpdate: {}", e.getMessage(), e);
     }
@@ -1299,15 +1293,14 @@ public class TaskWorkflowHandler {
               fieldPath);
           return;
         }
-        boolean success =
-            FieldPathUtils.updateFieldDescription(
-                entity,
-                repository,
-                user,
-                fieldPath,
-                suggestedValue,
-                isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
-        if (success) {
+        String before = JsonUtils.pojoToJson(entity);
+        if (FieldPathUtils.setFieldDescription(entity, fieldPath, suggestedValue)) {
+          saveChange(
+              entity,
+              repository,
+              user,
+              before,
+              isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {
           LOG.warn(
@@ -1340,16 +1333,9 @@ public class TaskWorkflowHandler {
 
   private void applyEntityLevelTags(
       EntityInterface<?> entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
-    String originalJson = JsonUtils.pojoToJson(entity);
-    List<TagLabel> mergedTags =
-        org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence(
-            entity.getTags(), tags);
-    entity.setTags(mergedTags);
-    String updatedJson = JsonUtils.pojoToJson(entity);
-    jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-    if (patch != null && !patch.toJsonArray().isEmpty()) {
-      repository.patch(null, entity.getId(), user, patch, null, null);
-    }
+    String before = JsonUtils.pojoToJson(entity);
+    entity.setTags(TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), tags));
+    saveChange(entity, repository, user, before, null);
   }
 
   private String resolveSuggestionChangeSummaryField(String fieldPath) {

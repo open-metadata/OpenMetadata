@@ -205,6 +205,17 @@ export const getOwnerOptions = async (searchText: string) => {
   });
 };
 
+// Resolves saved FQNs to display-name options, since a saved value may be outside the first page.
+export const getOptionsByFqns = (
+  fqns: string[],
+  searchIndex: SearchIndex | SearchIndex[]
+) =>
+  searchEntity({
+    searchText: '',
+    searchIndex,
+    queryFilter: getTermQuery({ fullyQualifiedName: fqns }, 'should', 1),
+  });
+
 export const getUserOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
