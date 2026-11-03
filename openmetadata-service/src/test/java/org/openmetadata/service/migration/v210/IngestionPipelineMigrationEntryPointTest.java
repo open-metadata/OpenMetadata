@@ -45,6 +45,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigrat
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
+import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
@@ -96,6 +97,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(ConsumerIdMigration.class);
         MockedStatic<WebhookSecretsMigration> webhookSecretsMigration =
             mockStatic(WebhookSecretsMigration.class);
+        MockedStatic<DestinationIdMigration> destinationIdMigration =
+            mockStatic(DestinationIdMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
             mockStatic(DeltaLakeRetirementMigration.class);
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
@@ -130,6 +133,8 @@ class IngestionPipelineMigrationEntryPointTest {
           () -> WebhookSecretsMigration.encryptProfileWebhookSecrets(handle, connectionType));
       webhookSecretsMigration.verify(
           () -> WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, connectionType));
+      destinationIdMigration.verify(
+          () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
       // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
       v206MigrationUtil.verify(
           () ->
