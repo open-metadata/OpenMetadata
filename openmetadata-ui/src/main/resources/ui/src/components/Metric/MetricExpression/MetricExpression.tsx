@@ -68,11 +68,7 @@ const getVersionedCode = (changeDescription?: ChangeDescription) => {
   if (!changeDescription) {
     return '';
   }
-  const diff = getDiffByFieldName(
-    'metricExpression',
-    changeDescription,
-    true
-  );
+  const diff = getDiffByFieldName('metricExpression', changeDescription, true);
 
   return getTextDiff(
     getExpressionCode(getChangedEntityOldValue(diff)),
