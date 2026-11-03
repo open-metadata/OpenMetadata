@@ -301,8 +301,8 @@ const GlossaryTreeView = ({
     }
   };
 
-  // React Aria stops firing onAction once a row is selected (toggle behaviour),
-  // and reports the next row through onSelectionChange instead.
+  // With a row selected, React Aria drops Enter and clicks on other rows in the
+  // default toggle behaviour; replace behaviour reports clicks as selection changes.
   const handleSelectionChange = (keys: Selection) => {
     const [key] = keys === 'all' ? [] : keys;
     if (key !== undefined) {
@@ -343,14 +343,15 @@ const GlossaryTreeView = ({
               className={TREE_CLASS}
               expandedKeys={expandedKeys}
               selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+              selectionBehavior="replace"
               selectionMode="single"
               onAction={handleAction}
-              onSelectionChange={handleSelectionChange}
               onExpandedChange={(keys) =>
                 setCollapsedIds(
                   new Set(parentIds.filter((id) => !keys.has(id)))
                 )
-              }>
+              }
+              onSelectionChange={handleSelectionChange}>
               {concepts.map((item) => (
                 <ConceptTreeItem
                   compact={compact}
@@ -374,6 +375,7 @@ const GlossaryTreeView = ({
               aria-label={t('label.metric-plural')}
               className={TREE_CLASS}
               selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+              selectionBehavior="replace"
               selectionMode="single"
               onAction={handleAction}
               onSelectionChange={handleSelectionChange}>
@@ -430,6 +432,7 @@ const GlossaryTreeView = ({
               aria-label={t('label.not-connected')}
               className={TREE_CLASS}
               selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+              selectionBehavior="replace"
               selectionMode="single"
               onAction={handleAction}
               onSelectionChange={handleSelectionChange}>

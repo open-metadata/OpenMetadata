@@ -172,8 +172,8 @@ const NativeOntologyTreeView = ({
 
     return roots;
   }, [rows, index, density, onConnect, t]);
-  // React Aria stops firing onAction once a row is selected (toggle behaviour),
-  // and reports the next row through onSelectionChange instead.
+  // With a row selected, React Aria drops Enter and clicks on other rows in the
+  // default toggle behaviour; replace behaviour reports clicks as selection changes.
   const openRow = (key: Key) => {
     const row = byKey.get(String(key));
     if (row) {
@@ -302,14 +302,9 @@ const NativeOntologyTreeView = ({
             ? [state.selectedKey]
             : []
         }
+        selectionBehavior="replace"
         selectionMode="single"
         onAction={openRow}
-        onSelectionChange={(keys) => {
-          const [key] = keys === 'all' ? [] : keys;
-          if (key !== undefined) {
-            openRow(key);
-          }
-        }}
         onExpandedChange={(keys) => {
           const changed = rows.find(
             (row) =>
@@ -327,6 +322,12 @@ const NativeOntologyTreeView = ({
               direction: 'forward',
               reveal: undefined,
             });
+          }
+        }}
+        onSelectionChange={(keys) => {
+          const [key] = keys === 'all' ? [] : keys;
+          if (key !== undefined) {
+            openRow(key);
           }
         }}>
         {treeItems}

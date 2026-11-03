@@ -1028,46 +1028,54 @@ test.describe(
             3
           );
           await rowOf(concepts[0].id).focus();
-          for (const concept of concepts) {
+          for (const [index, concept] of concepts.entries()) {
             await expect(rowOf(concept.id)).toBeFocused();
-            await page.keyboard.press('ArrowDown');
-          }
-          // The Tree ignores a second selection once the inspector is open
-          // (finding in the P1b report), so Enter is checked on the last row.
-          await expect(rowOf(concepts[2].id)).toBeFocused();
-          await page.keyboard.press('Enter');
-          await expect(inspector).toContainText(concepts[2].name);
-          await attachStudioShot(page, testInfo, `p1-keyboard-${mode}`);
-
-          const focusList = async () => {
-            await openOntologyInStudio(page, ontology.id);
-            const list = page.getByRole('listbox', { name: 'Concepts (3)' });
-            for (
-              let presses = 0;
-              presses < 150 &&
-              !(await list.evaluate((el) => el === document.activeElement));
-              presses += 1
-            ) {
-              await page.keyboard.press('Tab');
-            }
-            await expect(list).toBeFocused();
-
-            return list;
-          };
-          const names = (
-            await (await focusList()).getByRole('option').allTextContents()
-          ).map((name) => name.trim());
-          expect([...names].sort()).toEqual(['Alpha', 'Bravo', 'Charlie']);
-          for (const [index, name] of names.entries()) {
-            const list = await focusList();
-            for (let step = 0; step < index; step += 1) {
+            await page.keyboard.press('Enter');
+            await expect(inspector).toContainText(concept.name);
+            await expect(page).toHaveURL(
+              new RegExp(`[?&]concept=${concept.id}(&|$)`)
+            );
+            if (index < concepts.length - 1) {
+              await rowOf(concept.id).focus();
               await page.keyboard.press('ArrowDown');
             }
+          }
+          for (const concept of [concepts[0], concepts[1]]) {
+            await rowOf(concept.id).click();
+            await expect(inspector).toContainText(concept.name);
+            await expect(page).toHaveURL(
+              new RegExp(`[?&]concept=${concept.id}(&|$)`)
+            );
+          }
+          await attachStudioShot(page, testInfo, `p1-keyboard-${mode}`);
+
+          await page.getByTestId('submode-tab-graph').click();
+          const list = page.getByRole('listbox', { name: 'Concepts (3)' });
+          for (
+            let presses = 0;
+            presses < 150 &&
+            !(await list.evaluate((el) => el === document.activeElement));
+            presses += 1
+          ) {
+            await page.keyboard.press('Tab');
+          }
+          await expect(list).toBeFocused();
+          const names = (await list.getByRole('option').allTextContents()).map(
+            (name) => name.trim()
+          );
+          expect([...names].sort()).toEqual(['Alpha', 'Bravo', 'Charlie']);
+          await page.keyboard.press('Home');
+          for (const [index, name] of names.entries()) {
             await page.keyboard.press('Enter');
             await expect(inspector).toContainText(name);
-            await page.keyboard.press('Escape');
-            await expect(inspector).toBeHidden();
+            const opened = concepts.find((concept) => concept.name === name);
+            await expect(page).toHaveURL(
+              new RegExp(`[?&]concept=${opened?.id}(&|$)`)
+            );
             await expect(list).toBeFocused();
+            if (index < names.length - 1) {
+              await page.keyboard.press('ArrowDown');
+            }
           }
         } finally {
           await removeFlowOntologies(api, [ontology]);
