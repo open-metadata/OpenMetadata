@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import jakarta.json.Json;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -2420,7 +2421,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
-  void testODCSSpecCompliantV310DocumentRoundTrips(TestNamespace ns) {
+  void testODCSSpecCompliantV310DocumentRoundTrips(TestNamespace ns) throws Exception {
     Table table = createTestTable(ns);
 
     // Every shape the published ODCS v3.1.0 schema mandates: team as an object with members,
@@ -2500,7 +2501,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertTrue(exported.contains("value: 1"), exported);
     assertFalse(exported.contains("value: '1'"), exported);
     assertTrue(exported.contains("quality:"), exported);
-    assertTrue(exported.contains("property: engine"), exported);
+    assertEquals(
+        "engine",
+        new YAMLMapper().readTree(exported).at("/quality/0/customProperties/0/property").asText());
     assertFalse(exported.contains("[]"), exported);
   }
 
