@@ -9,7 +9,8 @@
   `test_recursiveImportCannotEditColumnsOfTableOutsideCallerPermissions`,
   `test_recursiveImportChecksChildOfNewDatabaseAgainstTheDatabaseOwners`,
   `test_recursiveImportChecksColumnRowsOfTableSharingStoredProcedureFqn`), `GlossaryResourceIT`,
-  `TeamResourceIT`, `TestCaseCsvDomainIsolationIT.test_importCsv_rowIsCheckedAgainstItsOwnTable`
+  `TeamResourceIT`, `TestCaseCsvDomainIsolationIT` (`test_importCsv_rowIsCheckedAgainstItsOwnTable`,
+  `test_importCsv_explicitDenyOnTestCaseRefusesRowAllowedOnTable`)
 - **Related:** ADR:2026-10-09-bulk-edits-authorize-each-entity-as-its-patch,
   ADR:2026-10-30-a-test-case-write-is-authorized-as-a-create-or-an-update
 
@@ -33,6 +34,8 @@ its FQN, so an import could create or overwrite entities the importer may not wr
   against all of its parents. A parent counts only once its own row has succeeded.
 - The authorizer evaluates no policy for an admin, so an admin's import skips the per-row checks.
 - Test case rows use the REST test-case write checks (`TestCaseWriteAuthRequests`).
+- Those checks follow `AuthorizationLogic.ANY` as REST does: every request is checked, one must be
+  allowed, and an explicit deny on any of them refuses the row.
 - A refused row fails on its own and the rest of the import continues, in dry runs as well. User
   import keeps its own privileged-field checks.
 

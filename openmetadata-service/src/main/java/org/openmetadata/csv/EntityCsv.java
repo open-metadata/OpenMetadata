@@ -119,6 +119,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.PolicyDeniedException;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -1456,21 +1457,33 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     authorize(new OperationContext(type, MetadataOperation.CREATE), createContext(type, entity));
   }
 
-  /** Authorizes the importer for any one of the requests, as AuthorizationLogic.ANY does. */
+  /**
+   * Authorizes the importer for any one of the requests, as AuthorizationLogic.ANY does: every
+   * request is checked, and an explicit deny on any of them refuses the row.
+   */
   protected void authorizeRowForAny(Supplier<List<AuthRequest>> requests) {
     if (!checksRowWrites()) {
       return;
     }
-    RuntimeException denied = new IllegalStateException("No write to authorize the row against");
+    boolean allowed = false;
+    PolicyDeniedException denied = null;
+    RuntimeException refused = new IllegalStateException("No write to authorize the row against");
     for (AuthRequest request : requests.get()) {
       try {
         authorize(request.operationContext(), request.resourceContext());
-        return;
-      } catch (AuthorizationException e) {
+        allowed = true;
+      } catch (PolicyDeniedException e) {
         denied = e;
+      } catch (AuthorizationException e) {
+        refused = e;
       }
     }
-    throw denied;
+    if (denied != null) {
+      throw denied;
+    }
+    if (!allowed) {
+      throw refused;
+    }
   }
 
   /** Records a row's new entity once the row has succeeded, so its child rows find it. */

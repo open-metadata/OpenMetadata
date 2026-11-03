@@ -488,6 +488,86 @@ public class TestCaseCsvDomainIsolationIT {
     }
   }
 
+  @Test
+  void test_importCsv_explicitDenyOnTestCaseRefusesRowAllowedOnTable(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String shortId = ns.uniqueShortId();
+      Domain domain = createDomain(admin, "d_" + shortId, cleanup);
+      Table table =
+          createTable(admin, "t_" + shortId, createSchema(ns, shortId, cleanup), domain, cleanup);
+      Table owned = admin.tables().get(table.getId().toString(), "owners");
+      owned.setOwners(List.of(admin.users().getByName("admin").getEntityReference()));
+      admin.tables().update(table.getId().toString(), owned);
+      createTestCase(admin, "seed_" + shortId, table);
+      String csv = admin.testCases().exportCsv(table.getFullyQualifiedName());
+
+      // EditTests on the table allows the update, but a deny on the owned test case refuses it, as
+      // on PUT. The import endpoint's context names no single test case: the allow on unowned test
+      // cases passes it and the deny skips it.
+      Rule allowEndpoint =
+          new Rule()
+              .withName("editUnownedTestCases")
+              .withEffect(Rule.Effect.ALLOW)
+              .withResources(List.of(Entity.TEST_CASE))
+              .withOperations(List.of(MetadataOperation.EDIT_ALL))
+              .withCondition("noOwner()");
+      String denyRuleName = "denyEditTestCases";
+      Rule allowTable =
+          new Rule()
+              .withName("allowEditTests")
+              .withEffect(Rule.Effect.ALLOW)
+              .withResources(List.of(Entity.TABLE))
+              .withOperations(List.of(MetadataOperation.EDIT_TESTS));
+      Rule denyTestCase =
+          new Rule()
+              .withName(denyRuleName)
+              .withEffect(Rule.Effect.DENY)
+              .withResources(List.of(Entity.TEST_CASE))
+              .withOperations(List.of(MetadataOperation.EDIT_ALL))
+              .withCondition("!noOwner()");
+      Policy policy =
+          admin
+              .policies()
+              .create(
+                  new CreatePolicy()
+                      .withName("p_" + shortId)
+                      .withRules(List.of(allowEndpoint, allowTable, denyTestCase)));
+      cleanup.push(() -> admin.policies().delete(policy.getId()));
+      Role role =
+          admin
+              .roles()
+              .create(
+                  new CreateRole()
+                      .withName("r_" + shortId)
+                      .withPolicies(List.of(policy.getFullyQualifiedName())));
+      cleanup.push(() -> admin.roles().delete(role.getId()));
+      String name = "u_" + shortId;
+      String email = name + "@test.openmetadata.org";
+      User user =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(name)
+                      .withEmail(email)
+                      .withRoles(List.of(role.getId())));
+      cleanup.push(() -> admin.users().delete(user.getId()));
+
+      CsvImportResult result =
+          importAs(
+              SdkClients.createClient(email, email, new String[] {}),
+              table.getFullyQualifiedName(),
+              csv);
+
+      assertTrue(result.getNumberOfRowsFailed() > 0, result.getImportResultsCsv());
+      assertTrue(result.getImportResultsCsv().contains(denyRuleName), result.getImportResultsCsv());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
   private String basicSuiteFqn(Table table) {
     return table.getFullyQualifiedName() + ".testSuite";
   }
