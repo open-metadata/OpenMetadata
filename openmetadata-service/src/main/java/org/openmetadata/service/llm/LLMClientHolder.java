@@ -1,12 +1,16 @@
 package org.openmetadata.service.llm;
 
+import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 
 /**
  * Holds the single shared {@link LLMCompletionClient} built from {@code llmConfiguration} at
  * startup, so downstream features (e.g. Context Center pill extraction) need not thread the config
- * through every layer. Falls back to a {@link NoopCompletionClient} when unset or disabled.
+ * through every layer. Falls back to a {@link NoopCompletionClient} when unset, disabled, or when
+ * the provider configuration cannot build a client.
  */
+@Slf4j
 public final class LLMClientHolder {
   private static volatile LLMCompletionClient instance;
   private static volatile boolean enabled;
@@ -15,10 +19,29 @@ public final class LLMClientHolder {
   private LLMClientHolder() {}
 
   public static synchronized void initialize(LLMConfiguration config) {
-    enabled = config != null && Boolean.TRUE.equals(config.getEnabled());
+    final boolean requested = config != null && Boolean.TRUE.equals(config.getEnabled());
+    final Optional<LLMCompletionClient> client = requested ? buildClient(config) : Optional.empty();
+    enabled = client.isPresent();
     memoryExtractionEnabled =
         config != null && Boolean.TRUE.equals(config.getMemoryExtractionEnabled());
-    instance = enabled ? LLMCompletionClientFactory.create(config) : new NoopCompletionClient();
+    instance = client.orElseGet(NoopCompletionClient::new);
+  }
+
+  /**
+   * LLM features are optional, so a provider configuration that cannot build a client (e.g. Bedrock
+   * without a region, OpenAI without an API key) disables them instead of failing server startup.
+   */
+  private static Optional<LLMCompletionClient> buildClient(LLMConfiguration config) {
+    Optional<LLMCompletionClient> client = Optional.empty();
+    try {
+      client = Optional.of(LLMCompletionClientFactory.create(config));
+    } catch (IllegalArgumentException e) {
+      LOG.error(
+          "LLM features are disabled: the {} completion client could not be built: {}",
+          config.getProvider(),
+          e.getMessage());
+    }
+    return client;
   }
 
   public static LLMCompletionClient get() {
