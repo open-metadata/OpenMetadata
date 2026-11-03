@@ -677,21 +677,26 @@ public final class NativeOntologyRdfImporter {
     private void property(final Outcome<OntologyProperty> outcome) {
       switch (outcome) {
         case Added<OntologyProperty> added -> {
+          final List<URI> needs = referencedNewConcepts(added.parsed());
           final OntologyChangeOperation operation =
               operation(OntologyChangeOperationType.UPSERT_PROPERTY, null)
-                  .withProperty(identified(added, OntologyProperty.class, propertyNames));
+                  .withProperty(identified(added, OntologyProperty.class, propertyNames))
+                  .withRequiresConceptIris(needs.isEmpty() ? null : needs);
           operations.add(operation);
           items.add(
               item(
                       NativeOntologyImportItemKind.PROPERTY,
                       NativeOntologyImportItemStatus.NEW,
                       added.parsed())
+                  .withDependsOnIris(needs)
                   .withOperationId(operation.getId()));
         }
         case Updated<OntologyProperty> updated -> {
+          final List<URI> needs = referencedNewConcepts(updated.proposed());
           final OntologyChangeOperation operation =
               operation(OntologyChangeOperationType.UPSERT_PROPERTY, updated.current())
-                  .withProperty(updated.proposed());
+                  .withProperty(updated.proposed())
+                  .withRequiresConceptIris(needs.isEmpty() ? null : needs);
           operations.add(operation);
           items.add(
               item(
@@ -699,6 +704,7 @@ public final class NativeOntologyRdfImporter {
                       NativeOntologyImportItemStatus.UPDATE,
                       updated.proposed())
                   .withDetail(propertyChanges(updated.current(), updated.proposed()))
+                  .withDependsOnIris(needs)
                   .withOperationId(operation.getId()));
         }
         case Unchanged<OntologyProperty> same -> items.add(
@@ -766,6 +772,15 @@ public final class NativeOntologyRdfImporter {
       collectIris(axiom.getTargetIri(), referenced);
       listOrEmpty(axiom.getExpressions())
           .forEach(expression -> collectIris(expression, referenced));
+      referenced.retainAll(newConceptIris);
+      return referenced.stream().map(URI::create).toList();
+    }
+
+    /** The concepts this import creates that the property names in its domain or range. */
+    private List<URI> referencedNewConcepts(final OntologyProperty property) {
+      final Set<String> referenced = new TreeSet<>();
+      listOrEmpty(property.getDomain()).forEach(iri -> collectIris(iri, referenced));
+      listOrEmpty(property.getRange()).forEach(iri -> collectIris(iri, referenced));
       referenced.retainAll(newConceptIris);
       return referenced.stream().map(URI::create).toList();
     }

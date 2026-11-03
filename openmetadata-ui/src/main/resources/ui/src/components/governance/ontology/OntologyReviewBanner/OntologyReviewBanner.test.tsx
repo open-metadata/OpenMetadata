@@ -266,6 +266,36 @@ describe('pending banner text', () => {
     expect(banner).not.toHaveTextContent('ready to publish');
   });
 
+  it('tells the author to withdraw and request review again when no reviewer is left', () => {
+    render(
+      <OntologyReviewBanner
+        release={{ ...release, reviewers: [bob] }}
+        review={{ ...review, callerCanVote: false, assignees: [] }}
+        viewerId="author"
+        viewerName="Author"
+        onOpenTask={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('ontology-review-withdraw-hint')
+    ).toHaveTextContent(
+      "Withdraw this request and request review again to send it to the ontology's current reviewers."
+    );
+  });
+
+  it('shows no withdraw hint while a reviewer is still pending', () => {
+    render(
+      asRequester({
+        assignees: [{ assignee: alice, status: AssigneeStatus.Pending }],
+      })
+    );
+
+    expect(
+      screen.queryByTestId('ontology-review-withdraw-hint')
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps the reviewer-facing title when the viewer can vote', () => {
     render(
       <OntologyReviewBanner

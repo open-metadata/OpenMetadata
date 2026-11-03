@@ -17,6 +17,9 @@ import {
 } from '../../../../generated/api/data/ontologyReleaseReview';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
+export const NO_REVIEWER_ASSIGNED_KEY =
+  'message.ontology-review-no-reviewer-assigned';
+
 const namesWithStatus = (
   review: OntologyReleaseReview,
   status: AssigneeStatus
@@ -53,7 +56,7 @@ export const getReviewStatusMessage = (
       }
     : {
         key: ontologyHasReviewers
-          ? 'message.ontology-review-no-reviewer-assigned'
+          ? NO_REVIEWER_ASSIGNED_KEY
           : 'message.ontology-review-ready-to-publish',
         values: {},
       };

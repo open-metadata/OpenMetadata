@@ -25,7 +25,10 @@ import {
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { releaseChangeCount } from '../OntologyReleasePanel/OntologyReleasePanel.utils';
-import { getReviewStatusMessage } from './OntologyReviewBanner.utils';
+import {
+  getReviewStatusMessage,
+  NO_REVIEWER_ASSIGNED_KEY,
+} from './OntologyReviewBanner.utils';
 
 type Props = {
   review: OntologyReleaseReview;
@@ -85,13 +88,20 @@ const PendingBanner = ({
   review,
   release,
   viewerName,
+  isRequester,
   onOpenTask,
-}: Pick<Props, 'review' | 'release' | 'viewerName' | 'onOpenTask'>) => {
+}: Pick<Props, 'review' | 'release' | 'viewerName' | 'onOpenTask'> & {
+  isRequester: boolean;
+}) => {
   const { t } = useTranslation();
   const status = getReviewStatusMessage(
     review,
     Boolean(release.reviewers?.length)
   );
+  const hasNoReviewerLeft =
+    isRequester &&
+    !review.callerCanVote &&
+    status.key === NO_REVIEWER_ASSIGNED_KEY;
 
   return (
     <Alert
@@ -102,6 +112,11 @@ const PendingBanner = ({
           : t(status.key, status.values)
       }
       variant={review.callerCanVote ? 'warning' : 'brand'}>
+      {hasNoReviewerLeft && (
+        <Typography data-testid="ontology-review-withdraw-hint">
+          {t('message.ontology-review-no-reviewer-withdraw-hint')}
+        </Typography>
+      )}
       <Box align="center" gap={3} justify="between" wrap="wrap">
         <Typography>
           {getEntityName(review.ontology)} ·{' '}
@@ -149,6 +164,7 @@ const OntologyReviewBanner = ({
 
   return (
     <PendingBanner
+      isRequester={isRequester}
       release={release}
       review={review}
       viewerName={viewerName}

@@ -19,6 +19,7 @@ class OntologyDecisionNoticeTest {
         .withId(UUID.randomUUID())
         .withName("release-3")
         .withFullyQualifiedName("Sales.release-3")
+        .withReleaseRevision(3L)
         .withSemanticVersion(semanticVersion);
   }
 
@@ -35,13 +36,26 @@ class OntologyDecisionNoticeTest {
   }
 
   @Test
-  void aRejectionCarriesTheReasonAndFallsBackToTheReleaseName() {
+  void aRejectionCarriesTheReasonAndFallsBackToTheReleaseNumber() {
     final ActivityEvent event =
         OntologyDecisionNotice.eventFor(
             release(null), TaskResolutionType.Rejected, REVIEWER, "Scope is too broad", 7L);
 
-    assertEquals("reviewer rejected release-3: Scope is too broad", event.getSummary());
+    assertEquals("reviewer rejected release #3: Scope is too broad", event.getSummary());
     assertEquals("Rejected", event.getNewValue());
+  }
+
+  @Test
+  void aReleaseWithNeitherVersionNorRevisionFallsBackToItsName() {
+    final ActivityEvent event =
+        OntologyDecisionNotice.eventFor(
+            release(null).withReleaseRevision(null),
+            TaskResolutionType.Approved,
+            REVIEWER,
+            null,
+            7L);
+
+    assertEquals("reviewer approved release-3", event.getSummary());
   }
 
   @Test
