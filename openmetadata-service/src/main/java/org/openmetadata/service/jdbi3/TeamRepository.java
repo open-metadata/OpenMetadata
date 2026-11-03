@@ -1519,8 +1519,9 @@ public class TeamRepository extends EntityRepository<Team> {
     public String exportCsv(CsvExportProgressCallback callback) throws IOException {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
-      return exportCsv(
-          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields), callback);
+      List<Team> teams =
+          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields);
+      return exportCsv(retainViewableForExport(teams, importedBy), callback);
     }
   }
 

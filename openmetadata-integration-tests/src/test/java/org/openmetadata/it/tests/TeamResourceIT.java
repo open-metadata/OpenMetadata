@@ -36,20 +36,26 @@ import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -59,6 +65,7 @@ import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for Team entity operations.
@@ -1397,6 +1404,68 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             () -> bulkAddAssetsWithResult(SdkClients.testUserClient(), team.getName(), addRequest),
             "Non-admin user should not be able to bulk add assets");
     assertEquals(403, exception.getStatusCode(), "Should return 403 Forbidden");
+  }
+
+  @Test
+  void test_exportLeavesOutTeamsTheExporterMayNotView(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Rule ownedTeamsOnly =
+        new Rule()
+            .withName(ns.shortPrefix("ownedTeamsOnly"))
+            .withResources(List.of(Entity.TEAM))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("!isOwner()");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(ns.shortPrefix("p_teamExport"))
+                    .withRules(List.of(ownedTeamsOnly)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.shortPrefix("r_teamExport"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = ns.shortPrefix("u_teamExport").toLowerCase();
+    User exporter =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withRoles(List.of(role.getId())));
+    List<EntityReference> owners = List.of(exporter.getEntityReference());
+    Team visible =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("exportVisible"))
+                .withTeamType(TeamType.GROUP)
+                .withOwners(owners));
+    Team hidden =
+        createEntity(
+            new CreateTeam().withName(ns.prefix("exportHidden")).withTeamType(TeamType.GROUP));
+    Team top =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("exportTop"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withOwners(owners)
+                .withChildren(List.of(visible.getId(), hidden.getId())));
+    OpenMetadataClient client =
+        SdkClients.createClient(exporter.getName(), exporter.getEmail(), new String[] {});
+
+    String csv =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/teams/name/" + top.getName() + "/export", null);
+
+    assertTrue(csv.contains(visible.getName()), csv);
+    assertFalse(csv.contains(hidden.getName()), csv);
   }
 
   @Test
