@@ -1619,11 +1619,18 @@ public class IngestionPipelineResource
   /** Only a patch that can rewrite the source config can carry a stored secret elsewhere. */
   private static boolean mayRetargetSecrets(SecurityContext securityContext, JsonPatch patch) {
     return (JsonPatchUtils.replacesWholeDocument(patch)
-            || JsonUtils.extractPatchedFields(patch).contains(SOURCE_CONFIG_FIELD))
+            || JsonUtils.extractPatchedFields(patch).contains(SOURCE_CONFIG_FIELD)
+            || JsonPatchUtils.readsFrom(patch, "/" + SOURCE_CONFIG_FIELD))
         && !ConnectionSecretsGuard.readsStoredSecrets(securityContext);
   }
 
   private void requireSecretsReenteredOnRetarget(IngestionPipeline original, JsonPatch patch) {
+    // The caller reads the source's secrets masked; a copy or move out of it would place a stored
+    // one where it is served as stored.
+    if (JsonPatchUtils.readsFrom(patch, "/" + SOURCE_CONFIG_FIELD)) {
+      throw new BadRequestException(
+          "A patch cannot copy or move a value out of the source config.");
+    }
     ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
         JsonUtils.applyPatch(original, patch, IngestionPipeline.class), original);
   }

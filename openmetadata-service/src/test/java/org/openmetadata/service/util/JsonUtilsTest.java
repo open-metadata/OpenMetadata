@@ -687,6 +687,21 @@ class JsonUtilsTest {
         "error should mention the field or expected format: " + cause.getMessage());
   }
 
+  /**
+   * An object or array where a date belongs is refused; returning without reading it would leave
+   * its members to be bound as fields of the label.
+   */
+  @Test
+  void testTagLabelAppliedAtObjectOrArrayIsRefused() {
+    for (String value : List.of("{\"tagFQN\":\"other.tag\"}", "[\"other.tag\"]")) {
+      String json = "{\"tagFQN\":\"x.y\",\"appliedAt\":" + value + "}";
+      assertThrows(
+          org.openmetadata.schema.exception.JsonParsingException.class,
+          () -> JsonUtils.readValue(json, TagLabel.class),
+          json);
+    }
+  }
+
   @Test
   void describeBindingFailureNamesTheFieldAndUriConstraintWithoutTheValue() {
     Map<String, Object> config = athenaConfigWith("s3StagingDir", "s3://bucket/athena results/");

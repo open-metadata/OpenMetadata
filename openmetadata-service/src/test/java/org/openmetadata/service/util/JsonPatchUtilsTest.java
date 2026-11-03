@@ -12,6 +12,7 @@ import jakarta.json.JsonReader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.jetbrains.annotations.NotNull;
@@ -25,6 +26,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -473,6 +476,119 @@ class JsonPatchUtilsTest {
             jsonPatch(
                 "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"tidy up\"},"
                     + "{\"op\":\"add\",\"path\":\"/connection/config/hostPort\",\"value\":\"h:1\"}]")));
+  }
+
+  @Test
+  void aMoveOrCopyNeedsTheOperationOfItsFromLocation() {
+    for (String op : List.of("move", "copy")) {
+      String patch =
+          """
+          [{"op": "%s", "from": "/columns/0/name", "path": "/description"}]
+          """
+              .formatted(op);
+
+      assertEquals(
+          Set.of(MetadataOperation.EDIT_ALL),
+          JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch)),
+          op);
+    }
+  }
+
+  @Test
+  void aMapKeyNamedLikeAFieldNeedsEditAll() {
+    Mockito.<EntityInterface<?>>when(resourceContextMock.getEntity())
+        .thenReturn(
+            new EventSubscription()
+                .withName("alert")
+                .withDestinations(
+                    List.of(
+                        new SubscriptionDestination()
+                            .withConfig(Map.of("headers", Map.of("x-team", "data"))))));
+    for (String key : List.of("description", "tags", "displayName", "owners")) {
+      String patch =
+          """
+          [{"op": "add", "path": "/destinations/0/config/headers/%s", "value": "v"}]
+          """
+              .formatted(key);
+
+      assertEquals(
+          Set.of(MetadataOperation.EDIT_ALL),
+          JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch)),
+          key);
+    }
+  }
+
+  @Test
+  void movingALabelToAnotherObjectNeedsItsTagOperation() {
+    String patch =
+        """
+        [{"op": "move", "from": "/columns/0/tags/0", "path": "/tags/1"}]
+        """;
+
+    assertEquals(
+        Set.of(MetadataOperation.EDIT_GLOSSARY_TERMS),
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch)));
+  }
+
+  @Test
+  void touchingTagsWithoutChangingALabelNeedsEditTags() {
+    String patch =
+        """
+        [{"op": "replace", "path": "/tags/0/tagFQN", "value": "Tier.Bronze"}]
+        """;
+
+    assertEquals(
+        Set.of(MetadataOperation.EDIT_TAGS),
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch)));
+  }
+
+  @Test
+  void anEmptyPatchNeedsViewBasic() {
+    assertEquals(
+        Set.of(MetadataOperation.VIEW_BASIC),
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch("[]")));
+  }
+
+  @Test
+  void aTermOfAGlossaryNamedTierIsAGlossaryTerm() {
+    String patch =
+        """
+        [{"op": "add", "path": "/tags/-", "value": {"tagFQN": "Tier.Gold", "source": "Glossary",
+          "labelType": "Manual", "state": "Confirmed"}}]
+        """;
+
+    assertEquals(
+        Set.of(MetadataOperation.EDIT_GLOSSARY_TERMS),
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch)));
+  }
+
+  @Test
+  void anOperationTheRepositorySkipsCannotHideAnAddedLabel() {
+    String patch =
+        """
+        [{"op": "add", "path": "/tags/1", "value": {"tagFQN": "PII.Sensitive",
+          "source": "Classification", "labelType": "Manual", "state": "Confirmed",
+          "href": "http://localhost/x"}},
+         {"op": "copy", "from": "/tags/1/href", "path": "/tags"}]
+        """;
+
+    assertTrue(
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch))
+            .contains(MetadataOperation.EDIT_TAGS));
+  }
+
+  @Test
+  void touchedLocationsIncludeFromAndReportMalformedLocationsAsTheRoot() {
+    JsonPatch patch =
+        jsonPatch(
+            """
+            [{"op": "move", "from": "/roles/0", "path": "/description"},
+             {"op": "add", "path": 7, "value": "x"}]
+            """);
+
+    assertEquals(List.of("/description", "/roles/0", ""), JsonPatchUtils.touchedLocations(patch));
+    assertTrue(JsonPatchUtils.readsFrom(patch, "/roles"));
+    assertFalse(JsonPatchUtils.readsFrom(patch, "/rolesAndMore"));
   }
 
   private static JsonPatch jsonPatch(String patch) {

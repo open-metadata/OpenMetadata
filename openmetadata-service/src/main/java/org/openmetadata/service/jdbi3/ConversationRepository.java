@@ -18,9 +18,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
-import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -73,6 +71,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.RestUtil;
 
 /** Repository for bounded conversation roots and normalized replies. */
@@ -1304,11 +1303,10 @@ public class ConversationRepository {
     if (patch == null || patch.toJsonArray().isEmpty()) {
       throw BadRequestException.of("Patch must contain at least one operation");
     }
-    for (JsonValue value : patch.toJsonArray()) {
-      JsonObject operation = value.asJsonObject();
-      String path = operation.getString("path", "");
-      if (!allowedPaths.contains(path)) {
-        throw BadRequestException.of("Patch path is not allowed: " + path);
+    // A move or copy reads its "from" location too, so that has to be allowed as well.
+    for (String location : JsonPatchUtils.touchedLocations(patch)) {
+      if (!allowedPaths.contains(location)) {
+        throw BadRequestException.of("Patch path is not allowed: " + location);
       }
     }
   }

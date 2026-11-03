@@ -1124,6 +1124,12 @@ public final class JsonUtils {
       if (t == com.fasterxml.jackson.core.JsonToken.VALUE_NULL) {
         return null;
       }
+      if (t == com.fasterxml.jackson.core.JsonToken.START_OBJECT
+          || t == com.fasterxml.jackson.core.JsonToken.START_ARRAY) {
+        // getValueAsString() is null for these, and returning without consuming the structure
+        // would leave its members to be read as fields of the enclosing object.
+        return (Date) ctxt.handleUnexpectedToken(Date.class, p);
+      }
       String value = p.getValueAsString();
       if (value == null) {
         return null;
