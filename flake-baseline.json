@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-02T03:10:18Z",
+  "generatedAt": "2026-11-03T03:07:52Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "40055442895",
-      "sourceSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
-      "recordedAt": "2026-10-24T03:19:43Z"
-    },
     {
       "runId": "40155676742",
       "sourceSha": "f862ad021059f748ac55880ffa495166c1836498",
@@ -53,12 +48,16 @@
       "runId": "41378543222",
       "sourceSha": "c013852beb6f93c120575ee3b348738d75594f8e",
       "recordedAt": "2026-11-02T03:10:18Z"
+    },
+    {
+      "runId": "41567061381",
+      "sourceSha": "30f04fd3869cd6602c1f036941fba1cc8c103711",
+      "recordedAt": "2026-11-03T03:07:52Z"
     }
   ],
   "entries": {
     "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges": {
       "observations": [
-        "40055442895",
         "40155676742",
         "40261121182"
       ],
@@ -66,16 +65,6 @@
       "file": "Pages/Lineage/LineageLargeResponse.spec.ts",
       "title": "Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges",
       "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": false
-    },
-    "Basic :: Pages/UserCreationWithPersona.spec.ts :: Create user with persona \u203a Create user with persona and verify on profile": {
-      "observations": [
-        "40055442895"
-      ],
-      "project": "Basic",
-      "file": "Pages/UserCreationWithPersona.spec.ts",
-      "title": "Create user with persona \u203a Create user with persona and verify on profile",
-      "lastSeenSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
       "hardFailure": false
     },
     "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it": {
@@ -87,6 +76,16 @@
       "title": "Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it",
       "lastSeenSha": "c013852beb6f93c120575ee3b348738d75594f8e",
       "hardFailure": false
+    },
+    "Ontology RDF :: Features/OntologyDataExploreRdf.spec.ts :: Ontology data exploration \u203a renders cross-page relations while paging 100+ tagged assets": {
+      "observations": [
+        "41567061381"
+      ],
+      "project": "Ontology RDF",
+      "file": "Features/OntologyDataExploreRdf.spec.ts",
+      "title": "Ontology data exploration \u203a renders cross-page relations while paging 100+ tagged assets",
+      "lastSeenSha": "30f04fd3869cd6602c1f036941fba1cc8c103711",
+      "hardFailure": true
     },
     "chromium :: Features/AIMode/AiObservabilityAlerts.spec.ts :: AI mode \u2014 observability alert form keeps every classic option \u203a saves every destination kind with its receivers and authentication": {
       "observations": [
@@ -201,6 +200,26 @@
       "title": "Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
       "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": true
+    },
+    "chromium :: Pages/AIProfile/ProfileMembers.spec.ts :: AI Profile Members - cross-surface navigation \u203a Should navigate from the users page to a role detail": {
+      "observations": [
+        "41567061381"
+      ],
+      "project": "chromium",
+      "file": "Pages/AIProfile/ProfileMembers.spec.ts",
+      "title": "AI Profile Members - cross-surface navigation \u203a Should navigate from the users page to a role detail",
+      "lastSeenSha": "30f04fd3869cd6602c1f036941fba1cc8c103711",
+      "hardFailure": false
+    },
+    "chromium :: Pages/AIProfile/ProfileTeam.spec.ts :: AI Profile Team Detail \u203a Should confirm a team move in a popover, not a modal": {
+      "observations": [
+        "41567061381"
+      ],
+      "project": "chromium",
+      "file": "Pages/AIProfile/ProfileTeam.spec.ts",
+      "title": "AI Profile Team Detail \u203a Should confirm a team move in a popover, not a modal",
+      "lastSeenSha": "30f04fd3869cd6602c1f036941fba1cc8c103711",
+      "hardFailure": false
     },
     "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Add and update Security and SLA tabs": {
       "observations": [
