@@ -34,12 +34,12 @@ import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { formatFormDataForSubmit } from '../../../../../../utils/JSONSchemaFormUtils';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import { getFormDisplayLabel } from '../../../../../common/FormBuilderV1/formBuilderV1LabelUtils';
 import { CoreFieldTemplate } from '../../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
-import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { AppFooter } from './AppFooter';
 
 export interface AppConfigFormProps {

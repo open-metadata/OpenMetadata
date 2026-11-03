@@ -19,13 +19,13 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Table } from '../../../../generated/entity/data/table';
-import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import {
   IngestionPipeline,
   LogLevels,
   PipelineType,
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../../../generated/tests/testSuite';
+import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import {
   addIngestionPipeline,
   deployIngestionPipelineById,

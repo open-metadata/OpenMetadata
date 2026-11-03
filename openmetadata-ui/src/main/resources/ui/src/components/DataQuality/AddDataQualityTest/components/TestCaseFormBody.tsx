@@ -49,8 +49,6 @@ import {
 } from '../../../../constants/constants';
 import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
-import { useFormFieldDocs } from '../../../../hooks/useFormFieldDocs';
-import { useSeedFirstFieldDoc } from '../../../../hooks/useSeedFirstFieldDoc';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -66,6 +64,8 @@ import {
 } from '../../../../generated/tests/testDefinition';
 import { useThresholdProfilerConfig } from '../../../../hooks/observability/data-quality/useThresholdProfilerConfig';
 import { useDataQualityDimensions } from '../../../../hooks/useDataQualityDimensions';
+import { useFormFieldDocs } from '../../../../hooks/useFormFieldDocs';
+import { useSeedFirstFieldDoc } from '../../../../hooks/useSeedFirstFieldDoc';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';

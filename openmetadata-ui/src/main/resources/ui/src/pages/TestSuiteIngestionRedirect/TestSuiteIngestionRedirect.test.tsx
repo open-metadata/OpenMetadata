@@ -40,7 +40,8 @@ const Landing = () => {
 
 const renderRedirect = () =>
   render(
-    <MemoryRouter initialEntries={['/test-suites/requested.suite/add-ingestion']}>
+    <MemoryRouter
+      initialEntries={['/test-suites/requested.suite/add-ingestion']}>
       <Routes>
         <Route
           element={<TestSuiteIngestionRedirect />}
