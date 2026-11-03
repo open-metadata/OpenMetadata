@@ -38,6 +38,7 @@ def test_get_end_of_day_timestamp_mill(mock_dt):
 
 # ---- convert_timestamp tests ----
 
+
 def test_convert_timestamp_iso_with_microseconds():
     """Human-readable datetime string (the failing case) must parse correctly."""
     # '2023-04-04 13:53:13.042525' is naive UTC
