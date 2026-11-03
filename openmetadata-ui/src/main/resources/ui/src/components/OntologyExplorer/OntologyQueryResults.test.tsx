@@ -124,6 +124,7 @@ describe('OntologyQueryResults', () => {
         'c\tlabel\nurn:a\tAlpha\nurn:b\tBeta, the second\nurn:c\tGamma'
       )
     );
+
     expect(await screen.findByTestId('ontology-sparql-copy')).toHaveTextContent(
       'label.copied'
     );
