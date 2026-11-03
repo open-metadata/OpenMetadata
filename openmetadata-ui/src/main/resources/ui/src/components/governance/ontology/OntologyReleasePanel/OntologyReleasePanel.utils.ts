@@ -34,6 +34,7 @@ import { getTaskDetailPath } from '../../../../utils/TaskUtils';
 import {
   flattenConceptChanges,
   suggestVersion,
+  type ChangeKindCounts,
   type VersionSuggestion,
 } from './OntologyReleaseChanges.utils';
 import type {
@@ -266,6 +267,85 @@ export const visibleHistoryReleases = (
       Boolean(release.reviewTask) ||
       release.id === latestReleaseId
   );
+
+export type HistoryStatus = 'published' | 'inReview' | 'draft' | 'rejected';
+export type HistoryStatusFilter = 'all' | HistoryStatus;
+
+export const HISTORY_STATUS_FILTERS: readonly HistoryStatusFilter[] = [
+  'all',
+  'published',
+  'inReview',
+  'draft',
+  'rejected',
+];
+
+/** Approved releases are the ones people can publish or already see. */
+export const historyStatus = (release: OntologyRelease): HistoryStatus => {
+  switch (release.entityStatus) {
+    case EntityStatus.Approved:
+      return 'published';
+    case EntityStatus.InReview:
+      return 'inReview';
+    case EntityStatus.Rejected:
+      return 'rejected';
+    default:
+      return 'draft';
+  }
+};
+
+export const filterHistoryReleases = (
+  releases: readonly OntologyRelease[],
+  filter: HistoryStatusFilter,
+  search: string
+) => {
+  const needle = search.trim().toLowerCase();
+
+  return releases.filter(
+    (release) =>
+      (filter === 'all' || historyStatus(release) === filter) &&
+      (!needle ||
+        [release.semanticVersion, release.name, release.releaseNotes].some(
+          (text) => text?.toLowerCase().includes(needle)
+        ))
+  );
+};
+
+/** Row counts by change type; a deprecation edits an existing concept. */
+export const releaseChangeBreakdown = (release: OntologyRelease) => {
+  const summary = release.changeSummary;
+  if (!summary || summary.deprecated === undefined) {
+    return undefined;
+  }
+
+  return {
+    added: summary.added,
+    changed: summary.changed + summary.deprecated,
+    removed: summary.removed,
+  };
+};
+
+/**
+ * Per-kind counts of a release's changes, read from the summary the server
+ * wrote at capture. A release captured before kind counts existed has none,
+ * so its row keeps the added, changed and removed breakdown alone.
+ */
+export const releaseKindCounts = (
+  release: OntologyRelease
+): ChangeKindCounts | undefined => {
+  const kinds = release.changeSummary?.kindCounts;
+  if (!kinds) {
+    return undefined;
+  }
+  const rules = kinds.axiom + kinds.shape;
+
+  return {
+    concepts: kinds.concept,
+    properties: kinds.property,
+    relationships: kinds.association,
+    rules,
+    total: kinds.concept + kinds.property + kinds.association + rules,
+  };
+};
 
 const action = (
   kind: PublicationAction['kind'],

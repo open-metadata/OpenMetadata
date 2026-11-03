@@ -26,11 +26,11 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { LogicalCheck } from '../../../../generated/api/data/ontologyReleaseValidation';
 import {
+  ApprovalBasis,
   EntityStatus,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyReviewRelease from '../OntologyReviewPanel/OntologyReviewRelease';
 import OntologyReleaseEvents from './OntologyReleaseEvents';
 import OntologyReleaseExport from './OntologyReleaseExport';
@@ -178,7 +178,13 @@ const OntologyReleaseDetails = ({
     `label.${release.entityStatus.toLowerCase().replaceAll(' ', '-')}`
   );
 
-  const heading = getEntityName(release);
+  const heading = versionLabel(release);
+  const directPublish =
+    release.approvalBasis === ApprovalBasis.NoReviewersConfigured ? (
+      <Typography data-testid="ontology-release-direct" size="text-sm">
+        {t('label.published-without-review')}
+      </Typography>
+    ) : null;
 
   const actions = (
     <ReleaseActions
@@ -233,6 +239,7 @@ const OntologyReleaseDetails = ({
                 </Badge>
               )}
             </Box>
+            {directPublish}
             {consistencyAlert}
             {actions}
             {history}
@@ -253,6 +260,7 @@ const OntologyReleaseDetails = ({
           {t('label.active')}
         </Typography>
       )}
+      {directPublish}
       {consistencyAlert}
       {actions}
       {history}

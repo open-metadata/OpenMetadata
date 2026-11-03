@@ -18,22 +18,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import type {
-  ChangeFilter,
-  ChangeKindCounts,
+import {
+  KIND_MESSAGES,
+  type ChangeFilter,
+  type ChangeKindCounts,
 } from './OntologyReleaseChanges.utils';
 
 const FILTERS: readonly ChangeFilter[] = ['all', 'added', 'changed', 'removed'];
-
-const KIND_MESSAGES: readonly [
-  Exclude<keyof ChangeKindCounts, 'total'>,
-  string
-][] = [
-  ['concepts', 'message.native-concept-count'],
-  ['properties', 'message.ontology-property-count'],
-  ['relationships', 'message.ontology-relationship-count'],
-  ['rules', 'message.ontology-rule-count'],
-];
 
 interface OntologyReleaseChangeFiltersProps {
   counts: ChangeKindCounts;

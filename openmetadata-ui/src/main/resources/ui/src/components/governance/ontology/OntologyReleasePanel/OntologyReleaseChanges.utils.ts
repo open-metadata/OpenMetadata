@@ -36,6 +36,16 @@ export interface VersionSuggestion {
   reason: VersionReason;
 }
 
+export const KIND_MESSAGES: readonly [
+  Exclude<keyof ChangeKindCounts, 'total'>,
+  string
+][] = [
+  ['concepts', 'message.native-concept-count'],
+  ['properties', 'message.ontology-property-count'],
+  ['relationships', 'message.ontology-relationship-count'],
+  ['rules', 'message.ontology-rule-count'],
+];
+
 const KIND_FIELD: Partial<
   Record<MemberKind, Exclude<keyof ChangeKindCounts, 'total'>>
 > = {

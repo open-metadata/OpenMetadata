@@ -14,6 +14,7 @@
 import { APIRequestContext, Page, TestInfo } from '@playwright/test';
 import { readFile } from 'fs/promises';
 import { SearchIndex } from '../../../src/enums/search.enum';
+import { OntologyReleaseDiff } from '../../../src/generated/api/data/ontologyReleaseDiff';
 import { ContextMemory } from '../../../src/generated/entity/context/contextMemory';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyChangeSet } from '../../../src/generated/entity/data/ontologyChangeSet';
@@ -29,6 +30,7 @@ import { fillCodeEditor } from '../../utils/codeEditor';
 import {
   clickIgnoringToasts,
   fullUuid,
+  getApiContext,
   getWorkerAdminAPIContext,
   uuid,
 } from '../../utils/common';
@@ -215,9 +217,18 @@ test.describe(
           page.getByTestId('ontology-scope-menu-trigger')
         ).toHaveText('Ontology');
         await expect(page.getByTestId('ontology-explorer')).toHaveCount(0);
-        await expect(
-          page.getByRole('button', { name: 'Reload', exact: true })
-        ).toBeVisible();
+        if (status === 404) {
+          await expect(page.getByTestId('ontology-not-found')).toContainText(
+            'This ontology was not found.'
+          );
+          await expect(
+            page.getByRole('button', { name: 'Reload', exact: true })
+          ).toHaveCount(0);
+        } else {
+          await expect(
+            page.getByRole('button', { name: 'Reload', exact: true })
+          ).toBeVisible();
+        }
         await page
           .getByRole('button', { name: 'All ontologies', exact: true })
           .click();
@@ -537,6 +548,13 @@ test.describe(
                 `/api/v1/ontologies/${ontologyId}` &&
               response.request().method() === 'PATCH'
           );
+          // The panel refetches after the PATCH and closes an open menu, so the next step opens its menu only after the last read of that refetch.
+          const refetched = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}/working/validation` &&
+              response.request().method() === 'GET'
+          );
           await author
             .getByRole('option', {
               name:
@@ -544,6 +562,7 @@ test.describe(
             })
             .click();
           expect((await addition).status()).toBe(200);
+          await refetched;
           await expect(emptyCard).toContainText(
             reviewer.responseData.displayName ?? reviewer.responseData.name
           );
@@ -944,11 +963,11 @@ test.describe(
         await expect(
           author.getByTestId('ontology-publication-modal')
         ).not.toBeVisible();
-        for (const [card, previewFormat, extension] of [
-          ['rdfxml', 'turtle', 'rdf'],
-          ['jsonld', 'turtle', 'jsonld'],
-          ['skos', 'skos', 'ttl'],
-          ['csv', 'csv', 'csv'],
+        for (const [card, extension] of [
+          ['rdfxml', 'rdf'],
+          ['jsonld', 'jsonld'],
+          ['skos', 'ttl'],
+          ['csv', 'csv'],
         ]) {
           const exportPath = `/api/v1/ontologyReleases/${firstRelease.id}/export`;
           const previewed = author.waitForResponse((response) => {
@@ -956,7 +975,7 @@ test.describe(
 
             return (
               url.pathname === exportPath &&
-              url.searchParams.get('format') === previewFormat
+              url.searchParams.get('format') === card
             );
           });
           await author.getByTestId('ontology-import-export-trigger').click();
@@ -2091,6 +2110,557 @@ test.describe(
         await expect(
           page.getByTestId('ontology-publication-modal')
         ).toHaveCount(0);
+      } finally {
+        await removeFixture(api, ontology);
+      }
+    });
+  }
+);
+
+const g8Shot = async (page: Page, testInfo: TestInfo, name: string) => {
+  const path = testInfo.outputPath(`g8-${name}.png`);
+  await page.screenshot({ path, fullPage: true });
+  await testInfo.attach(`g8-${name}`, { path, contentType: 'image/png' });
+};
+
+// Playwright drops the attachments of passing tests, so the review evidence is written straight to the folder the PR body reads.
+const g8ReviewShot = async (page: Page, lane: 1 | 2, mode: string) => {
+  const directory = process.env.G8_REVIEW_SHOT_DIR;
+  if (directory) {
+    await page.screenshot({
+      path: `${directory}/G8-review-history-${lane}-${mode}.png`,
+      fullPage: true,
+    });
+  }
+};
+
+type SealOptions = {
+  notes?: string;
+  publish?: boolean;
+  bump?: 'major' | 'minor';
+};
+
+const sealRelease = async (
+  api: APIRequestContext,
+  ontologyId: string,
+  { notes, publish = true, bump = 'minor' }: SealOptions = {}
+) => {
+  const state = await okJson<OntologyState>(
+    await api.get(`/api/v1/ontologies/${ontologyId}/state`),
+    'Read release fence'
+  );
+  const release = await okJson<OntologyRelease>(
+    await api.post(`/api/v1/ontologies/${ontologyId}/releases`, {
+      data: {
+        expectedWorkingRevision: state.workingRevision,
+        expectedLatestReleaseRevision: state.lastReleaseRevision,
+        expectedActivationRevision: state.activationRevision,
+        versionBump: bump,
+        releaseNotes: notes,
+      },
+    }),
+    'Seal release'
+  );
+  if (publish) {
+    await okJson(
+      await api.put(`/api/v1/ontologies/${ontologyId}/activation`, {
+        data: {
+          releaseId: release.id,
+          expectedActivationRevision: state.activationRevision,
+        },
+      }),
+      'Publish release directly'
+    );
+  }
+
+  return okJson<OntologyRelease>(
+    await api.get(`/api/v1/ontologyReleases/${release.id}`),
+    'Read sealed release'
+  );
+};
+
+const publishApproved = async (
+  api: APIRequestContext,
+  ontologyId: string,
+  releaseId: string
+) => {
+  const state = await okJson<OntologyState>(
+    await api.get(`/api/v1/ontologies/${ontologyId}/state`),
+    'Read activation fence'
+  );
+  await okJson(
+    await api.put(`/api/v1/ontologies/${ontologyId}/activation`, {
+      data: {
+        releaseId,
+        expectedActivationRevision: state.activationRevision,
+      },
+    }),
+    'Publish approved release'
+  );
+};
+
+const addConcept = async (
+  api: APIRequestContext,
+  ontology: Ontology,
+  name: string
+) =>
+  okJson<OntologyConcept>(
+    await api.post('/api/v1/ontologyConcepts', {
+      data: {
+        name,
+        ontology: ontology.fullyQualifiedName,
+        conceptType: 'OWL_CLASS',
+        description: `${name} definition`,
+      },
+    }),
+    `Create ${name}`
+  );
+
+const resolveReview = async (
+  adminApi: APIRequestContext,
+  reviewerApi: APIRequestContext,
+  release: OntologyRelease,
+  resolutionType: 'Approved' | 'Rejected',
+  tasks: string[],
+  comment?: string
+) => {
+  const task = await submitReview(
+    adminApi,
+    'ontologyRelease',
+    release.fullyQualifiedName,
+    tasks
+  );
+  await okJson(
+    await reviewerApi.post(`/api/v1/tasks/${task.id}/resolve`, {
+      data: { resolutionType, comment },
+    }),
+    `Resolve review as ${resolutionType}`
+  );
+};
+
+const openReleases = async (page: Page, ontology: Ontology) => {
+  await page.goto(`/governance/ontology?ontology=${ontology.id}`);
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+  await page.getByTestId('ontology-release-history-trigger').click();
+  await expect(page.getByTestId('ontology-release-history')).toBeVisible();
+};
+
+const chooseRelease = async (page: Page, picker: string, version: string) => {
+  await page.getByRole('button', { name: picker, exact: true }).click();
+  await page.getByText(`${version} (`).click();
+};
+
+const expectedBreakdown = (release: OntologyRelease) => {
+  const summary = release.changeSummary;
+  if (!summary) {
+    throw new Error('Sealed release has no change summary');
+  }
+
+  return `${summary.added} added · ${
+    summary.changed + (summary.deprecated ?? 0)
+  } changed · ${summary.removed} removed`;
+};
+
+test.describe(
+  'Release history and compare (G8)',
+  { tag: ['@Features', '@Governance'] },
+  () => {
+    for (const mode of ['ai', 'classic'] as const) {
+      test(`fills history rows and compares two releases in ${mode} mode`, async ({
+        isolatedUserPage: page,
+        isolatedUser,
+      }, testInfo) => {
+        test.slow();
+        const api = await getWorkerAdminAPIContext();
+        await setMode(api, isolatedUser.responseData.id, mode);
+        const { ontology, concept } = await createPublicationFixture(
+          api,
+          'pw_g8_compare',
+          []
+        );
+        try {
+          const legacy = await addConcept(api, ontology, 'Legacy');
+          const first = await sealRelease(api, ontology.id, {
+            notes: 'first cut',
+          });
+          await editConcept(api, concept, 'Customer redefined');
+          await addConcept(api, ontology, 'Invoice');
+          await api.delete(
+            `/api/v1/ontologyConcepts/${legacy.id}?hardDelete=true`
+          );
+          const second = await sealRelease(api, ontology.id, {
+            notes: 'second pass',
+          });
+          expect(first.semanticVersion).toBe('0.1.0');
+          expect(second.semanticVersion).toBe('0.2.0');
+
+          await openReleases(page, ontology);
+
+          await expect(page.getByTestId('ontology-release-row')).toHaveCount(2);
+          for (const release of [first, second]) {
+            await expect(
+              page.getByTestId(`ontology-release-select-${release.id}`)
+            ).toHaveText(release.semanticVersion ?? '');
+            await expect(
+              page.getByTestId(`ontology-release-decision-${release.id}`)
+            ).toHaveText('Published without review');
+            await expect(
+              page.getByTestId(`ontology-release-count-${release.id}`)
+            ).toHaveText(expectedBreakdown(release));
+          }
+          await expect(
+            page.getByTestId(`ontology-release-kinds-${first.id}`)
+          ).toHaveText('2 concepts');
+          await expect(
+            page.getByTestId(`ontology-release-kinds-${second.id}`)
+          ).toHaveText('3 concepts');
+          await g8Shot(page, testInfo, mode === 'ai' ? 'rows' : 'classic');
+          await g8ReviewShot(page, 1, mode);
+
+          await chooseRelease(page, 'From version', '0.1.0');
+          await chooseRelease(page, 'To version', '0.2.0');
+          const diff = await okJson<OntologyReleaseDiff>(
+            await api.get(
+              `/api/v1/ontologyReleases/${second.id}/diff?baseReleaseId=${first.id}&limit=500`
+            ),
+            'Read release diff'
+          );
+          const expected = (kinds: string[]) =>
+            diff.data
+              .filter(
+                (change) =>
+                  kinds.includes(change.changeType) &&
+                  change.memberKind !== 'ONTOLOGY'
+              )
+              .map((change) => change.entity.name);
+          expect(expected(['ADDED'])).toEqual(['Invoice']);
+          expect(expected(['REMOVED'])).toEqual(['Legacy']);
+          expect(expected(['CHANGED', 'DEPRECATED'])).toEqual(['Customer']);
+          await expect(
+            page.getByTestId('ontology-compare-added')
+          ).toContainText('Invoice');
+          await expect(
+            page.getByTestId('ontology-compare-changed')
+          ).toContainText('Customer');
+          await expect(
+            page.getByTestId('ontology-compare-removed')
+          ).toContainText('Legacy');
+          await expect(page.getByTestId('ontology-compare-counts')).toHaveText(
+            '3 changes · 3 concepts'
+          );
+          await g8Shot(
+            page,
+            testInfo,
+            mode === 'ai' ? 'compare' : 'classic-compare'
+          );
+          await g8ReviewShot(page, 2, mode);
+        } finally {
+          await removeFixture(api, ontology);
+        }
+      });
+    }
+
+    test('lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const { ontology } = await createPublicationFixture(
+        api,
+        'pw_g8_kinds',
+        []
+      );
+      try {
+        await addConcept(api, ontology, 'Legacy');
+        const older = await sealRelease(api, ontology.id, { notes: 'older' });
+        await addConcept(api, ontology, 'Invoice');
+        const newer = await sealRelease(api, ontology.id, { notes: 'newer' });
+        await page.route(
+          new RegExp(`/api/v1/ontologies/${ontology.id}/releases\\?`),
+          async (route) => {
+            const response = await route.fetch();
+            const body = await response.json();
+            for (const release of body.data) {
+              if (release.id === older.id) {
+                delete release.changeSummary.kindCounts;
+              }
+            }
+            await route.fulfill({ response, json: body });
+          }
+        );
+
+        await openReleases(page, ontology);
+
+        await expect(
+          page.getByTestId(`ontology-release-kinds-${newer.id}`)
+        ).toHaveText('1 concept');
+        await expect(
+          page.getByTestId(`ontology-release-count-${older.id}`)
+        ).toHaveText('3 added · 0 changed · 0 removed');
+        await expect(
+          page.getByTestId(`ontology-release-kinds-${older.id}`)
+        ).toHaveCount(0);
+      } finally {
+        await removeFixture(api, ontology);
+      }
+    });
+
+    test('says there are no differences when a release is compared with itself', async ({
+      isolatedUserPage: page,
+    }, testInfo) => {
+      const api = await getWorkerAdminAPIContext();
+      const { ontology } = await createPublicationFixture(
+        api,
+        'pw_g8_same',
+        []
+      );
+      try {
+        await sealRelease(api, ontology.id);
+        await openReleases(page, ontology);
+
+        await chooseRelease(page, 'From version', '0.1.0');
+        await chooseRelease(page, 'To version', '0.1.0');
+
+        await expect(page.getByTestId('ontology-compare-empty')).toHaveText(
+          'No differences between 0.1.0 and 0.1.0.'
+        );
+        await g8Shot(page, testInfo, 'same');
+      } finally {
+        await removeFixture(api, ontology);
+      }
+    });
+
+    test('reads Published without review on a directly published release row and detail', async ({
+      isolatedUserPage: page,
+    }, testInfo) => {
+      const api = await getWorkerAdminAPIContext();
+      const { ontology } = await createPublicationFixture(
+        api,
+        'pw_g8_direct',
+        []
+      );
+      try {
+        const release = await sealRelease(api, ontology.id, {
+          notes: 'direct',
+        });
+        expect(release.approvalBasis).toBe('NO_REVIEWERS_CONFIGURED');
+        await openReleases(page, ontology);
+
+        await expect(
+          page.getByTestId(`ontology-release-decision-${release.id}`)
+        ).toHaveText('Published without review');
+        await page.getByTestId(`ontology-release-select-${release.id}`).click();
+        const detail = page.getByTestId('ontology-release-definition');
+        await expect(
+          detail.getByRole('heading', { name: 'v0.1.0' })
+        ).toBeVisible();
+        await expect(detail.getByTestId('ontology-release-direct')).toHaveText(
+          'Published without review'
+        );
+        await expect(
+          detail.getByTestId('ontology-release-event').filter({
+            hasText: 'Published without review',
+          })
+        ).toHaveCount(1);
+        await g8Shot(page, testInfo, 'direct');
+      } finally {
+        await removeFixture(api, ontology);
+      }
+    });
+
+    test('shows reviewer, reason and filters for approved, rejected and draft releases', async ({
+      isolatedUserPage: page,
+      freshUserPage: { page: reviewerPage, user: reviewer },
+    }, testInfo) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const { apiContext: reviewerApi, afterAction } = await getApiContext(
+        reviewerPage
+      );
+      const { ontology, concept } = await createPublicationFixture(
+        api,
+        'pw_g8_decided',
+        [reviewer.responseData.id]
+      );
+      const tasks: string[] = [];
+      try {
+        const approved = await sealRelease(api, ontology.id, {
+          notes: 'billing launch',
+          publish: false,
+        });
+        await resolveReview(api, reviewerApi, approved, 'Approved', tasks);
+        await publishApproved(api, ontology.id, approved.id);
+        await editConcept(api, concept, 'Second definition');
+        const rejected = await sealRelease(api, ontology.id, {
+          notes: 'risky rewrite',
+          publish: false,
+        });
+        await resolveReview(
+          api,
+          reviewerApi,
+          rejected,
+          'Rejected',
+          tasks,
+          'Definitions overlap with Customer'
+        );
+        await editConcept(api, concept, 'Third definition');
+        const draft = await sealRelease(api, ontology.id, {
+          notes: 'work in progress',
+          publish: false,
+          bump: 'major',
+        });
+
+        await openReleases(page, ontology);
+        const versions = () =>
+          page
+            .locator('[data-testid^="ontology-release-select-"]')
+            .allTextContents();
+        await expect.poll(versions).toEqual(['1.0.0', '0.2.0', '0.1.0']);
+        await expect(
+          page.getByTestId(`ontology-release-decision-${approved.id}`)
+        ).toContainText(`Approved by ${reviewer.responseData.name}`);
+        await expect(
+          page.getByTestId(`ontology-release-decision-${rejected.id}`)
+        ).toContainText(`Rejected by ${reviewer.responseData.name}`);
+
+        await page
+          .getByTestId(`ontology-release-select-${rejected.id}`)
+          .click();
+        const detail = page.getByTestId('ontology-release-definition');
+        await expect(
+          detail.getByTestId('ontology-release-event-reason')
+        ).toHaveText('Reason: Definitions overlap with Customer');
+        await expect(
+          detail
+            .getByTestId('ontology-release-event')
+            .filter({ hasText: 'Rejected' })
+        ).toContainText(reviewer.responseData.name);
+        await g8Shot(page, testInfo, 'rejected');
+
+        const search = page.getByTestId('ontology-release-search');
+        await search.fill('0.2');
+        await expect.poll(versions).toEqual(['0.2.0']);
+        await search.fill('BILLING');
+        await expect.poll(versions).toEqual(['0.1.0']);
+        await g8Shot(page, testInfo, 'search');
+        await search.fill('');
+
+        const filters: [string, string[]][] = [
+          ['published', ['0.1.0']],
+          ['rejected', ['0.2.0']],
+          ['draft', ['1.0.0']],
+          ['all', ['1.0.0', '0.2.0', '0.1.0']],
+        ];
+        for (const [filter, expected] of filters) {
+          await page.getByTestId(`ontology-release-filter-${filter}`).click();
+          await expect.poll(versions).toEqual(expected);
+        }
+        expect(draft.semanticVersion).toBe('1.0.0');
+        await page.getByTestId('ontology-release-filter-rejected').click();
+        await g8Shot(page, testInfo, 'filter');
+      } finally {
+        await afterAction();
+        await removeFixture(api, ontology, tasks);
+      }
+    });
+
+    test('pages thirty releases and keeps the selection across pages', async ({
+      isolatedUserPage: page,
+    }, testInfo) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const { ontology, concept } = await createPublicationFixture(
+        api,
+        'pw_g8_paging',
+        []
+      );
+      try {
+        const releases: OntologyRelease[] = [];
+        for (let index = 0; index < 30; index += 1) {
+          await editConcept(api, concept, `Definition ${index}`);
+          releases.push(await sealRelease(api, ontology.id));
+        }
+        await openReleases(page, ontology);
+
+        await expect(page.getByTestId('ontology-release-row')).toHaveCount(10);
+        await expect(page.getByTestId('ontology-release-page')).toHaveText(
+          'Page 1 / 3'
+        );
+        const newest = releases[29];
+        await page.getByTestId(`ontology-release-select-${newest.id}`).click();
+        const detail = page.getByTestId('ontology-release-definition');
+        await expect(
+          detail.getByRole('heading', { name: `v${newest.semanticVersion}` })
+        ).toBeVisible();
+
+        await page.getByTestId('ontology-release-next').click();
+        await expect(page.getByTestId('ontology-release-page')).toHaveText(
+          'Page 2 / 3'
+        );
+        await expect(
+          page.getByTestId(`ontology-release-select-${newest.id}`)
+        ).toHaveCount(0);
+        await expect(
+          detail.getByRole('heading', { name: `v${newest.semanticVersion}` })
+        ).toBeVisible();
+        await page.getByTestId('ontology-release-next').click();
+        await page.getByTestId('ontology-release-load-more').click();
+        await expect(page.getByTestId('ontology-release-row')).toHaveCount(10);
+        await g8Shot(page, testInfo, 'paging');
+
+        await page.getByTestId('ontology-release-previous').click();
+        await page.getByTestId('ontology-release-previous').click();
+        await expect(
+          page.getByTestId(`ontology-release-select-${newest.id}`)
+        ).toHaveAttribute('aria-expanded', 'true');
+      } finally {
+        await removeFixture(api, ontology);
+      }
+    });
+
+    test('lets a viewer without edit rights read rows and compare with no write action', async ({
+      isolatedUserPage: author,
+      freshUserPage: { page: viewer },
+    }, testInfo) => {
+      const api = await getWorkerAdminAPIContext();
+      const { ontology, concept } = await createPublicationFixture(
+        api,
+        'pw_g8_viewer',
+        []
+      );
+      try {
+        const first = await sealRelease(api, ontology.id);
+        await editConcept(api, concept, 'Changed once');
+        const second = await sealRelease(api, ontology.id);
+        void author;
+
+        await openReleases(viewer, ontology);
+
+        await expect(
+          viewer.getByTestId(`ontology-release-select-${second.id}`)
+        ).toHaveText('0.2.0');
+        await chooseRelease(viewer, 'From version', '0.1.0');
+        await chooseRelease(viewer, 'To version', '0.2.0');
+        await expect(
+          viewer.getByTestId('ontology-compare-changed')
+        ).toContainText('Customer');
+        await viewer.getByTestId(`ontology-release-select-${first.id}`).click();
+        await expect(
+          viewer
+            .getByTestId('ontology-release-definition')
+            .getByRole('heading', { name: 'v0.1.0' })
+        ).toBeVisible();
+        await expect(
+          viewer.getByTestId('ontology-rollback-release')
+        ).toBeDisabled();
+        for (const testId of [
+          'ontology-publish-release',
+          'ontology-capture-release',
+          'ontology-request-review',
+        ]) {
+          await expect(viewer.getByTestId(testId)).toHaveCount(0);
+        }
+        await g8Shot(viewer, testInfo, 'viewer');
       } finally {
         await removeFixture(api, ontology);
       }
