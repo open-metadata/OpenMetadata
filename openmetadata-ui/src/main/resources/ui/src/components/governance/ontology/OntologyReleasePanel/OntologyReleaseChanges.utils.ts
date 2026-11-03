@@ -107,9 +107,11 @@ export const conceptChangeLabel = (group: ConceptChange) => {
     ({ memberKind }) => memberKind === MemberKind.Concept
   );
 
+  const memberName = member ? getEntityName(member.entity) : '';
+
   return (
     group.concept ||
-    (member ? getEntityName(member.entity) : '') ||
+    memberName ||
     iriTail(group.iri) ||
     group.changes.map(({ entity }) => getEntityName(entity)).join(', ')
   );

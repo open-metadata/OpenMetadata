@@ -222,6 +222,37 @@ beforeEach(() => {
 
     return undefined;
   };
+  const emptyPage = () => ({ data: { data: [], paging: { total: 0 } } });
+  const reviewResponse = () => {
+    if (reviewMissing) {
+      throw new AxiosError('No open review', '404');
+    }
+
+    return { data: review };
+  };
+  const suffixResponses: [string, () => unknown][] = [
+    [
+      '/working/diff',
+      () => ({ data: { state, data: [], paging: { total: 1 } } }),
+    ],
+    ['/working/validation', () => ({ data: { valid: true, violations: [] } })],
+    ['/state', () => ({ data: state })],
+    ['/review', reviewResponse],
+    [
+      '/structure',
+      () => ({
+        data: {
+          releaseId: release.id,
+          contentDigest: release.contentDigest,
+          valid: true,
+          violationCount: 0,
+          violations: [],
+        },
+      }),
+    ],
+    ['/events', emptyPage],
+    ['/diff', emptyPage],
+  ];
   get.mockImplementation(async (url) => {
     const captured = releaseResponse(url);
     if (captured) {
@@ -230,38 +261,14 @@ beforeEach(() => {
     if (url === `/ontologies/${ontology.id}`) {
       return { data: ontology };
     }
-    if (url.endsWith('/working/diff')) {
-      return { data: { state, data: [], paging: { total: 1 } } };
-    }
-    if (url.endsWith('/working/validation')) {
-      return { data: { valid: true, violations: [] } };
-    }
-    if (url.endsWith('/state')) {
-      return { data: state };
-    }
-    if (url.endsWith('/review')) {
-      if (reviewMissing) {
-        throw new AxiosError('No open review', '404');
-      }
-
-      return { data: review };
-    }
-    if (url.endsWith('/structure')) {
-      return {
-        data: {
-          releaseId: release.id,
-          contentDigest: release.contentDigest,
-          valid: true,
-          violationCount: 0,
-          violations: [],
-        },
-      };
-    }
-    if (url.endsWith('/events') || url.endsWith('/diff')) {
-      return { data: { data: [], paging: { total: 0 } } };
+    const respond = suffixResponses.find(([suffix]) =>
+      url.endsWith(suffix)
+    )?.[1];
+    if (!respond) {
+      throw new Error(`Unexpected read ${url}`);
     }
 
-    throw new Error(`Unexpected read ${url}`);
+    return respond();
   });
 });
 

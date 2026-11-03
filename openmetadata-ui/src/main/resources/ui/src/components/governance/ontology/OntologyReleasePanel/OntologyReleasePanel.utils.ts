@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import { OntologyApprovalRule } from '../../../../generated/entity/data/ontology';
 import {
   EntityStatus,
@@ -30,6 +31,11 @@ import {
 } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getTaskDetailPath } from '../../../../utils/TaskUtils';
+import {
+  flattenConceptChanges,
+  suggestVersion,
+  type VersionSuggestion,
+} from './OntologyReleaseChanges.utils';
 import type {
   PublicationAction,
   PublicationActionInput,
@@ -40,6 +46,55 @@ import type {
 } from './OntologyReleasePanel.types';
 
 export { nextPublicationVersion as nextSemanticVersion } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
+
+export interface VersionEditorState {
+  owner: string;
+  versionBump?: VersionBump;
+  releaseNotes: string;
+}
+
+export const getEditorValues = (
+  editor: VersionEditorState | undefined,
+  scopeKey: string
+) =>
+  editor?.owner === scopeKey
+    ? { versionBump: editor.versionBump, releaseNotes: editor.releaseNotes }
+    : { versionBump: undefined, releaseNotes: '' };
+
+export const isCandidateStale = (
+  candidate: { sourceWorkingRevision: number } | null | undefined,
+  workingRevision: number | undefined
+) => !candidate || candidate.sourceWorkingRevision !== workingRevision;
+
+export const getWorkingDraft = (
+  ontologyId: string,
+  revision: number | undefined,
+  isActive: boolean
+) =>
+  isActive && revision !== undefined ? { ontologyId, revision } : undefined;
+
+type WorkingDiffPage = {
+  groups?: Parameters<typeof flattenConceptChanges>[0];
+  data: ReturnType<typeof flattenConceptChanges>;
+};
+
+const flattenWorkingDiff = (working: WorkingDiffPage) => [
+  ...flattenConceptChanges(working.groups ?? []),
+  ...working.data,
+];
+
+export const getWorkingChanges = (working: WorkingDiffPage | undefined) =>
+  working ? flattenWorkingDiff(working) : [];
+
+export const suggestWorkingVersion = (
+  changes: ReturnType<typeof getWorkingChanges>,
+  baseVersion: string | undefined
+) => (changes.length ? suggestVersion(changes, baseVersion) : undefined);
+
+export const resolveBump = (
+  chosen: VersionBump | undefined,
+  suggestion: VersionSuggestion | undefined
+) => chosen ?? suggestion?.bump ?? VersionBump.Minor;
 
 export const isSameWorkingState = (
   first: OntologyState | undefined,

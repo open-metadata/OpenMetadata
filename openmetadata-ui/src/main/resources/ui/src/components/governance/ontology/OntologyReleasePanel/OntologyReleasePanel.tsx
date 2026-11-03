@@ -25,7 +25,6 @@ import { groupBy } from 'lodash';
 import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import { AssigneeStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import {
   ChangeType,
@@ -53,8 +52,6 @@ import {
   countRowsByFilter,
   filterConceptChanges,
   filterMemberChanges,
-  flattenConceptChanges,
-  suggestVersion,
 } from './OntologyReleaseChanges.utils';
 import OntologyReleaseDetails from './OntologyReleaseDetails';
 import OntologyReleaseHistory from './OntologyReleaseHistory';
@@ -68,9 +65,16 @@ import type {
 } from './OntologyReleasePanel.types';
 import {
   deriveReleasePanelView,
+  getEditorValues,
   getPublicationActions,
+  getWorkingChanges,
+  getWorkingDraft,
+  isCandidateStale,
   isSameWorkingState,
   nextSemanticVersion,
+  resolveBump,
+  suggestWorkingVersion,
+  type VersionEditorState,
 } from './OntologyReleasePanel.utils';
 import OntologyReleaseReviewers from './OntologyReleaseReviewers';
 import OntologyReleaseValidation, {
@@ -209,11 +213,7 @@ const OntologyReleasePanel = ({
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const [editor, setEditor] = useState<{
-    owner: string;
-    versionBump?: VersionBump;
-    releaseNotes: string;
-  }>();
+  const [editor, setEditor] = useState<VersionEditorState>();
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const [cursorRevision, setCursorRevision] = useState<string>();
   const [changeFilter, setChangeFilter] = useState<ChangeFilter>('all');
@@ -252,26 +252,24 @@ const OntologyReleasePanel = ({
     dismissActivationConflict,
     updateReviewSettings,
   } = publication;
-  const scopeKey = `${ontology.id}:${currentUser?.id ?? ''}`;
-  const versionBump =
-    editor?.owner === scopeKey ? editor.versionBump : undefined;
-  const releaseNotes = editor?.owner === scopeKey ? editor.releaseNotes : '';
+  const userId = currentUser?.id;
+  const scopeKey = `${ontology.id}:${userId ?? ''}`;
+  const { versionBump, releaseNotes } = getEditorValues(editor, scopeKey);
   const panelView = deriveReleasePanelView(current, {
     canEdit,
     canWrite,
-    userId: currentUser?.id,
+    userId,
     userName: currentUser?.name,
   });
   const currentStage = panelView.kind === 'ready' ? panelView.value : undefined;
   const validationReport = useSettledValidationReport(currentStage?.candidate);
   const workingRevision = working.data?.state.workingRevision;
-  const isCandidateStale =
-    !currentStage?.candidate ||
-    currentStage.candidate.sourceWorkingRevision !== workingRevision;
-  const workingDraft =
-    view === 'changes' && isCandidateStale && workingRevision !== undefined
-      ? { ontologyId: ontology.id, revision: workingRevision }
-      : undefined;
+  const workingDraft = getWorkingDraft(
+    ontology.id,
+    workingRevision,
+    view === 'changes' &&
+      isCandidateStale(currentStage?.candidate, workingRevision)
+  );
   const workingValidation = useWorkingValidation(workingDraft);
   const workingErrors = firstWorkingErrors(
     workingValidation.isSuccess ? workingValidation.data : undefined
@@ -283,12 +281,7 @@ const OntologyReleasePanel = ({
   }, [firstPageRevision]);
   const after = cursors[cursors.length - 1];
   const page = useQuery({
-    queryKey: [
-      ONTOLOGY_WORKING_DIFF_QUERY_KEY,
-      ontology.id,
-      after,
-      currentUser?.id,
-    ],
+    queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontology.id, after, userId],
     queryFn: ({ signal }) =>
       getOntologyWorkingDiff(
         ontology.id,
@@ -321,21 +314,14 @@ const OntologyReleasePanel = ({
     !displayed.isFetching,
   ].every(Boolean);
   const baseVersion = versionBase.data?.semanticVersion;
-  const workingChanges = working.data
-    ? [
-        ...flattenConceptChanges(working.data.groups ?? []),
-        ...working.data.data,
-      ]
-    : [];
-  const suggestion = workingChanges.length
-    ? suggestVersion(workingChanges, baseVersion)
-    : undefined;
+  const workingChanges = getWorkingChanges(working.data);
+  const suggestion = suggestWorkingVersion(workingChanges, baseVersion);
   const visibleMembers = filterMemberChanges(
     changes.data?.data ?? [],
     changeFilter,
     changeSearch
   );
-  const bump = versionBump ?? suggestion?.bump ?? VersionBump.Minor;
+  const bump = resolveBump(versionBump, suggestion);
   const getNextVersion = () =>
     versionBase.isSuccess ? nextSemanticVersion(baseVersion, bump) : '';
   const changedSinceRejection = () =>
@@ -450,10 +436,7 @@ const OntologyReleasePanel = ({
         ? workingErrors
         : firstValidationErrors(validationReport),
       isReady: isDecided ? canWrite : canCapture,
-      isRequester: isSameUser(
-        current.value.review?.requester?.id,
-        currentUser?.id
-      ),
+      isRequester: isSameUser(current.value.review?.requester?.id, userId),
       version,
     };
   };
@@ -732,9 +715,11 @@ const OntologyReleasePanel = ({
       </Box>
     );
   };
+  const getBaseVersionTag = () =>
+    baseVersion ? versionTag(baseVersion) : t('label.draft');
   const getVersionPreview = () =>
     versionBase.isSuccess
-      ? (baseVersion ? versionTag(baseVersion) : t('label.draft')) +
+      ? getBaseVersionTag() +
         ' → ' +
         versionTag(nextSemanticVersion(baseVersion, bump))
       : t('label.loading');

@@ -24,11 +24,11 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { LogicalCheck } from '../../../../generated/api/data/ontologyReleaseValidation';
 import {
   EntityStatus,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
-import { LogicalCheck } from '../../../../generated/api/data/ontologyReleaseValidation';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyReviewRelease from '../OntologyReviewPanel/OntologyReviewRelease';
