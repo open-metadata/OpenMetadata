@@ -2361,14 +2361,21 @@ public class EventSubscriptionResourceIT
 
   @Test
   void test_unrelatedPatchCopyWithLegacyNumericHeader(TestNamespace ns) throws Exception {
+    // Long enough that the random hex in the copied name never contains it by chance.
+    int numericSecret = 987654321;
     EventSubscription created =
         createEntity(
-            secretRequest(ns, "legacy_numeric", "http://localhost:8585/hook", "123", null));
+            secretRequest(
+                ns,
+                "legacy_numeric",
+                "http://localhost:8585/hook",
+                String.valueOf(numericSecret),
+                null));
     EventSubscription stored = AlertFixtures.stored(created.getId());
     Map<String, Object> config = configOf(stored.getDestinations().getFirst());
-    config.put("headers", Map.of("Authorization", 123));
+    config.put("headers", Map.of("Authorization", numericSecret));
     stored.getDestinations().getFirst().withConfig(config);
-    stored.withBatchSize(123);
+    stored.withBatchSize(numericSecret);
     AlertFixtures.writeBehindTheServer(stored);
     JsonNode patch =
         JsonUtils.readTree("[{\"op\":\"copy\",\"from\":\"/name\",\"path\":\"/displayName\"}]");
@@ -2379,8 +2386,10 @@ public class EventSubscriptionResourceIT
 
     EventSubscription updated = getEntity(created.getId().toString());
     assertEquals(created.getName(), updated.getDisplayName());
-    assertEquals(123, updated.getBatchSize());
-    assertEquals("123", decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
+    assertEquals(numericSecret, updated.getBatchSize());
+    assertEquals(
+        String.valueOf(numericSecret),
+        decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
   }
 
   @Test

@@ -55,7 +55,10 @@ import {
   getValidationPath,
   updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
-import { searchAlertAiArgumentOptions } from './AlertAiFormFieldsSearchUtils';
+import {
+  resolveAlertAiArgumentLabels,
+  searchAlertAiArgumentOptions,
+} from './AlertAiFormFieldsSearchUtils';
 import {
   getSelectArgumentConfig,
   renderSelectItem,
@@ -280,6 +283,39 @@ const AiArgumentAutocomplete = ({
       );
     });
   }, [argument, sourceSearch]);
+
+  // Saved values can arrive after mount and lie outside the first page, so resolve any selected
+  // value still shown by its raw FQN. Tracking only the current selection keeps this bounded and
+  // stops a value the search cannot find from being looked up again.
+  const resolveAttemptsRef = useRef({ argument, values: new Set<string>() });
+
+  useEffect(() => {
+    const previous = resolveAttemptsRef.current;
+    const attempted = new Set(
+      previous.argument === argument
+        ? selectedValues.filter((selectedValue) =>
+            previous.values.has(selectedValue)
+          )
+        : []
+    );
+    const unresolved = selectedValues.filter(
+      (selectedValue) =>
+        !attempted.has(selectedValue) &&
+        !items.some(
+          (item) => item.id === selectedValue && item.label !== selectedValue
+        )
+    );
+    unresolved.forEach((selectedValue) => attempted.add(selectedValue));
+    resolveAttemptsRef.current = { argument, values: attempted };
+    if (unresolved.length === 0) {
+      return;
+    }
+    resolveAlertAiArgumentLabels(argument, unresolved).then((resolvedItems) =>
+      setItems((currentItems) =>
+        mergeSelectItems([...resolvedItems, ...currentItems])
+      )
+    );
+  }, [argument, items, selectedValues]);
 
   const selectedItems = useMemo(
     () =>

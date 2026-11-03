@@ -35,10 +35,15 @@ import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.TestNamespace;
 import org.openmetadata.sdk.test.util.TestNamespaceExtension;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.jdbi3.ContextFileRepository;
+import org.openmetadata.service.util.RequestEntityCache;
 
 @ExtendWith(TestNamespaceExtension.class)
 class ContextFileIT {
@@ -527,6 +532,67 @@ class ContextFileIT {
     ContextFile stored = getFile(rest, file.getId(), "");
     assertNotNull(stored.getShareConfig(), "A sharing change must survive a re-read");
     assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
+  }
+
+  @Test
+  void testProcessingUpdateKeepsConsolidatedMetadataEdits(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(rest, new CreateContextFile().withName(ns.prefix("processing-edit")));
+    ContextFileRepository repository =
+        (ContextFileRepository) Entity.getEntityRepository(Entity.CONTEXT_FILE);
+    try {
+      ContextFile analyzing =
+          JsonUtils.deepCopy(file, ContextFile.class)
+              .withProcessingStatus(ProcessingStatus.Analyzing);
+      repository.updateIfCurrent(null, file, analyzing, Entity.ADMIN_USER_NAME);
+      ContextFile snapshot =
+          repository.get(null, file.getId(), repository.getFields(""), Include.NON_DELETED, false);
+      ContextFile edited =
+          rest.patch(
+              FILE_PATH,
+              file.getId(),
+              JsonUtils.pojoToJson(snapshot),
+              JsonUtils.deepCopy(snapshot, ContextFile.class)
+                  .withDescription("Current description")
+                  .withShareConfig(
+                      new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)),
+              ContextFile.class);
+      assertEquals(snapshot.getVersion(), edited.getVersion());
+      ContextFile result =
+          JsonUtils.deepCopy(snapshot, ContextFile.class)
+              .withProcessingStatus(ProcessingStatus.Processed)
+              .withExtractedText("Extracted text");
+
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> repository.updateIfCurrent(null, snapshot, result, Entity.ADMIN_USER_NAME));
+
+      RequestEntityCache.invalidate(Entity.CONTEXT_FILE, file.getId(), null);
+      ContextFile current =
+          repository.get(null, file.getId(), repository.getFields(""), Include.NON_DELETED, false);
+      repository.updateIfCurrent(
+          null,
+          current,
+          JsonUtils.deepCopy(current, ContextFile.class)
+              .withProcessingStatus(ProcessingStatus.Processed)
+              .withExtractedText("Extracted text"),
+          Entity.ADMIN_USER_NAME);
+      ContextFile stored = getFile(rest, file.getId(), "");
+      assertEquals("Current description", stored.getDescription());
+      assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
+      assertEquals("Extracted text", stored.getExtractedText());
+      assertEquals(ProcessingStatus.Processed, stored.getProcessingStatus());
+      User readerUser = DriveTestUsers.createUser(ns, "processing-reader");
+      RestClient reader = RestClient.forUser(readerUser.getEmail(), new String[] {});
+      try (Response response = reader.rawGet(FILE_PATH + "/" + file.getId());
+          Response download = reader.rawGet(FILE_PATH + "/" + file.getId() + "/download")) {
+        assertEquals(403, response.getStatus());
+        assertEquals(403, download.getStatus());
+      }
+    } finally {
+      RequestEntityCache.clear();
+    }
   }
 
   // --- Permissions ---

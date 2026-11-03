@@ -34,6 +34,7 @@ import {
   getModelRelations,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
   OntologyGraphData,
@@ -254,8 +255,7 @@ const AllOntologiesGraphView = ({
     }
 
     return (
-      <Suspense
-        fallback={<Typography role="status">{t('label.loading')}</Typography>}>
+      <Suspense fallback={<Loader />}>
         <OntologyGraphG6
           studioMode
           edges={graph.edges}

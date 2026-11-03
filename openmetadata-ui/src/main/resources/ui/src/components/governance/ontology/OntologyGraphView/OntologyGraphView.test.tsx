@@ -2460,7 +2460,7 @@ describe('OntologyGraphView', () => {
     }
     await act(() => created);
     await waitFor(() =>
-      expect(screen.queryByText('label.loading')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument()
     );
 
     expect(createOntologyProperty).toHaveBeenCalledTimes(2);
