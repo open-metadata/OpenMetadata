@@ -28,13 +28,14 @@ survived.
 - Re-extraction maintains `Approved` and `Unprocessed` pills. It matches an existing pill by exact
   question and answer first, for every pill, then by similarity, never pairing two pills whose
   numbers conflict. Numbers conflict only when one answer replaces a number of the other, compared
-  as written, grouping commas and leading zeros aside (1,500 is 1500, 3.10 is not 3.1); an added
+  as written, grouping commas, leading zeros and a zero fraction aside (1,500.00 is 1500, 3.10 is
+  not 3.1); an added
   or dropped number (a year) is a rewording, and a parenthesized citation ("(section 3)", "(Table
   4)") is no number at all, so renumbering them changes no claim. The prompt names a value's
   section in its summary, never in its question or answer. A replaced number is a new claim, created
   in the stage it was derived in, and the old pill is released. Extracted pills claim their
   rewordings before a pill a person corrected (Manual) does; the corrected pill then claims the
-  document's value for its own question (the same vocabulary; "What's" is "What is") when exactly
+  document's value for its own question (every word counts but filler: "What's" is "What is", "UK" is not "US") when exactly
   one is left, so that value is never recreated
   beside the correction and the correction never takes another fact's value. A pill whose
   question or answer changes takes the stage it was derived in; a reworded title or summary keeps

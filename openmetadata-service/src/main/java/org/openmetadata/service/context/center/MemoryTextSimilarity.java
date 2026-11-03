@@ -30,9 +30,13 @@ final class MemoryTextSimilarity {
 
   private static final Pattern CITATION =
       Pattern.compile(
-          "(?i)(?:\\b(?:sections?|pages?|pp?\\.|chapters?|clauses?|paragraphs?|appendix|articles?"
-              + "|tables?|figures?|annex(?:es)?|schedules?|parts?)\\s*|§\\s*)"
-              + "\\d+(?:\\.\\d+)*(?:[-–]\\d+(?:\\.\\d+)*)?");
+          "(?i)(?:\\b(?:sections?|sec\\.|pages?|pp?\\.|chapters?|clauses?|paragraphs?|appendix"
+              + "|articles?|tables?|figures?|annex(?:es)?|schedules?|parts?)\\s*|§\\s*)"
+              + "\\d+(?:\\.\\d+)*(?:\\s*(?:[-–&]|and)\\s*\\d+(?:\\.\\d+)*)*");
+
+  /** Words a rewording adds or drops without asking anything else: "What's" is "What is". */
+  private static final Set<String> FILLER =
+      Set.of("a", "an", "the", "is", "are", "was", "were", "s", "do", "does", "did");
 
   private static final Pattern NUMBERS =
       Pattern.compile("\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?");
@@ -65,9 +69,15 @@ final class MemoryTextSimilarity {
             .collect(Collectors.toSet());
   }
 
-  /** Drops grouping commas and leading zeros; trailing zeros stay, so "3.10" is not "3.1". */
+  /**
+   * Drops grouping commas, leading zeros and a fraction of zeros ("1,500.00" is "1500"); any other
+   * fraction stays as written, so "3.10" is not "3.1".
+   */
   private static String byValue(String number) {
-    return new BigDecimal(number.replace(",", "")).toPlainString();
+    BigDecimal value = new BigDecimal(number.replace(",", ""));
+    return value.stripTrailingZeros().scale() <= 0
+        ? value.setScale(0).toPlainString()
+        : value.toPlainString();
   }
 
   static String withoutCitations(String text) {
@@ -81,17 +91,20 @@ final class MemoryTextSimilarity {
                         "(" + CITATION.matcher(group.group(1)).replaceAll(" ") + ")"));
   }
 
-  /** One question in other words of the same vocabulary: "What is" and "What's" ask the same. */
+  /**
+   * One question in other words: every word counts, short ones too ("UK" is not "US", "Q3" is not
+   * "Q4"), except filler a rewording adds or drops ("What is" and "What's" ask the same).
+   */
   static boolean sameQuestion(String questionA, String questionB) {
-    Set<String> a = tokenize(questionA);
-    Set<String> b = tokenize(questionB);
-    return a.isEmpty() && b.isEmpty()
-        ? normalize(questionA).equals(normalize(questionB))
-        : a.equals(b);
+    return questionWords(questionA).equals(questionWords(questionB));
   }
 
-  private static String normalize(String text) {
-    return text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
+  private static Set<String> questionWords(String text) {
+    return text == null
+        ? Set.of()
+        : Arrays.stream(text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+"))
+            .filter(word -> !word.isEmpty() && !FILLER.contains(word))
+            .collect(Collectors.toSet());
   }
 
   static double weighted(String questionA, String answerA, String questionB, String answerB) {

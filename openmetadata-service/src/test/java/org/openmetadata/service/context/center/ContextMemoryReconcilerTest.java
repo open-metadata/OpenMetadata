@@ -504,6 +504,28 @@ class ContextMemoryReconcilerTest {
     verify(memoryRepository, never()).create(any(), any());
   }
 
+  /** "UK" and "US" are two questions: the US value's change must not vanish into the UK fix. */
+  @Test
+  void aCorrectionNeverTakesTheValueOfAQuestionDifferingInAShortWord() {
+    existing(
+        pill(
+            "How many vacation days do employees in the UK get?",
+            "28 days",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED),
+        pill(
+            "How many vacation days do employees in the US get?",
+            "15 days",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED));
+
+    reconcile(List.of(derived("How many vacation days do employees in the US get?", "20 days")));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).create(isNull(), captor.capture());
+    assertEquals("20 days", captor.getValue().getAnswer());
+  }
+
   /** With only another fact's value derived, the correction must not swallow it. */
   @Test
   void aCorrectedPillNeverTakesAnotherQuestionsValue() {

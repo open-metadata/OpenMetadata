@@ -28,6 +28,8 @@ class MemoryTextSimilarityTest {
     assertFalse(MemoryTextSimilarity.hasConflictingNumbers("sections 1,2", "sections 1, 2"));
     assertTrue(MemoryTextSimilarity.hasConflictingNumbers("$1,500 per trip", "$2,000 per trip"));
     assertTrue(MemoryTextSimilarity.hasConflictingNumbers("Python 3.10", "Python 3.1"));
+    assertFalse(
+        MemoryTextSimilarity.hasConflictingNumbers("$1,500.00 per trip", "$1,500 per trip"));
   }
 
   /** Inserting a section above a value renumbers its citation; the value is unchanged. */
@@ -41,6 +43,12 @@ class MemoryTextSimilarityTest {
     assertFalse(
         MemoryTextSimilarity.hasConflictingNumbers(
             "$75 per day (Table 3)", "$75 per day (Table 4)"));
+    assertFalse(MemoryTextSimilarity.hasConflictingNumbers("30 days (sec. 3)", "30 days (sec. 4)"));
+    assertFalse(
+        MemoryTextSimilarity.hasConflictingNumbers("30 days (pp. 3 - 5)", "30 days (pp. 6 - 8)"));
+    assertFalse(
+        MemoryTextSimilarity.hasConflictingNumbers(
+            "30 days (sections 3 & 4)", "30 days (sections 5 & 6)"));
     assertTrue(MemoryTextSimilarity.hasConflictingNumbers("15% (section 3)", "25% (section 3)"));
     assertTrue(
         MemoryTextSimilarity.hasConflictingNumbers(
@@ -61,5 +69,10 @@ class MemoryTextSimilarityTest {
         MemoryTextSimilarity.sameQuestion(
             "How many vacation days do employees get per year?",
             "How many vacation days do contractors get per year?"));
+    assertFalse(
+        MemoryTextSimilarity.sameQuestion(
+            "How many vacation days do employees in the UK get?",
+            "How many vacation days do employees in the US get?"));
+    assertFalse(MemoryTextSimilarity.sameQuestion("What was Q3 revenue?", "What was Q4 revenue?"));
   }
 }
