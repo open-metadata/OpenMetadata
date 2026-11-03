@@ -49,19 +49,22 @@ public final class UnsupportedNotificationTemplates {
   }
 
   public static void review(Handle handle) {
-    NotificationTemplateRepository repository =
-        (NotificationTemplateRepository) Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE);
     UnsupportedNotificationTemplates templates =
         new UnsupportedNotificationTemplates(
             new HandlebarsNotificationTemplateProcessor(),
-            stored ->
-                repository.resetToDefault(
-                    repository.get(null, stored.getId(), repository.getFields("*"))));
+            UnsupportedNotificationTemplates::resetStoredTemplate);
     handle
         .createQuery(STORED_TEMPLATES)
         .map((result, context) -> result.getString("json"))
         .list()
         .forEach(json -> templates.review(JsonUtils.readValue(json, NotificationTemplate.class)));
+  }
+
+  // The repository is looked up only when a template has to be reset.
+  private static void resetStoredTemplate(NotificationTemplate stored) {
+    NotificationTemplateRepository repository =
+        (NotificationTemplateRepository) Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE);
+    repository.resetToDefault(repository.get(null, stored.getId(), repository.getFields("*")));
   }
 
   void review(NotificationTemplate template) {
