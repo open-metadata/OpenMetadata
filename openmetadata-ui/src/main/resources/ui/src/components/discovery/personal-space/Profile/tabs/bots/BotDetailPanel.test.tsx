@@ -20,7 +20,11 @@ import {
   within,
 } from '@testing-library/react';
 import React, { useState } from 'react';
-import { getBotByName, updateBotDetail } from '../../../../../../rest/botsAPI';
+import {
+  getBotByName,
+  restoreBot,
+  updateBotDetail,
+} from '../../../../../../rest/botsAPI';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import {
   getAuthMechanismForBotUser,
@@ -53,15 +57,18 @@ jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
   useLimitStore: () => ({ getResourceLimit: mockGetResourceLimit }),
 }));
 
+const mockPermissions = { canEditAll: true, canDelete: true };
+
 jest.mock(
   '../../../../../../hooks/useEntityPermissions/useEntityPermissions',
   () => ({
-    useEntityPermissions: () => ({ canEditAll: true, canDelete: true }),
+    useEntityPermissions: () => mockPermissions,
   })
 );
 
 jest.mock('../../../../../../rest/botsAPI', () => ({
   getBotByName: jest.fn(),
+  restoreBot: jest.fn().mockResolvedValue({}),
   updateBotDetail: jest.fn().mockResolvedValue({}),
 }));
 
@@ -106,9 +113,17 @@ jest.mock('../../../../../../utils/EntityNameUtils', () => ({
     entity?.displayName ?? entity?.name ?? '',
 }));
 
-jest.mock('./BotTokenSection', () => () => (
-  <div data-testid="bot-token-section" />
-));
+jest.mock(
+  './BotTokenSection',
+  () =>
+    ({ isDisabled }: { isDisabled?: boolean }) =>
+      (
+        <div
+          data-disabled={String(Boolean(isDisabled))}
+          data-testid="bot-token-section"
+        />
+      )
+);
 
 jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
   React.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
@@ -160,29 +175,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Autocomplete: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
     <div data-testid={testId} />
   ),
-  Badge: ({ children }: { children: React.ReactNode }) => (
-    <span>{children}</span>
-  ),
+  Badge: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={testId}>{children}</span>,
   Box: ({
     children,
     ...props
   }: React.PropsWithChildren<Record<string, unknown>>) => (
     <div {...props}>{children}</div>
   ),
-  Button: ({
-    children,
-    onPress,
-    'data-testid': testId,
-  }: {
-    children: React.ReactNode;
-    onPress?: () => void;
-    'data-testid'?: string;
-  }) => (
-    <button data-testid={testId} type="button" onClick={onPress}>
-      {children}
-    </button>
-  ),
-  // Real ones, so the delete confirmation opens from its trigger as in the app.
+  // Real ones, so the delete and restore confirmations open from their triggers as in the app.
+  Button: jest.requireActual('@openmetadata/ui-core-components').Button,
   ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
     .ButtonUtility,
   ConfirmPopover: jest.requireActual('@openmetadata/ui-core-components')
@@ -266,6 +273,8 @@ const HeaderHarness = () => {
 describe('BotDetailPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPermissions.canEditAll = true;
+    mockPermissions.canDelete = true;
     (getBotByName as jest.Mock).mockResolvedValue(BOT);
     (getUserByName as jest.Mock).mockResolvedValue(USER);
     (getAuthMechanismForBotUser as jest.Mock).mockResolvedValue({});
@@ -376,6 +385,84 @@ describe('BotDetailPanel', () => {
     expect(deleteEntity).toHaveBeenCalledWith('bots', 'bot-1', false, false);
     expect(screen.getByTestId('delete-bot-popover')).toBeInTheDocument();
     expect(mockOnNavigate).not.toHaveBeenCalled();
+  });
+
+  it('does not offer delete for a system bot', async () => {
+    (getBotByName as jest.Mock).mockResolvedValue({
+      ...BOT,
+      provider: 'system',
+    });
+    render(<HeaderHarness />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('rename-bot-btn')).toBeInTheDocument()
+    );
+
+    expect(screen.queryByTestId('delete-bot-btn')).not.toBeInTheDocument();
+  });
+
+  it('shows the impersonation badge only when the bot user allows it', async () => {
+    (getUserByName as jest.Mock).mockResolvedValue({
+      ...USER,
+      allowImpersonation: true,
+    });
+    render(<HeaderHarness />);
+
+    expect(
+      await screen.findByTestId('impersonation-enabled-badge')
+    ).toHaveTextContent('label.impersonation-enabled');
+  });
+
+  it('restores a soft-deleted bot after confirmation', async () => {
+    (getBotByName as jest.Mock).mockResolvedValue({ ...BOT, deleted: true });
+    render(<HeaderHarness />);
+
+    fireEvent.click(await screen.findByTestId('restore-bot-btn'));
+
+    expect(screen.queryByTestId('delete-bot-btn')).not.toBeInTheDocument();
+    expect(restoreBot).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('restore-bot-popover-confirm'));
+    });
+
+    expect(restoreBot).toHaveBeenCalledWith('bot-1');
+    expect(getBotByName).toHaveBeenLastCalledWith(
+      'ingest',
+      expect.objectContaining({ include: 'all' })
+    );
+  });
+
+  it('gates restore on EditAll (what PUT /bots/restore checks), not Delete', async () => {
+    (getBotByName as jest.Mock).mockResolvedValue({ ...BOT, deleted: true });
+    mockPermissions.canEditAll = false;
+    mockPermissions.canDelete = true;
+    const { unmount } = render(<HeaderHarness />);
+
+    expect(await screen.findByTestId('restore-bot-btn')).toBeDisabled();
+
+    unmount();
+    mockPermissions.canEditAll = true;
+    mockPermissions.canDelete = false;
+    render(<HeaderHarness />);
+
+    expect(await screen.findByTestId('restore-bot-btn')).toBeEnabled();
+  });
+
+  it('makes a soft-deleted bot read-only until it is restored', async () => {
+    (getBotByName as jest.Mock).mockResolvedValue({ ...BOT, deleted: true });
+    render(<HeaderHarness />);
+
+    expect(await screen.findByTestId('restore-bot-btn')).toBeEnabled();
+    expect(screen.queryByTestId('rename-bot-btn')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('edit-description-btn')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edit-roles')).not.toBeInTheDocument();
+    expect(screen.getByTestId('bot-token-section')).toHaveAttribute(
+      'data-disabled',
+      'true'
+    );
   });
 
   it('keeps the bot when the header delete popover is cancelled', async () => {

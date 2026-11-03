@@ -645,6 +645,7 @@
       ],
       "recipientCategories": [
         "Assignees",
+        "Owners",
         "Mentions"
       ]
     },

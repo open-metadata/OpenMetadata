@@ -361,6 +361,13 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             afterDomainUpdateAction={onUpdateMetricDetails}
             dataAsset={metricDetails}
             entityType={EntityType.METRIC}
+            hardDeleteMessagePostFix={` ${t(
+              'message.delete-metric-children-message',
+              {
+                metricName: getEntityName(metricDetails),
+                deleteType: t('label.permanently-lowercase'),
+              }
+            )}`}
             headerActions={
               editAllPermission && (
                 <Button
@@ -374,6 +381,13 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             }
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
+            softDeleteMessagePostFix={` ${t(
+              'message.delete-metric-children-message',
+              {
+                metricName: getEntityName(metricDetails),
+                deleteType: t('label.soft-lowercase'),
+              }
+            )}`}
             onCertificationUpdate={onCertificationUpdate}
             onDeleteFailure={fetchMetricDetails}
             onDisplayNameUpdate={handleUpdateDisplayName}
