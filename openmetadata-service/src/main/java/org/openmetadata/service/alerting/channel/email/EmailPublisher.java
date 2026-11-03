@@ -90,7 +90,7 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
       throws EventPublisherException {
-    if (!emailSender.isEnabled()) {
+    if (!Boolean.TRUE.equals(emailSender.isEnabled())) {
       LOG.debug(
           "Skipping email notification for subscription [{}]: SMTP is not enabled",
           eventSubscription.getName());
