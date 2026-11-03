@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} ihlal",
     "shacl-violations-found": "SHACL ihlalleri bulundu — rapor indirildi",
     "sharding-representative-columns": "Sütunlar temsilci parçayı tanımlar.",
-    "sharding-system-metrics-unsupported": "Parçalanmış tablolar için sistem metrikleri henüz desteklenmiyor.",
     "shared-queries-description": "Salt okunur. Bu ontolojideki herkes kullanabilir.",
     "show-raw-connection-log-lines": "Ham bağlantı günlüğünü göster ({{count}})",
     "showing-users-active-in-last-n-hours": "Son {{hours}} saatte aktif kullanıcıları gösteriliyor",

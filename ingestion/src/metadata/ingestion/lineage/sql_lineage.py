@@ -30,7 +30,6 @@ from metadata.entity_resolution.table_search import (
     DEFAULT_SCHEMA_NAME,
     database_service_type_cache,  # noqa: F401 - compatibility import of the shared cache
     get_database_service_type,  # noqa: F401 - compatibility import
-    get_table_binding_resolution,  # noqa: F401 - compatibility import
     get_table_fqn_from_query_name,
     search_cache,  # noqa: F401 - compatibility import of the shared cache
     search_table_entities,

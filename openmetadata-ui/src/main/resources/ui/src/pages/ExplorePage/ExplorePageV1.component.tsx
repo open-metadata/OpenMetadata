@@ -695,69 +695,65 @@ const ExplorePageV1: FC<unknown> = () => {
   );
 
   return (
-    <>
-      <ExploreV1
-        activeTabKey={searchIndex}
-        additionalSearchResults={
-          shardedFamilies.length > 0 && (
-            <section aria-label={t('label.matching-sharded-families')}>
-              <Box className="tw:mb-4" direction="col" gap={3}>
-                <Typography size="text-sm" weight="semibold">
-                  {t('label.matching-sharded-families')}
-                </Typography>
-                <Box direction="col" gap={2}>
-                  {shardedFamilies.map((table) => (
-                    <Link
-                      key={table.id}
-                      to={`/table/${encodeURIComponent(
-                        table.fullyQualifiedName ?? ''
-                      )}`}>
-                      <Typography
-                        as="span"
-                        className="tw:break-all"
-                        color="brand"
-                        size="text-sm">
-                        {table.fullyQualifiedName}
-                      </Typography>
-                    </Link>
-                  ))}
-                </Box>
+    <ExploreV1
+      activeTabKey={searchIndex}
+      additionalSearchResults={
+        shardedFamilies.length > 0 && (
+          <section aria-label={t('label.matching-sharded-families')}>
+            <Box className="tw:mb-4" direction="col" gap={3}>
+              <Typography size="text-sm" weight="semibold">
+                {t('label.matching-sharded-families')}
+              </Typography>
+              <Box direction="col" gap={2}>
+                {shardedFamilies.map((table) => (
+                  <Link
+                    key={table.id}
+                    to={`/table/${encodeURIComponent(
+                      table.fullyQualifiedName ?? ''
+                    )}`}>
+                    <Typography
+                      as="span"
+                      className="tw:break-all"
+                      color="brand"
+                      size="text-sm">
+                      {table.fullyQualifiedName}
+                    </Typography>
+                  </Link>
+                ))}
               </Box>
-            </section>
-          )
-        }
-        aggregations={updatedAggregations}
-        browseFields={browseFields}
-        browseQueryFilter={browseQueryFilter}
-        currentPage={currentPage}
-        isElasticSearchIssue={showIndexNotFoundAlert}
-        loading={isLoading}
-        pageSize={pageSize}
-        quickFilters={advancedSearchQuickFilters}
-        searchIndex={searchIndex}
-        searchResults={searchResults}
-        showDeleted={showDeleted}
-        showRankingDetails={showRankingDetails}
-        sortOrder={sortOrder}
-        sortValue={effectiveSortValue}
-        tabItems={tabItems}
-        onChangeAdvancedSearchQuickFilters={
-          handleAdvanceSearchQuickFiltersChange
-        }
-        onChangePage={handlePageChange}
-        onChangePageSize={handlePageSizeChange}
-        onChangeSearchIndex={handleSearchIndexChange}
-        onChangeShowDeleted={handleShowDeletedChange}
-        onChangeShowRankingDetails={setShowRankingDetails}
-        onChangeSortOder={(sortOrderVal) => {
-          handleSortOrderChange(sortOrderVal);
-        }}
-        onChangeSortValue={(sortVal) => {
-          handleSortValueChange(sortVal);
-        }}
-        onTreeSelect={handleTreeSelect}
-      />
-    </>
+            </Box>
+          </section>
+        )
+      }
+      aggregations={updatedAggregations}
+      browseFields={browseFields}
+      browseQueryFilter={browseQueryFilter}
+      currentPage={currentPage}
+      isElasticSearchIssue={showIndexNotFoundAlert}
+      loading={isLoading}
+      pageSize={pageSize}
+      quickFilters={advancedSearchQuickFilters}
+      searchIndex={searchIndex}
+      searchResults={searchResults}
+      showDeleted={showDeleted}
+      showRankingDetails={showRankingDetails}
+      sortOrder={sortOrder}
+      sortValue={effectiveSortValue}
+      tabItems={tabItems}
+      onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
+      onChangePage={handlePageChange}
+      onChangePageSize={handlePageSizeChange}
+      onChangeSearchIndex={handleSearchIndexChange}
+      onChangeShowDeleted={handleShowDeletedChange}
+      onChangeShowRankingDetails={setShowRankingDetails}
+      onChangeSortOder={(sortOrderVal) => {
+        handleSortOrderChange(sortOrderVal);
+      }}
+      onChangeSortValue={(sortVal) => {
+        handleSortValueChange(sortVal);
+      }}
+      onTreeSelect={handleTreeSelect}
+    />
   );
 };
 

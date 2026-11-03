@@ -889,7 +889,7 @@ def test_connector_module_controls_resolution_without_changing_callers(sdk, tmp_
 
 
 def test_service_type_cache_is_isolated_between_services(sdk):
-    from metadata.ingestion.lineage.sql_lineage import get_table_binding_resolution
+    from metadata.entity_resolution.table_search import get_table_binding_resolution
 
     metadata, transport = sdk
     add_bigquery_service(transport)

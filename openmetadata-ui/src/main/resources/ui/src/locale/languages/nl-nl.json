@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} overtredingen",
     "shacl-violations-found": "SHACL-overtredingen gevonden — rapport gedownload",
     "sharding-representative-columns": "De kolommen beschrijven de representatieve shard.",
-    "sharding-system-metrics-unsupported": "Systeemstatistieken worden nog niet ondersteund voor gesharde tabellen.",
     "shared-queries-description": "Alleen-lezen. Beschikbaar voor iedereen in deze ontologie.",
     "show-raw-connection-log-lines": "Ruwe verbindingslog weergeven ({{count}})",
     "showing-users-active-in-last-n-hours": "Tonen van gebruikers actief in de laatste {{hours}} uur",

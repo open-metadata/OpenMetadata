@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} הפרות",
     "shacl-violations-found": "נמצאו הפרות SHACL — הדוח הורד",
     "sharding-representative-columns": "העמודות מתארות את המקטע המייצג.",
-    "sharding-system-metrics-unsupported": "מדדי מערכת עדיין אינם נתמכים בטבלאות המחולקות למקטעים.",
     "shared-queries-description": "לקריאה בלבד. זמינות לכל המשתמשים באונטולוגיה זו.",
     "show-raw-connection-log-lines": "הצג יומן חיבור גולמי ({{count}})",
     "showing-users-active-in-last-n-hours": "מציג משתמשים פעילים ב-{{hours}} השעות האחרונות",

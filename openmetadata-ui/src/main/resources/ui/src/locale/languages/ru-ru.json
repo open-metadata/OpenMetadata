@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} нарушений",
     "shacl-violations-found": "Обнаружены нарушения SHACL — отчёт загружен",
     "sharding-representative-columns": "Столбцы описывают представительный шард.",
-    "sharding-system-metrics-unsupported": "Системные метрики для шардированных таблиц пока не поддерживаются.",
     "shared-queries-description": "Только чтение. Доступны всем пользователям этой онтологии.",
     "show-raw-connection-log-lines": "Показать необработанный журнал соединения ({{count}})",
     "showing-users-active-in-last-n-hours": "Показаны пользователи, активные за последние {{hours}} часов",

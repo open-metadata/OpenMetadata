@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} Verstöße",
     "shacl-violations-found": "SHACL-Verstöße gefunden — Bericht heruntergeladen",
     "sharding-representative-columns": "Die Spalten beschreiben den repräsentativen Shard.",
-    "sharding-system-metrics-unsupported": "Systemmetriken werden für Shard-Tabellen noch nicht unterstützt.",
     "shared-queries-description": "Schreibgeschützt. Für alle in dieser Ontologie verfügbar.",
     "show-raw-connection-log-lines": "Rohes Verbindungsprotokoll anzeigen ({{count}})",
     "showing-users-active-in-last-n-hours": "Zeigt Benutzer an, die in den letzten {{hours}} Stunden aktiv waren",

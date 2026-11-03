@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} överträdelser",
     "shacl-violations-found": "SHACL-överträdelser hittades — rapport nedladdad",
     "sharding-representative-columns": "Kolumnerna beskriver den representativa sharden.",
-    "sharding-system-metrics-unsupported": "Systemmått stöds ännu inte för shardade tabeller.",
     "shared-queries-description": "Skrivskyddade. Tillgängliga för alla i den här ontologin.",
     "show-raw-connection-log-lines": "Visa rå anslutningslogg ({{count}})",
     "showing-users-active-in-last-n-hours": "Visar användare som varit aktiva de senaste {{hours}} timmarna",

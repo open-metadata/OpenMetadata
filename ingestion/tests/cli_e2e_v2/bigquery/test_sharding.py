@@ -27,7 +27,8 @@ from .test_profiles import profiler_options
 
 def grouped(bigquery, options):
     invocation = bigquery.invocation(options, filters={"tableFilterPattern": {"includes": ["^events_yyyymmdd$"]}})
-    invocation.config["source"]["sourceConfig"]["config"]["shardedTables"] = {"enabled": True}
+    if isinstance(options, MetadataPipeline):
+        invocation.config["source"]["sourceConfig"]["config"]["shardedTables"] = {"enabled": True}
     return invocation
 
 

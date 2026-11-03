@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -43,6 +45,55 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 class TableShardingIT {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "/tableSharding/prefix",
+        "/tableSharding/suffixFormat",
+        "/tableSharding/representative",
+        "/tableSharding/shardCount",
+        "/tableSharding/firstShardDate",
+        "/tableSharding/lastShardDate",
+        "/tableSharding/representative/databaseName",
+        "/tableSharding/representative/schemaName",
+        "/tableSharding/representative/tableName",
+        "/tableSharding/representative/shardDate"
+      })
+  void patchCannotRemoveRequiredShardingFields(String path, TestNamespace ns) {
+    var client = SdkClients.adminClient().tables();
+    var original = client.create(request(ns));
+    for (String operation : List.of("remove", "replace")) {
+      var patch =
+          JsonUtils.readTree(
+              "[{\"op\":\"%s\",\"path\":\"%s\",\"value\":null}]".formatted(operation, path));
+      assertEquals(
+          400,
+          assertThrows(OpenMetadataException.class, () -> client.patch(original.getId(), patch))
+              .getStatusCode());
+      var stored = client.get(original.getId().toString());
+      assertEquals(original.getTableSharding(), stored.getTableSharding());
+      assertEquals(original.getVersion(), stored.getVersion());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"databaseName", "schemaName", "tableName"})
+  void patchCannotEmptyRepresentativeNames(String field, TestNamespace ns) {
+    var client = SdkClients.adminClient().tables();
+    var original = client.create(request(ns));
+    var patch =
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/tableSharding/representative/%s\",\"value\":\"\"}]"
+                .formatted(field));
+    assertEquals(
+        400,
+        assertThrows(OpenMetadataException.class, () -> client.patch(original.getId(), patch))
+            .getStatusCode());
+    var stored = client.get(original.getId().toString());
+    assertEquals(original.getTableSharding(), stored.getTableSharding());
+    assertEquals(original.getVersion(), stored.getVersion());
+  }
+
   @Test
   void representativeRolloverKeepsIdentityAndAnnotations(TestNamespace ns) {
     var request =

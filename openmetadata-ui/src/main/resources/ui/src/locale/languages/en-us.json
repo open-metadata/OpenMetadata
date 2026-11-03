@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} violations",
     "shacl-violations-found": "SHACL violations found — report downloaded",
     "sharding-representative-columns": "Columns describe the representative shard.",
-    "sharding-system-metrics-unsupported": "System metrics are not supported for sharded tables yet.",
     "shared-queries-description": "Read-only. Available to everyone on this ontology.",
     "show-raw-connection-log-lines": "Show raw connection log ({{count}})",
     "showing-users-active-in-last-n-hours": "Showing users active in the last {{hours}} hours",

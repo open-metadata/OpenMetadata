@@ -42,13 +42,17 @@ public final class DatabaseUtil {
     if (sharding == null) return;
     var source = sharding.getRepresentative();
     if (source == null
+        || nullOrEmpty(source.getDatabaseName())
+        || nullOrEmpty(source.getSchemaName())
+        || nullOrEmpty(source.getTableName())
+        || sharding.getSuffixFormat() == null
         || source.getShardDate() == null
         || sharding.getFirstShardDate() == null
         || sharding.getLastShardDate() == null
         || sharding.getShardCount() == null
         || sharding.getPrefix() == null) {
       throw new IllegalArgumentException(
-          "Sharding requires complete source dates, count and prefix");
+          "Sharding requires complete source names, dates, suffix format, count and prefix");
     }
     var first = parseShardDate(sharding.getFirstShardDate());
     var last = parseShardDate(sharding.getLastShardDate());

@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} violazioni",
     "shacl-violations-found": "Violazioni SHACL trovate — report scaricato",
     "sharding-representative-columns": "Le colonne descrivono il frammento rappresentativo.",
-    "sharding-system-metrics-unsupported": "Le metriche di sistema non sono ancora disponibili per le tabelle frammentate.",
     "shared-queries-description": "Sola lettura. Disponibili a tutti su questa ontologia.",
     "show-raw-connection-log-lines": "Mostra il log grezzo della connessione ({{count}})",
     "showing-users-active-in-last-n-hours": "Utenti attivi nelle ultime {{hours}} ore",

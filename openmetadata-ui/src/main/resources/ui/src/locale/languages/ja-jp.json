@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}}件の違反",
     "shacl-violations-found": "SHACL 違反が見つかりました — レポートをダウンロードしました",
     "sharding-representative-columns": "列は代表シャードを記述します。",
-    "sharding-system-metrics-unsupported": "シャード化テーブルのシステムメトリクスはまだサポートされていません。",
     "shared-queries-description": "読み取り専用。このオントロジーのすべてのユーザーが利用できます。",
     "show-raw-connection-log-lines": "生の接続ログを表示 ({{count}})",
     "showing-users-active-in-last-n-hours": "過去{{hours}}時間以内にアクティブだったユーザーを表示中",

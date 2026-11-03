@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: ละเมิด {{count}} รายการ",
     "shacl-violations-found": "พบการละเมิด SHACL — ดาวน์โหลดรายงานแล้ว",
     "sharding-representative-columns": "คอลัมน์อธิบายชาร์ดตัวแทน",
-    "sharding-system-metrics-unsupported": "ยังไม่รองรับตัวชี้วัดระบบสำหรับตารางที่แบ่งชาร์ด",
     "shared-queries-description": "อ่านอย่างเดียว ใช้ได้สำหรับทุกคนในออนโทโลยีนี้",
     "show-raw-connection-log-lines": "แสดงบันทึกการเชื่อมต่อดิบ ({{count}})",
     "showing-users-active-in-last-n-hours": "แสดงผู้ใช้ที่ใช้งานในช่วง {{hours}} ชั่วโมงที่ผ่านมา",

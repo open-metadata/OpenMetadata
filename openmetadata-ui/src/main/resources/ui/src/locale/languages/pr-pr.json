@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} نقض",
     "shacl-violations-found": "نقض‌های SHACL یافت شد — گزارش دانلود شد",
     "sharding-representative-columns": "ستون‌ها بخش نماینده را توصیف می‌کنند.",
-    "sharding-system-metrics-unsupported": "معیارهای سیستم هنوز برای جدول‌های بخش‌بندی‌شده پشتیبانی نمی‌شوند.",
     "shared-queries-description": "فقط خواندنی. برای همه در این هستی‌شناسی در دسترس است.",
     "show-raw-connection-log-lines": "نمایش گزارش خام اتصال ({{count}})",
     "showing-users-active-in-last-n-hours": "نمایش کاربران فعال در {{hours}} ساعت گذشته",

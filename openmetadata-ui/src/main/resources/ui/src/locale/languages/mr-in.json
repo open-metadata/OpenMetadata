@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: {{count}} उल्लंघने",
     "shacl-violations-found": "SHACL उल्लंघन आढळले — अहवाल डाउनलोड केला",
     "sharding-representative-columns": "स्तंभ प्रतिनिधी शार्डचे वर्णन करतात.",
-    "sharding-system-metrics-unsupported": "शार्ड केलेल्या तक्त्यांसाठी प्रणाली मेट्रिक्स अद्याप समर्थित नाहीत.",
     "shared-queries-description": "केवळ वाचनीय. या ऑन्टोलॉजीवरील प्रत्येकासाठी उपलब्ध.",
     "show-raw-connection-log-lines": "कच्ची कनेक्शन नोंद दाखवा ({{count}})",
     "showing-users-active-in-last-n-hours": "मागील {{hours}} तासांत सक्रिय असलेले वापरकर्ते दाखवत आहे",

@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL：{{count}} 項違規",
     "shacl-violations-found": "發現 SHACL 違規 — 報告已下載",
     "sharding-representative-columns": "欄位描述代表分片。",
-    "sharding-system-metrics-unsupported": "分片資料表暫不支援系統指標。",
     "shared-queries-description": "唯讀。此本體中的所有人都可以使用。",
     "show-raw-connection-log-lines": "顯示原始連線日誌 ({{count}})",
     "showing-users-active-in-last-n-hours": "顯示過去 {{hours}} 小時內活躍的使用者",

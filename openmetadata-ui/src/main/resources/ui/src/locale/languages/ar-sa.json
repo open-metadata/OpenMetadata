@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL: لا انتهاكات",
     "shacl-violations-found": "تم العثور على انتهاكات SHACL — تم تنزيل التقرير",
     "sharding-representative-columns": "تصف الأعمدة الجزء الممثل.",
-    "sharding-system-metrics-unsupported": "مقاييس النظام غير مدعومة بعد للجداول المجزأة.",
     "shared-queries-description": "للقراءة فقط. متاحة لكل من يستخدم هذه الأنطولوجيا.",
     "show-raw-connection-log-lines": "إظهار سجل الاتصال الخام ({{count}})",
     "showing-users-active-in-last-n-hours": "عرض المستخدمين النشطين في آخر {{hours}} ساعة",

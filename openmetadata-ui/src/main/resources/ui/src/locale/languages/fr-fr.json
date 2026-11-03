@@ -6123,7 +6123,6 @@
     "shacl-violation-count_zero": "SHACL : {{count}} violations",
     "shacl-violations-found": "Violations SHACL détectées — rapport téléchargé",
     "sharding-representative-columns": "Les colonnes décrivent le fragment représentatif.",
-    "sharding-system-metrics-unsupported": "Les métriques système ne sont pas encore disponibles pour les tables fragmentées.",
     "shared-queries-description": "Lecture seule. Disponibles pour tous sur cette ontologie.",
     "show-raw-connection-log-lines": "Afficher le journal de connexion brut ({{count}})",
     "showing-users-active-in-last-n-hours": "Affichage des utilisateurs actifs au cours des {{hours}} dernières heures",
