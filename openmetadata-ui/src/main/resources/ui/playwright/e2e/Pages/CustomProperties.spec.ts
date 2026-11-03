@@ -248,7 +248,7 @@ const BASIC_PROPERTIES = [
   'Duration',
   'Email',
   'Number',
-  'Sql Query',
+  'SQL Query',
   'Time Interval',
   'Timestamp',
   'Hyperlink',

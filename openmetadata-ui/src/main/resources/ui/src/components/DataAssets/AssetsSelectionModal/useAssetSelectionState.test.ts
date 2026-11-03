@@ -710,6 +710,48 @@ describe('useAssetSelectionState', () => {
       });
     });
 
+    it('shows each rejected row inline instead of a toast when the whole bulk add is rejected', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('1')], 1)
+      );
+      (addAssetsToGlossaryTerm as jest.Mock).mockRejectedValue({
+        response: {
+          status: 400,
+          data: {
+            status: 'failure',
+            failedRequest: [
+              {
+                request: { id: '1' },
+                message:
+                  "Asset 'db.customers' is already an input port of this data product; an asset cannot be both an input and an output port",
+              },
+            ],
+          },
+        },
+      });
+
+      const { result } = renderAssetSelectionState({
+        type: AssetsOfEntity.GLOSSARY,
+        variant: 'drawer',
+      });
+
+      await selectOneItem(result);
+
+      await act(async () => {
+        result.current.onSaveAction();
+      });
+
+      await waitFor(() => {
+        expect(result.current.getErrorStatusAndMessage('1')).toEqual({
+          isError: true,
+          errorMessage:
+            "Asset 'db.customers' is already an input port of this data product; an asset cannot be both an input and an output port",
+        });
+      });
+
+      expect(showErrorToast).not.toHaveBeenCalled();
+    });
+
     it('should show a raw error toast when save throws in modal variant', async () => {
       (searchQuery as jest.Mock).mockResolvedValue(
         buildSearchResponse([buildHit('1')], 1)

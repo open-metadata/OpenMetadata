@@ -1147,14 +1147,16 @@ describe('Ontology Studio mode-switch integration', () => {
         </QueryClientProvider>
       );
 
-      expect(screen.getByText('label.loading')).toBeVisible();
+      expect(screen.getByTestId('loader')).toBeVisible();
 
       expect(await screen.findByRole('alert')).toBeVisible();
       expect(screen.queryByTestId('graph-nodes')).not.toBeInTheDocument();
       expect(screen.getByTestId('location')).toHaveTextContent(
         'ontology=unavailable'
       );
-      expect(screen.getByRole('button', { name: 'label.retry' })).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: 'label.reload' })
+      ).toBeVisible();
 
       fireEvent.click(screen.getByRole('button', { name: 'label.all-entity' }));
       await waitFor(() =>

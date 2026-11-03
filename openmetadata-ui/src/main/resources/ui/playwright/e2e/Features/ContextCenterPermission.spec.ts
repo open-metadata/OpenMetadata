@@ -652,7 +652,11 @@ test.describe('Context Center Permissions', () => {
         const feedRes = await feedResPromise;
 
         expect(feedRes.status()).toBe(201);
-        await expect(viewOnlyPage.getByText(conversationMessage)).toBeVisible();
+        await expect(
+          viewOnlyPage
+            .getByTestId('feed-card-v2-sidebar')
+            .filter({ hasText: conversationMessage })
+        ).toBeVisible();
         await viewOnlyPage.getByTestId('closeDrawer').click();
       });
 

@@ -300,6 +300,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
+import org.openmetadata.service.util.LifeCycles;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.PostCommitActionQueue;
@@ -3533,6 +3534,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public final void prepareInternal(T entity, boolean update) {
     validateTags(entity);
+    entity.setLifeCycle(LifeCycles.withoutPlaceholderTimestamps(entity.getLifeCycle()));
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
@@ -4599,6 +4601,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // The import records its author as impersonatedBy too; it carries no bot impersonation.
     authorizeImportedDomains(originals, updates, ChangeActor.recorded(updatedBy, null));
 
+    // Each original is a fresh read that nothing else holds, so it takes the relationships a PUT or
+    // PATCH records in history in place. Serializing here keeps the transaction to the inserts.
+    setFieldsInBulk(putFields, originals);
+    VersionRows previousVersions = versionRows(originals);
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
       T original = originals.get(i);
@@ -4607,6 +4613,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setId(original.getId());
       carryCreationAudit(original, updated);
       updated.setVersion(nextVersion(original.getVersion()));
+      updated.setChangeDescription(importChangeDescription(original));
+      updated.setIncrementalChangeDescription(null);
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       // 2. Set impersonatedBy
@@ -4624,6 +4632,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // round trip runs while the handle is held.
     flushInOneTransaction(
         () -> {
+          storeVersions(previousVersions);
           updateMany(updatedEntities);
           replaceExtensions(originals, updatedEntities);
           clearRelationshipsForUpdateMany(updatedEntities);
@@ -4637,6 +4646,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     refreshCountingParentsMovedInBatch(previousParents, updatedEntities);
     return updatedEntities;
+  }
+
+  /**
+   * The change description of an imported entity. It follows the stored version, so an edit in the
+   * same session consolidates against that version, and it keeps the per-field change summary.
+   */
+  private ChangeDescription importChangeDescription(T original) {
+    ChangeSummaryMap changeSummary =
+        Optional.ofNullable(original.getChangeDescription())
+            .map(ChangeDescription::getChangeSummary)
+            .orElse(null);
+    return new ChangeDescription()
+        .withPreviousVersion(original.getVersion())
+        .withChangeSummary(changeSummary);
   }
 
   @SuppressWarnings("unused")
@@ -5275,6 +5298,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // The patched copy carries the stored impersonatedBy. Replace it (null for a regular user)
     // before prepare, so validation sees who makes this change rather than who made the last one.
     updated.setImpersonatedBy(impersonatedBy);
+    updated.setLifeCycle(
+        LifeCycles.withoutPlaceholderTimestamps(updated.getLifeCycle(), original.getLifeCycle()));
 
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
@@ -5572,6 +5597,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected void postRestore(T entity) {
     getCountingParents(entity).forEach(this::refreshCountingParent);
   }
+
+  /** Checked by the restore endpoint only; upserts and cascades that restore do not call it. */
+  public void validateRestore(UUID id) {}
 
   @FunctionalInterface
   protected interface DeleteLifecycle extends AutoCloseable {
@@ -6653,9 +6681,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /** Stores each entity as the version it was before an update. The only writer of versions. */
   protected final void storeVersions(final List<T> originals) {
-    if (originals.isEmpty()) {
-      return;
-    }
+    storeVersions(versionRows(originals));
+  }
+
+  /**
+   * The rows {@link #storeVersions(List)} writes, column by column. Only {@link #versionRows} builds
+   * them, so every stored version goes through {@link #serializeForVersionHistory}.
+   */
+  private record VersionRows(List<UUID> ids, List<String> extensions, List<String> jsons) {}
+
+  /** Serializes the versions ahead of the write, so a caller can keep that work out of its transaction. */
+  private VersionRows versionRows(final List<T> originals) {
     final List<UUID> ids = new ArrayList<>(originals.size());
     final List<String> extensions = new ArrayList<>(originals.size());
     final List<String> jsons = new ArrayList<>(originals.size());
@@ -6664,7 +6700,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       extensions.add(EntityUtil.getVersionExtension(entityType, original.getVersion()));
       jsons.add(serializeForVersionHistory(original));
     }
-    daoCollection.entityExtensionDAO().insertMany(ids, extensions, entityType, jsons);
+    return new VersionRows(ids, extensions, jsons);
+  }
+
+  private void storeVersions(final VersionRows rows) {
+    if (!rows.ids().isEmpty()) {
+      daoCollection
+          .entityExtensionDAO()
+          .insertMany(rows.ids(), rows.extensions(), entityType, rows.jsons());
+    }
   }
 
   /** The copy of an entity a version stores, before the fields no version shows leave it. */
@@ -8088,8 +8132,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
     }
     for (var entry : idsByType.entrySet()) {
-      EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
-      repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
+      // Time-series children (e.g., TestCase --PARENT_OF--> testCaseResolutionStatus) carry no
+      // deleted flag and have no repository in ENTITY_REPOSITORY_MAP — skip them, mirroring
+      // dispatchToContainedChildren, instead of failing the whole subtree restore.
+      String childType = entry.getKey();
+      if (!Entity.isTimeSeriesEntity(childType)) {
+        EntityRepository<?> repo = Entity.getEntityRepository(childType);
+        repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
+      }
     }
   }
 
@@ -15552,18 +15602,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * hard-delete the stale entities.
    *
    * <p>FQNs are compared by hash so quoting or case differences between the connector-supplied and
-   * stored values never cause spurious deletes. An empty scope yields zero deletions - it is never
-   * interpreted as "everything is stale". Each delete runs in its own transaction so a single
-   * failure does not roll back the rest of the batch.
+   * stored values never cause spurious deletes. An empty {@code seenFqns} yields zero deletions
+   * unless the connector sets {@code allowEmptySeenFqns}, confirming its listing was complete
+   * (ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing).
+   * Each delete runs in its own transaction so a single failure does not roll back the rest of the
+   * batch.
    */
   public BulkOperationResult bulkDeleteStaleEntities(
       BulkDeleteStaleRequest request, String deletedBy) {
     validateScopeRequest(request.getScopeEntityType(), request.getScopeFqn());
-    if (nullOrEmpty(request.getSeenFqns())) {
-      // An empty seen-set cannot be distinguished from a connector run that crashed or discovered
-      // nothing, so it must never be interpreted as "every entity under the scope is stale" - that
-      // would silently delete the whole service/database. Treat it as zero deletions, mirroring the
-      // scope-not-found path.
+    if (isAmbiguousEmptySeenSet(request)) {
+      // An unconfirmed empty seen-set cannot be distinguished from a connector run that crashed or
+      // discovered nothing, so it must never be interpreted as "every entity under the scope is
+      // stale" - that would silently delete the whole service/database. Treat it as zero
+      // deletions, mirroring the scope-not-found path.
       LOG.warn(
           "deleteStale for scope {} '{}' received an empty seenFqns; treating as zero deletions "
               + "rather than marking the entire scope stale",
@@ -15610,12 +15662,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return buildStaleDeletionResult(dryRun, successRequests, failedRequests);
   }
 
+  private static boolean isAmbiguousEmptySeenSet(BulkDeleteStaleRequest request) {
+    return nullOrEmpty(request.getSeenFqns())
+        && !Boolean.TRUE.equals(request.getAllowEmptySeenFqns());
+  }
+
   /**
    * Rejects a malformed request before any work runs: {@code scopeFqn} and {@code scopeEntityType}
    * must be present and {@code scopeEntityType} must resolve to a registered entity type. These are
-   * caller mistakes (typos, swapped fields) and fail with 400. An empty {@code seenFqns} is handled
-   * separately in {@link #bulkDeleteStaleEntities} as a safe zero-deletion no-op rather than a 400,
-   * since it is a well-formed request whose intent is genuinely ambiguous.
+   * caller mistakes (typos, swapped fields) and fail with 400. An empty {@code seenFqns} without
+   * {@code allowEmptySeenFqns} is handled separately in {@link #bulkDeleteStaleEntities} as a safe
+   * zero-deletion no-op rather than a 400, since it is a well-formed request whose intent is
+   * genuinely ambiguous.
    */
   private void validateScopeRequest(String scopeEntityType, String scopeFqn) {
     if (nullOrEmpty(scopeFqn)) {

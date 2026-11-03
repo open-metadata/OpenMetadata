@@ -84,20 +84,6 @@ def _log_sample_data_handoff(
         fetched,
         handed_off,
     )
-    # Fetching fewer rows than requested (small table) or more than requested
-    # (custom sample query) is not a loss. Dropping rows we were asked for is.
-    dropped = min(requested, fetched) - handed_off
-    if dropped > 0:
-        logger.warning(
-            "Sample data for [%s]: %d rows requested and %d fetched, but only %d handed off."
-            " %d rows were dropped because sample data is capped at %d rows.",
-            entity_fqn,
-            requested,
-            fetched,
-            handed_off,
-            dropped,
-            SAMPLE_DATA_DEFAULT_COUNT,
-        )
     if truncated:
         logger.warning(
             "Sample data for [%s]: values longer than %d characters were truncated (column=count): %s",
