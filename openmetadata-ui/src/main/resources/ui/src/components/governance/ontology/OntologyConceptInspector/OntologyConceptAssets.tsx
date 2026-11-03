@@ -121,6 +121,7 @@ const OntologyConceptAssets = ({
       <OntologyDataAssetPicker
         native={{
           assetTypes: NATIVE_BINDING_ASSET_TYPES,
+          concept: { name: conceptName },
           isDisabled: !bindings.editableSnapshot,
           linkedIds: assets.map((asset) => asset.assetId),
           saveAssets: linking.saveAssets,

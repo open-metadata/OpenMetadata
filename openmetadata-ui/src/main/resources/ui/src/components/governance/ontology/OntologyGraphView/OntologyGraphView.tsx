@@ -1262,6 +1262,7 @@ const OntologyGraphView = ({
       (model?.concepts ?? []).map((concept) => ({
         id: concept.id,
         name: getEntityName(concept),
+        synonyms: concept.synonyms,
       })),
     [model?.concepts]
   );

@@ -62,7 +62,9 @@ const CENTERED_CARD_CLASS =
 interface OntologyNativeDataModeProps {
   /** Whether the person may link and unlink assets of the picked concept. */
   canEditBindings?: boolean;
-  concepts: ReadonlyArray<Pick<DataPickerConcept, 'id' | 'name'>>;
+  concepts: ReadonlyArray<
+    Pick<DataPickerConcept, 'id' | 'name'> & { synonyms?: string[] }
+  >;
   isActive?: boolean;
   ontologyId: string;
   revision?: number;
@@ -418,7 +420,7 @@ const OntologyNativeDataMode = ({
                 (binding) => binding.assetId
               ),
               saveAssets: linking.saveAssets,
-              concept: { name: picked.name },
+              concept: { name: picked.name, synonyms: picked.synonyms },
             }}
             onCancel={() => {
               linking.cancel();
