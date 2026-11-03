@@ -53,7 +53,6 @@ import {
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
-import { showSuccessToast } from '../../../../utils/ToastUtils';
 import {
   RelationWarningCheck,
   RelationWarningContext,

@@ -12,15 +12,15 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
-import { Task } from '../../../src/generated/entity/tasks/task';
-import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
-import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
+import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
+import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyAssetConceptLinks } from '../../../src/generated/type/ontologyAssetConceptLinks';
 import { OntologyConceptBindingsResponse } from '../../../src/generated/type/ontologyConceptBindingsResponse';
-import { TableClass } from '../../support/entity/TableClass';
+import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
