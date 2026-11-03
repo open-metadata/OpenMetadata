@@ -175,7 +175,8 @@ public class ElasticSearchClient implements SearchClient {
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
     aggregationManager = new ElasticSearchAggregationManager(newClient, rbacConditionEvaluator);
-    dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
+    dataInsightAggregatorManager =
+        new ElasticSearchDataInsightAggregatorManager(newClient, rbacConditionEvaluator);
     searchManager =
         new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
@@ -922,6 +923,17 @@ public class ElasticSearchClient implements SearchClient {
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
+      throws IOException {
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, caller);
   }
 
   @Override

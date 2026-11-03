@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.datainsight.system;
 
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
+
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -114,7 +116,7 @@ public class DataInsightSystemChartResource
       throws IOException {
     DataInsightCustomChart diChart = getByNameInternal(uriInfo, securityContext, fqn, null, null);
     DataInsightCustomChartResultList resultList =
-        repository.getPreviewData(diChart, start, end, filter);
+        repository.getPreviewData(diChart, start, end, filter, getSubjectContext(securityContext));
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -172,7 +174,8 @@ public class DataInsightSystemChartResource
           String serviceName)
       throws IOException {
     Map<String, DataInsightCustomChartResultList> resultList =
-        repository.listChartData(chartNames, start, end, filter, live, serviceName);
+        repository.listChartData(
+            chartNames, start, end, filter, live, serviceName, getSubjectContext(securityContext));
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 

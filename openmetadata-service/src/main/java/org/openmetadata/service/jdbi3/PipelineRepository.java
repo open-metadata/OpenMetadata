@@ -309,7 +309,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Index pipeline execution in Elasticsearch for analytics
     try {
-      indexPipelineExecutionInES(pipeline, pipelineStatus);
+      indexPipelineExecutionInES(
+          PipelineExecutionIndex.withAccessFields(pipeline.getEntityReference()), pipelineStatus);
     } catch (Exception e) {
       LOG.error("Failed to index pipeline execution in Elasticsearch", e);
       // Don't fail the entire operation if ES indexing fails
@@ -2451,7 +2452,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Get all pipelines
     ListFilter filter = new ListFilter(NON_DELETED);
-    List<Pipeline> pipelines = listAll(new Fields(Set.of("service")), filter);
+    List<Pipeline> pipelines =
+        listAll(getFields("service," + PipelineExecutionIndex.ACCESS_FIELDS), filter);
 
     int totalIndexed = 0;
     int totalFailed = 0;

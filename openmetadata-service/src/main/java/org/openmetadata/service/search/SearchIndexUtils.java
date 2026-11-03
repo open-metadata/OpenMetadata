@@ -36,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
@@ -50,6 +51,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.Utilities;
 
 @Slf4j
@@ -1303,5 +1305,17 @@ public final class SearchIndexUtils {
         transformColumnExtensionsRecursive(children, columnEntityType);
       }
     }
+  }
+
+  /**
+   * The tag FQNs search access control matches a tag condition on a table or its columns against:
+   * every tag the table's own endpoints decide on.
+   */
+  public static List<String> policyTagFqns(Table table) {
+    return TableRepository.allTags(table).stream()
+        .map(TagLabel::getTagFQN)
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
   }
 }

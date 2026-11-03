@@ -250,6 +250,7 @@ public class SearchResource {
     if (!subjectContext.isAdmin()) {
       domains = subjectContext.getUserDomains();
     }
+    refuseEmailLookup(subjectContext, query, queryFilter, postFilter);
 
     SearchRequest request =
         new SearchRequest()
@@ -265,7 +266,7 @@ public class SearchResource {
             .withDeleted(deleted)
             .withSortOrder(sortOrder)
             .withIncludeSourceFields(includeSourceFields)
-            .withExcludeSourceFields(excludeSourceFields)
+            .withExcludeSourceFields(withoutPrivateFields(subjectContext, excludeSourceFields))
             .withIsHierarchy(getHierarchy)
             .withDomains(domains)
             .withApplyDomainFilter(
@@ -689,7 +690,7 @@ public class SearchResource {
             .withDeleted(deleted)
             .withSortOrder(sortOrder)
             .withIncludeSourceFields(includeSourceFields)
-            .withExcludeSourceFields(excludeSourceFields)
+            .withExcludeSourceFields(withoutPrivateFields(subjectContext, excludeSourceFields))
             .withIsHierarchy(getHierarchy)
             .withDomains(domains)
             .withApplyDomainFilter(
@@ -766,8 +767,10 @@ public class SearchResource {
           int size)
       throws IOException {
 
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    refuseEmailLookup(subjectContext, fieldName + ":", fieldValue);
     return searchRepository.searchByField(
-        fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext));
+        fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
 
   @GET
@@ -854,7 +857,10 @@ public class SearchResource {
             .withIndex(index)
             .withFieldName(fieldName)
             .withFieldValue(value)
-            .withSourceFields(SearchUtils.sourceFields(sourceFieldsParam))
+            .withSourceFields(
+                withoutPrivateSourceFields(
+                    getSubjectContext(securityContext),
+                    SearchUtils.sourceFields(sourceFieldsParam)))
             .withDeleted(deleted)
             .withQueryText(queryText);
 
@@ -1490,6 +1496,52 @@ public class SearchResource {
     } catch (Exception e) {
       LOG.warn("Failed to check distributed search indexing status: {}", e.getMessage());
       return false;
+    }
+  }
+
+  /**
+   * Fields only admins and bots read from a search document. Everywhere else a user's email is
+   * masked for other callers, so search neither returns it nor matches on it for them
+   * (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
+   */
+  private static final List<String> PRIVATE_SOURCE_FIELDS = List.of("email");
+
+  private static boolean readsPrivateFields(SubjectContext subject) {
+    return subject.isAdmin() || subject.isBot();
+  }
+
+  private static List<String> withoutPrivateFields(
+      SubjectContext subject, List<String> excludeSourceFields) {
+    if (readsPrivateFields(subject)) {
+      return excludeSourceFields;
+    }
+    List<String> excludes =
+        new ArrayList<>(excludeSourceFields == null ? List.of() : excludeSourceFields);
+    PRIVATE_SOURCE_FIELDS.stream()
+        .filter(field -> !excludes.contains(field))
+        .forEach(excludes::add);
+    return excludes;
+  }
+
+  private static List<String> withoutPrivateSourceFields(
+      SubjectContext subject, List<String> sourceFields) {
+    return readsPrivateFields(subject) || sourceFields == null
+        ? sourceFields
+        : sourceFields.stream().filter(field -> !PRIVATE_SOURCE_FIELDS.contains(field)).toList();
+  }
+
+  /** Refuses a query that names an email field or carries an address, for anyone else. */
+  private static void refuseEmailLookup(SubjectContext subject, String... queryParts) {
+    if (readsPrivateFields(subject)) {
+      return;
+    }
+    for (String part : queryParts) {
+      if (part != null
+          && (part.contains("@")
+              || part.toLowerCase(java.util.Locale.ROOT)
+                  .matches("(?s).*\\bemail\\b\\W*[:\\\"].*"))) {
+        throw new BadRequestException("Searching by email address is reserved to administrators");
+      }
     }
   }
 }

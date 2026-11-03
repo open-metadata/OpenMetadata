@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -43,6 +45,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.datainsight.system.DataInsightSystemChartResource;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
 import org.openmetadata.service.util.EntityUtil;
@@ -519,8 +523,17 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   }
 
   public DataInsightCustomChartResultList getPreviewData(
-      DataInsightCustomChart chart, long startTimestamp, long endTimestamp, String filter)
+      DataInsightCustomChart chart,
+      long startTimestamp,
+      long endTimestamp,
+      String filter,
+      SubjectContext caller)
       throws IOException {
+    // A preview reads the Data Insights snapshots, which search access policies do not cover, so a
+    // caller under them gets the chart without their own filter.
+    if (underSearchAccessControl(caller)) {
+      filter = null;
+    }
     if (chart.getChartDetails() != null && filter != null) {
       HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
       if (chartDetails.get("metrics") != null) {
@@ -532,6 +545,20 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       }
     }
     return getPreviewData(chart, startTimestamp, endTimestamp);
+  }
+
+  private static boolean underSearchAccessControl(SubjectContext caller) {
+    return caller != null && !caller.isAdmin() && SearchUtils.isAccessControlEnabled();
+  }
+
+  private static SubjectContext ownerSubject(StreamingSession session) {
+    try {
+      User owner = Entity.getEntity(Entity.USER, session.ownerId, "", Include.NON_DELETED);
+      return SubjectContext.getSubjectContext(owner.getName());
+    } catch (RuntimeException e) {
+      // An owner who is gone sees nothing rather than everything.
+      throw new IllegalStateException("Streaming session owner no longer exists", e);
+    }
   }
 
   /**
@@ -549,6 +576,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     return searchClient().buildDIChart(chart, startTimestamp, endTimestamp);
   }
 
+  /** Chart data for a system report, computed on no caller's behalf. */
   public Map<String, DataInsightCustomChartResultList> listChartData(
       String chartNames,
       long startTimestamp,
@@ -557,7 +585,25 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       boolean live,
       String serviceName)
       throws IOException {
+    return listChartData(chartNames, startTimestamp, endTimestamp, filter, live, serviceName, null);
+  }
+
+  public Map<String, DataInsightCustomChartResultList> listChartData(
+      String chartNames,
+      long startTimestamp,
+      long endTimestamp,
+      String filter,
+      boolean live,
+      String serviceName,
+      SubjectContext caller)
+      throws IOException {
     HashMap<String, DataInsightCustomChartResultList> result = new HashMap<>();
+    // Live charts aggregate search documents under the caller's access policies; the snapshots
+    // behind the other charts are not covered by them, so there the caller's filter is dropped
+    // (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
+    if (!live && underSearchAccessControl(caller)) {
+      filter = null;
+    }
     if (chartNames == null) {
       return result;
     }
@@ -582,7 +628,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           chartDetails.put("includeXAxisFiled", serviceName.toLowerCase());
         }
         DataInsightCustomChartResultList data =
-            searchClient().buildDIChart(chart, startTimestamp, endTimestamp, live);
+            searchClient().buildDIChart(chart, startTimestamp, endTimestamp, live, caller);
         result.put(chartName, data);
       }
     }
@@ -597,9 +643,11 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    * @return Active session if exists, null otherwise
    */
   private StreamingSession findActiveSession(
-      String chartNames, String serviceName, String entityLink) {
+      String chartNames, String serviceName, String entityLink, String filter, UUID userId) {
     return activeSessions.values().stream()
         .filter(session -> session.getChartNames().equals(chartNames))
+        .filter(session -> session.ownerId.equals(userId))
+        .filter(session -> Objects.equals(session.getFilter(), filter))
         .filter(
             session -> {
               // Handle null serviceName comparison
@@ -654,7 +702,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     }
 
     // Check if there's already an active streaming session for the same criteria
-    StreamingSession existingSession = findActiveSession(chartNames, serviceName, entityLink);
+    StreamingSession existingSession =
+        findActiveSession(chartNames, serviceName, entityLink, filter, userId);
     if (existingSession != null) {
       // Add this user to the existing session
       existingSession.addUser(userId);
@@ -923,7 +972,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               endTime,
               session.getFilter(),
               true,
-              session.getServiceName());
+              session.getServiceName(),
+              ownerSubject(session));
 
       // Fetch ingestion pipeline status for the service
       List<Map> ingestionPipelineStatus = getIngestionPipelineStatus(session.getServiceName());
@@ -1068,6 +1118,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     private final String filter;
     private final String entityLink;
     private final Set<UUID> userIds; // Multiple users can share the same session
+    // The data is computed under this user's search access policies, so only they join it.
+    private final UUID ownerId;
     private final long startTime; // Session start time
     private final long dataStartTime; // Data range start time
     private final long dataEndTime; // Data range end time
@@ -1091,6 +1143,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       this.entityLink = entityLink;
       this.userIds = ConcurrentHashMap.newKeySet(); // Thread-safe set
       this.userIds.add(userId);
+      this.ownerId = userId;
       this.startTime = System.currentTimeMillis(); // Session start time
       this.dataStartTime = dataStartTime; // Data range start time
       this.dataEndTime = dataEndTime; // Data range end time

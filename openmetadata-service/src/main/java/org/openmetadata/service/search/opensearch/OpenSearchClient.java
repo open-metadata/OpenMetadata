@@ -166,7 +166,8 @@ public class OpenSearchClient implements SearchClient {
     entityManager = new OpenSearchEntityManager(newClient);
     genericManager = new OpenSearchGenericManager(newClient, transport);
     aggregationManager = new OpenSearchAggregationManager(newClient, rbacConditionEvaluator);
-    dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
+    dataInsightAggregatorManager =
+        new OpenSearchDataInsightAggregatorManager(newClient, rbacConditionEvaluator);
     searchManager =
         new OpenSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
@@ -909,6 +910,17 @@ public class OpenSearchClient implements SearchClient {
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
+      throws IOException {
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, caller);
   }
 
   /**

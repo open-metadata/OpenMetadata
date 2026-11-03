@@ -20,6 +20,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ColumnSearchIndex implements SearchIndex {
+  static final String POLICY_TAGS_FIELD = "policyTags";
   private final Column column;
   private final Table parentTable;
 
@@ -76,6 +77,9 @@ public class ColumnSearchIndex implements SearchIndex {
     doc.put("updatedBy", parentTable.getUpdatedBy());
     doc.put("version", parentTable.getVersion());
     doc.put("descriptionStatus", nullOrEmpty(column.getDescription()) ? "INCOMPLETE" : "COMPLETE");
+    // Read only by search access control: a tag rule on a table covers its columns, as the column
+    // endpoints decide on the table (ADR:2026-10-08-column-entries-carry-only-their-own-tags).
+    doc.put(POLICY_TAGS_FIELD, SearchIndexUtils.policyTagFqns(parentTable));
 
     Map<String, Object> tableRef = new HashMap<>();
     tableRef.put("id", parentTable.getId().toString());

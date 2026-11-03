@@ -127,6 +127,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.AsyncService;
@@ -1878,8 +1879,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
+    return allTags((Table) entity);
+  }
+
+  /** The tags a tag condition on a table reads: its own, its columns' and its data model's. */
+  public static List<TagLabel> allTags(Table table) {
     List<TagLabel> allTags = new ArrayList<>();
-    Table table = (Table) entity;
     EntityUtil.mergeTags(allTags, table.getTags());
     EntityUtil.mergeColumnTags(allTags, table.getColumns());
     if (table.getDataModel() != null) {
@@ -3558,6 +3563,11 @@ public class TableRepository extends EntityRepository<Table> {
 
     doc.put("deleted", false);
     doc.put("entityType", "pipelineStatus");
+    // The run index is searched under the pipeline's access rules, so the document carries the
+    // pipeline's access fields; one whose pipeline does not resolve is not written.
+    doc.putAll(
+        PipelineExecutionIndex.accessFields(
+            PipelineExecutionIndex.withAccessFields(observability.getPipeline())));
 
     String docId = pipelineFqn + "_" + table.getId().toString();
     String docJson = JsonUtils.pojoToJson(doc);
