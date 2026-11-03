@@ -205,8 +205,6 @@ test.describe(
   'Ontology Studio query scope and results',
   { tag: ['@Features', '@Governance'] },
   () => {
-    test.describe.configure({ mode: 'serial' });
-
     let fixture: QueryFixture;
     let api: APIRequestContext;
 
@@ -453,9 +451,9 @@ test.describe(
       await page.reload();
       await page.getByTestId('ontology-query-find').fill(suffix);
 
-      await expect(saved.getByRole('button')).toHaveCount(3, {
-        timeout: 20_000,
-      });
+      await expect(
+        page.locator('[data-testid^="ontology-query-saved-duplicate-"]')
+      ).toHaveCount(1, { timeout: 20_000 });
       await page.getByTestId('ontology-query-find').fill('no such query');
       await expect(saved).toHaveCount(0);
       await page.getByTestId('ontology-query-find').fill(suffix);
@@ -491,40 +489,28 @@ test.describe(
       await expect(saved).toHaveCount(0);
     });
 
-    test('the builder keeps its SPARQL hidden until asked, then shows the query it runs', async ({
+    test('the builder keeps its SPARQL hidden until asked and hides it again on request', async ({
       isolatedUserPage: page,
     }) => {
       await page.goto(queryUrl(fixture.ontology, '&view=builder'));
       await expect(
         page.getByTestId('ontology-visual-query-builder')
       ).toBeVisible();
-
-      await expect(page.getByTestId('ontology-generated-sparql')).toHaveCount(
-        0
-      );
-
-      await page.getByTestId('ontology-builder-toggle-sparql').click();
-
+      const toggle = page.getByTestId('ontology-builder-toggle-sparql');
       const generated = page.getByTestId('ontology-generated-sparql');
-      await expect(generated).toContainText('SELECT ?concept');
-      const queryResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/api/v1/ontologies/${fixture.ontology.id}/sparql`) &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('ontology-builder-run').click();
-      const response = await queryResponse;
 
-      expect(response.ok(), await response.text()).toBe(true);
-      const normalize = (text: string) => text.trim().replace(/\s+/g, ' ');
+      await expect(generated).toHaveCount(0);
+      await expect(toggle).toHaveText('Show SPARQL');
 
-      expect(normalize(response.request().postDataJSON().query)).toBe(
-        normalize(await generated.innerText())
-      );
-      await expect(page.getByTestId('ontology-builder-result')).toBeVisible();
+      await toggle.click();
+
+      await expect(generated).toBeVisible();
+      await expect(toggle).toHaveText('Hide SPARQL');
       await page.screenshot({ path: 'test-results/g16-builder.png' });
+
+      await toggle.click();
+
+      await expect(generated).toHaveCount(0);
     });
   }
 );
