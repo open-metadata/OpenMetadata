@@ -5890,6 +5890,7 @@
     "ontology-review-created-by-you": "You created this task. Waiting on reviewers.",
     "ontology-review-event-window": "Showing one page of release events. Task comments and recorded votes are included.",
     "ontology-review-lock-unavailable": "Review lock unavailable. Refresh before editing.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

@@ -719,6 +719,7 @@
         "openmetadata-spec/src/main/resources/json/schema/api/data/ontology*",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Ontology*IT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyApprovalIT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyReviewFilterIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/OntologyConcurrentHardDeleteIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyReleaseIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyPublicationIT.java",
@@ -738,7 +739,9 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseReuseTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptSqlGeneratorTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptQueryServiceTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyConceptBindingDaoTest.java"
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyConceptBindingDaoTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseReviewListTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseRepositoryTest.java"
       ],
       "tests": [
         "*Ontology*IT",

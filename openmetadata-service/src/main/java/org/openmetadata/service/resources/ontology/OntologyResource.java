@@ -533,10 +533,11 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       operationId = "listOntologyReleaseReviews",
       summary = "List the open release reviews the calling user is part of",
       description =
-          "view=assigned lists open reviews with an assignee entry for the caller or one of their teams, view=created lists the open reviews the caller requested, and view=pending lists the assigned reviews the caller can still vote on. A decided review is read through its release.")
+          "view=assigned lists open reviews with an assignee entry for the caller or one of their teams, view=created lists the open reviews the caller requested, and view=pending lists the assigned reviews the caller can still vote on. ontologyId narrows any view to one ontology. A decided review is read through its release.")
   public ResultList<OntologyReleaseReview> listReviews(
       @Context final SecurityContext securityContext,
       @QueryParam("view") @DefaultValue("assigned") final String view,
+      @QueryParam("ontologyId") final UUID ontologyId,
       @QueryParam("limit") @DefaultValue("25") @Min(1) @Max(100) final int limit,
       @QueryParam("after") final String after) {
     final var releases =
@@ -544,6 +545,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     return releases.listReviews(
         OntologyReleaseReviewReader.View.parse(view),
         user(securityContext),
+        ontologyId,
         limit,
         after,
         release -> canViewRelease(securityContext, release));

@@ -1221,6 +1221,7 @@ export const reviewNativeOntologyPack = async (
 export const getOntologyReleaseReviews = async (
   params: {
     view: 'assigned' | 'created' | 'pending';
+    ontologyId?: string;
     limit: number;
     after?: string;
   },
