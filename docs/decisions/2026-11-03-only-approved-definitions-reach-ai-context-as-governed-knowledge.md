@@ -18,9 +18,10 @@ stage it could check.
 
 A glossary term or metric is governed knowledge only when its `entityStatus` is Approved or unset
 (no review workflow applies). Attached knowledge (`PersonaContextBuilder.fullKnowledgeItem`),
-search-found context (`AIContextFinder.isApprovedForContext`), column glossary terms, and concept
-context with the metric definition built from it (`AIContextBuilder.hasConceptContext`) skip any
-other stage; articles keep their existing rule.
+search-found context (`AIContextFinder.isApprovedForContext`), column glossary terms, the metrics
+applied or related to an anchor (`AIContextBuilder.metricKnowledgeItem`), and concept context with
+the metric definition built from it (`AIContextBuilder.hasConceptContext`) skip any other stage;
+articles keep their existing rule.
 
 ## Consequences
 

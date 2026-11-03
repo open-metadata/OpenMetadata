@@ -897,6 +897,19 @@ public class AIContextBuilder {
     return status == null || status == EntityStatus.APPROVED;
   }
 
+  /** A metric attached to or related to the anchor reaches its context only once Approved. */
+  static KnowledgeItem metricKnowledgeItem(Metric metric, boolean visible) {
+    return visible && isGovernedDefinition(metric)
+        ? new KnowledgeItem()
+            .withId(metric.getId())
+            .withType(KnowledgeItem.Type.METRIC)
+            .withName(metric.getName())
+            .withDisplayName(metric.getDisplayName())
+            .withFullyQualifiedName(metric.getFullyQualifiedName())
+            .withContent(metricContent(metric))
+        : null;
+  }
+
   /** Concept context, and a metric's definition built from it, present a governed definition. */
   static boolean hasConceptContext(EntityInterface<?> entity) {
     return (entity instanceof GlossaryTerm || entity instanceof Metric)
@@ -1032,16 +1045,9 @@ public class AIContextBuilder {
     KnowledgeItem item = null;
     try {
       Metric metric = Entity.getEntity(ref, "", Include.NON_DELETED);
-      if (canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName())) {
-        item =
-            new KnowledgeItem()
-                .withId(metric.getId())
-                .withType(KnowledgeItem.Type.METRIC)
-                .withName(metric.getName())
-                .withDisplayName(metric.getDisplayName())
-                .withFullyQualifiedName(metric.getFullyQualifiedName())
-                .withContent(metricContent(metric));
-      }
+      item =
+          metricKnowledgeItem(
+              metric, canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName()));
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch metric {}: {}", ref.getName(), e.getMessage());
     }

@@ -1,16 +1,20 @@
 package org.openmetadata.service.aicontext;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.service.Entity;
@@ -57,6 +61,31 @@ class GovernedDefinitionTest {
     assertNull(PersonaContextBuilder.fullKnowledgeItem(Entity.METRIC, metric(EntityStatus.DRAFT)));
     assertNotNull(
         PersonaContextBuilder.fullKnowledgeItem(Entity.METRIC, metric(EntityStatus.APPROVED)));
+  }
+
+  /** A Draft metric applied to a selected asset used to throw and fail the whole persona build. */
+  @Test
+  void anUnapprovedMetricOnAPersonaAssetAttachesNothing() {
+    AIContext context = new AIContext();
+    List<KnowledgeItem> collected = new ArrayList<>();
+
+    PersonaContextBuilder.attachFullKnowledge(
+        Entity.METRIC, metric(EntityStatus.DRAFT), context, collected::add);
+    assertTrue(collected.isEmpty());
+    assertTrue(context.getMetrics() == null || context.getMetrics().isEmpty());
+
+    PersonaContextBuilder.attachFullKnowledge(
+        Entity.METRIC, metric(EntityStatus.APPROVED), context, collected::add);
+    assertEquals(1, collected.size());
+    assertEquals(1, context.getMetrics().size());
+  }
+
+  /** Metrics applied to, or related to, the anchor reach its context and its concept only Approved. */
+  @Test
+  void anAnchorsUnapprovedMetricIsNotInItsContext() {
+    assertNull(AIContextBuilder.metricKnowledgeItem(metric(EntityStatus.IN_REVIEW), true));
+    assertNull(AIContextBuilder.metricKnowledgeItem(metric(EntityStatus.APPROVED), false));
+    assertNotNull(AIContextBuilder.metricKnowledgeItem(metric(EntityStatus.APPROVED), true));
   }
 
   @Test
