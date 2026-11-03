@@ -2,9 +2,11 @@ package org.openmetadata.service.secrets.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import java.util.List;
@@ -36,12 +38,14 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.messaging.NatsConnection;
 import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
 import org.openmetadata.schema.services.connections.pipeline.PrefectConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
 
@@ -96,13 +100,25 @@ public class ClassConverterFactoryTest {
   }
 
   @Test
-  void testUnconvertibleSecretOneOfFailsClosed() {
-    Map<String, Object> invalidAuth =
+  void testSecretOneOfFieldNoBranchDeclaresIsDropped() {
+    Map<String, Object> storedAuth =
         Map.of("username", "user", "password", "secret", "unrecognized", true);
+
+    Object converted =
+        ClassConverterFactory.convertProperty(NatsConnection.class, "authType", storedAuth);
+
+    NatsBasicAuth auth = assertInstanceOf(NatsBasicAuth.class, converted);
+    assertEquals("secret", auth.getPassword());
+    assertFalse(JsonUtils.pojoToJson(auth).contains("unrecognized"));
+  }
+
+  @Test
+  void testSecretOneOfWithNoDeclaredFieldFailsClosed() {
+    Map<String, Object> unknownAuth = Map.of("unrecognized", true);
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> ClassConverterFactory.convertProperty(NatsConnection.class, "authType", invalidAuth));
+        () -> ClassConverterFactory.convertProperty(NatsConnection.class, "authType", unknownAuth));
   }
 
   @Test
@@ -186,7 +202,7 @@ public class ClassConverterFactoryTest {
   }
 
   @Test
-  void testClosedSecretBranchFailureFailsClosed() {
+  void testClosedSecretBranchKeepsItsSecretWhenAFieldIsUndeclared() {
     Map<String, Object> privateConfig =
         Map.of(
             "waiiInstance", "https://waii.example.com",
@@ -196,8 +212,12 @@ public class ClassConverterFactoryTest {
             "unrecognized", true);
     Map<String, Object> config = Map.of("type", "Application", "appPrivateConfig", privateConfig);
 
-    assertThrows(
-        RuntimeException.class,
-        () -> ClassConverterFactory.convertProperty(SourceConfig.class, "config", config));
+    Object converted = ClassConverterFactory.convertProperty(SourceConfig.class, "config", config);
+
+    Object typedPrivateConfig = ((ApplicationPipeline) converted).getAppPrivateConfig();
+    assertFalse(typedPrivateConfig instanceof Map<?, ?>, String.valueOf(typedPrivateConfig));
+    String serialized = JsonUtils.pojoToJson(typedPrivateConfig);
+    assertTrue(serialized.contains("secret"), serialized);
+    assertFalse(serialized.contains("unrecognized"), serialized);
   }
 }

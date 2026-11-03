@@ -15,8 +15,12 @@ package org.openmetadata.service.secrets.converter;
 
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.ReflectionException;
 
+@Slf4j
 final class SchemaClassConverter {
   private static final JsonSchemaRepository SCHEMAS = JsonSchemaRepository.getInstance();
 
@@ -103,7 +107,12 @@ final class SchemaClassConverter {
         }
       }
     }
-    failedConversion(target.getClass().getSimpleName(), getter.getName(), value, oneOf, failure);
+    Object converted =
+        failedConversion(
+            target.getClass().getSimpleName(), getter.getName(), value, oneOf, failure);
+    if (converted != value) {
+      ClassConverter.setConvertedValue(target, getter, converted);
+    }
   }
 
   private static Object failedConversion(
@@ -115,14 +124,50 @@ final class SchemaClassConverter {
     if (SCHEMAS.hasOpenObjectBranch(oneOf) && !SCHEMAS.hasMatchingClosedBranch(oneOf, value)) {
       return value;
     }
-    if (SCHEMAS.containsPasswordFormat(oneOf)) {
-      if (failure != null) {
-        throw failure;
-      }
-      throw new IllegalArgumentException(
-          "Cannot convert secret-bearing oneOf property " + property + " on " + owner);
+    if (!SCHEMAS.containsPasswordFormat(oneOf)) {
+      return value;
     }
-    return value;
+    return convertIgnoringUndeclaredFields(oneOf, value)
+        .map(
+            converted -> {
+              LOG.warn(
+                  "Converted {} on {} as {}, ignoring fields its schema does not declare",
+                  property,
+                  owner,
+                  converted.getClass().getSimpleName());
+              return converted;
+            })
+        .orElseThrow(
+            () ->
+                failure != null
+                    ? failure
+                    : new IllegalArgumentException(
+                        "Cannot convert secret-bearing oneOf property "
+                            + property
+                            + " on "
+                            + owner));
+  }
+
+  /**
+   * A stored value can carry a field its schema no longer declares. It is still typed as the
+   * branch that declares most of its fields, so its secrets stay masked and encrypted and the
+   * entity holding it stays readable.
+   */
+  private static Optional<Object> convertIgnoringUndeclaredFields(
+      JsonSchemaRepository.Ref oneOf, Object value) {
+    return SCHEMAS
+        .closestSecretBranch(oneOf, value)
+        .flatMap(branch -> convertLeniently(SCHEMAS.javaClass(branch), value));
+  }
+
+  private static Optional<Object> convertLeniently(Class<?> branchClass, Object value) {
+    try {
+      Object typed = JsonUtils.convertValueLenient(value, branchClass);
+      return Optional.of(ClassConverterFactory.getConverter(branchClass).convert(typed));
+    } catch (RuntimeException e) {
+      LOG.debug("Cannot convert value as {}", branchClass.getSimpleName(), e);
+      return Optional.empty();
+    }
   }
 
   private static boolean isEmptyMap(Object value) {

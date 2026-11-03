@@ -362,6 +362,26 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
     return List.of(auth.getCertificate(), auth.getPrivateKey(), auth.getPrivateKeyPassphrase());
   }
 
+  @Test
+  void testNestedFieldTheSchemaNoLongerDeclaresIsIgnoredAndTheSecretMasked() {
+    Object connection =
+        JsonUtils.readValue(
+            """
+            {"type":"Mysql","username":"user","hostPort":"localhost:3306",
+             "authType":{"password":"secret-value","legacyField":"x"}}
+            """,
+            Map.class);
+
+    Object masked =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(connection, "Mysql", ServiceType.DATABASE);
+
+    String serialized = JsonUtils.pojoToJson(masked);
+    assertFalse(serialized.contains("secret-value"), serialized);
+    assertFalse(serialized.contains("legacyField"), serialized);
+    assertTrue(serialized.contains(PasswordEntityMasker.PASSWORD_MASK), serialized);
+  }
+
   @ParameterizedTest(name = "{0}")
   @MethodSource("nestedSecretConnections")
   void testSecretsBelowEveryNestedOneOfAreMasked(
