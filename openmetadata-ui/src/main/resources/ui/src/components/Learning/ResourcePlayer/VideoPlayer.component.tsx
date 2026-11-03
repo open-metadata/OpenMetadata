@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { Spin } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import './video-player.less';
 
 interface VideoPlayerProps {
@@ -21,10 +24,14 @@ interface VideoPlayerProps {
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
 
   const embedUrl = useMemo(() => {
-    const url = resource.source.url;
+    const url = getSafeHttpUrl(resource.source.url);
+    if (!url) {
+      return undefined;
+    }
 
     let parsedUrl: URL | undefined;
     try {
@@ -85,6 +92,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
   const handleLoad = useCallback(() => {
     setIsLoading(false);
   }, []);
+
+  if (!embedUrl) {
+    return (
+      <div className="tw:p-4">
+        <Typography as="span" size="text-sm">
+          {t('label.invalid-url')}
+        </Typography>
+      </div>
+    );
+  }
 
   return (
     <div className="video-player-wrapper">
