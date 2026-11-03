@@ -19,6 +19,7 @@ import {
   within,
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
+import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -75,6 +76,7 @@ import OntologyGraphView from './OntologyGraphView';
 
 const mockGraphProps = jest.fn();
 const mockGraphControls = {
+  clearEdgeSelection: jest.fn(),
   getNodePositions: jest.fn(),
   fitView: jest.fn(),
   zoomIn: jest.fn(),
@@ -801,7 +803,7 @@ describe('OntologyGraphView', () => {
     ]);
 
     await act(() =>
-      graphProps.onCreateRelation(customer.id, party.id, SUBCLASS_OF)
+      graphProps.onCreateRelation(orphan.id, party.id, SUBCLASS_OF)
     );
     await act(() =>
       graphProps.onCreateRelation(customer.id, orphan.id, objectProperty.iri)
@@ -814,8 +816,8 @@ describe('OntologyGraphView', () => {
     expect(createOntologyAxiom).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        name: 'CustomerIsParty2',
-        subjectIri: customer.iri,
+        name: 'OrphanIsParty',
+        subjectIri: orphan.iri,
       })
     );
     expect(createOntologyAxiom).toHaveBeenNthCalledWith(
@@ -2314,23 +2316,27 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-property-name')).toBeVisible();
   });
 
-  it('does not replay an old add-concept request after the graph remounts', async () => {
-    const view = (createConceptRequestKey: number) => (
-      <OntologyGraphView
-        isEditing
-        createConceptRequestKey={createConceptRequestKey}
-        ontology={ontology}
-        surface="graph"
-        onRequestGraphSurface={jest.fn()}
-      />
-    );
-    const first = render(view(0));
-    first.rerender(view(4));
+  it('does not replay an add-concept request the page marked handled after the graph remounts', async () => {
+    const Page = ({ remountKey }: { remountKey: string }) => {
+      const [handled, setHandled] = useState(false);
+
+      return (
+        <OntologyGraphView
+          isEditing
+          createConceptRequestKey={handled ? 0 : 4}
+          key={remountKey}
+          ontology={ontology}
+          surface="graph"
+          onCreateConceptRequestHandled={() => setHandled(true)}
+          onRequestGraphSurface={jest.fn()}
+        />
+      );
+    };
+    const view = render(<Page remountKey="first" />);
 
     expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
 
-    first.unmount();
-    render(view(4));
+    view.rerender(<Page remountKey="second" />);
     await screen.findByTestId('native-ontology-graph');
 
     expect(
@@ -2338,7 +2344,7 @@ describe('OntologyGraphView', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('does not open the New class panel for an old add-concept request at first mount', async () => {
+  it('opens the New class panel for a pending add-concept request when the graph mounts after it was made', async () => {
     render(
       <OntologyGraphView
         isEditing
@@ -2349,11 +2355,7 @@ describe('OntologyGraphView', () => {
       />
     );
 
-    await screen.findByTestId('native-ontology-graph');
-
-    expect(
-      screen.queryByTestId('ontology-new-class-panel')
-    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
   it('keeps a pending class attempt mounted when another canvas node is selected', async () => {

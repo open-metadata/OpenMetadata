@@ -217,11 +217,16 @@ const OntologyStudioScopeMenu = ({
         role="none">
         <MenuButton
           aria-checked={isSelected}
+          aria-label={meta ? `${name}, ${meta}` : name}
           data-testid={testId}
           role="menuitemradio"
           onPress={closeThen(() => onScopeChange(scopeTarget))}>
           {icon}
-          <span className="tw:min-w-0 tw:flex-1 tw:truncate">{name}</span>
+          <span
+            className="tw:min-w-0 tw:flex-1 tw:truncate"
+            data-testid={`${testId}-label`}>
+            {name}
+          </span>
           {meta ? (
             <span className="tw:shrink-0 tw:text-xs tw:text-tertiary">
               {meta}

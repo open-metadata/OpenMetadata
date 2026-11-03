@@ -30,7 +30,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
@@ -38,8 +44,10 @@ import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlacehol
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../components/common/Loader/Loader';
+import AggregateConceptInspector from '../../components/governance/ontology/AllOntologiesGraphView/AggregateConceptInspector';
 import AllOntologiesGraphView from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView';
 import { FILTERS as NATIVE_FILTERS } from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView.constants';
+import OntologyAllOntologiesConceptDrawer from '../../components/governance/ontology/OntologyAuthoringWorkspace/OntologyAllOntologiesConceptDrawer';
 import OntologyCreateDialog from '../../components/governance/ontology/OntologyCreateDialog/OntologyCreateDialog';
 import OntologyEmptyState from '../../components/governance/ontology/OntologyEmptyState/OntologyEmptyState';
 import { OntologyGraphSearchSlotContext } from '../../components/governance/ontology/OntologyGraphView/OntologyGraphSearchSlot.context';
@@ -49,7 +57,6 @@ import OntologyPublicationModal from '../../components/governance/ontology/Ontol
 import OntologyStudioHeader from '../../components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader';
 import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
 import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
-import OntologyAllOntologiesConceptDrawer from '../../components/governance/ontology/OntologyAuthoringWorkspace/OntologyAllOntologiesConceptDrawer';
 import OntologyStudioWorkspace from '../../components/governance/ontology/OntologyStudioWorkspace/OntologyStudioWorkspace';
 import OntologyTasksDrawer from '../../components/governance/ontology/OntologyTasksDrawer/OntologyTasksDrawer';
 import OntologyVersionChip from '../../components/governance/ontology/OntologyVersionChip/OntologyVersionChip';
@@ -73,9 +80,9 @@ import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
-import { OntologyPublicationStatus } from '../../generated/type/ontologyPublicationStatus';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
+import { OntologyPublicationStatus } from '../../generated/type/ontologyPublicationStatus';
 import { useAuth } from '../../hooks/authHooks';
 import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
@@ -104,11 +111,6 @@ import {
   isOntologyScope,
   OntologyStudioScope,
 } from '../../utils/governance/ontology/OntologyStudioScope.utils';
-import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
-import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../utils/PermissionsUtils';
 import {
   parseStudioUrlState,
   patchStudioUrlParams,
@@ -116,6 +118,11 @@ import {
   StudioUrlVersion,
   StudioUrlView,
 } from '../../utils/governance/ontology/OntologyStudioUrlState.utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
 import { generateUUID } from '../../utils/StringUtils';
 import {
   showErrorToast,
@@ -733,10 +740,26 @@ function canShowPublicationTrigger(state: {
   return state.isAllOntologies && state.canEditAnyOntology;
 }
 
-function nextConceptRequest(
-  current: { key: number; ontologyId: string } | undefined,
+interface NativeConceptRequest {
+  key: number;
+  ontologyId: string;
+  handled?: boolean;
+}
+
+// A remounted graph must not replay a request it already opened, so a handled one reads as 0.
+function pendingConceptRequestKey(
+  request: NativeConceptRequest | undefined,
   ontologyId: string
 ) {
+  return request?.ontologyId === ontologyId && !request.handled
+    ? request.key
+    : 0;
+}
+
+function nextConceptRequest(
+  current: NativeConceptRequest | undefined,
+  ontologyId: string
+): NativeConceptRequest {
   return {
     key: current?.ontologyId === ontologyId ? current.key + 1 : 1,
     ontologyId,
@@ -750,6 +773,78 @@ function aggregateEnabled(
   return (
     isAllOntologies && !scopes.isOntologyLoading && !scopes.isOntologyError
   );
+}
+
+function useLoadedOntology(ontologyId: string | null) {
+  const [loadedOntology, setLoadedOntology] = useState<Ontology>();
+  const [ontologyLoadFailed, setOntologyLoadFailed] = useState(false);
+  const [ontologyNotFound, setOntologyNotFound] = useState(false);
+  const [ontologyLoadAttempt, setOntologyLoadAttempt] = useState(0);
+  useEffect(() => {
+    if (!ontologyId) {
+      return;
+    }
+    if (loadedOntology?.id === ontologyId) {
+      return;
+    }
+    const controller = new AbortController();
+    setOntologyLoadFailed(false);
+    setOntologyNotFound(false);
+    getOntology(
+      ontologyId,
+      'owners,reviewers,publicationStatus',
+      controller.signal
+    )
+      .then((ontology) => {
+        if (!controller.signal.aborted) {
+          setLoadedOntology(ontology);
+        }
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setLoadedOntology(undefined);
+        if (isAxiosError(error) && error.response?.status === 404) {
+          setOntologyNotFound(true);
+
+          return;
+        }
+        showErrorToast(error);
+        setOntologyLoadFailed(true);
+      });
+
+    return () => controller.abort();
+  }, [loadedOntology?.id, ontologyId, ontologyLoadAttempt]);
+  const reloadOntology = () => setOntologyLoadAttempt((attempt) => attempt + 1);
+
+  return {
+    loadedOntology,
+    setLoadedOntology,
+    ontologyLoadFailed,
+    ontologyNotFound,
+    reloadOntology,
+  };
+}
+
+const idOrEmpty = (entity?: { id: string }) => entity?.id ?? '';
+
+function canEditAnyNativeOntology(
+  isAdminUser: boolean | undefined,
+  permissions: ReturnType<typeof usePermissionProvider>['permissions']
+): boolean {
+  return (
+    Boolean(isAdminUser) ||
+    checkPermission(Operation.EditAll, ResourceEntity.ONTOLOGY, permissions)
+  );
+}
+
+function isNativePermissionPending(
+  mode: StudioMode,
+  ontologyPending: boolean,
+  conceptPending: boolean
+): boolean {
+  return ontologyPending || (mode === 'edit' && conceptPending);
 }
 
 const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
@@ -769,7 +864,6 @@ const OntologyExplorerContent: React.FC = () => {
   } = useOntologyAiCapability();
   const initialDraftId = useLinkedDraftId();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [loadedOntology, setLoadedOntology] = useState<Ontology>();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEmptyImportOpen, setIsEmptyImportOpen] = useState(false);
   const [pendingFirstClass, setPendingFirstClass] = useState<{
@@ -861,15 +955,17 @@ const OntologyExplorerContent: React.FC = () => {
     },
     [setSearchParams]
   );
-  const [ontologyLoadFailed, setOntologyLoadFailed] = useState(false);
-  const [ontologyNotFound, setOntologyNotFound] = useState(false);
-  const [ontologyLoadAttempt, setOntologyLoadAttempt] = useState(0);
+  const {
+    loadedOntology,
+    setLoadedOntology,
+    ontologyLoadFailed,
+    ontologyNotFound,
+    reloadOntology,
+  } = useLoadedOntology(ontologyId);
   const selectedOntology = getSelectedOntology(ontologyId, loadedOntology);
   const canCreateOntology = canCreateNativeOntology(isAdminUser, permissions);
-  const canEditAnyOntology =
-    Boolean(isAdminUser) ||
-    checkPermission(Operation.EditAll, ResourceEntity.ONTOLOGY, permissions);
-  const selectedOntologyId = selectedOntology?.id ?? '';
+  const canEditAnyOntology = canEditAnyNativeOntology(isAdminUser, permissions);
+  const selectedOntologyId = idOrEmpty(selectedOntology);
   const refreshNativeWorkingDiff = useCallback(() => {
     void queryClient.invalidateQueries({
       queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
@@ -917,43 +1013,6 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }, [publicationIdentity, selectedReviewTaskId]);
 
-  useEffect(() => {
-    if (!ontologyId) {
-      return;
-    }
-    if (loadedOntology?.id === ontologyId) {
-      return;
-    }
-    const controller = new AbortController();
-    setOntologyLoadFailed(false);
-    setOntologyNotFound(false);
-    getOntology(
-      ontologyId,
-      'owners,reviewers,publicationStatus',
-      controller.signal
-    )
-      .then((ontology) => {
-        if (!controller.signal.aborted) {
-          setLoadedOntology(ontology);
-        }
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setLoadedOntology(undefined);
-        if (isAxiosError(error) && error.response?.status === 404) {
-          setOntologyNotFound(true);
-
-          return;
-        }
-        showErrorToast(error);
-        setOntologyLoadFailed(true);
-      });
-
-    return () => controller.abort();
-  }, [loadedOntology?.id, ontologyId, ontologyLoadAttempt]);
-
   const [settingsRequest, setSettingsRequest] = useState({
     ontologyId: '',
     key: 0,
@@ -974,12 +1033,11 @@ const OntologyExplorerContent: React.FC = () => {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [nativeStats, setNativeStats] = useState<OntologyModelStats>();
   const [nativeRefresh, setNativeRefresh] = useState(0);
+  const workspaceShownFor = useRef<string>();
   const [nativeAuthoringLocked, setNativeAuthoringLocked] = useState(false);
   const [isAggregateCreateOpen, setIsAggregateCreateOpen] = useState(false);
-  const [nativeConceptRequest, setNativeConceptRequest] = useState<{
-    key: number;
-    ontologyId: string;
-  }>();
+  const [nativeConceptRequest, setNativeConceptRequest] =
+    useState<NativeConceptRequest>();
   const [searchSlot, setSearchSlot] = useState<HTMLDivElement | null>(null);
   const [conceptDraft, setConceptDraft] = useState<{
     defaultGlossaryId?: string;
@@ -1052,7 +1110,7 @@ const OntologyExplorerContent: React.FC = () => {
     }
     setIsPublicationOpen(false);
     setLoadedOntology(undefined);
-    setOntologyLoadAttempt((attempt) => attempt + 1);
+    reloadOntology();
     setSearchParams((current) => {
       let next = new URLSearchParams(current);
       if ((ontology?.id ?? null) !== current.get('ontology')) {
@@ -1156,9 +1214,11 @@ const OntologyExplorerContent: React.FC = () => {
     { enabled: isNativeOntology && Boolean(selectedConceptId) }
   );
   // Only Edit depends on the concept read; View must not unmount on each selection.
-  const isNativePermissionLoading =
-    isNativeOntologyPermissionLoading ||
-    (mode === 'edit' && isConceptPermissionLoading);
+  const isNativePermissionLoading = isNativePermissionPending(
+    mode,
+    isNativeOntologyPermissionLoading,
+    isConceptPermissionLoading
+  );
   const [editConceptRequest, setEditConceptRequest] = useState<string>();
   const viewSurface = resolveViewSurface(urlState.view, isNativeOntology);
   const editSurface = resolveEditSurface(urlState.view, isNativeOntology);
@@ -2065,8 +2125,10 @@ const OntologyExplorerContent: React.FC = () => {
       <Loader />
     );
 
-  const renderReadGate = () => {
-    if (isVersionPending) {
+  const renderReadGate = (ontologyId: string) => {
+    // Once the workspace is up, a later permission read (selecting a concept
+    // in Edit) must not unmount it, or the graph loses placed nodes and layout.
+    if (isVersionPending && workspaceShownFor.current !== ontologyId) {
       return <Loader />;
     }
 
@@ -2079,18 +2141,18 @@ const OntologyExplorerContent: React.FC = () => {
     if (mode === 'query' || mode === 'ai') {
       return renderMainContent();
     }
-    const gate = renderReadGate();
+    const gate = renderReadGate(ontology.id);
     if (gate) {
       return gate;
     }
+    workspaceShownFor.current = ontology.id;
 
     return (
       <OntologyStudioWorkspace
-        createConceptRequestKey={
-          nativeConceptRequest?.ontologyId === ontology.id
-            ? nativeConceptRequest.key
-            : 0
-        }
+        createConceptRequestKey={pendingConceptRequestKey(
+          nativeConceptRequest,
+          ontology.id
+        )}
         editConceptRequest={editConceptRequest}
         initialDraftId={initialDraftId}
         key={`${ontology.id}:${nativeRefresh}:${publishedReleaseId ?? 'draft'}`}
@@ -2108,6 +2170,11 @@ const OntologyExplorerContent: React.FC = () => {
         }
         viewSurface={explorerSurface}
         onAuthoringLockChange={setNativeAuthoringLocked}
+        onCreateConceptRequestHandled={() =>
+          setNativeConceptRequest((current) =>
+            current ? { ...current, handled: true } : current
+          )
+        }
         onEditConceptRequestHandled={() => setEditConceptRequest(undefined)}
         onRequestCreateConcept={() => guard(handleAddConcept)}
         onRequestEdit={(conceptId) => {
@@ -2131,7 +2198,7 @@ const OntologyExplorerContent: React.FC = () => {
   };
 
   function renderAggregateError() {
-    return (
+    const alert = (
       <div
         className="tw:relative tw:min-h-70 tw:flex-1"
         data-testid="all-ontologies-load-error"
@@ -2154,6 +2221,27 @@ const OntologyExplorerContent: React.FC = () => {
             ]}
           />
         )}
+      </div>
+    );
+
+    if (!allModels.isTooLarge || !selectedConceptId) {
+      return alert;
+    }
+
+    return (
+      <div className="tw:flex tw:min-h-0 tw:flex-1">
+        {alert}
+        <AggregateConceptInspector
+          conceptId={selectedConceptId}
+          onClose={() => selectNativeConcept(undefined)}
+          onEditConcept={(ontology, conceptId) =>
+            selectOntology(ontology, conceptId, 'edit')
+          }
+          onOpenOwner={(ontology, conceptId) =>
+            selectOntology(ontology, conceptId)
+          }
+          onSelectConcept={selectNativeConcept}
+        />
       </div>
     );
   }
@@ -2246,7 +2334,7 @@ const OntologyExplorerContent: React.FC = () => {
             {
               key: 'reload',
               label: t('label.reload'),
-              onPress: () => setOntologyLoadAttempt((attempt) => attempt + 1),
+              onPress: () => reloadOntology(),
             },
             {
               key: 'all-ontologies',

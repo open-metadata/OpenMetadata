@@ -43,6 +43,7 @@ import { OntologyBulkResultArtifact } from '../generated/api/data/ontologyBulkRe
 import { OntologyBulkSubmission } from '../generated/api/data/ontologyBulkSubmission';
 import { OntologyBulkTemplate } from '../generated/api/data/ontologyBulkTemplate';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { OntologyConceptDeleteImpact } from '../generated/api/data/ontologyConceptDeleteImpact';
 import type {
   Hop,
   OntologyConceptQuery,
@@ -267,6 +268,19 @@ export const patchOntology = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
+export const getOntologyConcept = async (
+  id: string,
+  fields?: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyConcept>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}`,
+    { params: { fields }, signal }
+  );
+
+  return response.data;
+};
+
 export const createOntologyConcept = async (request: CreateOntologyConcept) => {
   const response = await APIClient.post<OntologyConcept>(
     ONTOLOGY_CONCEPTS_PATH,
@@ -297,6 +311,32 @@ export const hardDeleteOntologyDefinition = async (
   }
 };
 
+export const softDeleteOntologyDefinition = async (
+  type: 'concept' | 'property' | 'axiom',
+  id: string
+) => {
+  const path = {
+    concept: ONTOLOGY_CONCEPTS_PATH,
+    property: ONTOLOGY_PROPERTIES_PATH,
+    axiom: ONTOLOGY_AXIOMS_PATH,
+  }[type];
+  await APIClient.delete(`${path}/${encodeURIComponent(id)}`, {
+    params: { hardDelete: false },
+  });
+};
+
+export const getOntologyConceptDeleteImpact = async (
+  id: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyConceptDeleteImpact>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/deleteImpact`,
+    { signal }
+  );
+
+  return response.data;
+};
+
 export const restoreOntologyDefinition = async (
   type: 'concept' | 'property' | 'axiom',
   id: string
@@ -307,6 +347,16 @@ export const restoreOntologyDefinition = async (
     axiom: ONTOLOGY_AXIOMS_PATH,
   }[type];
   await APIClient.put(`${path}/restore`, { id });
+};
+
+/** Reads with include=all so a soft-deleted concept still holding the name is found. */
+export const getOntologyConceptByName = async (fqn: string) => {
+  const response = await APIClient.get<OntologyConcept>(
+    `${ONTOLOGY_CONCEPTS_PATH}/name/${getEncodedFqn(fqn)}`,
+    { params: { include: 'all' } }
+  );
+
+  return response.data;
 };
 
 export const patchOntologyConcept = async (id: string, patch: Operation[]) => {

@@ -31,6 +31,7 @@ import {
   createOntology,
   getNativeOntologyDataGraphPage,
   getOntology,
+  getOntologyConcept,
   getOntologyConceptBindings,
   getOntologyWorkingDiff,
   listOntologies,
@@ -137,6 +138,7 @@ jest.mock('../../rest/ontologyAPI', () => ({
     .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
   getNativeOntologyDataGraphPage: jest.fn(),
   getOntology: jest.fn(),
+  getOntologyConcept: jest.fn(),
   getOntologyReleaseReviews: jest
     .fn()
     .mockResolvedValue({ data: [], paging: { total: 0 } }),
@@ -2523,6 +2525,63 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(await screen.findByTestId('ontology-add-concept'));
 
     expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+  });
+
+  describe('a concept link in an over-limit catalog', () => {
+    const many = Array.from({ length: 21 }, (_, index) => ({
+      ...nativeOntology,
+      id: 'bulk-' + index,
+      name: 'bulk' + index,
+      fullyQualifiedName: 'bulk' + index,
+    }));
+
+    it('shows the linked concept inspector next to the capacity alert', async () => {
+      (getOntologyConcept as jest.Mock).mockResolvedValue({
+        id: 'Customer',
+        name: 'Customer',
+        iri: 'urn:Customer',
+        ontology: { id: nativeOntology.id, type: 'ontology' },
+      });
+      renderNativeStudio(
+        '?concept=Customer',
+        nativeOntology,
+        undefined,
+        undefined,
+        many
+      );
+
+      expect(
+        await screen.findByText('message.ontology-aggregate-capacity')
+      ).toBeVisible();
+      expect(
+        await screen.findByTestId('ontology-concept-inspector')
+      ).toHaveTextContent('urn:Customer');
+    });
+
+    it('says the concept was not found for an unknown id', async () => {
+      (getOntologyConcept as jest.Mock).mockRejectedValue(
+        new AxiosError('missing', '404', undefined, undefined, {
+          status: 404,
+        } as AxiosResponse)
+      );
+      renderNativeStudio(
+        '?concept=gone',
+        nativeOntology,
+        undefined,
+        undefined,
+        many
+      );
+
+      expect(
+        await screen.findByText('message.ontology-concept-not-found')
+      ).toBeVisible();
+      expect(
+        screen.queryByTestId('ontology-concept-inspector')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText('message.ontology-aggregate-capacity')
+      ).toBeVisible();
+    });
   });
 
   it('still opens the concept drawer when All ontologies is over the aggregate limit', async () => {

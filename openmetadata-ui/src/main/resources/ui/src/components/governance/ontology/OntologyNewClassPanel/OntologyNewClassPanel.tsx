@@ -33,17 +33,18 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, MutableRefObject, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuid } from 'uuid';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
   ConceptMappingType,
   CreateOntologyChangeSet,
   OntologyConceptType,
 } from '../../../../generated/api/data/createOntologyChangeSet';
-import { EntityType } from '../../../../enums/entity.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { User } from '../../../../generated/entity/teams/user';
 import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
 import {
   useOntologyDirtyForm,
@@ -53,6 +54,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   getOntologyState,
   hardDeleteOntologyDefinition,
+  restoreOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
@@ -61,13 +63,13 @@ import {
   NewClassDraft,
   OwnPropertyDraft,
 } from '../../../../utils/governance/ontology/OntologyNativeChangeSet.utils';
-import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   OntologyStudioModel,
   StudioDatatype,
   STUDIO_DATATYPES,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { EntityReferenceOption } from '../../../Glossary/AddGlossary/AddGlossary.interface';
 import {
   toEntityReferenceOption,
@@ -75,8 +77,8 @@ import {
 } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import {
-  classIdentityIssues,
   ClassIdentityIssue,
+  classIdentityIssues,
   classIri,
   classLocalName,
   distinctChipValues,
@@ -88,6 +90,7 @@ import {
   ownPropertyDraft,
   ownPropertyTypeLabel,
 } from './OntologyNewClassPanel.utils';
+import { useDeletedConceptNamed } from './useDeletedConceptNamed';
 const DATATYPE_LABEL_KEYS: Record<StudioDatatype | 'object', string> = {
   boolean: 'label.boolean',
   date: 'label.date',
@@ -104,10 +107,27 @@ interface SelectionValues {
   disjoint: FormSelectItem[];
   owners: EntityReferenceOption[];
 }
+
+/** What the author typed, kept by the host while the panel remounts for another ontology. */
+export interface CarriedConceptDraft {
+  label: string;
+  manualName?: string;
+  description: string;
+  conceptType: OntologyConceptType;
+  customIri: string;
+  source: string;
+  abstract: boolean;
+  advancedOpen: boolean;
+  synonyms: string[];
+  mappings: MappingInput[];
+  /** Concepts of the ontology the draft was typed under; mappings to them do not carry over. */
+  conceptIris: string[];
+}
 export interface OntologyFieldProps {
   options: { id: string; label: string }[];
   value: string;
   onChange: (id: string) => void;
+  draft?: MutableRefObject<CarriedConceptDraft | undefined>;
 }
 interface Props {
   ontology: Ontology;
@@ -123,6 +143,45 @@ interface Props {
   onClose: () => void;
   onLockChange?: (locked: boolean) => void;
 }
+const emptySelections = (
+  currentUser: User | undefined,
+  youLabel: string
+): SelectionValues => ({
+  parents: [],
+  equivalent: [],
+  disjoint: [],
+  owners: currentUser
+    ? [
+        {
+          ...toEntityReferenceOption(
+            getEntityReferenceFromEntity(currentUser, EntityType.USER)
+          ),
+          label:
+            (currentUser.displayName ?? currentUser.name) +
+            ' (' +
+            youLabel +
+            ')',
+        },
+      ]
+    : [],
+});
+const restoreCarriedDraft = (
+  carried: CarriedConceptDraft | undefined
+): Omit<CarriedConceptDraft, 'conceptIris'> => ({
+  label: carried?.label ?? '',
+  manualName: carried?.manualName,
+  description: carried?.description ?? '',
+  conceptType: carried?.conceptType ?? OntologyConceptType.OwlClass,
+  customIri: carried?.customIri ?? '',
+  source: carried?.source ?? '',
+  abstract: carried?.abstract ?? false,
+  advancedOpen: carried?.advancedOpen ?? false,
+  synonyms: carried?.synonyms ?? [],
+  mappings: (carried?.mappings ?? []).filter(
+    (mapping) => !carried?.conceptIris.includes(mapping.conceptIri)
+  ),
+});
+const NAME_ISSUES: ClassIdentityIssue[] = ['name-invalid', 'name-taken'];
 const ISSUE_MESSAGES: Record<ClassIdentityIssue, string> = {
   'name-required': 'message.ontology-concept-name-required',
   'name-invalid': 'message.ontology-concept-name-invalid',
@@ -166,41 +225,29 @@ const OntologyNewClassPanel = ({
   }, []);
   const currentUser = useApplicationStore((state) => state.currentUser);
   const ownerPicker = useUserTeamOptions();
-  const defaultSelections = (): SelectionValues => ({
-    parents: [],
-    equivalent: [],
-    disjoint: [],
-    owners: currentUser
-      ? [
-          {
-            ...toEntityReferenceOption(
-              getEntityReferenceFromEntity(currentUser, EntityType.USER)
-            ),
-            label:
-              (currentUser.displayName ?? currentUser.name) +
-              ' (' +
-              t('label.you') +
-              ')',
-          },
-        ]
-      : [],
-  });
+  const defaultSelections = (): SelectionValues =>
+    emptySelections(currentUser, t('label.you'));
   const form = useForm<SelectionValues>({
     defaultValues: defaultSelections(),
   });
   const selections = form.watch();
-  const [label, setLabel] = useState('');
-  const [manualName, setManualName] = useState<string>();
+  const start = useRef(
+    restoreCarriedDraft(ontologyField?.draft?.current)
+  ).current;
+  const [label, setLabel] = useState(start.label);
+  const [manualName, setManualName] = useState<string | undefined>(
+    start.manualName
+  );
   const localName = manualName ?? classLocalName(label);
-  const [description, setDescription] = useState('');
-  const [conceptType, setConceptType] = useState(OntologyConceptType.OwlClass);
-  const [customIri, setCustomIri] = useState('');
-  const [source, setSource] = useState('');
-  const [abstract, setAbstract] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [synonyms, setSynonyms] = useState<string[]>([]);
+  const [description, setDescription] = useState(start.description);
+  const [conceptType, setConceptType] = useState(start.conceptType);
+  const [customIri, setCustomIri] = useState(start.customIri);
+  const [source, setSource] = useState(start.source);
+  const [abstract, setAbstract] = useState(start.abstract);
+  const [advancedOpen, setAdvancedOpen] = useState(start.advancedOpen);
+  const [synonyms, setSynonyms] = useState<string[]>(start.synonyms);
   const [synonym, setSynonym] = useState('');
-  const [mappings, setMappings] = useState<MappingInput[]>([]);
+  const [mappings, setMappings] = useState<MappingInput[]>(start.mappings);
   const [mappingType, setMappingType] = useState(ConceptMappingType.ExactMatch);
   const [mappingIri, setMappingIri] = useState('');
   const [properties, setProperties] = useState<OwnPropertyDraft[]>([]);
@@ -216,6 +263,37 @@ const OntologyNewClassPanel = ({
   const [saved, setSaved] = useState(false);
   const [focusName, setFocusName] = useState(false);
   const [pressed, setPressed] = useState<'create' | 'another'>('create');
+  const draftRef = ontologyField?.draft;
+  useEffect(() => {
+    if (draftRef) {
+      draftRef.current = {
+        abstract,
+        advancedOpen,
+        conceptIris: model.concepts.map((concept) => concept.iri),
+        conceptType,
+        customIri,
+        description,
+        label,
+        manualName,
+        mappings,
+        source,
+        synonyms,
+      };
+    }
+  }, [
+    abstract,
+    advancedOpen,
+    conceptType,
+    customIri,
+    description,
+    draftRef,
+    label,
+    manualName,
+    mappings,
+    model.concepts,
+    source,
+    synonyms,
+  ]);
   const attemptIri = useRef('');
   const attemptPlan = useRef<CreateOntologyChangeSet>();
   const addAnother = useRef(false);
@@ -238,6 +316,9 @@ const OntologyNewClassPanel = ({
   };
   const mappingRowValid = isValidMapping(mappings, pendingMapping);
   const mappingRowInvalid = Boolean(mappingIri.trim()) && !mappingRowValid;
+  const [restoring, setRestoring] = useState(false);
+  const [restoreFailed, setRestoreFailed] = useState(false);
+  const deletedConcept = useDeletedConceptNamed(ontology, model, localName);
   const issues = classIdentityIssues(model, {
     displayName: label,
     localName,
@@ -266,6 +347,11 @@ const OntologyNewClassPanel = ({
     if (issues.length > 0) {
       return issueText(issues[0]);
     }
+    if (deletedConcept) {
+      return t('message.ontology-concept-name-deleted', {
+        name: localName.trim(),
+      });
+    }
     if (mappingRowInvalid) {
       return t('message.invalid-concept-iri');
     }
@@ -274,6 +360,43 @@ const OntologyNewClassPanel = ({
   })();
   const valid = blockedReason === undefined;
   const effectiveIri = classIri(ontology.namespace ?? '', localName, customIri);
+
+  const reconcileRef = useRef<() => Promise<void>>(async () => undefined);
+  const dirty = [
+    label,
+    manualName,
+    description,
+    customIri,
+    source,
+    abstract,
+    synonyms.length,
+    synonym,
+    mappings.length,
+    mappingIri,
+    properties.length,
+    propertyName,
+    range,
+    identifier,
+    enumInput,
+    enumValues.length,
+    datatype !== 'string',
+    conceptType !== OntologyConceptType.OwlClass,
+    form.formState.isDirty,
+  ].some(Boolean);
+  useEffect(() => {
+    if (dirty) {
+      setSaved(false);
+    }
+  }, [dirty]);
+  const markSaved = useOntologyDirtyForm(dirty);
+  const apply = useOntologyChangeSetApply({
+    canApply: permitted,
+    rebuildAfterFailure: true,
+    onApplied: () => {
+      markSaved();
+      void reconcileRef.current();
+    },
+  });
 
   const resetForAnother = () => {
     setLabel('');
@@ -352,41 +475,7 @@ const OntologyNewClassPanel = ({
       setReconciling(false);
     }
   };
-  const dirty = [
-    label,
-    manualName,
-    description,
-    customIri,
-    source,
-    abstract,
-    synonyms.length,
-    synonym,
-    mappings.length,
-    mappingIri,
-    properties.length,
-    propertyName,
-    range,
-    identifier,
-    enumInput,
-    enumValues.length,
-    datatype !== 'string',
-    conceptType !== OntologyConceptType.OwlClass,
-    form.formState.isDirty,
-  ].some(Boolean);
-  useEffect(() => {
-    if (dirty) {
-      setSaved(false);
-    }
-  }, [dirty]);
-  const markSaved = useOntologyDirtyForm(dirty);
-  const apply = useOntologyChangeSetApply({
-    canApply: permitted,
-    rebuildAfterFailure: true,
-    onApplied: () => {
-      markSaved();
-      void reconcile();
-    },
-  });
+  reconcileRef.current = reconcile;
   const leaveLocked = preparing || reconciling || apply.configurationLocked;
   useOntologyDraftLock(leaveLocked);
   const locked = leaveLocked || apply.status.kind === 'applied';
@@ -403,6 +492,8 @@ const OntologyNewClassPanel = ({
   }, [leaveLocked, onLockChange]);
   const removeProperty = (property: OwnPropertyDraft) =>
     setProperties((previous) => previous.filter((p) => p !== property));
+  const removeMapping = (mapping: MappingInput) =>
+    setMappings((previous) => previous.filter((m) => m !== mapping));
   const propertyInput = {
     name: propertyName,
     datatype,
@@ -435,6 +526,54 @@ const OntologyNewClassPanel = ({
       { mappingType, conceptIri: mappingIri.trim() },
     ]);
     setMappingIri('');
+  };
+  const restoreDeleted = async () => {
+    if (!deletedConcept || restoring) {
+      return;
+    }
+    setRestoring(true);
+    setRestoreFailed(false);
+    try {
+      await restoreOntologyDefinition('concept', deletedConcept.id);
+      if (!(await onCreated(deletedConcept.iri, { keepOpen: false }))) {
+        setError(true);
+      }
+    } catch {
+      setRestoreFailed(true);
+    } finally {
+      setRestoring(false);
+    }
+  };
+  const renderNameHint = () => {
+    if (apply.status.kind === 'blocked' && apply.status.conflict) {
+      return (
+        <span data-testid="new-class-name-conflict">
+          {apply.status.message}
+        </span>
+      );
+    }
+    if (deletedConcept && !has(...NAME_ISSUES)) {
+      return (
+        <span data-testid="new-class-name-deleted">
+          {restoreFailed
+            ? t('server.unexpected-error')
+            : t('message.ontology-concept-name-deleted', {
+                name: localName.trim(),
+              })}{' '}
+          <Button
+            color="link-color"
+            data-testid="new-class-restore"
+            isDisabled={locked}
+            isLoading={restoring}
+            size="sm"
+            onPress={() => void restoreDeleted()}>
+            {t('label.restore')}
+          </Button>
+        </span>
+      );
+    }
+
+    return fieldHint(undefined, ...NAME_ISSUES);
   };
   const create = async (keepOpen: boolean) => {
     if (!valid || !permitted || locked || submitting.current) {
@@ -588,9 +727,7 @@ const OntologyNewClassPanel = ({
             isDisabled={locked}
             size="xs"
             tooltip={t('label.remove-entity', { entity: mapping.conceptIri })}
-            onClick={() =>
-              setMappings((previous) => previous.filter((m) => m !== mapping))
-            }
+            onClick={() => removeMapping(mapping)}
           />
         </Box>
       ))}
@@ -765,7 +902,7 @@ const OntologyNewClassPanel = ({
             : t('server.unexpected-error')}
         </Alert>
       ) : null}
-      {apply.status.kind === 'blocked' ? (
+      {apply.status.kind === 'blocked' && !apply.status.conflict ? (
         <Alert variant="error">{apply.status.message}</Alert>
       ) : null}
       {blockedReason && apply.status.kind !== 'applied' ? (
@@ -924,11 +1061,15 @@ const OntologyNewClassPanel = ({
               </div>
             ) : null}
             <Input
-              hint={fieldHint(undefined, 'name-invalid', 'name-taken')}
+              isRequired
+              hint={renderNameHint()}
               inputDataTestId="new-class-local-name"
               isDisabled={locked}
-              isInvalid={has('name-invalid', 'name-taken')}
-              isRequired
+              isInvalid={
+                has(...NAME_ISSUES) ||
+                Boolean(deletedConcept) ||
+                (apply.status.kind === 'blocked' && apply.status.conflict)
+              }
               label={t('label.name')}
               ref={nameInput}
               value={localName}

@@ -293,7 +293,7 @@ test.describe(
               await expectNativeStudioCopy(shell);
               await shell.getByTestId('ontology-scope-menu-trigger').click();
               await expect(
-                page.getByTestId('ontology-scope-all-ontologies')
+                page.getByTestId('ontology-scope-all-ontologies-label')
               ).toHaveText('All ontologies');
               await expectNativeStudioCopy(page.getByRole('menu'));
               await page.keyboard.press('Escape');

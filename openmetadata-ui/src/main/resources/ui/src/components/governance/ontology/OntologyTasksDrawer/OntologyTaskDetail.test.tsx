@@ -15,13 +15,13 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { EntityStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import APIClient from '../../../../rest/axiosClient';
 import {
-  renderWithQueryClient,
-  runQueryNotificationsSynchronously,
-} from '../../../../test/unit/test-utils';
-import {
   useEnUsTranslations,
   useKeyEchoTranslations,
 } from '../../../../test/unit/enUsTranslation';
+import {
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
+} from '../../../../test/unit/test-utils';
 import OntologyTaskDetail from './OntologyTaskDetail';
 import { release, review, task } from './OntologyTasksDrawer.mock';
 

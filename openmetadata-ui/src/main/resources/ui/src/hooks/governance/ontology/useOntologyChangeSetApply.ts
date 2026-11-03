@@ -95,7 +95,7 @@ const validateDraft = (
 type ApplyStatus =
   | { kind: 'idle' | 'applied' | 'unchanged' }
   | { kind: 'busy'; step: 'creating' | 'reconciling' | 'leasing' | 'applying' }
-  | { kind: 'blocked'; message: string };
+  | { kind: 'blocked'; message: string; conflict?: true };
 
 const planState = (
   status: ApplyStatus,
@@ -156,6 +156,19 @@ export const useOntologyChangeSetApply = ({
       running.current = false;
       outcomeUnknown.current = unknown;
       setOutcomeUnknownShown(unknown);
+      const conflictMessage =
+        isAxiosError(error) && error.response?.status === 409
+          ? error.response.data?.message
+          : undefined;
+      if (typeof conflictMessage === 'string' && conflictMessage) {
+        setStatus({
+          kind: 'blocked',
+          message: conflictMessage,
+          conflict: true,
+        });
+
+        return;
+      }
       setStatus({ kind: 'blocked', message });
       if (error) {
         showErrorToast(isAxiosError(error) ? error : message);

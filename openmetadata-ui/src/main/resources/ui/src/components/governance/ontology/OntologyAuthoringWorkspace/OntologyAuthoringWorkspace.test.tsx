@@ -222,6 +222,55 @@ describe('OntologyAuthoringWorkspace', () => {
     );
   });
 
+  it('lists relationship-backed properties under Relationships, apart from data properties', async () => {
+    const property = (id: string, name: string, kind: Kind) => ({
+      id,
+      name,
+      kind,
+      fullyQualifiedName: 'Sales.' + name,
+      iri: 'urn:sales:' + name,
+      ontology: { id: ontology.id, type: 'ontology' },
+    });
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (path, config) => {
+      if (path === '/ontologyProperties') {
+        return {
+          data: {
+            data: [
+              property('p-name', 'customerName', Kind.Data),
+              property('p-broader', 'broader', Kind.Object),
+              property('p-narrower', 'narrower', Kind.Object),
+            ],
+            paging: { total: 3 },
+          },
+        };
+      }
+
+      return defaultGet?.(path, config);
+    });
+    renderWithQueryClient(
+      <OntologyAuthoringWorkspace
+        definitionType="property"
+        ontology={ontology}
+      />
+    );
+    await flushReactQuery();
+
+    const properties = await screen.findByTestId(
+      'ontology-definition-group-property'
+    );
+    const relationships = screen.getByTestId(
+      'ontology-definition-group-relationship'
+    );
+
+    expect(properties).toHaveTextContent('customerName');
+    expect(properties).not.toHaveTextContent('broader');
+    expect(properties).not.toHaveTextContent('narrower');
+    expect(relationships).toHaveTextContent('broader');
+    expect(relationships).toHaveTextContent('narrower');
+    expect(relationships).not.toHaveTextContent('customerName');
+  });
+
   it('shows a failed list with retry and hides unavailable data', async () => {
     get.mockImplementation(async (path) => {
       if (path === '/ontologies') {

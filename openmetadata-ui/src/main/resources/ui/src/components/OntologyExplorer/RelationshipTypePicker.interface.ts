@@ -38,4 +38,6 @@ export interface RelationshipTypePickerProps {
   groups?: RelationTypeOptionGroup[];
   /** Offers the search text as a new relationship type when nothing matches it exactly. */
   canCreateType?: boolean;
+  /** The reason a choice cannot be written, or undefined; the picker shows it instead of selecting. */
+  checkRelation?: (relationType: string) => string | undefined;
 }

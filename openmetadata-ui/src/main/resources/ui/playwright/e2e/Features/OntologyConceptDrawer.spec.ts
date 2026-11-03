@@ -315,9 +315,7 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.getByTestId('new-class-local-name').fill('Spaced Name!');
 
         await expect(create).toBeDisabled();
-        await expect(
-          panel.getByText(/Spaces are not allowed/).first()
-        ).toBeVisible();
+        await expect(panel).toContainText(/Spaces are not allowed/);
         await expect(page.getByTestId('new-class-iri')).not.toHaveText(
           UUID_PATTERN
         );
@@ -325,21 +323,17 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.getByTestId('new-class-local-name').fill('Customer');
 
         await expect(create).toBeDisabled();
-        await expect(
-          panel
-            .getByText('A definition named Customer already exists', {
-              exact: false,
-            })
-            .first()
-        ).toBeVisible();
+        await expect(panel).toContainText(
+          'A definition named Customer already exists'
+        );
 
         await page.getByTestId('new-class-local-name').fill('Buyer');
         await page.getByTestId('new-class-label').fill('customer');
 
         await expect(create).toBeDisabled();
-        await expect(
-          panel.getByText('A concept labeled customer already exists').first()
-        ).toBeVisible();
+        await expect(panel).toContainText(
+          'A concept labeled customer already exists'
+        );
         await page.screenshot({
           path: testInfo.outputPath(`g10-validation-${mode}.png`),
         });
@@ -420,7 +414,6 @@ for (const mode of ['classic', 'ai'] as const) {
         await expect(
           page.getByTestId('ontology-concept-inspector')
         ).toContainText('Clean Log');
-        await page.waitForLoadState('networkidle');
 
         expect(failures).toEqual([]);
       });

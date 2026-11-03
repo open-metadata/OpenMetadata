@@ -44,7 +44,10 @@ import { OntologyDraftContext } from '../../../../context/OntologyDraft/Ontology
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
+import {
+  PaletteKey,
+  RelationshipType,
+} from '../../../../generated/entity/data/relationshipType';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -55,8 +58,11 @@ import {
   createOntologyProperty,
   createRelationshipType,
   listRelationshipTypes,
+  patchOntologyAxiom,
   patchOntologyProperty,
   patchRelationshipType,
+  restoreOntologyDefinition,
+  softDeleteOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
 import {
   buildInverseBackLink,
@@ -75,13 +81,19 @@ import {
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
 import {
+  checkNativeRelation,
+  describeRelationIssue,
+} from '../../../../utils/governance/ontology/OntologyRelationCheck.utils';
+import {
   buildDataPropertyRequest,
   buildOntologyStudioGraph,
   DataPropertyInput,
+  OntologyModelRelation,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
@@ -103,12 +115,14 @@ import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/Relationship
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
+import OntologyConceptDeleteDialog from '../OntologyAuthoringWorkspace/OntologyConceptDeleteDialog';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
 import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
+import OntologyRelationDetail from '../OntologyRelationControls/OntologyRelationDetail';
 import OntologyConceptSearch from './OntologyConceptSearch';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
 import OntologyGraphNodeList from './OntologyGraphNodeList';
@@ -317,6 +331,7 @@ interface OntologyGraphViewProps {
   readonly onRequestGraphSurface: () => void;
   readonly onRequestTreeSurface?: () => void;
   readonly createConceptRequestKey?: number;
+  readonly onCreateConceptRequestHandled?: () => void;
   readonly onRequestCreateConcept?: () => void;
   readonly onAuthoringLockChange?: (locked: boolean) => void;
   readonly isEditing?: boolean;
@@ -340,7 +355,31 @@ export interface OntologyModelStats {
 
 interface ConceptEditorRequest {
   readonly conceptId?: string;
+  /** Where a double-click on empty canvas asked for the new concept, in canvas space. */
+  readonly position?: { readonly x: number; readonly y: number };
 }
+
+// A published release is read-only, so its edit and delete rights are forced off whatever the role allows.
+const useConceptRights = (
+  conceptId: string | undefined,
+  concepts: ReadonlyArray<{ id: string; deleted?: boolean }> | undefined,
+  releaseId: string | undefined
+) => {
+  const { canEditAll, canDelete } = useEntityPermissions(
+    ResourceEntity.ONTOLOGY_CONCEPT,
+    { id: conceptId ?? '' },
+    {
+      enabled: Boolean(conceptId),
+      deleted: concepts?.find((concept) => concept.id === conceptId)?.deleted,
+    }
+  );
+
+  return {
+    canEditByRights: canEditAll,
+    canEdit: canEditAll && !releaseId,
+    canDelete: canDelete && !releaseId,
+  };
+};
 
 const OntologyGraphView = ({
   ontology,
@@ -349,6 +388,7 @@ const OntologyGraphView = ({
   onRequestGraphSurface,
   onRequestTreeSurface,
   createConceptRequestKey = 0,
+  onCreateConceptRequestHandled,
   onRequestCreateConcept,
   onAuthoringLockChange,
   isEditing = false,
@@ -371,7 +411,7 @@ const OntologyGraphView = ({
   // The inverse this view registered and has not linked back yet. A retry reuses or links it, since
   // a delete needs a right the dialog never checks and a soft delete leaves its name taken.
   const unlinkedInverseId = useRef<string>();
-  const handledCreateConceptRequest = useRef(createConceptRequestKey);
+  const handledCreateConceptRequest = useRef(0);
   const [nodePositions, setNodePositions] =
     useState<Record<string, { x: number; y: number }>>();
   const creationPositions = useRef<Record<string, { x: number; y: number }>>();
@@ -401,6 +441,8 @@ const OntologyGraphView = ({
     ? selectedConceptId
     : localSelectedId;
   const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
+  const [selectedEdgeKey, setSelectedEdgeKey] = useState<string>();
+  const [isDeletingConcept, setIsDeletingConcept] = useState(false);
   const guard = useOntologyDraftGuard();
   const { runConfirmed } = useContext(OntologyDraftContext);
   const setSelectedId = useCallback(
@@ -513,7 +555,7 @@ const OntologyGraphView = ({
       permissions[resource] ?? DEFAULT_ENTITY_PERMISSION
     );
   const canCreateDefinition = (resource: ResourceEntity) =>
-    isEditing && !ontology.deleted && flagsOf(resource).canCreate;
+    isEditing && !releaseId && !ontology.deleted && flagsOf(resource).canCreate;
   const canCreateConcept = canCreateDefinition(ResourceEntity.ONTOLOGY_CONCEPT);
   const canCreateChangeSet = canCreateDefinition(
     ResourceEntity.ONTOLOGY_CHANGE_SET
@@ -533,18 +575,15 @@ const OntologyGraphView = ({
     ResourceEntity.ONTOLOGY_AXIOM,
   ].every(canCreateDefinition);
   const canLinkInverse = flagsOf(ResourceEntity.RELATIONSHIP_TYPE).canEditAll;
-  const conceptPermissionId = conceptEditor?.conceptId ?? selectedId;
-  const { canEditAll: canEditConceptByRights } = useEntityPermissions(
-    ResourceEntity.ONTOLOGY_CONCEPT,
-    { id: conceptPermissionId ?? '' },
-    {
-      enabled: Boolean(conceptPermissionId),
-      deleted: model?.concepts.find(
-        (concept) => concept.id === conceptPermissionId
-      )?.deleted,
-    }
+  const {
+    canEditByRights: canEditConceptByRights,
+    canEdit: canEditConcept,
+    canDelete: canDeleteConcept,
+  } = useConceptRights(
+    conceptEditor?.conceptId ?? selectedId,
+    model?.concepts,
+    releaseId
   );
-  const canEditConcept = canEditConceptByRights && !releaseId;
   const selected = model?.concepts.find((concept) => concept.id === selectedId);
   const {
     data: relationTypes = NO_RELATIONSHIP_TYPES,
@@ -681,6 +720,49 @@ const OntologyGraphView = ({
     [canCreateRelationType, catalog, catalogOf, refetchRegistry]
   );
 
+  const issueFor = useCallback(
+    (
+      fromId: string,
+      toId: string,
+      typeId: string,
+      among: readonly OntologyModelRelation[] = relations
+    ): string | undefined => {
+      const from = model?.concepts.find((concept) => concept.id === fromId);
+      const to = model?.concepts.find((concept) => concept.id === toId);
+      const label = typeId.startsWith(NEW_RELATION_TYPE_PREFIX)
+        ? typeId.slice(NEW_RELATION_TYPE_PREFIX.length)
+        : undefined;
+      const type =
+        catalog.find((candidate) => candidate.id === typeId) ??
+        (label === undefined
+          ? undefined
+          : ({
+              group: 'custom',
+              id: typeId,
+              kind: 'objectProperty',
+              label,
+              name: label,
+              paletteKey: PaletteKey.Purple,
+            } as const));
+      const issue =
+        from && to && type
+          ? checkNativeRelation({ from, relations: among, to, type })
+          : undefined;
+
+      return issue ? describeRelationIssue(t, issue) : undefined;
+    },
+    [catalog, model, relations, t]
+  );
+
+  const resolveRelationType = useCallback(
+    async (relationType: string) =>
+      relationType.startsWith(NEW_RELATION_TYPE_PREFIX)
+        ? createType(relationType.slice(NEW_RELATION_TYPE_PREFIX.length))
+        : catalog.find((candidate) => candidate.id === relationType) ??
+          missingRelationType(relationType),
+    [catalog, createType]
+  );
+
   const createRelation = useCallback(
     async (
       fromId: string,
@@ -697,14 +779,15 @@ const OntologyGraphView = ({
 
         return false;
       }
+      const issue = issueFor(fromId, toId, relationType);
+      if (issue) {
+        showErrorToast(issue);
+
+        return false;
+      }
       let written = false;
       try {
-        const type = relationType.startsWith(NEW_RELATION_TYPE_PREFIX)
-          ? await createType(
-              relationType.slice(NEW_RELATION_TYPE_PREFIX.length)
-            )
-          : catalog.find((candidate) => candidate.id === relationType) ??
-            missingRelationType(relationType);
+        const type = await resolveRelationType(relationType);
         if (!type) {
           return false;
         }
@@ -733,14 +816,101 @@ const OntologyGraphView = ({
     },
     [
       canWrite,
-      catalog,
-      createType,
+      issueFor,
       model,
       noteWorkingChange,
       refetch,
+      resolveRelationType,
       showWriteError,
       t,
     ]
+  );
+
+  const deleteRelation = useCallback(
+    async (
+      relation: OntologyModelRelation,
+      { isSilent = false }: { isSilent?: boolean } = {}
+    ): Promise<boolean> => {
+      const axiom = relation.axiom;
+      if (!axiom) {
+        return false;
+      }
+      const expressionIndex = axiom.expressions.findIndex((expression) =>
+        relation.kind === 'restriction'
+          ? expression.propertyIri === relation.propertyIri &&
+            expression.filler?.classIri === relation.to.iri
+          : expression.classIri === relation.to.iri
+      );
+      const isWholeAxiom = axiom.expressions.length <= 1 || expressionIndex < 0;
+      try {
+        if (isWholeAxiom) {
+          await softDeleteOntologyDefinition('axiom', axiom.id);
+        } else {
+          await patchOntologyAxiom(axiom.id, [
+            { op: 'remove', path: `/expressions/${expressionIndex}` },
+          ]);
+        }
+      } catch (error) {
+        showWriteError(error);
+
+        return false;
+      }
+      noteWorkingChange();
+      await refetch();
+      if (!isSilent) {
+        if (isWholeAxiom) {
+          showUndoToast(
+            t('message.ontology-relationship-deleted'),
+            async () => {
+              try {
+                await restoreOntologyDefinition('axiom', axiom.id);
+                noteWorkingChange();
+                await refetch();
+              } catch (error) {
+                showWriteError(error);
+              }
+            }
+          );
+        } else {
+          showSuccessToast(t('message.ontology-relationship-deleted'));
+        }
+      }
+
+      return true;
+    },
+    [noteWorkingChange, refetch, showWriteError, t]
+  );
+
+  const changeRelationType = useCallback(
+    async (
+      relation: OntologyModelRelation,
+      typeId: string
+    ): Promise<boolean> => {
+      const issue = issueFor(
+        relation.from.id,
+        relation.to.id,
+        typeId,
+        relations.filter((candidate) => candidate.key !== relation.key)
+      );
+      if (issue) {
+        showErrorToast(issue);
+
+        return false;
+      }
+      const isCreated = await createRelation(
+        relation.from.id,
+        relation.to.id,
+        typeId
+      );
+
+      return isCreated && deleteRelation(relation, { isSilent: true });
+    },
+    [createRelation, deleteRelation, issueFor, relations]
+  );
+
+  const deleteSelectedConcept = useCallback(
+    () => setIsDeletingConcept(true),
+    []
   );
 
   const createDataProperty = useCallback(
@@ -806,6 +976,7 @@ const OntologyGraphView = ({
       handledCreateConceptRequest.current !== createConceptRequestKey
     ) {
       handledCreateConceptRequest.current = createConceptRequestKey;
+      onCreateConceptRequestHandled?.();
       runConfirmed(() =>
         (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
       );
@@ -816,6 +987,7 @@ const OntologyGraphView = ({
   }, [
     createConceptRequestKey,
     isEditing,
+    onCreateConceptRequestHandled,
     onRequestGraphSurface,
     onSelectedConceptChange,
     runConfirmed,
@@ -835,7 +1007,21 @@ const OntologyGraphView = ({
     return <Loader />;
   }
 
-  const selectNode = ({ id }: { id: string }) => setSelectedId(id);
+  const selectedRelation = relations.find(
+    (relation) => relation.key === selectedEdgeKey
+  );
+  const selectNode = ({ id }: { id: string }) => {
+    setSelectedEdgeKey(undefined);
+    graphRef.current?.clearEdgeSelection();
+    setSelectedId(id);
+  };
+  const placeConceptAt = (position: { x: number; y: number }) => {
+    runConfirmed(() =>
+      (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
+    );
+    setSelectedEdgeKey(undefined);
+    setConceptEditor({ position });
+  };
   const connectNode = ({ id }: { id: string }) => {
     setSelectedId(id);
     onRequestEdit?.();
@@ -878,8 +1064,14 @@ const OntologyGraphView = ({
               oldNodes,
               created.id
             );
-            setNodePositions(positions);
-            if (!keepOpen) {
+            setNodePositions(
+              conceptEditor?.position
+                ? { ...positions, [created.id]: conceptEditor.position }
+                : positions
+            );
+            if (keepOpen) {
+              setConceptEditor({});
+            } else {
               runConfirmed(() =>
                 (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
               );
@@ -936,50 +1128,119 @@ const OntologyGraphView = ({
     );
   };
 
+  const renderRelationDetail = (selectedRelation: OntologyModelRelation) => {
+    return (
+      <OntologyRelationDetail
+        canCreateRelationType={canCreateRelationType}
+        canEdit={isEditing && canCreateAxiom}
+        checkType={(typeId) =>
+          issueFor(
+            selectedRelation.from.id,
+            selectedRelation.to.id,
+            typeId,
+            relations.filter(
+              (candidate) => candidate.key !== selectedRelation.key
+            )
+          )
+        }
+        groups={relationTypeGroups}
+        relation={selectedRelation}
+        onClose={() => {
+          setSelectedEdgeKey(undefined);
+          graphRef.current?.clearEdgeSelection();
+        }}
+        onDelete={async () => {
+          const isDeleted = await deleteRelation(selectedRelation);
+          if (isDeleted) {
+            setSelectedEdgeKey(undefined);
+          }
+
+          return isDeleted;
+        }}
+        onEdit={async (typeId) => {
+          const isChanged = await changeRelationType(selectedRelation, typeId);
+          if (isChanged) {
+            setSelectedEdgeKey(undefined);
+          }
+
+          return isChanged;
+        }}
+        onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
+      />
+    );
+  };
+
+  const renderInspector = (
+    selected: NonNullable<typeof model>['concepts'][number]
+  ) => {
+    return (
+      <OntologyConceptInspector
+        canAddProperty={canCreateProperty}
+        canAddRelation={canCreateAxiom}
+        canCreateRelationType={canCreateRelationType}
+        canEditBindings={isEditing && canEditConcept}
+        canEditRelations={isEditing && canCreateAxiom}
+        checkAddRelation={(targetId, typeId) =>
+          issueFor(selected.id, targetId, typeId)
+        }
+        checkRelationType={(relation, typeId) =>
+          issueFor(
+            relation.from.id,
+            relation.to.id,
+            typeId,
+            relations.filter((candidate) => candidate.key !== relation.key)
+          )
+        }
+        concept={selected}
+        isEditing={isEditing}
+        model={model}
+        relationTypeGroups={relationTypeGroups}
+        relations={relations}
+        onAddProperty={(input) => createDataProperty(selected.id, input)}
+        onAddRelation={(targetId, relationType) =>
+          createRelation(selected.id, targetId, relationType)
+        }
+        onClose={() => setSelectedId(undefined)}
+        onDelete={
+          isEditing && canDeleteConcept ? deleteSelectedConcept : undefined
+        }
+        onDeleteRelation={(relation) => deleteRelation(relation)}
+        onEdit={
+          canEditConceptByRights
+            ? () => {
+                if (!releaseId) {
+                  setConceptEditor({ conceptId: selected.id });
+                }
+                onRequestEdit?.(selected.id);
+              }
+            : undefined
+        }
+        onEditMappings={
+          isEditing && canEditConcept
+            ? () => setConceptEditor({ conceptId: selected.id })
+            : undefined
+        }
+        onEditRelation={changeRelationType}
+        onOpenData={() => {
+          onRequestGraphSurface();
+          changeGraphMode('data');
+        }}
+        onSelectConcept={(concept) => setSelectedId(concept.id)}
+      />
+    );
+  };
+
   const renderSidebar = () => {
     if (conceptEditor && isEditing) {
       return renderConceptEditor();
     }
 
+    if (selectedRelation && !selected) {
+      return renderRelationDetail(selectedRelation);
+    }
+
     if (selected) {
-      return (
-        <OntologyConceptInspector
-          canAddProperty={canCreateProperty}
-          canAddRelation={canCreateAxiom}
-          canCreateRelationType={canCreateRelationType}
-          canEditBindings={isEditing && canEditConcept}
-          concept={selected}
-          isEditing={isEditing}
-          model={model}
-          relationTypeGroups={relationTypeGroups}
-          relations={relations}
-          onAddProperty={(input) => createDataProperty(selected.id, input)}
-          onAddRelation={(targetId, relationType) =>
-            createRelation(selected.id, targetId, relationType)
-          }
-          onClose={() => setSelectedId(undefined)}
-          onEdit={
-            canEditConceptByRights
-              ? () => {
-                  if (!releaseId) {
-                    setConceptEditor({ conceptId: selected.id });
-                  }
-                  onRequestEdit?.(selected.id);
-                }
-              : undefined
-          }
-          onEditMappings={
-            isEditing && canEditConcept
-              ? () => setConceptEditor({ conceptId: selected.id })
-              : undefined
-          }
-          onOpenData={() => {
-            onRequestGraphSurface();
-            changeGraphMode('data');
-          }}
-          onSelectConcept={(concept) => setSelectedId(concept.id)}
-        />
-      );
+      return renderInspector(selected);
     }
 
     return (
@@ -1105,6 +1366,7 @@ const OntologyGraphView = ({
               keepCanvasOnAdd
               studioMode
               canCreateRelationType={canCreateRelationType}
+              checkRelation={issueFor}
               edges={scope.graph.edges}
               focusNodeId={selectedId}
               glossaries={[]}
@@ -1118,8 +1380,21 @@ const OntologyGraphView = ({
               relationTypeGroups={relationTypeGroups}
               selectedNodeId={selectedId}
               settings={SETTINGS}
+              onCanvasDoubleClick={
+                isEditing && canCreateNewClass ? placeConceptAt : undefined
+              }
               onCreateRelation={async (fromId, toId, relationType) => {
                 await createRelation(fromId, toId, relationType);
+              }}
+              onEdgeClick={(edge) => {
+                if (edge?.id) {
+                  runConfirmed(() =>
+                    (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
+                  );
+                  setSelectedEdgeKey(edge.id);
+                } else {
+                  setSelectedEdgeKey(undefined);
+                }
               }}
               onNodeClick={selectNode}
               onNodeDoubleClick={selectNode}
@@ -1280,6 +1555,32 @@ const OntologyGraphView = ({
       </div>
       {renderSidebar()}
       {renderTypeDialog()}
+      {isDeletingConcept && selected ? (
+        <OntologyConceptDeleteDialog
+          concept={selected}
+          onCancel={() => setIsDeletingConcept(false)}
+          onDeleted={({ restore }) => {
+            setIsDeletingConcept(false);
+            (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
+            noteWorkingChange();
+            void refetch();
+            showUndoToast(
+              t('message.ontology-definition-deleted', {
+                name: selected.displayName ?? selected.name,
+              }),
+              async () => {
+                try {
+                  await restore();
+                  noteWorkingChange();
+                  await refetch();
+                } catch (error) {
+                  showWriteError(error);
+                }
+              }
+            );
+          }}
+        />
+      ) : null}
     </div>
   );
 };
