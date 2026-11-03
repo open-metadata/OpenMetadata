@@ -2493,6 +2493,9 @@ const OntologyExplorerContent: React.FC = () => {
             void queryClient.invalidateQueries({
               queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontology.id],
             });
+            void queryClient.invalidateQueries({
+              queryKey: ['ontology-state', ontology.id],
+            });
           },
         }}
         onClose={() => setIsLibraryOpen(false)}

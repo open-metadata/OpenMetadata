@@ -234,6 +234,50 @@ export const resolveOntologyDraft = ({
   };
 };
 
+export interface GeneratedOntologyIdentity {
+  readonly name: string;
+  readonly displayName: string;
+  readonly iri: string;
+  readonly namespace: string;
+}
+
+const IDENTITY_SUFFIX_LIMIT = 1000;
+
+/**
+ * The readable name and `https` IRI an installed or imported ontology gets,
+ * made the way the create dialog makes them. A name already taken gets " (2)".
+ * Undefined while no RDF base URI is known, so callers keep their fallback.
+ */
+export const generatedOntologyIdentity = (
+  title: string,
+  baseUri: string,
+  ontologies: readonly Ontology[] | undefined
+): GeneratedOntologyIdentity | undefined => {
+  if (!baseUri || !ontologies) {
+    return undefined;
+  }
+  const base = title.trim() || 'Ontology';
+  for (let attempt = 1; attempt < IDENTITY_SUFFIX_LIMIT; attempt++) {
+    const displayName = attempt === 1 ? base : `${base} (${attempt})`;
+    const draft = resolveOntologyDraft({
+      displayName,
+      idOverride: deriveOntologyId(displayName) || 'ontology',
+      baseUri,
+      ontologies,
+    });
+    if (draft.isSubmittable) {
+      return {
+        name: draft.id,
+        displayName,
+        iri: draft.iri,
+        namespace: draft.namespace,
+      };
+    }
+  }
+
+  return undefined;
+};
+
 interface NewOntologyDraft {
   readonly id: string;
   readonly displayName: string;

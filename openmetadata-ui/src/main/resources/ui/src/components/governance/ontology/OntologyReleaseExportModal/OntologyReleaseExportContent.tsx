@@ -19,6 +19,7 @@ import {
   Grid,
   RadioButton,
   RadioGroup,
+  Select,
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
@@ -33,27 +34,36 @@ import {
 } from './OntologyReleaseExportModal.constants';
 import {
   OntologyReleaseExportContentState,
+  OntologyReleaseExportScopeOption,
   OntologyReleaseExportSelection,
 } from './OntologyReleaseExportModal.types';
 import OntologyReleaseExportShacl from './OntologyReleaseExportShacl';
 
 interface OntologyReleaseExportContentProps {
+  readonly isDraft: boolean;
   readonly isShaclRunning: boolean;
+  readonly scopeKey: string;
+  readonly scopes: readonly OntologyReleaseExportScopeOption[];
   readonly selection: OntologyReleaseExportSelection;
   readonly shaclReport?: OntologyReleaseValidation;
   readonly state: OntologyReleaseExportContentState;
   readonly onRunShacl: () => void;
+  readonly onScopeChange: (scopeKey: string) => void;
   readonly onSelectionChange: (
     selection: OntologyReleaseExportSelection
   ) => void;
 }
 
 const OntologyReleaseExportContent = ({
+  isDraft,
   isShaclRunning,
+  scopeKey,
+  scopes,
   selection,
   shaclReport,
   state,
   onRunShacl,
+  onScopeChange,
   onSelectionChange,
 }: OntologyReleaseExportContentProps) => {
   const { t } = useTranslation();
@@ -66,11 +76,6 @@ const OntologyReleaseExportContent = ({
     <Box direction="col" gap={5}>
       {state.kind === 'loading' ? (
         <Typography role="status">{t('label.loading')}</Typography>
-      ) : null}
-      {state.kind === 'empty' ? (
-        <Alert variant="warning">
-          {t('message.no-active-ontology-release')}
-        </Alert>
       ) : null}
       {state.kind === 'error' ? (
         <Box direction="col" gap={3}>
@@ -85,6 +90,23 @@ const OntologyReleaseExportContent = ({
 
       {state.kind === 'ready' ? (
         <Grid className="tw:md:gap-x-5" rowGap="5">
+          <Grid.Item className="tw:min-w-0">
+            <Select
+              data-testid="ontology-export-scope"
+              hint={t('message.ontology-export-scope-help')}
+              label={t('label.scope')}
+              selectedKey={scopeKey}
+              onSelectionChange={(key) => onScopeChange(String(key))}>
+              {scopes.map((scope) => (
+                <Select.Item
+                  id={scope.key}
+                  key={scope.key}
+                  label={scope.label}
+                  supportingText={scope.hint}
+                />
+              ))}
+            </Select>
+          </Grid.Item>
           <Grid.Item className="tw:min-w-0 tw:md:col-span-13">
             <RadioGroup
               label={t('label.format')}
@@ -132,14 +154,17 @@ const OntologyReleaseExportContent = ({
               />
               <Checkbox
                 data-testid="ontology-export-bound-assets"
-                isDisabled={card === 'csv'}
-                isSelected={options.includeBoundAssets && card !== 'csv'}
+                isDisabled={card === 'csv' || isDraft}
+                isSelected={
+                  options.includeBoundAssets && card !== 'csv' && !isDraft
+                }
                 label={t('label.include-bound-assets')}
                 onChange={(value) => setOption({ includeBoundAssets: value })}
               />
               <Checkbox
                 data-testid="ontology-export-shacl-gate"
-                isSelected={options.shaclGate}
+                isDisabled={isDraft}
+                isSelected={options.shaclGate && !isDraft}
                 label={t('label.shacl-gate')}
                 onChange={(value) => setOption({ shaclGate: value })}
               />
@@ -166,11 +191,13 @@ const OntologyReleaseExportContent = ({
                   : state.content?.slice(0, ONTOLOGY_RELEASE_PREVIEW_LIMIT) ??
                     '—'}
               </pre>
-              <OntologyReleaseExportShacl
-                isRunning={isShaclRunning}
-                report={shaclReport}
-                onRun={onRunShacl}
-              />
+              {isDraft ? null : (
+                <OntologyReleaseExportShacl
+                  isRunning={isShaclRunning}
+                  report={shaclReport}
+                  onRun={onRunShacl}
+                />
+              )}
             </Box>
           </Grid.Item>
         </Grid>

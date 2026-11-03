@@ -31,6 +31,7 @@ import { CreateOntology } from '../../../../generated/api/data/createOntology';
 import type { OntologyPackManifest } from '../../../../generated/api/data/ontologyPackManifest';
 import type { Ontology } from '../../../../generated/entity/data/ontology';
 import type { OntologyPackInstallationRecord } from '../../../../generated/type/ontologyPackInstallationRecord';
+import { useOntologyIdentitySource } from '../../../../hooks/governance/ontology/useOntologyIdentitySource';
 import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -87,6 +88,7 @@ const OntologyNativeLibraryDetail = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const currentUserId = useApplicationStore((state) => state.currentUser?.id);
+  const { identityOf } = useOntologyIdentitySource(canCreate);
   const [targetId, setTargetId] = useState('new');
   const [target, setTarget] = useState<Ontology>();
   const [selectedModuleIds, setSelectedModuleIds] = useState(() =>
@@ -250,7 +252,11 @@ const OntologyNativeLibraryDetail = ({
         target,
         request:
           targetId === 'new' && currentUserId
-            ? nativeLibraryOntologyRequest(pack, currentUserId)
+            ? nativeLibraryOntologyRequest(
+                pack,
+                currentUserId,
+                identityOf(pack.name)
+              )
             : undefined,
       };
     }

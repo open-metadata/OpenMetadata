@@ -20,8 +20,13 @@ export interface OntologyReleaseExportSelection {
   readonly skosXl: boolean;
 }
 
+export interface OntologyReleaseExportScopeOption {
+  readonly hint: string;
+  readonly key: string;
+  readonly label: string;
+}
+
 export type OntologyReleaseExportContentState =
-  | { readonly kind: 'empty' }
   | { readonly kind: 'error'; readonly onRetry: () => void }
   | { readonly kind: 'loading' }
   | {

@@ -636,6 +636,26 @@ export const exportOntologyRelease = async (
   }
 };
 
+/** The unpublished working content, written in the same formats as a release. */
+export const exportOntologyDraft = async (
+  ontologyId: string,
+  format: OntologyReleaseExportFormat,
+  options: Pick<OntologyReleaseExportOptions, 'includeInverses'> = {},
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<string>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/export`,
+    {
+      params: { format, ...options },
+      headers: { Accept: NATIVE_EXPORT_MEDIA_TYPES[format] },
+      responseType: 'text',
+      signal,
+    }
+  );
+
+  return response.data;
+};
+
 type OntologyChangeSetCreation =
   | CreateOntologyChangeSet
   | CreateOntologyChangeSetRequest;
@@ -1154,6 +1174,20 @@ export const previewNativeOntologyPack = async (
 ): Promise<CreateOntologyChangeSet> => {
   const response = await APIClient.post<CreateOntologyChangeSet>(
     `/ontologies/${ontologyId}/library/${packId}/preview`,
+    request
+  );
+
+  return response.data;
+};
+
+/** The pack preview with a status for every definition and any clash the install would add. */
+export const reviewNativeOntologyPack = async (
+  ontologyId: string,
+  packId: string,
+  request: PreviewNativeOntologyPack
+): Promise<NativeOntologyImportPreview> => {
+  const response = await APIClient.post<NativeOntologyImportPreview>(
+    `/ontologies/${ontologyId}/library/${packId}/review`,
     request
   );
 

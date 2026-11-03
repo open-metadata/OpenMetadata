@@ -40,6 +40,7 @@ import {
   NativeInstallTarget,
   useNativeOntologyInstall,
 } from '../../../../hooks/governance/ontology/useNativeOntologyInstall';
+import { useOntologyIdentitySource } from '../../../../hooks/governance/ontology/useOntologyIdentitySource';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -48,6 +49,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
+import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
 import { resolveNativeLibraryTarget } from '../OntologyNativeLibraryDetail/OntologyNativeLibraryDetail.utils';
 import {
   detectNativeImportFile,
@@ -62,6 +64,10 @@ import {
   NativeImportState,
   nativeImportStep,
   NativeImportTarget,
+  importItemsOf,
+  selectChanges,
+  selectedCount,
+  selectionOf,
   NATIVE_IMPORT_ACCEPTED_EXTENSIONS,
   NATIVE_IMPORT_FORMAT_LABEL_KEYS,
   NATIVE_IMPORT_MAX_BYTES,
@@ -69,6 +75,7 @@ import {
   pick,
   readySummaryOf,
 } from './OntologyNativeImportPanel.utils';
+import OntologyNativeImportItems from './OntologyNativeImportItems';
 
 interface OntologyNativeImportPanelProps {
   readonly canImport: boolean;
@@ -231,6 +238,7 @@ const ImportFileStep = ({
 const ImportActions = ({
   canParse,
   canImport,
+  importCount,
   isImporting,
   isLocked,
   isParsed,
@@ -240,6 +248,7 @@ const ImportActions = ({
 }: {
   readonly canParse: boolean;
   readonly canImport: boolean;
+  readonly importCount?: number;
   readonly isImporting: boolean;
   readonly isLocked: boolean;
   readonly isParsed: boolean;
@@ -267,7 +276,11 @@ const ImportActions = ({
         isDisabled={!canImport}
         isLoading={isImporting}
         onPress={onImport}>
-        {isLocked ? t('label.retry') : t('label.import')}
+        {isLocked && t('label.retry')}
+        {!isLocked && importCount === undefined && t('label.import')}
+        {!isLocked &&
+          importCount !== undefined &&
+          t('label.import-selected-count', { count: importCount })}
       </Button>
     </Box>
   );
@@ -352,14 +365,16 @@ const useNativeImportInstall = ({
     resolveNew: resolveNativeLibraryTarget,
     plan: async (resolved) => {
       if (!isNewTarget && parse.kind === 'ready' && parse.changeSet) {
-        return parse.changeSet;
+        return selectChanges(parse.changeSet, parse.summary, parse.selection);
       }
       const preview = await previewNativeOntologyImport(resolved.id, {
         data: content.current,
         fileName,
       });
 
-      return preview.changeSet;
+      return parse.kind === 'ready'
+        ? selectChanges(preview.changeSet, preview.summary, parse.selection)
+        : preview.changeSet;
     },
     onInstalled: (installed) => {
       showSuccessToast(t('label.ontology-applied'));
@@ -379,7 +394,8 @@ const useNativeImportInstall = ({
 const nativeImportInstallTarget = (
   state: NativeImportState,
   ontology: Ontology | undefined,
-  userId: string | undefined
+  userId: string | undefined,
+  identityOf: (title: string) => GeneratedOntologyIdentity | undefined
 ): NativeInstallTarget | undefined => {
   if (state.parse.kind !== 'ready' || !state.fileName) {
     return undefined;
@@ -394,7 +410,8 @@ const nativeImportInstallTarget = (
         request: nativeImportOntologyRequest(
           state.parse.summary.ontologyLabel,
           state.fileName,
-          userId
+          userId,
+          identityOf
         ),
       }
     : undefined;
@@ -409,6 +426,7 @@ const OntologyNativeImportPanel = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const { canCreate, currentUserId } = useCanCreateOntology();
+  const { identityOf } = useOntologyIdentitySource(!ontology || canCreate);
   const [state, dispatch] = useReducer(nativeImportReducer, {
     ...INITIAL_NATIVE_IMPORT_STATE,
     target: ontology ? 'existing' : 'new',
@@ -469,7 +487,8 @@ const OntologyNativeImportPanel = ({
     const target = nativeImportInstallTarget(
       state,
       isNewTarget ? undefined : ontology,
-      currentUserId
+      currentUserId,
+      identityOf
     );
     if (target) {
       void install.start(target);
@@ -522,20 +541,52 @@ const OntologyNativeImportPanel = ({
     />
   );
 
+  const selection = selectionOf(state.parse);
   const importResult = readySummary && (
-    <ImportResult
-      hasReviewers={!isNewTarget && hasReviewers(ontology)}
-      isNewTarget={isNewTarget}
-      summary={readySummary}
-    />
+    <>
+      <ImportResult
+        hasReviewers={!isNewTarget && hasReviewers(ontology)}
+        isNewTarget={isNewTarget}
+        summary={readySummary}
+      />
+      {importItemsOf(readySummary).length > 0 && (
+        <OntologyNativeImportItems
+          isDisabled={isLockedOrBusy}
+          items={importItemsOf(readySummary)}
+          selection={selection}
+          onSelectionChange={(next) =>
+            dispatch({
+              type: 'selectionChanged',
+              parseId: state.parseId,
+              selection: next,
+            })
+          }
+        />
+      )}
+    </>
   );
 
   const errors = errorMessage && <Alert variant="error">{errorMessage}</Alert>;
+
+  const progress = isParsing && state.fileName && (
+    <Typography
+      color="secondary"
+      data-testid="ontology-native-import-reading"
+      role="status"
+      size="text-sm">
+      {t('message.native-import-reading-file', { fileName: state.fileName })}
+    </Typography>
+  );
 
   const importActions = (
     <ImportActions
       canImport={flags.canImport}
       canParse={flags.canParse}
+      importCount={
+        readySummary && importItemsOf(readySummary).length > 0
+          ? selectedCount(readySummary, selection)
+          : undefined
+      }
       isImporting={install.isBusy}
       isLocked={install.isLocked}
       isParsed={Boolean(readySummary)}
@@ -570,6 +621,7 @@ const OntologyNativeImportPanel = ({
           </FileTrigger>
           <ImportFileLabel state={state} />
         </Box>
+        {progress}
         {importResult}
         {errors}
         <Box justify="end">{importActions}</Box>
@@ -599,6 +651,7 @@ const OntologyNativeImportPanel = ({
         onFile={(files) => void handleFile(files)}
         onSizeLimitExceed={rejectOversizedFile}
       />
+      {progress}
       {importResult}
       {errors}
       {importActions}
