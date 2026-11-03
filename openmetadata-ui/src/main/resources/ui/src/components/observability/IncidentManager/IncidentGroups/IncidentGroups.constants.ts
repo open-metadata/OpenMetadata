@@ -80,7 +80,6 @@ export const INCIDENT_TABLE_CARD_CLASS = 'tw:shadow-none';
 export const INCIDENT_TABLE_PAGER_CLASS =
   'tw:shrink-0 tw:border-0 tw:border-t tw:border-secondary tw:shadow-none';
 
-/** The page sizes the application's paged lists offer. */
 /** Query string params the filters live in — the filter keys themselves. */
 export const INCIDENT_GROUP_FILTER_KEYS: (keyof IncidentGroupFilters)[] = [
   'testCaseFQN',
