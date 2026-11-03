@@ -1,9 +1,9 @@
 # Nested configuration conversion is schema-driven and fails closed for secret-bearing oneOf values
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-01 (initial)
+- **Revisions:** v1 2026-11-01 (initial); v2 2026-11-03 (branch selection, undeclared fields, pipeline configs, labels)
 - **Deciders:** Harsha
-- **Guard:** `NestedSecretConverterCoverageTest`, `DBSecretsManagerTest`, `PasswordEntityMaskerTest`, `ClassConverterFactoryTest`
+- **Guard:** `NestedSecretConverterCoverageTest`, `JsonSchemaRepositoryTest`, `DBSecretsManagerTest`, `PasswordEntityMaskerTest`, `ClassConverterFactoryTest`, `IngestionPipelineBuilderTest`
 - **Related:** #28299, #33193, ANT-2026-5GKK8L41
 
 ## Context
@@ -20,11 +20,27 @@ children, newly allowed branches, inline definitions, and ingestion pipeline con
    otherwise branches are tried in schema order. Conversion then recurses through typed children and
    collection elements.
 2. Secret-bearing inline branches must have generated classes and explicit `javaType` metadata.
-3. Empty maps and non-secret dynamic objects retain their existing behavior. A map that remains
-   under a secret-bearing `oneOf` after all compatible branches fail is an error, never a value that
-   encryption or masking may silently skip. The original conversion exception is preserved.
+3. Empty maps and non-secret dynamic objects retain their existing behavior. When every compatible
+   branch of a secret-bearing `oneOf` rejects a map, the map is typed as the secret-bearing
+   candidate branch that declares most of its fields, and the fields that branch does not declare
+   are dropped. A stored value that carries a field its schema no longer declares therefore stays
+   readable and its secrets stay protected. A map that no branch declares any field of is an error,
+   never a value that encryption or masking may silently skip; the original conversion exception
+   is preserved.
 4. Existing bespoke converters remain for selection that needs external context. The schema-driven
    pass runs after them, so extending a schema does not require a compensating registry entry.
+5. Branch selection: when a `oneOf` also has an open object branch, a typed branch is a candidate
+   only if every one of its `required` properties is present. A matching closed branch that holds
+   a secret disables the fallback to the open branch.
+6. A root schema without `javaType` maps to the class jsonschema2pojo generates from its file
+   name, never from its `title`.
+7. `sourceConfig.config` of an ingestion pipeline is converted when it declares `type`. A config
+   with no `type` is converted by its pipeline type for dbt pipelines, and by the storage rules of
+   ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged for
+   storage metadata pipelines; any other config without `type` is left for validation.
+8. When an inline branch moves to its own file, the form label it had stays on the `$ref` in the
+   `oneOf` (`{"$ref": "...", "title": "Basic Auth"}`). The file's `title` names the generated
+   Python and TypeScript models, and the generator keeps the previous Python names as aliases.
 
 ## Consequences
 
