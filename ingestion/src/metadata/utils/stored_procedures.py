@@ -58,6 +58,23 @@ NAME_PATTERN = "|".join(
     )
 )
 
+# Oracle's alternative quoting `q'<delim>...<delim>'` (and the national-char
+# `nq'...'` form) lets a string hold an apostrophe without `''` escaping, so a
+# literal like `q'[it's done]'` is well-formed. `sqlparse` does not recognize
+# the form: it pairs the opening `'` with the first apostrophe inside the body
+# (emitting that much as `Literal.String.Single`) and leaves the real closing
+# `'` as `Token.Error`. The unterminated-`'` truncation below would then treat
+# that lone `Token.Error` `'` as a truncated literal and cut off a real
+# `CALL`/`BEGIN` that ran after it. Pre-blank the whole q-quote so neither its
+# interior nor its closing `'` survives to confuse the tokenizer or the
+# truncation pass. The bracket delimiters pair `()`/`[]`/`{}`/`<>`; any other
+# single non-whitespace delimiter is its own closer. `(?<!\w)` avoids matching
+# the `q'` inside an identifier like `seq'...`.
+_QQUOTE = re.compile(
+    r"(?<!\w)n?q'(?:\(.+?\)|\[.+?\]|\{.+?\}|<.+?>|(\S)(.+?)\1)'",
+    re.IGNORECASE | re.DOTALL,
+)
+
 
 def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False) -> str | None:
     """
@@ -75,6 +92,11 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
     # Tokenize without grouping so large query-history statements stay linear,
     # while quoted identifiers and whitespace between name segments survive.
     if any(marker in query_text for marker in ("--", "/*", "'", "$")):
+        # Blank Oracle alternative-quoted string literals up front; see
+        # `_QQUOTE` for why `sqlparse` cannot tokenize them and would leave a
+        # spurious lone `'` that the truncation below mistakes for a truncated
+        # literal.
+        query_text = _QQUOTE.sub(" ", query_text)
         query_text = "".join(
             " "
             if token_type in tokens.Comment

@@ -370,6 +370,49 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text=long_string) is None
         assert get_procedure_name_from_call(query_text=long_string + "' ; CALL daily_etl_v2();") == "daily_etl_v2"
 
+    def test_get_procedure_name_handles_oracle_alternative_quoting(self):
+        """Oracle's alternative quoting `q'<delim>...<delim>'` lets a string
+        hold an apostrophe without `''` escaping, so `q'[it's done]'` is a
+        well-formed literal. `sqlparse` does not recognize the form: it pairs
+        the opening `'` with the apostrophe inside `it's` (emitting that much
+        as `Literal.String.Single`) and leaves the real closing `'` as
+        `Token.Error`. Without pre-blanking, the unterminated-`'` truncation
+        treats that lone `Token.Error` `'` as a truncated literal and cuts off
+        a real `CALL`/`BEGIN` that ran after it -- a regression flagged in
+        review of the unterminated-string fix (#36023). The q-quote is blanked
+        up front so neither its interior nor its closing `'` survives.
+        """
+        # The reviewer reproduction: a real PL/SQL block AFTER a valid Oracle
+        # q-quoted literal that contains an apostrophe must still resolve.
+        assert (
+            get_procedure_name_from_call(
+                query_text="DECLARE m VARCHAR2(50) := q'[it's done]'; BEGIN etl.notify(m); END;"
+            )
+            == "notify"
+        )
+
+        # A real invocation that runs AFTER a q-quoted literal keeps its
+        # lineage -- the literal is blanked, so the lone closing `'` never
+        # reaches the truncation pass.
+        assert get_procedure_name_from_call(query_text="q'[note]'; CALL real_proc(1)") == "real_proc"
+        assert get_procedure_name_from_call(query_text="CALL real(); q'[it's done]'") == "real"
+
+        # Non-bracket delimiters (here `#`) whose content holds an apostrophe
+        # are equally well-formed and must be blanked the same way.
+        assert get_procedure_name_from_call(query_text="q'#it's#'; CALL after()") == "after"
+
+        # The national-char `nq'...'` form uses the same mechanism.
+        assert get_procedure_name_from_call(query_text="nq'[it's done]'; CALL nproc()") == "nproc"
+
+        # A `CALL`/`BEGIN` written INSIDE the q-quoted literal never executed,
+        # so it must not fabricate lineage -- the whole literal is blanked.
+        assert get_procedure_name_from_call(query_text="q'[call fake(); BEGIN ghost(); END;]'") is None
+
+        # `q'` inside an identifier (e.g. `seq'...`) is NOT a q-quote, so the
+        # pre-blank regex must not touch it. The unterminated `'` here is a
+        # genuine truncated literal and must still truncate to `None`.
+        assert get_procedure_name_from_call(query_text="SELECT seq'CALL fake()") is None
+
     def test_get_procedure_name_strips_comments_without_corrupting_quoted_identifiers(self):
         """`sqlparse` is a SQL-aware tokenizer, so stripping comments must preserve quoted
         identifiers (backtick and `"..."` forms) and string literals that a naive regex would
