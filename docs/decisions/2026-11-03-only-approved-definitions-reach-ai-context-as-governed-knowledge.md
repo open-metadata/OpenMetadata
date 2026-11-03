@@ -23,9 +23,18 @@ applied or related to an anchor (`AIContextBuilder.metricKnowledgeItem`), and co
 the metric definition built from it (`AIContextBuilder.hasConceptContext`) skip any other stage;
 articles keep their existing rule.
 
+"Unset" is the entity's stage, never a search hit's. Vector chunk docs carry no `entityStatus`, so
+search-found context reads the stage of a term or metric hit that has none from the entity, once per
+entity per request, and drops the hit when the entity cannot be read.
+
 ## Consequences
 
 A Draft, In Review, Rejected, Deprecated or Archived definition never reaches AI context as
 governed knowledge; asking about one anchored gets no concept context or metric definition. Entity
 details still return it, with its stage, for an answer that names it. Attached knowledge now admits
 a term with no stage, as the other paths already did.
+
+Search pays one cached entity read per term or metric whose hit carries no stage. Stamping the
+stage on chunk docs instead would bump `CHUNK_DOC_VERSION`, restamping every chunk set in the
+catalog on the next reindex, and the restamp check would have to track a stage the fingerprint does
+not cover; until that backfill ran, the read would be needed anyway.
