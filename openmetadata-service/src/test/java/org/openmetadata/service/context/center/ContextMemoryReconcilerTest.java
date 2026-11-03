@@ -2,6 +2,7 @@ package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.llm.LLMCompletionException;
 
@@ -123,7 +125,7 @@ class ContextMemoryReconcilerTest {
                     derived("What is GDPR?", "Revised definition."),
                     derived("What is consent?", "Revised consent definition."),
                     derived("What is personal data?", "Information identifying a person."))));
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
     verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
     verify(memoryRepository, never()).linkExtractedMemory(any(), any());
     verify(memoryRepository, never()).create(any(), any());
@@ -192,7 +194,7 @@ class ContextMemoryReconcilerTest {
     verify(memoryRepository, never()).create(isNull(), any());
 
     ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memoryRepository).update(isNull(), any(), captor.capture(), any());
+    verify(memoryRepository).updateIfCurrent(isNull(), any(), captor.capture(), any());
     assertEquals(stored.getId(), captor.getValue().getId(), "identity is the point of the match");
     assertEquals(42, captor.getValue().getUsageCount(), "retrieval telemetry rides the identity");
   }
@@ -242,7 +244,7 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.kept());
     assertEquals(0, result.created());
     verify(memoryRepository, never()).create(any(), any());
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
   }
 
   @ParameterizedTest
@@ -259,7 +261,7 @@ class ContextMemoryReconcilerTest {
 
     assertEquals(0, result.updated());
     assertEquals(0, result.created(), "a retired pill still claims its fact");
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
   }
 
   @Test
@@ -275,11 +277,11 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.kept());
     assertEquals(1, result.created());
     verify(memoryRepository).create(isNull(), eq(conflicting));
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
   }
 
   @Test
-  void reExtractionMaintainsAPillAwaitingReview() {
+  void reExtractionStillMaintainsAPillAwaitingReview() {
     ContextMemory pending =
         pill("Q1", "old", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.UNPROCESSED);
     existing(pending);
@@ -288,9 +290,94 @@ class ContextMemoryReconcilerTest {
 
     assertEquals(1, result.updated());
     ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memoryRepository).update(isNull(), eq(pending), captor.capture(), any());
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(pending), captor.capture(), any());
     assertEquals("new", captor.getValue().getAnswer());
     assertEquals(pending.getId(), captor.getValue().getId());
+    // OSS derives Approved: a changed fact takes the stage it was derived in.
+    assertEquals(ContextMemoryStatus.APPROVED, captor.getValue().getEntityStatus());
+  }
+
+  /** P1 15% -> "25% (HR policy)", P2 25% -> 20%: the HR value keeps P2; P1's value is gone. */
+  @Test
+  void aChangedNumberIsANewClaimNeverASiblingReworded() {
+    ContextMemory fifteen =
+        pill(
+            "Discount?",
+            "15%",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    ContextMemory twentyFive =
+        pill(
+            "Discount?",
+            "25%",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    existing(fifteen, twentyFive);
+    ContextMemory twenty = derived("Discount?", "20%");
+
+    reconcile(List.of(derived("Discount?", "25% (HR policy)"), twenty));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(twentyFive), captor.capture(), any());
+    assertEquals("25% (HR policy)", captor.getValue().getAnswer());
+    verify(memoryRepository, never()).updateIfCurrent(isNull(), eq(fifteen), any(), any());
+    verify(memoryRepository).releaseExtractedMemory(fifteen.getId(), source);
+    verify(memoryRepository).create(isNull(), eq(twenty));
+  }
+
+  /** A reviewer superseded 15%; rephrasing both answers must not hand 15% to the Approved 25%. */
+  @Test
+  void aReviewersDecisionSurvivesRephrasedSiblings() {
+    ContextMemory superseded =
+        pill(
+            "Discount?",
+            "15%",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.SUPERSEDED);
+    ContextMemory approved =
+        pill(
+            "Discount?",
+            "25%",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    existing(superseded, approved);
+
+    reconcile(
+        List.of(
+            derived("Discount?", "15% per the Sales handbook"),
+            derived("Discount?", "25% (HR policy)")));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(approved), captor.capture(), any());
+    assertEquals("25% (HR policy)", captor.getValue().getAnswer());
+    verify(memoryRepository, never()).updateIfCurrent(isNull(), eq(superseded), any(), any());
+    verify(memoryRepository, never()).create(any(), any());
+  }
+
+  /** A run reading past this write's time must find it, however long the duplicate checks took. */
+  @Test
+  void aCreatedPillIsStampedWhenItIsWritten() {
+    existing();
+    ContextMemory fresh = derived("Q1", "A1").withUpdatedAt(1L);
+    long before = System.currentTimeMillis();
+
+    reconcile(List.of(fresh));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).create(isNull(), captor.capture());
+    assertTrue(captor.getValue().getUpdatedAt() >= before);
+  }
+
+  /** A review decided while the source was being re-extracted wins over the plan's snapshot. */
+  @Test
+  void aPillChangedDuringReExtractionIsLeftAsIs() {
+    ContextMemory original =
+        pill("Q1", "old", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.APPROVED);
+    existing(original);
+    when(memoryRepository.updateIfCurrent(isNull(), eq(original), any(), any()))
+        .thenThrow(new PreconditionFailedException("stale"));
+
+    assertEquals(1, reconcile(List.of(derived("Q1", "new"))).updated());
   }
 
   /** A reviewing provider derives Unprocessed pills, so a changed fact goes back to review. */
@@ -305,7 +392,7 @@ class ContextMemoryReconcilerTest {
     reconcile(List.of(changed));
 
     ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memoryRepository).update(isNull(), eq(approved), captor.capture(), any());
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(approved), captor.capture(), any());
     assertEquals(ContextMemoryStatus.UNPROCESSED, captor.getValue().getEntityStatus());
   }
 
@@ -320,7 +407,7 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.updated());
     ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
     verify(memoryRepository)
-        .update(isNull(), eq(original), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+        .updateIfCurrent(isNull(), eq(original), captor.capture(), eq(Entity.ADMIN_USER_NAME));
     assertEquals("new", captor.getValue().getAnswer());
     assertEquals(original.getId(), captor.getValue().getId(), "identity must be preserved");
   }
@@ -336,7 +423,7 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.deleted());
     assertEquals(1, result.created());
     verify(memoryRepository).releaseExtractedMemory(gone.getId(), source);
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
   }
 
   @Test
@@ -346,7 +433,7 @@ class ContextMemoryReconcilerTest {
     ContextMemoryReconciler.ReconcileResult result =
         reconcile(List.of(derived("Q1", "llm answer"), derived("Q2", "A2")));
 
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
     ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
     verify(memoryRepository, times(1)).create(isNull(), captor.capture());
     assertEquals("Q2", captor.getValue().getQuestion(), "Q1 is owned by the manual pill");
@@ -377,7 +464,7 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.updated());
     ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
     verify(memoryRepository)
-        .update(isNull(), eq(original), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+        .updateIfCurrent(isNull(), eq(original), captor.capture(), eq(Entity.ADMIN_USER_NAME));
     assertEquals(original.getId(), captor.getValue().getId(), "identity must be preserved");
     assertEquals(
         "How should billing totals handle the refunds?",
@@ -438,15 +525,16 @@ class ContextMemoryReconcilerTest {
             ContextMemorySourceType.PAGE_EXTRACTION,
             ContextMemoryStatus.APPROVED);
     existing(shared);
-    when(memoryRepository.hasOtherSources(shared.getId(), source)).thenReturn(true);
 
+    // A changed number never pairs with the old pill: it is released from this source only, and
+    // releaseExtractedMemory keeps it while another source still states it.
     ContextMemoryReconciler.ReconcileResult result =
         reconcile(
             List.of(derived("How long are events retained?", "Events are retained for 30 days.")));
 
     assertEquals(1, result.created());
     verify(memoryRepository).releaseExtractedMemory(shared.getId(), source);
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
   }
 
   @Test
@@ -492,7 +580,7 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.updated());
     ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
     verify(memoryRepository)
-        .update(isNull(), eq(legacy), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+        .updateIfCurrent(isNull(), eq(legacy), captor.capture(), eq(Entity.ADMIN_USER_NAME));
     ContextMemory repaired = captor.getValue();
     assertEquals(ContextMemoryScope.ENTITY_SCOPED, repaired.getMemoryScope());
     assertEquals(source.getId(), repaired.getPrimaryEntity().getId());

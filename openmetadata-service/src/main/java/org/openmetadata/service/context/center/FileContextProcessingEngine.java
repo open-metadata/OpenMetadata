@@ -1,8 +1,5 @@
 package org.openmetadata.service.context.center;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_OWNERS;
-
 import java.util.UUID;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ContextFile;
@@ -44,7 +41,7 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
         String text = content.getExtractedText() == null ? "" : content.getExtractedText();
         String hash =
             content.getChecksum() != null ? content.getChecksum() : content.getId().toString();
-        source = new Source(text, hash, file.getEntityReference(), listOrEmpty(file.getOwners()));
+        source = new Source(text, hash, file.getEntityReference());
       }
     }
     return source;
@@ -111,7 +108,7 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
     try {
       result =
           fileRepository.get(
-              null, fileId, fileRepository.getFields(FIELD_OWNERS), Include.NON_DELETED, false);
+              null, fileId, fileRepository.getFields(""), Include.NON_DELETED, false);
     } catch (EntityNotFoundException e) {
       // A deleted file is a legitimate skip; any other failure (DB outage, ...) must propagate so
       // the caller records a Failed run instead of silently marking the file Processed.

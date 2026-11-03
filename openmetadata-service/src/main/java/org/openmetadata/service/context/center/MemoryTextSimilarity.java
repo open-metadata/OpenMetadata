@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -17,10 +19,24 @@ final class MemoryTextSimilarity {
    */
   static final double IDENTITY_THRESHOLD = 0.5;
 
+  private static final Pattern NUMBERS = Pattern.compile("\\d+(?:\\.\\d+)?");
   private static final double QUESTION_WEIGHT = 0.6;
   private static final double ANSWER_WEIGHT = 0.4;
 
   private MemoryTextSimilarity() {}
+
+  /** Both answers state numbers, and not the same ones: two values for one fact, not a rewording. */
+  static boolean hasConflictingNumbers(String answerA, String answerB) {
+    Set<String> a = numbers(answerA);
+    Set<String> b = numbers(answerB);
+    return !a.isEmpty() && !b.isEmpty() && !a.equals(b);
+  }
+
+  private static Set<String> numbers(String text) {
+    return text == null
+        ? Set.of()
+        : NUMBERS.matcher(text).results().map(MatchResult::group).collect(Collectors.toSet());
+  }
 
   static double weighted(String questionA, String answerA, String questionB, String answerB) {
     return QUESTION_WEIGHT * jaccard(tokenize(questionA), tokenize(questionB))

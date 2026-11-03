@@ -1,7 +1,5 @@
 package org.openmetadata.service.context.center;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
@@ -151,12 +149,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       // Return a source even for an empty body so a cleared article reconciles to an empty pill
       // set (archiving its stale pills); null is reserved for a page that no longer exists.
       String body = page.getDescription() == null ? "" : page.getDescription();
-      source =
-          new Source(
-              body,
-              DigestUtils.sha256Hex(body),
-              page.getEntityReference(),
-              listOrEmpty(page.getOwners()));
+      source = new Source(body, DigestUtils.sha256Hex(body), page.getEntityReference());
     }
     return source;
   }

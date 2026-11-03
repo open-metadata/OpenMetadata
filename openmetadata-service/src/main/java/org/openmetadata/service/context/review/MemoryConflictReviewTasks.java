@@ -30,7 +30,9 @@ import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.DisputedMemory;
@@ -289,16 +291,41 @@ public final class MemoryConflictReviewTasks {
         .withUpdatedAt(now);
   }
 
-  /** Whoever owns either side of the conflict can decide it. */
+  /**
+   * Whoever owns either side of the conflict can decide it, and for a memory extracted from a
+   * document or article, whoever owns that source when the review opens: the memory itself stays
+   * owned by its writer, because owning it would keep it readable after the source changes hands
+   * (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values).
+   */
   static List<EntityReference> assignees(ContextMemory reviewed, List<ContextMemory> disputed) {
+    return assignees(reviewed, disputed, MemoryConflictReviewTasks::currentSourceOwners);
+  }
+
+  static List<EntityReference> assignees(
+      ContextMemory reviewed,
+      List<ContextMemory> disputed,
+      Function<ContextMemory, List<EntityReference>> sourceOwners) {
     Map<UUID, EntityReference> owners = new LinkedHashMap<>();
     List<ContextMemory> involved = new ArrayList<>(List.of(reviewed));
     involved.addAll(disputed);
     involved.forEach(
-        memory ->
-            listOrEmpty(memory.getOwners())
-                .forEach(owner -> owners.putIfAbsent(owner.getId(), owner)));
+        memory -> {
+          listOrEmpty(memory.getOwners())
+              .forEach(owner -> owners.putIfAbsent(owner.getId(), owner));
+          sourceOwners.apply(memory).forEach(owner -> owners.putIfAbsent(owner.getId(), owner));
+        });
     return new ArrayList<>(owners.values());
+  }
+
+  private static List<EntityReference> currentSourceOwners(ContextMemory memory) {
+    boolean extracted =
+        memory.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
+            || memory.getSourceType() == ContextMemorySourceType.PAGE_EXTRACTION;
+    EntityInterface source =
+        extracted && memory.getSourceEntity() != null
+            ? Entity.getEntityOrNull(memory.getSourceEntity(), "owners", Include.NON_DELETED)
+            : null;
+    return source == null ? List.of() : listOrEmpty(source.getOwners());
   }
 
   private static List<ContextMemory> disputedMemories(ContextMemory reviewed) {

@@ -93,6 +93,24 @@ class ContextMemoryExtractorTest {
     assertEquals("25% (HR)", memories.get(1).getAnswer());
   }
 
+  /** The same fact reworded in two chunks is one pill; only a different number makes a second. */
+  @Test
+  void aRewordedAnswerIsTheSameFact() {
+    EntityReference source = fileRef(UUID.randomUUID(), "policy");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenReturn(
+            List.of(
+                new KnowledgePill("Refunds", "Refund window?", "30 days", "S", "Faq"),
+                new KnowledgePill(
+                    "Refunds",
+                    "Refund window?",
+                    "Refunds are accepted within 30 days",
+                    "S",
+                    "Faq")));
+
+    assertEquals(1, derive("text", source).size());
+  }
+
   @Test
   void asksTheModelForEveryConflictingValueInsteadOfChoosingOne() {
     EntityReference source = fileRef(UUID.randomUUID(), "policy");

@@ -16,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -24,7 +23,6 @@ import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -73,36 +71,6 @@ class FileContextProcessingEngineTest {
     ArgumentCaptor<ContextFile> updated = ArgumentCaptor.forClass(ContextFile.class);
     verify(repository).update(isNull(), eq(file), updated.capture(), eq(Entity.ADMIN_USER_NAME));
     assertEquals("same-hash", updated.getValue().getExtractionStats().getSourceHash());
-  }
-
-  /** A pill awaiting review needs an owner: the file's owners review what was extracted from it. */
-  @Test
-  void extractedMemoriesAreOwnedByTheFileOwners() {
-    UUID fileId = UUID.randomUUID();
-    UUID contentId = UUID.randomUUID();
-    EntityReference uploader =
-        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("tomas");
-    ContextFile file =
-        new ContextFile()
-            .withId(fileId)
-            .withName("policy.md")
-            .withHeadContentId(contentId.toString())
-            .withOwners(List.of(uploader));
-    ContextFileContent content =
-        new ContextFileContent().withId(contentId).withChecksum("hash").withExtractedText("facts");
-    ContextMemory pill = new ContextMemory().withId(UUID.randomUUID()).withQuestion("Q");
-    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(file);
-    when(repository.getContentById(contentId.toString())).thenReturn(content);
-    when(extractor.derive(
-            "facts", file.getEntityReference(), ContextMemorySourceType.FILE_EXTRACTION))
-        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.of(pill), 1, 1));
-    when(reconciler.reconcile(file.getEntityReference(), Entity.CONTEXT_FILE, List.of(pill)))
-        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 0, 0, 0));
-
-    new FileContextProcessingEngine(repository, extractor, reconciler).runExtraction(fileId);
-
-    assertEquals(List.of(uploader), pill.getOwners());
   }
 
   /** Reused pills stay anchored to the restricted original, hiding them from the copy's readers. */

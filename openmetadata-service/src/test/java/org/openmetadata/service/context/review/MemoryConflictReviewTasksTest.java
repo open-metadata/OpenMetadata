@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -162,6 +163,26 @@ class MemoryConflictReviewTasksTest {
         MemoryConflictReviewTasks.assignees(reviewed(disputed), List.of(disputed, alsoDisputed));
 
     assertEquals(List.of(REVIEWER, CURATOR), assignees);
+  }
+
+  /** A document's memory stays owned by its writer; whoever owns the document now reviews it. */
+  @Test
+  void aDocumentsMemoryIsReviewedByWhoeverOwnsTheDocumentNow() {
+    EntityReference uploader = user("uploader");
+    ContextMemory disputed = memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR);
+    ContextMemory fromDocument =
+        reviewed(disputed)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withSourceEntity(
+                new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE));
+
+    List<EntityReference> assignees =
+        MemoryConflictReviewTasks.assignees(
+            fromDocument,
+            List.of(disputed),
+            memory -> memory == fromDocument ? List.of(uploader) : List.of());
+
+    assertEquals(List.of(REVIEWER, uploader, CURATOR), assignees);
   }
 
   /** Every user may read tasks, while a memory may be Private: none of it reaches the task. */

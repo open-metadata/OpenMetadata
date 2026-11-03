@@ -165,15 +165,27 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
     return result;
   }
 
-  /** Drops repeats of the same fact; different answers to one question are kept as a conflict. */
+  /**
+   * One pill per question, except that an answer whose numbers conflict with every kept answer to
+   * that question is a second value the document gives, kept for review; any other is a rewording.
+   */
   private List<KnowledgePill> dedupe(List<KnowledgePill> pills) {
-    Map<String, KnowledgePill> byFact = new LinkedHashMap<>();
+    Map<String, List<KnowledgePill>> byQuestion = new LinkedHashMap<>();
     for (KnowledgePill pill : pills) {
       if (isValid(pill)) {
-        byFact.putIfAbsent(normalize(pill.question()) + '\n' + normalize(pill.answer()), pill);
+        List<KnowledgePill> kept =
+            byQuestion.computeIfAbsent(normalize(pill.question()), ignored -> new ArrayList<>());
+        boolean newValue =
+            kept.stream()
+                .allMatch(
+                    other ->
+                        MemoryTextSimilarity.hasConflictingNumbers(other.answer(), pill.answer()));
+        if (newValue) {
+          kept.add(pill);
+        }
       }
     }
-    return new ArrayList<>(byFact.values());
+    return byQuestion.values().stream().flatMap(List::stream).toList();
   }
 
   private static String normalize(String text) {

@@ -19,12 +19,14 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 /**
  * Reconciles a freshly-derived set of knowledge pills against the pills already linked to a Context
  * Center source, instead of deleting and recreating them wholesale on every run. Matching happens
- * in two passes — exact normalized question first, then word-overlap similarity — so a re-derived
+ * in two passes — exact normalized question and answer first, for every pill, then word-overlap
+ * similarity that never pairs two pills whose numbers conflict — so a re-derived
  * fact keeps its pill identity (and the usageCount/lastUsedAt retrieval telemetry that rides it)
  * even when the model rephrases the question between runs. An automated pill that is no longer
  * derived from its last source is hard-deleted; a shared pill is detached from only the changed
@@ -110,7 +112,7 @@ public class ContextMemoryReconciler {
       ReconciliationPlan plan) {
     List<ContextMemory> unmatched = new ArrayList<>();
     for (ContextMemory pill : existing) {
-      ContextMemory match = removeSameQuestion(derivedByQuestion, pill);
+      ContextMemory match = derivedByQuestion.remove(factKey(pill));
       if (match == null) {
         unmatched.add(pill);
       } else {
@@ -142,7 +144,8 @@ public class ContextMemoryReconciler {
     for (ContextMemory pill : derived) {
       ContextMemory equivalent = duplicateFinder.findEquivalent(pill);
       if (equivalent == null || plan.changingIds.contains(equivalent.getId())) {
-        plan.writes.add(() -> memoryRepository.create(null, pill));
+        plan.writes.add(
+            () -> memoryRepository.create(null, pill.withUpdatedAt(System.currentTimeMillis())));
         plan.created++;
       } else {
         plan.writes.add(() -> memoryRepository.linkExtractedMemory(equivalent.getId(), sourceRef));
@@ -199,25 +202,6 @@ public class ContextMemoryReconciler {
   }
 
   /**
-   * Claims the derived pill stating the same fact, else the first asking the same question, so a
-   * changed answer keeps its pill while a conflicting sibling is left to become its own memory.
-   */
-  private ContextMemory removeSameQuestion(Map<String, ContextMemory> derived, ContextMemory pill) {
-    ContextMemory match = derived.remove(factKey(pill));
-    if (match == null) {
-      String question = questionKey(pill);
-      String key =
-          derived.entrySet().stream()
-              .filter(entry -> questionKey(entry.getValue()).equals(question))
-              .map(Map.Entry::getKey)
-              .findFirst()
-              .orElse(null);
-      match = key == null ? null : derived.remove(key);
-    }
-    return match;
-  }
-
-  /**
    * Claims and returns the remaining candidate most similar to {@code pill}, or null when none
    * clears the identity bar. Always the best match above the bar rather than the first, so a loose
    * bar cannot let a weaker candidate take a pill a closer one should own. Claimed even for a Manual
@@ -228,6 +212,11 @@ public class ContextMemoryReconciler {
     String bestKey = null;
     double bestScore = 0;
     for (Map.Entry<String, ContextMemory> entry : derivedByQuestion.entrySet()) {
+      if (MemoryTextSimilarity.hasConflictingNumbers(
+          pill.getAnswer(), entry.getValue().getAnswer())) {
+        // A changed number is a different claim, never the same pill reworded.
+        continue;
+      }
       double score =
           MemoryTextSimilarity.weighted(
               pill.getQuestion(),
@@ -272,12 +261,24 @@ public class ContextMemoryReconciler {
         updated.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
       }
       updated.setUpdatedBy(Entity.ADMIN_USER_NAME);
-      updated.setUpdatedAt(System.currentTimeMillis());
-      plan.writes.add(
-          () -> memoryRepository.update(null, existing, updated, Entity.ADMIN_USER_NAME));
+      plan.writes.add(() -> updateIfCurrent(existing, updated));
       plan.changingIds.add(existing.getId());
     }
     return changed;
+  }
+
+  /**
+   * Stamped when the write runs, not when it was planned, so a reconciliation run reading past this
+   * write's time never misses it; and conditional, so a review decided while the source was being
+   * re-extracted is not overwritten by the snapshot this plan was made from.
+   */
+  private void updateIfCurrent(ContextMemory existing, ContextMemory updated) {
+    updated.setUpdatedAt(System.currentTimeMillis());
+    try {
+      memoryRepository.updateIfCurrent(null, existing, updated, Entity.ADMIN_USER_NAME);
+    } catch (PreconditionFailedException e) {
+      LOG.info("Memory {} changed while its source was re-extracted; left as is", existing.getId());
+    }
   }
 
   private boolean needsMetadataRepair(ContextMemory memory) {
