@@ -746,7 +746,7 @@ public class UserRepository extends EntityRepository<User> {
     Set<EntityReference> result = new HashSet<>();
     for (EntityReference t : teams) {
       if (!visited.add(t.getId())) {
-        continue; // A team with multiple parents was already visited through another parent
+        continue;
       }
       Team team = Entity.getEntity(Entity.TEAM, t.getId(), "teamType", Include.ALL);
       if (TeamType.GROUP.equals(team.getTeamType())) {
@@ -1612,8 +1612,7 @@ public class UserRepository extends EntityRepository<User> {
         List<User> users,
         Set<UUID> visitedTeams,
         Fields fields) {
-      // Export the users by listing users for the entire team hierarchy. A team can have multiple
-      // parents, so each team is visited once, not once per path that leads to it.
+      // Export the users by listing users for the entire team hierarchy, visiting each team once
       ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("team", parentTeam);
 
       // Add users for the given team

@@ -163,8 +163,7 @@ public class PermissionDebugService {
 
     debugInfo.getTeamPermissions().add(teamPermission);
 
-    // Process parent teams. A team can have multiple parents, so an ancestor reached on several
-    // paths is processed once.
+    // Process parent teams, each ancestor once
     if (team.getParents() != null && !team.getParents().isEmpty()) {
       for (EntityReference parentRef : team.getParents()) {
         if (visited.add(parentRef.getId())) {

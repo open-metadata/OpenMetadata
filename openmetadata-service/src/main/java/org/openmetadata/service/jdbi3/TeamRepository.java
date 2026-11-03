@@ -64,6 +64,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -123,6 +124,10 @@ public class TeamRepository extends EntityRepository<Team> {
       "profile,users,defaultRoles,defaultPersona,parents,children,policies,teamType,email,domains";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private static final String DEFAULT_PERSONA = "defaultPersona";
+  // A multi-parent team is listed under every parent while the hierarchy response stays within
+  // this many nodes per team (ADR:2026-11-03-a-team-with-several-parents-is-expanded-once).
+  private static final int HIERARCHY_NODES_PER_TEAM = 10;
+  private static final int MIN_HIERARCHY_NODES = 1000;
   private Team organization = null;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -976,7 +981,44 @@ public class TeamRepository extends EntityRepository<Team> {
             .filter(node -> !childIds.contains(node.getId()))
             .sorted(Comparator.comparing(TeamHierarchy::getName))
             .toList();
-    return TeamHierarchyTree.expand(roots, hierarchyMap.size());
+    long nodeBudget =
+        Math.max(MIN_HIERARCHY_NODES, (long) HIERARCHY_NODES_PER_TEAM * hierarchyMap.size());
+    return expandHierarchy(roots, nodeBudget);
+  }
+
+  /**
+   * Lists each team with its subtree under every parent until {@code nodeBudget} nodes are listed;
+   * after that a team already expanded elsewhere is listed without children.
+   */
+  static List<TeamHierarchy> expandHierarchy(List<TeamHierarchy> roots, long nodeBudget) {
+    AtomicLong remaining = new AtomicLong(nodeBudget);
+    Set<UUID> expanded = new HashSet<>();
+    return roots.stream().map(root -> expandNode(root, remaining, expanded)).toList();
+  }
+
+  private static TeamHierarchy expandNode(
+      TeamHierarchy node, AtomicLong remaining, Set<UUID> expanded) {
+    boolean withinBudget = remaining.decrementAndGet() > 0;
+    boolean firstExpansion = expanded.add(node.getId());
+    TeamHierarchy copy = copyWithoutChildren(node);
+    if (firstExpansion || withinBudget) {
+      listOrEmpty(node.getChildren())
+          .forEach(child -> copy.getChildren().add(expandNode(child, remaining, expanded)));
+    }
+    return copy;
+  }
+
+  private static TeamHierarchy copyWithoutChildren(TeamHierarchy node) {
+    return new TeamHierarchy()
+        .withId(node.getId())
+        .withTeamType(node.getTeamType())
+        .withName(node.getName())
+        .withDisplayName(node.getDisplayName())
+        .withHref(node.getHref())
+        .withFullyQualifiedName(node.getFullyQualifiedName())
+        .withIsJoinable(node.getIsJoinable())
+        .withChildren(new ArrayList<>())
+        .withDescription(node.getDescription());
   }
 
   private List<EntityReference> getUsers(Team team) {
@@ -1528,8 +1570,7 @@ public class TeamRepository extends EntityRepository<Team> {
         List<Team> teams,
         Set<UUID> visited,
         Fields fields) {
-      // Export the entire hierarchy of teams. A team can have multiple parents, so each team is
-      // exported and descended into once, not once per path that leads to it.
+      // Export the entire hierarchy of teams, visiting each team once
       final ListFilter filter =
           new ListFilter(Include.NON_DELETED).addQueryParam("parentTeam", parentTeam);
       List<Team> list =
@@ -1930,8 +1971,9 @@ public class TeamRepository extends EntityRepository<Team> {
               "Circular reference detected in CSV: Team '%s' participates in a loop involving '%s'.",
               originalTeamName, currentParentName));
     }
+    // A parent reached again through another team has had its ancestors checked already
     if (!explored.add(currentParentName)) {
-      return; // Ancestors were already checked through another path, a team can have many parents
+      return;
     }
     visited.add(currentParentName);
 
