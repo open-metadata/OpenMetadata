@@ -64,6 +64,11 @@
       "type": "integer",
       "minimum": 25000,
       "default": 100000
+    },
+    "readOnly": {
+      "description": "Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every user including admins. Write tools are left out of tools/list and cannot be called. Read when the MCP server starts, so a change applies after a restart.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

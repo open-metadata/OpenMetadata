@@ -21,6 +21,7 @@ import org.openmetadata.mcp.server.transport.JsonRpcErrorBody;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -82,7 +83,8 @@ public class McpServer implements McpServerProvider {
     this.limits = limits;
     this.environment = environment;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
-    List<McpSchema.Tool> tools = getTools();
+    List<McpSchema.Tool> tools =
+        exposedTools(getTools(), SecurityConfigurationManager.getCurrentMcpConfig());
     List<McpSchema.Prompt> prompts = getPrompts();
     addStatelessTransport(contextHandler, tools, prompts);
   }
@@ -121,9 +123,7 @@ public class McpServer implements McpServerProvider {
    */
   protected List<McpSchema.Tool> getTools() {
     List<McpSchema.Tool> tools =
-        toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json").stream()
-            .filter(tool -> toolContext.isToolAllowed(tool.name()))
-            .toList();
+        toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
     if (rdfEnabled()) {
       return tools;
     }
@@ -138,6 +138,28 @@ public class McpServer implements McpServerProvider {
   private static boolean rdfEnabled() {
     RdfRepository repository = RdfRepository.getInstanceOrNull();
     return repository != null && repository.isEnabled();
+  }
+
+  /**
+   * Read-only mode, for every caller including admins, whom no policy can deny. It filters here,
+   * after a subclass has added its own tools in {@link #getTools()}, so those are covered too. The
+   * SDK answers a call to a tool that was never registered with "Unknown tool", so a hidden tool
+   * cannot be called either. See ADR:2026-11-04-mcp-read-only-mode-hides-write-tools.
+   */
+  static List<McpSchema.Tool> exposedTools(List<McpSchema.Tool> tools, MCPConfiguration config) {
+    List<McpSchema.Tool> exposed = tools;
+    if (config != null && Boolean.TRUE.equals(config.getReadOnly())) {
+      exposed = tools.stream().filter(McpServer::isReadOnlyTool).toList();
+      LOG.info(
+          "[MCP] Read-only mode; withholding {} write tool(s) from tools/list",
+          tools.size() - exposed.size());
+    }
+    return exposed;
+  }
+
+  // The MCP spec defaults readOnlyHint to false, so a tool without it counts as a write tool.
+  private static boolean isReadOnlyTool(McpSchema.Tool tool) {
+    return tool.annotations() != null && Boolean.TRUE.equals(tool.annotations().readOnlyHint());
   }
 
   protected List<McpSchema.Prompt> getPrompts() {

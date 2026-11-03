@@ -62,6 +62,12 @@ export interface MCPConfiguration {
      */
     path?: string;
     /**
+     * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
+     * user including admins. Write tools are left out of tools/list and cannot be called. Read
+     * when the MCP server starts, so a change applies after a restart.
+     */
+    readOnly?: boolean;
+    /**
      * HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms
      * (30 seconds)
      */
