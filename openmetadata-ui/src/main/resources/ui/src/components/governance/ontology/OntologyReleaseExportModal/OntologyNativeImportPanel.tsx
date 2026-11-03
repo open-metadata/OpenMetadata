@@ -426,7 +426,9 @@ const OntologyNativeImportPanel = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const { canCreate, currentUserId } = useCanCreateOntology();
-  const { identityOf } = useOntologyIdentitySource(!ontology || canCreate);
+  const { identityOf, isReady: isIdentityReady } = useOntologyIdentitySource(
+    !ontology || canCreate
+  );
   const [state, dispatch] = useReducer(nativeImportReducer, {
     ...INITIAL_NATIVE_IMPORT_STATE,
     target: ontology ? 'existing' : 'new',
@@ -580,7 +582,7 @@ const OntologyNativeImportPanel = ({
 
   const importActions = (
     <ImportActions
-      canImport={flags.canImport}
+      canImport={flags.canImport && isIdentityReady}
       canParse={flags.canParse}
       importCount={
         readySummary && importItemsOf(readySummary).length > 0

@@ -53,5 +53,7 @@ export const useOntologyIdentitySource = (enabled = true) => {
     [baseUri, ontologies.data]
   );
 
-  return { identityOf };
+  const isReady = !enabled || (!status.isPending && !ontologies.isPending);
+
+  return { identityOf, isReady };
 };

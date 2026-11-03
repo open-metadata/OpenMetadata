@@ -89,6 +89,15 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
 }));
 
 jest.mock(
+  '../../../../hooks/governance/ontology/useOntologyIdentitySource',
+  () => ({
+    useOntologyIdentitySource: () => ({
+      isReady: true,
+      identityOf: () => undefined,
+    }),
+  })
+);
+jest.mock(
   '../../../../hooks/useEntityPermissions/useEntityPermissions',
   () => ({
     useEntityPermissions: () => ({
@@ -469,18 +478,20 @@ describe('OntologyReleaseExportModal', () => {
       </MemoryRouter>
     );
 
-    await userEvent.click(
-      within(await screen.findByTestId('ontology-export-scope')).getByRole(
-        'button'
-      )
-    );
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const trigger = within(
+      await screen.findByTestId('ontology-export-scope')
+    ).getByRole('button');
+    await waitFor(() => expect(trigger).toHaveTextContent('Release 1'));
+    trigger.focus();
+    await user.keyboard('{Enter}');
 
     expect(
       await screen.findByRole('option', { name: /label\.current-draft/ })
     ).toBeVisible();
     expect(screen.getByRole('option', { name: /Release 0/ })).toBeVisible();
 
-    fireEvent.click(screen.getByRole('option', { name: /Release 0/ }));
+    await user.click(screen.getByRole('option', { name: /Release 0/ }));
 
     expect(await screen.findByText('<rdf>older release</rdf>')).toBeVisible();
   });
