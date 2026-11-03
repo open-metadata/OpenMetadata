@@ -170,7 +170,6 @@ const OntologyStudioScopeMenu = ({
   const [pendingDelete, setPendingDelete] = useState<Ontology>();
   const conceptCounts = useOntologyConceptCounts(ontologies, isOpen);
   const termLabel = t('label.term-plural').toLocaleLowerCase();
-  const conceptLabel = t('label.concept-plural').toLocaleLowerCase();
   const selectedKey = getScopeKey(scope);
   const visibleOntologies = filterOntologies(ontologies, query);
   const allOntologiesLabel = t('label.all-entity', {
@@ -249,7 +248,10 @@ const OntologyStudioScopeMenu = ({
         testId: `ontology-scope-${ontology.id}`,
         scopeKey: `ontology:${ontology.id}`,
         name: getEntityName(ontology),
-        meta: count === undefined ? undefined : `${count} ${conceptLabel}`,
+        meta:
+          count === undefined
+            ? undefined
+            : t('message.native-concept-count', { count }),
         scopeTarget: { kind: 'ontology', ontologyId: ontology.id },
         icon: isAiMode ? undefined : (
           <Globe01 aria-hidden="true" className="tw:size-4 tw:shrink-0" />

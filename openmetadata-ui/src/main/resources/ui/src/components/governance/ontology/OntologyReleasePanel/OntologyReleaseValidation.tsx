@@ -21,13 +21,21 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
+  OntologyProfileReport,
+  Severity,
+} from '../../../../generated/api/data/ontologyProfileReport';
+import {
   FindingSeverity,
+  LogicalCheck,
   OntologyReleaseValidation as OntologyReleaseValidationReport,
 } from '../../../../generated/api/data/ontologyReleaseValidation';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getOntologyReleaseValidation } from '../../../../rest/ontologyAPI';
+import {
+  getOntologyReleaseValidation,
+  getOntologyWorkingValidation,
+} from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
 export const useReleaseValidation = (release?: OntologyRelease) => {
@@ -68,6 +76,45 @@ export const useReleaseValidation = (release?: OntologyRelease) => {
   return validation;
 };
 
+export const ONTOLOGY_WORKING_VALIDATION_QUERY_KEY =
+  'ontology-working-validation';
+
+export interface WorkingDraft {
+  ontologyId: string;
+  /** The working revision the report is for; a new revision asks again. */
+  revision?: number;
+}
+
+/** Checks the whole working draft, so a structure error shows before any capture. */
+export const useWorkingValidation = (draft: WorkingDraft | undefined) => {
+  const userId = useApplicationStore((store) => store.currentUser?.id);
+
+  return useQuery({
+    queryKey: [
+      ONTOLOGY_WORKING_VALIDATION_QUERY_KEY,
+      draft?.ontologyId,
+      draft?.revision,
+      userId,
+    ],
+    enabled: Boolean(draft?.ontologyId),
+    queryFn: () => getOntologyWorkingValidation(draft?.ontologyId ?? ''),
+    retry: false,
+    gcTime: 0,
+  });
+};
+
+/** The error-severity messages of a working draft report, in report order. */
+export const firstWorkingErrors = (
+  report: OntologyProfileReport | undefined,
+  limit = 3
+) =>
+  report
+    ? report.violations
+        .filter(({ severity }) => severity === Severity.Error)
+        .map(({ message }) => message)
+        .slice(0, limit)
+    : [];
+
 const settledReport = (validation: ReturnType<typeof useReleaseValidation>) =>
   validation.isSuccess && !validation.isFetching ? validation.data : undefined;
 
@@ -92,12 +139,20 @@ export const firstValidationErrors = (
 
 const OntologyReleaseValidation = ({
   release,
+  working,
 }: {
   release?: OntologyRelease;
+  /** When given, the structure section reports the working draft, not the capture. */
+  working?: WorkingDraft;
 }) => {
   const { t } = useTranslation();
   const validation = useReleaseValidation(release);
   const report = settledReport(validation);
+  const workingValidation = useWorkingValidation(working);
+  const workingReport =
+    working && workingValidation.isSuccess && !workingValidation.isFetching
+      ? workingValidation.data
+      : undefined;
   const truncated = (shown: number, total: number) => (
     <Typography color="secondary" size="text-xs">
       {t('message.ontology-findings-truncated', { shown, total })}
@@ -118,6 +173,38 @@ const OntologyReleaseValidation = ({
 
     return report?.shacl.warningCount ? 'label.warning' : 'label.passed';
   };
+  const workingStatus = () => {
+    if (!workingReport) {
+      return 'label.not-checked';
+    }
+
+    return workingReport.valid ? 'label.passed' : 'label.failed';
+  };
+  const renderWorkingStructure = () => (
+    <>
+      <Typography size="text-sm">
+        {t('label.structural-validation')}: {t(workingStatus())}
+      </Typography>
+      {workingReport && workingReport.violations.length > 0 && (
+        <ul
+          className="tw:m-0 tw:flex tw:flex-col tw:gap-2 tw:pl-4"
+          data-testid="ontology-working-violations">
+          {workingReport.violations.map((issue) => (
+            <li key={JSON.stringify(issue)}>
+              <Typography
+                className="tw:whitespace-pre-wrap tw:break-words"
+                size="text-sm">
+                {issue.message}
+              </Typography>
+              <Typography color="secondary" size="text-xs">
+                {issue.path}
+              </Typography>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
   const renderStructure = () => (
     <>
       <Typography size="text-sm">
@@ -295,8 +382,26 @@ const OntologyReleaseValidation = ({
               ? t('message.ontology-captured-validation', {
                   version: release.semanticVersion ?? release.releaseRevision,
                 })
-              : t('message.ontology-structure-after-capture')}
+              : t(
+                  working
+                    ? 'message.ontology-working-validation'
+                    : 'message.ontology-structure-after-capture'
+                )}
           </Typography>
+          {working && workingValidation.isFetching && (
+            <Typography role="status">{t('label.loading')}</Typography>
+          )}
+          {working && workingValidation.isError && (
+            <Alert variant="error">
+              {t('message.ontology-validation-unavailable')}
+              <Button
+                color="secondary"
+                size="sm"
+                onPress={() => void workingValidation.refetch()}>
+                {t('label.retry')}
+              </Button>
+            </Alert>
+          )}
           {release && validation.isFetching && (
             <Typography role="status">{t('label.loading')}</Typography>
           )}
@@ -311,12 +416,17 @@ const OntologyReleaseValidation = ({
               </Button>
             </Alert>
           )}
-          {renderStructure()}
+          {working ? renderWorkingStructure() : renderStructure()}
           {renderShacl()}
           {renderImpacts()}
 
-          <Typography size="text-sm">
-            {t('label.logical-consistency')}: {t('label.not-checked')}
+          <Typography data-testid="ontology-logical-consistency" size="text-sm">
+            {t('label.logical-consistency')}:{' '}
+            {t(
+              report?.logicalCheck === LogicalCheck.NotApplicable
+                ? 'label.not-applicable'
+                : 'label.not-checked'
+            )}
           </Typography>
         </Box>
       </Card.Content>

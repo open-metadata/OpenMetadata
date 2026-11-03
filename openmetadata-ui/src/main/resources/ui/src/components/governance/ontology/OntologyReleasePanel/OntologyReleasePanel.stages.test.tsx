@@ -233,6 +233,9 @@ beforeEach(() => {
     if (url.endsWith('/working/diff')) {
       return { data: { state, data: [], paging: { total: 1 } } };
     }
+    if (url.endsWith('/working/validation')) {
+      return { data: { valid: true, violations: [] } };
+    }
     if (url.endsWith('/state')) {
       return { data: state };
     }
@@ -918,7 +921,7 @@ it('renders a fresh working Draft and the initial semantic version without a cap
     'label.draft'
   );
   expect(screen.getByTestId('ontology-version-preview')).toHaveTextContent(
-    '0.0.0 → 1.0.0'
+    'label.draft → v0.1.0'
   );
   expect(screen.getByTestId('ontology-request-review')).toBeEnabled();
   expect(screen.queryByText('label.loading')).not.toBeInTheDocument();
@@ -1467,7 +1470,7 @@ describe('publication state table', () => {
     setStage(Stage.Draft);
     const original = get.getMockImplementation();
     get.mockImplementation(async (url, config) =>
-      url.endsWith('/validation')
+      url.endsWith('/validation') && !url.includes('/working/')
         ? {
             data: {
               releaseId: release.id,

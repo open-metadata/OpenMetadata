@@ -83,7 +83,12 @@ export interface EntityReference {
     type: string;
 }
 
+/**
+ * NOT_APPLICABLE when no inference is materialized, so there is no logical consequence to
+ * check. NOT_RUN when inference exists but no consistency check has run.
+ */
 export enum LogicalCheck {
+    NotApplicable = "NOT_APPLICABLE",
     NotRun = "NOT_RUN",
 }
 
@@ -143,10 +148,6 @@ export interface Issue {
 /**
  * Unique id used to identify an entity.
  *
- * Unique identifier that identifies an entity instance.
- *
- * Owning release when validating captured content; absent for a working definition.
- *
  * Optional description of entity.
  *
  * Text in Markdown format.
@@ -154,6 +155,10 @@ export interface Issue {
  * Link to the entity resource.
  *
  * URI that points to a resource.
+ *
+ * Unique identifier that identifies an entity instance.
+ *
+ * Owning release when validating captured content; absent for a working definition.
  *
  * Absolute semantic IRI, preserved exactly without URL normalization, case folding, or
  * percent encoding.
@@ -171,13 +176,19 @@ export enum MemberKind {
  * A typed OWL 2 DL profile guardrail finding.
  */
 export interface OntologyProfileViolation {
-    code:     Code;
-    message:  string;
-    path:     string;
-    severity: ViolationSeverity;
+    code: Code;
+    /**
+     * Declared concepts a rule clash involves, the clashing class first, so a client can link
+     * to each.
+     */
+    conceptIds?: string[];
+    message:     string;
+    path:        string;
+    severity:    ViolationSeverity;
 }
 
 export enum Code {
+    DisjointClash = "DISJOINT_CLASH",
     IllegalPunning = "ILLEGAL_PUNNING",
     InvalidAxiomShape = "INVALID_AXIOM_SHAPE",
     InvalidClassKind = "INVALID_CLASS_KIND",

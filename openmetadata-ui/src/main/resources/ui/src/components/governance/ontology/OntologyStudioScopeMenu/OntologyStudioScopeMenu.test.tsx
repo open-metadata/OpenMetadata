@@ -20,6 +20,10 @@ import {
   listOntologyReleases,
 } from '../../../../rest/ontologyAPI';
 import { getEntityPermissionById } from '../../../../rest/permissionAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import OntologyStudioScopeMenu from './OntologyStudioScopeMenu';
 
@@ -160,7 +164,7 @@ describe.each([
     expect(
       await screen.findByTestId('ontology-scope-all-ontologies')
     ).toHaveTextContent('2 label.ontology-plural');
-    expect(screen.getByText('8 label.concept-plural')).toBeInTheDocument();
+    expect(screen.getAllByText('message.native-concept-count')).toHaveLength(2);
 
     fireEvent.click(screen.getByTestId('ontology-scope-ont-1'));
 
@@ -328,5 +332,22 @@ describe.each([
 
     expect(onOntologyDeleted).not.toHaveBeenCalled();
     expect(screen.getByTestId('ontology-delete-dialog')).toBeVisible();
+  });
+});
+
+describe('concept count wording', () => {
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  it('reads one concept in the singular and eight in the plural', async () => {
+    renderMenu();
+
+    expect(await screen.findByText('8 concepts')).toBeInTheDocument();
+    expect(screen.getByText('1 concept')).toBeInTheDocument();
   });
 });
