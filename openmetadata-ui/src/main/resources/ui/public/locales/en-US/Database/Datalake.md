@@ -38,7 +38,7 @@ To execute metadata extraction GCP account should have enough access to fetch re
 - `storage.objects.get`
 - `storage.objects.list`
 
-You can find further information on the Data Lake connector in the <a href="https://docs.open-metadata.org/connectors/database/datalake" target="_blank">docs</a>.
+You can find further information on the Data Lake connector in the <a href="https://docs.open-metadata.org/connectors/database/s3-datalake" target="_blank">docs</a>.
 
 ## Connection Details
 
