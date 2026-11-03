@@ -775,9 +775,13 @@ def _create_lineage_by_table_name(
     procedure: EntityReference | None = None,
     graph: DiGraph | None = None,
     schema_fallback: bool = False,
+    to_table_entities: list[Table] | None = None,
 ) -> Iterable[Either[LineageRequest]]:
     """
     This method is to create a lineage between two tables
+
+    `to_table_entities` are the target entities when the caller already has them, so
+    `to_table` is not resolved again by name.
     """
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -792,14 +796,15 @@ def _create_lineage_by_table_name(
             schema_fallback=schema_fallback,
         )
 
-        to_table_entities = get_table_entities_from_query(
-            metadata=metadata,
-            service_names=service_names,
-            database_name=database_name,
-            database_schema=schema_name,
-            table_name=to_table,
-            schema_fallback=schema_fallback,
-        )
+        if to_table_entities is None:
+            to_table_entities = get_table_entities_from_query(
+                metadata=metadata,
+                service_names=service_names,
+                database_name=database_name,
+                database_schema=schema_name,
+                table_name=to_table,
+                schema_fallback=schema_fallback,
+            )
 
         for table_name, entity in (
             (from_table, from_table_entities),
@@ -1041,6 +1046,9 @@ def get_lineage_via_table_entity(
                         procedure=procedure,
                         graph=graph,
                         schema_fallback=schema_fallback,
+                        # The view was looked up by its FQN already. Joining its names
+                        # with dots loses the boundary of a name that contains one.
+                        to_table_entities=[table_entity],
                     )
                     or []
                 )
