@@ -43,6 +43,7 @@ import { useTranslation } from 'react-i18next';
 import { OntologyDraftContext } from '../../../../context/OntologyDraft/OntologyDraftContext';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { OntologyProfileViolation } from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
@@ -89,9 +90,11 @@ import {
 } from '../../../../utils/governance/ontology/OntologyRelationCheck.utils';
 import {
   buildDataPropertyRequest,
+  buildReusePropertyPatch,
   buildOntologyStudioGraph,
   DataPropertyInput,
   OntologyModelRelation,
+  OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
@@ -158,6 +161,27 @@ const RELATIONSHIP_TYPES_QUERY_KEY = 'relationship-types';
 const NO_RELATIONSHIP_TYPES: RelationshipType[] = [];
 const NO_GRAPH: OntologyGraphData = { nodes: [], edges: [] };
 const NO_VIOLATIONS: OntologyProfileViolation[] = [];
+
+const writeDataProperty = async (
+  model: OntologyStudioModel,
+  concept: OntologyConcept,
+  input: DataPropertyInput
+) => {
+  if (!input.reusePropertyIri) {
+    return createOntologyProperty(
+      buildDataPropertyRequest(model, concept, input)
+    );
+  }
+  const reused = model.properties.find(
+    ({ iri }) => iri === input.reusePropertyIri
+  );
+  if (!reused) {
+    throw new Error(input.reusePropertyIri);
+  }
+  const patch = buildReusePropertyPatch(reused, concept);
+
+  return patch.length ? patchOntologyProperty(reused.id, patch) : reused;
+};
 
 const missingRelationType = (id: string): never => {
   throw new Error(`Unknown relation type ${id}`);
@@ -954,9 +978,7 @@ const OntologyGraphView = ({
         return false;
       }
       try {
-        await createOntologyProperty(
-          buildDataPropertyRequest(model, concept, input)
-        );
+        await writeDataProperty(model, concept, input);
         noteWorkingChange();
         await refetch();
 

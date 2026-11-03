@@ -703,7 +703,7 @@ describe('OntologyConceptInspector in AI mode', () => {
 
   afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
 
-  const renderAiInspector = () => {
+  const renderAiInspector = (extraProperties: OntologyProperty[] = []) => {
     const handlers = {
       onAddProperty: jest.fn().mockResolvedValue(true),
       onAddRelation: jest.fn().mockResolvedValue(true),
@@ -720,7 +720,11 @@ describe('OntologyConceptInspector in AI mode', () => {
           canAddRelation
           canEditBindings
           concept={concept}
-          model={{ ...model, concepts: [concept, party] }}
+          model={{
+            ...model,
+            concepts: [concept, party],
+            properties: [property, ...extraProperties],
+          }}
           relationTypeGroups={[
             {
               id: 'hierarchy',
@@ -822,6 +826,7 @@ describe('OntologyConceptInspector in AI mode', () => {
         datatype: 'enum',
         enumValues: ['gold', 'silver'],
         isIdentifier: true,
+        kind: 'data',
         name: 'loyaltyTier',
       })
     );
@@ -834,6 +839,62 @@ describe('OntologyConceptInspector in AI mode', () => {
 
     expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
     expect(screen.getByTestId('ontology-relationship-form')).toBeVisible();
+  });
+
+  it('adds an annotation property with no data type to pick', async () => {
+    const handlers = renderAiInspector();
+    await screen.findByTestId('ontology-native-assets');
+
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+    fireEvent.click(screen.getByTestId('ontology-property-kind-annotation'));
+
+    expect(
+      screen.queryByTestId('ontology-property-type-string')
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('ontology-property-name'), {
+      target: { value: 'reviewNote' },
+    });
+    fireEvent.click(screen.getByTestId('ontology-property-submit'));
+
+    await waitFor(() =>
+      expect(handlers.onAddProperty).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'annotation', name: 'reviewNote' })
+      )
+    );
+  });
+
+  it('reuses a property another concept declared, and does not offer one this concept already has', async () => {
+    const shared: OntologyProperty = {
+      ...property,
+      domain: ['urn:sales:Order'],
+      id: 'shared-note',
+      iri: 'urn:sales:note',
+      kind: Kind.Annotation,
+      name: 'note',
+    };
+    const handlers = renderAiInspector([shared]);
+    await screen.findByTestId('ontology-native-assets');
+
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+    fireEvent.click(screen.getByTestId('ontology-property-source-existing'));
+
+    expect(screen.getByTestId('ontology-property-submit')).toBeDisabled();
+
+    const picker = screen.getByRole('combobox', { name: /label.property/ });
+    fireEvent.focus(picker);
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+
+    expect(await screen.findAllByRole('option')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('option', { name: /note/ }));
+    fireEvent.click(screen.getByTestId('ontology-property-submit'));
+
+    await waitFor(() =>
+      expect(handlers.onAddProperty).toHaveBeenCalledWith(
+        expect.objectContaining({ reusePropertyIri: 'urn:sales:note' })
+      )
+    );
   });
 
   it('reads an incoming relation through its inverse in the AI panel', async () => {

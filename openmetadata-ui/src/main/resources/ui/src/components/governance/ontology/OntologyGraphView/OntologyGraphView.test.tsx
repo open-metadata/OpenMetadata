@@ -810,6 +810,56 @@ describe('OntologyGraphView', () => {
     expect(getOntologyWorkingValidation).toHaveBeenCalledTimes(2);
   });
 
+  it('attaches an existing property to the concept with one patch instead of declaring it again', async () => {
+    const note: OntologyProperty = {
+      domain: [party.iri],
+      fullyQualifiedName: 'RetailCommerce.note',
+      id: 'property-note',
+      iri: 'urn:retail:note',
+      kind: Kind.Annotation,
+      name: 'note',
+      ontology: { id: ontology.id, type: 'ontology' },
+      version: 0.3,
+    };
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: {
+        ...modelResult.model,
+        properties: [...modelResult.model.properties, note],
+      },
+    });
+    (patchOntologyProperty as jest.Mock).mockResolvedValue(note);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+    fireEvent.click(screen.getByTestId('ontology-property-source-existing'));
+    const picker = screen.getByRole('combobox', { name: /label.property/ });
+    fireEvent.focus(picker);
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /note/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-property-submit'));
+    });
+
+    await waitFor(() =>
+      expect(patchOntologyProperty).toHaveBeenCalledWith('property-note', [
+        { op: 'test', path: '/version', value: 0.3 },
+        { op: 'add', path: '/domain/1', value: customer.iri },
+      ])
+    );
+
+    expect(createOntologyProperty).not.toHaveBeenCalled();
+  });
+
   it('uses the same inspector from the hierarchy tree', () => {
     render(
       <OntologyGraphView

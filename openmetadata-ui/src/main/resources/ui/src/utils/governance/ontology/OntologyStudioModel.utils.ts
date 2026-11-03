@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { compare, Operation } from 'fast-json-patch';
 import type {
   OntologyEdge,
   OntologyGraphData,
@@ -516,7 +517,37 @@ export interface DataPropertyInput {
   readonly datatype: StudioDatatype;
   readonly isIdentifier: boolean;
   readonly enumValues?: string[];
+  readonly kind?: 'data' | 'annotation';
+  /** Attach this declared property to the concept instead of declaring a new one. */
+  readonly reusePropertyIri?: string;
 }
+
+/**
+ * A property declared once is reused by adding the concept to its domain, so
+ * the ontology never holds two declarations of one property. Nothing to patch
+ * when the concept already belongs to the domain.
+ */
+export const buildReusePropertyPatch = (
+  property: OntologyProperty,
+  concept: OntologyConcept
+): Operation[] =>
+  (property.domain ?? []).includes(concept.iri)
+    ? []
+    : [
+        ...(property.version === undefined
+          ? []
+          : [
+              {
+                op: 'test' as const,
+                path: '/version',
+                value: property.version,
+              },
+            ]),
+        ...compare(
+          { domain: property.domain ?? [] },
+          { domain: [...(property.domain ?? []), concept.iri] }
+        ),
+      ];
 
 export const buildDataPropertyRequest = (
   model: OntologyStudioModel,
@@ -532,8 +563,11 @@ export const buildDataPropertyRequest = (
         }))
       : undefined,
   isIdentifier: input.isIdentifier || undefined,
-  kind: CreatePropertyKind.Data,
+  kind:
+    input.kind === 'annotation'
+      ? CreatePropertyKind.Annotation
+      : CreatePropertyKind.Data,
   name: input.name.trim(),
   ontology: model.ontology.fullyQualifiedName,
-  range: [getDatatypeIri(input.datatype)],
+  range: input.kind === 'annotation' ? [] : [getDatatypeIri(input.datatype)],
 });

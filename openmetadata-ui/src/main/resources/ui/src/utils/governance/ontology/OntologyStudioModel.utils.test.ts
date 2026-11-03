@@ -29,6 +29,7 @@ import {
 import {
   buildDataPropertyRequest,
   buildOntologyStudioGraph,
+  buildReusePropertyPatch,
   buildSubClassAxiomRequest,
   getAvailableName,
   getConceptAncestors,
@@ -439,5 +440,37 @@ describe('OntologyStudioModel utils', () => {
       ontology: 'RetailCommerce',
       range: [`${XSD}string`],
     });
+  });
+
+  it('builds an annotation property with no range', () => {
+    expect(
+      buildDataPropertyRequest(model, order, {
+        datatype: 'string',
+        isIdentifier: false,
+        kind: 'annotation',
+        name: 'reviewNote',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        domain: [order.iri],
+        kind: 'ANNOTATION',
+        range: [],
+      })
+    );
+  });
+
+  it('reuses a declared property by adding the concept to its domain', () => {
+    const declared = {
+      domain: [customer.iri],
+      id: 'p',
+      iri: `${NS}code`,
+      version: 0.2,
+    } as OntologyProperty;
+
+    expect(buildReusePropertyPatch(declared, order)).toEqual([
+      { op: 'test', path: '/version', value: 0.2 },
+      { op: 'add', path: '/domain/1', value: order.iri },
+    ]);
+    expect(buildReusePropertyPatch(declared, customer)).toEqual([]);
   });
 });
