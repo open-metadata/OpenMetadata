@@ -54,6 +54,7 @@ export type ReleasePanelView = PublicationRead<
 >;
 
 export type PublicationState =
+  | 'published'
   | 'cannotEdit'
   | 'noChanges'
   | 'noReviewers'

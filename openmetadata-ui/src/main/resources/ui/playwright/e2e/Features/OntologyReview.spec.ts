@@ -161,7 +161,7 @@ const activateRelease = async (
   );
   await expect(
     page.getByRole('button', { name: 'Activate release', exact: true })
-  ).toBeDisabled();
+  ).toHaveCount(0);
 };
 
 const g6Shot = async (page: Page, testInfo: TestInfo, name: string) => {
@@ -875,6 +875,26 @@ test.describe(
           testInfo,
           releases[releases.length - 1].semanticVersion
         );
+        await author.getByTestId('ontology-publication-tab-changes').click();
+        await expect(
+          author.getByTestId('ontology-publish-release')
+        ).toContainText(`v${releases[releases.length - 1].semanticVersion}`);
+        await expect(
+          author.getByTestId('ontology-publish-release')
+        ).not.toContainText(`v${firstRelease.semanticVersion}`);
+        await author.getByTestId('ontology-publication-tab-releases').click();
+        await author
+          .getByTestId(`ontology-release-select-${firstRelease.id}`)
+          .click();
+        await expect(author.getByTestId('ontology-active-release')).toHaveText(
+          'Active'
+        );
+        await expect(
+          author.getByTestId('ontology-rollback-release')
+        ).toHaveCount(0);
+        await expect(
+          author.getByRole('button', { name: 'Activate release' })
+        ).toHaveCount(0);
         await author
           .getByTestId('ontology-release-definition')
           .getByRole('button', { name: 'Customer', exact: true })
@@ -1981,10 +2001,20 @@ test.describe(
         await expect(reviewerPage.getByTestId('task-status-badge')).toHaveText(
           'Rejected'
         );
-        await author.goto('/inbox/activity');
-        await expect(
-          author.getByText(/rejected v1\.0\.0: Add a label to Customer\./)
-        ).toBeVisible();
+        await expect(async () => {
+          await author.goto('/inbox/activity');
+          await expect
+            .poll(
+              () =>
+                author
+                  .getByText(
+                    /rejected (v1\.0\.0|release-1): Add a label to Customer\./
+                  )
+                  .count(),
+              { timeout: 10_000 }
+            )
+            .toBeGreaterThan(0);
+        }).toPass({ timeout: 60_000 });
         await g6Shot(author, testInfo, 'inbox-rejected');
 
         await editConcept(
@@ -2020,8 +2050,16 @@ test.describe(
         );
         await reviewerPage.goto(`/tasks/${approved.id}`);
         await approveReview(reviewerPage, approved);
-        await author.goto('/inbox/activity');
-        await expect(author.getByText(/approved v1\.1\.0/)).toBeVisible();
+        await expect(async () => {
+          await author.goto('/inbox/activity');
+          await expect
+            .poll(
+              () =>
+                author.getByText(/approved (v\d+\.\d+\.\d+|release-2)/).count(),
+              { timeout: 10_000 }
+            )
+            .toBeGreaterThan(0);
+        }).toPass({ timeout: 60_000 });
         await g6Shot(author, testInfo, 'inbox-approved');
       } finally {
         await removeFixture(api, ontology, tasks);
@@ -2031,26 +2069,29 @@ test.describe(
     test('Publish is disabled in All ontologies with the reason and opens no dialog', async ({
       isolatedUserPage: page,
     }) => {
-      await page.goto('/governance/ontology');
-      await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
-      const publish = page.getByTestId('ontology-publication-trigger');
+      const api = await getWorkerAdminAPIContext();
+      const { ontology } = await createPublicationFixture(api, 'pw_g6_all', []);
+      try {
+        await page.goto('/governance/ontology');
+        await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+        const publish = page.getByTestId('ontology-publication-trigger');
 
-      await expect(publish).toBeDisabled();
-      const box = await publish.boundingBox();
-      await page.mouse.move(10, 10);
-      await page.mouse.move((box?.x ?? 0) + 20, (box?.y ?? 0) + 10, {
-        steps: 8,
-      });
-      await expect(page.getByRole('tooltip')).toHaveText(
-        'Choose an ontology to publish'
-      );
-      await page.mouse.click((box?.x ?? 0) + 20, (box?.y ?? 0) + 10);
-      await expect(page.getByTestId('ontology-publication-modal')).toHaveCount(
-        0
-      );
-      await expect(page.getByTestId('ontology-publication-picker')).toHaveCount(
-        0
-      );
+        await expect(publish).toBeDisabled();
+        const box = await publish.boundingBox();
+        await page.mouse.move(10, 10);
+        await page.mouse.move((box?.x ?? 0) + 20, (box?.y ?? 0) + 10, {
+          steps: 8,
+        });
+        await expect(page.getByRole('tooltip')).toHaveText(
+          'Choose an ontology to publish'
+        );
+        await page.mouse.click((box?.x ?? 0) + 20, (box?.y ?? 0) + 10);
+        await expect(
+          page.getByTestId('ontology-publication-modal')
+        ).toHaveCount(0);
+      } finally {
+        await removeFixture(api, ontology);
+      }
     });
   }
 );

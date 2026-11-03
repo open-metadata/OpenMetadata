@@ -117,7 +117,7 @@ test.describe(
             page.getByTestId('ontology-publication-trigger')
           ).toBeDisabled();
           await expect(
-            page.getByTestId('ontology-publication-picker')
+            page.getByTestId('ontology-publication-modal')
           ).toHaveCount(0);
           const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
           await scopeMenu.click();

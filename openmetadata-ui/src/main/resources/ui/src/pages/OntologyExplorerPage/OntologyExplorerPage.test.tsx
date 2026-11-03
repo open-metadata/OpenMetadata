@@ -1368,9 +1368,6 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(trigger);
 
     expect(
-      screen.queryByTestId('ontology-publication-picker')
-    ).not.toBeInTheDocument();
-    expect(
       screen.queryByTestId('ontology-publication-modal')
     ).not.toBeInTheDocument();
   });

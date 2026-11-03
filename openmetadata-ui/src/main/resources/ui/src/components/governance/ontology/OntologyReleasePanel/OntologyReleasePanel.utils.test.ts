@@ -176,6 +176,23 @@ describe('getPublicationActions', () => {
     });
   });
 
+  it('published with new changes: the draft rows apply again', () => {
+    expect(row({ stage: Stage.Published }).state).toBe('reviewersSet');
+    expect(row({ stage: Stage.Published, hasReviewers: false }).state).toBe(
+      'noReviewers'
+    );
+  });
+
+  it('published: the active release offers no action, only the nothing-to-capture line', () => {
+    expect(row({ stage: Stage.Published, hasChanges: false })).toEqual({
+      state: 'published',
+      primary: null,
+      secondary: null,
+      text: 'message.ontology-publication-no-changes',
+      errors: [],
+    });
+  });
+
   it('rejected: Request review again stays disabled until a change exists', () => {
     expect(
       row({ stage: Stage.ChangesRequested, changedSinceRejection: false })
