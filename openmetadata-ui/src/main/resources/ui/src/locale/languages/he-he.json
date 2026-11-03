@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "מחיקת {{entityType}} זה תמחק לצמיתות את הנתונים המטא שלו.",
     "delete-intake-form-confirmation": "האם אתה בטוח שברצונך למחוק את טופס הקליטה הזה? האכיפה תיפסק מיד עבור סוג הישות הרלוונטי.",
     "delete-message-question-mark": "מחיקת ההודעה?",
+    "delete-metric-children-message": "כל מדדי הצאצא מתחת ל-\"{{metricName}}\" יימחקו {{deleteType}}.",
     "delete-metrics-warning": "פעולה זו תמחק באופן זמני את המדדים שנבחרו יחד עם מדדי הצאצא שלהם. ניתן לשחזר מדדים שנמחקו באופן זמני מאוחר יותר.",
     "delete-persona-context-rule-confirmation": "למחוק את כלל ההקשר של הבינה המלאכותית?",
     "delete-scim-token": "מחק אסימון SCIM",

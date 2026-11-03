@@ -3489,6 +3489,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/asyncDelete.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/MetricHierarchy.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
@@ -9766,6 +9767,7 @@
         "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
+        "playwright/e2e/Features/MetricHierarchy.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
@@ -9798,6 +9800,7 @@
         "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
+        "playwright/e2e/Features/MetricHierarchy.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",

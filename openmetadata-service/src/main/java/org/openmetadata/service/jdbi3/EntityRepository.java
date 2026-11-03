@@ -5591,6 +5591,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     getCountingParents(entity).forEach(this::refreshCountingParent);
   }
 
+  /** Checked by the restore endpoint only; upserts and cascades that restore do not call it. */
+  public void validateRestore(UUID id) {}
+
   @FunctionalInterface
   protected interface DeleteLifecycle extends AutoCloseable {
     DeleteLifecycle NOOP = () -> {};
