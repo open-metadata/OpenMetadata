@@ -21,6 +21,7 @@ import {
   clickIgnoringToasts,
   getWorkerAdminAPIContext,
   scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 
@@ -283,16 +284,21 @@ test.describe(
               editor.getByTestId('ontology-axiom-mode-quick')
             ).toHaveAttribute('aria-checked', 'true');
             await editor.getByTestId('ontology-axiom-mode-advanced').click();
+            await selectOptionWithRetry(
+              editor
+                .getByTestId('ontology-expression-0')
+                .getByRole('button', { name: 'Constraint Type', exact: true })
+                .first(),
+              page.getByRole('option', { name: 'Classification', exact: true })
+            );
             await editor
               .getByRole('textbox', {
-                name: 'Display Name (optional)',
-                exact: true,
+                name: /^Display Name \(optional\)$/i,
               })
               .fill('Customer is a Person');
             await editor
               .getByRole('textbox', {
-                name: 'Description (optional)',
-                exact: true,
+                name: /^Description \(optional\)$/i,
               })
               .fill('Every customer is a person.');
             for (const [label, name] of [
@@ -331,8 +337,7 @@ test.describe(
               .click();
             await expect(
               editor.getByRole('textbox', {
-                name: 'Display Name (optional)',
-                exact: true,
+                name: /^Display Name \(optional\)$/i,
               })
             ).toHaveValue('Customer is a Person');
             const created = page.waitForResponse(
