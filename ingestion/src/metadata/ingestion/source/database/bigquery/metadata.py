@@ -16,8 +16,9 @@ Bigquery source module
 import os
 import threading
 import traceback
+from collections import OrderedDict
 from collections.abc import Iterable
-from typing import Literal, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 from google import auth
 from google.cloud import bigquery
@@ -237,6 +238,10 @@ BigQueryDialect.get_foreign_keys = get_foreign_keys
 
 
 # pylint: disable=too-many-public-methods
+SHARD_METADATA_BATCH_SIZE = 1000
+SHARD_METADATA_CACHE_SIZE = 2 * SHARD_METADATA_BATCH_SIZE
+
+
 class ShardingContext(Protocol):
     database_service: str
     database: str
@@ -246,6 +251,7 @@ class ShardingContext(Protocol):
     shard_lifecycle: dict[str, LifeCycleQueryByTable] | None
     shard_prefixes: set[str]
     sharding_failed: bool
+    shard_metadata: OrderedDict[tuple[str, str], dict[str, Any] | None]
 
 
 class BigqueryGlobalContext(Protocol):
@@ -471,6 +477,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         context = self._shard_context()
         self._set_sharding_scope(False)
         context.shard_family = None
+        context.shard_metadata = OrderedDict()
         client = self._require_client()
         dataset = f"{context.database}.{context.database_schema}"
         logger.info("BigQuery sharding uses full discovery for %s, including incremental configurations", dataset)
@@ -538,6 +545,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             "Refreshing BigQuery inventory once for %s: %d representatives disappeared", dataset, len(pending)
         )
         families = inventory_families(refreshed_tables())
+        context.shard_metadata = OrderedDict()
         context.shard_lifecycle = None
         context.shard_prefixes = set(families)
         for prefix in sorted(pending):
@@ -715,16 +723,38 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
         yield from super().yield_life_cycle_data(_)
 
+    def _sharded_table_metadata(self, query: str, table_name: str) -> dict[str, Any] | None:
+        """Read a bounded metadata window, reusing rows within the current topology context."""
+        context = self._shard_context()
+        cache = context.shard_metadata
+        key = (query, table_name)
+        if key in cache:
+            cache.move_to_end(key)
+            return cache[key]
+        statement = text(
+            f"SELECT * FROM ({query}) WHERE table_name >= :table_name "
+            f"ORDER BY table_name LIMIT {SHARD_METADATA_BATCH_SIZE}"
+        )
+        with self.engine.connect() as conn:
+            rows: dict[str, dict[str, Any] | None] = {
+                row.table_name: row._asdict() for row in conn.execute(statement, {"table_name": table_name})
+            }
+        rows.setdefault(table_name, None)
+        for name, values in rows.items():
+            cache[(query, name)] = values
+            cache.move_to_end((query, name))
+            if len(cache) > SHARD_METADATA_CACHE_SIZE:
+                cache.popitem(last=False)
+        return cache[key]
+
     def life_cycle_query_dict(self, query: str):  # pyright: ignore[reportIncompatibleVariableOverride]
         if not self.sharding_enabled:
             return super().life_cycle_query_dict(query)
         context = self._shard_context()
         descriptor = context.shard_family
         if not descriptor:
-            escaped = context.table.replace("'", "''")
-            with self.engine.connect() as conn:
-                rows = conn.execute(text(f"SELECT * FROM ({query}) WHERE table_name = '{escaped}'"))
-                return {row.table_name: LifeCycleQueryByTable.model_validate(row._asdict()) for row in rows}
+            values = self._sharded_table_metadata(query, context.table)
+            return {context.table: LifeCycleQueryByTable.model_validate(values)} if values is not None else {}
         if context.shard_lifecycle is None:
             summaries = {}
             with self.engine.connect() as conn:
@@ -1297,12 +1327,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     query = BIGQUERY_GET_TABLE_DDLS.format(
                         database_name=self._shard_context().database, schema_name=schema_name
                     )
-                    query += " AND table_name = @table_name"
-                    job_config = bigquery.QueryJobConfig(
-                        query_parameters=[bigquery.ScalarQueryParameter("table_name", "STRING", table_name)]
-                    )
-                    rows = self._require_client().query(query, job_config=job_config).result()
-                    return next((row.ddl for row in rows), None)
+                    values = self._sharded_table_metadata(query, table_name)
+                    return values["ddl"] if values else None
                 return self._table_ddl_cache.get(table_name)
         except NotImplementedError:
             logger.warning(f"Schema definition not implemented for {schema_name}.{table_name}")

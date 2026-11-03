@@ -10,8 +10,10 @@
 #  limitations under the License.
 """Daily family policy regressions."""
 
+import re
 from collections import namedtuple
 from contextlib import contextmanager
+from copy import deepcopy
 from datetime import date, datetime
 from threading import Lock
 from types import SimpleNamespace
@@ -20,7 +22,7 @@ from uuid import uuid4
 
 import pytest
 from google.cloud.bigquery import Table as BigQueryTable
-from sqlalchemy import select
+from sqlalchemy import create_engine, select, text
 from sqlalchemy_bigquery import BigQueryDialect
 
 from metadata.data_quality.validations.models import EvaluationScopeRuntimeParameters
@@ -32,6 +34,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_LIFE_CYCLE_QUERY
 from metadata.ingestion.source.database.bigquery.sharding import (
     eligible_shard,
     inventory_families,
@@ -278,6 +281,159 @@ def test_family_lifecycle_reduces_source_activity_without_changing_representativ
     assert context.shard_family.representative.tableName == "events_20260102"
 
 
+@pytest.fixture
+def metadata_batches():
+    source = source_for([])
+    assert list(source.get_tables_name_and_type()) == []
+    source.source_config.includeDDL = True
+    engine = create_engine("sqlite://")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE source_tables (table_name TEXT, table_type TEXT, creation_time TEXT, "
+                "ddl TEXT, table_schema TEXT, table_catalog TEXT)"
+            )
+        )
+        conn.execute(
+            text("INSERT INTO source_tables VALUES (:name, 'BASE TABLE', :created, :ddl, :schema, :project)"),
+            [
+                {
+                    "name": f"ordinary_{i:04d}",
+                    "created": "2026-01-01" if schema == "demo_dataset" else "2026-02-01",
+                    "ddl": f"CREATE TABLE {schema}.ordinary_{i:04d} (id INT64)",
+                    "schema": schema,
+                    "project": "demo_project",
+                }
+                for schema in ("demo_dataset", "other_dataset")
+                for i in range(2501)
+            ],
+        )
+        conn.execute(
+            text(
+                "INSERT INTO source_tables VALUES (:name, 'BASE TABLE', :created, :ddl, 'demo_dataset', 'demo_project')"
+            ),
+            [
+                {
+                    "name": f"events_2026010{day}",
+                    "created": f"2026-01-0{day}",
+                    "ddl": f"CREATE TABLE events_2026010{day} (id INT64)",
+                }
+                for day in (1, 2)
+            ],
+        )
+    queries = []
+
+    @contextmanager
+    def connect():
+        with engine.connect() as conn:
+
+            def execute(statement, parameters=None):
+                sql = str(statement)
+                queries.append((sql, parameters))
+                sql = re.sub(r"`[^`]+`\.`[^`]+`\.INFORMATION_SCHEMA\.TABLES", "source_tables", sql)
+                return conn.execute(text(sql), parameters or {})
+
+            yield SimpleNamespace(execute=execute)
+
+    source.engine = SimpleNamespace(connect=connect)
+    yield source, queries
+    engine.dispose()
+
+
+def lifecycle_query(schema="demo_dataset"):
+    return BIGQUERY_LIFE_CYCLE_QUERY.format(database_name="demo_project", schema_name=schema)
+
+
+def test_grouped_ordinary_metadata_uses_bounded_batches_without_truncation(metadata_batches):
+    source, queries = metadata_batches
+    context = source.context.get()
+    for i in range(2501):
+        name = f"ordinary_{i:04d}"
+        context.table = name
+        observed = source.life_cycle_query_dict(lifecycle_query())[name]
+        assert observed.created_at == datetime(2026, 1, 1)
+        assert source.get_schema_definition(TableType.Regular, name, "demo_dataset", None) == (
+            f"CREATE TABLE demo_dataset.{name} (id INT64)"
+        )
+        assert len(context.shard_metadata) <= 2000
+    assert len(queries) == 6
+
+
+def test_metadata_batches_isolate_datasets_and_support_out_of_order_reads(metadata_batches):
+    source, _ = metadata_batches
+    context = source.context.get()
+    for schema, name in [
+        ("demo_dataset", "ordinary_2000"),
+        ("other_dataset", "ordinary_2000"),
+        ("demo_dataset", "ordinary_0000"),
+        ("other_dataset", "ordinary_0001"),
+    ]:
+        context.database_schema = schema
+        context.table = name
+        observed = source.life_cycle_query_dict(lifecycle_query(schema))[name]
+        assert observed.created_at == datetime(2026, 1 if schema == "demo_dataset" else 2, 1)
+        assert source.get_schema_definition(TableType.Regular, name, schema, None) == (
+            f"CREATE TABLE {schema}.{name} (id INT64)"
+        )
+    assert len(context.shard_metadata) <= 2000
+    assert deepcopy(context.shard_metadata) == context.shard_metadata
+
+
+def test_family_lifecycle_and_representative_ddl_coexist_with_ordinary_batches(metadata_batches):
+    source, queries = metadata_batches
+    context = source.context.get()
+    context.table = "ordinary_0000"
+    assert source.life_cycle_query_dict(lifecycle_query())[context.table].created_at == datetime(2026, 1, 1)
+    context.shard_prefixes = {"events_"}
+    context.shard_family = inventory_families(
+        SimpleNamespace(table_id=name, table_type="TABLE") for name in ["events_20260101", "events_20260102"]
+    )["events_"].descriptor("demo_project", "demo_dataset")
+    context.table = "events_yyyymmdd"
+    assert source.life_cycle_query_dict(lifecycle_query())[context.table].created_at == datetime(2026, 1, 1)
+    assert source.get_schema_definition(TableType.Sharded, "events_20260102", "demo_dataset", None) == (
+        "CREATE TABLE events_20260102 (id INT64)"
+    )
+    context.shard_family = None
+    context.table = "ordinary_0001"
+    assert source.life_cycle_query_dict(lifecycle_query())[context.table].created_at == datetime(2026, 1, 1)
+    assert len(queries) == 3
+
+
+def test_metadata_batch_caches_absence_and_binds_table_names(metadata_batches):
+    source, queries = metadata_batches
+    context = source.context.get()
+    context.table = "ordinary_0000'"
+    for _ in range(2):
+        assert source.life_cycle_query_dict(lifecycle_query()) == {}
+        assert source.get_schema_definition(TableType.Regular, context.table, "demo_dataset", None) is None
+    assert len(queries) == 2
+    assert all(context.table not in sql and params["table_name"] == context.table for sql, params in queries)
+
+
+def test_failed_metadata_batch_does_not_cache_partial_results(metadata_batches):
+    source, queries = metadata_batches
+    context = source.context.get()
+    context.table = "ordinary_0000"
+    engine = source.engine
+
+    @contextmanager
+    def failed_connect():
+        with engine.connect() as conn:
+
+            def execute(statement, parameters):
+                yield next(iter(conn.execute(statement, parameters)))
+                raise ConnectionError("metadata read interrupted")
+
+            yield SimpleNamespace(execute=execute)
+
+    source.engine = SimpleNamespace(connect=failed_connect)
+    with pytest.raises(ConnectionError, match="metadata read interrupted"):
+        source.life_cycle_query_dict(lifecycle_query())
+    source.engine = engine
+    assert source.life_cycle_query_dict(lifecycle_query())[context.table].created_at == datetime(2026, 1, 1)
+    assert len(queries) == 2
+
+
 @pytest.mark.parametrize("complete", [False, True])
 def test_only_complete_scopes_delete_missing_families(complete):
     missing = catalog_table("events_yyyymmdd", sharded=True)
@@ -498,11 +654,13 @@ def topology_source_for_mode(extraction_fails, grouping, incremental):
         def connect(self):
             yield self
 
-        def execute(self, query):
-            query = str(query)
-            if "WHERE table_name = '" in query:
-                table_name = query.rsplit("WHERE table_name = '", 1)[1].removesuffix("'")
-                return WarehouseRows(item for item in rows if item.table_name == table_name)
+        def execute(self, query, parameters=None):
+            if parameters:
+                return WarehouseRows(
+                    item
+                    for item in sorted(rows, key=lambda row: row.table_name)
+                    if item.table_name >= parameters["table_name"]
+                )
             return WarehouseRows(rows)
 
     source.client = WarehouseInventory(names)

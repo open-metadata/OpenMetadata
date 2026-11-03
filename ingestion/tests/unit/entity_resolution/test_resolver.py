@@ -12,6 +12,7 @@
 """Run-scoped resolution against the real SDK with a fake HTTP boundary."""
 
 import gc
+import json
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
@@ -75,12 +76,15 @@ class Transport:
         self.partial = {}
         self.requests = []
         self.error = None
+        self.errors = {}
         self.closed = False
 
     def get(self, path):
         parsed = urlsplit(path)
         params = parse_qs(parsed.query)
         self.requests.append((unquote(parsed.path), params))
+        if error := self.errors.get(unquote(parsed.path)):
+            raise error
         if self.error:
             raise self.error
         if parsed.path == "/search/query" or params.get("index") == ["database_service_search_index"]:
@@ -550,6 +554,84 @@ def test_bigquery_date_wildcard_does_not_invent_membership(sdk):
         resolve_bigquery(sdk[0], "events_2026*")
 
 
+def test_failed_service_lookup_continues_and_is_retried(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    transport.entities["ordinary_service"] = DatabaseService(
+        id=uuid4(), name="ordinary_service", serviceType="Postgres"
+    )
+    family = bigquery_family()
+    ordinary = table("ordinary_service.my_db.my_schema.events_20260101")
+    transport.entities.update({value.fullyQualifiedName.root: value for value in (family, ordinary)})
+    transport.errors["/tables/name/my_service.my_db.my_schema.events_20260101"] = APIError(
+        {"code": 503, "message": "temporarily unavailable"}
+    )
+    services = ["my_service", "ordinary_service"]
+    assert search_table_entities(metadata, services, "my_db", "my_schema", "events_20260101") == [ordinary]
+    transport.errors.clear()
+    assert search_table_entities(metadata, services, "my_db", "my_schema", "events_20260101") == [family]
+
+
+@pytest.mark.parametrize("reference", ["events_2026*", "unavailable"])
+def test_failed_reference_preserves_other_sql_lineage(sdk, reference):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    ordinary = table("my_service.my_db.my_schema.ordinary")
+    target = table("my_service.my_db.my_schema.output")
+    transport.entities.update({value.fullyQualifiedName.root: value for value in (ordinary, target)})
+    transport.errors["/tables/name/my_service.my_db.my_schema.unavailable"] = APIError(
+        {"code": 503, "message": "temporarily unavailable"}
+    )
+    results = list(
+        get_lineage_by_query(
+            metadata=metadata,
+            service_names="my_service",
+            database_name="my_db",
+            schema_name="my_schema",
+            query=(
+                f"CREATE TABLE my_db.my_schema.output AS SELECT id FROM `my_db.my_schema.{reference}` "
+                "UNION ALL SELECT id FROM my_db.my_schema.ordinary"
+            ),
+            dialect=Dialect.BIGQUERY,
+        )
+    )
+    assert len(results) == 1
+    assert results[0].left is None
+    assert results[0].right.from_entity_fqn == ordinary.fullyQualifiedName.root
+    assert results[0].right.to_entity_fqn == target.fullyQualifiedName.root
+
+
+@pytest.mark.parametrize("reference", ["events_2026*", "unavailable"])
+def test_failed_reference_does_not_prevent_usage_batch_persistence(sdk, tmp_path, reference):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    family = bigquery_family()
+    transport.entities[family.fullyQualifiedName.root] = family
+    transport.errors["/tables/name/my_service.my_db.my_schema.unavailable"] = APIError(
+        {"code": 503, "message": "temporarily unavailable"}
+    )
+    directory = tmp_path / "usage"
+    stage = TableUsageStage(TableStageConfig(filename=str(directory)), metadata)
+    execution = ParsedData(
+        tables=["my_db.my_schema.events_20260101", f"my_db.my_schema.{reference}"],
+        databaseName="my_db",
+        databaseSchema="my_schema",
+        serviceName="my_service",
+        joins={},
+        date="1767398400000",
+        sql="SELECT 1",
+    )
+    following = execution.model_copy(update={"tables": ["my_db.my_schema.events_20260102"]})
+    outcomes = list(stage._run(QueryParserData(parsedData=[execution, following])))
+    assert all(outcome.left is None for outcome in outcomes)
+    records = [
+        json.loads(json.loads(line)) for line in (directory / "my_service_1767398400000").read_text().splitlines()
+    ]
+    saved = next(record for record in records if record.get("table") == "my_db.my_schema.events_yyyymmdd")
+    assert saved["count"] == 2
+    assert len(saved["sqlQueries"]) == 2
+
+
 @pytest.fixture
 def wildcard_lineage_catalog(sdk):
     metadata, transport = sdk
@@ -692,7 +774,7 @@ def test_hex_sql_cells_expand_complete_bigquery_wildcards(sdk, count):
 
 @pytest.mark.parametrize("count", [11, 100, 101])
 def test_hex_warehouse_queries_expand_or_report_incomplete(sdk, count, caplog):
-    caplog.set_level("DEBUG", logger="metadata.Ingestion")
+    caplog.set_level("DEBUG", logger="metadata.Utils")
     metadata, transport = sdk
     add_bigquery_service(transport)
     tables = [table(f"my_service.my_db.my_schema.events_{index}") for index in range(count)]

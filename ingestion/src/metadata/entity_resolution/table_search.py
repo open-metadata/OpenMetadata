@@ -88,7 +88,18 @@ def search_table_entities(
         service_names = [service_names]
 
     for service_name in service_names or [None]:
-        result = _search_service_tables(metadata, service_name, database, database_schema, table)
+        try:
+            result = _search_service_tables(metadata, service_name, database, database_schema, table)
+        except Exception:
+            logger.debug(
+                "Unable to resolve table [%s.%s.%s] in service [%s]",
+                database,
+                database_schema,
+                table,
+                service_name,
+                exc_info=True,
+            )
+            continue
         if result:
             return result
     return None
