@@ -51,13 +51,23 @@ test.describe('Customize UI Knowledge Graph tab — rdfEnabled mount race', () =
   }) => {
     test.slow();
 
-    // Hold the rdf config response until well after the customize editor
-    // mounts, reproducing the bug's losing-mount-race condition: the editor
-    // computes its default tabs while rdfEnabled is still false.
+    // Hold the rdf config response until the customize editor has mounted,
+    // reproducing the bug's losing-mount-race condition: the editor computes
+    // its default tabs while rdfEnabled is still false. The response is forced
+    // to rdfEnabled: true because CI servers run with RDF disabled, and a
+    // timer-based hold could release before the editor mounts on a slow run.
+    let releaseRdfConfig: () => void = () => undefined;
+    const rdfConfigReleased = new Promise<void>((resolve) => {
+      releaseRdfConfig = resolve;
+    });
     await page.route('**/api/v1/system/config/rdf', async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 4000));
+      await rdfConfigReleased;
+      const response = await route.fetch();
 
-      await route.continue();
+      await route.fulfill({
+        response,
+        json: { ...(await response.json()), rdfEnabled: true },
+      });
     });
 
     // A full navigation remounts AppRoot, which re-fires the (now-delayed)
@@ -91,11 +101,17 @@ test.describe('Customize UI Knowledge Graph tab — rdfEnabled mount race', () =
       .getByTestId('customize-tab-card')
       .getByTestId(`tab-${EntityTabs.KNOWLEDGE_GRAPH}`);
 
-    // The editor mounted before the 4s rdf response landed, so the tab must
-    // be absent at this point — the bug condition.
+    // The editor mounted before the rdf response landed, so the tab must be
+    // absent at this point — the bug condition.
     await expect(kgTab).toHaveCount(0);
 
-    // Once the delayed rdf response resolves, the reactive subscription
+    const rdfConfigResponse = page.waitForResponse(
+      '**/api/v1/system/config/rdf'
+    );
+    releaseRdfConfig();
+    await rdfConfigResponse;
+
+    // Once the held rdf response resolves, the reactive subscription
     // recomputes systemTabs and the Knowledge Graph tab appears in the same
     // session with no reload — the fix. (Without the fix it would stay
     // absent for the entire editor session.)
