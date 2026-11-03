@@ -109,6 +109,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.tasks.TaskTargetOperations;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -1317,30 +1318,17 @@ public class FeedRepository {
     }
 
     // Allow if user is an assignee of the task and if the assignee has permissions to update the
-    // entity. Accept either the specific permission OR EDIT_ALL (which encompasses all edit perms)
+    // entity. Accept either the operation the entity's own PATCH requires for the field OR EDIT_ALL
+    // (which encompasses all edit perms)
     if (assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))) {
-      ResourceContext resourceContext =
-          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
-      OperationContext editAllOpContext =
-          new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_ALL);
-      if (EntityUtil.isDescriptionTask(threadContext.getTaskWorkflow().getTaskType())) {
-        OperationContext specificOpContext =
-            new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_DESCRIPTION);
-        authorizer.authorizeRequests(
+      MetadataOperation taskOperation =
+          assigneeTaskOperation(threadContext.getTaskWorkflow().getTaskType());
+      if (taskOperation != null) {
+        authorizeAssigneeEdit(
+            authorizer,
             securityContext,
-            List.of(
-                new AuthRequest(specificOpContext, resourceContext),
-                new AuthRequest(editAllOpContext, resourceContext)),
-            AuthorizationLogic.ANY);
-      } else if (EntityUtil.isTagTask(threadContext.getTaskWorkflow().getTaskType())) {
-        OperationContext specificOpContext =
-            new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_TAGS);
-        authorizer.authorizeRequests(
-            securityContext,
-            List.of(
-                new AuthRequest(specificOpContext, resourceContext),
-                new AuthRequest(editAllOpContext, resourceContext)),
-            AuthorizationLogic.ANY);
+            aboutRef,
+            TaskTargetOperations.forTarget(aboutRef, taskOperation, userName));
       }
       return;
     }
@@ -1361,6 +1349,33 @@ public class FeedRepository {
     throw new AuthorizationException(
         CatalogExceptionMessage.taskOperationNotAllowed(
             userName, closeTask ? "closeTask" : "resolveTask"));
+  }
+
+  private static MetadataOperation assigneeTaskOperation(TaskType taskType) {
+    MetadataOperation operation = null;
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      operation = MetadataOperation.EDIT_DESCRIPTION;
+    } else if (EntityUtil.isTagTask(taskType)) {
+      operation = MetadataOperation.EDIT_TAGS;
+    }
+    return operation;
+  }
+
+  private static void authorizeAssigneeEdit(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      EntityReference aboutRef,
+      MetadataOperation operation) {
+    ResourceContext<?> resourceContext =
+        new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+    authorizer.authorizeRequests(
+        securityContext,
+        List.of(
+            new AuthRequest(new OperationContext(aboutRef.getType(), operation), resourceContext),
+            new AuthRequest(
+                new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_ALL),
+                resourceContext)),
+        AuthorizationLogic.ANY);
   }
 
   private void validateAnnouncement(Thread thread) {
