@@ -37,13 +37,14 @@ import { Fragment, MutableRefObject, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuid } from 'uuid';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
   ConceptMappingType,
   CreateOntologyChangeSet,
   OntologyConceptType,
 } from '../../../../generated/api/data/createOntologyChangeSet';
-import { EntityType } from '../../../../enums/entity.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { User } from '../../../../generated/entity/teams/user';
 import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
 import {
   useOntologyDirtyForm,
@@ -62,13 +63,13 @@ import {
   NewClassDraft,
   OwnPropertyDraft,
 } from '../../../../utils/governance/ontology/OntologyNativeChangeSet.utils';
-import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   OntologyStudioModel,
   StudioDatatype,
   STUDIO_DATATYPES,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { EntityReferenceOption } from '../../../Glossary/AddGlossary/AddGlossary.interface';
 import {
   toEntityReferenceOption,
@@ -76,8 +77,8 @@ import {
 } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import {
-  classIdentityIssues,
   ClassIdentityIssue,
+  classIdentityIssues,
   classIri,
   classLocalName,
   distinctChipValues,
@@ -142,6 +143,44 @@ interface Props {
   onClose: () => void;
   onLockChange?: (locked: boolean) => void;
 }
+const emptySelections = (
+  currentUser: User | undefined,
+  youLabel: string
+): SelectionValues => ({
+  parents: [],
+  equivalent: [],
+  disjoint: [],
+  owners: currentUser
+    ? [
+        {
+          ...toEntityReferenceOption(
+            getEntityReferenceFromEntity(currentUser, EntityType.USER)
+          ),
+          label:
+            (currentUser.displayName ?? currentUser.name) +
+            ' (' +
+            youLabel +
+            ')',
+        },
+      ]
+    : [],
+});
+const restoreCarriedDraft = (
+  carried: CarriedConceptDraft | undefined
+): Omit<CarriedConceptDraft, 'conceptIris'> => ({
+  label: carried?.label ?? '',
+  manualName: carried?.manualName,
+  description: carried?.description ?? '',
+  conceptType: carried?.conceptType ?? OntologyConceptType.OwlClass,
+  customIri: carried?.customIri ?? '',
+  source: carried?.source ?? '',
+  abstract: carried?.abstract ?? false,
+  advancedOpen: carried?.advancedOpen ?? false,
+  synonyms: carried?.synonyms ?? [],
+  mappings: (carried?.mappings ?? []).filter(
+    (mapping) => !carried?.conceptIris.includes(mapping.conceptIri)
+  ),
+});
 const NAME_ISSUES: ClassIdentityIssue[] = ['name-invalid', 'name-taken'];
 const ISSUE_MESSAGES: Record<ClassIdentityIssue, string> = {
   'name-required': 'message.ontology-concept-name-required',
@@ -186,52 +225,29 @@ const OntologyNewClassPanel = ({
   }, []);
   const currentUser = useApplicationStore((state) => state.currentUser);
   const ownerPicker = useUserTeamOptions();
-  const defaultSelections = (): SelectionValues => ({
-    parents: [],
-    equivalent: [],
-    disjoint: [],
-    owners: currentUser
-      ? [
-          {
-            ...toEntityReferenceOption(
-              getEntityReferenceFromEntity(currentUser, EntityType.USER)
-            ),
-            label:
-              (currentUser.displayName ?? currentUser.name) +
-              ' (' +
-              t('label.you') +
-              ')',
-          },
-        ]
-      : [],
-  });
+  const defaultSelections = (): SelectionValues =>
+    emptySelections(currentUser, t('label.you'));
   const form = useForm<SelectionValues>({
     defaultValues: defaultSelections(),
   });
   const selections = form.watch();
-  const carried = useRef(ontologyField?.draft?.current).current;
-  const [label, setLabel] = useState(carried?.label ?? '');
+  const start = useRef(
+    restoreCarriedDraft(ontologyField?.draft?.current)
+  ).current;
+  const [label, setLabel] = useState(start.label);
   const [manualName, setManualName] = useState<string | undefined>(
-    carried?.manualName
+    start.manualName
   );
   const localName = manualName ?? classLocalName(label);
-  const [description, setDescription] = useState(carried?.description ?? '');
-  const [conceptType, setConceptType] = useState(
-    carried?.conceptType ?? OntologyConceptType.OwlClass
-  );
-  const [customIri, setCustomIri] = useState(carried?.customIri ?? '');
-  const [source, setSource] = useState(carried?.source ?? '');
-  const [abstract, setAbstract] = useState(carried?.abstract ?? false);
-  const [advancedOpen, setAdvancedOpen] = useState(
-    carried?.advancedOpen ?? false
-  );
-  const [synonyms, setSynonyms] = useState<string[]>(carried?.synonyms ?? []);
+  const [description, setDescription] = useState(start.description);
+  const [conceptType, setConceptType] = useState(start.conceptType);
+  const [customIri, setCustomIri] = useState(start.customIri);
+  const [source, setSource] = useState(start.source);
+  const [abstract, setAbstract] = useState(start.abstract);
+  const [advancedOpen, setAdvancedOpen] = useState(start.advancedOpen);
+  const [synonyms, setSynonyms] = useState<string[]>(start.synonyms);
   const [synonym, setSynonym] = useState('');
-  const [mappings, setMappings] = useState<MappingInput[]>(() =>
-    (carried?.mappings ?? []).filter(
-      (mapping) => !carried?.conceptIris.includes(mapping.conceptIri)
-    )
-  );
+  const [mappings, setMappings] = useState<MappingInput[]>(start.mappings);
   const [mappingType, setMappingType] = useState(ConceptMappingType.ExactMatch);
   const [mappingIri, setMappingIri] = useState('');
   const [properties, setProperties] = useState<OwnPropertyDraft[]>([]);
@@ -345,6 +361,43 @@ const OntologyNewClassPanel = ({
   const valid = blockedReason === undefined;
   const effectiveIri = classIri(ontology.namespace ?? '', localName, customIri);
 
+  const reconcileRef = useRef<() => Promise<void>>(async () => undefined);
+  const dirty = [
+    label,
+    manualName,
+    description,
+    customIri,
+    source,
+    abstract,
+    synonyms.length,
+    synonym,
+    mappings.length,
+    mappingIri,
+    properties.length,
+    propertyName,
+    range,
+    identifier,
+    enumInput,
+    enumValues.length,
+    datatype !== 'string',
+    conceptType !== OntologyConceptType.OwlClass,
+    form.formState.isDirty,
+  ].some(Boolean);
+  useEffect(() => {
+    if (dirty) {
+      setSaved(false);
+    }
+  }, [dirty]);
+  const markSaved = useOntologyDirtyForm(dirty);
+  const apply = useOntologyChangeSetApply({
+    canApply: permitted,
+    rebuildAfterFailure: true,
+    onApplied: () => {
+      markSaved();
+      void reconcileRef.current();
+    },
+  });
+
   const resetForAnother = () => {
     setLabel('');
     setManualName(undefined);
@@ -422,41 +475,7 @@ const OntologyNewClassPanel = ({
       setReconciling(false);
     }
   };
-  const dirty = [
-    label,
-    manualName,
-    description,
-    customIri,
-    source,
-    abstract,
-    synonyms.length,
-    synonym,
-    mappings.length,
-    mappingIri,
-    properties.length,
-    propertyName,
-    range,
-    identifier,
-    enumInput,
-    enumValues.length,
-    datatype !== 'string',
-    conceptType !== OntologyConceptType.OwlClass,
-    form.formState.isDirty,
-  ].some(Boolean);
-  useEffect(() => {
-    if (dirty) {
-      setSaved(false);
-    }
-  }, [dirty]);
-  const markSaved = useOntologyDirtyForm(dirty);
-  const apply = useOntologyChangeSetApply({
-    canApply: permitted,
-    rebuildAfterFailure: true,
-    onApplied: () => {
-      markSaved();
-      void reconcile();
-    },
-  });
+  reconcileRef.current = reconcile;
   const leaveLocked = preparing || reconciling || apply.configurationLocked;
   useOntologyDraftLock(leaveLocked);
   const locked = leaveLocked || apply.status.kind === 'applied';
@@ -473,6 +492,8 @@ const OntologyNewClassPanel = ({
   }, [leaveLocked, onLockChange]);
   const removeProperty = (property: OwnPropertyDraft) =>
     setProperties((previous) => previous.filter((p) => p !== property));
+  const removeMapping = (mapping: MappingInput) =>
+    setMappings((previous) => previous.filter((m) => m !== mapping));
   const propertyInput = {
     name: propertyName,
     datatype,
@@ -706,9 +727,7 @@ const OntologyNewClassPanel = ({
             isDisabled={locked}
             size="xs"
             tooltip={t('label.remove-entity', { entity: mapping.conceptIri })}
-            onClick={() =>
-              setMappings((previous) => previous.filter((m) => m !== mapping))
-            }
+            onClick={() => removeMapping(mapping)}
           />
         </Box>
       ))}

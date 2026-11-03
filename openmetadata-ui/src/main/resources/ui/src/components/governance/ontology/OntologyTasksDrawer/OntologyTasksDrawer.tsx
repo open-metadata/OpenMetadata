@@ -33,10 +33,12 @@ import {
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
 import { Task, TaskType } from '../../../../generated/entity/tasks/task';
+import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   activateOntologyRelease,
+  getOntology,
   getOntologyRelease,
   getOntologyReleaseEvents,
   getOntologyReleaseReview,
@@ -61,6 +63,8 @@ import OntologyTaskDetail from './OntologyTaskDetail';
 import OntologyTaskThread from './OntologyTaskThread';
 
 type Props = {
+  /** The ontology in view; its latest decided review is announced to the requester. */
+  readonly ontologyId?: string;
   readonly taskId?: string;
   readonly onTaskChange: (taskId?: string) => void;
   readonly children: (parts: {
@@ -89,7 +93,53 @@ const pushCursor = (cursors: (string | undefined)[], after?: string) => {
   return [first, ...rest.slice(1 - CURSOR_HISTORY_LIMIT)];
 };
 
-const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
+const DECIDED_STAGES: string[] = [Stage.Approved, Stage.ChangesRequested];
+
+/**
+ * The latest decided review of the ontology in view, when the caller asked for
+ * it, so the author sees the outcome without opening the Inbox.
+ */
+const useDecidedReview = ({
+  account,
+  ontologyId,
+  enabled,
+  queuesKey,
+}: {
+  account: string;
+  ontologyId?: string;
+  enabled: boolean;
+  queuesKey: string[];
+}) => {
+  const query = useQuery({
+    queryKey: [...queuesKey, account, 'decided', ontologyId],
+    gcTime: 0,
+    retry: false,
+    enabled: enabled && Boolean(ontologyId),
+    queryFn: async ({ signal }) => {
+      const ontology = await getOntology(
+        ontologyId ?? '',
+        'publicationStatus',
+        signal
+      );
+      const latest = ontology.publicationStatus?.latest;
+      if (!latest || !DECIDED_STAGES.includes(latest.stage)) {
+        return null;
+      }
+      const review = await getOntologyReleaseReview(latest.releaseId, signal);
+
+      return review.requester?.id === account ? review : null;
+    },
+  });
+
+  return query.data ?? undefined;
+};
+
+const OntologyTasksDrawer = ({
+  ontologyId,
+  taskId,
+  onTaskChange,
+  children,
+}: Props) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queuesKey = ['ontology-review-queues'];
@@ -178,7 +228,16 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
         signal
       ),
   });
-  const bannerReview = pending.data?.data[0] ?? created.data?.data[0];
+  const openBannerReview = pending.data?.data[0] ?? created.data?.data[0];
+  const decided = useDecidedReview({
+    account,
+    ontologyId,
+    enabled: [pending.isSuccess, created.isSuccess, !openBannerReview].every(
+      Boolean
+    ),
+    queuesKey,
+  });
+  const bannerReview = openBannerReview ?? decided;
   const bannerRelease = useQuery({
     queryKey: ['ontology-review-banner', account, bannerReview?.release.id],
     gcTime: 0,

@@ -181,6 +181,11 @@ const coherentReview = (
   release: OntologyRelease,
   task: OntologyReleaseReview | null
 ) => {
+  // A withdrawn request returns the release to Draft but leaves its task id on
+  // the release, and a closed task has no review to read.
+  if (release.entityStatus === EntityStatus.Draft) {
+    return !task;
+  }
   if (!release.reviewTask) {
     return (
       !task &&
@@ -189,11 +194,7 @@ const coherentReview = (
       )
     );
   }
-  if (
-    !task ||
-    !matchesPublicationReview(task, release) ||
-    release.entityStatus === EntityStatus.Draft
-  ) {
+  if (!task || !matchesPublicationReview(task, release)) {
     return false;
   }
 

@@ -15,7 +15,10 @@ import {
   EntityStatus,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
+import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
+import type { PublicationActionInput } from './OntologyReleasePanel.types';
 import {
+  getPublicationActions,
   isSameWorkingState,
   nextSemanticVersion,
   visibleHistoryReleases,
@@ -84,5 +87,132 @@ describe('visible release history', () => {
     expect(
       visibleHistoryReleases(releases, 'approved').map(({ id }) => id)
     ).toEqual(['approved']);
+  });
+});
+
+describe('getPublicationActions', () => {
+  const base: PublicationActionInput = {
+    stage: Stage.Draft,
+    canEdit: true,
+    hasReviewers: true,
+    hasIndependentReviewer: true,
+    hasChanges: true,
+    changedSinceRejection: true,
+    validationErrors: [],
+    isReady: true,
+    isRequester: true,
+    version: '1.2.0',
+  };
+  const row = (override: Partial<PublicationActionInput>) =>
+    getPublicationActions({ ...base, ...override });
+
+  it('no reviewers, changes, valid: Publish enabled, Save as release draft enabled', () => {
+    expect(row({ hasReviewers: false })).toEqual({
+      state: 'noReviewers',
+      primary: { kind: 'publish', isDisabled: false },
+      secondary: { kind: 'saveDraft', isDisabled: false },
+      text: 'message.ontology-publication-no-reviewers',
+      errors: [],
+    });
+  });
+
+  it('no reviewers with validation errors: Publish disabled and the errors returned', () => {
+    expect(row({ hasReviewers: false, validationErrors: ['A', 'B'] })).toEqual({
+      state: 'noReviewersInvalid',
+      primary: { kind: 'publish', isDisabled: true },
+      secondary: { kind: 'saveDraft', isDisabled: false },
+      text: 'message.ontology-publication-fix-to-publish',
+      errors: ['A', 'B'],
+    });
+  });
+
+  it('reviewers set: Request review', () => {
+    expect(row({})).toEqual({
+      state: 'reviewersSet',
+      primary: { kind: 'requestReview', isDisabled: false },
+      secondary: { kind: 'saveDraft', isDisabled: false },
+      text: 'message.ontology-publication-draft-stays-editable',
+      errors: [],
+    });
+  });
+
+  it('only reviewer is the caller: Request review disabled', () => {
+    expect(row({ hasIndependentReviewer: false })).toEqual({
+      state: 'soloReviewer',
+      primary: { kind: 'requestReview', isDisabled: true },
+      secondary: { kind: 'saveDraft', isDisabled: false },
+      text: 'message.ontology-publication-solo-reviewer',
+      errors: [],
+    });
+  });
+
+  it('review open: Publish disabled and Withdraw only for the requester', () => {
+    expect(row({ stage: Stage.InReview })).toEqual({
+      state: 'inReview',
+      primary: { kind: 'publish', isDisabled: true },
+      secondary: { kind: 'withdraw', isDisabled: false },
+      text: 'message.ontology-publication-waiting-for',
+      errors: [],
+    });
+    expect(row({ stage: Stage.InReview, isRequester: false }).secondary).toBe(
+      null
+    );
+  });
+
+  it('approved: Publish for an editor, nothing for anyone else', () => {
+    expect(row({ stage: Stage.Approved })).toEqual({
+      state: 'approvedCanPublish',
+      primary: { kind: 'publish', isDisabled: false },
+      secondary: null,
+      text: 'message.ontology-publication-approved-by',
+      errors: [],
+    });
+    expect(row({ stage: Stage.Approved, canEdit: false })).toEqual({
+      state: 'approvedCannotPublish',
+      primary: null,
+      secondary: null,
+      text: 'message.ontology-publication-only-author-publishes',
+      errors: [],
+    });
+  });
+
+  it('rejected: Request review again stays disabled until a change exists', () => {
+    expect(
+      row({ stage: Stage.ChangesRequested, changedSinceRejection: false })
+    ).toEqual({
+      state: 'rejected',
+      primary: { kind: 'requestReviewAgain', isDisabled: true },
+      secondary: { kind: 'saveDraft', isDisabled: true },
+      text: 'message.ontology-publication-edit-then-request-again',
+      errors: [],
+    });
+    expect(row({ stage: Stage.ChangesRequested }).primary?.isDisabled).toBe(
+      false
+    );
+  });
+
+  it('a caller who cannot edit gets no action', () => {
+    expect(row({ canEdit: false })).toEqual({
+      state: 'cannotEdit',
+      primary: null,
+      secondary: null,
+      text: 'message.ontology-publication-needs-author-role',
+      errors: [],
+    });
+  });
+
+  it('no unpublished changes: both actions disabled', () => {
+    expect(row({ hasChanges: false, hasReviewers: false })).toEqual({
+      state: 'noChanges',
+      primary: { kind: 'publish', isDisabled: true },
+      secondary: { kind: 'saveDraft', isDisabled: true },
+      text: 'message.ontology-publication-no-changes',
+      errors: [],
+    });
+  });
+
+  it('a write that is not ready disables the enabled actions', () => {
+    expect(row({ isReady: false }).primary?.isDisabled).toBe(true);
+    expect(row({ isReady: false }).secondary?.isDisabled).toBe(true);
   });
 });

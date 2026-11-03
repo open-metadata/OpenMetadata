@@ -16,8 +16,12 @@ import {
   Box,
   Button,
   Card,
+  Dialog,
+  Modal,
+  ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -35,24 +39,108 @@ interface OntologyReleaseDetailsProps {
   isActive: boolean;
   showExport?: boolean;
   canPublish: boolean;
+  /** The release in force; a release older than it is a rollback target. */
+  activeRelease?: OntologyRelease;
+  ontologyName: string;
   onActivate: () => Promise<void>;
 }
 
-const OntologyReleaseDetails = ({
+const versionLabel = (release: OntologyRelease) =>
+  release.semanticVersion ? 'v' + release.semanticVersion : release.name;
+
+interface ActivationActionsProps {
+  release: OntologyRelease;
+  /** Set only when the release is older than the one in force. */
+  activeRelease?: OntologyRelease;
+  canActivate: boolean;
+  ontologyName: string;
+  onActivate: () => Promise<void>;
+}
+
+const ActivationActions = ({
+  release,
+  activeRelease,
+  canActivate,
+  ontologyName,
+  onActivate,
+}: ActivationActionsProps) => {
+  const { t } = useTranslation();
+  const [isConfirming, setIsConfirming] = useState(false);
+  if (!activeRelease) {
+    return (
+      <Button color="primary" isDisabled={!canActivate} onPress={onActivate}>
+        {t('label.activate-release')}
+      </Button>
+    );
+  }
+
+  return (
+    <>
+      <Button
+        color="primary"
+        data-testid="ontology-rollback-release"
+        isDisabled={!canActivate}
+        onPress={() => setIsConfirming(true)}>
+        {t('label.roll-back-to-version', { version: versionLabel(release) })}
+      </Button>
+      <ModalOverlay
+        isDismissable
+        isOpen={isConfirming}
+        onOpenChange={setIsConfirming}>
+        <Modal>
+          <Dialog
+            dividers="scroll"
+            title={t('message.ontology-rollback-confirm-title', {
+              version: versionLabel(release),
+            })}
+            onClose={() => setIsConfirming(false)}>
+            <Dialog.Content>
+              <Typography data-testid="ontology-rollback-confirmation">
+                {t('message.ontology-rollback-confirm', {
+                  ontology: ontologyName,
+                  current: versionLabel(activeRelease),
+                  target: versionLabel(release),
+                })}
+              </Typography>
+            </Dialog.Content>
+            <Dialog.Footer>
+              <Button color="secondary" onPress={() => setIsConfirming(false)}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="ontology-rollback-confirm"
+                onPress={() => {
+                  setIsConfirming(false);
+                  void onActivate();
+                }}>
+                {t('label.roll-back')}
+              </Button>
+            </Dialog.Footer>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
+    </>
+  );
+};
+
+const ReleaseActions = ({
   release,
   isActive,
-  showExport = true,
+  showExport,
   canPublish,
+  activeRelease,
+  ontologyName,
   onActivate,
-}: OntologyReleaseDetailsProps) => {
+}: OntologyReleaseDetailsProps & { showExport: boolean }) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const isApproved = release.entityStatus === EntityStatus.Approved;
-  const statusLabel = t(
-    `label.${release.entityStatus.toLowerCase().replaceAll(' ', '-')}`
-  );
+  const isRollback =
+    !isActive &&
+    activeRelease !== undefined &&
+    release.releaseRevision < activeRelease.releaseRevision;
 
-  const actions = (
+  return (
     <Box gap={3} wrap="wrap">
       {showExport && <OntologyReleaseExport releaseId={release.id} />}
       {release.reviewTask && (
@@ -60,13 +148,44 @@ const OntologyReleaseDetails = ({
           {t('label.approval')}
         </Link>
       )}
-      <Button
-        color="primary"
-        isDisabled={!canPublish || isActive || !isApproved}
-        onPress={onActivate}>
-        {t('label.activate-release')}
-      </Button>
+      <ActivationActions
+        activeRelease={isRollback ? activeRelease : undefined}
+        canActivate={canPublish && isApproved && !isActive}
+        ontologyName={ontologyName}
+        release={release}
+        onActivate={onActivate}
+      />
     </Box>
+  );
+};
+
+const OntologyReleaseDetails = ({
+  release,
+  isActive,
+  showExport = true,
+  canPublish,
+  activeRelease,
+  ontologyName,
+  onActivate,
+}: OntologyReleaseDetailsProps) => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const statusLabel = t(
+    `label.${release.entityStatus.toLowerCase().replaceAll(' ', '-')}`
+  );
+
+  const heading = getEntityName(release);
+
+  const actions = (
+    <ReleaseActions
+      activeRelease={activeRelease}
+      canPublish={canPublish}
+      isActive={isActive}
+      ontologyName={ontologyName}
+      release={release}
+      showExport={showExport}
+      onActivate={onActivate}
+    />
   );
 
   const consistencyAlert = (
@@ -91,7 +210,7 @@ const OntologyReleaseDetails = ({
           <Box direction="col" gap={4}>
             <Box align="center" gap={2} wrap="wrap">
               <Typography as="h3" size="text-lg" weight="semibold">
-                {getEntityName(release)}
+                {heading}
               </Typography>
               <Badge color="gray" size="sm" type="pill-color">
                 {statusLabel}
@@ -118,7 +237,7 @@ const OntologyReleaseDetails = ({
   return (
     <Box data-testid="ontology-release-definition" direction="col" gap={3}>
       <Typography as="h3" size="text-md" weight="semibold">
-        {getEntityName(release)}
+        {heading}
       </Typography>
       <Typography>{statusLabel}</Typography>
       {isActive && (

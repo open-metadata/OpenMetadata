@@ -610,11 +610,7 @@ describe('Ontology Studio mode-switch integration', () => {
 
     expect(await screen.findByTestId('all-ontologies-graph')).toBeVisible();
 
-    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
-
-    expect(
-      screen.getByTestId('ontology-publication-select-new-native')
-    ).toBeVisible();
+    expect(screen.getByTestId('ontology-publication-trigger')).toBeDisabled();
   });
 
   it('does not open the New class panel later for an ontology the user moved away from', async () => {

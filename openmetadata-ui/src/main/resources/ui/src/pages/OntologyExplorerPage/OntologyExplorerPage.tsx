@@ -17,6 +17,7 @@ import {
   Box,
   Button,
   Select,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -774,6 +775,78 @@ function aggregateEnabled(
   );
 }
 
+function useLoadedOntology(ontologyId: string | null) {
+  const [loadedOntology, setLoadedOntology] = useState<Ontology>();
+  const [ontologyLoadFailed, setOntologyLoadFailed] = useState(false);
+  const [ontologyNotFound, setOntologyNotFound] = useState(false);
+  const [ontologyLoadAttempt, setOntologyLoadAttempt] = useState(0);
+  useEffect(() => {
+    if (!ontologyId) {
+      return;
+    }
+    if (loadedOntology?.id === ontologyId) {
+      return;
+    }
+    const controller = new AbortController();
+    setOntologyLoadFailed(false);
+    setOntologyNotFound(false);
+    getOntology(
+      ontologyId,
+      'owners,reviewers,publicationStatus',
+      controller.signal
+    )
+      .then((ontology) => {
+        if (!controller.signal.aborted) {
+          setLoadedOntology(ontology);
+        }
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setLoadedOntology(undefined);
+        if (isAxiosError(error) && error.response?.status === 404) {
+          setOntologyNotFound(true);
+
+          return;
+        }
+        showErrorToast(error);
+        setOntologyLoadFailed(true);
+      });
+
+    return () => controller.abort();
+  }, [loadedOntology?.id, ontologyId, ontologyLoadAttempt]);
+  const reloadOntology = () => setOntologyLoadAttempt((attempt) => attempt + 1);
+
+  return {
+    loadedOntology,
+    setLoadedOntology,
+    ontologyLoadFailed,
+    ontologyNotFound,
+    reloadOntology,
+  };
+}
+
+const idOrEmpty = (entity?: { id: string }) => entity?.id ?? '';
+
+function canEditAnyNativeOntology(
+  isAdminUser: boolean | undefined,
+  permissions: ReturnType<typeof usePermissionProvider>['permissions']
+): boolean {
+  return (
+    Boolean(isAdminUser) ||
+    checkPermission(Operation.EditAll, ResourceEntity.ONTOLOGY, permissions)
+  );
+}
+
+function isNativePermissionPending(
+  mode: StudioMode,
+  ontologyPending: boolean,
+  conceptPending: boolean
+): boolean {
+  return ontologyPending || (mode === 'edit' && conceptPending);
+}
+
 const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
 
 const OntologyExplorerContent: React.FC = () => {
@@ -791,7 +864,6 @@ const OntologyExplorerContent: React.FC = () => {
   } = useOntologyAiCapability();
   const initialDraftId = useLinkedDraftId();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [loadedOntology, setLoadedOntology] = useState<Ontology>();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEmptyImportOpen, setIsEmptyImportOpen] = useState(false);
   const [pendingFirstClass, setPendingFirstClass] = useState<{
@@ -883,15 +955,17 @@ const OntologyExplorerContent: React.FC = () => {
     },
     [setSearchParams]
   );
-  const [ontologyLoadFailed, setOntologyLoadFailed] = useState(false);
-  const [ontologyNotFound, setOntologyNotFound] = useState(false);
-  const [ontologyLoadAttempt, setOntologyLoadAttempt] = useState(0);
+  const {
+    loadedOntology,
+    setLoadedOntology,
+    ontologyLoadFailed,
+    ontologyNotFound,
+    reloadOntology,
+  } = useLoadedOntology(ontologyId);
   const selectedOntology = getSelectedOntology(ontologyId, loadedOntology);
   const canCreateOntology = canCreateNativeOntology(isAdminUser, permissions);
-  const canEditAnyOntology =
-    Boolean(isAdminUser) ||
-    checkPermission(Operation.EditAll, ResourceEntity.ONTOLOGY, permissions);
-  const selectedOntologyId = selectedOntology?.id ?? '';
+  const canEditAnyOntology = canEditAnyNativeOntology(isAdminUser, permissions);
+  const selectedOntologyId = idOrEmpty(selectedOntology);
   const refreshNativeWorkingDiff = useCallback(() => {
     void queryClient.invalidateQueries({
       queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
@@ -938,43 +1012,6 @@ const OntologyExplorerContent: React.FC = () => {
       !selectedReviewTaskId && key === publicationIdentity ? key : undefined
     );
   }, [publicationIdentity, selectedReviewTaskId]);
-
-  useEffect(() => {
-    if (!ontologyId) {
-      return;
-    }
-    if (loadedOntology?.id === ontologyId) {
-      return;
-    }
-    const controller = new AbortController();
-    setOntologyLoadFailed(false);
-    setOntologyNotFound(false);
-    getOntology(
-      ontologyId,
-      'owners,reviewers,publicationStatus',
-      controller.signal
-    )
-      .then((ontology) => {
-        if (!controller.signal.aborted) {
-          setLoadedOntology(ontology);
-        }
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setLoadedOntology(undefined);
-        if (isAxiosError(error) && error.response?.status === 404) {
-          setOntologyNotFound(true);
-
-          return;
-        }
-        showErrorToast(error);
-        setOntologyLoadFailed(true);
-      });
-
-    return () => controller.abort();
-  }, [loadedOntology?.id, ontologyId, ontologyLoadAttempt]);
 
   const [settingsRequest, setSettingsRequest] = useState({
     ontologyId: '',
@@ -1073,7 +1110,7 @@ const OntologyExplorerContent: React.FC = () => {
     }
     setIsPublicationOpen(false);
     setLoadedOntology(undefined);
-    setOntologyLoadAttempt((attempt) => attempt + 1);
+    reloadOntology();
     setSearchParams((current) => {
       let next = new URLSearchParams(current);
       if ((ontology?.id ?? null) !== current.get('ontology')) {
@@ -1177,9 +1214,11 @@ const OntologyExplorerContent: React.FC = () => {
     { enabled: isNativeOntology && Boolean(selectedConceptId) }
   );
   // Only Edit depends on the concept read; View must not unmount on each selection.
-  const isNativePermissionLoading =
-    isNativeOntologyPermissionLoading ||
-    (mode === 'edit' && isConceptPermissionLoading);
+  const isNativePermissionLoading = isNativePermissionPending(
+    mode,
+    isNativeOntologyPermissionLoading,
+    isConceptPermissionLoading
+  );
   const [editConceptRequest, setEditConceptRequest] = useState<string>();
   const viewSurface = resolveViewSurface(urlState.view, isNativeOntology);
   const editSurface = resolveEditSurface(urlState.view, isNativeOntology);
@@ -1738,18 +1777,22 @@ const OntologyExplorerContent: React.FC = () => {
 
     return (
       <>
-        <Button
-          color={isAiMode ? 'secondary-brand' : 'primary'}
-          data-testid="ontology-publication-trigger"
-          iconLeading={GitBranch01}
-          isDisabled={isAllOntologies && studioScopes.isOntologyError}
-          size={headerActionSize}
-          onPress={() => {
-            setPublicationTab('changes');
-            setIsPublicationOpen(true);
-          }}>
-          {renderPublicationLabel()}
-        </Button>
+        <Tooltip
+          isDisabled={!isAllOntologies}
+          title={t('message.ontology-choose-ontology-to-publish')}>
+          <Button
+            color={isAiMode ? 'secondary-brand' : 'primary'}
+            data-testid="ontology-publication-trigger"
+            iconLeading={GitBranch01}
+            isDisabled={isAllOntologies}
+            size={headerActionSize}
+            onPress={() => {
+              setPublicationTab('changes');
+              setIsPublicationOpen(true);
+            }}>
+            {renderPublicationLabel()}
+          </Button>
+        </Tooltip>
         {isolatedCount > 0 && (
           <BadgeWithDot color="warning" size="sm">
             {isolatedCount} {t('label.isolated')}
@@ -2291,7 +2334,7 @@ const OntologyExplorerContent: React.FC = () => {
             {
               key: 'reload',
               label: t('label.reload'),
-              onPress: () => setOntologyLoadAttempt((attempt) => attempt + 1),
+              onPress: () => reloadOntology(),
             },
             {
               key: 'all-ontologies',
@@ -2409,20 +2452,8 @@ const OntologyExplorerContent: React.FC = () => {
         />
       );
     }
-    if (!isAllOntologies) {
-      return null;
-    }
 
-    return (
-      <OntologyPublicationModal
-        canEdit={false}
-        initialTab={publicationTab}
-        key={String(userId)}
-        ontologies={availableOntologies}
-        onClose={() => setIsPublicationOpen(false)}
-        onOpenTask={selectReviewTask}
-      />
-    );
+    return null;
   }
 
   const renderLibrary = () => {
@@ -2526,6 +2557,7 @@ const OntologyExplorerContent: React.FC = () => {
         data-testid="ontology-studio-shell"
         style={ONTOLOGY_STUDIO_STYLE}>
         <OntologyTasksDrawer
+          ontologyId={selectedOntology?.id}
           taskId={selectedReviewTaskId}
           onTaskChange={selectReviewTask}>
           {({ tasksAction, banner }) => (

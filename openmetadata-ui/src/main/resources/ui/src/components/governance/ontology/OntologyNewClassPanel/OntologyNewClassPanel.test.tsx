@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { toastQueue } from '@openmetadata/ui-core-components';
 import {
   act,
   fireEvent,
+  render as renderNode,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
-import { toastQueue } from '@openmetadata/ui-core-components';
-import { render as renderNode } from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useState } from 'react';
 import { Link, MemoryRouter } from 'react-router-dom';
@@ -33,8 +33,8 @@ import {
   useEnUsTranslations,
   useKeyEchoTranslations,
 } from '../../../../test/unit/enUsTranslation';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyNewClassPanel from './OntologyNewClassPanel';
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
@@ -980,9 +980,10 @@ describe('one drawer for every entry point', () => {
       fireEvent.click(screen.getByTestId('new-class-create'));
     });
     await waitFor(() => expect(reconcile).toHaveBeenCalled());
-    const { concept } = post.mock.calls.find(
+    const changeSetCall = post.mock.calls.find(
       ([url]) => url === '/ontologyChangeSets'
-    )?.[1].operations[0];
+    );
+    const { concept } = changeSetCall?.[1].operations[0] ?? {};
 
     expect(concept).toMatchObject({
       name: 'Remittance',

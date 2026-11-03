@@ -35,21 +35,59 @@ type Props = {
   onOpenTask: (taskId: string) => void;
 };
 
-const OntologyReviewBanner = ({
+const DecisionBanner = ({
+  review,
+  release,
+  onOpenTask,
+}: Pick<Props, 'review' | 'release' | 'onOpenTask'>) => {
+  const { t } = useTranslation();
+  const decision = review.latestDecision;
+  const approved = review.status === EntityStatus.Approved;
+  const version = release.semanticVersion
+    ? 'v' + release.semanticVersion
+    : release.name;
+
+  return (
+    <Alert
+      data-testid="ontology-review-decision-banner"
+      title={t(
+        approved
+          ? 'message.ontology-review-approved-banner'
+          : 'message.ontology-review-rejected-banner',
+        {
+          reviewer: getEntityName(decision?.user),
+          version,
+          reason: decision?.reason ?? '',
+        }
+      )}
+      variant={approved ? 'success' : 'error'}>
+      <Box align="center" gap={3} justify="between" wrap="wrap">
+        <Typography>
+          {getEntityName(review.ontology)} · {review.taskId ?? review.task.id}
+        </Typography>
+        <Button
+          color="secondary"
+          size="sm"
+          onPress={() => onOpenTask(review.task.id)}>
+          {t('label.view-request')}
+        </Button>
+      </Box>
+    </Alert>
+  );
+};
+
+const isDecided = (review: Props['review']) =>
+  Boolean(review.latestDecision) &&
+  (review.status === EntityStatus.Approved ||
+    review.status === EntityStatus.Rejected);
+
+const PendingBanner = ({
   review,
   release,
   viewerName,
-  viewerId,
   onOpenTask,
-}: Props) => {
+}: Pick<Props, 'review' | 'release' | 'viewerName' | 'onOpenTask'>) => {
   const { t } = useTranslation();
-  const isRequester = review.requester?.id === viewerId;
-  if (
-    review.status !== EntityStatus.InReview ||
-    (!review.callerCanVote && !isRequester)
-  ) {
-    return null;
-  }
   const pending = review.assignees
     .filter((entry) => entry.status === AssigneeStatus.Pending)
     .map((entry) => getEntityName(entry.assignee))
@@ -81,6 +119,40 @@ const OntologyReviewBanner = ({
         </Button>
       </Box>
     </Alert>
+  );
+};
+
+const OntologyReviewBanner = ({
+  review,
+  release,
+  viewerName,
+  viewerId,
+  onOpenTask,
+}: Props) => {
+  const isRequester = review.requester?.id === viewerId;
+  if (isRequester && isDecided(review)) {
+    return (
+      <DecisionBanner
+        release={release}
+        review={review}
+        onOpenTask={onOpenTask}
+      />
+    );
+  }
+  if (
+    review.status !== EntityStatus.InReview ||
+    (!review.callerCanVote && !isRequester)
+  ) {
+    return null;
+  }
+
+  return (
+    <PendingBanner
+      release={release}
+      review={review}
+      viewerName={viewerName}
+      onOpenTask={onOpenTask}
+    />
   );
 };
 

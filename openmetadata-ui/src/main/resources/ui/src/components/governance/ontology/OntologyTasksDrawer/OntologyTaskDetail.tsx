@@ -122,9 +122,20 @@ const OntologyTaskDetail = ({
       return null;
     }
 
+    if (!canPublish) {
+      return (
+        <Typography
+          color="secondary"
+          data-testid="ontology-only-author-publishes"
+          size="text-sm">
+          {t('message.ontology-publication-only-author-publishes')}
+        </Typography>
+      );
+    }
+
     return (
       <Button
-        isDisabled={[!canPublish, !activationReady, isWriting].some(Boolean)}
+        isDisabled={[!activationReady, isWriting].some(Boolean)}
         onPress={onPublish}>
         {t('label.publish')}
       </Button>

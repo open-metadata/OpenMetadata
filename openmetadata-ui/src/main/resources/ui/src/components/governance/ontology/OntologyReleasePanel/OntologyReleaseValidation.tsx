@@ -20,19 +20,17 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { FindingSeverity } from '../../../../generated/api/data/ontologyReleaseValidation';
+import {
+  FindingSeverity,
+  OntologyReleaseValidation as OntologyReleaseValidationReport,
+} from '../../../../generated/api/data/ontologyReleaseValidation';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getOntologyReleaseValidation } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
-const OntologyReleaseValidation = ({
-  release,
-}: {
-  release?: OntologyRelease;
-}) => {
-  const { t } = useTranslation();
+export const useReleaseValidation = (release?: OntologyRelease) => {
   const userId = useApplicationStore((store) => store.currentUser?.id);
   const validation = useQuery({
     queryKey: [
@@ -66,10 +64,40 @@ const OntologyReleaseValidation = ({
     retry: false,
     gcTime: 0,
   });
-  const report =
-    validation.isSuccess && !validation.isFetching
-      ? validation.data
-      : undefined;
+
+  return validation;
+};
+
+const settledReport = (validation: ReturnType<typeof useReleaseValidation>) =>
+  validation.isSuccess && !validation.isFetching ? validation.data : undefined;
+
+export const useSettledValidationReport = (release?: OntologyRelease | null) =>
+  settledReport(useReleaseValidation(release ?? undefined));
+
+/** The first messages that stop a release from publishing, in report order. */
+export const firstValidationErrors = (
+  report: OntologyReleaseValidationReport | undefined,
+  limit = 3
+) =>
+  report
+    ? [
+        ...report.structure.violations.map(
+          ({ violation }) => violation.message
+        ),
+        ...report.shacl.findings
+          .filter(({ severity }) => severity === FindingSeverity.Violation)
+          .map(({ message }) => message),
+      ].slice(0, limit)
+    : [];
+
+const OntologyReleaseValidation = ({
+  release,
+}: {
+  release?: OntologyRelease;
+}) => {
+  const { t } = useTranslation();
+  const validation = useReleaseValidation(release);
+  const report = settledReport(validation);
   const truncated = (shown: number, total: number) => (
     <Typography color="secondary" size="text-xs">
       {t('message.ontology-findings-truncated', { shown, total })}

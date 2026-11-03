@@ -111,44 +111,25 @@ test.describe(
           await expect(page).toHaveURL(new RegExp('concept=' + concepts[1].id));
           await expect(page).toHaveURL(new RegExp('ontology=' + owner.id));
         });
-        await test.step('Choose the publication target from the default route', async () => {
+        await test.step('Publish waits for one ontology to be chosen', async () => {
           await page.goto('/governance/ontology');
-          await page.getByTestId('ontology-publication-trigger').click();
+          await expect(
+            page.getByTestId('ontology-publication-trigger')
+          ).toBeDisabled();
           await expect(
             page.getByTestId('ontology-publication-picker')
-          ).toBeVisible();
-          await page
-            .getByTestId('ontology-publication-select-' + ontologies[0].id)
-            .click();
+          ).toHaveCount(0);
+          const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
+          await scopeMenu.click();
+          await page.getByTestId('ontology-scope-' + ontologies[0].id).click();
+          await page.getByTestId('ontology-publication-trigger').click();
           await expect(
             page.getByTestId('ontology-publication-modal')
           ).toContainText(ontologies[0].name);
-          await expect(
-            page.getByTestId('ontology-publication-tab-changes')
-          ).toBeVisible();
           await page.getByTestId('ontology-publication-tab-releases').click();
           await expect(
             page.getByTestId('ontology-publication-tab-releases')
           ).toHaveAttribute('aria-selected', 'true');
-        });
-        await test.step('Choose another publication owner without changing the workspace', async () => {
-          await page.keyboard.press('Escape');
-          await expect(
-            page.getByTestId('ontology-publication-modal')
-          ).toHaveCount(0);
-          await page.getByTestId('ontology-publication-trigger').click();
-          await page
-            .getByTestId('ontology-publication-select-' + ontologies[1].id)
-            .click();
-          await expect(
-            page.getByTestId('ontology-publication-modal')
-          ).toContainText(ontologies[1].name);
-          await expect(
-            page.getByTestId('ontology-publication-modal')
-          ).not.toContainText(ontologies[0].name);
-          await expect(
-            page.getByTestId('ontology-scope-menu-trigger')
-          ).toHaveAttribute('data-scope-key', 'ontology:all');
         });
         await test.step('Keep the explicit glossary experience available', async () => {
           await page.goto('/governance/ontology?scope=glossary:all');
@@ -546,7 +527,7 @@ test.describe(
           ).toContainText('Review & publish');
           await expect(
             page.getByRole('button', {
-              name: 'Capture release',
+              name: 'Save as release draft',
               exact: true,
             })
           ).toBeEnabled();

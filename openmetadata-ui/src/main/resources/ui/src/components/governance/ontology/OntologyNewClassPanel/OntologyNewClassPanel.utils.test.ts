@@ -10,19 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ConceptMappingType } from '../../../../generated/api/data/createOntologyChangeSet';
+import { OntologyStudioModel } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import {
   MODEL_NODE_MAX_WIDTH,
   NODE_HEIGHT,
 } from '../../../OntologyExplorer/utils/graphConfig';
-import { ConceptMappingType } from '../../../../generated/api/data/createOntologyChangeSet';
-import { OntologyStudioModel } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import {
   classIdentityIssues,
   classIri,
   classLocalName,
-  isValidMapping,
   distinctChipValues,
   isValidLocalName,
+  isValidMapping,
   placeNewClass,
 } from './OntologyNewClassPanel.utils';
 

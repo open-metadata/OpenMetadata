@@ -22,20 +22,25 @@ import {
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { groupBy } from 'lodash';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
+import { AssigneeStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import {
   ChangeType,
   MemberChange,
 } from '../../../../generated/api/data/ontologyWorkingDiff';
-import { Ontology } from '../../../../generated/entity/data/ontology';
+import {
+  Ontology,
+  OntologyApprovalRule,
+} from '../../../../generated/entity/data/ontology';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import {
   ONTOLOGY_WORKING_DIFF_QUERY_KEY,
   useOntologyPublication,
 } from '../../../../hooks/governance/ontology/useOntologyPublication';
+import { reusablePublicationCandidate } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -45,13 +50,21 @@ import {
   RELEASE_STAGE_COLORS,
   RELEASE_STAGE_LABELS,
 } from './OntologyReleasePanel.constants';
+import type {
+  PublicationAction,
+  PublicationActions,
+} from './OntologyReleasePanel.types';
 import {
   deriveReleasePanelView,
+  getPublicationActions,
   isSameWorkingState,
   nextSemanticVersion,
 } from './OntologyReleasePanel.utils';
 import OntologyReleaseReviewers from './OntologyReleaseReviewers';
-import OntologyReleaseValidation from './OntologyReleaseValidation';
+import OntologyReleaseValidation, {
+  firstValidationErrors,
+  useSettledValidationReport,
+} from './OntologyReleaseValidation';
 import OntologyVersionEditor from './OntologyVersionEditor';
 
 const CHANGE_BADGE_COLOR = {
@@ -120,6 +133,60 @@ interface OntologyReleasePanelProps {
   onOpenTask?: (taskId: string) => void;
 }
 
+const isSameUser = (left?: string, right?: string) =>
+  Boolean(right) && left === right;
+
+// A decided release keeps its own version; otherwise a reused Draft's, then the next.
+const displayedVersion = (
+  reusable: string | undefined,
+  decided: string | undefined,
+  next: () => string
+) => reusable ?? decided ?? next();
+
+const namesWithStatus = (
+  assignees: {
+    assignee: Parameters<typeof getEntityName>[0];
+    status: AssigneeStatus;
+  }[],
+  statuses: AssigneeStatus[]
+) =>
+  assignees
+    .filter((entry) => statuses.includes(entry.status))
+    .map((entry) => getEntityName(entry.assignee))
+    .join(', ');
+
+const countWithStatus = (
+  assignees: { status: AssigneeStatus }[],
+  status: AssigneeStatus
+) => assignees.filter((entry) => entry.status === status).length;
+
+/**
+ * The names the footer sentence is about: who approved once approved, who is
+ * still pending while the review is open, else the configured reviewers.
+ */
+const reviewersLine = (
+  assignees: Parameters<typeof namesWithStatus>[0],
+  state: PublicationActions['state'],
+  configured: Parameters<typeof getEntityName>[0][]
+) => {
+  const order =
+    state === 'approvedCanPublish'
+      ? [
+          [AssigneeStatus.Approved],
+          [AssigneeStatus.Pending, AssigneeStatus.Approved],
+        ]
+      : [
+          [AssigneeStatus.Pending],
+          [AssigneeStatus.Approved, AssigneeStatus.Pending],
+        ];
+
+  return (
+    order
+      .map((statuses) => namesWithStatus(assignees, statuses))
+      .find(Boolean) || configured.map(getEntityName).join(', ')
+  );
+};
+
 const OntologyReleasePanel = ({
   ontology,
   canEdit,
@@ -159,6 +226,10 @@ const OntologyReleasePanel = ({
     recovery,
     captureAndRequestApproval,
     capture,
+    publishDirectly,
+    withdraw,
+    notice,
+    dismissNotice,
     activate,
     refresh,
     retryRecovery,
@@ -176,6 +247,7 @@ const OntologyReleasePanel = ({
     userName: currentUser?.name,
   });
   const currentStage = panelView.kind === 'ready' ? panelView.value : undefined;
+  const validationReport = useSettledValidationReport(currentStage?.candidate);
   const firstPageRevision = JSON.stringify(working.data?.state);
   useEffect(() => {
     setCursors([undefined]);
@@ -223,6 +295,8 @@ const OntologyReleasePanel = ({
   const baseVersion = versionBase.data?.semanticVersion;
   const bump =
     versionBump ?? (baseVersion ? VersionBump.Minor : VersionBump.Major);
+  const getNextVersion = () =>
+    versionBase.isSuccess ? nextSemanticVersion(baseVersion, bump) : '';
   const changedSinceRejection = () =>
     currentStage?.stage !== Stage.ChangesRequested ||
     currentStage.candidate.sourceWorkingRevision !==
@@ -291,8 +365,10 @@ const OntologyReleasePanel = ({
     return (
       release && (
         <OntologyReleaseDetails
+          activeRelease={versionBase.data}
           canPublish={canPublish}
           isActive={release.id === activeReleaseId}
+          ontologyName={getEntityName(ontology)}
           release={release}
           showExport={view !== 'releases'}
           onActivate={() =>
@@ -302,94 +378,248 @@ const OntologyReleasePanel = ({
       )
     );
   };
-  const getPublicationDisabledReason = () => {
-    if (!currentStage) {
+  const versionTag = (version: string) =>
+    /^\d/.test(version) ? 'v' + version : version;
+  const getActionInput = () => {
+    if (
+      !currentStage ||
+      current.kind !== 'ready' ||
+      panelView.kind !== 'ready'
+    ) {
       return undefined;
     }
-    if (!canEdit || !canWrite) {
-      return t('message.ontology-publication-needs-author-role');
-    }
-    if (currentStage.stage === Stage.InReview) {
-      return t('message.ontology-publication-awaiting-approval');
-    }
-    if (currentStage.stage === Stage.Approved) {
-      return undefined;
-    }
-    if (!changedSinceRejection()) {
-      return t('message.ontology-publication-change-before-retry');
-    }
-    if (!currentStage.unpublishedChanges) {
-      return t('message.ontology-publication-no-changes');
-    }
-    if (!currentStage.canRequestReview) {
-      return t('message.ontology-publication-needs-reviewer');
-    }
+    const reusable = reusablePublicationCandidate(current.value);
+    const isDecided = [Stage.Approved, Stage.InReview].includes(
+      currentStage.stage
+    );
+    const version = displayedVersion(
+      reusable?.semanticVersion,
+      isDecided ? currentStage.candidate?.semanticVersion : undefined,
+      getNextVersion
+    );
 
-    return undefined;
+    return {
+      stage: currentStage.stage,
+      canEdit,
+      hasReviewers: panelView.value.settings.reviewers.length > 0,
+      hasIndependentReviewer: panelView.value.hasIndependentReviewer,
+      hasChanges: currentStage.unpublishedChanges > 0,
+      changedSinceRejection: changedSinceRejection(),
+      validationErrors: firstValidationErrors(validationReport),
+      isReady: isDecided ? canWrite : canCapture,
+      isRequester: isSameUser(
+        current.value.review?.requester?.id,
+        currentUser?.id
+      ),
+      version,
+    };
   };
-  const renderPublicationButtons = () => {
-    if (!currentStage) {
+  const requestReview = () => {
+    if (working.data) {
+      void captureAndRequestApproval(working.data.state, metadata);
+    }
+  };
+  const publish = () => {
+    if (currentStage?.stage === Stage.Approved) {
+      void activate({ kind: 'current' });
+    } else if (working.data) {
+      void publishDirectly(working.data.state, metadata);
+    }
+  };
+  const actionHandlers: Record<PublicationAction['kind'], () => void> = {
+    saveDraft: () => {
+      if (changes.data) {
+        void capture(changes.data.state, metadata);
+      }
+    },
+    requestReview,
+    requestReviewAgain: requestReview,
+    withdraw: () => void withdraw(),
+    publish,
+  };
+  const runAction = (action: PublicationAction) => {
+    if (!action.isDisabled) {
+      actionHandlers[action.kind]();
+    }
+  };
+  const ACTION_TEST_IDS = {
+    publish: 'ontology-publish-release',
+    requestReview: 'ontology-request-review',
+    requestReviewAgain: 'ontology-request-review',
+    saveDraft: 'ontology-capture-release',
+    withdraw: 'ontology-withdraw-request',
+  } as const;
+  const actionLabel = (action: PublicationAction, version: string) => {
+    switch (action.kind) {
+      case 'publish':
+        return version
+          ? t('label.publish') + ' ' + versionTag(version)
+          : t('label.publish');
+      case 'requestReview':
+        return t('label.request-review');
+      case 'requestReviewAgain':
+        return t('label.request-review-again');
+      case 'saveDraft':
+        return t('label.save-as-release-draft');
+      case 'withdraw':
+        return t('label.withdraw-request');
+    }
+  };
+  const renderActionButton = (
+    action: PublicationAction,
+    version: string,
+    color: 'primary' | 'secondary'
+  ) => (
+    <Button
+      color={color}
+      data-testid={ACTION_TEST_IDS[action.kind]}
+      isDisabled={action.isDisabled}
+      isLoading={isBusy && color === 'primary'}
+      onPress={() => runAction(action)}>
+      {actionLabel(action, version)}
+    </Button>
+  );
+  const renderActionText = (actions: PublicationActions) => {
+    const ready = panelView.kind === 'ready' ? panelView.value : undefined;
+    const assignees = ready?.assignees ?? [];
+    const reviewers = reviewersLine(
+      assignees,
+      actions.state,
+      ready?.settings.reviewers ?? []
+    );
+    const progress =
+      actions.state === 'inReview' &&
+      ready?.settings.approvalRule === OntologyApprovalRule.AllReviewers
+        ? ' ' +
+          t('message.ontology-publication-review-progress', {
+            approved: countWithStatus(assignees, AssigneeStatus.Approved),
+            total: assignees.length,
+          })
+        : null;
+
+    return (
+      <Box direction="col" gap={1}>
+        {actions.errors.length > 0 && (
+          <ul
+            className="tw:m-0 tw:flex tw:list-disc tw:flex-col tw:gap-1 tw:pl-4"
+            data-testid="ontology-publication-errors">
+            {actions.errors.map((message) => (
+              <li key={message}>
+                <Typography color="danger" size="text-xs">
+                  {message}
+                </Typography>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Typography
+          color="secondary"
+          data-testid="ontology-publication-text"
+          role="note"
+          size="text-xs">
+          {t(actions.text, { reviewers })}
+          {progress}
+        </Typography>
+      </Box>
+    );
+  };
+  const renderNotice = () => {
+    if (!notice) {
       return null;
     }
+    const ontologyName = getEntityName(ontology);
+    let action: ReactNode = null;
+    let title: string;
+    let detail: ReactNode = null;
+    switch (notice.kind) {
+      case 'requested':
+        title = t('message.ontology-publication-sent', {
+          version: notice.version,
+          reviewers: notice.reviewers.join(', '),
+        });
+        detail = (
+          <Typography size="text-sm">
+            {t('message.ontology-publication-notify-on-decision')}
+          </Typography>
+        );
+        action = onOpenTask ? (
+          <Button
+            color="secondary"
+            data-testid="ontology-view-request"
+            size="sm"
+            onPress={() => onOpenTask(notice.taskId)}>
+            {t('label.view-request')}
+          </Button>
+        ) : (
+          <Link data-testid="ontology-view-request" to={notice.taskHref}>
+            {t('label.view-request')}
+          </Link>
+        );
 
-    const disabledReason = getPublicationDisabledReason();
+        break;
+      case 'published':
+        title = t('message.ontology-publication-published', {
+          version: notice.version,
+          ontology: ontologyName,
+        });
+
+        break;
+      case 'withdrawn':
+        title = t('message.ontology-publication-withdrawn', {
+          version: notice.version,
+        });
+
+        break;
+      case 'unchanged':
+        title = t('message.ontology-publication-unchanged', {
+          version: notice.version,
+        });
+        detail = notice.releaseNotes ? (
+          <Typography
+            className="tw:whitespace-pre-wrap tw:break-words"
+            data-testid="ontology-publication-unchanged-notes"
+            size="text-sm">
+            {t('message.ontology-publication-unchanged-notes', {
+              notes: notice.releaseNotes,
+            })}
+          </Typography>
+        ) : null;
+
+        break;
+    }
+
+    return (
+      <Alert
+        closable
+        data-testid={'ontology-publication-notice-' + notice.kind}
+        variant={notice.kind === 'unchanged' ? 'warning' : 'success'}
+        onClose={dismissNotice}>
+        <Typography weight="semibold">{title}</Typography>
+        {detail}
+        {action}
+      </Alert>
+    );
+  };
+  const renderPublicationButtons = () => {
+    const input = getActionInput();
+    if (!input) {
+      return null;
+    }
+    const actions = getPublicationActions(input);
 
     return (
       <Box direction="col" gap={2}>
         <Box gap={2} wrap="wrap">
-          <Button
-            color="secondary"
-            data-testid="ontology-capture-release"
-            isDisabled={!canCapture}
-            onPress={() => {
-              if (canCapture && changes.data) {
-                void capture(changes.data.state, metadata);
-              }
-            }}>
-            {t('label.capture-release')}
-          </Button>
-          {currentStage.stage === Stage.Approved ||
-          currentStage.stage === Stage.InReview ? (
-            <Button
-              color="secondary-success"
-              data-testid="ontology-publish-release"
-              isDisabled={currentStage.stage !== Stage.Approved || !canWrite}
-              isLoading={isBusy}
-              onPress={() => void activate({ kind: 'current' })}>
-              {t('label.publish')} {candidateLabel()}
-            </Button>
-          ) : (
-            <Button
-              color="primary"
-              data-testid="ontology-request-review"
-              isDisabled={!canCapture || !currentStage.canRequestReview}
-              isLoading={isBusy}
-              onPress={() => {
-                if (
-                  canCapture &&
-                  currentStage.canRequestReview &&
-                  working.data
-                ) {
-                  void captureAndRequestApproval(working.data.state, metadata);
-                }
-              }}>
-              {t(
-                currentStage.stage === Stage.ChangesRequested
-                  ? 'label.request-review-again'
-                  : 'label.request-review'
-              )}
-            </Button>
-          )}
+          {actions.secondary &&
+            renderActionButton(actions.secondary, input.version, 'secondary')}
+          {actions.primary &&
+            renderActionButton(
+              actions.primary,
+              input.version,
+              actions.primary.isDisabled ? 'secondary' : 'primary'
+            )}
         </Box>
-        {disabledReason ? (
-          <Typography
-            color="secondary"
-            data-testid="ontology-publication-disabled-reason"
-            role="note"
-            size="text-xs">
-            {disabledReason}
-          </Typography>
-        ) : null}
+        {renderActionText(actions)}
       </Box>
     );
   };
@@ -412,6 +642,7 @@ const OntologyReleasePanel = ({
     return (
       <Box direction="col" gap={3}>
         <Divider />
+        {renderNotice()}
         {currentStage.stage === Stage.ChangesRequested && (
           <Alert variant="error">
             <Typography weight="semibold">
