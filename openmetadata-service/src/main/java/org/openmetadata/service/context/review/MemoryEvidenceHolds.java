@@ -196,6 +196,16 @@ public final class MemoryEvidenceHolds {
     return String.format(EVIDENCE_RETIRED, queryId);
   }
 
+  /** Whether {@code memory} is in Draft because a Query it cites was retired. */
+  public static boolean isHeld(ContextMemory memory) {
+    String reason = memory.getStatusReason();
+    int slot = EVIDENCE_RETIRED.indexOf("%s");
+    return memory.getEntityStatus() == ContextMemoryStatus.DRAFT
+        && reason != null
+        && reason.startsWith(EVIDENCE_RETIRED.substring(0, slot))
+        && reason.endsWith(EVIDENCE_RETIRED.substring(slot + 2));
+  }
+
   private static final class CatalogMemoryStore implements MemoryStore {
 
     @Override

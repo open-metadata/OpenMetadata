@@ -69,13 +69,19 @@ public class ContextMemoryWriteAccessIT {
   @Test
   void aDeletedAnchorCannotMakeAListedMemoryOrgWide(TestNamespace ns) {
     Table anchor = ShortStackFactory.table(ns);
-    ContextMemoryService owner = memoriesAs(createUser(ns, null));
+    User ownerUser = createUser(ns, null);
+    ContextMemoryService owner = memoriesAs(ownerUser);
     ContextMemoryService reader = memoriesAs(createUser(ns, null));
+    // An admin writes it Approved: the user's own create would start Unprocessed, which no reader
+    // lists whatever its anchor, and this asks about the anchor rule.
     ContextMemory memory =
-        owner.create(
-            entityMemory(ns, "deleted-anchor-list")
-                .withPrimaryEntity(tableRef(anchor))
-                .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY)));
+        adminMemories()
+            .create(
+                entityMemory(ns, "deleted-anchor-list")
+                    .withPrimaryEntity(tableRef(anchor))
+                    .withOwners(List.of(userRef(ownerUser)))
+                    .withShareConfig(
+                        new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY)));
     assertEquals(memory.getId(), reader.get(memory.getId().toString()).getId());
     SdkClients.adminClient()
         .tables()

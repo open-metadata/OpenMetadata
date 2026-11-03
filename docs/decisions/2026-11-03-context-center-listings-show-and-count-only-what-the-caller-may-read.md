@@ -12,31 +12,37 @@
 ## Context
 
 Release testing found the Context Center Memories page showing a reader another user's Shared
-memory still awaiting reconciliation. The listing asks search for every stage it shows, and search
-admitted any requested stage to whoever could see the memory, or to every admin. The plain list
-endpoint also reported the database's `paging.total`, which counted memories the caller cannot
-see, both on a count-only call (`limit=0`) and on any page that hid none itself.
+memory still awaiting review. The listing asks search for every stage it shows, and search admitted
+any requested stage to whoever could see the memory. The plain list endpoint also reported the
+database's `paging.total`, which counted memories the caller cannot see. That happened both on a
+count-only call (`limit=0`) and on any page that hid none itself.
 
 ## Decision
 
-- A listing shows an `Unprocessed` memory that a person wrote to its owners only, admins included.
-  Until reconciliation decides it, it is its author's. A pill extracted from a document
-  (`FileExtraction`, `PageExtraction`) has no author awaiting review, so it follows the share rules
-  in every stage, as its document does. The rule is `ContextMemoryVisibility.isListedToOwnersOnly`
-  on the plain list. The search-backed listing (`statuses=`) applies the same rule through the
-  three-argument `ContextMemorySearchVisibility.buildVisibilityFilter`.
-- `Draft` and every other stage keep the share rules. Draft is the review queue: an evidence hold
-  opens no task, so admins and the memory's readers must keep finding it in the list.
-- A direct read by id follows the share rules in every stage.
+- A memory awaiting review (`Unprocessed` or `Draft`) is listed to its owners and to admins only,
+  never to another reader. This holds for the search-backed listing (`statuses=`, the
+  three-argument `ContextMemorySearchVisibility.buildVisibilityFilter`), the plain list, and the
+  per-document cards (`ContextMemoryVisibility.filterListed`). Every other stage keeps the share
+  rules.
+- A document's pills are written by the extractor (`FileExtraction`, `PageExtraction`), so the
+  person who uploaded the document owns none of them. The plain list therefore also shows a
+  document's pending pill to the document's owners. Search cannot check who owns each pill's
+  document, so the search-backed listing shows a pending pill only to its owner and admins. A
+  document's owners find its pending pills on the document's card.
+- A direct read by id keeps the share rules in every stage, which is how a review task's
+  assignees open the memory.
+- Bots get no special case: no server-side caller lists memories as a bot. ai-platform impersonates
+  the user on every memory call, and Collate reads memories through the DAO and search.
 - The plain list's `paging.total` stands only when the page shows every row the database counted.
   Otherwise the rows the caller may list are recounted over at most `MAX_VISIBLE_COUNT_SCAN`
-  (10,000) rows, and the total is never less than the page. Past that bound the total is a lower
-  bound, never a count of hidden rows.
+  (10,000) rows, and the total is never less than the page. Past that bound it is a lower bound,
+  never a count of hidden rows.
 
 ## Consequences
 
-- An admin no longer lists or counts another user's `Unprocessed` memories: reconciliation, not a
-  person, decides them. The sidebar badge and dashboard count the caller's own.
-- AskCollate's explicit delete looks memories up through this listing, so it finds the caller's
-  own `Unprocessed` memories, not another user's.
-- A plain-list page that does not show every counted row costs one bounded extra read.
+- Draft, the review queue, belongs to the memory's owners and to admins. That includes an evidence
+  hold, which opens no review task.
+- The sidebar badge and dashboard count only the caller's own pending memories; an admin's count
+  includes everyone's.
+- A plain-list page that does not show every counted row costs one bounded extra read, plus one
+  ownership lookup per document whose pending pills are on it.

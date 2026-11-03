@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,6 +46,7 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -53,6 +55,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * ContextMemory is indexed whatever its {@code shareConfig.visibility}; privacy is enforced at
@@ -92,6 +95,105 @@ class ContextMemoryRepositoryTest {
     assertThrows(
         AuthorizationException.class,
         () -> repository.prepare(new ContextMemory().withName("unstamped"), true));
+  }
+
+  /**
+   * Item 18: a create by anyone but an admin or a bot starts Unprocessed, whatever it asked for,
+   * and claims no review it never had.
+   */
+  @Test
+  void aMemoryCreatedByANonAdminStartsUnprocessedWhateverItAskedFor() {
+    User alice = new User().withId(UUID.randomUUID()).withName("alice");
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("alice"))
+          .thenReturn(new SubjectContext(alice, null));
+      entities
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
+          .thenReturn(
+              new EntityReference().withId(alice.getId()).withName("alice").withType(Entity.USER));
+      ContextMemory approved = byWriter("alice", ContextMemoryStatus.APPROVED);
+      ContextMemory draft =
+          byWriter("alice", ContextMemoryStatus.DRAFT).withStatusReason("Please review");
+
+      repository.prepare(approved, false);
+      repository.prepare(draft, false);
+
+      assertEquals(ContextMemoryStatus.UNPROCESSED, approved.getEntityStatus());
+      assertNull(approved.getLastReviewedAt(), "an unreviewed memory claims no review");
+      assertEquals(ContextMemoryStatus.UNPROCESSED, draft.getEntityStatus());
+      assertNull(draft.getStatusReason());
+    }
+  }
+
+  /** Extraction (admin), reconciliation and governance (bots) keep the stage they write. */
+  @Test
+  void anAdminOrABotCreatesAMemoryInTheStageItAskedFor() {
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("root"))
+          .thenReturn(new SubjectContext(new User().withName("root").withIsAdmin(true), null));
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("governance-bot"))
+          .thenReturn(
+              new SubjectContext(new User().withName("governance-bot").withIsBot(true), null));
+      for (String writer : List.of(Entity.ADMIN_USER_NAME, "root", "governance-bot")) {
+        ContextMemory memory = byWriter(writer, ContextMemoryStatus.APPROVED);
+
+        ContextMemoryRepository.startPendingUnlessPrivileged(memory);
+
+        assertEquals(ContextMemoryStatus.APPROVED, memory.getEntityStatus(), writer);
+      }
+    }
+  }
+
+  /**
+   * A PUT that creates prepares twice; the first may hold the memory for a retired Query, and the
+   * create-time rule must not undo that hold.
+   */
+  @Test
+  void aHoldForRetiredEvidenceSurvivesTheNonAdminRule() {
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("alice"))
+          .thenReturn(new SubjectContext(new User().withName("alice"), null));
+      ContextMemory held =
+          byWriter("alice", ContextMemoryStatus.DRAFT)
+              .withStatusReason(
+                  "Supporting query "
+                      + UUID.randomUUID()
+                      + " was deleted; review whether this memory still holds without it");
+
+      ContextMemoryRepository.startPendingUnlessPrivileged(held);
+
+      assertEquals(ContextMemoryStatus.DRAFT, held.getEntityStatus());
+    }
+  }
+
+  /** Status transitions on update are out of scope: a PUT that updates keeps what it asked for. */
+  @Test
+  void anUpdateByANonAdminKeepsTheStageItAskedFor() {
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("alice"))
+          .thenReturn(new SubjectContext(new User().withName("alice"), null));
+      ContextMemory approved = byWriter("alice", ContextMemoryStatus.APPROVED);
+
+      repository.prepare(approved, true);
+
+      assertEquals(ContextMemoryStatus.APPROVED, approved.getEntityStatus());
+    }
+  }
+
+  private static ContextMemory byWriter(String writer, ContextMemoryStatus status) {
+    return new ContextMemory()
+        .withName("memory-" + UUID.randomUUID())
+        .withQuestion("Which column holds the order total?")
+        .withAnswer("orders.amount_usd")
+        .withUpdatedBy(writer)
+        .withUpdatedAt(1_760_000_000_000L)
+        .withEntityStatus(status);
   }
 
   /** The anchor edge getPrimaryEntity reads: APPLIED_TO from anything, the older HAS but from a domain. */

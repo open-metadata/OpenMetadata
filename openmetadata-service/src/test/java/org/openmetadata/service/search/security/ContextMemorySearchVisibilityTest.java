@@ -614,69 +614,28 @@ class ContextMemorySearchVisibilityTest {
 
   /**
    * The Context Center listing selects stages through its status list. Release testing: a reader
-   * listed another user's Shared memory still awaiting reconciliation. Unprocessed reaches the
-   * subject's own memories and a document's pills only, admins included; Draft, the review queue,
-   * keeps the share rules.
+   * listed another user's Shared memory awaiting review. A pending stage reaches the subject's own
+   * memories only, exactly as a search asking for it does; an admin reads every stage.
    */
   @Test
-  void aListingShowsAnotherUsersUnprocessedMemoryToNoOne() {
-    SubjectContext admin =
-        new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
-    for (SubjectContext subject : List.of(nonAdminSubject(), admin)) {
-      DocumentContext json =
-          JsonPath.parse(
-              listingJson(
-                  subject,
-                  List.of(
-                      ContextMemoryStatus.APPROVED,
-                      ContextMemoryStatus.UNPROCESSED,
-                      ContextMemoryStatus.DRAFT)));
-      String shareRuled = "$.bool.should[1].bool.must[1].bool.should[0].bool.should[0]";
-      String extracted = "$.bool.should[1].bool.must[1].bool.should[0].bool.should[1]";
-      String owned = "$.bool.should[1].bool.must[1].bool.should[1]";
-
-      assertFieldExists(
-          json,
-          shareRuled + ".bool.must[?(@.terms['entityStatus'] contains 'Draft')]",
-          "Draft follows the share rules");
-      assertFieldDoesNotExist(
-          json,
-          shareRuled + ".bool.must[?(@.terms['entityStatus'] contains 'Unprocessed')]",
-          "Unprocessed never reaches the subject through the share rules alone");
-      assertFieldExists(
-          json,
-          extracted + ".bool.must[?(@.terms['sourceType'] contains 'FileExtraction')]",
-          "a document's pills keep the share rules");
-      assertFieldExists(
-          json,
-          extracted + ".bool.must[0].bool.must[?(@.term['entityStatus'].value=='Unprocessed')]",
-          "the exemption covers the Unprocessed stage only");
-      assertFieldExists(
-          json,
-          owned + ".bool.must[?(@.nested.query.term['owners.id'].value=='" + USER_ID + "')]",
-          "the subject's own Unprocessed memories are listed");
-      assertFieldExists(
-          json,
-          owned + ".bool.must[?(@.term['entityStatus'].value=='Unprocessed')]",
-          "ownership admits Unprocessed only");
-    }
-  }
-
-  @Test
-  void aListingWithoutUnprocessedKeepsTheShareRules() {
+  void aListingShowsAPendingMemoryToItsOwnersAndAdminsOnly() {
     List<ContextMemoryStatus> listed =
-        List.of(ContextMemoryStatus.APPROVED, ContextMemoryStatus.DRAFT);
+        List.of(
+            ContextMemoryStatus.APPROVED,
+            ContextMemoryStatus.UNPROCESSED,
+            ContextMemoryStatus.DRAFT);
     SubjectContext admin =
         new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
-    for (SubjectContext subject : List.of(nonAdminSubject(), admin)) {
-      OMQueryBuilder unwidened =
-          new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
-              .buildVisibilityFilter(subject, listed, List.of(), List.of());
+    OMQueryBuilder everyStage =
+        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
+            .buildVisibilityFilter(admin, listed, List.of(), List.of());
 
-      assertEquals(
-          serializeElasticQuery(((ElasticQueryBuilder) unwidened).build()),
-          listingJson(subject, listed));
-    }
+    assertEquals(
+        ownerPendingJson(nonAdminSubject(), OWNER_PENDING_REQUESTED),
+        listingJson(nonAdminSubject(), listed));
+    assertEquals(
+        serializeElasticQuery(((ElasticQueryBuilder) everyStage).build()),
+        listingJson(admin, listed));
   }
 
   private String listingJson(SubjectContext subject, List<ContextMemoryStatus> listed) {

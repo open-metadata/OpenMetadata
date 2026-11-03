@@ -324,65 +324,72 @@ class ContextMemoryVisibilityTest {
   }
 
   /**
-   * Release testing: a reader listed another user's Shared memory still awaiting reconciliation.
-   * A listing shows it to its owners only, admins included; a read by id keeps the share rules.
+   * Release testing: a reader listed another user's Shared memory awaiting review, and an admin
+   * another user's Draft. A pending memory lists to its owners and admins only; a read by id keeps
+   * the share rules, which is how a review task's assignees open it.
    */
   @Test
-  void aListingShowsAnUnprocessedMemoryAPersonWroteToItsOwnersOnly() {
-    ContextMemory pending =
-        sharedWith(principalRef(BOB))
-            .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
-            .withSourceType(ContextMemorySourceType.REMEMBER_REQUEST);
-    ContextMemoryVisibility.AnchorAccess anyone = (userName, anchor) -> true;
+  void aListingShowsAPendingMemoryToItsOwnersAndAdminsOnly() {
+    for (ContextMemoryStatus stage :
+        List.of(ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT)) {
+      ContextMemory pending = sharedWith(principalRef(BOB)).withEntityStatus(stage);
 
-    assertTrue(listed(List.of(pending), ALICE, false, anyone).contains(pending));
-    assertTrue(listed(List.of(pending), BOB, false, anyone).isEmpty(), "bob may only read it");
-    assertTrue(listed(List.of(pending), "root", true, anyone).isEmpty(), "admins included");
-    assertTrue(ContextMemoryVisibility.isVisibleToUser(pending, BOB, false));
+      assertTrue(listed(List.of(pending), ALICE, false).contains(pending), "its owner");
+      assertTrue(listed(List.of(pending), "root", true).contains(pending), "an admin");
+      assertTrue(listed(List.of(pending), BOB, false).isEmpty(), "a reader, in " + stage);
+      assertTrue(ContextMemoryVisibility.isVisibleToUser(pending, BOB, false), "read by id");
+    }
+    ContextMemory approved =
+        sharedWith(principalRef(BOB)).withEntityStatus(ContextMemoryStatus.APPROVED);
+    assertTrue(listed(List.of(approved), BOB, false).contains(approved), "share rules");
   }
 
-  /** Draft is the review queue: an evidence hold opens no task, so it is listed by the share rules. */
+  /**
+   * A document's pills are written by the extractor, so its uploader owns none of them: a pending
+   * pill lists to the document's owners as well, and to no other reader of the document.
+   */
   @Test
-  void aListingShowsADraftByTheShareRules() {
-    ContextMemory held = sharedWith(principalRef(BOB)).withEntityStatus(ContextMemoryStatus.DRAFT);
-    ContextMemoryVisibility.AnchorAccess anyone = (userName, anchor) -> true;
-
-    assertTrue(listed(List.of(held), BOB, false, anyone).contains(held));
-    assertTrue(listed(List.of(held), "root", true, anyone).contains(held));
-    assertTrue(listed(List.of(held), "charlie", false, anyone).isEmpty());
-  }
-
-  /** A document's pills have no author awaiting review: its readers list them in every stage. */
-  @Test
-  void aListingShowsADocumentsUnprocessedPillsToItsReaders() {
+  void aListingShowsADocumentsPendingPillToTheDocumentsOwners() {
+    EntityReference document = ref(Entity.CONTEXT_FILE, "handbook", "handbook");
     ContextMemory pill =
         memoryOwnedBy("admin", MemoryVisibility.ENTITY)
-            .withPrimaryEntity(ANCHOR)
-            .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
-            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION);
-    ContextMemoryVisibility.AnchorAccess onlyBobReadsIt =
-        (userName, anchor) -> BOB.equals(userName);
+            .withPrimaryEntity(document)
+            .withSourceEntity(document)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    ContextMemory note =
+        memoryOwnedBy(ALICE, MemoryVisibility.ENTITY)
+            .withSourceEntity(document)
+            .withSourceType(ContextMemorySourceType.MANUAL)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    AtomicInteger lookups = new AtomicInteger();
+    ContextMemoryVisibility.SourceOwnership bobOwnsIt =
+        (userName, source) -> {
+          lookups.incrementAndGet();
+          return BOB.equals(userName);
+        };
 
-    assertTrue(listed(List.of(pill), BOB, false, onlyBobReadsIt).contains(pill));
-    assertTrue(listed(List.of(pill), "root", true, onlyBobReadsIt).contains(pill));
-    assertTrue(listed(List.of(pill), "charlie", false, onlyBobReadsIt).isEmpty());
-    assertFalse(
-        ContextMemoryVisibility.isListedToOwnersOnly(
-            pill.withSourceType(ContextMemorySourceType.PAGE_EXTRACTION)));
+    assertEquals(
+        List.of(pill),
+        ContextMemoryVisibility.filterListed(
+                List.of(pill, note, pill), BOB, false, (u, a) -> true, bobOwnsIt)
+            .stream()
+            .distinct()
+            .toList(),
+        "the document's owner gets its pills, not a person's note that cites it");
+    assertEquals(1, lookups.get(), "each document is asked about once per page");
     assertTrue(
-        ContextMemoryVisibility.isListedToOwnersOnly(pill.withSourceType(null)),
-        "a memory that does not say where it came from is a person's");
-    assertFalse(
-        ContextMemoryVisibility.isListedToOwnersOnly(new ContextMemory()),
-        "a memory with no stage is listed by the share rules");
+        ContextMemoryVisibility.filterListed(
+                List.of(pill), "charlie", false, (u, a) -> true, bobOwnsIt)
+            .isEmpty(),
+        "another reader of the document");
+    assertFalse(ContextMemoryVisibility.isPending(new ContextMemory()), "no stage is not pending");
   }
 
   private static List<ContextMemory> listed(
-      List<ContextMemory> memories,
-      String userName,
-      boolean isAdmin,
-      ContextMemoryVisibility.AnchorAccess anchorAccess) {
-    return ContextMemoryVisibility.filterListed(memories, userName, isAdmin, anchorAccess);
+      List<ContextMemory> memories, String userName, boolean isAdmin) {
+    return ContextMemoryVisibility.filterListed(
+        memories, userName, isAdmin, (u, anchor) -> true, (u, source) -> false);
   }
 
   @Test

@@ -1,11 +1,13 @@
 # Data Consumers create context memories by default
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (extraction provenance and write-response visibility)
+- **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (extraction provenance and write-response visibility);
+  v3 2026-11-03 (a non-admin's memory starts Unprocessed)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `DataConsumerPolicyGrantSqlMigrationTest` (the upgrade statement),
   `ContextMemoryCreateGrantIT` (the grant and the opt-out), `ContextMemoryWriteAccessTest` and
-  `ContextMemoryWriteAccessIT` (what a non-admin may write)
+  `ContextMemoryWriteAccessIT` (what a non-admin may write), `ContextMemoryRepositoryTest` (the
+  stage a non-admin's memory starts in)
 - **Related:** ai-platform#1580; OpenMetadata#34253, which made `ExecuteSparqlQuery` a Data
   Consumer default the same way (ADR:2026-09-16-agent-sparql-execution, §2a);
   open-metadata/openmetadata-collate#6965 (`MemoryCaptureGate`)
@@ -82,3 +84,20 @@ Company Context and file-memory reuse trust those values as engine provenance, s
 may preserve them on an existing memory but cannot establish them. Server writes without a principal
 now fail closed. PUT updates and pin/unpin enforce the same visibility as PATCH, since each returns
 the complete memory. The accepted reach of user-authored Approved memories remains unchanged.
+
+## Amendment — 2026-11-03: a non-admin's memory starts Unprocessed
+
+The revisit named above has happened: release testing found that a Data Steward could create an
+Approved or Public memory through the API, skipping review. A memory created by anyone but an admin
+or a bot now starts `Unprocessed`, whatever `entityStatus` it requests, so reconciliation decides
+it before anyone else grounds on it. `ContextMemoryRepository.prepare` applies this when it prepares
+a new memory, which every create path does: POST, a PUT that creates, and MCP `create_entity`
+(memories have no bulk endpoint). It runs before the stage stamps a
+review or validates stage-bound fields, so the memory never claims a review it did not have. A
+request for a stage it cannot start in, such as a superseding pointer or disputes, is refused as it
+would be on an `Unprocessed` memory.
+
+A hold for retired evidence is kept: a memory that cites a retired Query still starts in `Draft`.
+Extraction (written as the admin account), Collate's reconciliation and governance bots, and
+capture or `upsertMemory` (which already ask for `Unprocessed`) are unaffected. A stage change on
+update is unchanged; a non-admin who may edit a memory can still move it, which is a follow-up.

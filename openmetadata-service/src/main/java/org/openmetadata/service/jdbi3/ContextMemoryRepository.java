@@ -539,6 +539,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   public void prepare(ContextMemory entity, boolean update) {
     requireWritableByWriter(entity, update);
+    if (!update) {
+      startPendingUnlessPrivileged(entity);
+    }
     if (entity.getPrimaryEntity() != null) {
       entity.setPrimaryEntity(resolvePrimaryEntity(entity, update));
     }
@@ -568,6 +571,20 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     setCreatorAsDefaultOwner(entity, update);
     prepareLifecycle(entity, update);
     inheritAnchorDomains(entity, update);
+  }
+
+  /**
+   * A memory created by anyone but an admin or a bot starts Unprocessed, whatever stage it asked
+   * for, so reconciliation decides it before anyone else grounds on it. It runs before the stage
+   * derives anything, and keeps a hold for retired evidence that an earlier prepare of the same
+   * PUT applied (ADR:2026-10-09-data-consumers-create-context-memories).
+   */
+  static void startPendingUnlessPrivileged(ContextMemory memory) {
+    if (memory.getEntityStatus() != ContextMemoryStatus.UNPROCESSED
+        && !MemoryEvidenceHolds.isHeld(memory)
+        && !ContextMemoryWriteAccess.isPrivilegedWriter(memory.getUpdatedBy())) {
+      memory.withEntityStatus(ContextMemoryStatus.UNPROCESSED).withStatusReason(null);
+    }
   }
 
   private EntityReference resolvePrimaryEntity(ContextMemory memory, boolean update) {

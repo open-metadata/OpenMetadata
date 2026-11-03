@@ -1,8 +1,8 @@
 # Search admits a subject's own pending memories when the caller asks for them
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-03 (the listing shows another's Unprocessed
-  memory to no one)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-03 (the listing shows a pending memory to its
+  owners and admins only)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemorySearchVisibilityTest` (the owner-pending cases),
   `VectorSearchQueryBuilderTest` (the owner-pending cases)
@@ -45,10 +45,10 @@ whether the author can use what they said.
 - `Archived`, `Superseded`, `Invalidated`, `Rejected` and `Deprecated` stay out of normal search
   for everyone; the Context Center listing still selects stages explicitly with `statuses=`.
 
-## Amendment — 2026-11-03: the listing shows another's Unprocessed memory to no one
+## Amendment — 2026-11-03: the listing shows a pending memory to its owners and admins only
 
-The Context Center listing still selects stages with `statuses=`, but it no longer admits every
-selected stage by the share rules. A person's `Unprocessed` memory reaches its owners only, admins
-included, and a document's pills keep the share rules
-(ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read). Draft and
-the retired stages are still selected by the share rules. Vector and hybrid search are unchanged.
+The Context Center listing still selects stages with `statuses=`. It no longer admits every
+selected stage by the share rules: an `Unprocessed` or `Draft` memory reaches only its owners and
+admins, as above, and through the three-argument overload
+(ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read). The retired
+stages keep the share rules. Vector and hybrid search are unchanged.

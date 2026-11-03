@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
@@ -68,10 +67,9 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * (ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request). REST needs no third
  * edit for it: an owner already reads their own memories in every stage there.
  *
- * <p>A listing that selects stages ({@code statuses=}) shows another's memory in an {@link
- * ContextMemoryVisibility#OWNER_LISTED_STATUSES} stage to nobody, admins included, unless a
- * document's extraction wrote it; REST lists by the same rule ({@link
- * ContextMemoryVisibility#isListedToOwnersOnly})
+ * <p>A listing that selects stages ({@code statuses=}) shows a memory awaiting review ({@link
+ * #OWNER_PENDING_STATUSES}) to its owners and admins only; REST lists by the same rule ({@link
+ * ContextMemoryVisibility#isPending})
  * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
  *
  * <p>Search cannot evaluate an anchor's policy per document. An anchored {@code Entity} memory is
@@ -126,10 +124,9 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * As above, admitting memories in any of {@code statuses} instead of Approved only. A stage of
-   * {@link ContextMemoryVisibility#OWNER_LISTED_STATUSES} reaches the subject's own memories, admins
-   * included, plus a document's pills the subject may see; every other stage follows the share
-   * rules.
+   * As above, admitting memories in any of {@code statuses} instead of Approved only. A stage
+   * awaiting review ({@link #OWNER_PENDING_STATUSES}) reaches only the subject's own memories,
+   * unless the subject is an admin, who reads every memory in every stage.
    */
   public OMQueryBuilder buildVisibilityFilter(
       SubjectContext subjectContext, List<ContextMemoryStatus> statuses) {
@@ -146,14 +143,15 @@ public class ContextMemorySearchVisibility {
       SubjectContext subjectContext,
       List<ContextMemoryStatus> statuses,
       Collection<String> pinnedAnchorIds) {
-    List<ContextMemoryStatus> ownerListed =
-        statuses.stream().filter(ContextMemoryVisibility.OWNER_LISTED_STATUSES::contains).toList();
+    List<ContextMemoryStatus> ownersOnly =
+        isVisibilityEnforced(subjectContext)
+            ? statuses.stream().filter(OWNER_PENDING_STATUSES::contains).toList()
+            : List.of();
     return buildVisibilityFilter(
         subjectContext,
-        statuses.stream().filter(status -> !ownerListed.contains(status)).toList(),
+        statuses.stream().filter(status -> !ownersOnly.contains(status)).toList(),
         pinnedAnchorIds,
-        ownerListed,
-        ownerListed);
+        ownersOnly);
   }
 
   /**
@@ -166,32 +164,17 @@ public class ContextMemorySearchVisibility {
       List<ContextMemoryStatus> statuses,
       Collection<String> pinnedAnchorIds,
       List<ContextMemoryStatus> ownerStatuses) {
-    return buildVisibilityFilter(
-        subjectContext, statuses, pinnedAnchorIds, ownerStatuses, List.of());
-  }
-
-  /** As above, also admitting a document's pills in {@code extractedStatuses} by the share rules. */
-  private OMQueryBuilder buildVisibilityFilter(
-      SubjectContext subjectContext,
-      List<ContextMemoryStatus> statuses,
-      Collection<String> pinnedAnchorIds,
-      List<ContextMemoryStatus> ownerStatuses,
-      List<ContextMemoryStatus> extractedStatuses) {
     OMQueryBuilder filter = null;
     if (isVisibilityEnforced(subjectContext)) {
       User user = subjectContext.user();
       Set<String> readableAnchorIds = readableAnchorIds(subjectContext, pinnedAnchorIds);
       OMQueryBuilder visible =
-          withExtractedMemoriesIn(
-              statusMemoryClause(buildVisibleMemoryClause(user, readableAnchorIds), statuses),
-              buildVisibleMemoryClause(user, readableAnchorIds),
-              extractedStatuses);
+          statusMemoryClause(buildVisibleMemoryClause(user, readableAnchorIds), statuses);
       filter =
           scopeGovernedTypes(
               withOwnMemoriesIn(visible, user, ownerStatuses), buildVisibleFileClause(user));
     } else if (isSubjectResolvable(subjectContext)) {
-      OMQueryBuilder anyVisibility =
-          withExtractedMemoriesIn(statusMemoryClause(null, statuses), null, extractedStatuses);
+      OMQueryBuilder anyVisibility = statusMemoryClause(null, statuses);
       filter =
           scopeMemoriesTo(withOwnMemoriesIn(anyVisibility, subjectContext.user(), ownerStatuses));
     }
@@ -315,31 +298,6 @@ public class ContextMemorySearchVisibility {
                 List.of(queryBuilderFactory.termQuery(FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY)));
     OMQueryBuilder memoryVisible = scopedTo(Entity.CONTEXT_MEMORY, memoryClause);
     return queryBuilderFactory.boolQuery().should(List.of(nonMemory, memoryVisible));
-  }
-
-  /**
-   * Also admits a document's pills in {@code stages} that {@code visibleMemory} admits, or any of
-   * them when it is null (an admin); no stage leaves {@code memoryClause} as it is.
-   */
-  private OMQueryBuilder withExtractedMemoriesIn(
-      OMQueryBuilder memoryClause, OMQueryBuilder visibleMemory, List<ContextMemoryStatus> stages) {
-    return nullOrEmpty(stages)
-        ? memoryClause
-        : queryBuilderFactory
-            .boolQuery()
-            .should(
-                List.of(
-                    memoryClause,
-                    queryBuilderFactory
-                        .boolQuery()
-                        .must(
-                            List.of(
-                                statusMemoryClause(visibleMemory, stages),
-                                queryBuilderFactory.termsQuery(
-                                    ContextMemoryIndex.FIELD_SOURCE_TYPE,
-                                    ContextMemoryVisibility.EXTRACTED_SOURCES.stream()
-                                        .map(ContextMemorySourceType::value)
-                                        .toList())))));
   }
 
   private OMQueryBuilder withOwnMemoriesIn(

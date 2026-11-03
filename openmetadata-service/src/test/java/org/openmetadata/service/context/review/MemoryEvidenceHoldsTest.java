@@ -15,6 +15,7 @@ package org.openmetadata.service.context.review;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -343,5 +344,29 @@ class MemoryEvidenceHoldsTest {
       ContextMemory edited = edit.apply(JsonUtils.deepCopy(rows.get(id), ContextMemory.class));
       rows.put(id, edited.withUpdatedAt(rows.get(id).getUpdatedAt() + 1));
     }
+  }
+
+  @Test
+  void aMemoryIsHeldOnlyInDraftWithTheRetiredEvidenceReason() {
+    String reason = MemoryEvidenceHolds.reason(UUID.randomUUID());
+
+    assertTrue(
+        MemoryEvidenceHolds.isHeld(
+            new ContextMemory()
+                .withEntityStatus(ContextMemoryStatus.DRAFT)
+                .withStatusReason(reason)));
+    assertFalse(
+        MemoryEvidenceHolds.isHeld(
+            new ContextMemory()
+                .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+                .withStatusReason(reason)));
+    assertFalse(
+        MemoryEvidenceHolds.isHeld(
+            new ContextMemory()
+                .withEntityStatus(ContextMemoryStatus.DRAFT)
+                .withStatusReason("Please review")));
+    assertFalse(
+        MemoryEvidenceHolds.isHeld(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.DRAFT)));
   }
 }
