@@ -121,6 +121,10 @@ public class IngestionPipelineResourceIT
   private static final Logger LOG = LoggerFactory.getLogger(IngestionPipelineResourceIT.class);
   private static final Date START_DATE = new DateTime("2022-06-10T15:06:47+00:00").toDate();
   private static final String INGESTION_PIPELINES_PATH = "/v1/services/ingestionPipelines";
+  private static final String DBT_SECRET_POINTER =
+      "/sourceConfig/config/dbtConfigSource/dbtSecurityConfig/awsSecretAccessKey";
+  private static final String STORAGE_MANIFEST_SECRET_POINTER =
+      "/sourceConfig/config/storageMetadataConfigSource/securityConfig/awsSecretAccessKey";
 
   // IngestionPipeline only supports owners,followers fields - no tags, no domain
   {
@@ -1956,7 +1960,8 @@ public class IngestionPipelineResourceIT
                             new StorageServiceMetadataPipeline()
                                 .withStorageMetadataConfigSource(manifest))));
 
-    assertDbtSecretEncrypted(storedPipelineJson(pipeline.getId()), secret);
+    assertSecretEncryptedAt(
+        storedPipelineJson(pipeline.getId()), STORAGE_MANIFEST_SECRET_POINTER, secret);
     String response =
         JsonUtils.pojoToJson(
             SdkClients.testUserClient().ingestionPipelines().get(pipeline.getId()));
@@ -2012,15 +2017,17 @@ public class IngestionPipelineResourceIT
   }
 
   private static String dbtSecret(String json) {
-    return JsonUtils.readTree(json)
-        .at("/sourceConfig/config/dbtConfigSource/dbtSecurityConfig/awsSecretAccessKey")
-        .asText();
+    return JsonUtils.readTree(json).at(DBT_SECRET_POINTER).asText();
   }
 
   private static void assertDbtSecretEncrypted(String json, String secret) {
+    assertSecretEncryptedAt(json, DBT_SECRET_POINTER, secret);
+  }
+
+  private static void assertSecretEncryptedAt(String json, String pointer, String secret) {
     assertFalse(json.contains(secret), "Persisted pipeline must not contain plaintext credentials");
-    String storedSecret = dbtSecret(json);
-    assertTrue(Fernet.isTokenized(storedSecret), "Stored dbt credential must be Fernet ciphertext");
+    String storedSecret = JsonUtils.readTree(json).at(pointer).asText();
+    assertTrue(Fernet.isTokenized(storedSecret), "Stored credential must be Fernet ciphertext");
     assertEquals(secret, Fernet.getInstance().decrypt(storedSecret));
   }
 
