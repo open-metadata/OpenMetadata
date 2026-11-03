@@ -44,7 +44,6 @@ import {
   TaskDetailRowValue,
 } from '../taskDetail.types';
 import ActivityChangePanel from './ActivityChangePanel';
-import AgentAvatar from './AgentAvatar';
 import TaskDetailListValue from './TaskDetailListValue';
 
 export interface TaskDetailSummaryProps {
@@ -124,7 +123,7 @@ const RowValue: React.FC<{ value: TaskDetailRowValue; label: string }> = ({
     case 'agent':
       return (
         <Box align="center" gap={1}>
-          <AgentAvatar size="xs" />
+          <ProfilePicture isAgent displayName={value.name} name="" width="20" />
           <Typography size="text-sm">{value.name}</Typography>
         </Box>
       );

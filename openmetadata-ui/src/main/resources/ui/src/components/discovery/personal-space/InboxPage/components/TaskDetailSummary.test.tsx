@@ -21,7 +21,8 @@ jest.mock(
   '../../../../../components/common/ProfilePicture/ProfilePicture',
   () => ({
     __esModule: true,
-    default: () => <span />,
+    default: ({ isAgent }: { isAgent?: boolean }) =>
+      isAgent ? <span data-testid="agent-avatar" /> : <span />,
   })
 );
 

@@ -297,7 +297,8 @@ jest.mock('components/common/Loader/Loader', () => ({
 
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   __esModule: true,
-  default: () => <div />,
+  default: ({ isAgent }: { isAgent?: boolean }) =>
+    isAgent ? <span data-testid="agent-avatar" /> : <div />,
 }));
 
 jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () => ({
@@ -452,11 +453,6 @@ const mockT = jest.fn((key: string) => key);
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: mockT }),
-}));
-
-jest.mock('./AgentAvatar', () => ({
-  __esModule: true,
-  default: () => <span data-testid="agent-avatar" />,
 }));
 
 jest.mock('react-router-dom', () => ({

@@ -22,7 +22,6 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getProposingAgent, getTaskTypeBadge } from '../taskDetail.utils';
 import { TaskStatusBadge } from '../taskResolution.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
-import AgentAvatar from './AgentAvatar';
 import TaskTitle from './TaskTitle';
 import TaskTypeIcon from './TaskTypeIcon';
 
@@ -47,16 +46,13 @@ const TaskRequester: React.FC<{ task: Task }> = ({ task }) => {
 
   return requesterName ? (
     <Box align="center" className="tw:gap-1.5">
-      {agent ? (
-        <AgentAvatar size="xxs" />
-      ) : (
-        <ProfilePicture
-          matchRingToFill
-          displayName={requesterName}
-          name={requester?.name ?? ''}
-          width="16"
-        />
-      )}
+      <ProfilePicture
+        matchRingToFill
+        displayName={requesterName}
+        isAgent={Boolean(agent)}
+        name={requester?.name ?? ''}
+        width="16"
+      />
       <Typography className="tw:text-tertiary" size="text-xs">
         {requesterName}
       </Typography>

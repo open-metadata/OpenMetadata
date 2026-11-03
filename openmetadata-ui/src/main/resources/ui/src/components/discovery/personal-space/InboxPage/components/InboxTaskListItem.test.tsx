@@ -23,7 +23,8 @@ jest.mock('./ClampedText', () => ({
 
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   __esModule: true,
-  default: () => <div />,
+  default: ({ isAgent }: { isAgent?: boolean }) =>
+    isAgent ? <span data-testid="agent-avatar" /> : <div />,
 }));
 
 jest.mock('../taskTitle.utils', () => ({
@@ -46,9 +47,6 @@ jest.mock('utils/EntityNameUtils', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Avatar: (props: { 'data-testid'?: string }) => (
-    <span data-testid={props['data-testid']} />
-  ),
   Badge: ({
     children,
     ...rest

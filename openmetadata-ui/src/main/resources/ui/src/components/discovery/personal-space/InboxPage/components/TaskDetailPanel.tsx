@@ -82,7 +82,6 @@ import { getTaskTitleParts } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
-import AgentAvatar from './AgentAvatar';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
 import TaskAssetCard from './TaskAssetCard';
@@ -260,17 +259,14 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
 
   return (
     <Box align="center" data-testid="task-byline" gap={2}>
-      {agent ? (
-        <AgentAvatar size="xs" />
-      ) : (
-        person && (
-          <ProfilePicture
-            matchRingToFill
-            displayName={getEntityName(person)}
-            name={person.name ?? ''}
-            width="20"
-          />
-        )
+      {(agent || person) && (
+        <ProfilePicture
+          matchRingToFill
+          displayName={agent ?? getEntityName(person)}
+          isAgent={Boolean(agent)}
+          name={person?.name ?? ''}
+          width="20"
+        />
       )}
       <Typography className="tw:text-tertiary" size="text-sm">
         {text}
