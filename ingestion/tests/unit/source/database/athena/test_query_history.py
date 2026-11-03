@@ -100,7 +100,7 @@ def _workflow_source(source_class, workgroup, result_limit):
                 "type": "Athena",
                 "awsConfig": {"awsRegion": "us-east-1", "awsAccessKeyId": "key", "awsSecretAccessKey": "secret"},
                 "s3StagingDir": "s3://bucket/staging/",
-                **({"workgroup": workgroup} if workgroup else {}),
+                **({"workgroup": workgroup} if workgroup is not None else {}),
             }
         },
         "sourceConfig": {
@@ -146,7 +146,9 @@ class TestWorkgroupScope:
         assert client.paginated_work_groups == ["workgroup_a"]
         assert client.list_work_groups_calls == 0
 
-    def test_every_enabled_workgroup_is_read_when_none_is_configured(self, build_source):
+    # "" is what API/YAML configs held while the UI still required the field
+    @pytest.mark.parametrize("workgroup", [None, ""])
+    def test_every_enabled_workgroup_is_read_when_none_is_configured(self, build_source, workgroup):
         client = FakeAthenaClient(
             history={
                 "workgroup_a": _user_queries("a", 2),
@@ -155,7 +157,7 @@ class TestWorkgroupScope:
             },
             enabled_work_groups=["workgroup_a", "workgroup_b"],
         )
-        source = build_source(AthenaLineageSource, client, workgroup=None)
+        source = build_source(AthenaLineageSource, client, workgroup=workgroup)
 
         assert _lineage_queries(source) == [
             "SELECT * FROM a_0",
