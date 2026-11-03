@@ -40,6 +40,16 @@ const DATE_RANGE_TURTLE = (
 <${ns}issuedOn> a owl:DatatypeProperty ; rdfs:label "issued on" ; rdfs:domain <${ns}Invoice> ; rdfs:range xsd:date .
 `;
 
+const RULES_TURTLE = (
+  ns: string
+) => `@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+<${ns}Invoice> a owl:Class ; rdfs:label "Invoice" .
+<${ns}Payment> a owl:Class ; rdfs:label "Payment" .
+<${ns}Receipt> a owl:Class ; rdfs:label "Receipt" .
+<${ns}Invoice> owl:disjointWith <${ns}Payment> .
+`;
+
 const CLASH_TURTLE = (
   ns: string
 ) => `@prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -116,6 +126,26 @@ const conceptNames = async (
   );
 
   return list.data.map(({ displayName, name }) => displayName ?? name).sort();
+};
+
+const seedDraft = async (
+  ontology: Ontology,
+  api: Awaited<ReturnType<typeof getWorkerAdminAPIContext>>
+) => {
+  for (const name of ['Invoice', 'Payment', 'Receipt']) {
+    await okJson(
+      await api.post('/api/v1/ontologyConcepts', {
+        data: {
+          name,
+          displayName: name,
+          iri: `${NS(ontology.name)}${name}`,
+          ontology: ontology.fullyQualifiedName,
+          conceptType: 'OWL_CLASS',
+        },
+      }),
+      `Create seed concept ${name}`
+    );
+  }
 };
 
 const openImport = async (page: Page, ontology: Ontology) => {
@@ -213,11 +243,18 @@ test.describe(
       try {
         await openImport(page, ontology);
         await parseFile(page, 'billing.ttl', TURTLE(NS(ontology.name)));
-        await itemRow(page, 'Payment').getByRole('checkbox').uncheck();
-        await itemRow(page, 'Receipt').getByRole('checkbox').uncheck();
+        await itemRow(page, 'Payment')
+          .locator('[data-testid^="ontology-native-import-item-check-"]')
+          .click();
+        await itemRow(page, 'Receipt')
+          .locator('[data-testid^="ontology-native-import-item-check-"]')
+          .click();
+        await page
+          .getByTestId('ontology-native-import-group-check-RELATIONSHIP')
+          .click();
         await expect(
           page.getByTestId('ontology-native-import-apply')
-        ).toContainText('1');
+        ).toHaveText('Import 1 selected');
         await applyImport(page);
 
         expect(await conceptNames(api, ontology)).toEqual(['Invoice']);
@@ -240,7 +277,7 @@ test.describe(
         );
         await page.getByTestId('ontology-native-import-parse').click();
 
-        await expect(page.getByRole('alert')).toContainText('xsd');
+        await expect(page.getByRole('alert')).toContainText('XMLSchema#date');
         await expect(page.getByRole('alert')).toContainText('issuedOn');
         await expect(
           page.getByTestId('ontology-native-import-apply')
@@ -299,6 +336,104 @@ test.describe(
       });
     }
 
+    test('imports a CSV into a new ontology', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const { api, ontology } = await createOntology(`pw_review_${uuid()}`);
+      const source = await createOntology(`pw_review_${uuid()}`);
+      const created: string[] = [];
+
+      try {
+        await seedDraft(source.ontology, source.api);
+        const csv = await source.api.get(
+          `/api/v1/ontologies/${source.ontology.id}/export`,
+          { params: { format: 'csv' } }
+        );
+        expect(csv.ok()).toBeTruthy();
+
+        await openImport(page, ontology);
+        await chooseFile(page, 'billing.csv', await csv.text());
+        await expect(
+          page.getByTestId('ontology-native-import-format')
+        ).toHaveText('CSV');
+        await page.getByTestId('ontology-native-import-target').click();
+        await page.getByRole('option', { name: /new ontology/i }).click();
+        await page.getByTestId('ontology-native-import-parse').click();
+        await expect(itemRow(page, 'Invoice')).toContainText('New');
+        await expect(itemRow(page, 'Receipt')).toContainText('New');
+
+        const create = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/ontologies') &&
+            response.request().method() === 'POST'
+        );
+        await page.getByTestId('ontology-native-import-apply').click();
+        const made = await okJson<Ontology>(
+          await create,
+          'Create imported ontology'
+        );
+        created.push(made.id);
+
+        expect(made.iri).toMatch(/^https:\/\//);
+        await expect
+          .poll(() => conceptNames(api, made))
+          .toEqual(['Invoice', 'Payment', 'Receipt']);
+      } finally {
+        for (const id of created) {
+          await remove(api, id);
+        }
+        await remove(api, ontology.id);
+        await remove(source.api, source.ontology.id);
+      }
+    });
+
+    test('lists rules in their own group, counts them, and imports them when ticked', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const { api, ontology } = await createOntology(`pw_review_${uuid()}`);
+
+      try {
+        await openImport(page, ontology);
+        await parseFile(page, 'rules.ttl', RULES_TURTLE(NS(ontology.name)));
+
+        const group = page.getByTestId('ontology-native-import-group-RULE');
+        await expect(group).toContainText('Rules (1)');
+        await expect(
+          group.locator('[data-testid^="ontology-native-import-item-status-"]')
+        ).toHaveText(['New']);
+        await expect(
+          page.getByTestId('ontology-native-import-items-found')
+        ).toContainText('4 items found');
+        await expect(
+          page.getByTestId('ontology-native-import-selection-summary')
+        ).toContainText('4 of 4 items selected');
+
+        const check = group.getByTestId(
+          'ontology-native-import-group-check-RULE'
+        );
+        await check.click();
+        await expect(
+          page.getByTestId('ontology-native-import-selection-summary')
+        ).toContainText('3 of 4 items selected');
+        await check.click();
+        await applyImport(page);
+
+        const axioms = await okJson<{ data: { axiomType: string }[] }>(
+          await api.get('/api/v1/ontologyAxioms', {
+            params: { ontology: ontology.fullyQualifiedName, limit: 100 },
+          }),
+          'List imported rules'
+        );
+        expect(axioms.data.map(({ axiomType }) => axiomType)).toContain(
+          'DISJOINT_WITH'
+        );
+      } finally {
+        await remove(api, ontology.id);
+      }
+    });
+
     test('refuses a file that is not an ontology and one that is too large', async ({
       isolatedUserPage: page,
     }) => {
@@ -354,31 +489,6 @@ test.describe(
   'Native ontology draft export and round trip',
   { tag: ['@Features', '@Governance'] },
   () => {
-    const seed = async (
-      ontology: Ontology,
-      api: Awaited<ReturnType<typeof getWorkerAdminAPIContext>>
-    ) => {
-      const content = TURTLE(NS(ontology.name));
-      const preview = await okJson<{ changeSet: unknown }>(
-        await api.post(`/api/v1/ontologies/${ontology.id}/imports/preview`, {
-          data: { data: content, fileName: 'seed.ttl' },
-        }),
-        'Preview seed import'
-      );
-      const draft = await okJson<{ id: string }>(
-        await api.post('/api/v1/ontologyChangeSets', {
-          data: preview.changeSet,
-        }),
-        'Create seed change set'
-      );
-      await okJson(
-        await api.post(`/api/v1/ontologyChangeSets/${draft.id}/apply`, {
-          data: {},
-        }),
-        'Apply seed change set'
-      );
-    };
-
     test('previews the current draft in the chosen format and downloads it', async ({
       isolatedUserPage: page,
     }) => {
@@ -412,7 +522,14 @@ test.describe(
       }
     });
 
-    for (const card of ['rdfxml', 'skos', 'jsonld', 'csv'] as const) {
+    const ROUND_TRIP = {
+      csv: { extension: 'csv', marker: 'Invoice' },
+      jsonld: { extension: 'jsonld', marker: '@graph' },
+      rdfxml: { extension: 'rdf', marker: 'rdf:RDF' },
+      skos: { extension: 'ttl', marker: 'skos:' },
+    } as const;
+
+    for (const card of Object.keys(ROUND_TRIP) as (keyof typeof ROUND_TRIP)[]) {
       test(`a ${card} export of the draft imports again with the same concepts`, async ({
         isolatedUserPage: page,
       }) => {
@@ -433,14 +550,18 @@ test.describe(
           await page.getByTestId(`ontology-release-format-${card}`).click();
           await expect(
             page.getByTestId('ontology-release-export-preview')
-          ).toContainText('Invoice');
+          ).toContainText(ROUND_TRIP[card].marker);
           const download = page.waitForEvent('download');
           await page.getByTestId('ontology-run-release-export').click();
           const path = await (await download).path();
           const exported = await readFile(path, 'utf8');
 
           await openImport(page, target.ontology);
-          await chooseFile(page, `round.${card}`, exported);
+          await chooseFile(
+            page,
+            `round.${ROUND_TRIP[card].extension}`,
+            exported
+          );
           await page.getByTestId('ontology-native-import-parse').click();
           await expect(itemRow(page, 'Invoice')).toContainText('New');
           await expect(itemRow(page, 'Receipt')).toContainText('New');
@@ -463,7 +584,7 @@ test.describe(
       const { api, ontology } = await createOntology(`pw_scope_${uuid()}`);
 
       try {
-        await seed(ontology, api);
+        await seedDraft(ontology, api);
         const state = await okJson<{
           activationRevision: number;
           workingRevision: number;
@@ -494,7 +615,7 @@ test.describe(
         await expect(
           page.getByRole('option', { name: /Current draft/ })
         ).toBeVisible();
-        await expect(page.getByRole('option').nth(1)).toBeVisible();
+        await expect(page.getByRole('option')).toHaveCount(2);
       } finally {
         await remove(api, ontology.id);
       }
@@ -518,7 +639,6 @@ test.describe(
         await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
         await page.getByTestId('ontology-library-trigger').click();
         await page.getByTestId('ontology-pack-details-fibo').click();
-        await page.getByTestId('ontology-module-foundations').click();
 
         const created = page.waitForResponse(
           (response) =>
@@ -538,12 +658,13 @@ test.describe(
         await page.keyboard.press('Escape');
 
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
-        await expect(
-          page.getByTestId('ontology-publication-trigger')
-        ).toContainText('(0)');
+        const publish = page.getByTestId('ontology-publication-trigger');
+        await expect(publish).toContainText('Publish (');
+        const before = Number(
+          /\((\d+)\)/.exec((await publish.textContent()) ?? '')?.[1]
+        );
         await page.getByTestId('ontology-library-trigger').click();
         await page.getByTestId('ontology-pack-details-fibo').click();
-        await page.getByTestId('ontology-module-foundations').click();
         await page.getByTestId('ontology-library-target').click();
         await page
           .getByRole('option', { name: new RegExp(ontology.name) })
@@ -561,14 +682,45 @@ test.describe(
         expect((await applied).ok()).toBeTruthy();
         await page.keyboard.press('Escape');
 
-        await expect(
-          page.getByTestId('ontology-publication-trigger')
-        ).not.toContainText('(0)');
+        await expect(publish).toHaveText(`Publish (${before + 14})`);
       } finally {
         await remove(api, ontology.id);
         if (installed) {
           await remove(api, installed.id);
         }
+      }
+    });
+
+    test('a pack review lists its items as New and adds no clash to an ontology that already has one', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const { api, ontology } = await createOntology(`pw_packclash_${uuid()}`);
+
+      try {
+        await openImport(page, ontology);
+        await parseFile(page, 'clash.ttl', CLASH_TURTLE(NS(ontology.name)));
+        await applyImport(page);
+        await page.keyboard.press('Escape');
+        await page.getByTestId('ontology-library-trigger').click();
+        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-library-target').click();
+        await page
+          .getByRole('option', { name: new RegExp(ontology.name) })
+          .click();
+
+        const review = page.getByTestId('ontology-library-pack-review');
+        await expect(review).toContainText('Financial Instrument');
+        await expect(
+          review.locator('[data-testid^="ontology-native-import-item-status-"]')
+        ).toHaveText(Array(14).fill('New'));
+        await expect(
+          review.locator(
+            '[data-testid^="ontology-native-import-item-warning-"]'
+          )
+        ).toHaveCount(0);
+      } finally {
+        await remove(api, ontology.id);
       }
     });
 

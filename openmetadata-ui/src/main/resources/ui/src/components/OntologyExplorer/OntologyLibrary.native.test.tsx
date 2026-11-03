@@ -42,11 +42,12 @@ jest.mock('../../rest/axiosClient', () => ({
   put: jest.fn(),
   delete: jest.fn(),
 }));
+let mockIdentityReady = true;
 jest.mock(
   '../governance/ontology/OntologyCreateForm/useOntologyIdentitySource',
   () => ({
     useOntologyIdentitySource: () => ({
-      isReady: true,
+      isReady: mockIdentityReady,
       identityOf: () => undefined,
     }),
   })
@@ -369,6 +370,20 @@ describe('OntologyLibrary native installation', () => {
         url.startsWith('/ontologies/')
       )
     ).toBe(false);
+  });
+
+  it('keeps Install disabled for a new ontology until its name and IRI source has loaded', async () => {
+    mockIdentityReady = false;
+    try {
+      renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+      await openPack();
+
+      expect(
+        await screen.findByTestId('ontology-library-native-install')
+      ).toBeDisabled();
+    } finally {
+      mockIdentityReady = true;
+    }
   });
 
   it('installs and opens the graph from the AI-mode pack detail', async () => {

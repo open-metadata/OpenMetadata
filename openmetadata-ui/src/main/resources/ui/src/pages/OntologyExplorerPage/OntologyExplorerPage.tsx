@@ -2488,6 +2488,9 @@ const OntologyExplorerContent: React.FC = () => {
           },
           onApplied: (ontology) => {
             void queryClient.invalidateQueries({
+              queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+            });
+            void queryClient.invalidateQueries({
               queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY],
             });
             void queryClient.invalidateQueries({

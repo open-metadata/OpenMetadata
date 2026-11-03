@@ -89,7 +89,8 @@ const OntologyNativeLibraryDetail = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const currentUserId = useApplicationStore((state) => state.currentUser?.id);
-  const { identityOf } = useOntologyIdentitySource(canCreate);
+  const { identityOf, isReady: isIdentityReady } =
+    useOntologyIdentitySource(canCreate);
   const [targetId, setTargetId] = useState('new');
   const [target, setTarget] = useState<Ontology>();
   const [selectedModuleIds, setSelectedModuleIds] = useState(() =>
@@ -209,7 +210,7 @@ const OntologyNativeLibraryDetail = ({
       return true;
     }
     if (targetId === 'new' && !target) {
-      return !canCreate || !currentUserId;
+      return !canCreate || !currentUserId || !isIdentityReady;
     }
 
     return !canEditTarget;
