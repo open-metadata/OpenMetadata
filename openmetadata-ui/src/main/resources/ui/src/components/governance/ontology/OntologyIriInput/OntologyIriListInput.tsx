@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
@@ -59,10 +60,11 @@ const OntologyIriListInput = ({
               color="secondary"
               isDisabled={isDisabled}
               key={iri}
+              iconTrailing={XClose}
               size="sm"
               title={iri}
               onPress={() => onChange(value.filter((entry) => entry !== iri))}>
-              {labelOf(iri)} x
+              {labelOf(iri)}
             </Button>
           ))}
         </Box>

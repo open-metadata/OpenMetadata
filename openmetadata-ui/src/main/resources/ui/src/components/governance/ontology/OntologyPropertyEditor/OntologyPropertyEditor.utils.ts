@@ -147,6 +147,11 @@ export const propertyPatch = (
     : [{ op: 'test', path: '/version', value: property.version }, ...changes];
 };
 
+const IRI_LIST_HINT: Record<string, string> = {
+  true: 'message.ontology-iri-chain-per-line',
+  false: 'message.ontology-iri-per-line',
+};
+
 export const propertyFormFields = (
   t: ReturnType<typeof useTranslation>['t'],
   kind: Kind,
@@ -162,13 +167,7 @@ export const propertyFormFields = (
     name,
     label,
     type: multiple ? FieldTypes.TEXTAREA : FieldTypes.TEXT,
-    placeholder: multiple
-      ? t(
-          ordered
-            ? 'message.ontology-iri-chain-per-line'
-            : 'message.ontology-iri-per-line'
-        )
-      : undefined,
+    placeholder: multiple ? t(IRI_LIST_HINT[String(ordered)]) : undefined,
     rules: {
       validate: (value: string) =>
         (multiple
