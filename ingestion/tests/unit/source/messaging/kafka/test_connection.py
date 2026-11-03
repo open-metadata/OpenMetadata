@@ -157,3 +157,21 @@ def test_config_maps_pass_through_when_no_secrets_manager_is_configured():
 
     admin_config = mock_admin.call_args.args[0]
     assert admin_config["ssl.key.password"] == "secret:/om/messaging/prod/key"
+
+
+def test_literal_secret_prefixed_values_pass_through_under_the_default_db_provider():
+    """The default provider never hands out references, so a literal `secret:` value is kept."""
+    from metadata.ingestion.source.messaging.kafka.connection import get_connection
+    from metadata.utils.secrets.db_secrets_manager import DBSecretsManager
+
+    config = _kafka_config(consumerConfig={"ssl.key.password": "secret:passphrase"})
+
+    with (
+        patch(f"{CONNECTION_MODULE}.AdminClient") as mock_admin,
+        patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as mock_factory,
+    ):
+        mock_factory.return_value.get_secrets_manager.return_value = DBSecretsManager()
+        get_connection(config)
+
+    admin_config = mock_admin.call_args.args[0]
+    assert admin_config["ssl.key.password"] == "secret:passphrase"

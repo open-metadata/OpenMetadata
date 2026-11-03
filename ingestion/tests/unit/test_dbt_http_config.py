@@ -151,6 +151,26 @@ class TestDbtHttpConfigCustomHeaders:
         _, kwargs = mock_get.call_args
         assert kwargs["headers"] == {"PRIVATE-TOKEN": "glpat-resolved"}
 
+    def test_literal_secret_prefixed_header_is_kept_under_the_default_db_provider(self):
+        """The default provider never hands out references, so a literal `secret:` header is kept."""
+        from metadata.utils.secrets.db_secrets_manager import DBSecretsManager
+
+        config = _base_config(dbtHttpHeaders={"Authorization": "secret:literal-token"})
+        manifest_resp = _make_json_response(MANIFEST_JSON)
+
+        with (
+            patch(
+                "metadata.ingestion.source.database.dbt.dbt_config.requests.get",
+                return_value=manifest_resp,
+            ) as mock_get,
+            patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as mock_factory,
+        ):
+            mock_factory.return_value.get_secrets_manager.return_value = DBSecretsManager()
+            list(get_dbt_details(config))
+
+        _, kwargs = mock_get.call_args
+        assert kwargs["headers"] == {"Authorization": "secret:literal-token"}
+
 
 class TestDbtHttpConfigSSLVerify:
     """verifySSL enum values produce correct verify= argument to requests.get()."""

@@ -65,12 +65,17 @@ def _resolve_secret_value(value: str) -> str:
 
     Imported lazily, as in custom_pydantic, to avoid a circular import.
     """
+    from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
+        DBSecretsManager,
+    )
     from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
         SecretsManagerFactory,
     )
 
     secrets_manager = SecretsManagerFactory().get_secrets_manager()
-    if not secrets_manager:
+    # The server only hands out references with an external store; under the default DB
+    # provider a value starting with `secret:` is the literal setting and must reach the client.
+    if not secrets_manager or isinstance(secrets_manager, DBSecretsManager):
         return value
     secret_id = value.replace(SECRET, "", 1)
     try:
