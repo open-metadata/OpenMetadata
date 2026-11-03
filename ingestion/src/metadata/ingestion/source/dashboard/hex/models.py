@@ -13,7 +13,7 @@ Hex API Response Models
 """
 
 from datetime import datetime
-from typing import List, Optional  # noqa: UP035
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -52,39 +52,39 @@ class Reviews(BaseModel):
 class AppViews(BaseModel):
     """App view counts"""
 
-    allTime: Optional[int] = Field(None, alias="all_time")  # noqa: N815, UP045
-    lastSevenDays: Optional[int] = Field(None, alias="last_seven_days")  # noqa: N815, UP045
-    lastFourteenDays: Optional[int] = Field(None, alias="last_fourteen_days")  # noqa: N815, UP045
-    lastThirtyDays: Optional[int] = Field(None, alias="last_thirty_days")  # noqa: N815, UP045
+    allTime: int | None = None  # noqa: N815
+    lastSevenDays: int | None = None  # noqa: N815
+    lastFourteenDays: int | None = None  # noqa: N815
+    lastThirtyDays: int | None = None  # noqa: N815
 
 
 class ProjectAnalytics(BaseModel):
     """Project analytics data"""
 
-    appViews: Optional[AppViews] = Field(None, alias="app_views")  # noqa: N815, UP045
-    lastViewedAt: Optional[datetime] = Field(None, alias="last_viewed_at")  # noqa: N815, UP045
-    publishedResultsUpdatedAt: Optional[datetime] = Field(None, alias="published_results_updated_at")  # noqa: N815, UP045
+    appViews: AppViews | None = None  # noqa: N815
+    lastViewedAt: datetime | None = None  # noqa: N815
+    publishedResultsUpdatedAt: datetime | None = None  # noqa: N815
 
 
 class Project(BaseModel):
-    """Hex Project Model"""
+    """Hex Project or Component, told apart by type"""
 
     id: str
     title: str
-    description: Optional[str] = None  # noqa: UP045
-    type: Optional[str] = None  # noqa: UP045
-    creator: Optional[Creator] = None  # noqa: UP045
-    owner: Optional[Owner] = None  # noqa: UP045
-    status: Optional[ProjectStatus] = None  # noqa: UP045
-    categories: List[Category] = Field(default_factory=list)  # noqa: UP006
-    reviews: Optional[Reviews] = None  # noqa: UP045
-    analytics: Optional[ProjectAnalytics] = None  # noqa: UP045
-    lastEditedAt: Optional[datetime] = Field(None, alias="last_edited_at")  # noqa: N815, UP045
-    lastPublishedAt: Optional[datetime] = Field(None, alias="last_published_at")  # noqa: N815, UP045
-    createdAt: Optional[datetime] = Field(None, alias="created_at")  # noqa: N815, UP045
-    archivedAt: Optional[datetime] = Field(None, alias="archived_at")  # noqa: N815, UP045
-    trashedAt: Optional[datetime] = Field(None, alias="trashed_at")  # noqa: N815, UP045
-    schedules: List = Field(default_factory=list)  # noqa: UP006
+    description: str | None = None
+    type: str | None = None
+    creator: Creator | None = None
+    owner: Owner | None = None
+    status: ProjectStatus | None = None
+    categories: list[Category] = Field(default_factory=list)
+    reviews: Reviews | None = None
+    analytics: ProjectAnalytics | None = None
+    lastEditedAt: datetime | None = None  # noqa: N815
+    lastPublishedAt: datetime | None = None  # noqa: N815
+    createdAt: datetime | None = None  # noqa: N815
+    archivedAt: datetime | None = None  # noqa: N815
+    trashedAt: datetime | None = None  # noqa: N815
+    schedules: list = Field(default_factory=list)
 
 
 class Pagination(BaseModel):
@@ -104,29 +104,21 @@ class ProjectListResponse(PagedResponse):
     values: list[Project] = Field(default_factory=list)
 
 
-class ProjectRunInput(BaseModel):
-    """Project run input parameter"""
-
-    name: str
-    value: Optional[str] = None  # noqa: UP045
-
-
 class ProjectRun(BaseModel):
-    """Project run information"""
+    """A run of a published project"""
 
-    projectId: str = Field(alias="project_id")  # noqa: N815
-    runId: str = Field(alias="run_id")  # noqa: N815
-    status: Optional[str] = None  # noqa: UP045
-    startedAt: Optional[datetime] = Field(None, alias="started_at")  # noqa: N815, UP045
-    completedAt: Optional[datetime] = Field(None, alias="completed_at")  # noqa: N815, UP045
-    inputs: List[ProjectRunInput] = Field(default_factory=list)  # noqa: UP006
+    runId: str  # noqa: N815
+    status: str | None = None
+    startTime: datetime | None = None  # noqa: N815
+    endTime: datetime | None = None  # noqa: N815
+    # Milliseconds
+    elapsedTime: float | None = None  # noqa: N815
 
 
 class ProjectRunsResponse(BaseModel):
     """Get Project Runs API Response"""
 
-    runs: List[ProjectRun] = Field(default_factory=list)  # noqa: UP006
-    nextPage: Optional[str] = Field(None, alias="next_page")  # noqa: N815, UP045
+    runs: list[ProjectRun] = Field(default_factory=list)
 
 
 class DataConnection(BaseModel):

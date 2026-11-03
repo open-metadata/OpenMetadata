@@ -14,8 +14,6 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -24,7 +22,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.FieldPathUtils.FieldPathComponents;
 
 /**
@@ -277,24 +274,19 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_dotSeparator_malformedEmptySegment() throws Exception {
     // The FQN parser rejects empty segments; parseFieldPath must return null (fail-loud
-    // upstream at updateFieldDescription) instead of producing garbage components.
+    // upstream at setFieldDescription) instead of producing garbage components.
     FieldPathComponents result = invokeParseFieldPath("columns..description");
 
     assertNull(result);
   }
 
   @Test
-  void testUpdateFieldDescription_nestedLeaf_updatesLeafOnly() {
+  void testSetFieldDescription_nestedLeaf_updatesLeafOnly() {
     Table table = nestedTable();
-    EntityRepository<?> repository = mock(EntityRepository.class);
 
     boolean updated =
-        FieldPathUtils.updateFieldDescription(
-            table,
-            repository,
-            "admin",
-            "columns.profile.personal.full_name.description",
-            "Full name of the customer");
+        FieldPathUtils.setFieldDescription(
+            table, "columns.profile.personal.full_name.description", "Full name of the customer");
 
     assertTrue(updated);
     Column profile = table.getColumns().getFirst();
@@ -306,17 +298,15 @@ class FieldPathUtilsTest {
   }
 
   @Test
-  void testUpdateFieldDescription_unresolvableNestedPath_failsLoudly() {
+  void testSetFieldDescription_unresolvableNestedPath_failsLoudly() {
     Table table = nestedTable();
-    EntityRepository<?> repository = mock(EntityRepository.class);
 
     boolean updated =
-        FieldPathUtils.updateFieldDescription(
-            table, repository, "admin", "columns.profile.nonexistent.child.description", "text");
+        FieldPathUtils.setFieldDescription(
+            table, "columns.profile.nonexistent.child.description", "text");
 
     assertFalse(updated);
     assertEquals("Customer profile block", table.getColumns().getFirst().getDescription());
-    verifyNoInteractions(repository);
   }
 
   @Test

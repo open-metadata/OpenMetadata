@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ICON_DIMENSION } from '../../../constants/constants';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import {
   CommonEntitySummaryInfoV1Props,
   EntityInfoItemV1,
@@ -61,11 +62,13 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
       return isNil(info.value) ? '-' : info.value;
     }
 
+    const url = info.isExternal ? getSafeHttpUrl(info.url) : info.url;
+
     if (info.isExternal && info.value !== '-') {
       return (
         <a
           className="summary-item-link"
-          href={info.url}
+          href={url}
           rel="noopener noreferrer"
           target="_blank">
           {info.value}
@@ -82,7 +85,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
     return (
       <Link
         className="summary-item-link"
-        to={info.linkProps ?? info.url ?? ''}
+        to={info.linkProps ?? url ?? ''}
         onClick={onLinkClick}>
         {info.value}
       </Link>

@@ -37,7 +37,10 @@ import {
 } from './FilterChip.interface';
 import { FetchedOption } from './useTestCaseFilterOptions';
 
+// Last Run is on by default so the counts visibly read as all-time, matching how the
+// Summary tab always shows the range its counts cover.
 const DEFAULT_SELECTED_FILTERS = [
+  TEST_CASE_FILTERS.lastRun,
   TEST_CASE_FILTERS.status,
   TEST_CASE_FILTERS.type,
   TEST_CASE_FILTERS.table,
