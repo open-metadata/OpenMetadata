@@ -40,7 +40,7 @@ import {
   ContextMemoryStatus,
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -399,10 +399,12 @@ const EntityStatusReason: FC<{ memory: ContextMemory }> = ({ memory }) => {
  * (ADR:2026-11-03-extraction-bookkeeping-keeps-the-sources-last-editor).
  */
 const useMemoryAuthors = (memory: ContextMemory) => {
-  const updaterDisplayName = useApplicationStore(
-    (state) => state.userProfilePics[memory.updatedBy ?? '']?.displayName
-  );
-  const updater = updaterDisplayName || memory.updatedBy;
+  // The avatar loads the owner, so the last editor's profile is loaded here.
+  const [, , updaterProfile] = useUserProfile({
+    permission: Boolean(memory.updatedBy),
+    name: memory.updatedBy ?? '',
+  });
+  const updater = updaterProfile?.displayName || memory.updatedBy;
   const owner = memory.owners?.[0];
 
   return owner

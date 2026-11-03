@@ -10,13 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import {
   ContextMemory,
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
+import { User } from '../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getUserByName } from '../../../rest/userAPI';
 import MemoriesView from './MemoriesView.component';
+
+const DISPLAY_NAMES: Record<string, string> = {
+  alice: 'Alice Smith',
+  MemoryReconciliationApplicationBot: 'Memory Reconciliation Agent',
+  tomas: 'Tomas Montiel',
+};
+
+const profileOf = (name: string): User => ({
+  id: name,
+  name,
+  displayName: DISPLAY_NAMES[name],
+  email: '',
+});
+
+jest.mock('../../../rest/userAPI', () => ({
+  getUserByName: jest.fn(),
+}));
 
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
@@ -135,18 +154,15 @@ const mockMemories: ContextMemory[] = [
 describe('MemoriesView', () => {
   beforeEach(() => {
     useApplicationStore.setState({ userProfilePics: {} });
+    (getUserByName as jest.Mock).mockImplementation(async (name: string) =>
+      profileOf(name)
+    );
   });
 
   it.each([
     ['alice', 'Alice Smith'],
     ['MemoryReconciliationApplicationBot', 'Memory Reconciliation Agent'],
-  ])('shows the cached display name for author %s', (name, displayName) => {
-    useApplicationStore.setState({
-      userProfilePics: {
-        [name]: { id: name, name, displayName, email: '' },
-      },
-    });
-
+  ])('shows the display name of author %s', async (name, displayName) => {
     render(
       <MemoriesView
         data={[{ ...mockMemories[0], updatedBy: name }]}
@@ -154,23 +170,15 @@ describe('MemoriesView', () => {
       />
     );
 
-    expect(screen.getByText(displayName)).toBeInTheDocument();
+    expect(await screen.findByText(displayName)).toBeInTheDocument();
     expect(screen.queryByText(name)).not.toBeInTheDocument();
   });
 
-  /** Reconciliation edits a memory as its app bot: the card still leads with the owner. */
-  it('names the owner first and whoever changed the memory last second', () => {
-    useApplicationStore.setState({
-      userProfilePics: {
-        MemoryReconciliationApplicationBot: {
-          id: 'bot',
-          name: 'MemoryReconciliationApplicationBot',
-          displayName: 'Memory Reconciliation Agent',
-          email: '',
-        },
-      },
-    });
-
+  /**
+   * Reconciliation edits a memory as its app bot: the card still leads with the owner. The avatar
+   * loads only the owner, so the card must load the bot's profile itself.
+   */
+  it('names the owner first and whoever changed the memory last second', async () => {
     render(
       <MemoriesView
         data={[
@@ -194,8 +202,53 @@ describe('MemoriesView', () => {
     expect(screen.getByTestId('memory-owner')).toHaveTextContent(
       'Tomas Montiel'
     );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('memory-updated-by')).toHaveTextContent(
+        'label.updated-by Memory Reconciliation Agent'
+      )
+    );
+
+    expect(getUserByName).toHaveBeenCalledWith(
+      'MemoryReconciliationApplicationBot',
+      expect.anything()
+    );
+  });
+
+  it('names the last editor as is when their profile cannot be read', async () => {
+    (getUserByName as jest.Mock).mockRejectedValue({
+      response: { status: 403 },
+    });
+
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            owners: [
+              {
+                id: 'tomas-id',
+                type: 'user',
+                name: 'tomas',
+                displayName: 'Tomas Montiel',
+              },
+            ],
+            updatedBy: 'MemoryReconciliationApplicationBot',
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    await waitFor(() =>
+      expect(
+        useApplicationStore.getState().userProfilePics
+          .MemoryReconciliationApplicationBot
+      ).toBeDefined()
+    );
+
     expect(screen.getByTestId('memory-updated-by')).toHaveTextContent(
-      'label.updated-by Memory Reconciliation Agent'
+      'label.updated-by MemoryReconciliationApplicationBot'
     );
   });
 
@@ -223,21 +276,20 @@ describe('MemoriesView', () => {
     expect(screen.queryByTestId('memory-updated-by')).not.toBeInTheDocument();
   });
 
-  it('shows the raw author name until the profile is cached', () => {
+  it('shows the raw author name until the profile is loaded', async () => {
+    let resolveProfile: (user: User) => void = jest.fn();
+    (getUserByName as jest.Mock).mockReturnValue(
+      new Promise<User>((resolve) => {
+        resolveProfile = resolve;
+      })
+    );
+
     render(<MemoriesView data={[mockMemories[0]]} isLoading={false} />);
 
     expect(screen.getByText('alice')).toBeInTheDocument();
 
-    act(() => {
-      useApplicationStore.getState().updateUserProfilePics({
-        id: 'alice',
-        user: {
-          id: 'alice',
-          name: 'alice',
-          displayName: 'Alice Smith',
-          email: '',
-        },
-      });
+    await act(async () => {
+      resolveProfile(profileOf('alice'));
     });
 
     expect(screen.getByText('Alice Smith')).toBeInTheDocument();
@@ -245,15 +297,22 @@ describe('MemoriesView', () => {
   });
 
   it.each([undefined, ''])(
-    'falls back to the author name when the cached display name is %s',
-    (displayName) => {
-      useApplicationStore.setState({
-        userProfilePics: {
-          alice: { id: 'alice', name: 'alice', displayName, email: '' },
-        },
-      });
+    'falls back to the author name when the display name is %s',
+    async (displayName) => {
+      (getUserByName as jest.Mock).mockImplementation(async (name: string) => ({
+        id: name,
+        name,
+        displayName,
+        email: '',
+      }));
 
       render(<MemoriesView data={[mockMemories[0]]} isLoading={false} />);
+
+      await waitFor(() =>
+        expect(
+          useApplicationStore.getState().userProfilePics.alice
+        ).toBeDefined()
+      );
 
       expect(screen.getByText('alice')).toBeInTheDocument();
     }
