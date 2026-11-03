@@ -33,6 +33,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import Loader from '../../../../../common/Loader/Loader';
 import { GovernanceView } from './Governance.types';
 
 const INTAKE_FORM_ENTITY = 'label.intake-form';
@@ -111,8 +112,8 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
 
   if (isLoadingExisting || !resolvedEntityType) {
     return (
-      <div className="tw:flex tw:flex-1 tw:items-center tw:justify-center tw:p-8 tw:text-sm tw:text-tertiary">
-        {t('label.loading')}
+      <div className="tw:flex tw:flex-1 tw:items-center tw:justify-center tw:p-8">
+        <Loader dataTestId="intake-form-page-loader" />
       </div>
     );
   }
@@ -123,7 +124,7 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
       data-testid="intake-form-page"
       direction="col">
       <div className="tw:flex-1 tw:overflow-y-auto">
-        <div className="tw:max-w-[50%] tw:w-full tw:mx-auto">
+        <div className="tw:w-full">
           <IntakeFormDesignerBody
             open
             entityType={resolvedEntityType}
