@@ -994,6 +994,16 @@ const OntologyGraphView = ({
     runConfirmed,
   ]);
 
+  const dataConcepts = useMemo(
+    () =>
+      (model?.concepts ?? []).map((concept) => ({
+        id: concept.id,
+        name: getEntityName(concept),
+        synonyms: concept.synonyms,
+      })),
+    [model?.concepts]
+  );
+
   if ([isError, !model].every(Boolean)) {
     return (
       <Alert variant="error">
@@ -1256,16 +1266,6 @@ const OntologyGraphView = ({
       />
     );
   };
-
-  const dataConcepts = useMemo(
-    () =>
-      (model?.concepts ?? []).map((concept) => ({
-        id: concept.id,
-        name: getEntityName(concept),
-        synonyms: concept.synonyms,
-      })),
-    [model?.concepts]
-  );
 
   const renderDataSurface = () =>
     hasOpenedData ? (
