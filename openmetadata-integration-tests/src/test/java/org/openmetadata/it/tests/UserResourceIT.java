@@ -1109,6 +1109,15 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(scopedGrid.contains(secondTable.getFullyQualifiedName()));
     assertTrue(scopedGrid.contains(unassignedTable.getFullyQualifiedName()));
     assertFalse(scopedGrid.contains(otherTable.getFullyQualifiedName()), "column grid");
+    // The grid's domain filter narrows within their domains; another domain falls back to the role.
+    String ownDomainGrid = getAs(user, grid + "&domainId=" + second.getId());
+    assertTrue(ownDomainGrid.contains(secondTable.getFullyQualifiedName()));
+    assertFalse(ownDomainGrid.contains(firstTable.getFullyQualifiedName()));
+    assertFalse(ownDomainGrid.contains(unassignedTable.getFullyQualifiedName()));
+    String otherDomainGrid = getAs(user, grid + "&domainId=" + other.getId());
+    assertTrue(otherDomainGrid.contains(secondTable.getFullyQualifiedName()));
+    assertFalse(
+        otherDomainGrid.contains(otherTable.getFullyQualifiedName()), "grid filtered on another");
 
     String onlyTheseTables =
         String.format(

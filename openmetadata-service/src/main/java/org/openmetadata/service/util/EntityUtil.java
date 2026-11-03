@@ -1186,7 +1186,27 @@ public final class EntityUtil {
    */
   public static NavbarDomainIds navbarDomainIds(
       SecurityContext securityContext, String entityType) {
-    NavbarScope scope = navbarScope(securityContext, getSubjectContext(securityContext));
+    return domainIds(navbarScope(securityContext, getSubjectContext(securityContext)), entityType);
+  }
+
+  /**
+   * As above, for a domain the caller filtered on (e.g. the column grid's domain filter): kept as
+   * is, unless a domain-only user filters on one outside their domains, where their role scope
+   * applies as it does for such a pick.
+   */
+  public static NavbarDomainIds navbarDomainIds(
+      SecurityContext securityContext, String entityType, String domainId) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    NavbarScope scope =
+        isDomainRestricted(subjectContext)
+            ? navbarScope(subjectContext, domainById(domainId))
+            : NavbarScope.NONE;
+    return scope.keepsUnassigned()
+        ? domainIds(scope, entityType)
+        : new NavbarDomainIds(List.of(domainId), false);
+  }
+
+  private static NavbarDomainIds domainIds(NavbarScope scope, String entityType) {
     List<EntityReference> domains = scope.domains();
     boolean applies =
         !domains.isEmpty()
@@ -1196,6 +1216,15 @@ public final class EntityUtil {
         ? new NavbarDomainIds(
             List.of(scopeAndSubDomainIds(domains).split(",")), scope.keepsUnassigned())
         : new NavbarDomainIds(List.of(), false);
+  }
+
+  // A malformed or unknown id resolves to no domain, as a stale pick does.
+  private static EntityReference domainById(String id) {
+    try {
+      return resolveSelectedDomain(new EntityReference().withId(UUID.fromString(id)));
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 
   /**
@@ -1395,10 +1424,12 @@ public final class EntityUtil {
    */
   private static NavbarScope navbarScope(
       SecurityContext securityContext, SubjectContext subjectContext) {
-    if (subjectContext.isBot()) {
-      return NavbarScope.NONE;
-    }
-    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    return subjectContext.isBot()
+        ? NavbarScope.NONE
+        : navbarScope(subjectContext, resolveSelectedDomain(activeDomain(securityContext)));
+  }
+
+  private static NavbarScope navbarScope(SubjectContext subjectContext, EntityReference selected) {
     if (!isDomainRestricted(subjectContext)) {
       return selected == null ? NavbarScope.NONE : new NavbarScope(List.of(selected), false);
     }

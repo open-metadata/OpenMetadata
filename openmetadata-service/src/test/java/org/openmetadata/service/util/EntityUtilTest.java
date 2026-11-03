@@ -1213,6 +1213,77 @@ class EntityUtilTest {
   }
 
   @Test
+  void navbarDomainIds_keepsAFilteredDomainWithinADomainOnlyUsersDomains() {
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference marketing =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Marketing");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    CatalogSecurityContext analyst =
+        new CatalogSecurityContext(() -> "analyst", "https", "digest", null, false, null, null);
+    CatalogSecurityContext viewer =
+        new CatalogSecurityContext(() -> "viewer", "https", "digest", null, false, null, null);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      for (EntityReference domain : List.of(sales, marketing)) {
+        entity
+            .when(() -> Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), NON_DELETED))
+            .thenReturn(domain);
+      }
+      EntityRepository tableRepository = mock(EntityRepository.class);
+      when(tableRepository.isSupportsDomains()).thenReturn(true);
+      entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("table")).thenReturn(tableRepository);
+      entity.when(Entity::getSearchRepository).thenReturn(null);
+      stubSubDomainIds(entity, List.of());
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(analyst))
+          .thenReturn(
+              new SubjectContext(
+                  new org.openmetadata.schema.entity.teams.User()
+                      .withName("analyst")
+                      .withRoles(List.of(domainRole))
+                      .withDomains(List.of(sales)),
+                  null));
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(viewer))
+          .thenReturn(
+              new SubjectContext(
+                  new org.openmetadata.schema.entity.teams.User().withName("viewer"), null));
+      String salesId = sales.getId().toString();
+      String marketingId = marketing.getId().toString();
+
+      assertEquals(
+          new EntityUtil.NavbarDomainIds(List.of(salesId), false),
+          EntityUtil.navbarDomainIds(analyst, "table", salesId));
+      // Another domain: the role scope applies, as for a pick outside their domains.
+      assertEquals(
+          new EntityUtil.NavbarDomainIds(List.of(salesId), true),
+          EntityUtil.navbarDomainIds(analyst, "table", marketingId));
+      assertEquals(
+          new EntityUtil.NavbarDomainIds(List.of(salesId), true),
+          EntityUtil.navbarDomainIds(analyst, "table", "not-a-uuid"));
+      // Other users keep the filter as sent.
+      assertEquals(
+          new EntityUtil.NavbarDomainIds(List.of(marketingId), false),
+          EntityUtil.navbarDomainIds(viewer, "table", marketingId));
+    }
+  }
+
+  @Test
   void addNavbarDomainFilter_unresolvableParentListsChildrenInFull() {
     // A parent that no longer resolves (ResourceContext returns no entity) can't vouch for its
     // children's inherited domain, so the list is left unfiltered rather than strictly narrowed.

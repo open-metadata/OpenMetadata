@@ -247,7 +247,7 @@ public class DataInsightSystemChartResource
               chartNames,
               serviceName,
               serviceType,
-              filter,
+              scopedToPick(securityContext, filter),
               entityLink,
               user.getId(),
               startTime,

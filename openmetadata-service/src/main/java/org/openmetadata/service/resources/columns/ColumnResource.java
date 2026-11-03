@@ -403,13 +403,12 @@ public class ColumnResource {
     request.setDatabaseName(databaseName);
     request.setSchemaName(schemaName);
     // The grid is a search aggregation, so the navbar scope is applied here.
-    if (domainId == null) {
-      EntityUtil.NavbarDomainIds scope = EntityUtil.navbarDomainIds(securityContext, Entity.TABLE);
-      request.setDomainId(scope.ids().isEmpty() ? null : String.join(",", scope.ids()));
-      request.setIncludeUnassignedDomain(scope.keepsUnassigned());
-    } else {
-      request.setDomainId(domainId);
-    }
+    EntityUtil.NavbarDomainIds scope =
+        domainId == null
+            ? EntityUtil.navbarDomainIds(securityContext, Entity.TABLE)
+            : EntityUtil.navbarDomainIds(securityContext, Entity.TABLE, domainId);
+    request.setDomainId(scope.ids().isEmpty() ? null : String.join(",", scope.ids()));
+    request.setIncludeUnassignedDomain(scope.keepsUnassigned());
     request.setHasConflicts(hasConflicts);
     request.setHasMissingMetadata(hasMissingMetadata);
     request.setMetadataStatus(metadataStatus);
