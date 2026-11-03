@@ -137,7 +137,14 @@ public class ListRowAuthorizationIT {
     OpenMetadataClient admin = SdkClients.adminClient();
     String secret = secretTag(ns, "suite");
     OpenMetadataClient restricted = cleanedUpRestrictedUser(ns, "suite", secret, Entity.TABLE);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    // A table's basic suite is named after its FQN, which the namespace prefix pushes past the
+    // column limit.
+    String shortId = ns.uniqueShortId();
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimpleWithName(
+            "s_" + shortId,
+            ns,
+            DatabaseServiceTestFactory.createPostgresWithName("lra_" + shortId, ns));
     TestCase hidden =
         tableTest(ns, createTable(admin, schema, "suite_secret", List.of(tag(secret)), List.of()));
     TestCase shown = tableTest(ns, createTable(admin, schema, "suite_open", List.of(), List.of()));
