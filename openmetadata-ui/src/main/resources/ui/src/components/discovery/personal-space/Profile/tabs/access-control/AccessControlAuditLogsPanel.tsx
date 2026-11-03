@@ -45,7 +45,6 @@ import Banner from '../../../../../../components/common/Banner/Banner';
 import { CSVExportWebsocketResponse } from '../../../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
   LIST_PAGE_SIZE_OPTIONS,
-  PAGE_SIZE_BASE,
   SOCKET_EVENTS,
 } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
@@ -64,6 +63,7 @@ import {
   AuditLogListResponse,
 } from '../../../../../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../../../../../utils/AuditLogUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -122,11 +122,6 @@ async function walkToPageCursor(
   }
 
   return { cursor, discoveredCursors };
-}
-
-// ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
-function shouldShowPagination(total: number | undefined, pageSize: number) {
-  return (total ?? 0) > pageSize || pageSize !== PAGE_SIZE_BASE;
 }
 
 interface AccessControlAuditLogsPanelProps {
@@ -762,7 +757,7 @@ const AccessControlAuditLogsPanel: React.FC<
         </Box>
 
         {/* Pagination inside card */}
-        {shouldShowPagination(paging.total, pageSize) && (
+        {shouldShowPager(logs) && (
           <Box className="tw:shrink-0 tw:border-t tw:border-secondary">
             <PaginationCardWithControls
               page={currentPage}

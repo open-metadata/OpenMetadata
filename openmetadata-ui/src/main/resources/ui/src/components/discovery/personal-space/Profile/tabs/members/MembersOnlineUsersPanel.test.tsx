@@ -130,8 +130,14 @@ describe('MembersOnlineUsersPanel', () => {
 
   it('pages with the cursor but writes only page and size to the URL', async () => {
     mockGetOnlineUsers
-      .mockResolvedValueOnce({ data: [], paging: { after: 'c2', total: 40 } })
-      .mockResolvedValueOnce({ data: [], paging: { before: 'c1', total: 40 } });
+      .mockResolvedValueOnce({
+        data: [{ id: 'user-1', name: 'user-1' }],
+        paging: { after: 'c2', total: 40 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'user-2', name: 'user-2' }],
+        paging: { before: 'c1', total: 40 },
+      });
     renderPanel();
 
     const next = await screen.findByTestId('next');

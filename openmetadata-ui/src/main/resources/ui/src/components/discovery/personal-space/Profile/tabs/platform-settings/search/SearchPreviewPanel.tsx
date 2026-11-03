@@ -193,7 +193,7 @@ const SearchPreviewPanel = ({
       <Box direction="col" gap={2}>
         {renderResults()}
       </Box>
-      {total > pageSize && (
+      {total > 0 && (
         // The pager is a card footer with no top edge; with no table above it,
         // the card frame supplies the full outline.
         <TableCard.Root variant="muted">

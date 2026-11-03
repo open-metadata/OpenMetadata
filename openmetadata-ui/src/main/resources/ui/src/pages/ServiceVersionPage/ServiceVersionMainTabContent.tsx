@@ -16,7 +16,6 @@ import { Assets } from '@openmetadata/ui-core-components/icons';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
-import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +29,7 @@ import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicePageData } from '../../interface/platform/service.interface';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtilsPure';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
 import { getCountLabel } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -104,9 +104,7 @@ function ServiceVersionMainTabContent({
                 customPaginationProps={{
                   currentPage,
                   isLoading: isServiceLoading,
-                  showPagination:
-                    Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-                    !isEmpty(data),
+                  showPagination: shouldShowPager(data),
                   pageSize,
                   paging,
                   pagingHandler,

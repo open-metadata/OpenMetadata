@@ -37,6 +37,7 @@ import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlace
 import { isCacheWarmupApplication } from '../../utils/ApplicationUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
@@ -53,7 +54,6 @@ const MarketPlacePage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
-    showPagination,
     pagingCursor,
   } = usePaging(undefined, GRID_PAGE_SIZE_OPTIONS);
   const navigate = useNavigate();
@@ -204,7 +204,7 @@ const MarketPlacePage = () => {
         <Box
           className="layout-column tw:block"
           style={{ maxWidth: '75%', flex: '0 0 75%' }}>
-          {showPagination && (
+          {shouldShowPager(applicationData) && (
             <NextPrevious
               currentPage={currentPage}
               isLoading={isLoading}

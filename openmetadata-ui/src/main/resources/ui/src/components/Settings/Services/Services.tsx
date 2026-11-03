@@ -59,6 +59,7 @@ import {
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { shouldShowPager } from '../../../utils/PaginationUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import {
@@ -373,7 +374,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const customPaginationTableProps = useMemo(
     () => ({
-      showPagination: !isEmpty(serviceDetails) || currentPage > 1,
+      showPagination: shouldShowPager(serviceDetails),
       currentPage,
       isLoading,
       isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),

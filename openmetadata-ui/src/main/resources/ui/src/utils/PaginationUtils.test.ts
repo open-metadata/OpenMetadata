@@ -3,7 +3,11 @@ import {
   LIST_PAGE_SIZE_OPTIONS,
 } from '../constants/constants';
 import { PageViewMode } from '../generated/type/personaPreferences';
-import { computeTotalPages, getViewPageSizeOptions } from './PaginationUtils';
+import {
+  computeTotalPages,
+  getViewPageSizeOptions,
+  shouldShowPager,
+} from './PaginationUtils';
 
 /*
  *  Copyright 2024 Collate.
@@ -66,5 +70,16 @@ describe('view page sizes', () => {
       LIST_PAGE_SIZE_OPTIONS
     );
     expect(getViewPageSizeOptions(undefined)).toBe(LIST_PAGE_SIZE_OPTIONS);
+  });
+});
+
+describe('shouldShowPager', () => {
+  it('shows the pager for a single page of items, so its size can still be changed', () => {
+    expect(shouldShowPager(['a', 'b', 'c'])).toBe(true);
+  });
+
+  it('hides the pager on an empty page', () => {
+    expect(shouldShowPager([])).toBe(false);
+    expect(shouldShowPager(undefined)).toBe(false);
   });
 });

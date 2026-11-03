@@ -23,7 +23,6 @@ import { useTranslation } from 'react-i18next';
 import {
   SYSTEM_ANNOUNCEMENTS_QUERY_KEY,
   SYSTEM_ANNOUNCEMENT_FETCH_LIMIT,
-  SYSTEM_ANNOUNCEMENT_PAGE_SIZES,
 } from '../../constants/platform/systemAnnouncements.constants';
 import {
   AnnouncementStatus,
@@ -40,6 +39,7 @@ import {
 } from '../../rest/announcementsAPI';
 import { searchSystemAnnouncements } from '../../utils/platform/systemAnnouncements.utils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { usePageSizeState } from '../paging/usePageSizeState';
 
 export interface SystemAnnouncementFilters {
   search: string;
@@ -63,9 +63,7 @@ const EMPTY_FILTERS: SystemAnnouncementFilters = { search: '' };
 export const useSystemAnnouncementsList = () => {
   const [filters, setFilters] =
     useState<SystemAnnouncementFilters>(EMPTY_FILTERS);
-  const [pageSize, setPageSizeState] = useState(
-    SYSTEM_ANNOUNCEMENT_PAGE_SIZES[0]
-  );
+  const [pageSize, setPageSizeState] = usePageSizeState();
   const [page, setPage] = useState(1);
 
   const query = useQuery({

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
@@ -101,10 +101,22 @@ describe('KPI list component', () => {
     );
   });
 
-  it('hides the pager when every KPI fits on one page', async () => {
+  it('shows the pager when every KPI fits on one page', async () => {
     render(<KPIList />, { wrapper: MemoryRouter });
 
     expect(await screen.findByText('Description KPI')).toBeInTheDocument();
+    expect(screen.getByTestId('next')).toBeInTheDocument();
+  });
+
+  it('hides the pager when there are no KPIs', async () => {
+    (getListKPIs as jest.Mock).mockResolvedValueOnce({
+      data: [],
+      paging: { total: 0 },
+    });
+    render(<KPIList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => expect(getListKPIs).toHaveBeenCalled());
+
     expect(screen.queryByTestId('next')).not.toBeInTheDocument();
   });
 

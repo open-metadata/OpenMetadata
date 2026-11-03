@@ -34,10 +34,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  LIST_PAGE_SIZE_OPTIONS,
-  PAGE_SIZE_BASE,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -54,6 +51,7 @@ import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getPolicies } from '../../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   checkPermission,
   LIST_CAP,
@@ -95,14 +93,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   );
   const fetchRequestIdRef = useRef(0);
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      // ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
-      pageSize !== PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(policies);
 
   const { permissions } = usePermissionProvider();
 

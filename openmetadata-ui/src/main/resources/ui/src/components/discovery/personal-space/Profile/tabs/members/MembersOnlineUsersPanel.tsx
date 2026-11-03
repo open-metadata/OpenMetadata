@@ -25,7 +25,6 @@ import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   LIST_PAGE_SIZE_OPTIONS,
-  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../../../../../constants/constants';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -50,6 +49,7 @@ import type { PagingHandlerParams } from '../../../../../common/NextPrevious/Nex
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
@@ -75,10 +75,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     setPage: setHashPage,
   } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const showPagination =
-    Boolean(paging.before || paging.after) ||
-    paging.total > pageSize ||
-    pageSize !== PAGE_SIZE_BASE;
+  const showPagination = shouldShowPager(users);
 
   const handlePageChange = useCallback(
     (page: number) => setHashPage(page, undefined, undefined, pageSize),

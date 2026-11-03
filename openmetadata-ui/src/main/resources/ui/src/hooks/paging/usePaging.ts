@@ -219,24 +219,8 @@ export const usePaging = (
     [setStoredPageSize, savePageSize, setCurrentPage, updateUrlParams]
   );
 
-  const paginationVisible = useMemo(() => {
-    const hasCursorPagination = Boolean(paging.before || paging.after);
-    const isNonDefaultSize =
-      pageSize !== (defaultPageSize ?? pageSizeOptions[0]);
-
-    return (
-      hasCursorPagination ||
-      paging.total > pageSize ||
-      (paging.total > 0 && isNonDefaultSize)
-    );
-  }, [
-    defaultPageSize,
-    pageSizeOptions,
-    paging.after,
-    paging.before,
-    paging.total,
-    pageSize,
-  ]);
+  const paginationVisible =
+    paging.total > 0 || Boolean(paging.before || paging.after);
 
   const handlePageChange = useCallback(
     (

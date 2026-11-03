@@ -181,7 +181,7 @@ describe('ServiceVersionMainTabContent tests', () => {
     expect(entityTable).toBeInTheDocument();
     expect(screen.getByText('Description')).toBeInTheDocument();
     expect(screen.getByTestId('entity-right-panel')).toBeInTheDocument();
-    expect(screen.queryByText('NextPrevious')).toBeNull();
+    expect(screen.getByText('NextPrevious')).toBeInTheDocument();
     expect(screen.getAllByText('TagsContainerV2')).toHaveLength(2);
     expect(entityName).toBeInTheDocument();
     expect(entityOwner).toBeInTheDocument();

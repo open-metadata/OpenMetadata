@@ -220,4 +220,29 @@ describe('useCursorPagedList', () => {
     expect(result.current.items).toEqual(['item-1']);
     expect(fetchPage).not.toHaveBeenCalledWith({ after: 'p3', limit: 15 });
   });
+
+  it('keeps the pager for a single page of items at the default size', async () => {
+    fetchPage.mockResolvedValue({ data: ['a', 'b'], paging: { total: 2 } });
+
+    const { result } = renderHook(() =>
+      useCursorPagedList(fetchPage, [12, 24, 48])
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.pageSize).toBe(12);
+    expect(result.current.showPagination).toBe(true);
+  });
+
+  it('hides the pager when the list is empty', async () => {
+    fetchPage.mockResolvedValue({ data: [], paging: { total: 0 } });
+
+    const { result } = renderHook(() =>
+      useCursorPagedList(fetchPage, [12, 24, 48])
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.showPagination).toBe(false);
+  });
 });

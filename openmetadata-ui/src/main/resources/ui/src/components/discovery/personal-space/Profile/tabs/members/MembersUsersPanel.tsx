@@ -38,7 +38,6 @@ import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   LIST_PAGE_SIZE_OPTIONS,
-  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
@@ -74,6 +73,7 @@ import type { PagingHandlerParams } from '../../../../../common/NextPrevious/Nex
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import type { MembersUsersPanelProps } from './Members.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash } from './profileHash.utils';
@@ -108,10 +108,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     setPage: setHashPage,
   } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const showPagination =
-    Boolean(paging.before || paging.after) ||
-    paging.total > pageSize ||
-    pageSize !== PAGE_SIZE_BASE;
+  const showPagination = shouldShowPager(users);
 
   const handlePageChange = useCallback(
     (page: number) => setHashPage(page, undefined, undefined, pageSize),

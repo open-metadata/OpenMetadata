@@ -78,6 +78,17 @@ describe('usePaging', () => {
     expect(result.current.showPagination).toBe(true);
   });
 
+  it('shows pagination for a single page of records at the default page size', () => {
+    const { result } = renderHook(() => usePaging());
+
+    act(() => {
+      result.current.handlePagingChange({ total: 3 });
+    });
+
+    expect(result.current.pageSize).toBe(mockPageSize);
+    expect(result.current.showPagination).toBe(true);
+  });
+
   it('syncs pagination state when url paging params are updated externally', () => {
     const { result, rerender } = renderHook(() => usePaging());
 

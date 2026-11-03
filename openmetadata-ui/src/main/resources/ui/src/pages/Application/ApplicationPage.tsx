@@ -48,6 +48,7 @@ import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -60,7 +61,6 @@ const ApplicationPage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
-    showPagination,
     pagingCursor,
   } = usePaging(undefined, GRID_PAGE_SIZE_OPTIONS);
   const navigate = useNavigate();
@@ -261,7 +261,7 @@ const ApplicationPage = () => {
               </Grid>
             </Grid.Item>
             <Grid.Item className="layout-column" span={24}>
-              {showPagination && (
+              {shouldShowPager(applicationData) && (
                 <NextPrevious
                   currentPage={currentPage}
                   isLoading={isLoading}

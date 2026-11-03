@@ -46,6 +46,7 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
+import { shouldShowPager } from '../../../utils/PaginationUtils';
 
 const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
 
@@ -292,7 +293,7 @@ export const WorkflowExecutionHistory: React.FC<
           tableLayout="auto"
         />
       </div>
-      {paging.total > pageSize && (
+      {shouldShowPager(instances) && (
         <div className="tw:shrink-0">
           <NextPrevious
             currentPage={currentPage}

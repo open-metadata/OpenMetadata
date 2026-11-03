@@ -35,10 +35,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  LIST_PAGE_SIZE_OPTIONS,
-  PAGE_SIZE_BASE,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -54,6 +51,7 @@ import {
   getAllAlerts,
 } from '../../../../../../rest/alertsAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
@@ -94,13 +92,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const fetchAlertsRef = useRef<typeof fetchAlerts>(null!);
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      pageSize !== PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(alerts);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 

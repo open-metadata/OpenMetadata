@@ -134,7 +134,7 @@ describe('PersonasLanding', () => {
       'label.no-description'
     );
     expect(screen.getAllByTestId('default-persona-tag')).toHaveLength(1);
-    expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pagination')).toBeInTheDocument();
   });
 
   it('navigates to the persona detail on click and keyboard activation', async () => {

@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { LIST_PAGE_SIZE_OPTIONS } from '../constants/constants';
 import { Paging } from '../generated/type/paging';
 import { walkToAfterCursor } from '../utils/CursorPaging.utils';
+import { shouldShowPager } from '../utils/PaginationUtils';
 import { showErrorToast } from '../utils/ToastUtils';
 import { usePageSizeState } from './paging/usePageSizeState';
 
@@ -167,9 +168,7 @@ export const useCursorPagedList = <T>(
     page,
     pageSize,
     totalPages: Math.ceil((paging.total ?? 0) / pageSize),
-    showPagination:
-      Boolean(paging.after || paging.before) ||
-      paging.total > pageSizeOptions[0],
+    showPagination: shouldShowPager(items),
     onPageChange,
     onPageSizeChange,
   };

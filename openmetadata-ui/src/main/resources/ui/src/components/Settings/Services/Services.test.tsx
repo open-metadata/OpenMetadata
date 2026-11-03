@@ -329,7 +329,7 @@ describe('Services', () => {
     (usePaging as jest.Mock).mockReturnValue(pagingState);
   });
 
-  it('keeps the pager on an empty later page so the user can page back', async () => {
+  it('hides the pager on an empty later page too', async () => {
     (getServices as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: [], paging: { total: 20 } })
     );
@@ -346,7 +346,7 @@ describe('Services', () => {
     expect(ListView).toHaveBeenLastCalledWith(
       expect.objectContaining({
         customPaginationProps: expect.objectContaining({
-          showPagination: true,
+          showPagination: false,
         }),
       }),
       expect.anything()

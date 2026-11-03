@@ -42,6 +42,7 @@ import { getListKPIs } from '../../rest/KpiAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getKpiPath } from '../../utils/RouterUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
@@ -256,7 +257,7 @@ const KPIList = () => {
         customPaginationProps={{
           currentPage: kpiPage,
           isLoading,
-          showPagination: Boolean(kpiPaging.after || kpiPaging.before),
+          showPagination: shouldShowPager(kpiList),
           pageSize: kpiPageSize,
           paging: kpiPaging,
           pagingHandler: kpiPagingHandler,

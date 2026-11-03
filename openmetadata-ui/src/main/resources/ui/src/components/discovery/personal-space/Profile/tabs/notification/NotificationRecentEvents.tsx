@@ -30,10 +30,7 @@ import { isEmpty, isUndefined, startCase } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterOffIcon } from '../../../../../../assets/svg/ic-filter-off.svg';
-import {
-  LIST_PAGE_SIZE_OPTIONS,
-  PAGE_SIZE_BASE,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../../../enums/codemirror.enum';
 import {
@@ -56,6 +53,7 @@ import {
 } from '../../../../../../utils/Alerts/AlertsUtilPure';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../../../../AppRouter/withSuspenseFallback';
@@ -167,13 +165,7 @@ function NotificationRecentEvents({
     [savePageSize, updateParams, getAlertRecentEvents]
   );
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      pageSize !== PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(alertRecentEvents);
 
   const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
 

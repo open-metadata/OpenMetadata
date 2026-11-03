@@ -689,7 +689,6 @@ const TableQueries: FC<TableQueriesProp> = ({
                     {showPagination && (
                       <Grid.Item className="layout-column" span={24}>
                         <PaginationComponent
-                          hideOnSinglePage
                           showSizeChanger
                           className="text-center m-b-sm"
                           current={currentPage}

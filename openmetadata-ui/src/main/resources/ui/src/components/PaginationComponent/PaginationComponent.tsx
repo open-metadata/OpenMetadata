@@ -36,7 +36,7 @@ const PaginationComponent = ({
   pageSize,
   defaultCurrent = 1,
   defaultPageSize = PAGE_SIZE_BASE,
-  hideOnSinglePage = true,
+  hideOnSinglePage = false,
   showSizeChanger,
   onChange,
   ...props
@@ -64,7 +64,7 @@ const PaginationComponent = ({
     onChange?.(nextPage, nextSize);
   };
 
-  if (hideOnSinglePage && totalPages <= 1) {
+  if (total === 0 || (hideOnSinglePage && totalPages <= 1)) {
     return null;
   }
 

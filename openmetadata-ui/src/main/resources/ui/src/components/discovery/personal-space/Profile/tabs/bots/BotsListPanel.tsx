@@ -42,10 +42,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  LIST_PAGE_SIZE_OPTIONS,
-  PAGE_SIZE_BASE,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -62,6 +59,7 @@ import { getBots, restoreBot } from '../../../../../../rest/botsAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { escapeESReservedCharacters } from '../../../../../../utils/StringUtils';
 import {
   showErrorToast,
@@ -127,14 +125,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const searchTermRef = useRef(searchTerm);
   searchTermRef.current = searchTerm;
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      // ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
-      pageSize !== PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(bots);
 
   const columns: BotColumn[] = useMemo(
     () => [

@@ -21,12 +21,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  GRID_PAGE_SIZE_BASE,
-  GRID_PAGE_SIZE_OPTIONS,
-} from '../../../../../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { Paging } from '../../../../../../generated/type/paging';
@@ -34,6 +31,7 @@ import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
 import { walkToAfterCursor } from '../../../../../../utils/CursorPaging.utils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -65,14 +63,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   const fetchRequestIdRef = useRef(0);
   const navigationRef = useRef(0);
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      // ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
-      pageSize !== GRID_PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(personas);
 
   const cacheCursor = (targetPage: number, nextPaging: Paging) =>
     setCursorCache((prev) => {

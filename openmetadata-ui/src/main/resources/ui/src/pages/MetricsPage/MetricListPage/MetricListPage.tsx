@@ -1201,7 +1201,7 @@ const MetricListPage = () => {
   );
 
   const renderPagination = () =>
-    totalMetrics > metricPageSize ? (
+    totalMetrics > 0 ? (
       <Box
         aria-label={t('label.page')}
         className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"

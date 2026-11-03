@@ -14,7 +14,6 @@
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,6 +27,7 @@ import {
   getLiveIndexingQueue,
   SearchIndexRetryRecord,
 } from '../../../../rest/applicationAPI';
+import { shouldShowPager } from '../../../../utils/PaginationUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -182,9 +182,8 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
         ),
       }}
       pagination={
-        isEmpty(records) && currentPage === 1
-          ? false
-          : {
+        shouldShowPager(records)
+          ? {
               total: paging.total,
               pageSize,
               current: currentPage,
@@ -194,6 +193,7 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
                 handlePageChangeHandler({ currentPage: page }),
               onShowSizeChange: (_, size) => handlePageSizeChange(size),
             }
+          : false
       }
       rowKey={(record) => `${record.entityId}-${record.entityFqn}`}
       size="small"

@@ -1,6 +1,6 @@
 # A paged settings list keeps its pagination control visible at a non-default page size
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-03-paged-views-show-pagination-whenever-they-have-items
 - **Revisions:** v1 2026-10-31 (initial) · v2 2026-11-03 (the default is the first step of the panel's scale)
 - **Deciders:** Settings modal maintainers
 - **Guard:** `AccessControlRolesPanel.test.tsx` ("keeps pagination at a non-default page size so it can be switched back") and the same-named case in `AccessControlAuditLogsPanel.test.tsx`

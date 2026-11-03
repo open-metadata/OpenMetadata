@@ -21,10 +21,7 @@ import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaceholder from '../../../../../../components/common/EmptyPlaceholder/CreatePlaceholder';
-import {
-  LIST_PAGE_SIZE_OPTIONS,
-  PAGE_SIZE_BASE,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { RelationshipType } from '../../../../../../generated/entity/data/relationshipType';
 import { usePageSizeState } from '../../../../../../hooks/paging/usePageSizeState';
 import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
@@ -34,6 +31,7 @@ import {
   deleteRelationshipType,
   listRelationshipTypes,
 } from '../../../../../../rest/ontologyAPI';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -182,7 +180,7 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
             onConfirm={() => handleDelete(deleteTarget)}
           />
         )}
-        {items.length > PAGE_SIZE_BASE ? (
+        {shouldShowPager(items) ? (
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
