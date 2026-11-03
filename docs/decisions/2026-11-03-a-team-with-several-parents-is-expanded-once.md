@@ -1,4 +1,4 @@
-# A team with several parents is expanded once in hierarchy walks and listings
+# A team with several parents is visited once by hierarchy walks and listed under each parent within a node budget
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial)
