@@ -82,6 +82,23 @@ def test_extract_column_refs_returns_unqualified_names_without_a_table():
         ("orders", "a:b"),
     ]
     assert extract_column_refs('"it\'s" || \'a "b"\'') == [(None, "it's")]
+    # backslash-escaped and dollar-quoted strings are literals too
+    assert extract_column_refs(r"IFF(customers.last_name = 'O\'Reilly', customers.first_name, 'x')") == [
+        ("customers", "last_name"),
+        ("customers", "first_name"),
+    ]
+    assert extract_column_refs("REGEXP_LIKE(STATUS, $$^(OPEN|CLOSED)$$)") == [(None, "STATUS")]
+    # a schema-qualified function name is not a column
+    assert extract_column_refs("analytics.normalize(amount)") == [(None, "amount")]
+    # a date part is not a column, but a column called year still is
+    assert extract_column_refs(
+        "EXTRACT(year FROM event_at) + DATE_PART(year, event_at) + DATEADD(day, 1, d) + year"
+    ) == [
+        (None, "event_at"),
+        (None, "event_at"),
+        (None, "d"),
+        (None, "year"),
+    ]
 
 
 # Snowflake's normal form: each object's expression is relative to its own logical table.

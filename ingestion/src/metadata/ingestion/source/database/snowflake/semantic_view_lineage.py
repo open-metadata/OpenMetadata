@@ -58,9 +58,9 @@ ViewKey = tuple[str, str]
 # is not unique -- Snowflake declares every object as ``<table_alias>.<name>``.
 SemanticKey = tuple[str, str]
 
-# A string literal or a double-quoted identifier, scanned together so neither is read
-# inside the other. Double quotes delimit identifiers in Snowflake, not strings.
-_LITERAL_OR_QUOTED_RE = re.compile(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"")
+# A string literal (``'...'`` with ``''`` or ``\'`` escapes, or ``$$...$$``) or a
+# double-quoted identifier, scanned together so neither is read inside the other.
+_LITERAL_OR_QUOTED_RE = re.compile(r"'(?:[^'\\]|\\.|'')*'|\$\$.*?\$\$|\"(?:[^\"]|\"\")*\"", re.DOTALL)
 # A single identifier segment once each quoted identifier is masked as ``\0<n>\0``.
 # A bare name never starts inside a number, so ``1e5`` offers no ``e5``.
 _IDENTIFIER = r"\x00\d+\x00|(?<![\w$])[A-Za-z_][\w$]*"
@@ -68,8 +68,15 @@ _IDENTIFIER = r"\x00\d+\x00|(?<![\w$])[A-Za-z_][\w$]*"
 # ``"orders"."o amount"``, ``db.schema.orders.amount``).
 _COLUMN_REF_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))+")
 _SEGMENT_RE = re.compile(_IDENTIFIER)
-# A function name with its opening parenthesis, such as ``SUM(``.
-_FUNCTION_HEAD_RE = re.compile(rf"(?:{_IDENTIFIER})\s*\(")
+# A function name, possibly schema-qualified, with its opening parenthesis (``SUM(``).
+_FUNCTION_HEAD_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))*\s*\(")
+# The date or time part a date function takes first, such as ``year`` in
+# ``DATE_PART(year, d)`` or ``EXTRACT(year FROM d)``.
+_DATE_PART_RE = re.compile(
+    rf"\b((?:EXTRACT|DATE_PART|DATE_TRUNC|DATEADD|DATEDIFF|TIMEADD|TIMEDIFF|TIMESTAMPADD|TIMESTAMPDIFF)\s*\(\s*)"
+    rf"(?:{_IDENTIFIER})",
+    re.IGNORECASE,
+)
 # A cast target (``::NUMBER(10, 2)``, ``CAST(x AS DATE)``) or a semi-structured path
 # (``payload:a.b[0]``).
 _CAST_OR_PATH_RE = re.compile(
@@ -100,7 +107,7 @@ def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
 
     def mask(match: re.Match[str]) -> str:
         token = match.group()
-        if token.startswith("'"):
+        if not token.startswith('"'):
             return " "
         quoted.append(unquote_name_part(token))
         return f"\x00{len(quoted) - 1}\x00"
@@ -110,6 +117,7 @@ def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
 
     text = _LITERAL_OR_QUOTED_RE.sub(mask, expression or "")
     text = _CAST_OR_PATH_RE.sub(" ", text)
+    text = _DATE_PART_RE.sub(r"\1", text)
     text = _FUNCTION_HEAD_RE.sub("(", text)
     refs: list[tuple[str | None, str]] = []
     for chain in _COLUMN_REF_RE.findall(text):
