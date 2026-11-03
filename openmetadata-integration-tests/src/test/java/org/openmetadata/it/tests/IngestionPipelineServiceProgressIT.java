@@ -138,6 +138,91 @@ public class IngestionPipelineServiceProgressIT {
   }
 
   @Test
+  void serviceStreamExcludesPreviousDiscovery(TestNamespace ns) throws IOException {
+    assertPreviousPipelineInstanceOmitted("DISCOVERY", ns);
+  }
+
+  @Test
+  void serviceStreamExcludesPreviousProcessing(TestNamespace ns) throws IOException {
+    assertPreviousPipelineInstanceOmitted("PROCESSING", ns);
+  }
+
+  private void assertPreviousPipelineInstanceOmitted(String updateType, TestNamespace ns)
+      throws IOException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    User viewer = createViewer(ns, Entity.INGESTION_PIPELINE, "!isOwner()");
+    IngestionPipeline previous = createPipeline(ns, service, "reused", null);
+    String token = token(viewer);
+    assertEquals(403, requestStatus(API_BASE + "/name/" + previous.getFullyQualifiedName(), token));
+    UUID previousRun = seedProgress(previous, updateType);
+    SdkClients.adminClient()
+        .ingestionPipelines()
+        .delete(previous.getId().toString(), Map.of("hardDelete", "true", "force", "true"));
+    IngestionPipeline replacement = createPipeline(ns, service, "reused", viewer);
+    assertEquals(previous.getFullyQualifiedName(), replacement.getFullyQualifiedName());
+    assertEquals(
+        200, requestStatus(API_BASE + "/name/" + replacement.getFullyQualifiedName(), token));
+    if ("PROCESSING".equals(updateType)) {
+      seedProgress(previous, previousRun, "PROCESSING");
+    }
+    UUID currentRun = seedProgress(replacement, "PROCESSING");
+
+    HttpURLConnection connection =
+        connection(servicePath(Entity.DATABASE_SERVICE, service.getFullyQualifiedName()), token);
+    try {
+      assertEquals(200, connection.getResponseCode());
+      List<ServiceProgressEvent> events =
+          readEvents(connection).stream()
+              .map(data -> JsonUtils.readValue(data, ServiceProgressEvent.class))
+              .toList();
+      assertFalse(
+          events.stream().anyMatch(event -> previousRun.toString().equals(event.getRunId())));
+      assertTrue(events.stream().anyMatch(event -> currentRun.toString().equals(event.getRunId())));
+    } finally {
+      connection.disconnect();
+    }
+  }
+
+  @Test
+  void serviceStreamAppliesPolicyChangesWithoutReconnecting(TestNamespace ns) throws IOException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    User viewer = createViewer(ns, Entity.INGESTION_PIPELINE, "false");
+    IngestionPipeline pipeline = createPipeline(ns, service, "policyUpdates", null);
+    UUID initialRun = seedProgress(pipeline, "DISCOVERY");
+    String token = token(viewer);
+    HttpURLConnection connection =
+        connection(servicePath(Entity.DATABASE_SERVICE, service.getFullyQualifiedName()), token);
+    try {
+      assertEquals(200, connection.getResponseCode());
+      setViewDenied(ns, true);
+      assertEquals(
+          403, requestStatus(API_BASE + "/name/" + pipeline.getFullyQualifiedName(), token));
+      UUID deniedRun = seedProgress(pipeline, "PROCESSING");
+
+      setViewDenied(ns, false);
+      assertEquals(
+          200, requestStatus(API_BASE + "/name/" + pipeline.getFullyQualifiedName(), token));
+      UUID allowedRun = seedProgress(pipeline, "PROCESSING");
+      List<ServiceProgressEvent> events =
+          readEvents(connection).stream()
+              .map(data -> JsonUtils.readValue(data, ServiceProgressEvent.class))
+              .toList();
+      assertTrue(events.stream().anyMatch(event -> initialRun.toString().equals(event.getRunId())));
+      assertFalse(events.stream().anyMatch(event -> deniedRun.toString().equals(event.getRunId())));
+      assertTrue(events.stream().anyMatch(event -> allowedRun.toString().equals(event.getRunId())));
+    } finally {
+      connection.disconnect();
+    }
+  }
+
+  private void setViewDenied(TestNamespace ns, boolean denied) {
+    Policy policy =
+        SdkClients.adminClient().policies().getByName(ns.prefix("progressPolicy"), "rules");
+    policy.getRules().getFirst().setCondition(Boolean.toString(denied));
+    SdkClients.adminClient().policies().update(policy.getId(), policy);
+  }
+
+  @Test
   void livePipelineUsesTheSubscribersRequestContext(TestNamespace ns) throws IOException {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     User viewer = createViewer(ns, Entity.INGESTION_PIPELINE, "isImpersonated() && !isOwner()");
@@ -349,8 +434,13 @@ public class IngestionPipelineServiceProgressIT {
     return SdkClients.adminClient().ingestionPipelines().create(request);
   }
 
-  private void seedProgress(IngestionPipeline pipeline, String updateType) {
+  private UUID seedProgress(IngestionPipeline pipeline, String updateType) {
     UUID runId = UUID.randomUUID();
+    seedProgress(pipeline, runId, updateType);
+    return runId;
+  }
+
+  private void seedProgress(IngestionPipeline pipeline, UUID runId, String updateType) {
     SdkClients.adminClient()
         .getHttpClient()
         .execute(

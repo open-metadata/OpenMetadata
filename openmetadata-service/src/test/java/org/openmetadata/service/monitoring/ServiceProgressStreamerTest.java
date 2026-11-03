@@ -13,8 +13,13 @@
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
@@ -34,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
+import org.slf4j.LoggerFactory;
 
 class ServiceProgressStreamerTest {
   private final List<CapturingSink> sinks = new ArrayList<>();
@@ -65,8 +71,11 @@ class ServiceProgressStreamerTest {
         new StubSse(),
         tracker,
         event ->
-            "svc.visible".equals(event.getPipelineFqn()) ? Optional.of(event) : Optional.empty());
-    ServiceProgressStreamer.stream("svc", unrestricted, new StubSse(), tracker, Optional::of);
+            "svc.visible".equals(event.event().getPipelineFqn())
+                ? Optional.of(event.event())
+                : Optional.empty());
+    ServiceProgressStreamer.stream(
+        "svc", unrestricted, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
     assertEquals(1, restricted.data.size());
     assertEquals(2, unrestricted.data.size());
 
@@ -84,19 +93,39 @@ class ServiceProgressStreamerTest {
     tracker.updateProgress("svc.metadata", run, processing(run));
     CapturingSink broken = sink();
     CapturingSink healthy = sink();
-    ServiceProgressStreamer.stream(
-        "svc",
-        broken,
-        new StubSse(),
-        tracker,
-        event -> {
-          throw new IllegalStateException("Cannot prepare event");
-        });
-    ServiceProgressStreamer.stream("svc", healthy, new StubSse(), tracker, Optional::of);
-    assertTrue(broken.isClosed());
-    assertTrue(broken.data.isEmpty());
-    tracker.updateProgress("svc.metadata", run, terminal(run));
-    assertEquals(2, healthy.data.size());
+    Logger logger = (Logger) LoggerFactory.getLogger(ServiceProgressStreamer.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      ServiceProgressStreamer.stream(
+          "svc",
+          broken,
+          new StubSse(),
+          tracker,
+          event -> {
+            throw new IllegalStateException("secret-bearing exception details");
+          });
+      ServiceProgressStreamer.stream(
+          "svc", healthy, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
+      assertTrue(broken.isClosed());
+      assertTrue(broken.data.isEmpty());
+      tracker.updateProgress("svc.metadata", run, terminal(run));
+      assertEquals(2, healthy.data.size());
+      List<ILoggingEvent> failures =
+          appender.list.stream()
+              .filter(event -> event.getFormattedMessage().contains(run.toString()))
+              .toList();
+      assertEquals(1, failures.size());
+      String message = failures.getFirst().getFormattedMessage();
+      assertTrue(message.contains("svc.metadata"));
+      assertTrue(message.contains("IllegalStateException"));
+      assertFalse(message.contains("secret-bearing"));
+      assertNull(failures.getFirst().getThrowableProxy());
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   @Test
@@ -104,7 +133,8 @@ class ServiceProgressStreamerTest {
     IngestionProgressTracker tracker = new IngestionProgressTracker(new SimpleMeterRegistry());
     CapturingSink sink = sink();
     sink.failSends = true;
-    ServiceProgressStreamer.stream("svc", sink, new StubSse(), tracker, Optional::of);
+    ServiceProgressStreamer.stream(
+        "svc", sink, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
 
     UUID run = UUID.randomUUID();
     tracker.updateProgress("svc.metadata", run, processing(run));
@@ -121,7 +151,8 @@ class ServiceProgressStreamerTest {
     tracker.updateProgress("svc.metadata", run1, processing(run1));
 
     CapturingSink sink = sink();
-    ServiceProgressStreamer.stream("svc", sink, new StubSse(), tracker, Optional::of);
+    ServiceProgressStreamer.stream(
+        "svc", sink, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
 
     assertEquals(1, sink.data.size());
 
@@ -138,7 +169,8 @@ class ServiceProgressStreamerTest {
     UUID run2 = UUID.randomUUID();
 
     CapturingSink sink = sink();
-    ServiceProgressStreamer.stream("svc", sink, new StubSse(), tracker, Optional::of);
+    ServiceProgressStreamer.stream(
+        "svc", sink, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
 
     tracker.updateProgress("svc.metadata", run1, terminal(run1));
     tracker.updateProgress("svc.lineage", run2, processing(run2));

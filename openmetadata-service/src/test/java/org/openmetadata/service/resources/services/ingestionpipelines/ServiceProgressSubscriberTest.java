@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,8 +55,10 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.monitoring.IngestionProgressTracker.ServiceProgressSnapshot;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMasker;
@@ -83,6 +86,7 @@ class ServiceProgressSubscriberTest {
   private SecretsManager originalManager;
   private EntityMasker originalMasker;
   private List<Key> originalKeys;
+  private final UUID pipelineId = UUID.randomUUID();
   private IngestionPipeline pipeline;
 
   @BeforeEach
@@ -94,7 +98,7 @@ class ServiceProgressSubscriberTest {
     when(repository.getFields(anyString())).thenReturn(Fields.EMPTY_FIELDS);
     pipeline =
         new IngestionPipeline()
-            .withId(UUID.randomUUID())
+            .withId(pipelineId)
             .withName("metadata")
             .withFullyQualifiedName("svc.metadata")
             .withPipelineType(PipelineType.METADATA)
@@ -132,10 +136,12 @@ class ServiceProgressSubscriberTest {
         authorizer, caller, new OpenMetadataApplicationConfig(), service);
   }
 
-  private ServiceProgressEvent event() {
-    return new ServiceProgressEvent()
-        .withPipelineFqn("svc.metadata")
-        .withRunId(UUID.randomUUID().toString());
+  private ServiceProgressSnapshot event() {
+    return new ServiceProgressSnapshot(
+        pipelineId,
+        new ServiceProgressEvent()
+            .withPipelineFqn("svc.metadata")
+            .withRunId(UUID.randomUUID().toString()));
   }
 
   @ParameterizedTest
@@ -154,6 +160,31 @@ class ServiceProgressSubscriberTest {
         .when(authorizer)
         .authorize(any(), any(OperationContext.class), any());
     assertTrue(subscriber().apply(event()).isEmpty());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = MetadataOperation.class,
+      names = {"VIEW_BASIC", "VIEW_ALL"})
+  void appliesPermissionChangesWithoutReconnecting(MetadataOperation denied) {
+    AtomicBoolean allowed = new AtomicBoolean(true);
+    doAnswer(
+            call -> {
+              OperationContext operation = call.getArgument(1);
+              if (!allowed.get() && operation.getOperations(call.getArgument(2)).contains(denied)) {
+                throw new AuthorizationException("Pipeline is restricted");
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(any(), any(OperationContext.class), any());
+    ServiceProgressSubscriber subscriber = subscriber();
+
+    assertTrue(subscriber.apply(event()).isPresent());
+    allowed.set(false);
+    assertTrue(subscriber.apply(event()).isEmpty());
+    allowed.set(true);
+    assertTrue(subscriber.apply(event()).isPresent());
   }
 
   @ParameterizedTest
@@ -202,6 +233,40 @@ class ServiceProgressSubscriberTest {
   }
 
   @Test
+  void replayUsesCurrentPipelineState() {
+    IngestionPipeline cached = pipeline;
+    when(repository.getByName(
+            isNull(), anyString(), any(Fields.class), any(RelationIncludes.class), anyBoolean()))
+        .thenAnswer(
+            call -> {
+              if (call.getArgument(4, Boolean.class)) {
+                return cached;
+              }
+              throw EntityNotFoundException.byMessage("Pipeline was deleted");
+            });
+
+    assertTrue(subscriber().apply(event()).isEmpty());
+  }
+
+  @Test
+  void rejectsEventsWithoutPipelineIdentity() {
+    ServiceProgressSnapshot snapshot = event();
+    assertTrue(subscriber().apply(new ServiceProgressSnapshot(null, snapshot.event())).isEmpty());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void rejectsEventsFromPreviousPipelineInstance(boolean attachPipeline) {
+    ServiceProgressSnapshot previous = event();
+    if (attachPipeline) {
+      previous.event().withIngestionPipeline(pipeline);
+    }
+    pipeline = JsonUtils.deepCopy(pipeline, IngestionPipeline.class).withId(UUID.randomUUID());
+
+    assertTrue(subscriber().apply(previous).isEmpty());
+  }
+
+  @Test
   void rejectsMissingPipeline() {
     pipeline = null;
     assertTrue(subscriber().apply(event()).isEmpty());
@@ -229,8 +294,8 @@ class ServiceProgressSubscriberTest {
 
   @Test
   void passesAuthorizedProgressWithoutAttachedPipeline() {
-    ServiceProgressEvent event = event();
-    assertEquals(event, subscriber().apply(event).orElseThrow());
+    ServiceProgressSnapshot snapshot = event();
+    assertEquals(snapshot.event(), subscriber().apply(snapshot).orElseThrow());
   }
 
   @Test
@@ -248,18 +313,19 @@ class ServiceProgressSubscriberTest {
         .withOpenMetadataServerConnection(new OpenMetadataConnection());
     SecretsManagerFactory.getSecretsManager().encryptIngestionPipeline(pipeline);
     String stored = JsonUtils.pojoToJson(pipeline);
-    ServiceProgressEvent event = event().withIngestionPipeline(pipeline);
+    ServiceProgressSnapshot snapshot = event();
+    snapshot.event().withIngestionPipeline(pipeline);
     when(authorizer.shouldMaskPasswords(caller)).thenReturn(true);
-    IngestionPipeline masked = subscriber().apply(event).orElseThrow().getIngestionPipeline();
+    IngestionPipeline masked = subscriber().apply(snapshot).orElseThrow().getIngestionPipeline();
     assertNotSame(pipeline, masked);
     assertEquals("*********", password(masked));
     assertNull(masked.getOpenMetadataServerConnection());
-    assertEquals(stored, JsonUtils.pojoToJson(event.getIngestionPipeline()));
+    assertEquals(stored, JsonUtils.pojoToJson(snapshot.event().getIngestionPipeline()));
 
     when(authorizer.shouldMaskPasswords(caller)).thenReturn(false);
-    IngestionPipeline unmasked = subscriber().apply(event).orElseThrow().getIngestionPipeline();
+    IngestionPipeline unmasked = subscriber().apply(snapshot).orElseThrow().getIngestionPipeline();
     assertEquals("secret-value", password(unmasked));
-    assertEquals(stored, JsonUtils.pojoToJson(event.getIngestionPipeline()));
+    assertEquals(stored, JsonUtils.pojoToJson(snapshot.event().getIngestionPipeline()));
   }
 
   private String password(IngestionPipeline value) {

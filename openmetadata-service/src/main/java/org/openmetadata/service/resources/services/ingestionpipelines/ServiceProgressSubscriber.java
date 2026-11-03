@@ -13,10 +13,9 @@
 
 package org.openmetadata.service.resources.services.ingestionpipelines;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
@@ -27,25 +26,25 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.monitoring.IngestionProgressTracker.ServiceProgressSnapshot;
 import org.openmetadata.service.security.ActivePersonaContext;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /** Applies a caller's pipeline permissions and response masking to a service progress stream. */
 final class ServiceProgressSubscriber
-    implements Function<ServiceProgressEvent, Optional<ServiceProgressEvent>> {
+    implements Function<ServiceProgressSnapshot, Optional<ServiceProgressEvent>> {
   private final Authorizer authorizer;
   private final SecurityContext securityContext;
   private final OpenMetadataApplicationConfig config;
   private final EntityReference service;
   private final String impersonatedBy;
   private final String activePersona;
-  // Decisions belong to this connection; cap both allowed and denied pipeline entries.
-  private final Cache<String, Boolean> pipelineAccess =
-      Caffeine.newBuilder().maximumSize(512).build();
 
   ServiceProgressSubscriber(
       Authorizer authorizer,
@@ -61,22 +60,23 @@ final class ServiceProgressSubscriber
   }
 
   @Override
-  public Optional<ServiceProgressEvent> apply(ServiceProgressEvent event) {
+  public Optional<ServiceProgressEvent> apply(ServiceProgressSnapshot snapshot) {
     // Live callbacks run on a reporting PUT's thread, but policy conditions belong to the viewer.
     String producer = ImpersonationContext.getImpersonatedBy();
     String producerPersona = ActivePersonaContext.getActivePersona();
     ImpersonationContext.setImpersonatedBy(impersonatedBy);
     ActivePersonaContext.setActivePersona(activePersona);
     try {
-      return visibleEvent(event);
+      return visibleEvent(snapshot);
     } finally {
       ImpersonationContext.setImpersonatedBy(producer);
       ActivePersonaContext.setActivePersona(producerPersona);
     }
   }
 
-  private Optional<ServiceProgressEvent> visibleEvent(ServiceProgressEvent event) {
-    if (!pipelineAccess.get(event.getPipelineFqn(), this::canViewPipeline)) {
+  private Optional<ServiceProgressEvent> visibleEvent(ServiceProgressSnapshot snapshot) {
+    ServiceProgressEvent event = snapshot.event();
+    if (!canViewPipeline(event.getPipelineFqn(), snapshot.pipelineId())) {
       return Optional.empty();
     }
     if (event.getIngestionPipeline() == null) {
@@ -93,10 +93,19 @@ final class ServiceProgressSubscriber
             .withIngestionPipeline(pipeline));
   }
 
-  private boolean canViewPipeline(String pipelineFqn) {
+  private boolean canViewPipeline(String pipelineFqn, UUID pipelineId) {
+    if (pipelineId == null) {
+      return false;
+    }
     try {
       ResourceContext<IngestionPipeline> context =
-          new ResourceContext<>(Entity.INGESTION_PIPELINE, null, pipelineFqn, Include.NON_DELETED);
+          new ResourceContext<>(
+              Entity.INGESTION_PIPELINE,
+              null,
+              pipelineFqn,
+              Include.NON_DELETED,
+              Fields.EMPTY_FIELDS,
+              RelationIncludes.fromInclude(Include.NON_DELETED));
       authorizer.authorize(
           securityContext,
           new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.VIEW_BASIC),
@@ -108,6 +117,7 @@ final class ServiceProgressSubscriber
       IngestionPipeline pipeline = (IngestionPipeline) context.getEntity();
       EntityReference parent = pipeline == null ? null : pipeline.getService();
       return parent != null
+          && pipelineId.equals(pipeline.getId())
           && service.getType().equals(parent.getType())
           && service.getId().equals(parent.getId());
     } catch (AuthorizationException | EntityNotFoundException e) {

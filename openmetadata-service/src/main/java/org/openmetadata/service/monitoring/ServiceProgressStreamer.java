@@ -17,8 +17,10 @@ import jakarta.ws.rs.sse.SseEventSink;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.monitoring.IngestionProgressTracker.ServiceProgressSnapshot;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 
 /**
@@ -27,6 +29,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSs
  * stream, a single run's terminal event does not close the sink — the connection stays open for the
  * whole page session and is closed only on client disconnect or the {@link ProgressSseManager} cap.
  */
+@Slf4j
 public final class ServiceProgressStreamer {
 
   private ServiceProgressStreamer() {}
@@ -36,8 +39,8 @@ public final class ServiceProgressStreamer {
       SseEventSink eventSink,
       Sse sse,
       IngestionProgressTracker tracker,
-      Function<ServiceProgressEvent, Optional<ServiceProgressEvent>> subscriber) {
-    Consumer<ServiceProgressEvent> listener = event -> send(eventSink, sse, event, subscriber);
+      Function<ServiceProgressSnapshot, Optional<ServiceProgressEvent>> subscriber) {
+    Consumer<ServiceProgressSnapshot> listener = event -> send(eventSink, sse, event, subscriber);
     tracker.registerServiceListener(serviceFqn, listener);
     Runnable onClose = () -> tracker.unregisterServiceListener(serviceFqn, listener);
     if (ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
@@ -46,7 +49,7 @@ public final class ServiceProgressStreamer {
       // would otherwise strand the run displayed as "running" until the client reloads. A
       // replayed snapshot may duplicate a just-delivered live event, which is harmless (the
       // client keys by pipelineFqn and renders the latest).
-      for (ServiceProgressEvent snapshot : tracker.getActiveRunSnapshots(serviceFqn)) {
+      for (ServiceProgressSnapshot snapshot : tracker.getActiveRunSnapshots(serviceFqn)) {
         listener.accept(snapshot);
       }
     } else {
@@ -58,12 +61,12 @@ public final class ServiceProgressStreamer {
   private static void send(
       SseEventSink eventSink,
       Sse sse,
-      ServiceProgressEvent event,
-      Function<ServiceProgressEvent, Optional<ServiceProgressEvent>> subscriber) {
+      ServiceProgressSnapshot snapshot,
+      Function<ServiceProgressSnapshot, Optional<ServiceProgressEvent>> subscriber) {
     if (!eventSink.isClosed()) {
       try {
         subscriber
-            .apply(event)
+            .apply(snapshot)
             .ifPresent(
                 visible ->
                     eventSink
@@ -75,6 +78,11 @@ public final class ServiceProgressStreamer {
                               }
                             }));
       } catch (RuntimeException e) {
+        LOG.warn(
+            "Closing service progress stream for pipeline {} run {} after {}",
+            snapshot.event().getPipelineFqn(),
+            snapshot.event().getRunId(),
+            e.getClass().getSimpleName());
         ProgressSseManager.getInstance().close(eventSink);
       }
     }
