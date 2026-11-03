@@ -446,8 +446,10 @@ def test_only_complete_scopes_delete_missing_families(complete):
     source._get_filtered_schema_names = lambda **kwargs: [scope]
     source.metadata.list_all_entities = lambda *args, **kwargs: iter([missing, physical])
 
-    def delete_stale(entity, scope_params, live_fqns, recursive):
+    def delete_stale(entity, scope_params, live_fqns, recursive, allow_empty_seen=False):
         assert scope_params == {"databaseSchema": scope}
+        if not live_fqns and not allow_empty_seen:
+            return {"deleted": 0}
         for table in (missing, physical):
             if table.fullyQualifiedName.root not in live_fqns:
                 table.deleted = True
@@ -472,7 +474,9 @@ def test_filtered_logical_family_is_outside_reconciliation_scope():
     source._get_filtered_schema_names = lambda **kwargs: [scope]
     source.metadata.list_all_entities = lambda *args, **kwargs: iter([family])
 
-    def delete_stale(entity, scope_params, live_fqns, recursive):
+    def delete_stale(entity, scope_params, live_fqns, recursive, allow_empty_seen=False):
+        if not live_fqns and not allow_empty_seen:
+            return {"deleted": 0}
         family.deleted = family.fullyQualifiedName.root not in live_fqns
         return {"deleted": 0}
 
@@ -578,6 +582,8 @@ def test_refreshed_inventory_controls_reconciliation(failure):
 
     def delete_stale_entities(**kwargs):
         submitted.append(kwargs)
+        if kwargs["live_fqns"] or kwargs.get("allow_empty_seen", False):
+            family.deleted = family.fullyQualifiedName.root not in kwargs["live_fqns"]
         return {"deleted": 1}
 
     source.metadata.delete_stale_entities = delete_stale_entities
@@ -585,6 +591,7 @@ def test_refreshed_inventory_controls_reconciliation(failure):
     list(source.mark_tables_as_deleted())
     assert source.client.calls == 4
     assert source._sharding_scopes[scope] is (failure is None)
+    assert family.deleted is (failure is None)
     if failure is None:
         assert len(submitted) == 1
         assert submitted[0]["live_fqns"] == set()

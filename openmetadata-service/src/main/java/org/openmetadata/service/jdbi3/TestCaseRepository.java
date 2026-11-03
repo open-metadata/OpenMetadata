@@ -101,6 +101,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.openmetadata.service.resources.dqtests.TestCaseWriteAuthRequests;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -2587,6 +2588,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TestCaseRepository repository =
               (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
 
+          // Compute and set FQN manually (same logic as setFullyQualifiedName)
+          EntityLink parsedLink = EntityLink.parse(entityLink);
+          String testCaseFqn =
+              FullyQualifiedName.add(
+                  parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
+          testCase.setFullyQualifiedName(testCaseFqn);
+          testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
+
+          // A row can name any table, so it is checked as the matching REST write, before anything
+          // is created for it (e.g. the table's test suite)
+          authorizeRowForAny(
+              () ->
+                  repository.findByNameOrNull(testCaseFqn, Include.ALL) == null
+                      ? TestCaseWriteAuthRequests.forCreate(testCase)
+                      : TestCaseWriteAuthRequests.forUpdate(testCase));
+
           // Get test suite if provided, otherwise get or create default test suite
           if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
             TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
@@ -2601,14 +2618,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             testCase.withTestSuite(testSuite);
             importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
           }
-
-          // Compute and set FQN manually (same logic as setFullyQualifiedName)
-          EntityLink parsedLink = EntityLink.parse(entityLink);
-          String testCaseFqn =
-              FullyQualifiedName.add(
-                  parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
-          testCase.setFullyQualifiedName(testCaseFqn);
-          testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
 
           // Set required fields for new entities - createOrUpdateForImport doesn't call
           // prepareInternal which would normally set these

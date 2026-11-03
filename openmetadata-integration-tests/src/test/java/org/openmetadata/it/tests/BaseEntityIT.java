@@ -7822,8 +7822,13 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
       String after = null;
       do {
         JsonNode result = readHistoryPage(client, basePath, startTs, endTs, limit, "after", after);
-        pages.add(versionKeys(result));
-        lastPageBeforeCursor = cursor(result, "before");
+        List<String> page = versionKeys(result);
+        // A concurrent test can hard-delete the row that made the previous page report more,
+        // leaving this page empty and cursorless. The walk then ends on the last page with rows.
+        if (!page.isEmpty()) {
+          pages.add(page);
+          lastPageBeforeCursor = cursor(result, "before");
+        }
         after = cursor(result, "after");
       } while (after != null);
       return new HistoryWalk(pages, lastPageBeforeCursor);

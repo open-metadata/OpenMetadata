@@ -70,7 +70,7 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.tableSharding import TableSharding
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.delete import delete_entity_by_name, delete_entity_from_source
+from metadata.ingestion.api.delete import SourceListing, delete_entity_by_name, delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
@@ -1706,7 +1706,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     self.status.warning(scope, f"Catalog reconciliation inventory failed: {exc}")
                     continue
                 yield from delete_entity_from_source(
-                    self.metadata, Table, self.database_source_state, recursive=True, params={"databaseSchema": scope}
+                    self.metadata,
+                    Table,
+                    self.database_source_state,
+                    recursive=True,
+                    params={"databaseSchema": scope},
+                    source_listing=SourceListing(is_complete=True),
                 )
             if self.sharding_enabled or not self.incremental.enabled:
                 return

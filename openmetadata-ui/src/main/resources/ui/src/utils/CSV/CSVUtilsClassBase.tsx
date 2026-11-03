@@ -2634,9 +2634,13 @@ const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
     };
 
     return (
+      // The picker anchors below its trigger; the trigger must fill the cell or
+      // the dropdown opens mid-cell, over the field being edited.
       <DomainSelectableList
+        fullWidthTrigger
         hasPermission
         multiple
+        className="tw:h-full tw:w-full"
         popoverProps={{ open: true }}
         selectedDomain={domains}
         onUpdate={(domain) => handleChange(domain as EntityReference[])}>
