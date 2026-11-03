@@ -107,7 +107,7 @@ const TableDescription = ({
         </span>
       );
     }
-  }, [columnData.field, suggestionData]);
+  }, [columnData.field, suggestionData, t]);
 
   return (
     <Box
