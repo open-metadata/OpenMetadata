@@ -4701,6 +4701,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
+  /**
+   * Captures cleanup inputs before hard deletion removes relationships. The returned action runs
+   * after the owning row deletion succeeds, or after an enclosing transaction commits.
+   */
+  protected Runnable preparePostDeleteCleanup(List<T> entities) {
+    return () -> {};
+  }
+
   protected void postDelete(T entity, boolean hardDelete) {
     // Delete from RDF only on hard delete
     if (hardDelete) {
@@ -4822,7 +4830,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // need to walk HAS to discover linked entities. Mirrors bulkHardDeleteSubtree
         // ordering for direct-entity hard delete.
         hardDeleteAdditionalChildren(original.getId(), deletedBy);
+        Runnable postDeleteCleanup = preparePostDeleteCleanup(List.of(updated));
         cleanup(updated);
+        PostCommitActionQueue.runOrDefer(postDeleteCleanup);
         changeType = ENTITY_DELETED;
       }
       LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
@@ -6909,7 +6919,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
       // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
       // already deleted by the recursion above, so this transaction is bounded to this chunk.
+      Runnable postDeleteCleanup = preparePostDeleteCleanup(entities);
       bulkDeleteReferencesAndRows(entities);
+      PostCommitActionQueue.runOrDefer(postDeleteCleanup);
       bulkInvalidate(entities);
       // When an ancestor's deleteFromSearch cascade already removes these docs in a single
       // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
