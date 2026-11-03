@@ -197,6 +197,9 @@ class BasicAuthLoginServletTest {
     assertThat(responseBody.toString())
         .contains("<strong>https://client.example.com</strong>")
         .doesNotContain("client.example.com/callback");
+    // Never framed, so another page cannot cover that line.
+    verify(response).setHeader("X-Frame-Options", "DENY");
+    verify(response).addHeader("Content-Security-Policy", "frame-ancestors 'none'");
   }
 
   // ── the re-rendered form stays bound to its auth request ─────────────────

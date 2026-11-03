@@ -2,6 +2,8 @@ package org.openmetadata.mcp.server.auth.html;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 public class HtmlTemplates {
 
   private static final String LOGIN_FORM_TEMPLATE =
@@ -298,6 +300,17 @@ public class HtmlTemplates {
         escapeHtml(message),
         escapeHtml(returnUrl),
         escapeHtml(destination));
+  }
+
+  /**
+   * Sets the headers every MCP sign-in page carries: never cached, and never framed, so another
+   * site cannot show the page under its own address or cover the line naming where access goes.
+   */
+  public static void setSignInPageHeaders(HttpServletResponse response) {
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("X-Frame-Options", "DENY");
+    // Added next to any policy the web security headers set; browsers enforce both.
+    response.addHeader("Content-Security-Policy", "frame-ancestors 'none'");
   }
 
   /**

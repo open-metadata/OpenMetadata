@@ -289,6 +289,7 @@ public class BasicAuthLoginServlet extends HttpServlet {
         HtmlTemplates.generateLoginForm(clientName, redirectTarget, errorMessage, csrfToken);
     response.setContentType("text/html; charset=UTF-8");
     response.setStatus(HttpServletResponse.SC_OK);
+    HtmlTemplates.setSignInPageHeaders(response);
     response.getWriter().write(html);
   }
 
