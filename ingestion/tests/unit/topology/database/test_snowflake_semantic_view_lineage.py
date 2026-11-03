@@ -72,6 +72,16 @@ def test_extract_column_refs_returns_unqualified_names_without_a_table():
     assert extract_column_refs("amount::NUMBER(10, 2) * 1e5") == [(None, "amount")]
     assert extract_column_refs("payload:region::string") == [(None, "payload")]
     assert extract_column_refs("src:customer.name[0]::string") == [(None, "src")]
+    assert extract_column_refs("TRY_CAST(created_at AS DATE) + CAST(x AS NUMBER(10, 2))") == [
+        (None, "created_at"),
+        (None, "x"),
+    ]
+    # punctuation inside a quoted identifier is part of the name
+    assert extract_column_refs('orders."amount (USD)" + orders."a:b"') == [
+        ("orders", "amount (USD)"),
+        ("orders", "a:b"),
+    ]
+    assert extract_column_refs('"it\'s" || \'a "b"\'') == [(None, "it's")]
 
 
 # Snowflake's normal form: each object's expression is relative to its own logical table.

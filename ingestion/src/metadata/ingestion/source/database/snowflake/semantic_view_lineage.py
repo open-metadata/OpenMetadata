@@ -58,22 +58,25 @@ ViewKey = tuple[str, str]
 # is not unique -- Snowflake declares every object as ``<table_alias>.<name>``.
 SemanticKey = tuple[str, str]
 
-# A single identifier segment: a double-quoted name (``""`` escapes a quote) or a bare
-# name. A bare name never starts inside a number, so ``1e5`` offers no ``e5``.
-_IDENTIFIER = r'"(?:[^"]|"")*"|(?<![\w$])[A-Za-z_][\w$]*'
+# A string literal or a double-quoted identifier, scanned together so neither is read
+# inside the other. Double quotes delimit identifiers in Snowflake, not strings.
+_LITERAL_OR_QUOTED_RE = re.compile(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"")
+# A single identifier segment once each quoted identifier is masked as ``\0<n>\0``.
+# A bare name never starts inside a number, so ``1e5`` offers no ``e5``.
+_IDENTIFIER = r"\x00\d+\x00|(?<![\w$])[A-Za-z_][\w$]*"
 # A dotted chain of two or more identifier segments (e.g. ``orders.amount``,
 # ``"orders"."o amount"``, ``db.schema.orders.amount``).
 _COLUMN_REF_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))+")
 _SEGMENT_RE = re.compile(_IDENTIFIER)
 # A function name with its opening parenthesis, such as ``SUM(``.
 _FUNCTION_HEAD_RE = re.compile(rf"(?:{_IDENTIFIER})\s*\(")
-# A cast target (``::NUMBER(10, 2)``) or a semi-structured path (``payload:a.b[0]``).
+# A cast target (``::NUMBER(10, 2)``, ``CAST(x AS DATE)``) or a semi-structured path
+# (``payload:a.b[0]``).
 _CAST_OR_PATH_RE = re.compile(
-    rf"::\s*(?:{_IDENTIFIER})(?:\s*\([^)]*\))?"
-    rf"|:\s*(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER})|\[[^\]]*\])*"
+    rf"(?:::|\bAS\b)\s*(?:{_IDENTIFIER})(?:\s*\([^)]*\))?"
+    rf"|:\s*(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER})|\[[^\]]*\])*",
+    re.IGNORECASE,
 )
-# A string literal. Double quotes delimit identifiers in Snowflake, not strings.
-_STRING_LITERAL_RE = re.compile(r"'(?:[^']|'')*'")
 _MAX_RESOLUTION_DEPTH = 5
 SEMANTIC_COLUMN_CATALOG_VIEWS = (
     "semantic_dimensions",
@@ -93,17 +96,29 @@ def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
     A dotted chain contributes its last two segments. An unqualified name comes back
     with table ``None``: it refers to the semantic object's own logical table.
     """
-    text = _STRING_LITERAL_RE.sub(" ", expression or "")
+    quoted: list[str] = []
+
+    def mask(match: re.Match[str]) -> str:
+        token = match.group()
+        if token.startswith("'"):
+            return " "
+        quoted.append(unquote_name_part(token))
+        return f"\x00{len(quoted) - 1}\x00"
+
+    def name(segment: str) -> str:
+        return quoted[int(segment.strip("\x00"))] if segment.startswith("\x00") else segment
+
+    text = _LITERAL_OR_QUOTED_RE.sub(mask, expression or "")
     text = _CAST_OR_PATH_RE.sub(" ", text)
     text = _FUNCTION_HEAD_RE.sub("(", text)
     refs: list[tuple[str | None, str]] = []
     for chain in _COLUMN_REF_RE.findall(text):
         segments = _SEGMENT_RE.findall(chain)
-        refs.append((unquote_name_part(segments[-2]), unquote_name_part(segments[-1])))
+        refs.append((name(segments[-2]), name(segments[-1])))
     for identifier in _SEGMENT_RE.findall(_COLUMN_REF_RE.sub(" ", text)):
-        if not identifier.startswith('"') and identifier.lower() in SQL_KEYWORDS:
+        if not identifier.startswith("\x00") and identifier.lower() in SQL_KEYWORDS:
             continue
-        refs.append((None, unquote_name_part(identifier)))
+        refs.append((None, name(identifier)))
     return refs
 
 
