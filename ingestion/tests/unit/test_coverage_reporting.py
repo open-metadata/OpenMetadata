@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Regression tests for coverage report filenames consumed by SonarCloud."""
 
+import os
 import shutil
 import subprocess
 import sys
@@ -124,3 +125,89 @@ def test_nox_coverage_rejects_missing_data(coverage_repository: Path, from_root:
     )
     assert result.returncode != 0, result.stdout + result.stderr
     assert "No data to combine" in result.stdout + result.stderr
+
+
+@pytest.fixture(params=["src", "env/lib/python3.10/site-packages"])
+def recorded_coverage(tmp_path: Path, request, monkeypatch):
+    monkeypatch.delenv("COVERAGE_FILE", raising=False)
+    monkeypatch.delenv("COVERAGE_PROCESS_START", raising=False)
+    project = tmp_path / "ingestion"
+    source = project / "src/metadata"
+    source.mkdir(parents=True)
+    (source / "__init__.py").touch()
+    (source / "sample.py").write_text("def double(value):\n    return value * 2\n")
+    package = project / request.param / "metadata"
+    if package != source:
+        shutil.copytree(source, package)
+    temporary = tmp_path / "temporary"
+    connector = temporary / "test_binding"
+    connector.mkdir(parents=True)
+    (connector / "__init__.py").touch()
+    (connector / "resolution.py").write_text("VALUE = 1\n")
+    probe = project / "probe.py"
+    probe.write_text(
+        "import metadata\n"
+        f"metadata.__path__.append({str(temporary)!r})\n"
+        "from metadata.test_binding.resolution import VALUE\n"
+        "from metadata.sample import double\n"
+        "assert double(VALUE) == 2\n"
+    )
+    environment = {**os.environ, "PYTHONPATH": str(package.parent)}
+
+    def run_coverage(*arguments):
+        return subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "coverage",
+                arguments[0],
+                f"--rcfile={INGESTION_DIR / 'pyproject.toml'}",
+                *arguments[1:],
+            ],
+            cwd=project,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+
+    result = run_coverage("run", str(probe))
+    assert result.returncode == 0, result.stdout + result.stderr
+    data = CoverageData(basename=str(next(project.glob(".coverage.*"))))
+    data.read()
+    assert str(connector / "resolution.py") in data.measured_files()
+    return project, temporary, run_coverage
+
+
+def test_reports_exclude_temporary_modules_before_and_after_combining(recorded_coverage):
+    project, temporary, run_coverage = recorded_coverage
+    # Unit jobs report before transfer; the combine job has only the checkout and artifacts.
+    partial = next(project.glob(".coverage.*"))
+    result = run_coverage("xml", f"--data-file={partial}", "-o", "unit.xml")
+    assert result.returncode == 0, result.stdout + result.stderr
+    unit_report = ET.parse(project / "unit.xml")
+    assert [entry.attrib["name"] for entry in unit_report.findall(".//class")] == ["sample.py"]
+
+    shutil.rmtree(temporary)
+    result = run_coverage("combine")
+    assert result.returncode == 0, result.stdout + result.stderr
+    for command in ("report", "xml"):
+        result = run_coverage(command)
+        assert result.returncode == 0, result.stdout + result.stderr
+    report = ET.parse(project / "ci-coverage.xml")
+    classes = report.findall(".//class")
+    assert [entry.attrib["name"] for entry in classes] == ["sample.py"]
+    assert classes[0].attrib["line-rate"] == "1"
+
+
+def test_reports_still_reject_missing_application_sources(recorded_coverage):
+    project, temporary, run_coverage = recorded_coverage
+    shutil.rmtree(temporary)
+    result = run_coverage("combine")
+    assert result.returncode == 0, result.stdout + result.stderr
+    (project / "src/metadata/sample.py").unlink()
+    result = run_coverage("report")
+    assert result.returncode != 0
+    assert "No source for code" in result.stdout + result.stderr
+    assert "sample.py" in result.stdout + result.stderr
