@@ -1400,12 +1400,19 @@ class TestUnscopedShardLineage:
         _, edges = run(source)
         assert edges == []
 
-    @pytest.mark.parametrize("failure", ["overflow", "partial", "inexact", "timeout", "shards", "http", "missing"])
-    def test_incomplete_search_preserves_existing_model(self, make_unscoped_source, failure):
+    @pytest.mark.parametrize(
+        "failure,reference",
+        [
+            (failure, "events_20261101")
+            for failure in ("overflow", "partial", "inexact", "timeout", "shards", "http", "missing")
+        ]
+        + [(failure, "events_*") for failure in ("overflow", "partial", "inexact", "timeout", "shards", "http")],
+    )
+    def test_incomplete_search_preserves_existing_model(self, make_unscoped_source, failure, reference):
         family = shard_table()
         previous = make_unscoped_source([family])
         run(previous)
-        source = make_unscoped_source([family])
+        source = make_unscoped_source([family], f"demo_db.analytics.{reference}")
         source.metadata.entities.update(previous.metadata.entities)
         model_fqn = f"{SERVICE}.model.{PROJECT.id}"
         stored_model = source.metadata.entities[model_fqn]
@@ -1433,13 +1440,34 @@ class TestUnscopedShardLineage:
         (dashboard,) = source.yield_dashboard(PROJECT)
         assert [model.root for model in dashboard.right.dataModels] == [model_fqn]
 
-    def test_date_constrained_wildcard_reports_incomplete_without_search(self, make_unscoped_source):
+    def test_date_constrained_wildcard_is_logged_and_skipped_without_search(self, make_unscoped_source, caplog):
+        caplog.set_level("DEBUG", logger="metadata.Ingestion")
         source = make_unscoped_source([shard_table()], "demo_db.analytics.events_2026*")
         requests, edges = run(source)
-        assert requests == []
+        assert len(requests) == 1
+        assert [child.name.root for child in requests[0].columns[0].children] == ["id"]
         assert edges == []
-        assert source._kept_data_model == PROJECT.id
+        assert source._kept_data_model is None
         assert source.metadata.client.get.call_count == 0
+        assert "Skipping unsupported Hex table reference events_2026*" in caplog.text
+
+    @pytest.mark.parametrize("unsupported", ["events_2026*", "ev*ents_*", "events_*_archive"])
+    def test_unsupported_wildcard_keeps_lineage_from_other_cells(self, make_unscoped_source, unsupported):
+        family = shard_table()
+        source = make_unscoped_source([family])
+        source.client.get_project_cells.return_value.extend(
+            [
+                sql_cell("c2", f"select id from `demo_db.analytics.{unsupported}`", "unsupported", "connection"),
+                sql_cell("c3", "select id from `demo_db.analytics.events_20261101`", "later", "connection"),
+            ]
+        )
+        requests, edges = run(source)
+        assert [column.name.root for column in requests[0].columns] == ["c1", "c2", "c3"]
+        assert {edge.fromEntity.id.root for edge in edges} == {family.id.root}
+        assert {target for edge in edges for target in column_lineage(edge)} == {
+            f"{SERVICE}.model.{PROJECT.id}.c1.id",
+            f"{SERVICE}.model.{PROJECT.id}.c3.id",
+        }
 
     def test_unknown_connection_type_keeps_ordinary_cross_service_lookup(self, make_unscoped_source):
         physical = make_table("events_20261101", {"id": DataType.INT}, "warehouse.demo_db.analytics")

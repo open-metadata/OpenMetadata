@@ -35,6 +35,10 @@ alias_resolution_cache = LRUCache(LRU_CACHE_SIZE)
 ALIAS_OPT_IN_FIELD = "includeSynonyms"
 
 
+class UnsupportedTableReferenceError(ValueError):
+    """The connector cannot resolve this reference without additional source evidence."""
+
+
 def load_table_binding_resolution(
     source_type: str | None,
     metadata: OpenMetadata,

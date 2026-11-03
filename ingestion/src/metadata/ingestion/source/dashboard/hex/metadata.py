@@ -21,7 +21,11 @@ from datetime import datetime, timezone
 from sqlglot import exp
 
 from metadata.domain.table_reference import TableReference
-from metadata.entity_resolution.table_binding import TableLookup, load_table_binding_resolution
+from metadata.entity_resolution.table_binding import (
+    TableLookup,
+    UnsupportedTableReferenceError,
+    load_table_binding_resolution,
+)
 from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createCustomProperty import (
@@ -1005,6 +1009,9 @@ class HexSource(DashboardServiceSource):
             return resolution.resolve(
                 TableReference(database, schema, table), service_name=service, lookup=TableLookup.SEARCH
             )
+        except UnsupportedTableReferenceError as exc:
+            logger.debug("Skipping unsupported Hex table reference %s: %s", table, exc)
+            return ()
         except Exception as exc:
             raise TableSearchError(f"searching table reference {table}: {exc}") from exc
 
@@ -1021,7 +1028,7 @@ class HexSource(DashboardServiceSource):
             if not (searched_schema or schema):
                 continue
             if any(
-                expected and actual and expected != actual
+                expected and actual and expected.lower() != actual.lower()
                 for expected, actual in ((database, searched_database), (schema, searched_schema), (table, table_name))
             ):
                 continue

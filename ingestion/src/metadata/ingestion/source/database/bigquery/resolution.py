@@ -22,7 +22,7 @@ from metadata.entity_resolution.engine import (
     ResolutionTier,
 )
 from metadata.entity_resolution.table_binding import TableBindingResolution as DefaultTableBindingResolution
-from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_binding import TableLookup, UnsupportedTableReferenceError
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.generated.schema.type.queryParserData import ParsedData
@@ -47,7 +47,9 @@ def _resolve_unscoped_reference(
     name = strip_partition_decorator(reference.table)
     wildcard = "*" in name
     if wildcard and (name.count("*") != 1 or not name.endswith("*") or re.search(r"[0-9]+\*", name)):
-        raise ValueError("BigQuery wildcard requires member inventory evidence; resolution incomplete")
+        raise UnsupportedTableReferenceError(
+            "BigQuery wildcard requires member inventory evidence; resolution incomplete"
+        )
     parsed = parse_shard_name(name)
     scope = [
         {"term": {field: value}}
@@ -147,7 +149,9 @@ def _resolve_scoped_reference(resolver, service: str, reference: TableReference,
         Table, (ResolutionTier((FqnCandidate(name, mode),)),), fields, include, 100, warn_on_partial=True
     )
     if "*" in reference.table and re.search(r"[0-9]+\*", reference.table):
-        raise ValueError("Date-constrained BigQuery wildcards require member inventory evidence; resolution incomplete")
+        raise UnsupportedTableReferenceError(
+            "Date-constrained BigQuery wildcards require member inventory evidence; resolution incomplete"
+        )
     exact = resolver.resolve(plan)
     if exact:
         return exact

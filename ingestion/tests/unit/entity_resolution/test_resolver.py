@@ -747,8 +747,9 @@ def test_bigquery_usage_counts_each_execution_once_and_preserves_sql(sdk, tmp_pa
     assert [item.query.root for item in values[0].sqlQueries] == [execution.sql, execution.sql]
 
 
+@pytest.mark.parametrize("prefix", ["my_service", "my_service.my_db.My_Schema"])
 @pytest.mark.parametrize("count", [11, 100, 101])
-def test_hex_sql_cells_expand_complete_bigquery_wildcards(sdk, count):
+def test_hex_sql_cells_expand_complete_bigquery_wildcards(sdk, count, prefix):
     metadata, transport = sdk
     add_bigquery_service(transport)
     tables = [table(f"my_service.my_db.my_schema.events_{index}") for index in range(count)]
@@ -756,7 +757,7 @@ def test_hex_sql_cells_expand_complete_bigquery_wildcards(sdk, count):
     transport.hits = [value.fullyQualifiedName.root for value in tables]
     source = HexSource.__new__(HexSource)
     source.metadata = metadata
-    source.source_config = SimpleNamespace(lineageInformation=SimpleNamespace(dbServicePrefixes=["my_service"]))
+    source.source_config = SimpleNamespace(lineageInformation=SimpleNamespace(dbServicePrefixes=[prefix]))
     cell = Cell(
         id="cell",
         dataConnectionId="connection",
@@ -770,6 +771,30 @@ def test_hex_sql_cells_expand_complete_bigquery_wildcards(sdk, count):
         result = source._build_sql_cell_lineage(cell, connections, ChainedCells(), LRUCache(100))
         assert set(result.tables) == {str(value.id.root) for value in tables}
         assert all(not column.source_columns for column in result.columns)
+
+
+def test_hex_scoped_unsupported_wildcard_keeps_other_table_lineage(sdk, caplog):
+    caplog.set_level("DEBUG", logger="metadata.Ingestion")
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    ordinary = table("my_service.my_db.my_schema.orders")
+    transport.entities[ordinary.fullyQualifiedName.root] = ordinary
+    source = HexSource.__new__(HexSource)
+    source.metadata = metadata
+    source.source_config = SimpleNamespace(lineageInformation=SimpleNamespace(dbServicePrefixes=["my_service"]))
+    cell = Cell(
+        id="cell",
+        dataConnectionId="connection",
+        contents={
+            "sqlCell": {
+                "source": "SELECT o.id FROM `my_db.my_schema.orders` o JOIN `my_db.my_schema.events_2026*` e ON o.id = e.id"
+            }
+        },
+    )
+    connections = {"connection": DataConnection(id="connection", name="demo", type="bigquery")}
+    result = source._build_sql_cell_lineage(cell, connections, ChainedCells(), LRUCache(100))
+    assert set(result.tables) == {str(ordinary.id.root)}
+    assert "Skipping unsupported Hex table reference events_2026*" in caplog.text
 
 
 @pytest.mark.parametrize("count", [11, 100, 101])
