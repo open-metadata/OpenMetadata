@@ -1001,7 +1001,7 @@ it('keeps the current InReview footer when an older Approved release is selected
     screen.getByTestId(`ontology-release-select-${id(4)}`)
   ).toHaveAttribute('aria-expanded', 'true');
   expect(screen.getByTestId('ontology-release-definition')).toHaveTextContent(
-    historical.name
+    `v${historical.semanticVersion}`
   );
   expect(activationButton()).toBeEnabled();
 });
@@ -1284,7 +1284,9 @@ it('counts only disjoint top-level changes and distinguishes latest from active'
 
   expect(
     screen.queryByTestId(`ontology-release-count-${release.id}`)
-  ).toHaveTextContent('10 label.change-plural');
+  ).toHaveTextContent(
+    '1 label.added-lowercase · 6 label.changed-lowercase · 3 label.removed-lowercase'
+  );
 
   const currentRow = screen
     .getByTestId(`ontology-release-select-${release.id}`)

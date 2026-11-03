@@ -267,6 +267,62 @@ export const visibleHistoryReleases = (
       release.id === latestReleaseId
   );
 
+export type HistoryStatus = 'published' | 'inReview' | 'draft' | 'rejected';
+export type HistoryStatusFilter = 'all' | HistoryStatus;
+
+export const HISTORY_STATUS_FILTERS: readonly HistoryStatusFilter[] = [
+  'all',
+  'published',
+  'inReview',
+  'draft',
+  'rejected',
+];
+
+/** Approved releases are the ones people can publish or already see. */
+export const historyStatus = (release: OntologyRelease): HistoryStatus => {
+  switch (release.entityStatus) {
+    case EntityStatus.Approved:
+      return 'published';
+    case EntityStatus.InReview:
+      return 'inReview';
+    case EntityStatus.Rejected:
+      return 'rejected';
+    default:
+      return 'draft';
+  }
+};
+
+export const filterHistoryReleases = (
+  releases: readonly OntologyRelease[],
+  filter: HistoryStatusFilter,
+  search: string
+) => {
+  const needle = search.trim().toLowerCase();
+
+  return releases.filter(
+    (release) =>
+      (filter === 'all' || historyStatus(release) === filter) &&
+      (!needle ||
+        [release.semanticVersion, release.name, release.releaseNotes].some(
+          (text) => text?.toLowerCase().includes(needle)
+        ))
+  );
+};
+
+/** Row counts by change type; a deprecation edits an existing concept. */
+export const releaseChangeBreakdown = (release: OntologyRelease) => {
+  const summary = release.changeSummary;
+  if (!summary || summary.deprecated === undefined) {
+    return undefined;
+  }
+
+  return {
+    added: summary.added,
+    changed: summary.changed + summary.deprecated,
+    removed: summary.removed,
+  };
+};
+
 const action = (
   kind: PublicationAction['kind'],
   isDisabled = false

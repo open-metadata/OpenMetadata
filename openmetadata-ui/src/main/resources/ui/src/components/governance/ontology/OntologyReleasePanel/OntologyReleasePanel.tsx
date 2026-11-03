@@ -961,6 +961,7 @@ const OntologyReleasePanel = ({
       activeReleaseId={activeReleaseId}
       history={history}
       latestReleaseId={projection.data?.publicationStatus?.latest?.releaseId}
+      ontologyId={ontology.id}
       selectedReleaseId={selectedId}
       onSelect={setSelectedId}
     />

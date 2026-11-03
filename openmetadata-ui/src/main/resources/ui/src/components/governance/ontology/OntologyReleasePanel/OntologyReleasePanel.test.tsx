@@ -16,6 +16,7 @@ import {
   fireEvent,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
@@ -43,6 +44,7 @@ import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
+import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyPublicationModal from '../OntologyPublicationModal/OntologyPublicationModal';
 import OntologyReleasePanel from './OntologyReleasePanel';
@@ -642,7 +644,14 @@ describe('OntologyReleasePanel', () => {
     await screen.findByText(/Customer/);
     await capture();
 
-    expect(await screen.findByText('Captured R6')).toBeVisible();
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId('ontology-release-definition')).getByRole(
+          'heading',
+          { name: 'v1.3.0' }
+        )
+      ).toBeVisible()
+    );
 
     await capture();
 
@@ -664,8 +673,12 @@ describe('OntologyReleasePanel', () => {
         expectedLatestReleaseRevision: 2,
       })
     );
-    expect(await screen.findByText('Captured R7')).toBeVisible();
-    expect(screen.queryByText('Captured R6')).not.toBeInTheDocument();
+    expect(
+      await screen.findByTestId(`ontology-release-export-${captures[1].id}`)
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId(`ontology-release-export-${captures[0].id}`)
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-release-stage')).toHaveTextContent(
       'label.draft'
     );
@@ -1229,9 +1242,11 @@ describe('OntologyReleasePanel', () => {
       const mounted = screen.getByTestId('ontology-release-definition');
       await clickActivation();
 
-      expect(await screen.findByText(/activation-author/)).toHaveTextContent(
-        new Date(2000).toLocaleString()
-      );
+      expect(
+        (await screen.findByText(/activation-author/)).closest(
+          '[data-testid="ontology-release-event"]'
+        )
+      ).toHaveTextContent(formatDateTimeLong(2000));
       expect(screen.getByTestId('ontology-release-definition')).toBe(mounted);
       expect(screen.getByTestId('ontology-active-release')).toBeVisible();
     }
