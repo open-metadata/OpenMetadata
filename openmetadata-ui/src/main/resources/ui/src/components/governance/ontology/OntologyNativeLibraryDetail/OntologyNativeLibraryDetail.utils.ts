@@ -18,8 +18,8 @@ import {
   getOntologyByName,
 } from '../../../../rest/ontologyAPI';
 import { generateUUID } from '../../../../utils/StringUtils';
-import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
 import { getOwnersOrCurrentUser } from '../../../Glossary/AddGlossary/AddGlossary.utils';
+import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
 
 export const nativeLibraryOntologyRequest = (
   pack: OntologyPackManifest,

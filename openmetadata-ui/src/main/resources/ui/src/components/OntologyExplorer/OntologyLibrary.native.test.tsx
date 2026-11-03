@@ -42,6 +42,15 @@ jest.mock('../../rest/axiosClient', () => ({
   put: jest.fn(),
   delete: jest.fn(),
 }));
+jest.mock(
+  '../governance/ontology/OntologyCreateForm/useOntologyIdentitySource',
+  () => ({
+    useOntologyIdentitySource: () => ({
+      isReady: true,
+      identityOf: () => undefined,
+    }),
+  })
+);
 jest.mock('../../hooks/useAppMode', () => ({
   ...jest.requireActual('../../hooks/useAppMode'),
   useIsAiMode: jest.fn().mockReturnValue(false),
@@ -487,7 +496,9 @@ describe('OntologyLibrary native installation', () => {
       expect(
         screen.getByTestId('ontology-library-native-install')
       ).toBeDisabled();
-      expect(post).not.toHaveBeenCalled();
+      expect(
+        post.mock.calls.filter(([url]) => !String(url).endsWith('/review'))
+      ).toHaveLength(0);
     }
   );
 
@@ -499,9 +510,11 @@ describe('OntologyLibrary native installation', () => {
     await install();
 
     expect(creates()).toHaveLength(1);
-    expect(post.mock.calls.some(([url]) => url.includes('/library/'))).toBe(
-      false
-    );
+    expect(
+      post.mock.calls.some(
+        ([url]) => url.includes('/library/') && !url.endsWith('/review')
+      )
+    ).toBe(false);
     expect(screen.getByTestId('ontology-library-close')).toBeDisabled();
     expect(screen.getByTestId('ontology-library-back')).toBeDisabled();
 
@@ -611,7 +624,7 @@ describe('OntologyLibrary native installation', () => {
   it('keeps the created target on preview failure and retries its selected modules', async () => {
     let failPreview = true;
     post.mockImplementation(async (url, data) => {
-      if (url.includes('/library/') && failPreview) {
+      if (url.endsWith('/preview') && failPreview) {
         failPreview = false;
 
         throw new Error('preview failed');

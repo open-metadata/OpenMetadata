@@ -31,8 +31,8 @@ import { CreateOntology } from '../../../../generated/api/data/createOntology';
 import type { OntologyPackManifest } from '../../../../generated/api/data/ontologyPackManifest';
 import type { Ontology } from '../../../../generated/entity/data/ontology';
 import type { OntologyPackInstallationRecord } from '../../../../generated/type/ontologyPackInstallationRecord';
-import { useOntologyIdentitySource } from '../../../../hooks/governance/ontology/useOntologyIdentitySource';
 import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
+import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIdentitySource';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -51,6 +51,7 @@ import {
   nativeLibraryOntologyRequest,
   resolveNativeLibraryTarget,
 } from './OntologyNativeLibraryDetail.utils';
+import OntologyNativePackReview from './OntologyNativePackReview';
 
 export interface NativeLibraryCompletion {
   ontology: Ontology;
@@ -391,6 +392,13 @@ const OntologyNativeLibraryDetail = ({
                 </Card>
               ))}
             </Box>
+            {targetId !== 'new' && (
+              <OntologyNativePackReview
+                moduleIds={selectedModuleIds}
+                ontologyId={targetId}
+                packId={pack.id}
+              />
+            )}
             {renderInstallActions()}
             {error && <Alert variant="error">{error}</Alert>}
             {apply.status.kind === 'blocked' && (

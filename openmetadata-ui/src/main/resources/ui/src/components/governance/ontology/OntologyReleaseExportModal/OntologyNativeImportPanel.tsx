@@ -40,7 +40,7 @@ import {
   NativeInstallTarget,
   useNativeOntologyInstall,
 } from '../../../../hooks/governance/ontology/useNativeOntologyInstall';
-import { useOntologyIdentitySource } from '../../../../hooks/governance/ontology/useOntologyIdentitySource';
+import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIdentitySource';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -51,9 +51,11 @@ import { getErrorText } from '../../../../utils/StringUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
 import { resolveNativeLibraryTarget } from '../OntologyNativeLibraryDetail/OntologyNativeLibraryDetail.utils';
+import OntologyNativeImportItems from './OntologyNativeImportItems';
 import {
   detectNativeImportFile,
   hasReviewers,
+  importItemsOf,
   INITIAL_NATIVE_IMPORT_STATE,
   landOnImportedOntology,
   nativeImportActionFlags,
@@ -64,18 +66,16 @@ import {
   NativeImportState,
   nativeImportStep,
   NativeImportTarget,
-  importItemsOf,
-  selectChanges,
-  selectedCount,
-  selectionOf,
   NATIVE_IMPORT_ACCEPTED_EXTENSIONS,
   NATIVE_IMPORT_FORMAT_LABEL_KEYS,
   NATIVE_IMPORT_MAX_BYTES,
   parseNativeImportFile,
   pick,
   readySummaryOf,
+  selectChanges,
+  selectedCount,
+  selectionOf,
 } from './OntologyNativeImportPanel.utils';
-import OntologyNativeImportItems from './OntologyNativeImportItems';
 
 interface OntologyNativeImportPanelProps {
   readonly canImport: boolean;

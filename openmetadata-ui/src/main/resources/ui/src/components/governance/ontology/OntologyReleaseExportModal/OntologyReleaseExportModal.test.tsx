@@ -88,15 +88,12 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   getOntologyState: jest.fn(),
 }));
 
-jest.mock(
-  '../../../../hooks/governance/ontology/useOntologyIdentitySource',
-  () => ({
-    useOntologyIdentitySource: () => ({
-      isReady: true,
-      identityOf: () => undefined,
-    }),
-  })
-);
+jest.mock('../OntologyCreateForm/useOntologyIdentitySource', () => ({
+  useOntologyIdentitySource: () => ({
+    isReady: true,
+    identityOf: () => undefined,
+  }),
+}));
 jest.mock(
   '../../../../hooks/useEntityPermissions/useEntityPermissions',
   () => ({
@@ -195,7 +192,10 @@ describe('OntologyReleaseExportModal', () => {
       workingRevision: 7,
     });
     mockGetOntologyRelease.mockResolvedValue(release);
-    mockListHistory.mockResolvedValue({ data: [release] });
+    mockListHistory.mockResolvedValue({
+      data: [release],
+      paging: { total: 1 },
+    });
     mockExportDraft.mockResolvedValue('<rdf>draft</rdf>');
     mockExportOntologyRelease.mockResolvedValue('<rdf>sealed release</rdf>');
   });
@@ -424,7 +424,7 @@ describe('OntologyReleaseExportModal', () => {
       ontologyId: ontology.id,
       workingRevision: 0,
     });
-    mockListHistory.mockResolvedValue({ data: [] });
+    mockListHistory.mockResolvedValue({ data: [], paging: { total: 0 } });
 
     renderWithQueryClient(
       <MemoryRouter>
@@ -452,6 +452,7 @@ describe('OntologyReleaseExportModal', () => {
     fireEvent.click(screen.getByTestId('ontology-run-release-export'));
 
     await waitFor(() => expect(mockDownloadFile).toHaveBeenCalled());
+
     expect(mockDownloadFile).toHaveBeenCalledWith(
       '<rdf>draft</rdf>',
       'Sales-draft.rdf',
@@ -467,7 +468,10 @@ describe('OntologyReleaseExportModal', () => {
       fullyQualifiedName: 'Sales.Release0',
       releaseRevision: 0,
     };
-    mockListHistory.mockResolvedValue({ data: [release, older] });
+    mockListHistory.mockResolvedValue({
+      data: [release, older],
+      paging: { total: 2 },
+    });
     mockExportOntologyRelease.mockImplementation(async (id) =>
       id === older.id ? '<rdf>older release</rdf>' : '<rdf>sealed release</rdf>'
     );

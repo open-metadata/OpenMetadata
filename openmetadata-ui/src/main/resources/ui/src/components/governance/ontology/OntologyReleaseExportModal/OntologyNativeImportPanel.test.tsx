@@ -53,18 +53,15 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   previewNativeOntologyImport: jest.fn(),
   previewNativeOntologyImportWithoutTarget: jest.fn(),
 }));
-jest.mock(
-  '../../../../hooks/governance/ontology/useOntologyIdentitySource',
-  () => ({
-    useOntologyIdentitySource: () => ({
-      isReady: true,
-      identityOf: (title: string) =>
-        jest
-          .requireActual('../OntologyCreateForm/OntologyCreateForm.utils')
-          .generatedOntologyIdentity(title, 'https://open-metadata.org', []),
-    }),
-  })
-);
+jest.mock('../OntologyCreateForm/useOntologyIdentitySource', () => ({
+  useOntologyIdentitySource: () => ({
+    isReady: true,
+    identityOf: (title: string) =>
+      jest
+        .requireActual('../OntologyCreateForm/OntologyCreateForm.utils')
+        .generatedOntologyIdentity(title, 'https://open-metadata.org', []),
+  }),
+}));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),

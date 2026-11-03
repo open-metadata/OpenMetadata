@@ -56,7 +56,7 @@ const loadScopes = async (
   }
   const listed = releases.find(({ id }) => id === state.activeReleaseId);
   // The release ID comes from the state response, so this request is necessarily dependent.
-  // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
+
   const activeRelease =
     listed ?? (await getOntologyRelease(state.activeReleaseId, signal));
   if (activeRelease.ontology.id !== ontologyId) {
