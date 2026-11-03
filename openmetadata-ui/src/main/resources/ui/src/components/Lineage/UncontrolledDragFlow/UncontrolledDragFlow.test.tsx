@@ -10,20 +10,61 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
-import { ReactFlowProvider } from 'reactflow';
+import { act, render } from '@testing-library/react';
+import { ReactFlowProvider, useStoreApi } from 'reactflow';
 import UncontrolledDragFlow from './UncontrolledDragFlow';
 
+type FlowStore = ReturnType<typeof useStoreApi>;
+
 describe('UncontrolledDragFlow', () => {
-  it('renders a React Flow canvas inside the caller provider', () => {
-    const { container } = render(
+  it('keeps drag frames inside React Flow and reports only the drop', () => {
+    const onNodesChange = jest.fn();
+    let store: FlowStore | undefined;
+    const CaptureStore = () => {
+      store = useStoreApi();
+
+      return null;
+    };
+
+    render(
       <div style={{ width: 400, height: 400 }}>
         <ReactFlowProvider>
-          <UncontrolledDragFlow nodes={[]} onNodesChange={jest.fn()} />
+          <UncontrolledDragFlow
+            nodes={[{ id: 'a', position: { x: 0, y: 0 }, data: {} }]}
+            onNodesChange={onNodesChange}
+          />
+          <CaptureStore />
         </ReactFlowProvider>
       </div>
     );
+    const dragItem = {
+      id: 'a',
+      position: { x: 40, y: 60 },
+      positionAbsolute: { x: 40, y: 60 },
+      distance: { x: 0, y: 0 },
+      delta: { x: 0, y: 0 },
+      extent: undefined,
+      parentNode: undefined,
+      dimensions: { width: 0, height: 0 },
+    };
 
-    expect(container.querySelector('.react-flow')).toBeInTheDocument();
+    act(() => {
+      store?.getState().updateNodePositions([dragItem], true, true);
+    });
+
+    expect(onNodesChange).not.toHaveBeenCalled();
+
+    act(() => {
+      store?.getState().updateNodePositions([dragItem], false, false);
+    });
+
+    expect(onNodesChange).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'a',
+        type: 'position',
+        dragging: false,
+        position: { x: 40, y: 60 },
+      }),
+    ]);
   });
 });

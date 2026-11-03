@@ -30,6 +30,12 @@ const isDragFrame = (change: NodeChange) =>
  * Flow's store only, and the drag-end change, which carries no position, is
  * filled in from it so the caller receives the final position once.
  *
+ * Any other change the caller receives mid-drag (say, React Flow measuring a
+ * node auto-pan just revealed) makes React Flow re-sync from the caller's
+ * nodes, which still hold the pre-drag positions. Those batches therefore also
+ * carry the dragged nodes' current positions, so the re-sync cannot snap a
+ * dragged node back or let the drop save its start position.
+ *
  * Must be called inside a `ReactFlowProvider`.
  */
 export const useUncontrolledNodeDrag = (
@@ -61,9 +67,26 @@ export const useUncontrolledNodeDrag = (
               }
             : change;
         });
-      if (committed.length) {
-        onNodesChange(committed);
+      if (!committed.length) {
+        return;
       }
+      const endingIds = new Set(
+        committed.flatMap((change) =>
+          change.type === 'position' ? [change.id] : []
+        )
+      );
+      const inFlight: NodeChange[] = store
+        .getState()
+        .getNodes()
+        .filter((node) => node.dragging && !endingIds.has(node.id))
+        .map((node) => ({
+          id: node.id,
+          type: 'position',
+          dragging: true,
+          position: node.position,
+          positionAbsolute: node.positionAbsolute,
+        }));
+      onNodesChange([...inFlight, ...committed]);
     },
     [onNodesChange, store]
   );

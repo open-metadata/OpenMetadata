@@ -12,15 +12,23 @@
  */
 import { act, renderHook } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { ReactFlowProvider, useStoreApi } from 'reactflow';
+import {
+  applyNodeChanges,
+  Node,
+  NodeChange,
+  ReactFlowProvider,
+  useStoreApi,
+} from 'reactflow';
 import { useUncontrolledNodeDrag } from './useUncontrolledNodeDrag';
 
 const wrapper = ({ children }: { children?: ReactNode }) => (
   <ReactFlowProvider>{children}</ReactFlowProvider>
 );
 
-const setup = () => {
-  const onNodesChange = jest.fn();
+const setup = (
+  nodes: Node[] = [{ id: 'a', position: { x: 0, y: 0 }, data: {} }],
+  onNodesChange: (changes: NodeChange[]) => void = jest.fn()
+) => {
   const { result } = renderHook(
     () => ({
       handleNodesChange: useUncontrolledNodeDrag(onNodesChange),
@@ -29,17 +37,16 @@ const setup = () => {
     { wrapper }
   );
   act(() => {
-    result.current.store
-      .getState()
-      .setNodes([{ id: 'a', position: { x: 0, y: 0 }, data: {} }]);
+    result.current.store.getState().setNodes(nodes);
   });
 
-  return { onNodesChange, result };
+  return { result };
 };
 
 describe('useUncontrolledNodeDrag', () => {
   it('moves the node in React Flow only while dragging, then commits the final position once', () => {
-    const { onNodesChange, result } = setup();
+    const onNodesChange = jest.fn();
+    const { result } = setup(undefined, onNodesChange);
 
     act(() => {
       for (const y of [10, 20, 30]) {
@@ -82,7 +89,8 @@ describe('useUncontrolledNodeDrag', () => {
   });
 
   it('passes non-drag changes through unchanged', () => {
-    const { onNodesChange, result } = setup();
+    const onNodesChange = jest.fn();
+    const { result } = setup(undefined, onNodesChange);
     const changes = [
       { id: 'a', type: 'select' as const, selected: true },
       {
@@ -98,5 +106,56 @@ describe('useUncontrolledNodeDrag', () => {
     });
 
     expect(onNodesChange).toHaveBeenCalledWith(changes);
+  });
+
+  it('keeps a dragged node in place when the caller re-syncs mid-drag, and saves the dropped position', () => {
+    let parentNodes: Node[] = [
+      { id: 'a', position: { x: 0, y: 0 }, data: {} },
+      { id: 'b', position: { x: 100, y: 0 }, data: {} },
+    ];
+    // A controlled parent: it applies what it receives, then React Flow's
+    // StoreUpdater rebuilds the flow store from the parent's nodes.
+    const flow: { store?: ReturnType<typeof useStoreApi> } = {};
+    const parent = jest.fn((changes: NodeChange[]) => {
+      parentNodes = applyNodeChanges(changes, parentNodes);
+      flow.store?.getState().setNodes(parentNodes);
+    });
+    const { result } = setup(parentNodes, parent);
+    flow.store = result.current.store;
+    const getA = () => result.current.store.getState().nodeInternals.get('a');
+
+    act(() => {
+      result.current.handleNodesChange([
+        {
+          id: 'a',
+          type: 'position',
+          dragging: true,
+          position: { x: 5, y: 30 },
+          positionAbsolute: { x: 5, y: 30 },
+        },
+      ]);
+      // Auto-pan revealed `b`; React Flow reports its measured size.
+      result.current.handleNodesChange([
+        {
+          id: 'b',
+          type: 'dimensions',
+          dimensions: { width: 200, height: 80 },
+        },
+      ]);
+    });
+
+    expect(getA()?.position).toEqual({ x: 5, y: 30 });
+    expect(getA()?.dragging).toBe(true);
+
+    act(() => {
+      result.current.handleNodesChange([
+        { id: 'a', type: 'position', dragging: false },
+      ]);
+    });
+
+    expect(parentNodes.find((node) => node.id === 'a')).toMatchObject({
+      position: { x: 5, y: 30 },
+      dragging: false,
+    });
   });
 });
