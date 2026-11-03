@@ -5796,6 +5796,7 @@
     "ontology-empty-title": "Conecta conceptos en tu ontología",
     "ontology-enum-minimum": "Añada al menos dos valores permitidos distintos.",
     "ontology-export-draft-hint": "Includes unpublished changes",
+    "ontology-export-failed": "The export could not be generated.",
     "ontology-export-release-hint": "Sealed content of this release",
     "ontology-export-scope-help": "Choose the draft you are editing now, or a release that was captured earlier.",
     "ontology-find-hint": "Press Enter to open the highlighted concept.",

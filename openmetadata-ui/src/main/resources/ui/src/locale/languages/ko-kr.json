@@ -5796,6 +5796,7 @@
     "ontology-empty-title": "온톨로지의 개념을 연결하세요",
     "ontology-enum-minimum": "서로 다른 허용 값을 두 개 이상 추가하세요.",
     "ontology-export-draft-hint": "Includes unpublished changes",
+    "ontology-export-failed": "The export could not be generated.",
     "ontology-export-release-hint": "Sealed content of this release",
     "ontology-export-scope-help": "Choose the draft you are editing now, or a release that was captured earlier.",
     "ontology-find-hint": "Press Enter to open the highlighted concept.",
