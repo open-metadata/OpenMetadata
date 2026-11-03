@@ -276,7 +276,9 @@ test.describe(
           page.getByTestId('ontology-native-import-apply')
         ).toHaveText('Import 4 selected');
 
-        await itemRow(page, 'Payment').getByRole('checkbox').click();
+        await itemRow(page, 'Payment')
+          .locator('[data-testid^="ontology-native-import-item-check-"]')
+          .click();
 
         await expect(
           page.getByTestId('ontology-native-import-unticked-notice')
@@ -288,7 +290,9 @@ test.describe(
           page.getByTestId('ontology-native-import-apply')
         ).toHaveText('Import 2 selected');
 
-        await itemRow(page, 'Payment').getByRole('checkbox').click();
+        await itemRow(page, 'Payment')
+          .locator('[data-testid^="ontology-native-import-item-check-"]')
+          .click();
 
         await expect(
           page.getByTestId('ontology-native-import-unticked-notice')
@@ -305,14 +309,18 @@ test.describe(
           'Payment',
           'Receipt',
         ]);
-        const axioms = await okJson<{ data: unknown[] }>(
+        const axioms = await okJson<{
+          data: { ontology?: { id: string } }[];
+        }>(
           await api.get('/api/v1/ontologyAxioms', {
-            params: { ontology: ontology.fullyQualifiedName, limit: 100 },
+            params: { ontology: ontology.fullyQualifiedName, limit: 1000 },
           }),
           'List imported axioms'
         );
 
-        expect(axioms.data).toHaveLength(0);
+        expect(
+          axioms.data.filter((axiom) => axiom.ontology?.id === ontology.id)
+        ).toHaveLength(0);
       } finally {
         await remove(api, ontology.id);
       }
@@ -328,7 +336,9 @@ test.describe(
         await openImport(page, ontology);
         await parseFile(page, 'rules.ttl', RULES_TURTLE(NS(ontology.name)));
 
-        await itemRow(page, 'Invoice').getByRole('checkbox').click();
+        await itemRow(page, 'Invoice')
+          .locator('[data-testid^="ontology-native-import-item-check-"]')
+          .click();
 
         await expect(
           page.getByTestId('ontology-native-import-unticked-notice')
@@ -838,11 +848,13 @@ test.describe(
         await page.getByTestId('ontology-library-trigger').click();
         await page.getByTestId('ontology-pack-details-fibo').click();
         await expect.poll(() => modules.count()).toBeGreaterThan(1);
+        await page.getByTestId('ontology-module-business-entities').click();
         const initial = await checkedModules();
 
-        expect(initial.filter(([, isChecked]) => isChecked)).not.toHaveLength(
-          initial.length
-        );
+        expect(initial).toEqual([
+          ['ontology-module-foundations', true],
+          ['ontology-module-business-entities', false],
+        ]);
 
         await page.getByTestId('ontology-library-target').click();
         await page
