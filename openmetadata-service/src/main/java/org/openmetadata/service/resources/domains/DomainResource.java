@@ -91,6 +91,7 @@ import org.openmetadata.service.util.RestUtil;
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   private final DomainMapper mapper = new DomainMapper();
+  private final DomainStyleReader styleReader = new DomainStyleReader(Entity.getCollectionDAO());
   static final String FIELDS =
       "tags,children,childrenCount,owners,experts,extension,followers,votes,certification";
 
@@ -681,7 +682,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
         new ResourceContext<>(entityType));
-    return new DomainStyleReader(Entity.getCollectionDAO()).listStyles();
+    return styleReader.listStyles();
   }
 
   @GET

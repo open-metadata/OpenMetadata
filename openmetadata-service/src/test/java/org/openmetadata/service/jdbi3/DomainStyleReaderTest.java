@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.domains.EntityStyle;
-import org.openmetadata.schema.entity.domains.DataProduct;
-import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.CoverImage;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -36,25 +34,23 @@ class DomainStyleReaderTest {
   void listsTheColourAndIconOfStyledDomainsAndDataProducts() {
     UUID domainId = UUID.randomUUID();
     UUID dataProductId = UUID.randomUUID();
-    when(daoCollection.domainDAO().listStyledJson())
+    when(daoCollection.domainDAO().listStyles())
         .thenReturn(
             List.of(
                 JsonUtils.pojoToJson(
-                    new Domain()
+                    new EntityStyle()
                         .withId(domainId)
-                        .withName("marketing")
                         .withStyle(
                             new Style()
                                 .withColor("#F14C75")
                                 .withIconURL("Database01")
                                 .withCoverImage(new CoverImage().withUrl("cover.png"))))));
-    when(daoCollection.dataProductDAO().listStyledJson())
+    when(daoCollection.dataProductDAO().listStyles())
         .thenReturn(
             List.of(
                 JsonUtils.pojoToJson(
-                    new DataProduct()
+                    new EntityStyle()
                         .withId(dataProductId)
-                        .withName("orders")
                         .withStyle(new Style().withIconURL("Cube01")))));
 
     List<EntityStyle> styles = new DomainStyleReader(daoCollection).listStyles().getData();
@@ -76,16 +72,15 @@ class DomainStyleReaderTest {
   // can draw.
   @Test
   void omitsEntitiesWhoseStyleHasNoColourOrIcon() {
-    when(daoCollection.domainDAO().listStyledJson())
+    when(daoCollection.domainDAO().listStyles())
         .thenReturn(
             List.of(
                 JsonUtils.pojoToJson(
-                    new Domain()
+                    new EntityStyle()
                         .withId(UUID.randomUUID())
-                        .withName("finance")
                         .withStyle(
                             new Style().withCoverImage(new CoverImage().withUrl("cover.png"))))));
-    when(daoCollection.dataProductDAO().listStyledJson()).thenReturn(List.of());
+    when(daoCollection.dataProductDAO().listStyles()).thenReturn(List.of());
 
     assertEquals(List.of(), new DomainStyleReader(daoCollection).listStyles().getData());
   }
