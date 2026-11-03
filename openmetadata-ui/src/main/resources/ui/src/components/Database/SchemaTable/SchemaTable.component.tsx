@@ -566,24 +566,24 @@ const SchemaTable = () => {
     }
   };
 
-  const handleTagSelection = async (
-    selectedTags: EntityTags[],
-    editColumnTag: Column
-  ) => {
-    if (selectedTags && editColumnTag.fullyQualifiedName) {
-      try {
-        await updateColumnDetails(
-          editColumnTag.fullyQualifiedName,
-          {
-            tags: selectedTags,
-          },
-          'tags'
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+  const handleTagSelection = useCallback(
+    async (selectedTags: EntityTags[], editColumnTag: Column) => {
+      if (selectedTags && editColumnTag.fullyQualifiedName) {
+        try {
+          await updateColumnDetails(
+            editColumnTag.fullyQualifiedName,
+            {
+              tags: selectedTags,
+            },
+            'tags'
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }
-    }
-  };
+    },
+    [updateColumnDetails]
+  );
 
   const handleExtensionUpdate = useCallback(
     async (record: Column, updatedExtension: Column['extension']) => {
