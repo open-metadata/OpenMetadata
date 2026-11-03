@@ -111,6 +111,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { revokeEditPermissions } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -289,14 +290,20 @@ const TagPage = () => {
     if (tagItem) {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
+      if (!isEditable) {
+        return {
+          editTagsPermission: false,
+          disabledAwarePermissions: revokeEditPermissions(tagPermissions),
+        };
+      }
+
       return {
-        editTagsPermission: isEditable && tagCanEditAll,
+        editTagsPermission: tagCanEditAll,
         disabledAwarePermissions: {
           ...tagPermissions,
-          EditOwners:
-            isEditable && (tagCanEditAll || tagPermissions.EditOwners),
-          EditDomains: isEditable && tagCanEditDomains,
-          EditAll: isEditable && tagCanEditAll,
+          EditOwners: tagCanEditAll || tagPermissions.EditOwners,
+          EditDomains: tagCanEditDomains,
+          EditAll: tagCanEditAll,
         },
       };
     }

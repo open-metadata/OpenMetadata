@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "Excluir este {{entityType}} removerá permanentemente seus metadados.",
     "delete-intake-form-confirmation": "Tem a certeza de que pretende eliminar este formulário de admissão? A aplicação será interrompida imediatamente para o tipo de entidade em causa.",
     "delete-message-question-mark": "Excluir Mensagem?",
+    "delete-metric-children-message": "Qualquer métrica filha sob \"{{metricName}}\" será {{deleteType}} eliminada também.",
     "delete-metrics-warning": "Isto eliminará temporariamente as métricas selecionadas juntamente com as respetivas métricas filhas. As métricas eliminadas temporariamente podem ser restauradas mais tarde.",
     "delete-persona-context-rule-confirmation": "Eliminar esta regra de contexto de IA?",
     "delete-scim-token": "Eliminar Token SCIM",

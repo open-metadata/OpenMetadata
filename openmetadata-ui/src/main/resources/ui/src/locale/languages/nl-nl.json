@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "Het verwijderen van deze {{entityType}} verwijdert de metadata permanent.",
     "delete-intake-form-confirmation": "Weet je zeker dat je dit aanmeldformulier wilt verwijderen? De handhaving stopt onmiddellijk voor het betreffende entiteitstype.",
     "delete-message-question-mark": "Bericht verwijderen?",
+    "delete-metric-children-message": "De onderliggende metrics onder \"{{metricName}}\" worden ook {{deleteType}} verwijderd.",
     "delete-metrics-warning": "Hiermee worden de geselecteerde metrics samen met hun onderliggende metrics tijdelijk verwijderd. Tijdelijk verwijderde metrics kunnen later worden hersteld.",
     "delete-persona-context-rule-confirmation": "Deze AI-contextregel verwijderen?",
     "delete-scim-token": "SCIM-token verwijderen",

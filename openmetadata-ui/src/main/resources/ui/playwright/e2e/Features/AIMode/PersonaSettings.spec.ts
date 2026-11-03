@@ -733,9 +733,8 @@ test.describe(
     // sharing one across parallel workers would race on its version.
     const personas: Record<string, PersonaClass> = {};
     const EDITORS = [
-      'navigation',
       'appLayout',
-      'aiSidebar',
+      'navigation',
       'marketplace',
       'home',
       'homeTheme',
@@ -767,30 +766,6 @@ test.describe(
       await enableAiAppMode(page);
     });
 
-    test('Navigation: hiding an item is saved', async ({ page }) => {
-      await openPersonaSettings(
-        page,
-        personas.navigation.data.name,
-        '/customize/navigation'
-      );
-      const exploreSwitch = page
-        .getByTestId('navigation-switch-/explore')
-        .getByRole('switch');
-
-      await expect(exploreSwitch).toBeChecked();
-
-      // react-aria keeps the input under its label; the label takes the press.
-      await page.getByTestId('navigation-switch-/explore').click();
-
-      await expect(exploreSwitch).not.toBeChecked();
-
-      await saveLayoutAndReload(page, 'customize-save', '/explore');
-
-      await expect(
-        page.getByTestId('navigation-switch-/explore').getByRole('switch')
-      ).not.toBeChecked();
-    });
-
     test('App Layout: the default app mode is saved', async ({ page }) => {
       await openPersonaSettings(
         page,
@@ -810,11 +785,13 @@ test.describe(
       ).toBeChecked();
     });
 
-    test('AI sidebar: hiding a module is saved', async ({ page }) => {
+    test('Navigation in AI mode: hiding a module is saved', async ({
+      page,
+    }) => {
       await openPersonaSettings(
         page,
-        personas.aiSidebar.data.name,
-        '/customize/askCollateSidebar'
+        personas.navigation.data.name,
+        '/customize/navigation'
       );
       const exploreSwitch = page
         .getByTestId('ai-sidebar-switch-explore')

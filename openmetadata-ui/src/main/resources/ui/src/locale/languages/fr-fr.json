@@ -4689,6 +4689,7 @@
     "delete-entity-type-action-description": "Supprimer cette {{entityType}} supprimerait définitivement ses métadonnées.",
     "delete-intake-form-confirmation": "Voulez-vous vraiment supprimer ce formulaire d'admission ? L'application s'arrêtera immédiatement pour le type d'entité concerné.",
     "delete-message-question-mark": "Supprimer le Message ?",
+    "delete-metric-children-message": "Toute métrique enfant sous \"{{metricName}}\" sera {{deleteType}} supprimée aussi.",
     "delete-metrics-warning": "Cette action supprimera temporairement les métriques sélectionnées ainsi que leurs métriques enfants. Les métriques supprimées temporairement peuvent être restaurées ultérieurement.",
     "delete-persona-context-rule-confirmation": "Supprimer cette règle de contexte IA ?",
     "delete-scim-token": "Supprimer le jeton SCIM",
