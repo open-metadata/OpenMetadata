@@ -67,7 +67,6 @@ describe('buildBulkIncidentEntries', () => {
     ).toEqual({
       entries: [fresh, acked, assignedToAaron].map((incident) => ({
         testCaseReference: incident.testCaseReference?.fullyQualifiedName,
-        stateId: incident.stateId,
         testCaseResolutionStatusType: CreateStatusTypes.Resolved,
         testCaseResolutionStatusDetails: undefined,
       })),
@@ -85,7 +84,6 @@ describe('buildBulkIncidentEntries', () => {
       entries: [
         {
           testCaseReference: 'svc.db.shop.orders.fresh',
-          stateId: 'state-fresh',
           testCaseResolutionStatusType: CreateStatusTypes.ACK,
           testCaseResolutionStatusDetails: undefined,
         },
@@ -117,7 +115,6 @@ describe('buildBulkIncidentEntries', () => {
     expect(entries).toEqual([
       {
         testCaseReference: 'svc.db.shop.orders.fresh',
-        stateId: 'state-fresh',
         testCaseResolutionStatusType: CreateStatusTypes.Assigned,
         testCaseResolutionStatusDetails: { assignee: aaron },
       },
@@ -152,7 +149,6 @@ describe('buildBulkIncidentEntries', () => {
     ).toEqual([
       {
         testCaseReference: 'svc.db.shop.orders.acked',
-        stateId: 'state-acked',
         testCaseResolutionStatusType: CreateStatusTypes.Resolved,
         testCaseResolutionStatusDetails: details,
       },
@@ -169,14 +165,12 @@ describe('buildBulkIncidentEntries', () => {
       entries: [
         {
           testCaseReference: 'svc.db.shop.orders.fresh',
-          stateId: 'state-fresh',
           testCaseResolutionStatusType: CreateStatusTypes.New,
           testCaseResolutionStatusDetails: undefined,
           severity: CreateSeverities.Severity1,
         },
         {
           testCaseReference: 'svc.db.shop.orders.acked',
-          stateId: 'state-acked',
           testCaseResolutionStatusType: CreateStatusTypes.ACK,
           testCaseResolutionStatusDetails: undefined,
           severity: CreateSeverities.Severity1,

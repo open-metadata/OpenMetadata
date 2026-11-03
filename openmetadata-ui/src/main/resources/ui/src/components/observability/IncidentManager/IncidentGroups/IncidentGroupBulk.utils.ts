@@ -74,16 +74,12 @@ const toEntry = (
 ): CreateTestCaseResolutionStatus => {
   const testCaseReference =
     incident.testCaseReference?.fullyQualifiedName ?? '';
-  // A test case can hold more than one open incident: name the one picked, or
-  // the server applies the change to the test case's latest.
-  const { stateId } = incident;
 
   // A severity change re-sends the status the incident is in, with its
   // details: an assigned incident stays assigned to the same person.
   return change.kind === 'severity'
     ? {
         testCaseReference,
-        stateId,
         // The record and the request each generate the status enum from their
         // own schema; the members match one for one.
         testCaseResolutionStatusType:
@@ -94,7 +90,6 @@ const toEntry = (
       }
     : {
         testCaseReference,
-        stateId,
         testCaseResolutionStatusType: change.status,
         testCaseResolutionStatusDetails: change.details,
       };

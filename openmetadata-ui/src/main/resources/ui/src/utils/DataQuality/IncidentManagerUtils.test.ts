@@ -69,7 +69,6 @@ describe('reopenResolvedIncident', () => {
       expect(postTestCaseIncidentStatus).toHaveBeenCalledWith(
         expect.objectContaining({
           testCaseReference: BASE.testCaseFqn,
-          stateId: BASE.currentStateId,
           testCaseResolutionStatusType: status,
         })
       );

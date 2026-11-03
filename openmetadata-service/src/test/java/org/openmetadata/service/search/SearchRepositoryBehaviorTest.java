@@ -203,13 +203,6 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/test_suite_index_mapping.json")
           .build();
 
-  private static final IndexMapping TEST_CASE_RESOLUTION_STATUS_MAPPING =
-      IndexMapping.builder()
-          .indexName("test_case_resolution_status_search_index")
-          .alias(Entity.TEST_CASE_RESOLUTION_STATUS)
-          .indexMappingFile("/elasticsearch/%s/test_case_resolution_status_index_mapping.json")
-          .build();
-
   private static final IndexMapping TEST_CASE_MAPPING =
       IndexMapping.builder()
           .indexName("test_case_search_index")
@@ -263,7 +256,6 @@ class SearchRepositoryBehaviorTest {
                 Map.entry(Entity.PAGE, PAGE_MAPPING),
                 Map.entry(Entity.TEST_SUITE, TEST_SUITE_MAPPING),
                 Map.entry(Entity.TEST_CASE, TEST_CASE_MAPPING),
-                Map.entry(Entity.TEST_CASE_RESOLUTION_STATUS, TEST_CASE_RESOLUTION_STATUS_MAPPING),
                 Map.entry(Entity.QUERY, TABLE_MAPPING)),
             "cluster");
     Entity.setSearchRepository(repository);
@@ -325,7 +317,8 @@ class SearchRepositoryBehaviorTest {
         map.put(entityType, mock(org.openmetadata.service.jdbi3.EntityTimeSeriesRepository.class));
         org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
             org.openmetadata.service.search.capability.EntityIndexCapability.forTimeSeries(
-                entityType));
+                entityType,
+                Entity.TEST_CASE_RESOLUTION_STATUS.equals(entityType) ? "testCase.deleted" : null));
       }
     } catch (Exception e) {
       throw new RuntimeException("Failed to register mock time-series repositories", e);
@@ -3547,31 +3540,14 @@ class SearchRepositoryBehaviorTest {
     assertIncidentTestCasesFlagged("service.id", service.getId(), false);
   }
 
-  // Promoting a reindex's staged index must not bring back the flag the serving index lost.
-  @Test
-  void softDeleteOrRestoredChildrenFlagsTheIncidentsInAStagedIndexToo() throws IOException {
-    EntityReference testCase =
-        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
-    repository.registerStagedIndex(
-        Entity.TEST_CASE_RESOLUTION_STATUS, "test_case_resolution_status_search_index_rebuild");
-
-    repository.softDeleteOrRestoredChildren(testCase, TEST_CASE_MAPPING, true);
-
-    verify(searchClient)
-        .softDeleteOrRestoreChildren(
-            eq(List.of(INCIDENT_INDEX, "test_case_resolution_status_search_index_rebuild")),
-            any(String.class),
-            eq(List.of(new ImmutablePair<>("testCase.id", testCase.getId().toString()))));
-  }
-
-  private static final String INCIDENT_INDEX = "cluster_test_case_resolution_status_search_index";
+  private static final String INCIDENT_ALIAS = "cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS;
 
   private void assertIncidentTestCasesFlagged(String parentField, UUID parentId, boolean deleted)
       throws IOException {
     ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
     verify(searchClient)
         .softDeleteOrRestoreChildren(
-            eq(List.of(INCIDENT_INDEX)),
+            eq(List.of(INCIDENT_ALIAS)),
             script.capture(),
             eq(List.of(new ImmutablePair<>(parentField, parentId.toString()))));
     assertTrue(
@@ -4398,7 +4374,6 @@ class SearchRepositoryBehaviorTest {
             Entity.PAGE,
             Entity.TEST_SUITE,
             Entity.TEST_CASE,
-            Entity.TEST_CASE_RESOLUTION_STATUS,
             Entity.QUERY),
         repository.getSearchEntities());
     assertSame(highLevelClient, repository.getHighLevelClient());

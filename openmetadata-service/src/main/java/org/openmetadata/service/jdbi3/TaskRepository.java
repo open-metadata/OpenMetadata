@@ -403,6 +403,9 @@ public class TaskRepository extends EntityRepository<Task> {
       TaskFieldValidator.validateDataAccessRequestExpiry(task);
     }
     validateNoDuplicateActiveDataAccessRequest(task);
+    if (!update) {
+      validateNoOtherOpenIncident(task);
+    }
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
@@ -451,6 +454,34 @@ public class TaskRepository extends EntityRepository<Task> {
                 existing.getTaskId(), entityFqn));
       }
     }
+  }
+
+  /**
+   * A test case holds at most one open incident, and an incident task is that incident. A new one
+   * is refused while the test case has another open incident; status changes go to that one. The
+   * open incident's own id is let through, as the v200 migration adopts an open chain under it.
+   */
+  private void validateNoOtherOpenIncident(Task task) {
+    if (isTestCaseIncidentTask(task)) {
+      String testCaseFqn = task.getAbout().getFullyQualifiedName();
+      UUID openIncident =
+          ((TestCaseResolutionStatusRepository)
+                  Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS))
+              .getOngoingIncidentStateId(testCaseFqn);
+      if (openIncident != null && !openIncident.equals(task.getId())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Test case '%s' already has an open incident (%s). Update that incident instead.",
+                testCaseFqn, openIncident));
+      }
+    }
+  }
+
+  private static boolean isTestCaseIncidentTask(Task task) {
+    return task.getType() == TaskEntityType.TestCaseResolution
+        && task.getAbout() != null
+        && Entity.TEST_CASE.equals(task.getAbout().getType())
+        && !nullOrEmpty(task.getAbout().getFullyQualifiedName());
   }
 
   private boolean isDuplicateDataAccessRequestCheckable(Task task) {

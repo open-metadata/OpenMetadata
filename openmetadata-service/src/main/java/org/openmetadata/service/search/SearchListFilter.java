@@ -13,6 +13,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
@@ -116,19 +118,6 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return condition.toString();
   }
 
-  // An incident document has no deleted flag of its own, so the include scoping applies to the
-  // test case it embeds; SearchRepository keeps that flag current on a soft delete or restore.
-  // Documents indexed without the flag count as not deleted.
-  private String getTestCaseDeletedCondition() {
-    String condition = "";
-    if (include == Include.DELETED) {
-      condition = "{\"term\": {\"testCase.deleted\": true}}";
-    } else if (include != Include.ALL) {
-      condition = "{\"bool\":{\"must_not\":[{\"term\":{\"testCase.deleted\":true}}]}}";
-    }
-    return condition;
-  }
-
   private String getTimestampFilter(String conditionAlias, Long value) {
     return getTimestampFilter("timestamp", conditionAlias, value);
   }
@@ -173,19 +162,27 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return "";
   }
 
+  // A document indexed before its deleted field existed counts as not deleted.
   private String getIncludeCondition(String entityType) {
-    boolean supportsDeleted = true;
-    if (entityType != null) {
-      Class<?> clazz = Entity.getEntityClassFromType(entityType);
-      if (clazz == null) clazz = Entity.getEntityTimeSeriesClassFromType(entityType);
-      supportsDeleted = (clazz != null) && Entity.getEntityFields(clazz).contains("deleted");
+    String deletedField = deletedFieldOf(entityType);
+    String condition = "";
+    if (include == Include.DELETED && deletedField != null) {
+      condition = String.format("{\"term\": {\"%s\": \"true\"}}", deletedField);
+    } else if (include != Include.ALL && deletedField != null) {
+      condition =
+          String.format(
+              "{\"bool\": {\"must_not\": [{\"term\": {\"%s\": \"true\"}}]}}", deletedField);
     }
-    String deleted = "";
-    if (include != Include.ALL && supportsDeleted) {
-      deleted =
-          String.format("{\"term\": {\"%s\": \"%s\"}}", FIELD_DELETED, include == Include.DELETED);
+    return condition;
+  }
+
+  // The field each entity's capability names: an incident takes its deletion from its test case.
+  private static String deletedFieldOf(String entityType) {
+    if (entityType == null) {
+      return FIELD_DELETED;
     }
-    return deleted;
+    EntityIndexCapability capability = EntityIndexCapabilityRegistry.get(entityType);
+    return capability == null ? null : capability.deletedField();
   }
 
   private String getOwnerCondition() {
@@ -536,8 +533,6 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (originEntityFQN != null) {
       conditions.add(getTestCaseForEntityCondition(originEntityFQN, "testCase.entityFQN.keyword"));
     }
-
-    conditions.add(getTestCaseDeletedCondition());
 
     return addCondition(conditions);
   }

@@ -71,6 +71,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     Entity.registerEntity(entityClass, entityType, this);
   }
 
+  /**
+   * The search document field that marks a record deleted, or null when it carries none. Read once
+   * at registration, from the constructor, so an override returns a constant.
+   */
+  public String getSearchDeletedField() {
+    return null;
+  }
+
   @Transaction
   public T createNewRecord(T recordEntity, String recordFQN) {
     return createNewRecord(recordEntity, null, recordFQN);

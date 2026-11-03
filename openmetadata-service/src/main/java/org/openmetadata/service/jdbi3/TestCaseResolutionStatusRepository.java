@@ -216,6 +216,13 @@ public class TestCaseResolutionStatusRepository
     return SEARCH_ONLY_FIELDS;
   }
 
+  // An incident has no deleted flag of its own: it is deleted with its test case, whose flag the
+  // document embeds.
+  @Override
+  public String getSearchDeletedField() {
+    return "testCase.deleted";
+  }
+
   // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource} and
   // feeds the raw ES hit straight into strict deserialization, so the full set of non-schema
   // search fields must be pushed into the {@code _source.exclude} of the query itself — matching
@@ -375,8 +382,7 @@ public class TestCaseResolutionStatusRepository
    * it instead of counting it as applied.
    */
   public void applyBulkStatus(TestCaseResolutionStatus incoming, String testCaseFqn) {
-    TestCaseResolutionStatus latest =
-        incidentToUpdate(incoming, testCaseFqn, getLatestRecord(testCaseFqn));
+    TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
     boolean isOpen = Boolean.TRUE.equals(unresolvedIncident(latest));
     if (isOpen && isSameStatus(incoming, latest)) {
       if (incoming.getSeverity() == null || incoming.getSeverity() == latest.getSeverity()) {
@@ -391,47 +397,6 @@ public class TestCaseResolutionStatusRepository
     } else {
       createNewRecord(incoming, testCaseFqn);
     }
-  }
-
-  /**
-   * The incident a status applies to: the one its stateId names, or the test case's latest. A test
-   * case can hold more than one open incident (a task-first incident starts its own chain without
-   * closing an older one), so a client listing them names the one it picked.
-   */
-  private TestCaseResolutionStatus incidentToUpdate(
-      TestCaseResolutionStatus incoming,
-      String testCaseFqn,
-      TestCaseResolutionStatus latestOfTestCase) {
-    UUID stateId = incoming.getStateId();
-    boolean namesAnotherIncident =
-        stateId != null
-            && (latestOfTestCase == null || !stateId.equals(latestOfTestCase.getStateId()));
-    TestCaseResolutionStatus incident =
-        namesAnotherIncident ? requireIncidentOf(stateId, testCaseFqn) : latestOfTestCase;
-    rejectNewNamingAClosedIncident(incoming, incident);
-    return incident;
-  }
-
-  // New on an open incident only restates its status, as a severity change does. On a resolved
-  // one it would start a new incident, and naming it would write that chain under its stateId.
-  private void rejectNewNamingAClosedIncident(
-      TestCaseResolutionStatus incoming, TestCaseResolutionStatus incident) {
-    if (incoming.getStateId() != null
-        && incoming.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New
-        && !Boolean.TRUE.equals(unresolvedIncident(incident))) {
-      throw new IllegalArgumentException(
-          "A New status starts an incident and cannot name a resolved one");
-    }
-  }
-
-  private TestCaseResolutionStatus requireIncidentOf(UUID stateId, String testCaseFqn) {
-    TestCaseResolutionStatus incident = getLatestRecordForStateId(stateId);
-    if (incident == null
-        || !testCaseFqn.equals(incident.getTestCaseReference().getFullyQualifiedName())) {
-      throw new IllegalArgumentException(
-          String.format("Test case %s has no incident %s", testCaseFqn, stateId));
-    }
-    return incident;
   }
 
   private static boolean isSameStatus(
@@ -518,12 +483,10 @@ public class TestCaseResolutionStatusRepository
   public void storeInternal(
       TestCaseResolutionStatus recordEntity, String recordFQN, String extension) {
 
-    TestCaseResolutionStatus latestOfTestCase = getLatestRecord(recordFQN);
-    TestCaseResolutionStatus lastIncident =
-        incidentToUpdate(recordEntity, recordFQN, latestOfTestCase);
+    TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
     long lastTimestamp =
-        latestOfTestCase != null && latestOfTestCase.getTimestamp() != null
-            ? latestOfTestCase.getTimestamp()
+        lastIncident != null && lastIncident.getTimestamp() != null
+            ? lastIncident.getTimestamp()
             : -1L;
     long incomingTimestamp =
         recordEntity.getTimestamp() != null
@@ -808,18 +771,7 @@ public class TestCaseResolutionStatusRepository
       }
     }
 
-    Task openTask =
-        taskRepository.findOpenTaskByEntityAndType(recordFQN, TaskEntityType.TestCaseResolution);
-    return drivesAnotherIncident(openTask, stateId) ? null : openTask;
-  }
-
-  // A task-first incident's task id is its stateId, so the test case's open task can belong to
-  // another of its incidents; a status for this incident must not move that one.
-  private boolean drivesAnotherIncident(Task task, UUID stateId) {
-    return task != null
-        && stateId != null
-        && !task.getId().equals(stateId)
-        && getLatestRecordForStateId(task.getId()) != null;
+    return taskRepository.findOpenTaskByEntityAndType(recordFQN, TaskEntityType.TestCaseResolution);
   }
 
   private String resolveLegacyTransitionId(Task task, TestCaseResolutionStatus recordEntity) {
@@ -905,7 +857,15 @@ public class TestCaseResolutionStatusRepository
       return existing.getId();
     }
 
-    return createIncidentTask(testCase, updatedBy, failureReason);
+    // An open incident without a task (started through the status API) takes the failure too: a
+    // test case holds one open incident, and the task check refuses a second.
+    UUID openIncident =
+        ((TestCaseResolutionStatusRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS))
+            .getOngoingIncidentStateId(testCase.getFullyQualifiedName());
+    return openIncident != null
+        ? openIncident
+        : createIncidentTask(testCase, updatedBy, failureReason);
   }
 
   private static UUID createIncidentTask(

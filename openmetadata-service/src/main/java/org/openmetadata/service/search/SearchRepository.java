@@ -4387,42 +4387,32 @@ public class SearchRepository {
   public void softDeleteOrRestoredChildren(
       EntityReference entityReference, IndexMapping indexMapping, boolean delete)
       throws IOException {
-    // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
-    // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
-    SoftDeleteScript script = new SoftDeleteScript(delete);
-    List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
     String entityType = entityReference.getType();
     // Service entities propagate child deletions through a shared service.id field; everything
     // else uses the entity-type-specific <type>.id. Reuses the canonical SERVICE_ENTITY_SET that
     // updateChildrenForSearchPropagation also relies on, so the contract stays in one place.
     String parentIdField =
         SERVICE_ENTITY_SET.contains(entityType) ? "service.id" : entityType + ".id";
-    Pair<String, String> parentMatch =
-        new ImmutablePair<>(parentIdField, entityReference.getId().toString());
-    if (!targets.isEmpty()) {
-      searchClient.softDeleteOrRestoreChildren(targets, script.painless(), List.of(parentMatch));
-    }
-    if (childAliasesOf(indexMapping).contains(Entity.TEST_CASE_RESOLUTION_STATUS)) {
-      softDeleteOrRestoreIncidentTestCases(parentMatch, delete);
+    List<Pair<String, String>> parentMatch =
+        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString()));
+    // Each childAlias is an entity-type name (per indexMapping.json) whose capability names the
+    // field that marks its docs deleted, so one script runs per field and never reaches an index
+    // without one. A cascade writes no search document per descendant, so this update is the only
+    // one: an incident under the parent takes its test case's flag here.
+    for (String deletedField : childDeletedFields(indexMapping)) {
+      SoftDeleteScript script = new SoftDeleteScript(delete, deletedField);
+      List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
+      searchClient.softDeleteOrRestoreChildren(targets, script.painless(), parentMatch);
     }
   }
 
-  /**
-   * Incident documents have no {@code deleted} field, so the soft delete above skips them; they
-   * embed their test case instead, and the incident listing scopes on {@code testCase.deleted}. A
-   * cascade soft-deletes the descendant test cases without search writes of their own, so the flag
-   * is set here for every incident under the parent, through the same synchronous update as the
-   * soft delete above, so a quick restore cannot race it. It reaches a reindex's staged index too,
-   * or promoting it would bring the old flag back. The retry of a failed soft delete does not
-   * reach incident documents; a reindex of testCaseResolutionStatus repairs them.
-   */
-  private void softDeleteOrRestoreIncidentTestCases(
-      Pair<String, String> parentMatch, boolean delete) throws IOException {
-    IndexMapping incidentMapping = entityIndexMap.get(Entity.TEST_CASE_RESOLUTION_STATUS);
-    searchClient.softDeleteOrRestoreChildren(
-        getWriteFanoutTargets(incidentMapping.getIndexName(clusterAlias)),
-        "if (ctx._source.testCase != null) { ctx._source.testCase.deleted = " + delete + "; }",
-        List.of(parentMatch));
+  private List<String> childDeletedFields(IndexMapping indexMapping) {
+    return childAliasesWithCapability(
+            indexMapping, capability -> capability != null && capability.hasFieldDeleted())
+        .stream()
+        .map(alias -> EntityIndexCapabilityRegistry.get(alias).deletedField())
+        .distinct()
+        .toList();
   }
 
   public String getScriptWithParams(

@@ -3,7 +3,6 @@ package org.openmetadata.it.tests;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -590,131 +589,6 @@ public class IncidentGroupsIT {
         1,
         response.getPaging().getTotal(),
         "the pager counts the open incidents the page lists, not the resolved one's New record");
-  }
-
-  // A task-first incident starts its own chain without closing an older one, so a test case can
-  // hold two open incidents. The group counts both; its drill-down must list both.
-  @Test
-  void testDrillDownListsEveryOpenIncidentOfATestCase() throws Exception {
-    long ts = System.currentTimeMillis();
-    Table table = createTable(schemaFqn, "incident_groups_two_open_" + ts);
-    TestDefinition definition =
-        createTestDefinition("incident_groups_two_open_def_" + ts, TestDefinitionEntityType.TABLE);
-    TestCase testCase =
-        createTestCase("incident_groups_two_open_case", tableLink(table), definition, List.of());
-    UUID olderIncident = UUID.randomUUID();
-    UUID newerIncident = UUID.randomUUID();
-    insertStatusRecords(
-        testCase,
-        List.of(
-            seededRecord(
-                olderIncident.toString(), ts - 180_000, TestCaseResolutionStatusTypes.New, null),
-            seededRecord(
-                olderIncident.toString(), ts - 120_000, TestCaseResolutionStatusTypes.Ack, null),
-            seededRecord(
-                newerIncident.toString(), ts - 60_000, TestCaseResolutionStatusTypes.New, null)));
-
-    Map<String, String> groupParams = groupParams(GROUP_BY_TABLE);
-    groupParams.put("testCaseFQN", testCase.getFullyQualifiedName());
-    TestCaseIncidentGroup group =
-        findGroup(fetchGroups(groupParams), table.getFullyQualifiedName());
-    ListParams drillDown =
-        latestOpenParams().addFilter("testCaseFQN", testCase.getFullyQualifiedName());
-
-    assertEquals(2, group.getIncidentCount());
-    assertEquals(
-        Set.of(olderIncident, newerIncident),
-        listStatuses(drillDown).stream()
-            .map(TestCaseResolutionStatus::getStateId)
-            .collect(Collectors.toSet()));
-    assertEquals(2, client.testCaseResolutionStatuses().list(drillDown).getPaging().getTotal());
-  }
-
-  // The drill-down lists the older of two open incidents, so a bulk change picked from it has to
-  // move that incident, not the test case's latest.
-  @Test
-  void testBulkChangeUpdatesTheIncidentItNames() throws Exception {
-    long ts = System.currentTimeMillis();
-    TestCase testCase = createTestCaseWithIncidents("incident_groups_bulk_by_incident_" + ts);
-    UUID olderIncident = UUID.randomUUID();
-    UUID newerIncident = UUID.randomUUID();
-    insertStatusRecords(
-        testCase,
-        List.of(
-            seededRecord(
-                olderIncident.toString(), ts - 120_000, TestCaseResolutionStatusTypes.New, null),
-            seededRecord(
-                newerIncident.toString(), ts - 60_000, TestCaseResolutionStatusTypes.New, null)));
-
-    BulkOperationResult ack =
-        client
-            .testCaseResolutionStatuses()
-            .bulkCreate(
-                List.of(incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, olderIncident)));
-    BulkOperationResult severity =
-        client
-            .testCaseResolutionStatuses()
-            .bulkCreate(
-                List.of(
-                    incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, olderIncident)
-                        .withSeverity(Severity.Severity1)));
-
-    assertEquals(ApiStatus.SUCCESS, ack.getStatus());
-    assertEquals(ApiStatus.SUCCESS, severity.getStatus());
-    Map<UUID, TestCaseResolutionStatus> latest = latestRecordByIncident(testCase);
-    assertEquals(
-        TestCaseResolutionStatusTypes.Ack,
-        latest.get(olderIncident).getTestCaseResolutionStatusType());
-    assertEquals(Severity.Severity1, latest.get(olderIncident).getSeverity());
-    assertEquals(
-        TestCaseResolutionStatusTypes.New,
-        latest.get(newerIncident).getTestCaseResolutionStatusType(),
-        "the incident the change does not name stays as it was");
-    assertNotEquals(Severity.Severity1, latest.get(newerIncident).getSeverity());
-  }
-
-  @Test
-  void testStatusNamingAnIncidentItCannotApplyToRejected() throws Exception {
-    long ts = System.currentTimeMillis();
-    TestCase testCase = createTestCaseWithIncidents("incident_groups_foreign_incident_" + ts);
-    TestCase otherTestCase =
-        createTestCaseWithIncidents("incident_groups_foreign_incident_other_" + ts);
-    UUID resolvedIncident = UUID.randomUUID();
-    UUID incident = UUID.randomUUID();
-    UUID otherIncident = UUID.randomUUID();
-    insertStatusRecords(
-        testCase,
-        List.of(
-            seededRecord(
-                resolvedIncident.toString(), ts - 120_000, TestCaseResolutionStatusTypes.New, null),
-            seededRecord(
-                resolvedIncident.toString(),
-                ts - 60_000,
-                TestCaseResolutionStatusTypes.Resolved,
-                null),
-            seededRecord(incident.toString(), ts, TestCaseResolutionStatusTypes.New, null)));
-    insertStatusRecords(
-        otherTestCase,
-        List.of(
-            seededRecord(otherIncident.toString(), ts, TestCaseResolutionStatusTypes.New, null)));
-
-    List<CreateTestCaseResolutionStatus> rejected =
-        List.of(
-            incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, otherIncident),
-            incidentEntry(testCase, TestCaseResolutionStatusTypes.Ack, UUID.randomUUID()),
-            incidentEntry(testCase, TestCaseResolutionStatusTypes.New, resolvedIncident));
-
-    for (CreateTestCaseResolutionStatus entry : rejected) {
-      assertEquals(
-          ApiStatus.FAILURE,
-          client.testCaseResolutionStatuses().bulkCreate(List.of(entry)).getStatus());
-    }
-    assertEquals(
-        TestCaseResolutionStatusTypes.New,
-        latestRecordByIncident(testCase).get(incident).getTestCaseResolutionStatusType());
-    assertEquals(
-        TestCaseResolutionStatusTypes.New,
-        latestRecordByIncident(otherTestCase).get(otherIncident).getTestCaseResolutionStatusType());
   }
 
   @Test
@@ -1351,12 +1225,12 @@ public class IncidentGroupsIT {
         createTestCase(
             "incident_groups_bulk_severity_case", tableLink(table), definition, List.of());
     createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
-    TestCaseResolutionStatus incident = fetchStatuses(testCase).getFirst();
-    Severity current = incident.getSeverity();
+    Severity current = fetchStatuses(testCase).getFirst().getSeverity();
     Severity target = current == Severity.Severity5 ? Severity.Severity4 : Severity.Severity5;
-    // As the grouped view sends it: the incident's own status and stateId, with the new severity.
     CreateTestCaseResolutionStatus severityOnly =
-        incidentEntry(testCase, TestCaseResolutionStatusTypes.New, incident.getStateId())
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
             .withSeverity(target);
 
     BulkOperationResult result =
@@ -1987,28 +1861,6 @@ public class IncidentGroupsIT {
       statement.executeBatch();
       syncIncidentSummary(connection, postgres);
     }
-    linkToTestCase(testCase, records);
-  }
-
-  // The flat list reads each record's test case through this relationship, as the write path
-  // stores it; without it the seeded records cannot be listed.
-  private void linkToTestCase(TestCase testCase, List<TestCaseResolutionStatus> records) {
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(
-            handle -> {
-              for (TestCaseResolutionStatus record : records) {
-                handle
-                    .createUpdate(
-                        "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
-                            + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
-                    .bind("fromId", testCase.getId().toString())
-                    .bind("toId", record.getId().toString())
-                    .bind("fromEntity", Entity.TEST_CASE)
-                    .bind("toEntity", Entity.TEST_CASE_RESOLUTION_STATUS)
-                    .bind("relation", Relationship.PARENT_OF.ordinal())
-                    .execute();
-              }
-            });
   }
 
   // Direct SQL seeding bypasses the repository's write path, so the summary projection the
@@ -2230,33 +2082,6 @@ public class IncidentGroupsIT {
       groups.add(JsonUtils.convertValue(item, TestCaseIncidentGroup.class));
     }
     return groups;
-  }
-
-  private TestCase createTestCaseWithIncidents(String name) throws Exception {
-    Table table = createTable(schemaFqn, name);
-    TestDefinition definition = createTestDefinition(name + "_def", TestDefinitionEntityType.TABLE);
-    return createTestCase(name + "_case", tableLink(table), definition, List.of());
-  }
-
-  private static CreateTestCaseResolutionStatus incidentEntry(
-      TestCase testCase, TestCaseResolutionStatusTypes status, UUID stateId) {
-    return new CreateTestCaseResolutionStatus()
-        .withTestCaseReference(testCase.getFullyQualifiedName())
-        .withTestCaseResolutionStatusType(status)
-        .withStateId(stateId);
-  }
-
-  private Map<UUID, TestCaseResolutionStatus> latestRecordByIncident(TestCase testCase)
-      throws Exception {
-    return listStatuses(
-            new ListParams()
-                .withLimit(100)
-                .withLatest(true)
-                .addFilter("startTs", "0")
-                .addFilter("endTs", String.valueOf(System.currentTimeMillis() + 60_000))
-                .addFilter("testCaseFQN", testCase.getFullyQualifiedName()))
-        .stream()
-        .collect(Collectors.toMap(TestCaseResolutionStatus::getStateId, status -> status));
   }
 
   private List<TestCaseResolutionStatus> fetchStatuses(TestCase testCase) throws Exception {
