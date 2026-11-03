@@ -12,10 +12,7 @@
  */
 package org.openmetadata.service.search.opensearch;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.time.Duration;
@@ -29,7 +26,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.service.search.ChildPropagationWatcher;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -145,55 +141,6 @@ class UpdateChildrenAsyncPropagationTest {
                                                         .value(FieldValue.of(ownerId)))))
                         .count()
                     == CHILD_COUNT);
-
-    String taskId = response.task();
-    ChildPropagationWatcher.TaskOutcome outcome =
-        Awaitility.await()
-            .atMost(60, TimeUnit.SECONDS)
-            .pollInterval(Duration.ofMillis(500))
-            .until(
-                () ->
-                    OpenSearchEntityManager.childPropagationOutcome(
-                        lowLevel.tasks().get(g -> g.taskId(taskId))),
-                ChildPropagationWatcher.TaskOutcome::finished);
-    assertTrue(outcome.failureReasons().isEmpty(), "a clean propagation reports no failures");
-    assertEquals(0, outcome.versionConflicts());
-
-    lowLevel.indices().delete(d -> d.index(index));
-  }
-
-  @Test
-  void aPropagationWhoseScriptFailsIsReportedAsLeavingChildrenStale() throws Exception {
-    var lowLevel = osClient.getNewClient();
-    String index = "repro_children_failing";
-    String parentId = UUID.randomUUID().toString();
-    lowLevel.index(
-        idx ->
-            idx.index(index)
-                .id("0")
-                .document(Map.of("name", "child-0", "entityType", Map.of("id", parentId))));
-    lowLevel.indices().refresh(r -> r.index(index));
-    UpdateByQueryRequest request =
-        new OpenSearchEntityManager(lowLevel)
-            .buildUpdateChildrenRequest(
-                List.of(index),
-                Pair.of("entityType.id", parentId),
-                Pair.of("ctx._source.owners = params.missing.size();", Map.of()));
-
-    String taskId = lowLevel.updateByQuery(request).task();
-    ChildPropagationWatcher.TaskOutcome outcome =
-        Awaitility.await()
-            .atMost(60, TimeUnit.SECONDS)
-            .pollInterval(Duration.ofMillis(500))
-            .until(
-                () ->
-                    OpenSearchEntityManager.childPropagationOutcome(
-                        lowLevel.tasks().get(g -> g.taskId(taskId))),
-                ChildPropagationWatcher.TaskOutcome::finished);
-
-    assertFalse(
-        outcome.failureReasons().isEmpty(),
-        "a task the cluster failed must be reported, so its parent is reindexed");
 
     lowLevel.indices().delete(d -> d.index(index));
   }

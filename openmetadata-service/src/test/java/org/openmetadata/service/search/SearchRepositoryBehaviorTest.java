@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -985,7 +986,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updateCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .propagateInheritedFields(
+        .updateChildren(
             eq(List.of("cluster_database")), fieldCaptor.capture(), updateCaptor.capture());
     assertEquals("service.id", fieldCaptor.getValue().getLeft());
     assertEquals("service-id", fieldCaptor.getValue().getRight());
@@ -1304,8 +1305,6 @@ class SearchRepositoryBehaviorTest {
     repository.propagateEntityAfterRetry(table, staleDelta);
 
     verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
-    verify(searchClient, never())
-        .propagateInheritedFields(any(List.class), any(Pair.class), any(Pair.class));
   }
 
   @Test
@@ -1434,10 +1433,7 @@ class SearchRepositoryBehaviorTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
-    verify(searchClient)
-        .propagateInheritedFields(
-            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
-    verify(searchClient)
+    verify(searchClient, times(2))
         .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, Map<String, Object>> paramsByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
@@ -1489,10 +1485,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
-    verify(searchClient)
-        .propagateInheritedFields(
-            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
-    verify(searchClient)
+    verify(searchClient, times(2))
         .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, List<TagLabel>> addedByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
@@ -1538,13 +1531,10 @@ class SearchRepositoryBehaviorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
-    verify(searchClient)
-        .propagateInheritedFields(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
-    assertEquals(List.of("cluster_unregisteredChild"), targetsCaptor.getValue());
-    // Column documents are built from their table, so a parent reindex cannot repair them; they
-    // are updated unwatched.
-    verify(searchClient)
-        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+    verify(searchClient).updateChildren(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
+
+    assertEquals(
+        List.of("cluster_unregisteredChild", "cluster_tableColumn"), targetsCaptor.getValue());
   }
 
   @Test
@@ -4079,8 +4069,7 @@ class SearchRepositoryBehaviorTest {
       propagationOrder.verify(bulkSink).close();
       propagationOrder
           .verify(searchClient)
-          .propagateInheritedFields(
-              eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
+          .updateChildren(eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
       verify(searchClient, never())
           .updateEntity(any(String.class), eq(serviceId), any(), any(String.class));
       retryQueue.verifyNoInteractions();
@@ -4224,8 +4213,7 @@ class SearchRepositoryBehaviorTest {
       repository.updateEntitiesIndex(List.of(failedService, successfulService));
 
       ArgumentCaptor<Pair<String, String>> parentMatch = ArgumentCaptor.forClass(Pair.class);
-      verify(searchClient)
-          .propagateInheritedFields(any(List.class), parentMatch.capture(), any(Pair.class));
+      verify(searchClient).updateChildren(any(List.class), parentMatch.capture(), any(Pair.class));
       assertEquals(successfulService.getId().toString(), parentMatch.getValue().getValue());
       verify(bulkSinks.constructed().getFirst()).close();
       retryQueue.verify(

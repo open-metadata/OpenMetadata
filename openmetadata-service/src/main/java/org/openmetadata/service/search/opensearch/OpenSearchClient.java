@@ -773,15 +773,6 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void propagateInheritedFields(
-      List<String> indexNames,
-      Pair<String, String> parentMatch,
-      Pair<String, Map<String, Object>> updates)
-      throws IOException {
-    entityManager.propagateInheritedFields(indexNames, parentMatch, updates);
-  }
-
-  @Override
   public void updateChildren(
       List<String> indexNames,
       String field,

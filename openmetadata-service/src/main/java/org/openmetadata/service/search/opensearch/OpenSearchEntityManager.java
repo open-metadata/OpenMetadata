@@ -47,7 +47,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ChildPropagationWatcher;
 import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
@@ -88,7 +87,6 @@ import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.UpdateRequest;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.search.Hit;
-import os.org.opensearch.client.opensearch.tasks.GetTasksResponse;
 
 /**
  * OpenSearch implementation of entity management operations.
@@ -544,48 +542,6 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
-  }
-
-  @Override
-  public void propagateInheritedFields(
-      List<String> indexNames,
-      Pair<String, String> parentMatch,
-      Pair<String, Map<String, Object>> updates)
-      throws IOException {
-    if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot propagate inherited fields.");
-      return;
-    }
-    UpdateByQueryResponse submitted =
-        client.updateByQuery(buildUpdateChildrenRequest(indexNames, parentMatch, updates));
-    ChildPropagationWatcher.watch(
-        submitted.task(), parentMatch.getValue(), this::readChildPropagation);
-    LOG.info("Submitted inherited-field propagation in OpenSearch for indices: {}", indexNames);
-  }
-
-  private ChildPropagationWatcher.TaskOutcome readChildPropagation(String taskId)
-      throws IOException {
-    return childPropagationOutcome(client.tasks().get(g -> g.taskId(taskId)));
-  }
-
-  static ChildPropagationWatcher.TaskOutcome childPropagationOutcome(GetTasksResponse task) {
-    ChildPropagationWatcher.TaskOutcome outcome = ChildPropagationWatcher.TaskOutcome.unfinished();
-    if (task.completed()) {
-      List<String> failures = new ArrayList<>();
-      if (task.error() != null) {
-        failures.add(task.error().reason());
-      }
-      long versionConflicts = 0;
-      if (task.response() != null) {
-        task.response().failures().forEach(failure -> failures.add(failure.toString()));
-        if (task.response().timedOut()) {
-          failures.add("updateChildren timed out");
-        }
-        versionConflicts = task.response().versionConflicts();
-      }
-      outcome = new ChildPropagationWatcher.TaskOutcome(true, failures, versionConflicts);
-    }
-    return outcome;
   }
 
   /**

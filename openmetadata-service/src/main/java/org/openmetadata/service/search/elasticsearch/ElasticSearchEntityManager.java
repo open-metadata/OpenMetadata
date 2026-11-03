@@ -14,7 +14,6 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -40,7 +39,6 @@ import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.UpdateRequest;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
-import es.co.elastic.clients.elasticsearch.tasks.GetTasksResponse;
 import es.co.elastic.clients.json.JsonData;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -73,7 +71,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ChildPropagationWatcher;
 import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
@@ -514,50 +511,6 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
-  }
-
-  @Override
-  public void propagateInheritedFields(
-      List<String> indexNames,
-      Pair<String, String> parentMatch,
-      Pair<String, Map<String, Object>> updates)
-      throws IOException {
-    if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot propagate inherited fields.");
-      return;
-    }
-    UpdateByQueryResponse submitted =
-        client.updateByQuery(buildUpdateChildrenRequest(indexNames, parentMatch, updates));
-    ChildPropagationWatcher.watch(
-        submitted.task(), parentMatch.getValue(), this::readChildPropagation);
-    LOG.info("Submitted inherited-field propagation in ElasticSearch for indices: {}", indexNames);
-  }
-
-  private ChildPropagationWatcher.TaskOutcome readChildPropagation(String taskId)
-      throws IOException {
-    return childPropagationOutcome(client.tasks().get(g -> g.taskId(taskId)));
-  }
-
-  static ChildPropagationWatcher.TaskOutcome childPropagationOutcome(GetTasksResponse task) {
-    ChildPropagationWatcher.TaskOutcome outcome = ChildPropagationWatcher.TaskOutcome.unfinished();
-    if (task.completed()) {
-      JsonNode result =
-          task.response() == null
-              ? JsonUtils.getObjectNode()
-              : JsonUtils.readTree(task.response().toJson().toString());
-      List<String> failures = new ArrayList<>();
-      if (task.error() != null) {
-        failures.add(task.error().reason());
-      }
-      result.path("failures").forEach(failure -> failures.add(failure.toString()));
-      if (result.path("timed_out").asBoolean(false)) {
-        failures.add("updateChildren timed out");
-      }
-      outcome =
-          new ChildPropagationWatcher.TaskOutcome(
-              true, failures, result.path("version_conflicts").asLong(0));
-    }
-    return outcome;
   }
 
   /**
