@@ -19,7 +19,7 @@ Two layers of models:
   loosely-typed YAML structure.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # Pagination
@@ -153,7 +153,7 @@ class OmniFolder(BaseModel):
 
 
 class OmniLabel(BaseModel):
-    """A document label. The documents API reports these as objects, not strings."""
+    """A document label. The documents API reports a label as an object or as a bare name."""
 
     name: str | None = None
     verified: bool | None = None
@@ -175,6 +175,11 @@ class OmniDocument(BaseModel):
     deleted: bool | None = False
     labels: list[OmniLabel] | None = Field(default_factory=list)
     updatedAt: str | None = None  # noqa: N815
+
+    @field_validator("labels", mode="before")
+    @classmethod
+    def _labels_from_names(cls, labels: list | None) -> list:
+        return [{"name": label} if isinstance(label, str) else label for label in labels or []]
 
     @property
     def label_names(self) -> list[str]:
