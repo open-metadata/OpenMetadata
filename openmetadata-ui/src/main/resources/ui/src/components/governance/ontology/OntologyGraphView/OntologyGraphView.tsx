@@ -43,7 +43,9 @@ import { useTranslation } from 'react-i18next';
 import { OntologyDraftContext } from '../../../../context/OntologyDraft/OntologyDraftContext';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { OntologyProfileViolation } from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import {
   PaletteKey,
   RelationshipType,
@@ -57,6 +59,7 @@ import {
   createOntologyAxiom,
   createOntologyProperty,
   createRelationshipType,
+  getOntologyWorkingValidation,
   listRelationshipTypes,
   patchOntologyAxiom,
   patchOntologyProperty,
@@ -64,6 +67,7 @@ import {
   restoreOntologyDefinition,
   softDeleteOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   buildInverseBackLink,
   buildNativeRelationCatalog,
@@ -84,11 +88,14 @@ import {
   checkNativeRelation,
   describeRelationIssue,
 } from '../../../../utils/governance/ontology/OntologyRelationCheck.utils';
+import { findRelationClash } from '../../../../utils/governance/ontology/OntologyRelationClash.utils';
 import {
   buildDataPropertyRequest,
   buildOntologyStudioGraph,
+  buildReusePropertyPatch,
   DataPropertyInput,
   OntologyModelRelation,
+  OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
@@ -112,7 +119,15 @@ import {
 } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/RelationshipTypePicker.constants';
+import {
+  RelationWarningCheck,
+  RelationWarningContext,
+} from '../../../OntologyExplorer/RelationWarning.context';
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
+import {
+  buildConflictHighlight,
+  ConflictHighlight,
+} from '../../../OntologyExplorer/utils/conflictHighlight';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
 import OntologyConceptDeleteDialog from '../OntologyAuthoringWorkspace/OntologyConceptDeleteDialog';
@@ -124,6 +139,7 @@ import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPane
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import OntologyRelationDetail from '../OntologyRelationControls/OntologyRelationDetail';
 import OntologyConceptSearch from './OntologyConceptSearch';
+import OntologyConflictsPanel from './OntologyConflictsPanel';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
 import OntologyGraphNodeList from './OntologyGraphNodeList';
 import { useOntologyGraphSearchSlot } from './OntologyGraphSearchSlot.context';
@@ -149,6 +165,28 @@ const GRAPH_BACKDROP_CLASS =
 const RELATIONSHIP_TYPES_QUERY_KEY = 'relationship-types';
 const NO_RELATIONSHIP_TYPES: RelationshipType[] = [];
 const NO_GRAPH: OntologyGraphData = { nodes: [], edges: [] };
+const NO_VIOLATIONS: OntologyProfileViolation[] = [];
+
+const writeDataProperty = async (
+  model: OntologyStudioModel,
+  concept: OntologyConcept,
+  input: DataPropertyInput
+) => {
+  if (!input.reusePropertyIri) {
+    return createOntologyProperty(
+      buildDataPropertyRequest(model, concept, input)
+    );
+  }
+  const reused = model.properties.find(
+    ({ iri }) => iri === input.reusePropertyIri
+  );
+  if (!reused) {
+    throw new Error(input.reusePropertyIri);
+  }
+  const patch = buildReusePropertyPatch(reused, concept);
+
+  return patch.length ? patchOntologyProperty(reused.id, patch) : reused;
+};
 
 const missingRelationType = (id: string): never => {
   throw new Error(`Unknown relation type ${id}`);
@@ -455,6 +493,16 @@ const OntologyGraphView = ({
   );
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology, releaseId);
+  const conflictsQuery = useQuery({
+    enabled: !releaseId,
+    queryFn: () => getOntologyWorkingValidation(ontology.id),
+    queryKey: ['ontology-working-validation', ontology.id, dataRevision],
+    staleTime: 0,
+  });
+  const conflictViolations = useMemo(
+    () => conflictsQuery.data?.violations ?? NO_VIOLATIONS,
+    [conflictsQuery.data]
+  );
   const treeIndex = useMemo(
     () => buildNativeTreeIndex(graph, { ...FILTERS, searchQuery: search }, []),
     [graph, search]
@@ -495,6 +543,21 @@ const OntologyGraphView = ({
         ],
       }),
     [graph, searchResults, selectedId]
+  );
+  const conflictHighlight = useMemo<ConflictHighlight>(
+    () => buildConflictHighlight(conflictViolations, scope.graph.edges),
+    [conflictViolations, scope.graph.edges]
+  );
+  const graphNodes = useMemo(
+    () =>
+      conflictHighlight.nodeIds.size
+        ? scope.graph.nodes.map((node) =>
+            conflictHighlight.nodeIds.has(node.id)
+              ? { ...node, hasConflict: true }
+              : node
+          )
+        : scope.graph.nodes,
+    [conflictHighlight, scope.graph.nodes]
   );
   const nodeListEntries = useMemo(
     () =>
@@ -754,6 +817,21 @@ const OntologyGraphView = ({
     [catalog, model, relations, t]
   );
 
+  const warnFor = useCallback<RelationWarningCheck>(
+    async (fromId, toId, typeId) => {
+      const from = model?.concepts.find((concept) => concept.id === fromId);
+      const to = model?.concepts.find((concept) => concept.id === toId);
+      const type = catalog.find((candidate) => candidate.id === typeId);
+
+      if (!model || !from || !to || !type) {
+        return undefined;
+      }
+
+      return findRelationClash({ from, model, to, type });
+    },
+    [catalog, model]
+  );
+
   const resolveRelationType = useCallback(
     async (relationType: string) =>
       relationType.startsWith(NEW_RELATION_TYPE_PREFIX)
@@ -920,9 +998,7 @@ const OntologyGraphView = ({
         return false;
       }
       try {
-        await createOntologyProperty(
-          buildDataPropertyRequest(model, concept, input)
-        );
+        await writeDataProperty(model, concept, input);
         noteWorkingChange();
         await refetch();
 
@@ -1244,11 +1320,29 @@ const OntologyGraphView = ({
     }
 
     return (
-      <OntologyHealthPanel
-        health={health}
-        placement="sidebar"
-        onConnect={canEditOntology ? connectNode : undefined}
-      />
+      <>
+        {releaseId ? null : (
+          <OntologyConflictsPanel
+            conceptLabel={(conceptId) => {
+              const concept = model?.concepts.find(
+                (candidate) => candidate.id === conceptId
+              );
+
+              return concept ? getEntityName(concept) : undefined;
+            }}
+            isChecking={conflictsQuery.isFetching}
+            isFailed={conflictsQuery.isError}
+            violations={conflictViolations}
+            onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
+            onValidateAll={() => void conflictsQuery.refetch()}
+          />
+        )}
+        <OntologyHealthPanel
+          health={health}
+          placement="sidebar"
+          onConnect={canEditOntology ? connectNode : undefined}
+        />
+      </>
     );
   };
 
@@ -1367,6 +1461,7 @@ const OntologyGraphView = ({
               studioMode
               canCreateRelationType={canCreateRelationType}
               checkRelation={issueFor}
+              conflictEdgeKeys={conflictHighlight.edgeKeys}
               edges={scope.graph.edges}
               focusNodeId={selectedId}
               glossaries={[]}
@@ -1374,7 +1469,7 @@ const OntologyGraphView = ({
               graphSearchHighlight={searchHighlight}
               isEditMode={canCreateAxiom}
               nodePositions={nodePositions}
-              nodes={scope.graph.nodes}
+              nodes={graphNodes}
               ref={graphRef}
               relationColors={relationColors}
               relationTypeGroups={relationTypeGroups}
@@ -1539,49 +1634,51 @@ const OntologyGraphView = ({
   };
 
   return (
-    // Escape bubbles up from whichever control opened or sits in the panel.
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div
-      className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
-      ref={rootRef}
-      onKeyDown={closeOnEscape}>
-      <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
-        {renderSearch()}
-        {renderMissingConcept()}
-        {renderAddConcept()}
-        {renderGraphMode()}
-        {renderSurface()}
-        {renderEmptyCard()}
-      </div>
-      {renderSidebar()}
-      {renderTypeDialog()}
-      {isDeletingConcept && selected ? (
-        <OntologyConceptDeleteDialog
-          concept={selected}
-          onCancel={() => setIsDeletingConcept(false)}
-          onDeleted={({ restore }) => {
-            setIsDeletingConcept(false);
-            (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
-            noteWorkingChange();
-            void refetch();
-            showUndoToast(
-              t('message.ontology-definition-deleted', {
-                name: selected.displayName ?? selected.name,
-              }),
-              async () => {
-                try {
-                  await restore();
-                  noteWorkingChange();
-                  await refetch();
-                } catch (error) {
-                  showWriteError(error);
+    <RelationWarningContext.Provider value={warnFor}>
+      {/* Escape bubbles up from whichever control opened or sits in the panel. */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+      <div
+        className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
+        ref={rootRef}
+        onKeyDown={closeOnEscape}>
+        <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
+          {renderSearch()}
+          {renderMissingConcept()}
+          {renderAddConcept()}
+          {renderGraphMode()}
+          {renderSurface()}
+          {renderEmptyCard()}
+        </div>
+        {renderSidebar()}
+        {renderTypeDialog()}
+        {isDeletingConcept && selected ? (
+          <OntologyConceptDeleteDialog
+            concept={selected}
+            onCancel={() => setIsDeletingConcept(false)}
+            onDeleted={({ restore }) => {
+              setIsDeletingConcept(false);
+              (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
+              noteWorkingChange();
+              void refetch();
+              showUndoToast(
+                t('message.ontology-definition-deleted', {
+                  name: selected.displayName ?? selected.name,
+                }),
+                async () => {
+                  try {
+                    await restore();
+                    noteWorkingChange();
+                    await refetch();
+                  } catch (error) {
+                    showWriteError(error);
+                  }
                 }
-              }
-            );
-          }}
-        />
-      ) : null}
-    </div>
+              );
+            }}
+          />
+        ) : null}
+      </div>
+    </RelationWarningContext.Provider>
   );
 };
 

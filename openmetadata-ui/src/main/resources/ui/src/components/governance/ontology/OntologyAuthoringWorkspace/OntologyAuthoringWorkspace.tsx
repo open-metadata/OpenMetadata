@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ComponentProps } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import {
   listOntologyConcepts,
   listOntologyProperties,
 } from '../../../../rest/ontologyAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
@@ -29,6 +33,32 @@ interface OntologyAuthoringWorkspaceProps {
   definitionType?: 'concept' | 'property';
   onWorkingChange?: () => void;
 }
+
+const useConceptOptions = (ontology: Ontology) => {
+  const { model } = useOntologyStudioModel(ontology);
+
+  return model?.concepts
+    .filter(
+      (concept) => concept.conceptType !== OntologyConceptType.SkosConcept
+    )
+    .map((concept) => ({ iri: concept.iri, label: getEntityName(concept) }));
+};
+
+const PropertyEditorWithConcepts = (
+  props: Omit<ComponentProps<typeof OntologyPropertyEditor>, 'concepts'>
+) => {
+  const concepts = useConceptOptions(props.ontology);
+
+  return <OntologyPropertyEditor {...props} concepts={concepts} />;
+};
+
+const ConceptEditorWithConcepts = (
+  props: Omit<ComponentProps<typeof OntologyConceptEditor>, 'concepts'>
+) => {
+  const concepts = useConceptOptions(props.ontology);
+
+  return <OntologyConceptEditor {...props} concepts={concepts} />;
+};
 
 const OntologyAuthoringWorkspace = ({
   ontology,
@@ -63,7 +93,7 @@ const OntologyAuthoringWorkspace = ({
         onWorkingChange={onWorkingChange}>
         {(concept, canEdit, onSaved) =>
           concept ? (
-            <OntologyConceptEditor
+            <ConceptEditorWithConcepts
               canEdit={canEdit}
               concept={concept}
               ontology={ontology}
@@ -84,7 +114,7 @@ const OntologyAuthoringWorkspace = ({
       ontology={ontology}
       onWorkingChange={onWorkingChange}>
       {(property, canEdit, onSaved) => (
-        <OntologyPropertyEditor
+        <PropertyEditorWithConcepts
           canEdit={canEdit}
           ontology={ontology}
           property={property}

@@ -413,6 +413,43 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
         diamond.getViolations().getFirst().getMessage());
   }
 
+  @Test
+  void draftValidationListsClashesThatNoSingleSaveWarnedOn(TestNamespace ns) {
+    final var ontology = createModel(ns, "draftClashes");
+    final var client = SdkClients.adminClient();
+    final URI animal = URI.create("https://example.org/draft/Animal");
+    final URI plant = URI.create("https://example.org/draft/Plant");
+    final URI dog = URI.create("https://example.org/draft/Dog");
+    final URI cat = URI.create("https://example.org/draft/Cat");
+    final var animalConcept = declareClass(ontology, "Animal", animal);
+    final var plantConcept = declareClass(ontology, "Plant", plant);
+    final var dogConcept = declareClass(ontology, "Dog", dog);
+    final var catConcept = declareClass(ontology, "Cat", cat);
+    client.ontologyAxioms().create(classAxiom(ontology, "AnimalNotPlant", DISJOINT, animal, plant));
+    assertTrue(client.ontologies().validateWorking(ontology.getId()).getValid());
+
+    client.ontologyAxioms().create(classAxiom(ontology, "DogIsAnimal", SUBCLASS, dog, animal));
+    client.ontologyAxioms().create(classAxiom(ontology, "CatIsAnimal", SUBCLASS, cat, animal));
+    client.ontologyAxioms().create(classAxiom(ontology, "DogIsPlant", SUBCLASS, dog, plant));
+    client.ontologyAxioms().create(classAxiom(ontology, "CatIsPlant", SUBCLASS, cat, plant));
+
+    final var report = client.ontologies().validateWorking(ontology.getId());
+    assertFalse(report.getValid());
+    assertEquals(2, report.getViolations().size());
+    assertEquals(
+        List.of(catConcept.getId(), dogConcept.getId()),
+        report.getViolations().stream().map(v -> v.getConceptIds().getFirst()).toList());
+    report
+        .getViolations()
+        .forEach(
+            violation -> {
+              assertEquals(OntologyProfileViolationSeverity.ERROR, violation.getSeverity());
+              assertEquals(
+                  List.of(animalConcept.getId(), plantConcept.getId()),
+                  violation.getConceptIds().subList(1, 3));
+            });
+  }
+
   private static Ontology createModel(TestNamespace ns, String name) {
     final var ontology = createOntology(ns, name);
     declareClass(ontology, "Customer", CUSTOMER);

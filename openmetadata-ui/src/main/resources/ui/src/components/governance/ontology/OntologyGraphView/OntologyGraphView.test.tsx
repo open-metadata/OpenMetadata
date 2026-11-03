@@ -22,6 +22,10 @@ import { applyPatch } from 'fast-json-patch';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
+import {
+  Code,
+  Severity,
+} from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   AxiomType,
@@ -54,6 +58,7 @@ import {
   getNativeOntologyDataGraphPage,
   getOntologyChangeSet,
   getOntologyState,
+  getOntologyWorkingValidation,
   getRelationshipTypeByName,
   listRelationshipTypes,
   patchOntologyConcept,
@@ -141,6 +146,7 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   getOntologyChangeSet: jest.fn(),
   getOntologyEditLock: jest.fn(),
   getOntologyState: jest.fn(),
+  getOntologyWorkingValidation: jest.fn(),
   listOntologyChangeSets: jest.fn(),
   releaseOntologyEditLock: jest.fn(),
   renewOntologyEditLock: jest.fn(),
@@ -451,6 +457,10 @@ describe('OntologyGraphView', () => {
     mockCanEditConcept = true;
     mockUneditableProperties = [];
     mockUseOntologyStudioModel.mockReturnValue(modelResult);
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: true,
+      violations: [],
+    });
     (listRelationshipTypes as jest.Mock).mockResolvedValue({
       data: registryTypes,
       paging: { total: registryTypes.length },
@@ -709,6 +719,145 @@ describe('OntologyGraphView', () => {
         { name: 'Party' }
       )
     ).toBeVisible();
+  });
+
+  it('marks the clashing concept and its link on the graph, lists the clash and clears both once the server finds none', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.DisjointClash,
+          conceptIds: ['concept-customer', 'concept-party'],
+          message: 'Customer is disjoint with its ancestor Party',
+          path: '/expressions',
+          severity: Severity.Error,
+        },
+      ],
+    });
+    render(
+      <OntologyGraphView
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+
+    const row = await screen.findByTestId('ontology-conflict-row');
+
+    expect(row).toHaveTextContent(
+      'Customer is disjoint with its ancestor Party'
+    );
+    expect(screen.getAllByTestId('ontology-conflict-link')).toHaveLength(2);
+
+    await waitFor(() => {
+      const props = mockGraphProps.mock.calls.at(-1)?.[0];
+
+      expect(
+        props.nodes
+          .filter((node: { hasConflict?: boolean }) => node.hasConflict)
+          .map((node: { id: string }) => node.id)
+      ).toEqual(['concept-customer']);
+      expect([...props.conflictEdgeKeys]).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getAllByTestId('ontology-conflict-link')[1]);
+
+    expect(
+      within(screen.getByTestId('ontology-concept-inspector')).getByRole(
+        'heading',
+        { name: 'Party' }
+      )
+    ).toBeVisible();
+  });
+
+  it('clears the badge and the row after the fix when Validate all runs again', async () => {
+    (getOntologyWorkingValidation as jest.Mock)
+      .mockResolvedValueOnce({
+        valid: false,
+        violations: [
+          {
+            code: Code.DisjointClash,
+            conceptIds: ['concept-customer', 'concept-party'],
+            message: 'Customer is disjoint with its ancestor Party',
+            path: '/expressions',
+            severity: Severity.Error,
+          },
+        ],
+      })
+      .mockResolvedValue({ valid: true, violations: [] });
+    render(
+      <OntologyGraphView
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('ontology-conflict-row');
+
+    fireEvent.click(screen.getByTestId('ontology-validate-all'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-conflict-row')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(
+      mockGraphProps.mock.calls
+        .at(-1)?.[0]
+        .nodes.some((node: { hasConflict?: boolean }) => node.hasConflict)
+    ).toBe(false);
+    expect(getOntologyWorkingValidation).toHaveBeenCalledTimes(2);
+  });
+
+  it('attaches an existing property to the concept with one patch instead of declaring it again', async () => {
+    const note: OntologyProperty = {
+      domain: [party.iri],
+      fullyQualifiedName: 'RetailCommerce.note',
+      id: 'property-note',
+      iri: 'urn:retail:note',
+      kind: Kind.Annotation,
+      name: 'note',
+      ontology: { id: ontology.id, type: 'ontology' },
+      version: 0.3,
+    };
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: {
+        ...modelResult.model,
+        properties: [...modelResult.model.properties, note],
+      },
+    });
+    (patchOntologyProperty as jest.Mock).mockResolvedValue(note);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+    fireEvent.click(screen.getByTestId('ontology-property-source-existing'));
+    const picker = screen.getByRole('combobox', { name: /label.property/ });
+    fireEvent.focus(picker);
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /note/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-property-submit'));
+    });
+
+    await waitFor(() =>
+      expect(patchOntologyProperty).toHaveBeenCalledWith('property-note', [
+        { op: 'test', path: '/version', value: 0.3 },
+        { op: 'add', path: '/domain/1', value: customer.iri },
+      ])
+    );
+
+    expect(createOntologyProperty).not.toHaveBeenCalled();
   });
 
   it('uses the same inspector from the hierarchy tree', () => {

@@ -17,8 +17,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  Checkbox,
-  Input,
   ProgressBarBase,
   Select,
   Typography,
@@ -34,6 +32,7 @@ import {
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
+import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -48,8 +47,6 @@ import {
   humanizeName,
   OntologyModelRelation,
   OntologyStudioModel,
-  StudioDatatype,
-  STUDIO_DATATYPES,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import {
   InspectorEmptyText,
@@ -60,6 +57,7 @@ import {
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
+import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.context';
 import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
@@ -70,6 +68,7 @@ import {
   ConceptFormPreview,
   ConceptSection,
 } from './OntologyConceptSection';
+import OntologyPropertyAuthoring from './OntologyPropertyAuthoring';
 import OntologyPropertyBindings from './OntologyPropertyBindings';
 
 interface OntologyConceptInspectorProps {
@@ -112,198 +111,6 @@ interface OntologyConceptInspectorProps {
   readonly onSelectConcept: (concept: OntologyConcept) => void;
 }
 
-interface PropertyAuthoringProps {
-  readonly isAvailable: boolean;
-  readonly isOpen: boolean;
-  readonly onClose: () => void;
-  readonly onOpen: () => void;
-  readonly onSave: (input: DataPropertyInput) => Promise<boolean>;
-}
-
-const getEnumValues = (value: string) =>
-  value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-const PropertyAuthoring = ({
-  isAvailable,
-  isOpen,
-  onClose,
-  onOpen,
-  onSave,
-}: PropertyAuthoringProps) => {
-  const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
-  const [propertyName, setPropertyName] = useState('');
-  const [datatype, setDatatype] = useState<StudioDatatype>('string');
-  const [enumValues, setEnumValues] = useState('');
-  const [isIdentifier, setIsIdentifier] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const parsedEnumValues = getEnumValues(enumValues);
-  const canSubmit =
-    Boolean(propertyName.trim()) &&
-    (datatype !== 'enum' || parsedEnumValues.length > 0);
-
-  const save = async () => {
-    setIsSaving(true);
-    const saved = await onSave({
-      datatype,
-      enumValues: datatype === 'enum' ? parsedEnumValues : undefined,
-      isIdentifier,
-      name: propertyName,
-    });
-    setIsSaving(false);
-    if (saved) {
-      setPropertyName('');
-      setDatatype('string');
-      setEnumValues('');
-      setIsIdentifier(false);
-      onClose();
-    }
-  };
-
-  const nameInput = (
-    <Input
-      inputDataTestId="ontology-property-name"
-      isDisabled={isSaving}
-      label={t('label.name')}
-      size="sm"
-      value={propertyName}
-      onChange={setPropertyName}
-    />
-  );
-  const datatypeGroup = (
-    <div
-      aria-label={t('label.data-type')}
-      className="tw:flex tw:flex-wrap tw:gap-1.5"
-      role="group">
-      {STUDIO_DATATYPES.map((item) => (
-        <Button
-          aria-pressed={datatype === item}
-          color={datatype === item ? 'primary' : 'secondary'}
-          data-testid={`ontology-property-type-${item}`}
-          isDisabled={isSaving}
-          key={item}
-          size="xs"
-          onPress={() => setDatatype(item)}>
-          {item}
-        </Button>
-      ))}
-    </div>
-  );
-  const renderOptionFields = () => (
-    <>
-      {datatype === 'enum' ? (
-        <Input
-          inputDataTestId="ontology-property-enum-values"
-          isDisabled={isSaving}
-          label={t('label.enum-value-plural')}
-          size="sm"
-          value={enumValues}
-          onChange={setEnumValues}
-        />
-      ) : null}
-      <Checkbox
-        data-testid="ontology-property-identifier"
-        isDisabled={isSaving}
-        isSelected={isIdentifier}
-        label={t('label.identifier')}
-        onChange={setIsIdentifier}
-      />
-    </>
-  );
-
-  const renderAiForm = () => (
-    <ConceptFormCard testId="ontology-property-form">
-      {nameInput}
-      <Box direction="col" gap={2}>
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.data-type')}
-        </Typography>
-        {datatypeGroup}
-      </Box>
-      {renderOptionFields()}
-      {propertyName.trim() ? (
-        <ConceptFormPreview>
-          {humanizeName(propertyName)} · {datatype}
-        </ConceptFormPreview>
-      ) : null}
-      <Box gap={2} justify="end">
-        <Button
-          color="secondary"
-          isDisabled={isSaving}
-          size="sm"
-          onPress={onClose}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid="ontology-property-submit"
-          isDisabled={!canSubmit}
-          isLoading={isSaving}
-          size="sm"
-          onPress={() => void save()}>
-          {t('label.add-entity', { entity: t('label.property') })}
-        </Button>
-      </Box>
-    </ConceptFormCard>
-  );
-
-  if (!isAvailable) {
-    return null;
-  }
-  if (isAiMode) {
-    return isOpen ? renderAiForm() : null;
-  }
-  if (!isOpen) {
-    return (
-      <Button
-        color="secondary"
-        data-testid="ontology-add-property"
-        iconLeading={Plus}
-        size="xs"
-        onPress={onOpen}>
-        {t('label.add-entity', { entity: t('label.property') })}
-      </Button>
-    );
-  }
-
-  return (
-    <Box
-      className="tw:rounded-lg tw:border tw:border-dashed tw:border-secondary tw:bg-secondary tw:p-3"
-      direction="col"
-      gap={3}>
-      {nameInput}
-      <Typography color="secondary" size="text-xs" weight="semibold">
-        {t('label.data-type')}
-      </Typography>
-      {datatypeGroup}
-      {renderOptionFields()}
-      <Box gap={2}>
-        <Button
-          data-testid="ontology-property-submit"
-          isDisabled={!canSubmit}
-          isLoading={isSaving}
-          size="xs"
-          onPress={() => void save()}>
-          {t('label.add')}
-        </Button>
-        <Button
-          color="secondary"
-          isDisabled={isSaving}
-          size="xs"
-          onPress={onClose}>
-          {t('label.cancel')}
-        </Button>
-      </Box>
-    </Box>
-  );
-};
-
 interface RelationAuthoringProps {
   readonly canCreateRelationType: boolean;
   readonly concept: OntologyConcept;
@@ -327,6 +134,17 @@ const RelationIssue = ({ message }: { message?: string }) =>
       className="tw:text-error-primary"
       data-testid="ontology-relationship-issue"
       role="alert"
+      size="text-xs">
+      {message}
+    </Typography>
+  ) : null;
+
+const RelationClash = ({ message }: { message?: string }) =>
+  message ? (
+    <Typography
+      className="tw:text-warning-primary"
+      data-testid="ontology-relationship-clash"
+      role="status"
       size="text-xs">
       {message}
     </Typography>
@@ -367,7 +185,13 @@ const RelationAuthoring = ({
 
   const target = targetConcepts.find(({ id }) => id === targetId);
   const issue = check?.(targetId, relationType);
-  const issueMessage = <RelationIssue message={issue} />;
+  const clash = useRelationClash(concept.id, targetId, relationType);
+  const issueMessage = (
+    <>
+      <RelationIssue message={issue} />
+      <RelationClash message={clash} />
+    </>
+  );
   const relationLabel =
     groups
       .flatMap((group) => group.options)
@@ -662,12 +486,26 @@ const OntologyConceptInspector = ({
     </InspectorRow>
   );
 
+  const reusableProperties = model
+    ? model.properties
+        .filter(
+          (property) =>
+            property.kind !== Kind.Object &&
+            !(property.domain ?? []).includes(concept.iri)
+        )
+        .map((property) => ({
+          iri: property.iri,
+          label: getPropertyLabel(property),
+        }))
+    : [];
+
   const renderPropertyAuthoring = () =>
     onAddProperty ? (
-      <PropertyAuthoring
+      <OntologyPropertyAuthoring
         isAvailable={canAddProperty}
         isOpen={authoring === 'property'}
         key={concept.id}
+        reusable={reusableProperties}
         onClose={() => setAuthoring(undefined)}
         onOpen={() => setAuthoring('property')}
         onSave={onAddProperty}

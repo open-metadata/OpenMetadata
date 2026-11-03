@@ -14,13 +14,14 @@ import {
   Badge,
   Box,
   Button,
+  FormField,
   getField,
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
-import { Fragment, useRef, useState } from 'react';
+import { Fragment, useMemo, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -31,7 +32,10 @@ import {
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { patchOntologyConcept } from '../../../../rest/ontologyAPI';
+import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
+import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
 import {
   conceptFormFields,
   conceptFormValues,
@@ -40,11 +44,13 @@ import {
   mappingFormFields,
   OntologyConceptFormValues,
 } from './OntologyConceptEditor.utils';
+import { useReadableConceptOptions } from './useReadableConceptOptions';
 
 interface OntologyConceptEditorProps {
   ontology: Ontology;
   concept: OntologyConcept;
   canEdit: boolean;
+  concepts?: ReadonlyArray<OntologyIriOption>;
   onSaved: (concept: OntologyConcept) => void;
 }
 
@@ -52,6 +58,7 @@ const OntologyConceptEditor = ({
   ontology,
   concept,
   canEdit,
+  concepts,
   onSaved,
 }: OntologyConceptEditorProps) => {
   const { t } = useTranslation();
@@ -66,6 +73,17 @@ const OntologyConceptEditor = ({
     name: 'conceptMappings',
   });
   const addMappingButton = useRef<HTMLButtonElement>(null);
+  const readableConcepts = useReadableConceptOptions(
+    canEdit && mappings.fields.length > 0
+  );
+  const mappingTargets = useMemo(() => {
+    const local = new Set((concepts ?? []).map((option) => option.iri));
+
+    return [
+      ...(concepts ?? []),
+      ...readableConcepts.filter((option) => !local.has(option.iri)),
+    ];
+  }, [concepts, readableConcepts]);
   const disabled = !canEdit || isSaving;
   const saveStatus = form.formState.isDirty
     ? t('label.unsaved-changes')
@@ -113,7 +131,33 @@ const OntologyConceptEditor = ({
   const renderMappingFields = (index: number) => (
     <>
       {mappingFormFields(t, index, disabled).map((field) => (
-        <Fragment key={field.name}>{getField(field)}</Fragment>
+        <Fragment key={field.name}>
+          {field.name.endsWith('.conceptIri') ? (
+            <FormField
+              control={form.control}
+              name={field.name as `conceptMappings.${number}.conceptIri`}
+              rules={{
+                validate: (value: string) =>
+                  isAbsoluteOntologyIri(value.trim()) ||
+                  t('message.invalid-concept-iri'),
+              }}>
+              {({ field: control, fieldState }) => (
+                <OntologyIriInput
+                  isRequired
+                  error={fieldState.error?.message}
+                  isDisabled={disabled}
+                  label={t('label.concept-iri')}
+                  options={mappingTargets}
+                  testId="ontology-mapping-concept"
+                  value={control.value}
+                  onChange={control.onChange}
+                />
+              )}
+            </FormField>
+          ) : (
+            getField(field)
+          )}
+        </Fragment>
       ))}
     </>
   );
