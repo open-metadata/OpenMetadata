@@ -11,6 +11,7 @@
       "type": "object",
       "description": "User/Bot Authentication Mechanism.",
       "javaType": "org.openmetadata.schema.entity.teams.AuthenticationMechanism",
+      "mask": true,
       "properties": {
         "config": {
           "oneOf": [
