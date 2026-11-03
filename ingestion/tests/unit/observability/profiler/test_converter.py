@@ -28,6 +28,7 @@ from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
 from metadata.profiler.orm.converter.base import _safe_orm_attr, ometa_to_sqa_orm
 from metadata.profiler.orm.converter.common import CommonMapTypes
+from metadata.profiler.orm.converter.converter_registry import converter_registry
 from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
 from metadata.profiler.orm.registry import NOT_COMPUTE, CustomTypes
 from metadata.profiler.orm.types import custom_xml
@@ -427,11 +428,31 @@ def test_map_array_types(array_data_type, expected_item_type):
         ("Array(Array(String))", sqlalchemy.String, 2),
         ("array<array<array<int>>>", sqlalchemy.INT, 3),
         ("array<array<nullable<string>>>", sqlalchemy.String, 2),
+        ("array<array<lowcardinality<string>>>", sqlalchemy.String, 2),
+        ("Nullable(Array(Array(String)))", sqlalchemy.String, 2),
+        (" Array ( Array ( String ) ) ", sqlalchemy.String, 2),
+        ("array<\narray<array<int>>>\n", sqlalchemy.INT, 3),
+        ("Array(Array(Decimal(18, 2)))", sqlalchemy.DECIMAL, 2),
+        ("Array(Array(Enum8(')' = 1, '<' = 2)))", sqlalchemy.types.NullType, 2),
+        ("Array(Array(Enum8('it''s >' = 1)))", sqlalchemy.types.NullType, 2),
+        (r"Array(Array(Enum8('it\'s >' = 1)))", sqlalchemy.types.NullType, 2),
         ("array<array<not_a_type>>", sqlalchemy.types.NullType, 2),
-        (None, sqlalchemy.types.NullType, 2),
+        (None, sqlalchemy.types.NullType, None),
+        ("", sqlalchemy.types.NullType, None),
+        ("array", sqlalchemy.types.NullType, None),
+        ("array<string>", sqlalchemy.types.NullType, None),
     ],
 )
-def test_map_nested_array_types(data_type_display, expected_item_type, expected_dimensions):
+@mark.parametrize(
+    "service_type",
+    [
+        DatabaseServiceType.Clickhouse,
+        DatabaseServiceType.Trino,
+        DatabaseServiceType.Databricks,
+        DatabaseServiceType.Athena,
+    ],
+)
+def test_map_nested_array_types(data_type_display, expected_item_type, expected_dimensions, service_type):
     """SQLAlchemy does not nest ARRAY types (e.g. ClickHouse `Array(Array(String))`), so
     a nested array maps to ARRAY(base_type, dimensions=N), with the depth and base type
     read from `dataTypeDisplay`. A base type that cannot be resolved is left untyped.
@@ -443,27 +464,66 @@ def test_map_nested_array_types(data_type_display, expected_item_type, expected_
         dataTypeDisplay=data_type_display,
     )
 
-    sqa_type = CommonMapTypes().map_types(col, DatabaseServiceType.Clickhouse)
+    sqa_type = converter_registry[service_type]().map_types(col, service_type)
 
     assert isinstance(sqa_type.impl.item_type, expected_item_type)
     assert sqa_type.impl.dimensions == expected_dimensions
 
 
+@mark.parametrize(
+    "data_type_display",
+    [
+        "array<array<string)>",
+        "array(array(string>>",
+        "array<array<string>",
+        "array<array<string>>>",
+        "array<array<string>>,array<int>",
+        "array<array<string>,array<int>>",
+        "array<array<string,int>>",
+        "array<array<nullable<string,int>>>",
+        "array<array<>>",
+        "array<array<   >>",
+        "array<array<string>> trailing",
+        "Array(Array(Enum8('unterminated = 1)))",
+    ],
+)
+def test_map_malformed_nested_array_types_remains_untyped(data_type_display):
+    col = Column(
+        name="tags",
+        dataType=DataType.ARRAY,
+        arrayDataType=DataType.ARRAY,
+        dataTypeDisplay=data_type_display,
+    )
+
+    sqa_type = CommonMapTypes().map_types(col, DatabaseServiceType.Clickhouse)
+
+    assert isinstance(sqa_type.impl.item_type, sqlalchemy.types.NullType)
+    assert sqa_type.impl.dimensions is None
+
+
 @patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
 @patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
-def test_table_with_nested_array_column_builds_orm(mock_schema, mock_database):
+@mark.parametrize(
+    "data_type_display, table_name",
+    [
+        ("array<array<string>>", "nested_array_repro"),
+        (None, "nested_array_missing_display"),
+        ("array<array<string)>", "nested_array_malformed_display"),
+    ],
+)
+def test_table_with_nested_array_column_builds_orm(mock_schema, mock_database, data_type_display, table_name):
     """A table with a nested array column must still build an ORM, so tests and
     the profiler can run on its other columns."""
     table = Table(
         id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
-        name="nested_array_repro",
+        name=table_name,
         columns=[
             Column(name="id", dataType=DataType.BIGINT),
             Column(
                 name="tags",
                 dataType=DataType.ARRAY,
                 arrayDataType=DataType.ARRAY,
-                dataTypeDisplay="array<array<string>>",
+                dataTypeDisplay=data_type_display,
             ),
         ],
         serviceType=DatabaseServiceType.Clickhouse,

@@ -24,8 +24,44 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.orm.types.custom_xml import XML
 
-# One wrapper of a type string, e.g. `array<...>`, `Array(...)` or `nullable<...>`
-_TYPE_WRAPPER = re.compile(r"^\s*(array|nullable|lowcardinality)\s*[<(](.*)[>)]\s*$", re.IGNORECASE)
+_TYPE_WRAPPER = re.compile(r"^\s*(array|nullable|lowcardinality)\s*([<(])", re.IGNORECASE)
+
+
+def _unwrap_type(type_display: str) -> tuple[str, str] | None:
+    match = _TYPE_WRAPPER.match(type_display)
+    if not match:
+        return None
+
+    opening = match.end() - 1
+    brackets = {"<": ">", "(": ")"}
+    stack: list[str] = []
+    quote = None
+    escaped = False
+    for index in range(opening, len(type_display)):
+        char = type_display[index]
+        # Enum labels and quoted field names may contain commas or brackets.
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char in "'\"`":
+            quote = char
+        elif char in brackets:
+            stack.append(brackets[char])
+        elif char in brackets.values():
+            if not stack or char != stack.pop():
+                raise ValueError("Mismatched type wrapper brackets")
+            if not stack:
+                inner = type_display[opening + 1 : index].strip()
+                if not inner or type_display[index + 1 :].strip():
+                    raise ValueError("Expected a single wrapped type")
+                return match.group(1).lower(), inner
+        elif char == "," and len(stack) == 1:
+            raise ValueError("Expected a single wrapped type")
+    raise ValueError("Unclosed type wrapper")
 
 
 class CommonMapTypes:
@@ -89,8 +125,8 @@ class CommonMapTypes:
         if col.arrayDataType:
             if col.arrayDataType == DataType.ARRAY:
                 item_type, dimensions = self._nested_array_item_type(col)
-                return self._TYPE_MAP.get(col.dataType)(item_type=item_type, dimensions=dimensions)
-            return self._TYPE_MAP.get(col.dataType)(item_type=self._array_element_type(col.arrayDataType))
+                return self._TYPE_MAP[col.dataType](item_type=item_type, dimensions=dimensions)
+            return self._TYPE_MAP[col.dataType](item_type=self._array_element_type(col.arrayDataType))
         return self.return_custom_type(col, table_service_type)
 
     def _array_element_type(self, data_type: DataType | None):
@@ -99,20 +135,23 @@ class CommonMapTypes:
             return sqlalchemy.types.NullType()
         return self._TYPE_MAP.get(data_type) or sqlalchemy.types.NullType()
 
-    def _nested_array_item_type(self, col: Column) -> tuple[Any, int]:
+    def _nested_array_item_type(self, col: Column) -> tuple[Any, int | None]:
         """SQLAlchemy does not nest ARRAY types: a multi-dimensional array is
         ARRAY(base_type, dimensions=N). The column only records that its element is
         itself an array, so the depth and the base type are read from
         `dataTypeDisplay`, e.g. `array<array<string>>` or `Array(Array(String))`."""
         dimensions = 0
         inner = col.dataTypeDisplay or ""
-        while match := _TYPE_WRAPPER.match(inner):
-            if match.group(1).lower() == "array":
-                dimensions += 1
-            inner = match.group(2)
+        try:
+            while wrapper := _unwrap_type(inner):
+                wrapper_type, inner = wrapper
+                if wrapper_type == "array":
+                    dimensions += 1
+        except ValueError:
+            return sqlalchemy.types.NullType(), None
         if dimensions < 2:
-            # `dataTypeDisplay` does not spell out the nesting: the column is an array of arrays.
-            return sqlalchemy.types.NullType(), 2
+            # arrayDataType establishes a minimum depth, not an exact dimension count.
+            return sqlalchemy.types.NullType(), None
         try:
             base_type = DataType(ColumnTypeParser.get_column_type(inner.strip()))
         except ValueError:
