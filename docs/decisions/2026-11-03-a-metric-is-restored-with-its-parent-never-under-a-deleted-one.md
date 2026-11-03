@@ -22,10 +22,11 @@ delete of the old parent hard-deleted the live child with it.
   called from `restoreEntityInternal` and from the async pre-check). A cascade restore brings
   children back before their parent is flipped, through `bulkRestoreSubtree`, which does not call it.
 - The restore endpoint never cuts the parent edge.
-- A PUT upsert (SDK, ingestion, CSV import) of a deleted metric is a full replace and stays as it
-  is: it restores the metric with the parent the request names. Naming no parent removes the edge,
-  so the metric becomes a root; naming the deleted parent fails, because it cannot be resolved.
-  Neither leaves a live metric pointing at a deleted parent.
+- This relies on how a PUT upsert (SDK, ingestion, CSV import) of a deleted metric behaves today,
+  without deciding it: a PUT that names no parent removes the edge, so the metric comes back as a
+  root, and naming the deleted parent fails because it cannot be resolved. Neither leaves a live
+  metric pointing at a deleted parent. If PUT starts keeping the stored parent, the deleted-parent
+  restore must be rejected on that path too.
 
 ## Consequences
 - No live metric can point at a deleted parent through these APIs, so read, write and delete paths
@@ -33,4 +34,5 @@ delete of the old parent hard-deleted the live child with it.
 - A user who wants the child back without its parent restores the parent, then moves or deletes
   what they do not want.
 - Metrics restored on their own before this rule may still point at a deleted parent (their
-  hierarchy and PATCH return 404). Restoring the parent repairs them.
+  hierarchy and PATCH return 404). Restoring the parent repairs them. Restore the parent before
+  permanently deleting it, or the orphaned metric is hard-deleted with it.
