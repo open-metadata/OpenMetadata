@@ -98,6 +98,11 @@ public final class OntologyConceptBindingStore {
     return dao.ontologyConceptBindingDAO().find(conceptId, assetId);
   }
 
+  /** The bindings of one asset across concepts, in concept id order. */
+  public List<BindingRow> forAsset(final UUID assetId, final int limit) {
+    return dao.ontologyConceptBindingDAO().listForAsset(assetId, limit);
+  }
+
   public List<BindingRow> page(final UUID conceptId, final UUID after, final int limit) {
     return dao.ontologyConceptBindingDAO()
         .listAfter(conceptId, after == null ? FIRST_PAGE : after.toString(), limit);

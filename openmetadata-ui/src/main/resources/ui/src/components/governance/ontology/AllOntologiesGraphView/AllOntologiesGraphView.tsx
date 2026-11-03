@@ -159,6 +159,14 @@ const AllOntologiesGraphView = ({
   const model = models.find((candidate) =>
     candidate.concepts.some((concept) => concept.id === selectedConceptId)
   );
+  const dataConcepts = useMemo(
+    () =>
+      (model?.concepts ?? []).map((concept) => ({
+        id: concept.id,
+        name: getEntityName(concept),
+      })),
+    [model?.concepts]
+  );
   const selected = model?.concepts.find(
     (concept) => concept.id === selectedConceptId
   );
@@ -234,6 +242,7 @@ const AllOntologiesGraphView = ({
       if (model) {
         return (
           <OntologyNativeDataMode
+            concepts={dataConcepts}
             key={model.ontology.id}
             ontologyId={model.ontology.id}
             selectedConceptId={selectedConceptId}

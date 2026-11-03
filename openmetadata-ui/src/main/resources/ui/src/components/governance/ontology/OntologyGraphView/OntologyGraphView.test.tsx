@@ -2704,7 +2704,7 @@ describe('OntologyGraphView', () => {
     expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a relation drawn in Model as a dashed edge once Data shows again, with one reload', async () => {
+  it('reloads the picked concept once after a relation is drawn in Model, when Data shows again', async () => {
     const editableModel = {
       ...model,
       properties: [...model.properties, objectProperty],
@@ -2753,12 +2753,13 @@ describe('OntologyGraphView', () => {
     );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
     await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
 
-    expect(screen.queryAllByTestId('ontology-data-semantic-edge')).toHaveLength(
-      0
-    );
+    expect(
+      screen.queryByTestId(`ontology-data-cluster-${orphan.id}`)
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
     await act(() =>
@@ -2773,14 +2774,14 @@ describe('OntologyGraphView', () => {
     expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
-    const edge = await screen.findByTestId('ontology-data-semantic-edge');
 
-    expect(edge).toHaveAttribute('data-edge-kind', 'semanticProjection');
-    expect(edge).toHaveAttribute('stroke-dasharray', '4 3');
+    await waitFor(() =>
+      expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2)
+    );
+
     expect(
-      screen.getByTestId('ontology-data-semantic-edge-label')
-    ).toHaveTextContent('served by');
-    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2);
+      await screen.findByTestId(`ontology-data-cluster-${customer.id}`)
+    ).toBeVisible();
   });
 
   it('reloads Data once for a relation that writes three steps while Data shows', async () => {
@@ -2817,6 +2818,7 @@ describe('OntologyGraphView', () => {
     );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
     await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
 
@@ -2994,7 +2996,7 @@ describe('OntologyGraphView', () => {
       expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
     });
 
-    it('switches to Data mode and shows every bound concept, keeping the chosen one selected', async () => {
+    it('switches to Data mode, asks which concept to show, and keeps the chosen concept when going back and forth', async () => {
       (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
         pageFixture({
           clusters: [
@@ -3019,17 +3021,31 @@ describe('OntologyGraphView', () => {
       fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 
       expect(
-        await screen.findByTestId(`ontology-data-cluster-${customer.id}`)
+        await screen.findByText('message.ontology-data-pick-title')
+      ).toBeVisible();
+      expect(screen.queryByTestId('ontology-health-panel')).toBeNull();
+
+      fireEvent.click(
+        await screen.findByTestId(`ontology-data-concept-option-${orphan.id}`)
+      );
+
+      expect(
+        await screen.findByTestId(`ontology-data-cluster-${orphan.id}`)
       ).toBeVisible();
       expect(
-        screen.getByTestId(`ontology-data-cluster-${orphan.id}`)
-      ).toBeVisible();
+        screen.queryByTestId(`ontology-data-cluster-${customer.id}`)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId('ontology-concept-inspector')
+      ).toHaveTextContent('Orphan');
 
       fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
       fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
       fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 
-      expect(screen.getByTestId('ontology-native-data-graph')).toBeVisible();
+      expect(
+        await screen.findByTestId(`ontology-data-cluster-${customer.id}`)
+      ).toBeVisible();
       expect(
         screen.getByTestId(`ontology-data-cluster-${customer.id}`).className
       ).toMatch(/border-brand/);

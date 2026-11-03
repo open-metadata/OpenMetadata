@@ -48,6 +48,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyAssetConceptLinks;
 import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -139,6 +140,19 @@ public class OntologyConceptResource
       @QueryParam("limit") @DefaultValue("100") @Min(1) @Max(100) final int limit,
       @QueryParam("after") final String after) {
     return bindings.get(new Access(uriInfo, securityContext), id, limit, after);
+  }
+
+  @GET
+  @Path("/boundTo/{assetType}/{assetId}")
+  @Operation(
+      operationId = "getOntologyConceptsBoundToAsset",
+      summary = "Get the concepts one catalog asset is bound to, with the columns bound to each")
+  public OntologyAssetConceptLinks getConceptsBoundToAsset(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("assetType") final String assetType,
+      @PathParam("assetId") final UUID assetId) {
+    return bindings.linksForAsset(new Access(uriInfo, securityContext), assetType, assetId);
   }
 
   @GET
