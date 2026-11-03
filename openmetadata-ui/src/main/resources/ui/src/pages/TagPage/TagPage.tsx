@@ -88,7 +88,6 @@ import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
-import { Operation } from '../../generated/entity/policies/policy';
 import { PageType } from '../../generated/system/ui/page';
 import { Style } from '../../generated/type/tagLabel';
 import { useIsAiMode } from '../../hooks/useAppMode';
@@ -112,7 +111,6 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
-import { getPrioritizedEditPermission } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -212,6 +210,7 @@ const TagPage = () => {
   const {
     permissions: tagPermissions,
     canEditAll: tagCanEditAll,
+    canEditDomains: tagCanEditDomains,
     error: tagPermissionsError,
   } = useEntityPermissions(
     ResourceEntity.TAG,
@@ -296,9 +295,7 @@ const TagPage = () => {
           ...tagPermissions,
           EditOwners:
             isEditable && (tagCanEditAll || tagPermissions.EditOwners),
-          EditDomains:
-            isEditable &&
-            getPrioritizedEditPermission(tagPermissions, Operation.EditDomains),
+          EditDomains: isEditable && tagCanEditDomains,
           EditAll: isEditable && tagCanEditAll,
         },
       };
@@ -313,7 +310,7 @@ const TagPage = () => {
     // `tagItem?.disabled`/`tagItem?.deleted` are `undefined` both before and after the load).
     // Folded in while touching this memo, per the ColumnDetailPanel/GlossaryTermTab precedent
     // (Task 8 Batches 3–4) of fixing missing deps in passing.
-  }, [tagPermissions, tagCanEditAll, tagItem]);
+  }, [tagPermissions, tagCanEditAll, tagCanEditDomains, tagItem]);
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
