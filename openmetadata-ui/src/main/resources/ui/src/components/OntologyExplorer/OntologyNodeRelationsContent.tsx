@@ -278,16 +278,19 @@ export const OntologyNodeRelationsContent: React.FC<
                       : undefined
                   }>
                   <div className="tw:grid tw:w-full tw:grid-cols-2 tw:items-center tw:gap-3">
-                    <Badge
-                      className={
-                        meta
-                          ? 'tw:bg-[var(--rel-bg)] tw:text-[var(--rel-color)] tw:outline-0'
-                          : 'tw:outline-0'
-                      }
-                      size="sm"
-                      type="color">
-                      {getDisplayName(rel.relationType)}
-                    </Badge>
+                    <div className="tw:flex tw:min-w-0">
+                      <Badge
+                        className={
+                          meta
+                            ? 'tw:bg-[var(--rel-bg)] tw:text-[var(--rel-color)] tw:outline-0'
+                            : 'tw:outline-0'
+                        }
+                        size="sm"
+                        tooltip={getDisplayName(rel.relationType)}
+                        type="color">
+                        {getDisplayName(rel.relationType)}
+                      </Badge>
+                    </div>
                     <div className="tw:min-w-0">
                       <Tooltip arrow placement="top" title={labelText}>
                         <TooltipTrigger className="tw:block tw:w-full">
@@ -448,18 +451,27 @@ export const OntologyNodeRelationsContent: React.FC<
           <Card
             className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:p-3 tw:shadow-sm"
             key={`${mapping.mappingType}-${mapping.conceptIri}`}>
-            <Badge
-              color={mappingBadgeColors[mapping.mappingType]}
-              size="sm"
-              type="color">
-              {t(mappingLabelKeys[mapping.mappingType])}
-            </Badge>
-            <Typography
-              as="span"
-              className="tw:min-w-0 tw:truncate tw:font-mono tw:text-secondary"
-              size="text-xs">
-              {mapping.conceptIri}
-            </Typography>
+            <div className="tw:flex tw:min-w-0 tw:max-w-[40%] tw:shrink-0">
+              <Badge
+                color={mappingBadgeColors[mapping.mappingType]}
+                size="sm"
+                tooltip={t(mappingLabelKeys[mapping.mappingType])}
+                type="color">
+                {t(mappingLabelKeys[mapping.mappingType])}
+              </Badge>
+            </div>
+            <div className="tw:min-w-0 tw:flex-1">
+              <Tooltip arrow placement="top" title={mapping.conceptIri}>
+                <TooltipTrigger className="tw:block tw:w-full">
+                  <Typography
+                    as="p"
+                    className="tw:block tw:truncate tw:text-left tw:font-mono tw:text-secondary"
+                    size="text-xs">
+                    {mapping.conceptIri}
+                  </Typography>
+                </TooltipTrigger>
+              </Tooltip>
+            </div>
           </Card>
         ))}
         {renderMappingEditor()}
