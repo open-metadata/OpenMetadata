@@ -374,6 +374,111 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(schemaContract.getName(), effective.getName());
     assertEquals(table.getId(), effective.getEntity().getId());
     assertTrue(effective.getInherited());
+    assertEquals(EntityStatus.APPROVED, effective.getEntityStatus());
+  }
+
+  @Test
+  void testTableKeepsSchemaContractStatusAfterValidationGivesItAnEmptyContract(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    createApprovedSchemaContract(ns, table);
+
+    validateByEntity(table);
+    DataContract effective =
+        SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table");
+
+    assertNotEquals(Boolean.TRUE, effective.getInherited(), "validation stores an own contract");
+    assertEquals(EntityStatus.APPROVED, effective.getEntityStatus());
+  }
+
+  @Test
+  void testTableContractWithOwnRulesKeepsItsOwnStatusOverSchemaContract(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    createApprovedSchemaContract(ns, table);
+    createEntity(
+        new CreateDataContract()
+            .withName(ns.prefix("table_contract"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.DRAFT)
+            .withSemantics(
+                List.of(
+                    new SemanticsRule()
+                        .withName("Description Required")
+                        .withDescription("Ensures description is provided")
+                        .withRule("{ \"!!\": { \"var\": \"description\" } }"))));
+
+    DataContract effective =
+        SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table");
+
+    assertEquals(EntityStatus.DRAFT, effective.getEntityStatus());
+  }
+
+  @Test
+  void testTableKeepsRejectedStatusOfItsEmptyContractOverSchemaContract(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    createApprovedSchemaContract(ns, table);
+    createEntity(
+        new CreateDataContract()
+            .withName(ns.prefix("table_contract"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.REJECTED));
+
+    DataContract effective =
+        SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table");
+
+    assertEquals(EntityStatus.REJECTED, effective.getEntityStatus());
+  }
+
+  @Test
+  void testTableShowsSchemaContractDescriptionAfterValidationGivesItAnEmptyContract(
+      TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract schemaContract = createApprovedSchemaContract(ns, table);
+
+    validateByEntity(table);
+    DataContract effective =
+        SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table");
+
+    assertNotEquals(Boolean.TRUE, effective.getInherited(), "validation stores an own contract");
+    assertEquals(schemaContract.getDescription(), effective.getDescription());
+  }
+
+  @Test
+  void testTableContractKeepsItsOwnDescriptionOverSchemaContract(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    createApprovedSchemaContract(ns, table);
+    createEntity(
+        new CreateDataContract()
+            .withName(ns.prefix("table_contract"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Rules specific to this table"));
+
+    DataContract effective =
+        SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table");
+
+    assertEquals("Rules specific to this table", effective.getDescription());
+  }
+
+  private DataContract createApprovedSchemaContract(TestNamespace ns, Table table) {
+    return createEntity(
+        new CreateDataContract()
+            .withName(ns.prefix("schema_contract"))
+            .withEntity(table.getDatabaseSchema())
+            .withDescription("Contract governing every table in the schema")
+            .withEntityStatus(EntityStatus.APPROVED));
+  }
+
+  private static void validateByEntity(Table table) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/dataContracts/entity/validate",
+            null,
+            DataContractResult.class,
+            RequestOptions.builder()
+                .queryParam("entityId", table.getId().toString())
+                .queryParam("entityType", "table")
+                .build());
   }
 
   @Test

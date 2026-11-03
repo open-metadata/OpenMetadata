@@ -116,6 +116,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   // deleteLogicalTestSuite walks the suite's tests and pipelines, so both have to be hydrated
   // before it runs.
   private static final String TEST_SUITE_LIFECYCLE_FIELDS = "tests,pipelines";
+  // Statuses an own contract has before anyone reviews it: Draft for the empty contract validation
+  // stores, Unprocessed for a plain create.
+  private static final Set<EntityStatus> UNREVIEWED_STATUSES =
+      Set.of(EntityStatus.DRAFT, EntityStatus.UNPROCESSED);
 
   private final TestSuiteMapper testSuiteMapper = new TestSuiteMapper();
   private final IngestionPipelineMapper ingestionPipelineMapper;
@@ -1738,7 +1742,50 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       EntityInterface<?> entity, DataContract entityContract, DataContract parentContract) {
     return entityContract == null
         ? inheritFromParentContract(entity, parentContract)
-        : mergeContracts(entityContract, parentContract);
+        : mergeOwnContract(entityContract, parentContract);
+  }
+
+  /**
+   * An own contract with no terms of its own, such as the empty Draft one validation stores to hold
+   * an inheriting entity's results, enforces only the approved parent's terms, so it reads with the
+   * parent's status. A status someone set on it, such as Rejected or In Review, is kept. Without a
+   * description of its own it shows the parent's, as it does the parent's other unset terms.
+   */
+  private DataContract mergeOwnContract(DataContract entityContract, DataContract parentContract) {
+    DataContract merged = mergeContracts(entityContract, parentContract);
+    if (onlyHoldsInheritedTerms(entityContract)) {
+      merged.setEntityStatus(parentContract.getEntityStatus());
+    }
+    if (nullOrEmpty(merged.getDescription())) {
+      merged.setDescription(parentContract.getDescription());
+    }
+    return merged;
+  }
+
+  private static boolean onlyHoldsInheritedTerms(DataContract contract) {
+    return isUnreviewed(contract.getEntityStatus())
+        && !definesOwnRules(contract)
+        && !definesOwnTerms(contract);
+  }
+
+  private static boolean isUnreviewed(EntityStatus status) {
+    return status == null || UNREVIEWED_STATUSES.contains(status);
+  }
+
+  private static boolean definesOwnRules(DataContract contract) {
+    return !nullOrEmpty(contract.getSchema())
+        || !nullOrEmpty(contract.getSemantics())
+        || !nullOrEmpty(contract.getQualityExpectations())
+        || !nullOrEmpty(contract.getOdcsQualityRules())
+        || !nullOrEmpty(contract.getOdcsElementExtensions());
+  }
+
+  private static boolean definesOwnTerms(DataContract contract) {
+    return contract.getTermsOfUse() != null
+        || contract.getSecurity() != null
+        || contract.getSla() != null
+        || contract.getEffectiveFrom() != null
+        || contract.getEffectiveUntil() != null;
   }
 
   /**
@@ -1800,7 +1847,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // Clear execution-related fields - inherited contracts have no execution history
     inherited.setLatestResult(null);
     inherited.setContractUpdates(null);
-    inherited.setEntityStatus(EntityStatus.DRAFT);
+    // entityStatus stays the parent's: only an approved parent contract is inherited, and the copy
+    // is in force just as that contract is
+    // (ADR:2026-10-30-an-inherited-data-contract-carries-its-approved-parents-status).
 
     // Mark all fields as inherited
     if (inherited.getTermsOfUse() != null) {

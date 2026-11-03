@@ -79,6 +79,17 @@ public class DataContractValidationAppIT {
   }
 
   @Test
+  void assetsInheritTheApprovedStatusOfTheDataProductContract(TestNamespace ns) {
+    Table asset = assetOfDataProductWithContract(ns, EntityStatus.APPROVED);
+
+    DataContract inherited =
+        SdkClients.adminClient().dataContracts().getByEntityId(asset.getId(), "table");
+
+    assertTrue(inherited.getInherited());
+    assertEquals(EntityStatus.APPROVED, inherited.getEntityStatus());
+  }
+
+  @Test
   void laterRunsStillApplyTheInheritedRules(TestNamespace ns) {
     assumeFalse(TestSuiteBootstrap.isK8sEnabled(), "App trigger needs the embedded scheduler");
     Table asset = assetOfDataProductWithContract(ns, EntityStatus.APPROVED);
@@ -95,6 +106,10 @@ public class DataContractValidationAppIT {
             .getLatestResult(materialized.getId())
             .getContractExecutionStatus(),
         "The second run must still check the Data Product's rule the asset breaks");
+    assertEquals(
+        EntityStatus.APPROVED,
+        materialized.getEntityStatus(),
+        "The empty contract the app stores must not hide the Data Product contract's status");
   }
 
   @Test

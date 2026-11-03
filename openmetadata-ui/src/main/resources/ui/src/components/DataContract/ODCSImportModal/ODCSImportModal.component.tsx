@@ -45,6 +45,7 @@ import { load as yamlLoad } from 'js-yaml';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { CreateDataContract } from '../../../generated/api/data/createDataContract';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { ContractValidation } from '../../../generated/entity/datacontract/contractValidation';
@@ -52,6 +53,7 @@ import {
   createContract,
   createOrUpdateContractFromODCSYaml,
   deleteContractById,
+  getContractById,
   importContractFromODCSYaml,
   ODCSParseResult,
   parseODCSYaml,
@@ -150,18 +152,23 @@ const applyReplaceImport = async (
   return createContract(contractData) as Promise<DataContract>;
 };
 
+// The contract on screen is the effective one, whose status and description can come from the
+// contract it inherits from, so the merge is diffed against the stored contract.
 const applyMergeImport = async (
-  existingContract: DataContract | undefined | null,
+  existingContractId: string,
   contractData: CreateDataContract
 ): Promise<DataContract> => {
+  const storedContract = await getContractById(existingContractId, [
+    TabSpecificField.OWNERS,
+  ]);
   const mergedForPatch = normalizeTermsOfUseForPatch(
-    { ...existingContract, ...contractData },
-    existingContract
+    { ...storedContract, ...contractData },
+    storedContract
   );
-  const patchOperations = compare(existingContract as object, mergedForPatch);
+  const patchOperations = compare(storedContract, mergedForPatch);
 
   return updateContract(
-    existingContract?.id ?? '',
+    existingContractId,
     patchOperations
   ) as Promise<DataContract>;
 };
@@ -527,7 +534,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       }
 
       if (hasExistingContract && importMode === 'merge') {
-        return applyMergeImport(existingContract, contractData);
+        return applyMergeImport(existingContract?.id ?? '', contractData);
       }
 
       return createContract(contractData) as Promise<DataContract>;
