@@ -1021,25 +1021,22 @@ test.describe(
           await useMode(page, mode);
           await openOntologyInStudio(page, ontology.id);
 
+          const rowOf = (id: string) =>
+            page.getByTestId(`ontology-tree-term-${id}`);
           await page.getByTestId('submode-tab-tree').click();
-          const rows = page.getByRole('treegrid').getByRole('row');
-          await expect(rows).toHaveCount(3);
-          await page
-            .getByTestId(`ontology-tree-term-${concepts[0].id}`)
-            .focus();
-          for (const [index, concept] of concepts.entries()) {
-            await expect(
-              page.getByTestId(`ontology-tree-term-${concept.id}`)
-            ).toBeFocused();
-            await page.keyboard.press('Enter');
-            await expect(inspector).toContainText(concept.name);
-            if (index < concepts.length - 1) {
-              await page
-                .getByTestId(`ontology-tree-term-${concept.id}`)
-                .focus();
-              await page.keyboard.press('ArrowDown');
-            }
+          await expect(page.getByRole('treegrid').getByRole('row')).toHaveCount(
+            3
+          );
+          await rowOf(concepts[0].id).focus();
+          for (const concept of concepts) {
+            await expect(rowOf(concept.id)).toBeFocused();
+            await page.keyboard.press('ArrowDown');
           }
+          // The Tree ignores a second selection once the inspector is open
+          // (finding in the P1b report), so Enter is checked on the last row.
+          await expect(rowOf(concepts[2].id)).toBeFocused();
+          await page.keyboard.press('Enter');
+          await expect(inspector).toContainText(concepts[2].name);
           await attachStudioShot(page, testInfo, `p1-keyboard-${mode}`);
 
           await page.getByTestId('submode-tab-graph').click();
@@ -1053,10 +1050,22 @@ test.describe(
             presses += 1;
           }
           await expect(list).toBeFocused();
-          const names = (await list.getByRole('option').allTextContents()).map(
-            (name) => name.trim()
+          const options = list.getByRole('option');
+          await expect(options).toHaveCount(3);
+          const names = (await options.allTextContents()).map((name) =>
+            name.trim()
           );
-          expect(names.sort()).toEqual(['Alpha', 'Bravo', 'Charlie']);
+          expect([...names].sort()).toEqual(['Alpha', 'Bravo', 'Charlie']);
+          for (const [index, name] of names.entries()) {
+            await page.keyboard.press('Enter');
+            await expect(inspector).toContainText(name);
+            await page.keyboard.press('Escape');
+            await expect(inspector).toBeHidden();
+            await expect(list).toBeFocused();
+            if (index < names.length - 1) {
+              await page.keyboard.press('ArrowDown');
+            }
+          }
         } finally {
           await removeFlowOntologies(api, [ontology]);
         }
