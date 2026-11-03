@@ -69,9 +69,7 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
-schema_root = Path(
-    f"{directory_root}openmetadata-spec/src/main/resources/json/schema"
-).resolve()
+schema_root = Path(f"{directory_root}openmetadata-spec/src/main/resources/json/schema").resolve()
 output_root = Path(f"{ingestion_path}src/metadata/generated/schema").resolve()
 # The directory reader sorts only basenames; duplicate names need a stable path tie-breaker.
 schema_files = sorted(
@@ -192,17 +190,13 @@ for file_path in DATETIME_AWARE_FILE_PATHS:
 # This is a stopgap for the Python models only. The real fix is a discriminator on
 # `type` in openmetadata-spec/.../metadataIngestion/workflow.json, which would
 # resolve the union deterministically for the Java and TypeScript consumers too.
-UNION_MODE_FILE = (
-    f"{ingestion_path}src/metadata/generated/schema/metadataIngestion/workflow.py"
-)
+UNION_MODE_FILE = f"{ingestion_path}src/metadata/generated/schema/metadataIngestion/workflow.py"
 # black may wrap the long union annotation (older layout: `config: (\n ... \n    ) = None`)
 # or the default value (newer layout: `config: ... | None = (\n        None\n    )`). Handle both
 # so a black formatting change does not silently drop the union_mode pin.
 SOURCE_CONFIG_BLOCKS = (
     re.compile(r"(class SourceConfig\(BaseModel\):.*?\n    \) )= None\n", re.DOTALL),
-    re.compile(
-        r"(class SourceConfig\(BaseModel\):.*?\| None )= \(\s*None\s*\)\n", re.DOTALL
-    ),
+    re.compile(r"(class SourceConfig\(BaseModel\):.*?\| None )= \(\s*None\s*\)\n", re.DOTALL),
 )
 
 with Path(UNION_MODE_FILE).open("r", encoding=UTF_8) as f:
@@ -210,9 +204,7 @@ with Path(UNION_MODE_FILE).open("r", encoding=UTF_8) as f:
 
 applied = 0
 for source_config_block in SOURCE_CONFIG_BLOCKS:
-    content, applied = source_config_block.subn(
-        r'\1= Field(None, union_mode="left_to_right")\n', content, count=1
-    )
+    content, applied = source_config_block.subn(r'\1= Field(None, union_mode="left_to_right")\n', content, count=1)
     if applied == 1:
         break
 if applied != 1:
@@ -241,9 +233,7 @@ COMPATIBILITY_ALIASES = {
         "SapS4HanaBasicAuthType = basicAuth.SapS4HanaBasicAuth",
         "SapS4HanaOAuthType = oAuth.SapS4HanaOAuthCredentials",
     ),
-    "entity/services/connections/dashboard/powerBIConnection.py": (
-        "LocalConfig = localConfig.PowerBILocalConfig",
-    ),
+    "entity/services/connections/dashboard/powerBIConnection.py": ("LocalConfig = localConfig.PowerBILocalConfig",),
     "metadataIngestion/storageServiceMetadataPipeline.py": (
         "NoMetadataConfigurationSource = storageMetadataNoConfig.StorageMetadataNoConfig",
     ),
