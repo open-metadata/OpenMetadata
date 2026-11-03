@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Locale;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.AuthorizationException;
@@ -91,6 +93,33 @@ class SystemResourceSettingsAuthorizationTest {
         systemResource.getSettingByName(null, securityContext, GLOSSARY_RELATION_SETTINGS);
 
     assertSame(stored, settings);
+  }
+
+  @Test
+  void aSettingIsReadByItsNameInAnyCase() {
+    Settings stored = new Settings().withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS);
+    when(systemRepository.getConfigWithKey(GLOSSARY_RELATION_SETTINGS)).thenReturn(stored);
+
+    assertSame(
+        stored,
+        systemResource.getSettingByName(
+            null, securityContext, GLOSSARY_RELATION_SETTINGS.toUpperCase(Locale.ROOT)));
+  }
+
+  /**
+   * MySQL's collation ignores accents, so the lookup can answer for an accented name with the
+   * authentication configuration this endpoint refuses to serve.
+   */
+  @Test
+  void aRowOfAnotherNameThanTheOneRequestedIsNotServed() {
+    String accented = "authenticatiónConfiguration";
+    when(systemRepository.getConfigWithKey(accented))
+        .thenReturn(new Settings().withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION));
+    SystemResource asAdmin = new SystemResource(mock(Authorizer.class));
+
+    assertThrows(
+        SystemSettingsException.class,
+        () -> asAdmin.getSettingByName(null, securityContext, accented));
   }
 
   @Test

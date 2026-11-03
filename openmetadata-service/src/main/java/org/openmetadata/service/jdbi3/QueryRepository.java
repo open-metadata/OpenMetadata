@@ -128,7 +128,16 @@ public class QueryRepository extends EntityRepository<Query> {
     if (!fields.contains(QUERY_USED_IN_FIELD) || queries == null || queries.isEmpty()) {
       return;
     }
+    Map<UUID, List<EntityReference>> queryUsageMap = getQueryUsage(queries);
+    queries.forEach(
+        query -> query.setQueryUsedIn(queryUsageMap.getOrDefault(query.getId(), List.of())));
+  }
 
+  /** {@link #getQueryUsage(Query)} for many queries in one batch, keyed by query id. */
+  public Map<UUID, List<EntityReference>> getQueryUsage(List<Query> queries) {
+    if (queries.isEmpty()) {
+      return Map.of();
+    }
     List<String> queryIds = queries.stream().map(q -> q.getId().toString()).toList();
     List<CollectionDAO.EntityRelationshipObject> relationships =
         daoCollection
@@ -144,12 +153,7 @@ public class QueryRepository extends EntityRepository<Query> {
               record.getFromEntity(), UUID.fromString(record.getFromId()), Include.ALL);
       queryUsageMap.computeIfAbsent(queryId, k -> new ArrayList<>()).add(entityRef);
     }
-
-    queries.forEach(
-        query -> {
-          List<EntityReference> usage = queryUsageMap.getOrDefault(query.getId(), List.of());
-          query.setQueryUsedIn(usage);
-        });
+    return queryUsageMap;
   }
 
   private void fetchAndSetQueryUsers(List<Query> queries, EntityUtil.Fields fields) {

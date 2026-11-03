@@ -410,7 +410,8 @@ public final class SecurityUtil {
       if (nullOrEmpty(expectedDomains)) {
         expectedDomains = nullOrEmpty(principalDomain) ? Set.of() : Set.of(principalDomain);
       }
-      if (expectedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      String tokenDomain = domain;
+      if (expectedDomains.stream().noneMatch(d -> sameIdentifier(d, tokenDomain))) {
         throw AuthenticationException.invalidEmailMessage(domain, expectedDomains);
       }
     }

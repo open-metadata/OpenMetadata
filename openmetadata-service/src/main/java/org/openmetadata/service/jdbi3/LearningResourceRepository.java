@@ -16,11 +16,13 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -43,6 +45,9 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   private static final String UPDATE_FIELDS =
       "owners,reviewers,tags,contexts,categories,difficulty,source,estimatedDuration,status";
   private static final String PATCH_FIELDS = UPDATE_FIELDS;
+  // Every type's URL is framed, linked or opened by the UI, so a javascript: or data: URL would run
+  // in the product's origin. Require an http(s) URL for all of them.
+  private static final Set<String> WEB_URL_SCHEMES = Set.of("http", "https");
 
   public LearningResourceRepository() {
     super(
@@ -129,6 +134,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   @Override
   public void prepare(LearningResource entity, boolean update) {
     validateSource(entity.getSource());
+    validateSourceUrlScheme(entity);
     ensureCategories(entity);
     validateContexts(entity.getContexts());
     validateDuration(entity.getEstimatedDuration());
@@ -167,6 +173,19 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
     if (source == null || source.getUrl() == null) {
       throw BadRequestException.of("Learning resource source with URL is required");
     }
+  }
+
+  private void validateSourceUrlScheme(LearningResource entity) {
+    if (!isWebUrl(entity.getSource().getUrl())) {
+      throw BadRequestException.of(
+          "Learning resource of type '%s' requires an http or https URL"
+              .formatted(entity.getResourceType().value()));
+    }
+  }
+
+  private static boolean isWebUrl(URI url) {
+    String scheme = url.getScheme();
+    return scheme != null && WEB_URL_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT));
   }
 
   private void ensureCategories(LearningResource entity) {

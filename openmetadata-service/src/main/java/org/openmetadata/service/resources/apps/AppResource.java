@@ -47,6 +47,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -103,6 +105,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.PipelineStatusUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -980,10 +983,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    AppScheduler.getInstance().deleteScheduledApplication(app);
+    // Re-scheduling the app is a side effect beyond the patched field, so a patch that reaches it
+    // needs EditAll, not just permission on the field. A description-only patch leaves the schedule
+    // alone — otherwise it could reinstall or, if the install fails, leave the app unscheduled.
+    boolean reschedules =
+        SCHEDULED_TYPES.contains(app.getScheduleType()) && touchesScheduleOrConfig(patch);
+    if (reschedules) {
+      authorizeAppOperation(securityContext, id, MetadataOperation.EDIT_ALL);
+    }
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+    if (reschedules) {
+      AppScheduler.getInstance().deleteScheduledApplication(app);
       ApplicationHandler.getInstance()
           .installApplication(
               updatedApp,
@@ -994,6 +1005,20 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
     return response;
+  }
+
+  private static final Set<String> SCHEDULE_OR_CONFIG_FIELDS =
+      Set.of("appSchedule", "appConfiguration");
+
+  /**
+   * Whether a patch changes the schedule or configuration the app is installed with. A whole-document
+   * replace may change either, also when other operations in the same patch name only other fields,
+   * so it must still require EditAll and reschedule.
+   */
+  static boolean touchesScheduleOrConfig(JsonPatch patch) {
+    return JsonPatchUtils.replacesWholeDocument(patch)
+        || JsonUtils.extractPatchedFields(patch).stream()
+            .anyMatch(SCHEDULE_OR_CONFIG_FIELDS::contains);
   }
 
   @PATCH
@@ -1032,10 +1057,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    AppScheduler.getInstance().deleteScheduledApplication(app);
+    boolean reschedules =
+        SCHEDULED_TYPES.contains(app.getScheduleType()) && touchesScheduleOrConfig(patch);
+    if (reschedules) {
+      authorizeAppOperation(securityContext, fqn, MetadataOperation.EDIT_ALL);
+    }
     Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     App updatedApp = (App) response.getEntity();
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+    if (reschedules) {
+      AppScheduler.getInstance().deleteScheduledApplication(app);
       ApplicationHandler.getInstance()
           .installApplication(
               updatedApp,
@@ -1329,6 +1359,30 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return Response.status(Response.Status.OK).entity("App has been configured.").build();
   }
 
+  // Keys supplied at trigger time that target or parameterise the run rather than change the app's
+  // stored configuration. Setting one of these is part of a normal Trigger; changing anything else
+  // is
+  // a configuration override that needs EditAll - including a key the stored config omits and
+  // leaves
+  // at its schema default (recreateIndex drops and rebuilds every index; a retention period of 1
+  // wipes history), which comparing only against present values would let a Trigger-only user set.
+  private static final Set<String> RUNTIME_TRIGGER_PARAMETERS = Set.of("entityLink");
+
+  /**
+   * Whether the trigger payload changes a value the configuration holds or sets one it leaves to its
+   * schema default. A value for a declared runtime parameter ({@link #RUNTIME_TRIGGER_PARAMETERS},
+   * e.g. AutoPilot's {@code entityLink}) is part of a normal Trigger, not a configuration override.
+   */
+  static boolean overridesConfiguredValue(App app, Map<String, Object> configPayload) {
+    if (configPayload == null || configPayload.isEmpty()) {
+      return false;
+    }
+    Map<String, Object> configured = JsonUtils.getMap(app.getAppConfiguration());
+    return configPayload.entrySet().stream()
+        .filter(entry -> !RUNTIME_TRIGGER_PARAMETERS.contains(entry.getKey()))
+        .anyMatch(entry -> !Objects.equals(configured.get(entry.getKey()), entry.getValue()));
+  }
+
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
   @Path("/trigger/{name}")
@@ -1359,6 +1413,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     authorizeAppOperation(securityContext, name, MetadataOperation.TRIGGER);
+    // Overriding a configured setting changes the configuration the run uses — a DataRetention run
+    // with auditLogRetentionPeriod:1 would wipe the audit log — so that needs EditAll. Supplying a
+    // value for a runtime parameter the configuration leaves unset (AutoPilot's entityLink) is part
+    // of a normal Trigger, so it must not demand EditAll.
+    if (overridesConfiguredValue(app, configPayload)) {
+      authorizeAppOperation(securityContext, name, MetadataOperation.EDIT_ALL);
+    }
     if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
       throw AppException.byMessage(
           name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");

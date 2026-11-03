@@ -58,6 +58,7 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlLoginCompletionServlet;
+import org.openmetadata.service.security.saml.SamlResponseValidator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionRefreshInProgressException;
@@ -302,6 +303,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       if (!mcpCallback) {
         requireAnswerTo(validatedResponse.response, expectedRequestId);
       }
+      SamlResponseValidator.validate(samlSettings, wrappedRequest);
 
       // Extract user information from SAML response
       String nameId = auth.getNameId();

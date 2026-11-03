@@ -10,32 +10,40 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 
 /**
@@ -1115,5 +1123,126 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     CreateQuery request = new CreateQuery();
     request.setName(ns.prefix("invalid_query"));
     return request;
+  }
+
+  /**
+   * A query takes the domain of the assets it is used in, so every write that attaches it to an
+   * asset needs EditQueries on that asset: PATCH and bulk PUT as much as create, PUT and /usage. The
+   * curator owns the query and one table, so attaching that table proves the query itself may be
+   * edited and a denial names the asset, not the query.
+   */
+  @Test
+  void test_queryWritesNeedEditQueriesOnTheAssetsTheyAttach(TestNamespace ns) throws Exception {
+    User curator = createCurator(ns);
+    OpenMetadataClient curatorClient =
+        SdkClients.createClient(curator.getName(), curator.getEmail(), new String[] {});
+    Table owned = createTableOwnedBy(ns, "attach_owned", curator);
+    Table alsoOwned = createTableOwnedBy(ns, "attach_also_owned", curator);
+    Table foreign = createTableOwnedBy(ns, "attach_foreign", null);
+    CreateQuery request = curatedQuery(ns, "attach", curator, owned);
+    Query query = createEntity(request);
+
+    curatorClient.queries().patch(query.getId(), attachPatch(alsoOwned));
+    assertUsedIn(query, owned, alsoOwned);
+
+    assertDeniedEditQueries(
+        () -> curatorClient.queries().patch(query.getId(), attachPatch(foreign)));
+    assertDeniedEditQueries(
+        () ->
+            curatorClient
+                .queries()
+                .update(query.getId(), usedIn(request, owned, alsoOwned, foreign)));
+    assertBulkItemDeniedEditQueries(
+        curatorClient
+            .queries()
+            .bulkCreateOrUpdate(List.of(usedIn(request, owned, alsoOwned, foreign))));
+    assertUsedIn(query, owned, alsoOwned);
+  }
+
+  /** Detaching a query from an asset curates that asset's queries just as attaching does. */
+  @Test
+  void test_queryWritesNeedEditQueriesOnTheAssetsTheyDetach(TestNamespace ns) throws Exception {
+    User curator = createCurator(ns);
+    OpenMetadataClient curatorClient =
+        SdkClients.createClient(curator.getName(), curator.getEmail(), new String[] {});
+    Table owned = createTableOwnedBy(ns, "detach_owned", curator);
+    Table foreign = createTableOwnedBy(ns, "detach_foreign", null);
+    CreateQuery request = curatedQuery(ns, "detach", curator, owned);
+    Query query = createEntity(usedIn(request, owned, foreign));
+
+    JsonNode keepOnlyOwned =
+        OBJECT_MAPPER.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/queryUsedIn\",\"value\":[{\"id\":\""
+                + owned.getId()
+                + "\",\"type\":\"table\"}]}]");
+    assertDeniedEditQueries(() -> curatorClient.queries().patch(query.getId(), keepOnlyOwned));
+    assertDeniedEditQueries(
+        () -> curatorClient.queries().update(query.getId(), usedIn(request, owned)));
+    assertBulkItemDeniedEditQueries(
+        curatorClient.queries().bulkCreateOrUpdate(List.of(usedIn(request, owned))));
+    assertUsedIn(query, owned, foreign);
+  }
+
+  private User createCurator(TestNamespace ns) {
+    String name = "query_curator_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateUser createUser = new CreateUser().withName(name).withEmail(name + "@test.om.org");
+    return ns.trackRoot(Entity.USER, SdkClients.adminClient().users().create(createUser));
+  }
+
+  private Table createTableOwnedBy(TestNamespace ns, String suffix, User owner) {
+    CreateTable request =
+        new CreateTable()
+            .withName("t_q_" + suffix + "_" + ns.shortPrefix())
+            .withDatabaseSchema(getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    if (owner != null) {
+      request.withOwners(List.of(owner.getEntityReference()));
+    }
+    return SdkClients.adminClient().tables().create(request);
+  }
+
+  private CreateQuery curatedQuery(TestNamespace ns, String suffix, User curator, Table usedIn) {
+    String name = ns.prefix("curated_" + suffix);
+    return new CreateQuery()
+        .withName(name)
+        .withQuery("SELECT * FROM " + name)
+        .withOwners(List.of(curator.getEntityReference()))
+        .withQueryUsedIn(List.of(usedIn.getEntityReference()))
+        .withService(getOrCreateDatabaseService(ns).getFullyQualifiedName())
+        .withQueryDate(System.currentTimeMillis());
+  }
+
+  private static CreateQuery usedIn(CreateQuery request, Table... tables) {
+    return JsonUtils.deepCopy(request, CreateQuery.class)
+        .withQueryUsedIn(Arrays.stream(tables).map(Table::getEntityReference).toList());
+  }
+
+  private static JsonNode attachPatch(Table table) throws Exception {
+    return OBJECT_MAPPER.readTree(
+        "[{\"op\":\"add\",\"path\":\"/queryUsedIn/-\",\"value\":{\"id\":\""
+            + table.getId()
+            + "\",\"type\":\"table\"}}]");
+  }
+
+  private static void assertDeniedEditQueries(Executable write) {
+    OpenMetadataException denied = assertThrows(OpenMetadataException.class, write);
+    assertEquals(403, denied.getStatusCode(), denied.getMessage());
+    assertTrue(denied.getMessage().contains("EditQueries"), denied.getMessage());
+  }
+
+  private static void assertBulkItemDeniedEditQueries(BulkOperationResult result) {
+    assertEquals(1, result.getNumberOfRowsFailed(), String.valueOf(result.getFailedRequest()));
+    assertEquals(403, result.getFailedRequest().getFirst().getStatus());
+    assertTrue(
+        result.getFailedRequest().getFirst().getMessage().contains("EditQueries"),
+        result.getFailedRequest().getFirst().getMessage());
+  }
+
+  private void assertUsedIn(Query query, Table... tables) {
+    assertEquals(
+        Arrays.stream(tables).map(Table::getId).collect(Collectors.toSet()),
+        getEntityWithFields(query.getId().toString(), "queryUsedIn").getQueryUsedIn().stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet()));
   }
 }
