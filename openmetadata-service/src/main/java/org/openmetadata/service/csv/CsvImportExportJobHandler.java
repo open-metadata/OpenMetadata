@@ -39,6 +39,7 @@ import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -238,19 +239,27 @@ public class CsvImportExportJobHandler implements JobHandler {
     String jobId = String.valueOf(job.getId());
     SubjectContext subjectContext = SubjectContext.getSubjectContext(job.getCreatedBy());
     LineageRepository lineageRepository = Entity.getLineageRepository();
-    String csvData =
-        Boolean.TRUE.equals(args.getByEntityCount())
-            ? exportLineageByEntityCount(lineageRepository, args, subjectContext)
-            : lineageRepository.exportCsvAsync(
-                args.getFqn(),
-                args.getUpstreamDepth(),
-                args.getDownstreamDepth(),
-                args.getQueryFilter(),
-                args.getEntityType(),
-                Boolean.TRUE.equals(args.getDeleted()),
-                args.getStartTime(),
-                args.getEndTime(),
-                subjectContext);
+    // Policies read the bot a request is made on behalf of from the request's context, which this
+    // worker thread does not have, so the export restores it while it decides what to include.
+    ImpersonationContext.setImpersonatedBy(args.getImpersonatedBy());
+    String csvData;
+    try {
+      csvData =
+          Boolean.TRUE.equals(args.getByEntityCount())
+              ? exportLineageByEntityCount(lineageRepository, args, subjectContext)
+              : lineageRepository.exportCsvAsync(
+                  args.getFqn(),
+                  args.getUpstreamDepth(),
+                  args.getDownstreamDepth(),
+                  args.getQueryFilter(),
+                  args.getEntityType(),
+                  Boolean.TRUE.equals(args.getDeleted()),
+                  args.getStartTime(),
+                  args.getEndTime(),
+                  subjectContext);
+    } finally {
+      ImpersonationContext.clear();
+    }
     int rows = countRows(csvData);
     jobManager.completeExportJob(jobId, job.getCreatedBy(), csvData, rows, rows);
     sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", null, null));
