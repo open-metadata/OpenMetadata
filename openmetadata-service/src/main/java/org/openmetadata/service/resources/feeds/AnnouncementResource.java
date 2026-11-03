@@ -56,11 +56,13 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -141,6 +143,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
     repository.addDomainFilter(filter, domain);
     EntityUtil.addDomainQueryParam(securityContext, filter, Entity.ANNOUNCEMENT);
     if (entityLink != null) {
+      authorizeLinkView(securityContext, entityLink);
       filter.addQueryParam("entityLink", entityLink);
     }
     if (status != null) {
@@ -155,8 +158,10 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
     if (system != null) {
       filter.addQueryParam("systemAnnouncement", String.valueOf(system));
     }
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return viewableOnly(
+        securityContext,
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -179,7 +184,9 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @PathParam("id") UUID id,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    Announcement announcement = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    authorizeLinkedEntityView(securityContext, announcement);
+    return announcement;
   }
 
   @GET
@@ -202,7 +209,10 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @PathParam("fqn") String fqn,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    Announcement announcement =
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    authorizeLinkedEntityView(securityContext, announcement);
+    return announcement;
   }
 
   @GET
@@ -217,6 +227,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id) {
+    authorizeLinkedEntityView(securityContext, repository.find(id, Include.ALL));
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -231,6 +242,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @PathParam("version") String version) {
+    authorizeLinkedEntityView(securityContext, repository.find(id, Include.ALL));
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -277,7 +289,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
     Announcement announcement =
         getAnnouncement(create, securityContext.getUserPrincipal().getName());
     authorizeSystemAnnouncementWrite(securityContext, announcement);
-    authorizeSystemAnnouncementWrite(
+    authorizeExistingWrite(
         securityContext,
         repository.findByNameOrNull(
             FullyQualifiedName.quoteName(announcement.getName()), Include.ALL));
@@ -299,7 +311,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       JsonPatch patch) {
-    authorizeSystemAnnouncementWrite(securityContext, repository.find(id, Include.NON_DELETED));
+    authorizeExistingWrite(securityContext, repository.find(id, Include.NON_DELETED));
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -314,7 +326,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @QueryParam("hardDelete") @DefaultValue("false") boolean hardDelete) {
-    authorizeSystemAnnouncementWrite(securityContext, repository.find(id, Include.ALL));
+    authorizeExistingWrite(securityContext, repository.find(id, Include.ALL));
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -325,8 +337,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    authorizeSystemAnnouncementWrite(
-        securityContext, repository.find(restore.getId(), Include.ALL));
+    authorizeExistingWrite(securityContext, repository.find(restore.getId(), Include.ALL));
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -340,6 +351,34 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
     if (announcement != null && nullOrEmpty(announcement.getEntityLink())) {
       authorizer.authorizeAdminOrBot(securityContext);
     }
+  }
+
+  private void authorizeLinkedEntityView(
+      SecurityContext securityContext, Announcement announcement) {
+    AnnouncementVisibility.enforceVisibility(announcement, authorizer, securityContext);
+  }
+
+  /** A write answers with the announcement, so it needs what reading it needs too. */
+  private void authorizeExistingWrite(SecurityContext securityContext, Announcement existing) {
+    authorizeSystemAnnouncementWrite(securityContext, existing);
+    if (existing != null) {
+      authorizeLinkedEntityView(securityContext, existing);
+    }
+  }
+
+  /** A list narrowed to an entityLink needs the ViewBasic its asset needs, when it still exists. */
+  private void authorizeLinkView(SecurityContext securityContext, String entityLink) {
+    try {
+      AnnouncementVisibility.authorizeView(
+          authorizer, securityContext, EntityUtil.validateEntityLink(EntityLink.parse(entityLink)));
+    } catch (EntityNotFoundException e) {
+      LOG.debug("No entity for announcement filter {}", entityLink);
+    }
+  }
+
+  private ResultList<Announcement> viewableOnly(
+      SecurityContext securityContext, ResultList<Announcement> page) {
+    return AnnouncementVisibility.filterVisible(page, authorizer, securityContext);
   }
 
   private Announcement getAnnouncement(CreateAnnouncement create, String userName) {

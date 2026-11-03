@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.feed.CreateAnnouncement;
@@ -48,6 +50,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.feed.Announcement;
@@ -286,6 +289,98 @@ class FeedAccessAuthzIT {
                 .getHttpClient()
                 .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options),
         "Conversations on a table the caller cannot view must not be listable");
+  }
+
+  @Test
+  void readAnnouncement_callerDeniedViewOnTarget_forbidden(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table restricted = createTable(schema, ns.shortPrefix("restricted"), List.of(PII_SENSITIVE));
+    Announcement announcement = createAnnouncement(ns, restricted);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("ann_read"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+    RequestOptions byLink =
+        RequestOptions.builder().queryParam("entityLink", entityLink(restricted)).build();
+
+    for (String path :
+        List.of(
+            ANNOUNCEMENTS_PATH + "/" + announcement.getId(),
+            ANNOUNCEMENTS_PATH + "/name/" + announcement.getFullyQualifiedName(),
+            ANNOUNCEMENTS_PATH + "/" + announcement.getId() + "/versions",
+            ANNOUNCEMENTS_PATH + "/" + announcement.getId() + "/versions/0.1")) {
+      assertForbidden(
+          () -> get(denied, path), path + " must honour the view permission on its asset");
+    }
+    assertForbidden(
+        () ->
+            denied
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, ANNOUNCEMENTS_PATH, null, byLink),
+        "Announcements narrowed to an asset must honour the view permission on it");
+  }
+
+  @Test
+  void listAnnouncements_hidesUnviewableAssets(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table restricted = createTable(schema, ns.shortPrefix("hidden"), List.of(PII_SENSITIVE));
+    Table open = createTable(schema, ns.shortPrefix("open"), List.of());
+    Announcement hidden = createAnnouncement(ns, restricted);
+    Announcement shown = createAnnouncement(ns, open);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("ann_list"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+
+    List<String> deniedView = activeAnnouncementIds(denied);
+    assertTrue(deniedView.contains(shown.getId().toString()), "lost a viewable announcement");
+    assertFalse(
+        deniedView.contains(hidden.getId().toString()), "listed an announcement on a hidden asset");
+    assertTrue(
+        activeAnnouncementIds(SdkClients.adminClient()).contains(hidden.getId().toString()),
+        "admins must still see every announcement");
+  }
+
+  @Test
+  void readAnnouncement_afterAssetRename_checksAsset(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("ann-renamed"))
+                    .withDescription("Glossary that is renamed after its announcement")
+                    .withTags(List.of(PII_SENSITIVE)));
+    long now = System.currentTimeMillis();
+    Announcement announcement =
+        admin
+            .announcements()
+            .create(
+                new CreateAnnouncement()
+                    .withName(ns.prefix("announcement-renamed"))
+                    .withDescription("Announcement on a glossary")
+                    .withEntityLink("<#E::glossary::" + glossary.getFullyQualifiedName() + ">")
+                    .withStartTime(now)
+                    .withEndTime(now + ONE_DAY_MILLIS));
+    patch(admin, "/v1/glossaries/" + glossary.getId(), replace("/name", ns.prefix("ann-moved")));
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("ann_renamed"),
+            "glossary",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+
+    assertForbidden(
+        () -> get(denied, ANNOUNCEMENTS_PATH + "/" + announcement.getId()),
+        "A rename of the asset must not lift the view check on its announcement");
+    assertFalse(
+        activeAnnouncementIds(denied).contains(announcement.getId().toString()),
+        "A rename of the asset must not expose its announcement in lists");
   }
 
   @Test
@@ -551,7 +646,7 @@ class FeedAccessAuthzIT {
         .announcements()
         .create(
             new CreateAnnouncement()
-                .withName(ns.prefix("announcement"))
+                .withName(ns.shortPrefix("announcement-" + UUID.randomUUID()))
                 .withDescription("Announcement authored by admin")
                 .withEntityLink(entityLink(table))
                 .withStartTime(now)
@@ -647,6 +742,30 @@ class FeedAccessAuthzIT {
   private static List<String> eventIds(OpenMetadataClient client, String path) throws Exception {
     List<String> ids = new ArrayList<>();
     MAPPER.readTree(get(client, path)).path("data").forEach(e -> ids.add(e.path("id").asText()));
+    return ids;
+  }
+
+  /** Every active entity announcement the client is shown, across all pages. */
+  private static List<String> activeAnnouncementIds(OpenMetadataClient client) throws Exception {
+    List<String> ids = new ArrayList<>();
+    String after = null;
+    do {
+      RequestOptions.Builder options =
+          RequestOptions.builder()
+              .queryParam("active", "true")
+              .queryParam("system", "false")
+              .queryParam("limit", "1000");
+      if (after != null) {
+        options.queryParam("after", after);
+      }
+      JsonNode page =
+          MAPPER.readTree(
+              client
+                  .getHttpClient()
+                  .executeForString(HttpMethod.GET, ANNOUNCEMENTS_PATH, null, options.build()));
+      page.path("data").forEach(announcement -> ids.add(announcement.path("id").asText()));
+      after = page.path("paging").path("after").asText(null);
+    } while (after != null);
     return ids;
   }
 
