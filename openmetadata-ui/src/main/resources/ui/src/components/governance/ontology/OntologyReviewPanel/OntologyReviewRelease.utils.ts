@@ -85,14 +85,17 @@ const listText = (labels: string[]) =>
     .map((label) => (label.includes(', ') ? JSON.stringify(label) : label))
     .join(', ');
 
-const itemDetail = (item: unknown, label: string) =>
-  isRecord(item)
-    ? `${label} (${
-        typeof item.id === 'string'
-          ? item.id
-          : JSON.stringify(withoutBookkeeping(item))
-      })`
-    : label;
+const itemDetail = (item: unknown, label: string) => {
+  if (!isRecord(item)) {
+    return label;
+  }
+  const identity =
+    typeof item.id === 'string'
+      ? item.id
+      : JSON.stringify(withoutBookkeeping(item));
+
+  return `${label} (${identity})`;
+};
 
 const collect = (value: unknown, path: string, leaves: Leaves) => {
   if (value === null || value === undefined || value === '') {

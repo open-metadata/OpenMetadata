@@ -77,6 +77,7 @@ export const getWorkingDraft = (
 type WorkingDiffPage = {
   groups?: Parameters<typeof flattenConceptChanges>[0];
   data: ReturnType<typeof flattenConceptChanges>;
+  paging?: { after?: string };
 };
 
 const flattenWorkingDiff = (working: WorkingDiffPage) => [
@@ -91,6 +92,25 @@ export const suggestWorkingVersion = (
   changes: ReturnType<typeof getWorkingChanges>,
   baseVersion: string | undefined
 ) => (changes.length ? suggestVersion(changes, baseVersion) : undefined);
+
+/**
+ * A removal on a later page would make the suggestion too small, so a
+ * truncated diff suggests nothing and the reader chooses the bump.
+ */
+export const resolveVersionChoice = (
+  working: WorkingDiffPage | undefined,
+  baseVersion: string | undefined,
+  chosen: VersionBump | undefined
+) => {
+  const isTruncated = Boolean(working?.paging?.after);
+
+  return {
+    suggestion: isTruncated
+      ? undefined
+      : suggestWorkingVersion(getWorkingChanges(working), baseVersion),
+    isPickRequired: isTruncated && chosen === undefined,
+  };
+};
 
 export const resolveBump = (
   chosen: VersionBump | undefined,

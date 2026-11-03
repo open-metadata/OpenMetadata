@@ -67,11 +67,12 @@ export const buildConflictHighlight = (
   const subclassLinks: Array<[child: string, parent: string]> = [];
   edges.forEach(({ from, to, relationType }) => {
     const kind = normalize(relationType);
-    const link: [string, string] | undefined = CHILD_TO_PARENT.has(kind)
-      ? [from, to]
-      : PARENT_TO_CHILD.has(kind)
-      ? [to, from]
-      : undefined;
+    let link: [string, string] | undefined;
+    if (CHILD_TO_PARENT.has(kind)) {
+      link = [from, to];
+    } else if (PARENT_TO_CHILD.has(kind)) {
+      link = [to, from];
+    }
     if (link) {
       subclassLinks.push(link);
       push(parents, link[0], link[1]);

@@ -120,7 +120,8 @@ const isForbidden = (error: unknown) =>
 type CountKind = 'concept' | 'property';
 
 /**
- * The working draft is readable only with edit rights (ADR:2026-11-03-ontology-working-draft-reads-require-edit-rights),
+ * The working draft is readable only with edit rights
+ * (ADR:2026-11-03-ontology-working-draft-reads-require-edit-rights),
  * so a refused read falls back to what the active release froze. Null means
  * no count is known, which the caller leaves blank rather than showing 0.
  */

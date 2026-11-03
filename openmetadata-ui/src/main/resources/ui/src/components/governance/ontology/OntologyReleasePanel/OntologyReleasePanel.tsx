@@ -67,13 +67,13 @@ import {
   deriveReleasePanelView,
   getEditorValues,
   getPublicationActions,
-  getWorkingChanges,
   getWorkingDraft,
   isCandidateStale,
   isSameWorkingState,
   nextSemanticVersion,
+  getWorkingChanges,
   resolveBump,
-  suggestWorkingVersion,
+  resolveVersionChoice,
   type VersionEditorState,
 } from './OntologyReleasePanel.utils';
 import OntologyReleaseReviewers from './OntologyReleaseReviewers';
@@ -316,14 +316,8 @@ const OntologyReleasePanel = ({
     !displayed.isFetching,
   ].every(Boolean);
   const baseVersion = versionBase.data?.semanticVersion;
-  const workingChanges = getWorkingChanges(working.data);
-  // A removal on a later page would make the suggestion too small, so a
-  // truncated diff suggests nothing and the reader chooses the bump.
-  const isDiffTruncated = Boolean(working.data?.paging.after);
-  const suggestion = isDiffTruncated
-    ? undefined
-    : suggestWorkingVersion(workingChanges, baseVersion);
-  const isVersionPickRequired = isDiffTruncated && versionBump === undefined;
+  const { suggestion, isPickRequired: isVersionPickRequired } =
+    resolveVersionChoice(working.data, baseVersion, versionBump);
   const visibleMembers = filterMemberChanges(
     changes.data?.data ?? [],
     changeFilter,
@@ -777,7 +771,7 @@ const OntologyReleasePanel = ({
       )}
       {working.data && (
         <OntologyReleaseChangeFilters
-          counts={countChangesByKind(workingChanges)}
+          counts={countChangesByKind(getWorkingChanges(working.data))}
           filter={changeFilter}
           rowCounts={countRowsByFilter(
             working.data.groups ?? [],
