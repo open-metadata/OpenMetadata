@@ -1310,24 +1310,39 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  protected void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
-    // Capture the children before the parent cascade removes their relationships.
-    final List<UUID> childIds =
-        daoCollection
-            .relationshipDAO()
-            .findTo(
-                id,
-                Entity.TEST_CASE,
-                Relationship.PARENT_OF.ordinal(),
-                Entity.TEST_CASE_RESOLUTION_STATUS)
-            .stream()
+  protected List<CollectionDAO.EntityRelationshipRecord> prepareChildrenForHardDeleteCascade(
+      UUID parentId, List<CollectionDAO.EntityRelationshipRecord> children, String updatedBy) {
+    scheduleResolutionStatusCleanup(
+        children.stream()
+            .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getType()))
             .map(CollectionDAO.EntityRelationshipRecord::getId)
-            .toList();
+            .distinct()
+            .toList());
+    return children;
+  }
+
+  @Override
+  protected List<CollectionDAO.EntityRelationshipObject> prepareChildrenForHardDeleteCascade(
+      List<TestCase> parents,
+      List<CollectionDAO.EntityRelationshipObject> children,
+      String updatedBy) {
+    scheduleResolutionStatusCleanup(
+        children.stream()
+            .filter(child -> Entity.TEST_CASE.equals(child.getFromEntity()))
+            .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getToEntity()))
+            .map(child -> UUID.fromString(child.getToId()))
+            .distinct()
+            .toList());
+    return children;
+  }
+
+  private void scheduleResolutionStatusCleanup(List<UUID> childIds) {
+    // Reuse the cascade's child snapshot before relationship cleanup, once per batch.
     if (!nullOrEmpty(childIds)) {
       AsyncService.getInstance()
           .executeDatabaseTask(
               DatabaseOperation.TEST_CASE_CLEANUP,
-              "resolution-status:" + id,
+              "resolution-status:" + childIds.getFirst(),
               () -> deleteResolutionStatusChildren(childIds));
     }
   }

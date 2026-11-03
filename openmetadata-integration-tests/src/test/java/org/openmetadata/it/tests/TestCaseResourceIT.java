@@ -2851,39 +2851,46 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("tcrs_cascade_delete"))
-            .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "100")
-            .create();
+    List<UUID> testCaseIds = new ArrayList<>();
+    List<UUID> statusIds = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      TestCase testCase =
+          TestCaseBuilder.create(client)
+              .name(ns.prefix("tcrs_cascade_delete_" + i))
+              .forTable(table)
+              .testDefinition("tableRowCountToEqual")
+              .parameter("value", "100")
+              .create();
+      testCaseIds.add(testCase.getId());
 
-    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
-    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
-    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
-    var status = client.testCaseResolutionStatuses().create(newStatus);
-    assertEquals(
-        1, countRowsById("test_case_resolution_status_time_series", status.getId().toString()));
-
-    String testCaseId = testCase.getId().toString();
+      CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+      newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+      newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+      var status = client.testCaseResolutionStatuses().create(newStatus);
+      statusIds.add(status.getId());
+      assertEquals(
+          1, countRowsById("test_case_resolution_status_time_series", status.getId().toString()));
+    }
 
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
     params.put("recursive", "true");
     client.tables().delete(table.getId().toString(), params);
 
-    assertEquals(0, countRowsById("test_case", testCaseId));
+    for (UUID testCaseId : testCaseIds) {
+      assertEquals(0, countRowsById("test_case", testCaseId.toString()));
+    }
     Awaitility.await("incident children reaped after ancestor deletion")
         .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> {
-              assertEquals(
-                  0,
-                  countRowsById(
-                      "test_case_resolution_status_time_series", status.getId().toString()),
-                  "Ancestor deletion must eventually remove incident history");
-              assertEquals(0, countRelationshipsTo(status.getId()));
+              for (UUID statusId : statusIds) {
+                assertEquals(
+                    0,
+                    countRowsById("test_case_resolution_status_time_series", statusId.toString()),
+                    "Ancestor deletion must eventually remove incident history");
+                assertEquals(0, countRelationshipsTo(statusId));
+              }
             });
   }
 
