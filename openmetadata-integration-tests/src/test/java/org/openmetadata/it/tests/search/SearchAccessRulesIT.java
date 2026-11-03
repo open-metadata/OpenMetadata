@@ -19,6 +19,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -217,33 +218,86 @@ public class SearchAccessRulesIT {
   }
 
   @Test
-  void userSearchKeepsEmailsToAdmins(TestNamespace ns) throws Exception {
+  void userSearchNeitherReturnsNorMatchesEmailsForNonAdmins(TestNamespace ns) throws Exception {
     assumeTheServerTrustsHarnessSignedTokens();
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
       String p = ns.shortPrefix();
       String name = p + "_listed";
-      User listed =
-          admin
-              .users()
-              .create(new CreateUser().withName(name).withEmail(name + "@test.openmetadata.org"));
-      cleanup.push(() -> admin.users().delete(listed.getId()));
+      String email = name + "@test.openmetadata.org";
+      User listed = admin.users().create(new CreateUser().withName(name).withEmail(email));
+      cleanup.push(() -> hardDelete(admin, listed));
       OpenMetadataClient caller = user(admin, new CreateUser().withName(p + "_caller"), cleanup);
 
-      Awaitility.await("the user is indexed with an email for admins")
+      Awaitility.await("an admin finds the user by its email and reads it back")
           .atMost(Duration.ofSeconds(60))
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
-              () -> assertTrue(userHit(admin, name).hasNonNull("email"), "admin sees the email"));
-      JsonNode hit = userHit(caller, name);
-      assertEquals(name, hit.path("name").asText());
-      assertFalse(hit.has("email"), "a non-admin caller gets no email: " + hit);
-      for (String query : List.of(name + "@test.openmetadata.org", "email:" + name + "*")) {
-        assertThrows(
-            OpenMetadataException.class,
-            () -> caller.search().query(query).index(USER_INDEX).execute(),
-            query);
+              () -> assertEquals(email, userHit(admin, email, name).path("email").asText()));
+      assertEquals(email, fieldQueryHit(admin, name).path("email").asText());
+      assertTrue(aggregate(admin, aggregateRequest(name)).contains(email));
+
+      assertFalse(userHit(caller, name).has("email"), "query hit");
+      assertFalse(fieldQueryHit(caller, name).has("email"), "field query hit");
+      String topHits =
+          caller
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  "/v1/search/aggregate",
+                  null,
+                  RequestOptions.builder()
+                      .queryParam("index", USER_INDEX)
+                      .queryParam("field", "name.keyword")
+                      .queryParam("value", ".*")
+                      .queryParam("sourceFields", "*")
+                      .queryParam("q", nameFilter(name))
+                      .build());
+      assertTrue(topHits.contains(name), topHits);
+      assertFalse(topHits.contains(email), "GET aggregate top hits: " + topHits);
+      String postTopHits = aggregate(caller, aggregateRequest(name));
+      assertTrue(postTopHits.contains(name), postTopHits);
+      assertFalse(postTopHits.contains(email), "POST aggregate top hits: " + postTopHits);
+
+      String byAddress = caller.search().query(email).index(USER_INDEX).size(10).execute();
+      assertFalse(hitNames(byAddress).contains(name), "matched by email: " + byAddress);
+      caller.search().query("@timestamp").index("table_search_index").execute();
+
+      List<Executable> emailLookups =
+          List.of(
+              () ->
+                  caller.search().query("email.keyword:" + name + "*").index(USER_INDEX).execute(),
+              () ->
+                  caller
+                      .search()
+                      .query("*")
+                      .index(USER_INDEX)
+                      .queryFilter("{\"query\":{\"prefix\":{\"email.keyword\":\"" + name + "\"}}}")
+                      .execute(),
+              () ->
+                  caller
+                      .search()
+                      .query("*")
+                      .index(USER_INDEX)
+                      .sortBy("email.keyword", "asc")
+                      .execute(),
+              () -> fieldQuery(caller, "email.keyword", name + "*"),
+              () ->
+                  caller
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/search/aggregate",
+                          null,
+                          RequestOptions.builder()
+                              .queryParam("index", USER_INDEX)
+                              .queryParam("field", "email.keyword")
+                              .queryParam("value", ".*")
+                              .build()));
+      for (Executable lookup : emailLookups) {
+        OpenMetadataException refused = assertThrows(OpenMetadataException.class, lookup);
+        assertEquals(400, refused.getStatusCode(), refused.getMessage());
       }
     } finally {
       drain(cleanup);
@@ -307,13 +361,79 @@ public class SearchAccessRulesIT {
   }
 
   private static JsonNode userHit(OpenMetadataClient client, String name) throws Exception {
-    String response = client.search().query(name).index(USER_INDEX).size(10).execute();
+    return userHit(client, name, name);
+  }
+
+  private static JsonNode userHit(OpenMetadataClient client, String query, String name)
+      throws Exception {
+    return sourceNamed(client.search().query(query).index(USER_INDEX).size(10).execute(), name);
+  }
+
+  private static JsonNode fieldQueryHit(OpenMetadataClient client, String name) throws Exception {
+    return sourceNamed(fieldQuery(client, "name.keyword", name), name);
+  }
+
+  private static String fieldQuery(OpenMetadataClient client, String field, String value) {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/search/fieldQuery",
+            null,
+            RequestOptions.builder()
+                .queryParam("index", USER_INDEX)
+                .queryParam("fieldName", field)
+                .queryParam("fieldValue", value)
+                .build());
+  }
+
+  private static String aggregate(OpenMetadataClient client, String request) {
+    return client
+        .getHttpClient()
+        .executeForString(HttpMethod.POST, "/v1/search/aggregate", request);
+  }
+
+  /** Buckets the one user named {@code name} by name, its email asked for in the top hits. */
+  private static String aggregateRequest(String name) throws Exception {
+    return MAPPER.writeValueAsString(
+        Map.of(
+            "index",
+            USER_INDEX,
+            "fieldName",
+            "name.keyword",
+            "fieldValue",
+            ".*",
+            "query",
+            nameFilter(name),
+            "sourceFields",
+            List.of("email")));
+  }
+
+  private static String nameFilter(String name) throws Exception {
+    return MAPPER.writeValueAsString(Map.of("query", Map.of("term", Map.of("name.keyword", name))));
+  }
+
+  private static JsonNode sourceNamed(String response, String name) throws Exception {
     for (JsonNode hit : MAPPER.readTree(response).path("hits").path("hits")) {
       if (name.equals(hit.path("_source").path("name").asText())) {
         return hit.path("_source");
       }
     }
     throw new AssertionError("no hit for " + name + " in " + response);
+  }
+
+  private static Set<String> hitNames(String response) throws Exception {
+    Set<String> names = new HashSet<>();
+    MAPPER
+        .readTree(response)
+        .path("hits")
+        .path("hits")
+        .forEach(hit -> names.add(hit.path("_source").path("name").asText()));
+    return names;
+  }
+
+  private static void hardDelete(OpenMetadataClient admin, User user) {
+    admin.users().delete(user.getId().toString(), Map.of("hardDelete", "true"));
   }
 
   private static Pipeline createPipeline(
@@ -442,7 +562,7 @@ public class SearchAccessRulesIT {
       OpenMetadataClient admin, CreateUser create, Deque<Runnable> cleanup) {
     String email = create.getName() + "@test.openmetadata.org";
     User user = admin.users().create(create.withEmail(email));
-    cleanup.push(() -> admin.users().delete(user.getId()));
+    cleanup.push(() -> hardDelete(admin, user));
     return SdkClients.createClient(email, email, new String[] {});
   }
 

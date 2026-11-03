@@ -177,6 +177,7 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
@@ -4711,6 +4712,7 @@ public class SearchRepository {
   }
 
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, request);
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
@@ -4734,6 +4736,7 @@ public class SearchRepository {
 
   public int countSearchResults(SearchRequest baseRequest, SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, baseRequest);
     SearchRequest countRequest =
         new SearchRequest()
             .withQuery(baseRequest.getQuery())
@@ -4763,6 +4766,7 @@ public class SearchRepository {
       int from,
       java.io.OutputStream output)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, baseRequest);
     java.io.BufferedWriter writer =
         new java.io.BufferedWriter(
             new java.io.OutputStreamWriter(output, java.nio.charset.StandardCharsets.UTF_8));
@@ -4897,6 +4901,7 @@ public class SearchRepository {
 
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, request);
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
@@ -5144,6 +5149,7 @@ public class SearchRepository {
       int size,
       SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseFieldReference(subjectContext, index, fieldName);
     return searchClient.searchByField(
         fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
@@ -5205,6 +5211,7 @@ public class SearchRepository {
 
   public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, request);
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
@@ -5217,6 +5224,7 @@ public class SearchRepository {
 
   public Response getEntityTypeCounts(
       SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, index, request);
     return searchClient.getEntityTypeCounts(request, index, subjectContext);
   }
 
