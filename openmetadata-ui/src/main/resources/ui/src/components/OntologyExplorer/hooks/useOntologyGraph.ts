@@ -276,6 +276,7 @@ interface GraphComboMeta {
 }
 
 interface UseOntologyGraphProps {
+  nodePositions?: Record<string, { x: number; y: number }>;
   containerRef: React.RefObject<HTMLDivElement>;
   graphData: GraphData;
   inputNodes: OntologyNode[];
@@ -306,6 +307,7 @@ interface UseOntologyGraphProps {
   hierarchicalRelationTypes?: ReadonlySet<string>;
   isEditMode?: boolean;
   studioMode?: boolean;
+  keepCanvasOnAdd?: boolean;
 }
 
 function computeAssetCountBadgeDiameter(
@@ -1040,7 +1042,7 @@ function computePrecomputedAssetPositions(
 function buildAdditiveBakedNodes(
   graphData: GraphData,
   context: AdditiveUpdateContext,
-  precomputedAssetPositions: Record<string, [number, number]>
+  pinnedPositions: Record<string, [number, number]>
 ): NodeData[] {
   const { currentPositions, centerX, maxY } = context;
   const COLS = Math.max(1, Math.ceil(Math.sqrt(context.addedNodes.length)));
@@ -1049,11 +1051,11 @@ function buildAdditiveBakedNodes(
   return (graphData.nodes ?? []).map((node) => {
     const id = String(node.id);
 
-    const ringPos = precomputedAssetPositions[id];
-    if (ringPos) {
+    const pinnedPos = pinnedPositions[id];
+    if (pinnedPos) {
       return {
         ...node,
-        style: { ...node.style, x: ringPos[0], y: ringPos[1] },
+        style: { ...node.style, x: pinnedPos[0], y: pinnedPos[1] },
       };
     }
 
@@ -1080,28 +1082,38 @@ function buildAdditiveBakedNodes(
   });
 }
 
+function pinPlacedPositions(
+  addedNodes: NodeData[],
+  placedPositions: Record<string, { x: number; y: number }> | undefined
+): Record<string, [number, number]> {
+  return Object.fromEntries(
+    addedNodes.flatMap((node): Array<[string, [number, number]]> => {
+      const placed = placedPositions?.[String(node.id)];
+
+      return placed ? [[String(node.id), [placed.x, placed.y]]] : [];
+    })
+  );
+}
+
 function applyAdditiveUpdate(
   graph: Graph,
   graphData: GraphData,
   isDataMode: boolean,
   context: AdditiveUpdateContext,
-  assetToTermMap: Record<string, string[]>
+  assetToTermMap: Record<string, string[]>,
+  placedPositions?: Record<string, { x: number; y: number }>
 ): void {
-  const precomputedAssetPositions = isDataMode
+  const pinnedPositions = isDataMode
     ? computePrecomputedAssetPositions(
         context.addedNodes,
         context.currentPositions,
         assetToTermMap
       )
-    : {};
+    : pinPlacedPositions(context.addedNodes, placedPositions);
 
   const bakedData = {
     ...graphData,
-    nodes: buildAdditiveBakedNodes(
-      graphData,
-      context,
-      precomputedAssetPositions
-    ),
+    nodes: buildAdditiveBakedNodes(graphData, context, pinnedPositions),
   };
 
   const addedNodeIds = new Set(context.addedNodes.map((n) => String(n.id)));
@@ -1129,7 +1141,18 @@ function applyAdditiveUpdate(
   });
 }
 
+// Nodes that size to their label can be wider than NODE_WIDTH (up to
+// MODEL_NODE_MAX_LABEL_WIDTH), so row and ring spacing uses the widest one.
+const getMaxNodeWidth = (nodes: NodeData[]): number =>
+  nodes.reduce((m, n) => {
+    const s = n.data?.size;
+    const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
+
+    return Math.max(m, w);
+  }, NODE_WIDTH);
+
 export function useOntologyGraph({
+  nodePositions,
   containerRef,
   graphData,
   inputNodes,
@@ -1153,9 +1176,12 @@ export function useOntologyGraph({
   hierarchicalRelationTypes,
   isEditMode = false,
   studioMode = false,
+  keepCanvasOnAdd = false,
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
+  const nodePositionsRef = useRef(nodePositions);
+  nodePositionsRef.current = nodePositions;
   const relationsEdgeRoutesRef = useRef<Map<string, EdgeRoute>>(new Map());
 
   settingsRef.current = settings;
@@ -1180,6 +1206,13 @@ export function useOntologyGraph({
 
   const onScrollNearEdgeRef = useRef(onScrollNearEdge);
   onScrollNearEdgeRef.current = onScrollNearEdge;
+
+  const onNodeClickRef = useRef(onNodeClick);
+  onNodeClickRef.current = onNodeClick;
+  const onNodeDoubleClickRef = useRef(onNodeDoubleClick);
+  onNodeDoubleClickRef.current = onNodeDoubleClick;
+  const onPaneClickRef = useRef(onPaneClick);
+  onPaneClickRef.current = onPaneClick;
 
   const isEditModeRef = useRef(isEditMode);
   isEditModeRef.current = isEditMode;
@@ -1239,21 +1272,10 @@ export function useOntologyGraph({
       return {};
     }
     const positions: Record<string, { x: number; y: number }> = {};
-    const getHalfSize = (rawSize: unknown, fallback: number) => {
-      const sizeArr = Array.isArray(rawSize) ? rawSize : null;
-      const size = sizeArr ? Number(sizeArr[0]) : Number(rawSize);
-
-      return (Number.isFinite(size) ? size : fallback) / 2;
-    };
     graph.getNodeData().forEach((node) => {
       const pos = graph.getElementPosition(node.id);
       if (pos && Array.isArray(pos)) {
-        const rawSize = node.style?.size;
-        const w = getHalfSize(rawSize, 200);
-        const h = Array.isArray(rawSize)
-          ? (Number(rawSize[1]) || 40) / 2
-          : getHalfSize(rawSize, 40);
-        positions[node.id] = { x: pos[0] - w, y: pos[1] - h };
+        positions[node.id] = { x: pos[0], y: pos[1] };
       }
     });
 
@@ -1408,12 +1430,7 @@ export function useOntologyGraph({
 
       // Use the widest node's actual rendered width so long-label nodes
       // (up to MODEL_NODE_MAX_WIDTH) don't overlap neighbours and hide edges.
-      const maxNodeW = nodes.reduce((m, n) => {
-        const s = n.data?.size;
-        const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
-
-        return Math.max(m, w);
-      }, NODE_WIDTH);
+      const maxNodeW = getMaxNodeWidth(nodes);
 
       nodes.forEach((node, i) => {
         const nc = i % innerCols;
@@ -1457,6 +1474,7 @@ export function useOntologyGraph({
     if (orphanNodes.length > 0) {
       const bottomY = curY + rowMaxH;
       const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
+      const orphanW = getMaxNodeWidth(orphanNodes);
       orphanNodes.forEach((node, i) => {
         const col = i % orphanCols;
         const row = Math.floor(i / orphanCols);
@@ -1466,8 +1484,8 @@ export function useOntologyGraph({
             ...(node.style ?? {}),
             x:
               COMBO_INTERIOR_PADDING_SIDES +
-              col * (NODE_WIDTH + NODE_H_SEP) +
-              NODE_WIDTH / 2,
+              col * (orphanW + NODE_H_SEP) +
+              orphanW / 2,
             y:
               bottomY +
               COMBO_V_GAP +
@@ -1486,14 +1504,18 @@ export function useOntologyGraph({
 
   const positionStudioNodes = useCallback(
     async (graph: Graph) => {
-      const positions = await calculateStudioNodePositions(
-        graph.getNodeData(),
-        graph.getEdgeData(),
-        {
-          hierarchicalRelationTypes,
-          viewportWidth: containerRef.current?.offsetWidth,
-        }
-      );
+      const placed = nodePositionsRef.current;
+      const positions =
+        placed && graph.getNodeData().every((node) => placed[String(node.id)])
+          ? placed
+          : await calculateStudioNodePositions(
+              graph.getNodeData(),
+              graph.getEdgeData(),
+              {
+                hierarchicalRelationTypes,
+                viewportWidth: containerRef.current?.offsetWidth,
+              }
+            );
       const updates = graph
         .getNodeData()
         .map((node) => {
@@ -1594,12 +1616,7 @@ export function useOntologyGraph({
         return;
       }
 
-      const maxNodeW = nodes.reduce((m, n) => {
-        const s = n.data?.size;
-        const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
-
-        return Math.max(m, w);
-      }, NODE_WIDTH);
+      const maxNodeW = getMaxNodeWidth(nodes);
 
       // Ring radius large enough so node borders don't overlap, capped so
       // large groups (50-200 nodes) don't create unbounded layouts.
@@ -1648,6 +1665,7 @@ export function useOntologyGraph({
     if (orphanNodes.length > 0) {
       const bottomY = curY + rowMaxH + COMBO_V_GAP;
       const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
+      const orphanW = getMaxNodeWidth(orphanNodes);
       orphanNodes.forEach((node, i) => {
         updates.push({
           id: node.id,
@@ -1655,8 +1673,8 @@ export function useOntologyGraph({
             ...(node.style ?? {}),
             x:
               COMBO_INTERIOR_PADDING_SIDES +
-              (i % orphanCols) * (NODE_WIDTH + NODE_H_SEP) +
-              NODE_WIDTH / 2,
+              (i % orphanCols) * (orphanW + NODE_H_SEP) +
+              orphanW / 2,
             y:
               bottomY +
               Math.floor(i / orphanCols) * (NODE_HEIGHT + 40) +
@@ -1688,6 +1706,11 @@ export function useOntologyGraph({
         : inputNodes.length,
     [explorationMode, inputNodes]
   );
+  // Only a caller that adds classes to the live graph in place skips the
+  // rebuild; other studio callers need the hierarchy layout for new nodes.
+  const graphInstanceKey = keepCanvasOnAdd
+    ? Math.min(termNodeCount, 1)
+    : termNodeCount;
 
   const hasBakedPositions = useMemo(() => {
     if (explorationMode === 'data') {
@@ -1704,7 +1727,7 @@ export function useOntologyGraph({
   }, [explorationMode, layoutType]);
 
   useEffect(() => {
-    if (!containerRef.current || termNodeCount === 0) {
+    if (!containerRef.current || graphInstanceKey === 0) {
       return;
     }
 
@@ -1892,7 +1915,7 @@ export function useOntologyGraph({
         isDataMode && isDataModeAssetBadgeShape(e.originalTarget);
       const dataModeLoadMoreBadgeClick =
         isDataMode && isDataModeLoadMoreBadgeShape(e.originalTarget);
-      onNodeClick(resolveNodeForCallback(node), position, {
+      onNodeClickRef.current(resolveNodeForCallback(node), position, {
         dataModeAssetBadgeClick,
         dataModeLoadMoreBadgeClick,
       });
@@ -1903,7 +1926,7 @@ export function useOntologyGraph({
       if (id) {
         const node = findNodeById(id);
         if (node) {
-          onNodeDoubleClick(resolveNodeForCallback(node));
+          onNodeDoubleClickRef.current(resolveNodeForCallback(node));
         }
       }
     };
@@ -1961,7 +1984,7 @@ export function useOntologyGraph({
     graph.on(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
     graph.on(CanvasEvent.CLICK, () => {
       setClickedEdgeIdRef.current(null);
-      onPaneClick();
+      onPaneClickRef.current();
     });
 
     const handleEdgeClick = (e: IElementEvent) => {
@@ -2163,7 +2186,7 @@ export function useOntologyGraph({
     };
   }, [
     applyBakedPositions,
-    termNodeCount,
+    graphInstanceKey,
     explorationMode,
     hasBakedPositions,
     layoutType,
@@ -2233,7 +2256,8 @@ export function useOntologyGraph({
         graphData,
         isDataMode,
         additiveContext,
-        assetToTermMapRef.current
+        assetToTermMapRef.current,
+        nodePositionsRef.current
       );
       commitTermFingerprintIfChanged(
         termFingerprintRef,
@@ -2444,6 +2468,22 @@ export function useOntologyGraph({
     studioMode,
     recomputeGraphBounds,
   ]);
+
+  useEffect(() => {
+    const graph = graphRef.current;
+    const covered =
+      graph &&
+      nodePositions &&
+      graph.getNodeData().every((node) => nodePositions[String(node.id)]);
+    if (!studioMode || !graph || !covered) {
+      return;
+    }
+    void positionStudioNodes(graph).then(async () => {
+      if (graphRef.current === graph) {
+        await graph.draw();
+      }
+    });
+  }, [nodePositions, positionStudioNodes, studioMode]);
 
   return {
     graphRef,

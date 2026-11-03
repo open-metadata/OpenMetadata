@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -28,7 +29,9 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
@@ -49,18 +52,20 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 public class BasicAuthLoginServlet extends HttpServlet {
 
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-  private static final String SESSION_CSRF_TOKEN = "mcp.login.csrf";
-  private static final String SESSION_AUTH_REQUEST_ID = "mcp.login.auth_request_id";
+  private static final String SESSION_LOGIN_FORM = "mcp.login.form";
+
+  /**
+   * The CSRF token of the form last shown and the auth request it was shown for. One attribute, so
+   * a GET for another request replaces both and a token never completes a request it wasn't for.
+   */
+  record LoginForm(String csrfToken, String authRequestId) implements Serializable {}
 
   private final UserSSOOAuthProvider authProvider;
-  private final AuthenticatorHandler authenticator;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
   private final OAuthClientRepository clientRepository;
 
-  public BasicAuthLoginServlet(
-      UserSSOOAuthProvider authProvider, AuthenticatorHandler authenticator) {
+  public BasicAuthLoginServlet(UserSSOOAuthProvider authProvider) {
     this.authProvider = authProvider;
-    this.authenticator = authenticator;
     this.pendingAuthRepository = new McpPendingAuthRequestRepository();
     this.clientRepository = new OAuthClientRepository();
   }
@@ -82,23 +87,7 @@ public class BasicAuthLoginServlet extends HttpServlet {
         return;
       }
 
-      // Generate CSRF token and store in session along with auth_request_id
-      String csrfToken = generateSecureToken(32);
-      HttpSession session = request.getSession(true);
-      session.setAttribute(SESSION_CSRF_TOKEN, csrfToken);
-      session.setAttribute(SESSION_AUTH_REQUEST_ID, authRequestId);
-
-      // Look up client name for display
-      String clientName = "An application";
-      var client = clientRepository.findByClientId(pending.clientId());
-      if (client != null && client.getClientName() != null) {
-        clientName = client.getClientName();
-      }
-
-      String html = HtmlTemplates.generateLoginForm(clientName, null, csrfToken);
-      response.setContentType("text/html; charset=UTF-8");
-      response.setStatus(HttpServletResponse.SC_OK);
-      response.getWriter().write(html);
+      renderLoginFormWithError(request, response, pending, null);
 
     } catch (Exception e) {
       LOG.error("Failed to render login form", e);
@@ -120,11 +109,16 @@ public class BasicAuthLoginServlet extends HttpServlet {
 
       // Validate CSRF token (timing-safe)
       String submittedCsrf = request.getParameter("csrf_token");
-      String sessionCsrf = (String) session.getAttribute(SESSION_CSRF_TOKEN);
-      session.removeAttribute(SESSION_CSRF_TOKEN);
+      LoginForm loginForm = (LoginForm) session.getAttribute(SESSION_LOGIN_FORM);
+      session.removeAttribute(SESSION_LOGIN_FORM);
+      if (loginForm == null) {
+        response.sendError(
+            HttpServletResponse.SC_BAD_REQUEST,
+            "Session expired. Please restart the authorization flow.");
+        return;
+      }
 
-      byte[] expectedBytes =
-          sessionCsrf != null ? sessionCsrf.getBytes(StandardCharsets.UTF_8) : new byte[0];
+      byte[] expectedBytes = loginForm.csrfToken().getBytes(StandardCharsets.UTF_8);
       byte[] providedBytes =
           submittedCsrf != null ? submittedCsrf.getBytes(StandardCharsets.UTF_8) : new byte[0];
       if (!MessageDigest.isEqual(expectedBytes, providedBytes)) {
@@ -133,14 +127,8 @@ public class BasicAuthLoginServlet extends HttpServlet {
         return;
       }
 
-      // Get auth_request_id from session
-      String authRequestId = (String) session.getAttribute(SESSION_AUTH_REQUEST_ID);
-      if (authRequestId == null) {
-        response.sendError(
-            HttpServletResponse.SC_BAD_REQUEST,
-            "Session expired. Please restart the authorization flow.");
-        return;
-      }
+      // The auth request the submitted form was rendered for
+      String authRequestId = loginForm.authRequestId();
 
       // Lookup pending request from DB
       McpPendingAuthRequest pending = pendingAuthRepository.findByAuthRequestId(authRequestId);
@@ -178,6 +166,15 @@ public class BasicAuthLoginServlet extends HttpServlet {
         }
       }
 
+      // Resolved per login: a security reload registers a new authenticator without rebuilding MCP.
+      AuthenticatorHandler authenticator =
+          SecurityConfigurationManager.getInstance().getAuthenticatorHandler();
+      if (authenticator instanceof NoopAuthenticator) {
+        LOG.warn("MCP password login refused: the configured provider does not use passwords");
+        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Password login is not enabled");
+        return;
+      }
+
       try {
         authenticator.checkIfLoginBlocked(email);
       } catch (AuthenticationException e) {
@@ -189,11 +186,9 @@ public class BasicAuthLoginServlet extends HttpServlet {
 
       try {
         // lookUserInProvider validates credentials for LDAP (via LDAP bind) but NOT for
-        // BasicAuth (just finds user). Call validatePassword separately for non-LDAP providers.
+        // BasicAuth (just finds user). Call validatePassword separately for other authenticators.
         User user = authenticator.lookUserInProvider(email, password);
-        org.openmetadata.schema.services.connections.metadata.AuthProvider provider =
-            SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
-        if (provider != org.openmetadata.schema.services.connections.metadata.AuthProvider.LDAP) {
+        if (!(authenticator instanceof LdapAuthenticator)) {
           authenticator.validatePassword(email, password, user);
         }
         LoginAttemptCache.getInstance().recordSuccessfulLogin(email);
@@ -280,7 +275,7 @@ public class BasicAuthLoginServlet extends HttpServlet {
     // Generate new CSRF token for the re-rendered form
     String csrfToken = generateSecureToken(32);
     HttpSession session = request.getSession(true);
-    session.setAttribute(SESSION_CSRF_TOKEN, csrfToken);
+    session.setAttribute(SESSION_LOGIN_FORM, new LoginForm(csrfToken, pending.authRequestId()));
 
     String clientName = "An application";
     var client = clientRepository.findByClientId(pending.clientId());

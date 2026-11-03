@@ -64,6 +64,15 @@ describe('CustomiseHomeModal Component', () => {
       expect(screen.getByTestId('customise-home-modal')).toBeInTheDocument();
     });
 
+    // Playwright finds the modal by this accessible name.
+    it('should name the dialog after its title', () => {
+      render(<CustomiseHomeModal {...defaultProps} />);
+
+      expect(
+        screen.getByRole('dialog', { name: 'label.customize-entity' })
+      ).toBeInTheDocument();
+    });
+
     it('should not render modal when open is false', () => {
       render(<CustomiseHomeModal {...defaultProps} open={false} />);
 

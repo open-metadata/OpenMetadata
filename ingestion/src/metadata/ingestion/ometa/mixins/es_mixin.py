@@ -55,6 +55,10 @@ def _batched(values: Sequence[str], size: int) -> Iterator[list[str]]:
         yield list(values[start : start + size])
 
 
+class SearchCursorStalledError(RuntimeError):
+    """search_after pagination cannot page an index that does not sort on the id tiebreaker."""
+
+
 @dataclass(frozen=True)
 class FqnSearchResult:
     """Unhydrated FQN candidates and the server's hit count."""
@@ -86,7 +90,7 @@ class HitsModel(BaseModel):
     ]
     source: Annotated[dict, Field(description="Document source", alias="_source")]
     sort: Annotated[
-        list[str] | None,
+        list[str | None] | None,
         Field(
             default=None,
             description="Sort field. Used internally to get the next page FQN",
@@ -94,7 +98,7 @@ class HitsModel(BaseModel):
     ]
 
     @field_validator("sort", mode="before")
-    def normalize_sort(cls, sort_value: list[str] | None):  # noqa: N805
+    def normalize_sort(cls, sort_value: list | None):  # noqa: N805
         """
         Return sort as a list of strings, regardless of the actual type.
         if sort_field is set to `_score`, sort is a list of the score and the sort value.
@@ -107,7 +111,8 @@ class HitsModel(BaseModel):
         if sort_value is None:
             return None
 
-        return [str(v) for v in sort_value]
+        # A null stays null: it marks a sort field the index cannot sort on.
+        return [None if v is None else str(v) for v in sort_value]
 
 
 class ESHits(BaseModel):
@@ -534,15 +539,33 @@ class ESMixin(Generic[T]):
                     continue
                 else:
                     break
+
+            next_after = self._next_search_after(response)
+            # The server sorts last on its id tiebreaker. An index without id.keyword sorts it as
+            # null, and each next page then starts again with the previous page's last hit, so
+            # the walk is refused before any page of it is handed out
+            # (ADR:2026-10-23-paged-search-indexes-sort-last-on-id-keyword).
+            last_hit = response.hits.hits[-1] if response.hits.hits else None
+            no_tiebreaker = bool(last_hit and last_hit.sort and last_hit.sort[-1] is None)
+            if no_tiebreaker or (after and next_after == after):
+                raise SearchCursorStalledError(
+                    f"Search cursor for {entity.__name__} cannot page its index"
+                    f" {ES_INDEX_MAP[entity.__name__]}: it cannot sort on the id tiebreaker. Reindex it."
+                )
             yield response
 
-            # Get next page
-            last_hit = response.hits.hits[-1] if response.hits.hits else None
-            if not last_hit or not last_hit.sort:
+            if not next_after:
                 logger.debug("No more pages to fetch")
                 break
 
-            after = "".join(f"&search_after={quote_plus(str(v))}" for v in last_hit.sort)
+            after = next_after
+
+    @staticmethod
+    def _next_search_after(response: ESResponse) -> str:
+        """The search_after query parameters for the page after `response`, empty on the last page."""
+        last_hit = response.hits.hits[-1] if response.hits.hits else None
+        sort = last_hit.sort if last_hit else None
+        return "".join(f"&search_after={quote_plus(str(v))}" for v in sort or [])
 
     def paginate_es(
         self,

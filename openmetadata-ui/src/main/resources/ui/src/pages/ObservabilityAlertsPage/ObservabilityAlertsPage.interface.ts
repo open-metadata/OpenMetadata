@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import {
@@ -42,6 +43,7 @@ export interface UseObservabilityAlertsReturn {
   hasResourcePermissionError: boolean;
   refetchResourcePermission: () => Promise<void>;
   alerts: EventSubscription[];
+  alertsError?: AxiosError;
   columnList: AlertTableColumn[];
   currentPage: number;
   getAlertDetailsPath: (fqn: string) => string;
@@ -78,12 +80,14 @@ export interface ObservabilityAlertsTableProps {
   alertResourcePermission?: OperationPermission;
   hasResourcePermissionError?: boolean;
   alerts: EventSubscription[];
+  alertsError?: AxiosError;
   columnList: AlertTableColumn[];
   currentPage: number;
   loading: boolean;
   loadingCount: number;
   getAlertDetailsPath: (fqn: string) => string;
   onAddAlert: () => void;
+  onRetry?: () => void;
   onRetryPermission?: () => void;
   onEditAlert?: (alert: EventSubscription) => void;
   onPageChange: (params: PagingHandlerParams) => void;

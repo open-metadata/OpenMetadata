@@ -1517,6 +1517,12 @@ export interface Connection {
      */
     snowflakeSourceHost?: string;
     /**
+     * Number of tables whose DML history is read from QUERY_HISTORY with a single query when
+     * the profiler computes system metrics. Higher values issue fewer scans but hold more
+     * history in memory at once.
+     */
+    systemMetricsBatchSize?: number;
+    /**
      * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
      * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
      * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read
@@ -1623,7 +1629,8 @@ export interface Connection {
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
-     * mechanism.
+     * mechanism. The entire value is protected as a secret, including non-secret names. Secret
+     * references must resolve to the entire LOGDATA value.
      */
     logdata?: string;
     /**
@@ -2100,6 +2107,11 @@ export interface Connection {
      */
     limit?: number;
     /**
+     * Destination schema holding the Fivetran Platform Connector log table, used to extract
+     * per-phase run status. Leave empty to read the schema name from the Fivetran API.
+     */
+    logSchema?: string;
+    /**
      * URL to the Dagster instance
      *
      * DBT cloud Access URL.
@@ -2246,7 +2258,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?: string;
     /**

@@ -79,6 +79,9 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  // Unlike `loading`, which only gates the first render, this tracks every
+  // fetch, including the one a user change triggers after children mounted.
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
 
   const redirectToStoredPath = useCallback(() => {
     const urlPathname = new CookieStorage().getItem(REDIRECT_PATHNAME);
@@ -98,6 +101,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
    * Fetch permission for logged in user
    */
   const fetchLoggedInUserPermissions = useCallback(async () => {
+    setIsPermissionsLoading(true);
     try {
       const response = await getLoggedInUserPermissions();
       // Behavior parity with base (9cf866cd23): strict translation by
@@ -114,6 +118,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       console.error(error);
     } finally {
       setLoading(false);
+      setIsPermissionsLoading(false);
     }
   }, [redirectToStoredPath]);
 
@@ -188,6 +193,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       fetchLoggedInUserPermissions();
     } else {
       setLoading(false);
+      setIsPermissionsLoading(false);
     }
     if (isEmpty(currentUser)) {
       resetPermissions();
@@ -197,12 +203,14 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const contextValues = useMemo(
     () => ({
       permissions,
+      isPermissionsLoading,
       getEntityPermission: fetchEntityPermission,
       getResourcePermission: fetchResourcePermission,
       getEntityPermissionByFqn: fetchEntityPermissionByFqn,
     }),
     [
       permissions,
+      isPermissionsLoading,
       fetchEntityPermission,
       fetchResourcePermission,
       fetchEntityPermissionByFqn,

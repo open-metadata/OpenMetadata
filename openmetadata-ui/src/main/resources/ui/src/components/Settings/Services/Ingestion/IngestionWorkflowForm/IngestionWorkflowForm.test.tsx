@@ -27,6 +27,7 @@ import {
 import IngestionWorkflowForm from './IngestionWorkflowForm';
 
 const DBT_WORKFLOW_DATA = {
+  name: 'dbt_agent',
   type: 'DBT',
   dbtConfigSource: {
     dbtConfigType: 'local',
@@ -35,7 +36,7 @@ const DBT_WORKFLOW_DATA = {
   catalogMapping: { bq_catalog: 'my-gcp-project' },
 } as unknown as IngestionWorkflowData;
 
-const renderDbtForm = (onChange = jest.fn()) =>
+const renderDbtForm = (onChange = jest.fn(), onSubmit = jest.fn()) =>
   render(
     <IngestionWorkflowForm
       okText="Submit"
@@ -45,7 +46,7 @@ const renderDbtForm = (onChange = jest.fn()) =>
       onCancel={jest.fn()}
       onChange={onChange}
       onFocus={jest.fn()}
-      onSubmit={jest.fn()}
+      onSubmit={onSubmit}
     />
   );
 
@@ -84,6 +85,190 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     expect(Object.keys(catalogMapping)).toHaveLength(2);
     // RJSF's visible default, so an untouched row is noticed before it is saved
     expect(catalogMapping.newKey).toBe('New Value');
+  });
+
+  it('saves the catalog mapping without a row that was added but never filled in', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderDbtForm(jest.fn(), onSubmit);
+    await screen.findByText('Catalog Mapping');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.add-entity' }));
+    });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.calls[0][0].catalogMapping).toEqual({
+      bq_catalog: 'my-gcp-project',
+    });
+  });
+});
+
+// Pre-seeding `database` with a real object value selects the object branch of
+// the field's anyOf (string | object) so the map's Add button renders, without
+// having to drive the anyOf Select dropdown. RJSF selects the string branch for
+// an empty `{}`, so a non-empty value is required to reach the map branch.
+const METADATA_WORKFLOW_DATA = {
+  name: 'metadata-agent',
+  type: 'DatabaseMetadata',
+  ownerConfig: {
+    enableInheritance: true,
+    database: { existing_db: 'some-team' },
+  },
+} as unknown as IngestionWorkflowData;
+
+const renderMetadataForm = (onChange = jest.fn(), onSubmit = jest.fn()) =>
+  render(
+    <IngestionWorkflowForm
+      okText="Submit"
+      pipeLineType={PipelineType.Metadata}
+      serviceCategory={ServiceCategory.DATABASE_SERVICES}
+      workflowData={METADATA_WORKFLOW_DATA}
+      onCancel={jest.fn()}
+      onChange={onChange}
+      onFocus={jest.fn()}
+      onSubmit={onSubmit}
+    />
+  );
+
+describe('IngestionWorkflowForm ownerConfig map', () => {
+  it('drops an untouched ownerConfig.database row that RJSF seeded with {}', async () => {
+    const onChange = jest.fn();
+    const onSubmit = jest.fn();
+    const { container } = renderMetadataForm(onChange, onSubmit);
+
+    const addBtn = await screen.findByRole('button', {
+      name: 'label.add-entity',
+    });
+    await act(async () => {
+      fireEvent.click(addBtn);
+    });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const { ownerConfig } = onChange.mock.calls.at(-1)[0];
+
+    // RJSF seeds the untouched row as { newKey: {} } — the type-less anyOf default
+    expect(ownerConfig.database).toEqual(
+      expect.objectContaining({ newKey: {} })
+    );
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    // formatAdditionalProperties drops the untouched {} row before submit, while
+    // keeping the pre-existing filled row.
+    expect(onSubmit.mock.calls[0][0].ownerConfig.database).toEqual({
+      existing_db: 'some-team',
+    });
+    // and no validation alert surfaces for the dropped row
+    expect(container.querySelector('[role="alert"]')).not.toBeInTheDocument();
+  });
+
+  it('keeps a filled ownerConfig.database row through submit', async () => {
+    const onChange = jest.fn();
+    const onSubmit = jest.fn();
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.Metadata}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        workflowData={
+          {
+            name: 'metadata-agent',
+            type: 'DatabaseMetadata',
+            ownerConfig: {
+              enableInheritance: true,
+              database: { sales_db: 'sales-team' },
+            },
+          } as unknown as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onChange={onChange}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    // object branch is active for a non-empty database map
+    await screen.findByRole('button', { name: 'label.add-entity' });
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.calls[0][0].ownerConfig.database).toEqual({
+      sales_db: 'sales-team',
+    });
+  });
+
+  it('blocks submit when a named ownerConfig.database row has no owner', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderMetadataForm(jest.fn(), onSubmit);
+
+    const addBtn = await screen.findByRole('button', {
+      name: 'label.add-entity',
+    });
+    await act(async () => {
+      fireEvent.click(addBtn);
+    });
+
+    // Name the added row but leave its owner untouched (RJSF keeps the {} default)
+    const keyInput = await screen.findByDisplayValue('newKey');
+    await act(async () => {
+      fireEvent.change(keyInput, { target: { value: 'sales_db' } });
+      fireEvent.blur(keyInput);
+    });
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    expect(
+      await screen.findAllByText('message.field-text-is-required')
+    ).not.toHaveLength(0);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('shows an error when a saved pipeline already holds a row with no owner', async () => {
+    const onSubmit = jest.fn();
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.Metadata}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        workflowData={
+          {
+            name: 'metadata-agent',
+            type: 'DatabaseMetadata',
+            ownerConfig: {
+              enableInheritance: true,
+              database: { existing_db: 'some-team', sales_db: {} },
+            },
+          } as unknown as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await screen.findByTestId('submit-btn');
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    expect(
+      await screen.findAllByText('message.field-text-is-required')
+    ).not.toHaveLength(0);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
 

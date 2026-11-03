@@ -106,6 +106,8 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class BasicAuthenticator implements AuthenticatorHandler {
   // No of cycles to perform hashing, increasing too much slows the algorithm
   private static final int HASHING_COST = 12;
+  static final String EMAIL_CONFIRMATION_PENDING =
+      "Confirm your email address with the link sent to it, then sign in.";
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
 
@@ -136,7 +138,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String emailDomain = tokens[1];
       Set<String> allowedDomains = allowedRegistrationDomains();
       if (!allowedDomains.contains("all")
-          && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase)) {
+          && allowedDomains.stream()
+              .noneMatch(domain -> SecurityUtil.sameIdentifier(domain, emailDomain))) {
         LOG.error("Email with this Domain not allowed: {}", newRegistrationRequestEmail);
         throw new BadRequestException(
             "Email with the given domain is not allowed. Contact Administrator");
@@ -495,6 +498,21 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   /**
+   * A self-registered account signs in once its address is confirmed: the registration domain
+   * allow-list holds only as long as registering proves the registrant owns the address. Accounts
+   * an admin created, and ones registered while no mail server was set up, have no confirmation
+   * pending and sign in as before. Checked after the password, so it reveals nothing to a guesser.
+   */
+  void requireConfirmedRegistration(User storedUser) {
+    if (!Boolean.TRUE.equals(storedUser.getIsEmailVerified())
+        && !tokenRepository
+            .findByUserIdAndType(storedUser.getId(), EMAIL_VERIFICATION.toString())
+            .isEmpty()) {
+      throw new AuthenticationException(EMAIL_CONFIRMATION_PENDING);
+    }
+  }
+
+  /**
    * For callers that only have the address, such as the MCP login form. Failures are counted
    * against the account's current password, so this loads the account first; an address with no
    * active account has no lockout.
@@ -574,6 +592,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
     LoginAttemptCache.getInstance().recordSuccessfulLogin(failedLoginKey(omUser));
+    requireConfirmedRegistration(omUser);
   }
 
   /**

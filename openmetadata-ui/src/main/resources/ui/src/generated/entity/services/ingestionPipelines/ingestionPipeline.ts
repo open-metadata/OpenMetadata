@@ -1033,6 +1033,11 @@ export interface Pipeline {
      * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
      * Iceberg table properties) onto the entity extension. When disabled, no custom property
      * definitions are registered and no extension values are set.
+     *
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * the app views, last run status, run time and refresh time of Hex projects) onto the
+     * dashboard extension. The custom property definitions are shared by every dashboard in
+     * OpenMetadata, so this is disabled by default.
      */
     includeCustomProperties?: boolean;
     /**
@@ -1978,6 +1983,12 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Enter the retention period in days for the run history of governance workflows. A
+     * finished run older than this is deleted with its stages, but the latest run of each
+     * workflow for every entity is always kept. Use 0 to retain the history forever.
+     */
+    workflowInstanceRetentionPeriod?: number;
     /**
      * Enter the retention period in days for automation Workflows: the short-lived records left
      * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
@@ -5590,6 +5601,12 @@ export interface Connection {
      */
     snowflakeSourceHost?: string;
     /**
+     * Number of tables whose DML history is read from QUERY_HISTORY with a single query when
+     * the profiler computes system metrics. Higher values issue fewer scans but hold more
+     * history in memory at once.
+     */
+    systemMetricsBatchSize?: number;
+    /**
      * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
      * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
      * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read
@@ -5672,7 +5689,8 @@ export interface Connection {
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
-     * mechanism.
+     * mechanism. The entire value is protected as a secret, including non-secret names. Secret
+     * references must resolve to the entire LOGDATA value.
      */
     logdata?: string;
     /**
@@ -6095,6 +6113,11 @@ export interface Connection {
      */
     limit?: number;
     /**
+     * Destination schema holding the Fivetran Platform Connector log table, used to extract
+     * per-phase run status. Leave empty to read the schema name from the Fivetran API.
+     */
+    logSchema?: string;
+    /**
      * URL to the Dagster instance
      *
      * DBT cloud Access URL.
@@ -6241,7 +6264,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?: string;
     /**

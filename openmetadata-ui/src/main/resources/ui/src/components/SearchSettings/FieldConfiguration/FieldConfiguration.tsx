@@ -142,7 +142,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                       {fieldDescription ?? t('label.no-description')}
                     </span>
                     <span
-                      className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
+                      className="p-x-xs font-semibold d-flex items-center field-weightage"
                       data-testid="field-weight">
                       <FilterIcon className="tw:size-3.5 tw:shrink-0" />
                       {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}

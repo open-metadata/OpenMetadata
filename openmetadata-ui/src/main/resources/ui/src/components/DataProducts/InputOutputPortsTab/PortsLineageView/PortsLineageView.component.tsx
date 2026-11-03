@@ -15,7 +15,6 @@ import {
   Button,
   Tooltip,
   TooltipTrigger,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { Maximize01, Minimize01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,10 +30,8 @@ import ReactFlow, {
   useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import DataProductNode from './DataProductNode.component';
 import PortNode from './PortNode.component';
@@ -220,22 +217,14 @@ const PortsLineageView = ({
   if (!hasAnyPorts) {
     return (
       <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-secondary tw:rounded-lg tw:border tw:border-subtle">
-        <ErrorPlaceHolder
-          className="m-t-0"
-          icon={
-            <AddPlaceHolderIcon
-              className="tw:w-16 tw:h-16"
-              data-testid="no-ports-placeholder"
-            />
-          }
-          size={SIZE.SMALL}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as="p" className="text-center">
-            {assetCount === 0
-              ? t('message.no-assets-for-ports-lineage')
-              : t('message.no-ports-to-display-lineage')}
-          </Typography>
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-ports-placeholder"
+            {...(assetCount === 0
+              ? { description: t('message.no-assets-for-ports-lineage') }
+              : { title: t('message.no-ports-to-display-lineage') })}
+          />
+        </div>
       </div>
     );
   }

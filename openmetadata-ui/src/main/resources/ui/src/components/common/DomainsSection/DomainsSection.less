@@ -30,11 +30,6 @@
     padding-left: var(--om-space-14);
     padding-right: var(--om-space-14);
 
-    .no-data-placeholder {
-      color: @grey-500;
-      font-size: var(--om-font-size-xs);
-    }
-
     .domains-display {
       .domains-list {
         display: flex;
@@ -120,18 +115,6 @@
           }
         }
       }
-    }
-
-    // Ensure popover appears below the selector
-    :global(.domain-select-popover) {
-      .ant-popover-arrow {
-        display: none;
-      }
-    }
-  }
-  .domain-select-popover {
-    .ant-popover-inner {
-      border-radius: var(--om-radius-2xl) !important;
     }
   }
 }

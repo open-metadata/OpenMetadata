@@ -33,7 +33,7 @@ jest.mock(
   () => jest.fn(({ markdown }: { markdown: string }) => <p>{markdown}</p>)
 );
 
-jest.mock('../platform-settings/useFormFieldDocs', () => ({
+jest.mock('../../../../../../hooks/useFormFieldDocs', () => ({
   useFormFieldDocs: jest.fn(() => ({ active: 'Turn the workflow on.' })),
 }));
 

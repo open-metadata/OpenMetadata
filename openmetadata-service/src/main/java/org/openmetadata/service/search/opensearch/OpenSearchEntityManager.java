@@ -645,19 +645,56 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       LOG.error("OpenSearch client is not available. Cannot update nested children.");
       return;
     }
-    Map<String, JsonData> params =
-        convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
-    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
     List<Query> matches = new ArrayList<>();
     if (!docIds.isEmpty()) {
       matches.add(Query.of(q -> q.ids(i -> i.values(docIds))));
     }
+    matches.addAll(nestedTermsQueries(nestedPaths, field, values));
+    updateAnyMatchInBackground(indexNames, matches, updates);
+  }
+
+  /** Same request shape as {@link #updateChildrenByNestedField}. */
+  @Override
+  public void updateReferenceCopies(
+      List<String> indexNames,
+      List<String> nestedPaths,
+      List<String> objectPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update reference copies.");
+      return;
+    }
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    List<Query> matches = new ArrayList<>(nestedTermsQueries(nestedPaths, field, values));
+    for (String path : objectPaths) {
+      matches.add(
+          Query.of(
+              q -> q.terms(t -> t.field(path + "." + field).terms(tv -> tv.value(fieldValues)))));
+    }
+    updateAnyMatchInBackground(indexNames, matches, updates);
+  }
+
+  private static List<Query> nestedTermsQueries(
+      List<String> nestedPaths, String field, List<String> values) {
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    List<Query> queries = new ArrayList<>();
     for (String path : nestedPaths) {
       Query terms =
           Query.of(
               q -> q.terms(t -> t.field(path + "." + field).terms(tv -> tv.value(fieldValues))));
-      matches.add(Query.of(q -> q.nested(n -> n.path(path).ignoreUnmapped(true).query(terms))));
+      queries.add(Query.of(q -> q.nested(n -> n.path(path).ignoreUnmapped(true).query(terms))));
     }
+    return queries;
+  }
+
+  private void updateAnyMatchInBackground(
+      List<String> indexNames, List<Query> matches, Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    Map<String, JsonData> params =
+        convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
     client.updateByQuery(
         u ->
             u.index(indexNames)

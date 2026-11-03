@@ -40,20 +40,17 @@ export const ReviewerLabelV2 = <
     reviewers?: EntityReference[];
     id: string;
     changeDescription?: ChangeDescription;
+    deleted?: boolean;
   }
 >() => {
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
   const { t } = useTranslation();
 
-  // Named-flag derivation (Task 8 sweep): no named `canEdit*` flag exists for
-  // `EditReviewers`, so `can(Operation.EditReviewers)` is the documented escape hatch —
-  // applies the same prioritization the named flags use, replacing the old raw OR
-  // (explicit-deny-wins fix, same precedent as canViewBasic, Task 6 Finding 1). No `deleted`
-  // argument: the generic `T` constraint here has no `deleted` field, and the old expression
-  // never referenced one either.
+  // No named `canEdit*` flag exists for `EditReviewers`, so `can(Operation.EditReviewers)` is the
+  // documented escape hatch. `deleted` gates it like every other edit on a soft-deleted entity.
   const { can } = useMemo(
-    () => getDerivedPermissionFlags(permissions),
-    [permissions]
+    () => getDerivedPermissionFlags(permissions, data.deleted),
+    [permissions, data.deleted]
   );
   const hasEditReviewerAccess = useMemo(
     () => can(Operation.EditReviewers),
@@ -95,7 +92,6 @@ export const ReviewerLabelV2 = <
           listHeight={200}
           multiple={{ user: true, team: false }}
           owner={assignedReviewers ?? []}
-          popoverProps={{ placement: 'topLeft' }}
           onUpdate={handleReviewerSave}>
           {hasReviewers ? (
             <WidgetEditButton

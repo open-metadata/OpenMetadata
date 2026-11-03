@@ -96,7 +96,8 @@ function DataAssetsVersionHeader({
             />
           </Grid.Item>
           <Grid.Item className="layout-column" span={24}>
-            <div className="d-flex version-domain-container no-wrap">
+            {/* Wrap between items, never inside one: a squeezed item broke "No Domains" in two. */}
+            <div className="d-flex version-domain-container tw:flex-wrap tw:items-center tw:gap-y-1 tw:whitespace-nowrap">
               {entityType !== EntityType.METADATA_SERVICE && (
                 <>
                   <DomainLabel

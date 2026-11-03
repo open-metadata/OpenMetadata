@@ -133,18 +133,6 @@ jest.mock('../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
   })),
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-
-  Dropdown: jest.fn().mockImplementation(({ dropdownRender }) => {
-    return (
-      <div data-testid="dropdownRender">
-        <div>{dropdownRender}</div>
-      </div>
-    );
-  }),
-}));
-
 jest.mock('../../rest/miscAPI', () => ({
   getVersion: jest.fn().mockResolvedValue({
     version: '0.5.0-SNAPSHOT',

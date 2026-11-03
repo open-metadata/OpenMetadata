@@ -21,6 +21,8 @@ import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -104,6 +106,11 @@ public class TagRepository extends EntityRepository<Tag> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_CERTIFICATION, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null));
+    // Tag labels on assets carry a copy of the tag's style; propagateToRelatedEntities refreshes
+    // it.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     return descriptors;
   }
 
@@ -478,6 +485,11 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(TAG);
+  }
+
+  @Override
   public void setFullyQualifiedName(Tag tag) {
     if (tag.getParent() == null) {
       tag.setFullyQualifiedName(
@@ -614,18 +626,16 @@ public class TagRepository extends EntityRepository<Tag> {
         classificationRefs.stream()
             .collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
 
-    // Map tags to their classifications
+    // A restore brings back a classification's tags before the classification itself, so a tag
+    // can still point at a deleted one here; toMap rejects the null that lookup returns.
     return records.stream()
+        .filter(r -> idToRefMap.containsKey(r.getFromId()))
         .collect(
             Collectors.toMap(
                 r -> UUID.fromString(r.getToId()),
                 r -> idToRefMap.get(r.getFromId()),
                 (existing, replacement) -> existing // In case of duplicates, keep first
-                ))
-        .entrySet()
-        .stream()
-        .filter(e -> e.getValue() != null)
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                ));
   }
 
   private Map<UUID, EntityReference> batchFetchParents(List<Tag> tags) {
@@ -864,6 +874,19 @@ public class TagRepository extends EntityRepository<Tag> {
                     condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
         EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+        // A move changes the FQN without recording a name change, so the propagation pass that
+        // reacts to "name" never sees it; rewrite the tagged assets here for renames and moves.
+        searchRepository.deferIfFlushScopeActive(
+            () ->
+                searchRepository
+                    .getSearchClient()
+                    .updateClassificationTagByFqnPrefix(
+                        GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN),
+            "updateClassificationTagByFqnPrefix",
+            null,
+            newFqn,
+            Entity.TAG);
+        reindexRenamedDescendants(Entity.TAG, renamedTags, newFqn);
       }
 
       if (classificationChanged) {

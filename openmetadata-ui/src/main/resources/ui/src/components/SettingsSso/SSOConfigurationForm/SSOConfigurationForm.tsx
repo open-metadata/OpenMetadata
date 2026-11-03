@@ -249,7 +249,7 @@ const SSOConfigurationFormRJSF = ({
         {renderConfigAlerts()}
         <div className="form-actions-bottom">
           <Button
-            color="link-color"
+            color="secondary"
             data-testid="cancel-sso-configuration"
             onClick={handleCancelClick}>
             {t('label.cancel')}

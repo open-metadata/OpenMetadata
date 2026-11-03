@@ -15,7 +15,6 @@ import {
   Avatar,
   Box,
   Card,
-  EmptyPlaceholder,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -67,6 +66,8 @@ import { useListSearchInput } from '../common/atoms/navigation/useListSearchInpu
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
@@ -322,7 +323,7 @@ const DataProductListPage = ({
       if (isSearchOrFilterActive()) {
         return (
           <div className="tw:relative tw:min-h-70 tw:h-full">
-            <EmptyPlaceholder
+            <NoSearchResultsPlaceholder
               actions={[
                 {
                   color: 'primary',
@@ -332,7 +333,7 @@ const DataProductListPage = ({
                 },
               ]}
               description={t('message.check-spelling-or-try-different-term')}
-              icon={<NoSearch className="tw:text-quaternary" />}
+              icon={<NoSearch />}
               title={t('label.no-matching-results')}
             />
           </div>
@@ -343,7 +344,7 @@ const DataProductListPage = ({
         <div
           className="tw:relative tw:min-h-70"
           data-testid="no-data-placeholder">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               permissions.dataProduct?.Create
                 ? [
@@ -362,7 +363,6 @@ const DataProductListPage = ({
             description={t('label.no-data-products-yet-description')}
             icon={<Package className="tw:text-fg-brand-primary" />}
             title={t('label.no-data-products-yet')}
-            variant="blank"
           />
         </div>
       );

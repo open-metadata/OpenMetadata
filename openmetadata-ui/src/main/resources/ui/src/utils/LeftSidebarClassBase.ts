@@ -23,6 +23,7 @@ import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.in
 import { observabilityModule } from '../components/observability/ObservabilityModule/observability.module';
 import { AppModule } from '../components/platform/ai-shell/AppModule.types';
 import {
+  SIDEBAR_ENTITY_PATH_ALIASES,
   SIDEBAR_LIST,
   SIDEBAR_NESTED_KEYS,
 } from '../constants/LeftSidebar.constants';
@@ -67,6 +68,17 @@ class LeftSidebarClassBase {
 
   public getSidebarNestedKeys(): Record<string, string> {
     return SIDEBAR_NESTED_KEYS;
+  }
+
+  /**
+   * Route prefixes that mark another Classic sidebar item as active. Matched
+   * on the route's first two path segments, then on its first segment. A
+   * downstream build (Collate) spreads `super` and adds routes it owns outside
+   * the item's own path.
+   * ADR:2026-10-21-classic-sidebar-path-aliases-are-a-class-base-hook
+   */
+  public getSidebarPathAliases(): Record<string, string> {
+    return SIDEBAR_ENTITY_PATH_ALIASES;
   }
 
   /**

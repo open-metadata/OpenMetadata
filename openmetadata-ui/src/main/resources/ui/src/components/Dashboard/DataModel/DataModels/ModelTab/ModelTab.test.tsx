@@ -64,11 +64,6 @@ jest.mock('../../../../common/Table/TableV2', () =>
   })
 );
 
-jest.mock(
-  '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => jest.fn().mockImplementation(() => <div />)
-);
-
 const mockRecord = {
   name: 'test-column',
   fullyQualifiedName: 'test-data-model.test-column',

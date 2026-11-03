@@ -46,7 +46,7 @@ describe('formPureUtils', () => {
         jest.advanceTimersByTime(100);
 
         expect(mockQuerySelector).toHaveBeenCalledWith(
-          '.ant-form-item-has-error'
+          '[aria-invalid="true"], [data-invalid="true"]'
         );
       });
 
@@ -58,7 +58,7 @@ describe('formPureUtils', () => {
         jest.advanceTimersByTime(50);
 
         expect(mockQuerySelector).toHaveBeenCalledWith(
-          '.ant-form-item-has-error'
+          '[aria-invalid="true"], [data-invalid="true"]'
         ); // default selector used
       });
     });
@@ -292,12 +292,12 @@ describe('formPureUtils', () => {
         mockQuerySelector.mockReturnValueOnce({ ...mockErrorElement, closest });
 
         const handler = createScrollToErrorHandler({
-          scrollContainer: '.ant-drawer-body',
+          scrollContainer: '.custom-scroll-body',
         });
         handler();
         jest.advanceTimersByTime(100);
 
-        expect(closest).toHaveBeenCalledWith('.ant-drawer-body');
+        expect(closest).toHaveBeenCalledWith('.custom-scroll-body');
         expect(mockScrollTo).toHaveBeenCalledWith({
           top: 570, // 150 + 600 - 80 - 100
           behavior: 'smooth',

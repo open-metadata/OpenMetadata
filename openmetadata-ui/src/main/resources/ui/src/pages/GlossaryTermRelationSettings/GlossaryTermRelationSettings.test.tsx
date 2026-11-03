@@ -196,7 +196,10 @@ describe('GlossaryTermRelationSettingsPage', () => {
     fireEvent.click(screen.getByTestId('confirm-delete-btn'));
 
     await waitFor(() =>
-      expect(mockDeleteRelationshipType).toHaveBeenCalledWith(EXISTING_TYPE.id)
+      expect(mockDeleteRelationshipType).toHaveBeenCalledWith(
+        EXISTING_TYPE.id,
+        true
+      )
     );
 
     expect(screen.queryByText(EXISTING_TYPE.name)).not.toBeInTheDocument();
