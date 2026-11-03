@@ -20,8 +20,8 @@ import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
-import { visitTriage } from '../../utils/inbox';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { visitTriage } from '../../utils/inbox';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -291,8 +291,10 @@ test.describe(
           'You removed definitions that readers may rely on, so a Major version is suggested.'
         );
         await expect(
-          author.getByTestId('ontology-version-preview').first()
-        ).toHaveText('v1.0.0 → v2.0.0');
+          author
+            .getByTestId('ontology-version-preview')
+            .filter({ hasText: /^v1\.0\.0 → v2\.0\.0$/ })
+        ).not.toHaveCount(0);
         await g7Shot(author, testInfo, 'major');
       } finally {
         await cleanUp(api, [ontology]);
@@ -314,8 +316,10 @@ test.describe(
           author.getByRole('radio', { name: /Minor/ })
         ).toBeChecked();
         await expect(
-          author.getByTestId('ontology-version-preview').first()
-        ).toHaveText('Draft → v0.1.0');
+          author
+            .getByTestId('ontology-version-preview')
+            .filter({ hasText: /^Draft → v0\.1\.0$/ })
+        ).not.toHaveCount(0);
         await expect(
           author.getByTestId('ontology-version-reason')
         ).toContainText(
@@ -520,9 +524,9 @@ test.describe(
 
         await visitTriage(reviewer);
         for (const title of titles) {
-          await expect(
-            reviewer.getByTestId('inbox-tasks-tab').getByText(title).first()
-          ).toBeVisible();
+          await expect(reviewer.getByTestId('inbox-tasks-tab')).toContainText(
+            title
+          );
         }
         await g7Shot(reviewer, testInfo, 'task-titles-inbox');
       } finally {
