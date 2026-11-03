@@ -30,6 +30,12 @@
       "type": "integer",
       "minimum": 25000,
       "default": 100000
+    },
+    "readOnly": {
+      "title": "Read-only Mode",
+      "description": "Expose only the MCP tools that do not change metadata, such as search, lineage and entity details. Tools that create or edit metadata are hidden from every MCP client and cannot be called, for every user including admins. Each user's own permissions still apply to the remaining tools. Takes effect after the server restarts.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [
