@@ -400,9 +400,12 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     }
     repository.prepareInternal(updated, true);
     authorizeMembershipMutation(securityContext, original, updated);
-    JsonPatch applied = addressesMembers ? pinnedToMembers(original, patch) : patch;
+    if (!addressesMembers) {
+      return withoutMembers(patchInternal(uriInfo, securityContext, id, patch));
+    }
     try {
-      return withoutMembers(patchInternal(uriInfo, securityContext, id, applied));
+      return withoutMembers(
+          patchInternal(uriInfo, securityContext, id, pinnedToMembers(original, patch)));
     } catch (JsonException e) {
       // The patch applied cleanly to the members authorized above, so failing on the repository's
       // fresh load means they changed in between; index-based operations would hit other metrics.
@@ -431,7 +434,7 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     return Json.createPatch(operations.build());
   }
 
-  static boolean addressesMembers(JsonPatch patch) {
+  public static boolean addressesMembers(JsonPatch patch) {
     return patch.toJsonArray().stream()
         .map(JsonValue::asJsonObject)
         .anyMatch(

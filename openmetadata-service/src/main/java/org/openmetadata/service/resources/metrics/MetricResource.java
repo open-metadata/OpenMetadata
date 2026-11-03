@@ -830,12 +830,12 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
         || (left != null && right != null && Objects.equals(left.getId(), right.getId()));
   }
 
-  static boolean patchMutatesHierarchy(JsonPatch patch) {
+  public static boolean patchMutatesHierarchy(JsonPatch patch) {
     Set<String> fields = JsonUtils.extractPatchedFields(patch);
     return fields.contains("parent") || fields.contains("metricGroup");
   }
 
-  static void validateMetricPatch(JsonPatch patch) {
+  public static void validateMetricPatch(JsonPatch patch) {
     // The read-only and hierarchy guards work from the field names a patch touches. An operation on
     // the document root rewrites every field, parent and metricGroup included, while naming none.
     if (patchesDocumentRoot(patch)) {

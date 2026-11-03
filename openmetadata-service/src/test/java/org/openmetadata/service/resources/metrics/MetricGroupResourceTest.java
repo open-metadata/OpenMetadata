@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -63,6 +64,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.MetricGroupRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
@@ -359,6 +361,29 @@ class MetricGroupResourceTest {
     MetricGroup shifted = new MetricGroup().withName("kpis").withMetrics(List.of(second));
     assertThrows(
         JsonException.class, () -> JsonUtils.applyPatch(shifted, pinned, MetricGroup.class));
+  }
+
+  @Test
+  void memberPatchReachesTheRepositoryPinnedAndAnsweredWith412OnceMembersShift() {
+    UUID groupId = UUID.randomUUID();
+    MetricGroup group = groupWithMember(groupId, "kpis");
+    JsonPatch removeFirst = Json.createPatchBuilder().remove("/metrics/0").build();
+    try (ResourceFixture fixture = resourceFixture()) {
+      when(fixture.repository().getWithMembers(groupId, Include.NON_DELETED)).thenReturn(group);
+      when(fixture
+              .repository()
+              .patch(any(), eq(groupId), anyString(), any(JsonPatch.class), any(), any(), any()))
+          .thenThrow(new JsonException("test failed"));
+
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> fixture.resource().patch(null, securityContext("alice"), groupId, removeFirst));
+
+      ArgumentCaptor<JsonPatch> applied = ArgumentCaptor.forClass(JsonPatch.class);
+      verify(fixture.repository())
+          .patch(any(), eq(groupId), anyString(), applied.capture(), any(), any(), any());
+      assertEquals("test", applied.getValue().toJsonArray().getJsonObject(0).getString("op"));
+    }
   }
 
   @Test

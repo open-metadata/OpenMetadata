@@ -21,6 +21,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.metrics.MetricGroupResource;
+import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -61,8 +63,6 @@ public class PatchEntityTool implements McpTool {
   //   eventsubscription    scheduler re-registration
   //   ingestionPipeline    secret decryptOrNullify on the response
   //   intakeForm           authorizeAdmin
-  //   metric               EDIT_ALL on the moved subtree and on the new parent and group
-  //   metricGroup          EDIT_ALL on each metric added or removed, member visibility
   //   notificationTemplate provider-aware EDIT_ALL authorization
   //   persona              authorizeAdmin
   //   testCase             table-or-testCase authorization, sample cleanup
@@ -79,8 +79,6 @@ public class PatchEntityTool implements McpTool {
           Entity.EVENT_SUBSCRIPTION,
           Entity.INGESTION_PIPELINE,
           Entity.INTAKE_FORM,
-          Entity.METRIC,
-          Entity.METRIC_GROUP,
           Entity.NOTIFICATION_TEMPLATE,
           Entity.PERSONA,
           Entity.TEST_CASE,
@@ -109,6 +107,7 @@ public class PatchEntityTool implements McpTool {
 
     JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
     requireConnectionUntouched(entityType, jsonPatch);
+    requireMetricHierarchyUntouched(entityType, jsonPatch);
 
     // The permission comes from the patch itself: the operations it carries decide which
     // MetadataOperations are checked, exactly as the REST resource does it.
@@ -190,6 +189,27 @@ public class PatchEntityTool implements McpTool {
               + CONNECTION_POINTER
               + "': it holds the service's credentials. Use the service's OpenMetadata REST API."
               + " Nothing was changed.");
+    }
+  }
+
+  /**
+   * Moving a metric, or changing a metric group's members, needs EDIT_ALL on every metric moved and
+   * on the destination parent and group, which only their REST resources check. Other metric edits
+   * (description, tags, owners) have no such checks and stay available here.
+   */
+  private static void requireMetricHierarchyUntouched(String entityType, JsonPatch patch) {
+    if (Entity.METRIC.equals(entityType)) {
+      MetricResource.validateMetricPatch(patch);
+    }
+    boolean changesHierarchy =
+        (Entity.METRIC.equals(entityType) && MetricResource.patchMutatesHierarchy(patch))
+            || (Entity.METRIC_GROUP.equals(entityType)
+                && MetricGroupResource.addressesMembers(patch));
+    if (changesHierarchy) {
+      throw new IllegalArgumentException(
+          "patch_entity cannot change a metric's parent or metric group, or a metric group's"
+              + " members: those need permission checks on every metric they move. Use the"
+              + " dedicated OpenMetadata REST PATCH API. Nothing was changed.");
     }
   }
 

@@ -29,6 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
@@ -340,6 +341,55 @@ class PatchEntityToolTest {
   }
 
   @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "metric|[{\"op\":\"add\",\"path\":\"/parent\",\"value\":{\"id\":\"x\"}}]",
+        "metric|[{\"op\":\"remove\",\"path\":\"/metricGroup\"}]",
+        "metric|[{\"op\":\"add\",\"path\":\"\",\"value\":{}}]",
+        "metricGroup|[{\"op\":\"remove\",\"path\":\"/metrics/0\"}]",
+        "metricGroup|[{\"op\":\"copy\",\"from\":\"/metrics/0/name\",\"path\":\"/description\"}]"
+      })
+  void execute_rejectsMetricHierarchyAndMembershipChanges(String entityType, String patch) {
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", entityType);
+    params.put("fqn", "target");
+    params.put("patch", patch);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+          .isInstanceOf(IllegalArgumentException.class);
+    }
+    verifyNoInteractions(authorizer);
+  }
+
+  @Test
+  void execute_letsMetricDescriptionEditsThrough() {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
+    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED));
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", "metric");
+    params.put("fqn", "revenue");
+    params.put("patch", "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Net\"}]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
+        MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
+      entityMock.when(() -> Entity.getEntityRepository("metric")).thenReturn(mockRepo);
+      jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
+      jsonMock.when(() -> JsonUtils.extractPatchedFields(any())).thenCallRealMethod();
+
+      new PatchEntityTool().execute(authorizer, securityContext, params);
+    }
+
+    verify(mockRepo).patch(any(), eq("revenue"), any(), any(), any(), any(), any());
+  }
+
+  @ParameterizedTest
   @ValueSource(
       strings = {
         "announcement",
@@ -349,8 +399,6 @@ class PatchEntityToolTest {
         "eventsubscription",
         "ingestionPipeline",
         "intakeForm",
-        "metric",
-        "metricGroup",
         "notificationTemplate",
         "persona",
         "testCase",
