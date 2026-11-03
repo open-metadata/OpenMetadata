@@ -4,13 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -18,18 +21,26 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.tests.EntityTransactionBoundaryIT.TransactionCounter;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SqlFailureProbe;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.ChartRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.util.AsyncService;
 
 @ExtendWith(TestNamespaceExtension.class)
 @Isolated("Counts hard-delete commits and checks publication around an enclosing transaction")
@@ -156,6 +167,92 @@ class EntityHardDeletionAtomicityIT {
     assertEquals(
         original.getId(),
         SdkClients.adminClient().charts().getByName(original.getFullyQualifiedName()).getId());
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "false,commit",
+    "true,commit",
+    "false,rollback",
+    "true,rollback",
+    "false,failure",
+    "true,failure"
+  })
+  void incidentCleanupFollowsSuccessfulDeletion(boolean bulk, String outcome, TestNamespace ns) {
+    final var client = SdkClients.adminClient();
+    final var service =
+        DatabaseServiceTestFactory.createPostgresWithName("sv" + ns.shortPrefix(), ns);
+    final var schema =
+        DatabaseSchemaTestFactory.createSimpleWithName("sc" + ns.shortPrefix(), ns, service);
+    final var table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    final var testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("atomicIncident"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    final var status =
+        client
+            .testCaseResolutionStatuses()
+            .create(
+                new CreateTestCaseResolutionStatus()
+                    .withTestCaseReference(testCase.getFullyQualifiedName())
+                    .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New));
+    final var repository = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    final Runnable delete =
+        () -> {
+          if (bulk) {
+            repository.bulkHardDeleteSubtree(List.of(testCase.getId()), "admin");
+          } else {
+            repository.delete("admin", testCase.getId(), true, true);
+          }
+        };
+    if ("failure".equals(outcome)) {
+      try (var failure =
+          new SqlFailureProbe(
+              Entity.getJdbi(),
+              "delete from test_case",
+              () -> new IllegalStateException("Injected test-case delete failure"))) {
+        assertThrows(RuntimeException.class, delete::run);
+        assertTrue(failure.injected());
+      }
+    } else if ("rollback".equals(outcome)) {
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              repository.executeInTransaction(
+                  () -> {
+                    delete.run();
+                    throw new IllegalStateException("Roll back test-case deletion");
+                  }));
+    } else {
+      delete.run();
+    }
+    final var async = AsyncService.getInstance();
+    Awaitility.await()
+        .during(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(30))
+        .until(
+            () ->
+                async.getOperationQueuedCount(AsyncService.DatabaseOperation.TEST_CASE_CLEANUP) == 0
+                    && async.getOperationActiveCount(
+                            AsyncService.DatabaseOperation.TEST_CASE_CLEANUP)
+                        == 0);
+    final int expected = "commit".equals(outcome) ? 0 : 1;
+    assertEquals(expected, rowCount("test_case", testCase.getId()));
+    assertEquals(expected, rowCount("test_case_resolution_status_time_series", status.getId()));
+  }
+
+  private int rowCount(String table, UUID id) {
+    return Entity.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT count(*) FROM " + table + " WHERE id = :id")
+                    .bind("id", id.toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   private void assertDeleted(final Chart chart) {

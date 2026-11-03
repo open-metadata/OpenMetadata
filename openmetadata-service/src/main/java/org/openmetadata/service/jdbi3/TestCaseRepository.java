@@ -1310,34 +1310,23 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  protected List<CollectionDAO.EntityRelationshipRecord> prepareChildrenForHardDeleteCascade(
-      UUID parentId, List<CollectionDAO.EntityRelationshipRecord> children, String updatedBy) {
-    scheduleResolutionStatusCleanup(
-        children.stream()
-            .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getType()))
-            .map(CollectionDAO.EntityRelationshipRecord::getId)
-            .distinct()
-            .toList());
-    return children;
-  }
-
-  @Override
-  protected List<CollectionDAO.EntityRelationshipObject> prepareChildrenForHardDeleteCascade(
-      List<TestCase> parents,
-      List<CollectionDAO.EntityRelationshipObject> children,
-      String updatedBy) {
-    scheduleResolutionStatusCleanup(
-        children.stream()
+  protected Runnable preparePostDeleteCleanup(List<TestCase> testCases) {
+    final List<String> ids =
+        testCases.stream().map(testCase -> testCase.getId().toString()).toList();
+    final List<UUID> childIds =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(ids, List.of(Relationship.PARENT_OF.ordinal()), ALL)
+            .stream()
             .filter(child -> Entity.TEST_CASE.equals(child.getFromEntity()))
             .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getToEntity()))
             .map(child -> UUID.fromString(child.getToId()))
             .distinct()
-            .toList());
-    return children;
+            .toList();
+    return () -> scheduleResolutionStatusCleanup(childIds);
   }
 
   private void scheduleResolutionStatusCleanup(List<UUID> childIds) {
-    // Reuse the cascade's child snapshot before relationship cleanup, once per batch.
     if (!nullOrEmpty(childIds)) {
       AsyncService.getInstance()
           .executeDatabaseTask(
