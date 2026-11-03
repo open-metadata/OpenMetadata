@@ -18,9 +18,9 @@ import {
   Page,
   TestInfo,
 } from '@playwright/test';
-import { ACTION_TIMEOUT } from '../constant/common';
 import { Ontology } from '../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../src/generated/entity/data/ontologyConcept';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { UserClass } from '../support/user/UserClass';

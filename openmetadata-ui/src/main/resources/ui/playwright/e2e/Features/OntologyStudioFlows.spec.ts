@@ -13,11 +13,12 @@
 
 import { APIRequestContext, Browser, Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
+import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
 import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
-import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { expect, test } from '../../support/fixtures/isolatedUser';
+import { UserClass } from '../../support/user/UserClass';
 import { okJson } from '../../utils/apiResponse';
 import {
   clickIgnoringToasts,
@@ -27,18 +28,17 @@ import {
 import {
   attachStudioShot,
   clickGraphNode,
-  createUserWithRoles,
-  openPageAs,
   createFlowConcept,
   createFlowOntology,
+  createUserWithRoles,
   findEmptyCanvasPoint,
   openOntologyInStudio,
+  openPageAs,
   readNodePositions,
   removeFlowOntologies,
   STUDIO_PATH,
 } from '../../utils/ontologyStudio';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
-import { UserClass } from '../../support/user/UserClass';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
