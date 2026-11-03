@@ -88,6 +88,7 @@ import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../generated/entity/policies/policy';
 import { PageType } from '../../generated/system/ui/page';
 import { Style } from '../../generated/type/tagLabel';
 import { useIsAiMode } from '../../hooks/useAppMode';
@@ -111,6 +112,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { getPrioritizedEditPermission } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -295,7 +297,8 @@ const TagPage = () => {
           EditOwners:
             isEditable && (tagCanEditAll || tagPermissions.EditOwners),
           EditDomains:
-            isEditable && (tagCanEditAll || tagPermissions.EditDomains),
+            isEditable &&
+            getPrioritizedEditPermission(tagPermissions, Operation.EditDomains),
           EditAll: isEditable && tagCanEditAll,
         },
       };

@@ -520,5 +520,22 @@ describe('TagPage', () => {
         );
       });
     });
+
+    it('keeps an explicit EditDomains deny on an enabled tag with EditAll', async () => {
+      setMockTagPermissions({ EditAll: true, EditDomains: false });
+      (getTagByFqn as jest.Mock).mockResolvedValueOnce({
+        id: 'tag-id',
+        name: 'NonSensitive',
+        fullyQualifiedName: 'PII.NonSensitive',
+      });
+
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(mockGenericProvider).toHaveBeenLastCalledWith(
+          expect.objectContaining({ EditAll: true, EditDomains: false })
+        );
+      });
+    });
   });
 });
