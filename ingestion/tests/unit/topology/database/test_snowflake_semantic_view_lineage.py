@@ -71,6 +71,7 @@ def test_extract_column_refs_returns_unqualified_names_without_a_table():
     # cast targets, path steps and exponents are not columns
     assert extract_column_refs("amount::NUMBER(10, 2) * 1e5") == [(None, "amount")]
     assert extract_column_refs("payload:region::string") == [(None, "payload")]
+    assert extract_column_refs("src:customer.name[0]::string") == [(None, "src")]
 
 
 # Snowflake's normal form: each object's expression is relative to its own logical table.

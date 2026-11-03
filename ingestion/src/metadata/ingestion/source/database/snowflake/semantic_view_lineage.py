@@ -67,8 +67,11 @@ _COLUMN_REF_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))+")
 _SEGMENT_RE = re.compile(_IDENTIFIER)
 # A function name with its opening parenthesis, such as ``SUM(``.
 _FUNCTION_HEAD_RE = re.compile(rf"(?:{_IDENTIFIER})\s*\(")
-# A cast target (``::VARCHAR``) or a semi-structured path step (``payload:key``).
-_CAST_OR_PATH_RE = re.compile(rf"::?\s*(?:{_IDENTIFIER})(?:\s*\([^)]*\))?")
+# A cast target (``::NUMBER(10, 2)``) or a semi-structured path (``payload:a.b[0]``).
+_CAST_OR_PATH_RE = re.compile(
+    rf"::\s*(?:{_IDENTIFIER})(?:\s*\([^)]*\))?"
+    rf"|:\s*(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER})|\[[^\]]*\])*"
+)
 # A string literal. Double quotes delimit identifiers in Snowflake, not strings.
 _STRING_LITERAL_RE = re.compile(r"'(?:[^']|'')*'")
 _MAX_RESOLUTION_DEPTH = 5
