@@ -56,7 +56,7 @@ const skipDeleted = async <T>(load: () => Promise<T>) => {
   }
 };
 
-const loadOntologyStudioModel = async (
+const loadWorkingModel = async (
   ontology: Ontology,
   signal: AbortSignal,
   consume?: (count: number) => void
@@ -129,6 +129,32 @@ const loadReleaseModel = async (
   return { ontology, axioms, concepts, properties };
 };
 
+const isForbidden = (error: unknown) =>
+  isAxiosError(error) && error.response?.status === 403;
+
+/**
+ * Working definitions are readable only with edit rights on the ontology. A reader without them
+ * sees what the active release published, and an ontology nothing has published yet reads empty.
+ */
+const loadOntologyStudioModel = async (
+  ontology: Ontology,
+  signal: AbortSignal,
+  consume?: (count: number) => void
+): Promise<OntologyStudioModel> => {
+  try {
+    return await loadWorkingModel(ontology, signal, consume);
+  } catch (error) {
+    if (!isForbidden(error)) {
+      throw error;
+    }
+    const releaseId = ontology.publicationStatus?.active?.releaseId;
+
+    return releaseId
+      ? loadReleaseModel(ontology, releaseId, signal)
+      : { ontology, axioms: [], concepts: [], properties: [] };
+  }
+};
+
 /** Checks the aggregate budget and returns the ontologies that still exist. */
 const countAggregateOntologies = async (
   ontologies: Ontology[],
@@ -147,7 +173,15 @@ const countAggregateOntologies = async (
         listOntologyProperties(params, signal),
         listOntologyAxioms(ontology.id, { limit: 1 }, signal),
       ]);
-    const pages = await skipDeleted(countPages); // NOSONAR sequential: the budget check stops further requests
+    const pages = await skipDeleted(() =>
+      countPages().catch((error: unknown) => {
+        if (isForbidden(error)) {
+          return [];
+        }
+
+        throw error;
+      })
+    ); // NOSONAR sequential: the budget check stops further requests
     if (!pages) {
       continue;
     }

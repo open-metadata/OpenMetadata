@@ -282,6 +282,63 @@ describe('all native ontology models', () => {
     expect(result.current.graph).toBeNull();
   });
 
+  describe('without edit rights on the ontology', () => {
+    const forbidden = () =>
+      new AxiosError('Forbidden', '403', undefined, undefined, {
+        status: 403,
+      } as AxiosResponse);
+    const published: Ontology = {
+      ...ontology,
+      publicationStatus: { active: { releaseId: 'release-1' } },
+    } as Ontology;
+
+    it('reads the active release when the working definitions are refused', async () => {
+      mockListOntologyConcepts.mockRejectedValue(forbidden());
+      (
+        listOntologyReleaseMembers as jest.MockedFunction<
+          typeof listOntologyReleaseMembers
+        >
+      ).mockImplementation(async (_id, kind) => ({
+        data:
+          kind === 'CONCEPT'
+            ? [
+                {
+                  memberId: 'concept-Order',
+                  memberKind: kind,
+                  payload: concept('Order'),
+                  payloadBytes: 1,
+                  payloadDigest: 'x',
+                  releaseId: 'release-1',
+                },
+              ]
+            : [],
+        paging: { total: 0 },
+      }));
+
+      const { result } = renderHook(() => useOntologyStudioModel(published), {
+        wrapper,
+      });
+      await waitFor(() => expect(result.current.model).toBeDefined());
+
+      expect(result.current.model?.concepts.map(({ name }) => name)).toEqual([
+        'Order',
+      ]);
+      expect(result.current.isError).toBe(false);
+    });
+
+    it('reads an unpublished ontology as empty instead of failing', async () => {
+      mockListOntologyConcepts.mockRejectedValue(forbidden());
+
+      const { result } = renderHook(() => useOntologyStudioModel(ontology), {
+        wrapper,
+      });
+      await waitFor(() => expect(result.current.model).toBeDefined());
+
+      expect(result.current.model?.concepts).toEqual([]);
+      expect(result.current.isError).toBe(false);
+    });
+  });
+
   it('never returns a partial graph when one model fails', async () => {
     mockListOntologyAxioms.mockRejectedValue(new Error('Forbidden'));
     const { result } = renderHook(
