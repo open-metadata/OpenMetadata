@@ -602,7 +602,7 @@ const OntologyConceptInspector = ({
     ) : null;
 
   const renderBoundCount = () =>
-    bindings.data ? (
+    bindings.data && properties.length > 0 ? (
       <Typography color="secondary" size="text-xs">
         {t('label.ontology-properties-bound', {
           count: properties.filter(({ property }) =>
@@ -1004,6 +1004,7 @@ const OntologyConceptInspector = ({
         <OntologyConceptAssets
           canEdit={canEditBindings}
           conceptId={concept.id}
+          conceptName={getEntityName(concept)}
           key={concept.id}
           presentation={
             isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
@@ -1158,6 +1159,7 @@ const OntologyConceptInspector = ({
         <OntologyConceptAssets
           canEdit={canEditBindings}
           conceptId={concept.id}
+          conceptName={getEntityName(concept)}
           key={concept.id}
           presentation={
             isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }

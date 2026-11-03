@@ -942,7 +942,7 @@ describe('OntologyConceptInspector in AI mode', () => {
     expect(deleteOntologyConceptBinding).not.toHaveBeenCalled();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'label.remove' })
+      await screen.findByRole('button', { name: 'label.unlink' })
     );
     await waitFor(() =>
       expect(showSuccessToast).toHaveBeenCalledWith('label.saved')
