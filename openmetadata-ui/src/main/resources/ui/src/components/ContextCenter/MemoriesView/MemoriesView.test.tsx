@@ -158,6 +158,71 @@ describe('MemoriesView', () => {
     expect(screen.queryByText(name)).not.toBeInTheDocument();
   });
 
+  /** Reconciliation edits a memory as its app bot: the card still leads with the owner. */
+  it('names the owner first and whoever changed the memory last second', () => {
+    useApplicationStore.setState({
+      userProfilePics: {
+        MemoryReconciliationApplicationBot: {
+          id: 'bot',
+          name: 'MemoryReconciliationApplicationBot',
+          displayName: 'Memory Reconciliation Agent',
+          email: '',
+        },
+      },
+    });
+
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            owners: [
+              {
+                id: 'tomas-id',
+                type: 'user',
+                name: 'tomas',
+                displayName: 'Tomas Montiel',
+              },
+            ],
+            updatedBy: 'MemoryReconciliationApplicationBot',
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-owner')).toHaveTextContent(
+      'Tomas Montiel'
+    );
+    expect(screen.getByTestId('memory-updated-by')).toHaveTextContent(
+      'label.updated-by Memory Reconciliation Agent'
+    );
+  });
+
+  it('shows no updated-by when the owner changed the memory last', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            owners: [
+              {
+                id: 'alice-id',
+                type: 'user',
+                name: 'alice',
+                displayName: 'Alice Smith',
+              },
+            ],
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-owner')).toHaveTextContent('Alice Smith');
+    expect(screen.queryByTestId('memory-updated-by')).not.toBeInTheDocument();
+  });
+
   it('shows the raw author name until the profile is cached', () => {
     render(<MemoriesView data={[mockMemories[0]]} isLoading={false} />);
 

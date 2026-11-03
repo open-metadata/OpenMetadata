@@ -126,7 +126,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       Page updated = JsonUtils.deepCopy(current, Page.class);
       updated.setProcessingStatus(status);
       updated.setProcessingError(error);
-      pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
+      pageRepository.update(null, current, updated, lastEditorOf(current));
     }
   }
 
@@ -168,8 +168,16 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       updated.setExtractionStats(stats);
       updated.setProcessingStatus(PageProcessingStatus.Processed);
       updated.setProcessingError(null);
-      pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
+      pageRepository.update(null, current, updated, lastEditorOf(current));
     }
+  }
+
+  /**
+   * Bookkeeping, not an edit: the article keeps the person who last changed it
+   * (ADR:2026-11-03-extraction-bookkeeping-keeps-the-sources-last-editor).
+   */
+  private static String lastEditorOf(Page page) {
+    return page.getUpdatedBy() == null ? Entity.ADMIN_USER_NAME : page.getUpdatedBy();
   }
 
   @Override

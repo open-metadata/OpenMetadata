@@ -195,6 +195,19 @@ class PageContextProcessingEngineTest {
     assertEquals("LLM exploded", stamped.getProcessingError());
   }
 
+  /** Extraction bookkeeping must not make the article look last edited by admin. */
+  @Test
+  void extractionKeepsTheArticlesLastEditor() {
+    pageReturns(page("body", "stale-hash").withUpdatedBy("tomas"));
+    when(extractor.derive(eq("body"), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenThrow(new LLMCompletionException("LLM exploded"));
+
+    assertThrows(LLMCompletionException.class, () -> engine().runQueued(pageId));
+
+    verify(pageRepository, atLeastOnce()).update(isNull(), any(), any(), eq("tomas"));
+    verify(pageRepository, never()).update(any(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+  }
+
   private List<Page> capturedUpdates() {
     ArgumentCaptor<Page> captor = ArgumentCaptor.forClass(Page.class);
     verify(pageRepository, atLeastOnce())

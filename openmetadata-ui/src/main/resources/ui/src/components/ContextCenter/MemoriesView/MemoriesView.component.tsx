@@ -121,28 +121,50 @@ const MemoryRowSkeleton: FC = () => (
   </Box>
 );
 
-const MemoryRowHeader: FC<{ updatedBy?: string; updatedAt?: number }> = ({
-  updatedBy,
-  updatedAt,
-}) => (
-  <Box align="center" gap={2} wrap="wrap">
-    {updatedBy && (
-      <Typography className="tw:text-secondary" size="text-sm">
-        {updatedBy}
-      </Typography>
-    )}
-    {updatedAt !== undefined && (
-      <>
-        <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
-          &middot;
-        </span>
-        <Typography className="tw:text-quaternary" size="text-xs">
-          {getShortRelativeTime(updatedAt)}
+/** The owner leads; whoever changed the memory last follows when that is someone else. */
+const MemoryRowHeader: FC<{
+  owner?: string;
+  updatedBy?: string;
+  updatedAt?: number;
+}> = ({ owner, updatedBy, updatedAt }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" gap={2} wrap="wrap">
+      {(owner ?? updatedBy) && (
+        <Typography
+          className="tw:text-secondary"
+          data-testid="memory-owner"
+          size="text-sm">
+          {owner ?? updatedBy}
         </Typography>
-      </>
-    )}
-  </Box>
-);
+      )}
+      {owner && updatedBy && (
+        <>
+          <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
+            &middot;
+          </span>
+          <Typography
+            className="tw:text-quaternary"
+            data-testid="memory-updated-by"
+            size="text-xs">
+            {`${t('label.updated-by')} ${updatedBy}`}
+          </Typography>
+        </>
+      )}
+      {updatedAt !== undefined && (
+        <>
+          <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
+            &middot;
+          </span>
+          <Typography className="tw:text-quaternary" size="text-xs">
+            {getShortRelativeTime(updatedAt)}
+          </Typography>
+        </>
+      )}
+    </Box>
+  );
+};
 
 interface MemoryLinkedEntitiesProps {
   linkedEntities: EntityReference[];
@@ -371,6 +393,27 @@ const EntityStatusReason: FC<{ memory: ContextMemory }> = ({ memory }) => {
   );
 };
 
+/**
+ * Who a memory card names: its owner, and whoever changed it last when that is someone else. A
+ * memory with no owner names its last editor, as before
+ * (ADR:2026-11-03-extraction-bookkeeping-keeps-the-sources-last-editor).
+ */
+const useMemoryAuthors = (memory: ContextMemory) => {
+  const updaterDisplayName = useApplicationStore(
+    (state) => state.userProfilePics[memory.updatedBy ?? '']?.displayName
+  );
+  const updater = updaterDisplayName || memory.updatedBy;
+  const owner = memory.owners?.[0];
+
+  return owner
+    ? {
+        avatar: owner.name,
+        owner: getEntityName(owner),
+        updatedBy: owner.name === memory.updatedBy ? undefined : updater,
+      }
+    : { avatar: memory.updatedBy, owner: undefined, updatedBy: updater };
+};
+
 const MemoryRow: FC<MemoryRowProps> = ({
   currentUserName,
   isAdminUser,
@@ -381,9 +424,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
   onEditMemory,
   onViewMemory,
 }) => {
-  const authorDisplayName = useApplicationStore(
-    (state) => state.userProfilePics[memory.updatedBy ?? '']?.displayName
-  );
+  const authors = useMemoryAuthors(memory);
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
@@ -432,9 +473,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
       data-testid={`memory-row-${memory.id}`}
       gap={3}
       onClick={() => onViewMemory?.(memory)}>
-      {memory?.updatedBy && (
+      {authors.avatar && (
         <div className="tw:shrink-0 tw:mt-0.5">
-          <ProfilePicture name={memory.updatedBy} />
+          <ProfilePicture name={authors.avatar} />
         </div>
       )}
       <Box
@@ -447,8 +488,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
           direction="col"
           gap={1}>
           <MemoryRowHeader
+            owner={authors.owner}
             updatedAt={memory.updatedAt}
-            updatedBy={authorDisplayName || memory.updatedBy}
+            updatedBy={authors.updatedBy}
           />
 
           <Box align="center" gap={2} wrap="wrap">
