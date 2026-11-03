@@ -3281,6 +3281,41 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withRoles(List.of(dataStewardRole().getId())));
   }
 
+  @Test
+  void test_logout_endsTheTokenThatSignedTheRequestNotTheBodyToken(TestNamespace ns) {
+    String userName = ns.shortPrefix("logout");
+    User user =
+        createEntity(new CreateUser().withName(userName).withEmail(userName + "@example.com"));
+    String signingToken = userToken(user);
+    String otherToken = userToken(user);
+
+    clientWithToken(signingToken)
+        .getHttpClient()
+        .executeForString(HttpMethod.POST, "/v1/users/logout", Map.of("token", otherToken));
+
+    assertEquals(401, loggedInUserStatus(signingToken));
+    assertEquals(200, loggedInUserStatus(otherToken));
+  }
+
+  /** A sessionless access token as a password sign-in issues it. */
+  private static String userToken(User user) {
+    return JWTTokenGenerator.getInstance()
+        .generateJWTToken(
+            user.getName(), Set.of(), false, user.getEmail(), 3600, false, ServiceTokenType.OM_USER)
+        .getJWTToken();
+  }
+
+  private static int loggedInUserStatus(String token) {
+    try {
+      clientWithToken(token)
+          .getHttpClient()
+          .execute(HttpMethod.GET, "/v1/users/loggedInUser", null, User.class);
+      return 200;
+    } catch (OpenMetadataException e) {
+      return e.getStatusCode();
+    }
+  }
+
   private void assertPatchForbidden(OpenMetadataClient client, User target, ArrayNode patch) {
     OpenMetadataException exception =
         assertThrows(
