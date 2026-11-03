@@ -81,6 +81,7 @@ import {
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
   LayoutType,
@@ -730,7 +731,7 @@ const OntologyGraphView = ({
     );
   }
   if (isLoading || !model || !graph) {
-    return <Typography role="status">{t('label.loading')}</Typography>;
+    return <Loader />;
   }
 
   const selectNode = ({ id }: { id: string }) => setSelectedId(id);
@@ -956,10 +957,7 @@ const OntologyGraphView = ({
           aria-hidden="true"
           className={isAiMode ? AI_GRAPH_BACKDROP_CLASS : GRAPH_BACKDROP_CLASS}
         />
-        <Suspense
-          fallback={
-            <Typography role="status">{t('label.loading')}</Typography>
-          }>
+        <Suspense fallback={<Loader />}>
           <OntologyGraphG6
             keepCanvasOnAdd
             studioMode

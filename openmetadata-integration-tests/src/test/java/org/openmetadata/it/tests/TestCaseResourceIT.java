@@ -72,6 +72,7 @@ import org.openmetadata.schema.tests.type.DimensionValue;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
 import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -948,6 +949,93 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     TestCase restored = getEntity(testCaseId);
     assertEquals(testCase.getName(), restored.getName());
+  }
+
+  @Test
+  void test_testCaseSoftDeleteAndRestoreWithIncident_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("soft_delete_incident_restore"))
+            .forTable(createTable(ns))
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    addResolutionStatusChild(client, testCase);
+
+    String testCaseId = testCase.getId().toString();
+    softDeleteTestCaseRecursively(client, testCaseId);
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+    assertTrue(
+        getEntityIncludeDeleted(testCaseId).getDeleted(),
+        "Test case must be soft-deleted, not gone");
+
+    restoreEntity(testCaseId);
+
+    // include=all returns the entity regardless of deleted state, so the deleted flag is
+    // observable on the restored entity.
+    TestCase restored = client.testCases().get(testCaseId, null, "all");
+    assertEquals(testCase.getName(), restored.getName());
+    assertFalse(restored.getDeleted(), "Restored test case must not be marked deleted");
+  }
+
+  @Test
+  void test_testCaseCreateOrUpdateOnSoftDeletedWithIncident_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTestCase createRequest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("soft_delete_incident_upsert"))
+            .forTable(createTable(ns))
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    TestCase testCase = client.testCases().create(createRequest);
+    addResolutionStatusChild(client, testCase);
+
+    String testCaseId = testCase.getId().toString();
+    softDeleteTestCaseRecursively(client, testCaseId);
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+    assertTrue(
+        getEntityIncludeDeleted(testCaseId).getDeleted(),
+        "Test case must be soft-deleted, not gone");
+
+    // PUT create-or-update on the soft-deleted entity funnels through restoreEntity, so it
+    // exercises the same restoreChildren PARENT_OF walk as the /restore endpoint.
+    TestCase updated = updateEntity(testCaseId, createRequest);
+    assertFalse(updated.getDeleted(), "Upsert must restore the soft-deleted test case");
+
+    TestCase restored = client.testCases().get(testCaseId, null, "all");
+    assertEquals(testCase.getName(), restored.getName());
+    assertFalse(restored.getDeleted(), "Restored test case must not be marked deleted");
+  }
+
+  /**
+   * Creates a resolution-status record so the test case has the TestCase --PARENT_OF-->
+   * testCaseResolutionStatus child the regression walks over. The record and its PARENT_OF edge
+   * are written synchronously in one transaction (persistRecord → storeRelationship), unlike the
+   * incident-task mirror records, which are written asynchronously and best-effort by the incident
+   * workflow. Asserting the edge count guards against a vacuous pass: without this child, neither
+   * restore test reaches the time-series branch that the regression is about.
+   */
+  private void addResolutionStatusChild(OpenMetadataClient client, TestCase testCase) {
+    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    TestCaseResolutionStatus status = client.testCaseResolutionStatuses().create(newStatus);
+    assertEquals(
+        1,
+        countRelationshipsTo(status.getId()),
+        "PARENT_OF edge to the resolution-status child must exist before soft delete");
+  }
+
+  /**
+   * Soft-deletes a test case that has incident history. Its PARENT_OF child makes the entity
+   * non-empty, so DELETE without recursive=true is rejected with "testCase is not empty".
+   */
+  private void softDeleteTestCaseRecursively(OpenMetadataClient client, String testCaseId) {
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    client.testCases().delete(testCaseId, params);
   }
 
   @Test

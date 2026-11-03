@@ -20,6 +20,7 @@ import {
   getMetricHierarchy,
   getMetricHierarchyContext,
   getMetricObservability,
+  getMetricParentIds,
   getMetricSearchPaths,
   removeAssetsFromMetric,
 } from './metricsAPI';
@@ -43,6 +44,13 @@ const assets: EntityReference[] = [
     type: 'table',
   },
 ];
+
+const searchHits = (docs: object[]) => ({
+  hits: {
+    hits: docs.map((doc) => ({ _source: doc })),
+    total: { value: docs.length },
+  },
+});
 
 describe('Metric hierarchy, assets, and observability API contracts', () => {
   beforeEach(() => {
@@ -178,16 +186,14 @@ describe('Metric hierarchy, assets, and observability API contracts', () => {
   });
 
   it('collects search matches and walks their parents up to the root', async () => {
-    const hits = (docs: object[]) => ({
-      hits: {
-        hits: docs.map((doc) => ({ _source: doc })),
-        total: { value: docs.length },
-      },
-    });
     (searchQuery as jest.Mock)
-      .mockResolvedValueOnce(hits([{ id: 'canada', parent: { id: 'na' } }]))
-      .mockResolvedValueOnce(hits([{ id: 'na', parent: { id: 'total' } }]))
-      .mockResolvedValueOnce(hits([{ id: 'total' }]));
+      .mockResolvedValueOnce(
+        searchHits([{ id: 'canada', parent: { id: 'na' } }])
+      )
+      .mockResolvedValueOnce(
+        searchHits([{ id: 'na', parent: { id: 'total' } }])
+      )
+      .mockResolvedValueOnce(searchHits([{ id: 'total' }]));
 
     const { matchIds, ancestorIds, complete } = await getMetricSearchPaths(
       'canada'
@@ -221,5 +227,18 @@ describe('Metric hierarchy, assets, and observability API contracts', () => {
     await expect(getMetricSearchPaths('zzz')).resolves.toMatchObject({
       complete: false,
     });
+  });
+
+  it('walks parent links up for metrics that are not loaded, one search per level', async () => {
+    (searchQuery as jest.Mock)
+      .mockResolvedValueOnce(
+        searchHits([{ id: 'na', parent: { id: 'total' } }])
+      )
+      .mockResolvedValueOnce(searchHits([{ id: 'total' }]));
+
+    const parentIds = await getMetricParentIds(['na']);
+
+    expect([...parentIds]).toEqual([['na', 'total']]);
+    expect(searchQuery).toHaveBeenCalledTimes(2);
   });
 });

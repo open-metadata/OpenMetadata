@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { Profiler, ReactNode } from 'react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -1212,6 +1218,25 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('all-ontologies-load-error')).toBeVisible();
     expect(mockOntologyExplorer).not.toHaveBeenCalled();
     expect(screen.getByTestId('ontology-publication-trigger')).toBeDisabled();
+  });
+
+  it('keeps Reload beside the ontology shortcuts when only the aggregate graph fails', async () => {
+    (listOntologyConcepts as jest.Mock).mockRejectedValueOnce(
+      new Error('aggregate failed')
+    );
+    renderNativeStudio('');
+
+    const error = await screen.findByTestId('all-ontologies-load-error');
+
+    expect(
+      within(error).getByRole('button', { name: 'Native sales' })
+    ).toBeVisible();
+
+    fireEvent.click(
+      within(error).getByRole('button', { name: 'label.reload' })
+    );
+
+    expect(await screen.findByTestId('all-ontologies-graph')).toBeVisible();
   });
 
   it('defaults to a read-only native graph and opens the owning ontology', async () => {

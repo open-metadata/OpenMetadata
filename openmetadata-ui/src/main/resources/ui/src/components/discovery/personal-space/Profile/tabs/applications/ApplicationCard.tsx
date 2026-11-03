@@ -95,7 +95,7 @@ const ApplicationCard: FC<ApplicationCardProps> = ({
           onClick();
         }
       }}>
-      <Card.Content>
+      <Card.Content className="tw:px-3">
         <Box align="start" direction="row" gap={4}>
           <AppIconTile appName={appName} />
           <Box className="tw:min-w-0" direction="col" gap={1}>
