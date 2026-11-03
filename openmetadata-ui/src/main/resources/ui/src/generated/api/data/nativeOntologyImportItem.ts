@@ -23,7 +23,8 @@ export interface NativeOntologyImportItem {
      */
     detail?: string;
     /**
-     * Stable within one preview; identifies the item in the list.
+     * Derived from what the item states, so it is the same in every preview of one source and a
+     * selection survives a second preview.
      */
     id: string;
     /**

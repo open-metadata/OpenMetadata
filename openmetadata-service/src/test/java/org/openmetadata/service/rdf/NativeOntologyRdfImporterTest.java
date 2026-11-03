@@ -731,7 +731,15 @@ class NativeOntologyRdfImporterTest {
     final var summary = importer.summarize(source);
     final var preview = importer.preview(source, emptySnapshot(root()));
 
-    assertEquals(summary, preview.getSummary());
+    assertEquals(summary.getCounts(), preview.getSummary().getCounts());
+    assertEquals(summary.getDetectedFormat(), preview.getSummary().getDetectedFormat());
+    assertEquals(summary.getOntologyLabel(), preview.getSummary().getOntologyLabel());
+    assertEquals(
+        summary.getItems().stream().map(item -> item.getId() + item.getStatus()).toList(),
+        preview.getSummary().getItems().stream()
+            .map(item -> item.getId() + item.getStatus())
+            .toList());
+    assertTrue(summary.getItems().stream().allMatch(item -> item.getOperationId() == null));
     final var counts = summary.getCounts();
     assertEquals(3, counts.getNewConcepts());
     assertEquals(0, counts.getUpdatedConcepts());

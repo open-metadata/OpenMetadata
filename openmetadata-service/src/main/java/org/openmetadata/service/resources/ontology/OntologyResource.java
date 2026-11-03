@@ -59,6 +59,7 @@ import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
+import org.openmetadata.schema.api.data.OntologyReleaseExportOptions;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
@@ -102,6 +103,8 @@ import org.openmetadata.service.ontology.OntologyReleaseHistory;
 import org.openmetadata.service.ontology.OntologyReleaseQuery;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
+import org.openmetadata.service.rdf.OntologyExportFormat;
+import org.openmetadata.service.rdf.OntologyReleaseExporter;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -317,18 +320,35 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @PathParam("id") final UUID id,
       @PathParam("packId") final String packId,
       @NotNull @Valid final PreviewNativeOntologyPack request) {
+    return reviewLibraryPack(uriInfo, securityContext, id, packId, request).getChangeSet();
+  }
+
+  @POST
+  @Path("/{id}/library/{packId}/review")
+  @Operation(
+      operationId = "reviewNativeOntologyPack",
+      summary = "Review verified library modules item by item before they install",
+      description =
+          "The same dry run as the pack preview, with the status of every definition the modules state and any disjointness clash the install would create. Nothing is persisted.")
+  public NativeOntologyImportPreview reviewLibraryPack(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("packId") final String packId,
+      @NotNull @Valid final PreviewNativeOntologyPack request) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
     final var selected =
         packContentLoader.loadSelected(packCatalog, packId, request.getModuleIds());
-    return previewImport(
+    final NativeOntologyImportPreview preview =
+        previewImport(
             uriInfo,
             securityContext,
             id,
             new PreviewNativeOntologyImport()
                 .withFormat(NativeOntologyImportFormat.fromValue(selected.format()))
-                .withData(selected.body()))
-        .getChangeSet()
-        .withSourcePack(OntologyPackInstallations.sourcePack(selected));
+                .withData(selected.body()));
+    preview.getChangeSet().withSourcePack(OntologyPackInstallations.sourcePack(selected));
+    return preview;
   }
 
   @POST
@@ -513,6 +533,50 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     } catch (AuthorizationException denied) {
       return false;
     }
+  }
+
+  @GET
+  @Path("/{id}/export")
+  @Produces({
+    "text/turtle",
+    "application/rdf+xml",
+    "application/n-triples",
+    "application/ld+json",
+    "text/csv",
+    MediaType.APPLICATION_JSON
+  })
+  @Operation(
+      operationId = "exportOntologyDraft",
+      summary = "Export the unpublished working content of an ontology",
+      description =
+          "Writes what the ontology holds now, including changes no release has captured, in the same formats as a release export. Nothing is captured or stored, so the release history does not change. Bound asset links and the SHACL gate apply to releases only.")
+  public Response exportDraft(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @QueryParam("format") final String format,
+      @QueryParam("includeInverses") @DefaultValue("true") final boolean includeInverses) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final OntologyExportFormat target = OntologyExportFormat.parse(format);
+    final OntologyReleaseExportOptions options =
+        new OntologyReleaseExportOptions().withIncludeInverses(includeInverses);
+    final String content =
+        releaseCapture
+            .snapshot()
+            .read(
+                id,
+                definitions ->
+                    OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
+                working -> {
+                  final var draft = releaseCapture.draftContent(working);
+                  return OntologyReleaseExporter.exportDraft(
+                      draft.release(), draft.members(), target, options);
+                });
+    return Response.ok(content, target.mediaType())
+        .header(
+            "Content-Disposition",
+            "attachment; filename=\"ontology-draft-%s.%s\"".formatted(id, target.extension()))
+        .build();
   }
 
   @GET

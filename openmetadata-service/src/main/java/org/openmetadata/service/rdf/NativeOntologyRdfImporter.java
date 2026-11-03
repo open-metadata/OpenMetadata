@@ -40,6 +40,7 @@ import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
+import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -53,6 +54,8 @@ import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyProfileViolation;
 import org.openmetadata.schema.type.OntologyProfileViolationSeverity;
 import org.openmetadata.schema.type.OntologyPropertyKind;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -73,6 +76,17 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public final class NativeOntologyRdfImporter {
   private static final int MAX_CHANGED_DEFINITIONS = 1000;
   private static final int MAX_NAME_LENGTH = 64;
+  private static final int ITEM_DIGEST_LENGTH = 16;
+  private static final OntologyWorkingSnapshot.Snapshot PREVIEW_TARGET =
+      new OntologyWorkingSnapshot.Snapshot(
+          new OntologyState().withWorkingRevision(0L),
+          List.of(
+              new OntologyWorkingSnapshot.Entry(
+                  MemberKind.ONTOLOGY,
+                  new Ontology()
+                      .withId(new UUID(0, 0))
+                      .withName("preview")
+                      .withFullyQualifiedName("preview"))));
   private static final String FORMAT_REQUIRED =
       "Specify format as one of turtle, rdfxml, ntriples, jsonld, or csv";
 
@@ -125,16 +139,25 @@ public final class NativeOntologyRdfImporter {
     final Outcomes outcomes = reject(classify(source.document(), stored), stored);
     final Plan plan = new Plan(stored, working, SourceFamily.of(source.format()));
     final CreateOntologyChangeSet changeSet = plan.of(outcomes);
+    final List<NativeOntologyImportItem> items = plan.itemsWithClashes();
     return new NativeOntologyImportPreview()
-        .withSummary(summary(source.format(), source.document().header(), outcomes))
-        .withChangeSet(changeSet)
-        .withItems(plan.itemsWithClashes());
+        .withSummary(
+            summary(source.format(), source.document().header(), outcomes).withItems(items))
+        .withChangeSet(changeSet);
   }
 
+  /**
+   * Counts and items against an empty target that does not exist yet. The items carry no
+   * operation, because no change set exists until the ontology does.
+   */
   public NativeOntologyImportSummary summarize(final Source source) {
     requireApplicable(source.document(), Stored.EMPTY, source.propertyRows());
-    return summary(
-        source.format(), source.document().header(), classify(source.document(), Stored.EMPTY));
+    final Outcomes outcomes = reject(classify(source.document(), Stored.EMPTY), Stored.EMPTY);
+    final Plan plan = new Plan(Stored.EMPTY, PREVIEW_TARGET, SourceFamily.of(source.format()));
+    plan.of(outcomes);
+    final List<NativeOntologyImportItem> items = plan.itemsWithClashes();
+    items.forEach(item -> item.setOperationId(null));
+    return summary(source.format(), source.document().header(), outcomes).withItems(items);
   }
 
   public CreateOntologyChangeSet reconcile(
@@ -497,6 +520,7 @@ public final class NativeOntologyRdfImporter {
     private final Set<String> propertyNames;
     private final Set<String> axiomNames;
     private final Map<String, String> labels = new HashMap<>();
+    private final Map<String, Integer> idCounts = new HashMap<>();
     private final List<OntologyChangeOperation> operations = new ArrayList<>();
     private final List<NativeOntologyImportItem> items = new ArrayList<>();
 
@@ -725,12 +749,18 @@ public final class NativeOntologyRdfImporter {
       }
     }
 
+    /** Repeats of one id get a numbered suffix, so every id in a preview is unique. */
+    private String itemId(final String base) {
+      final int seen = idCounts.merge(base, 1, Integer::sum) - 1;
+      return seen == 0 ? base : base + "#" + seen;
+    }
+
     private NativeOntologyImportItem item(
         final NativeOntologyImportItemKind kind,
         final NativeOntologyImportItemStatus status,
         final OntologyDefinition definition) {
       return new NativeOntologyImportItem()
-          .withId(kind.value().toLowerCase(Locale.ROOT) + ":" + items.size())
+          .withId(itemId(kind.value().toLowerCase(Locale.ROOT) + ":" + iriOf(definition)))
           .withKind(kind)
           .withStatus(status)
           .withLabel(shown(definition))
@@ -742,7 +772,11 @@ public final class NativeOntologyRdfImporter {
         final OntologyAxiom axiom,
         final UUID operationId) {
       return new NativeOntologyImportItem()
-          .withId("axiom:" + items.size())
+          .withId(
+              itemId(
+                  "axiom:"
+                      + DigestUtils.sha256Hex(NativeOntologyDocument.signature(axiom))
+                          .substring(0, ITEM_DIGEST_LENGTH)))
           .withKind(axiomKind(axiom))
           .withStatus(status)
           .withLabel(sentence(axiom))

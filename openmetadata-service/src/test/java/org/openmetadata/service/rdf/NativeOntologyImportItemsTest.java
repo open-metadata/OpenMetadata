@@ -87,14 +87,14 @@ class NativeOntologyImportItemsTest {
     assertEquals(NativeOntologyImportItemStatus.NEW, byLabel.get("C is a kind of A").getStatus());
     assertEquals(
         NativeOntologyImportItemKind.RELATIONSHIP, byLabel.get("C is a kind of A").getKind());
-    assertEquals(8, preview.getItems().size());
+    assertEquals(8, preview.getSummary().getItems().size());
 
     final Set<UUID> operationIds =
         preview.getChangeSet().getOperations().stream()
             .map(OntologyChangeOperation::getId)
             .collect(Collectors.toSet());
     final Set<UUID> itemOperationIds =
-        preview.getItems().stream()
+        preview.getSummary().getItems().stream()
             .map(NativeOntologyImportItem::getOperationId)
             .filter(java.util.Objects::nonNull)
             .collect(Collectors.toSet());
@@ -104,15 +104,39 @@ class NativeOntologyImportItemsTest {
   }
 
   @Test
+  void itemIdsFollowTheContentSoASelectionSurvivesASecondPreview() {
+    final Ontology root = root();
+
+    final var first = importer.preview(read(NEXT), emptySnapshot(root));
+    final var second = importer.preview(read(NEXT), emptySnapshot(root));
+
+    final List<String> ids =
+        first.getSummary().getItems().stream().map(NativeOntologyImportItem::getId).toList();
+    assertEquals(
+        ids, second.getSummary().getItems().stream().map(NativeOntologyImportItem::getId).toList());
+    assertEquals(ids.size(), Set.copyOf(ids).size(), "every id is unique");
+    assertTrue(ids.contains("concept:https://example.org/items/C"), ids.toString());
+    assertTrue(
+        first.getSummary().getItems().stream()
+            .map(NativeOntologyImportItem::getOperationId)
+            .noneMatch(
+                second.getChangeSet().getOperations().stream()
+                        .map(OntologyChangeOperation::getId)
+                        .collect(Collectors.toSet())
+                    ::contains),
+        "operation ids are minted per preview");
+  }
+
+  @Test
   void importingTheSameFileAgainListsEveryItemAsAlreadyExists() {
     final Ontology root = root();
     final var preview = importer.preview(read(NEXT), imported(root, NEXT));
 
-    assertEquals(8, preview.getItems().size());
+    assertEquals(8, preview.getSummary().getItems().size());
     assertTrue(
-        preview.getItems().stream()
+        preview.getSummary().getItems().stream()
             .allMatch(item -> item.getStatus() == NativeOntologyImportItemStatus.ALREADY_EXISTS),
-        preview.getItems().toString());
+        preview.getSummary().getItems().toString());
     assertEquals(0, preview.getChangeSet().getOperations().size());
   }
 
@@ -129,8 +153,9 @@ class NativeOntologyImportItemsTest {
 
     assertEquals(
         List.of(NativeOntologyImportItemStatus.NEW, NativeOntologyImportItemStatus.DUPLICATE),
-        preview.getItems().stream().map(NativeOntologyImportItem::getStatus).toList());
-    assertEquals("Listed more than once in the file.", preview.getItems().get(1).getReason());
+        preview.getSummary().getItems().stream().map(NativeOntologyImportItem::getStatus).toList());
+    assertEquals(
+        "Listed more than once in the file.", preview.getSummary().getItems().get(1).getReason());
     assertEquals(1, preview.getChangeSet().getOperations().size());
     assertEquals(1, preview.getSummary().getCounts().getSkippedDefinitions());
   }
@@ -175,7 +200,7 @@ class NativeOntologyImportItemsTest {
             emptySnapshot(root()));
 
     final var kinds =
-        preview.getItems().stream()
+        preview.getSummary().getItems().stream()
             .filter(item -> item.getKind() == NativeOntologyImportItemKind.RULE)
             .map(NativeOntologyImportItem::getLabel)
             .sorted()
@@ -184,7 +209,7 @@ class NativeOntologyImportItemsTest {
     assertTrue(kinds.stream().anyMatch(label -> label.startsWith("A is disjoint with B")));
     assertEquals(
         1,
-        preview.getItems().stream()
+        preview.getSummary().getItems().stream()
             .filter(item -> item.getKind() == NativeOntologyImportItemKind.RELATIONSHIP)
             .count());
   }
@@ -229,7 +254,7 @@ class NativeOntologyImportItemsTest {
     assertEquals(1, preview.getSummary().getCounts().getNewRelations());
     assertEquals(
         List.of("Customer", "Party"),
-        preview.getItems().stream()
+        preview.getSummary().getItems().stream()
             .filter(item -> item.getKind() == NativeOntologyImportItemKind.CONCEPT)
             .map(NativeOntologyImportItem::getLabel)
             .sorted()
@@ -273,7 +298,7 @@ class NativeOntologyImportItemsTest {
             .collect(Collectors.toSet()));
     final var again = importer.preview(read(twin), imported(root, twin));
     assertTrue(
-        again.getItems().stream()
+        again.getSummary().getItems().stream()
             .allMatch(item -> item.getStatus() == NativeOntologyImportItemStatus.ALREADY_EXISTS));
   }
 
@@ -305,8 +330,8 @@ class NativeOntologyImportItemsTest {
             emptySnapshot(root()));
 
     final var warned =
-        preview.getItems().stream().filter(item -> item.getWarning() != null).toList();
-    assertFalse(warned.isEmpty(), preview.getItems().toString());
+        preview.getSummary().getItems().stream().filter(item -> item.getWarning() != null).toList();
+    assertFalse(warned.isEmpty(), preview.getSummary().getItems().toString());
     assertTrue(
         warned.stream()
             .allMatch(
@@ -330,7 +355,7 @@ class NativeOntologyImportItemsTest {
 
   private static Map<String, NativeOntologyImportItem> byLabel(
       final NativeOntologyImportPreview preview) {
-    return preview.getItems().stream()
+    return preview.getSummary().getItems().stream()
         .collect(Collectors.toMap(NativeOntologyImportItem::getLabel, item -> item));
   }
 

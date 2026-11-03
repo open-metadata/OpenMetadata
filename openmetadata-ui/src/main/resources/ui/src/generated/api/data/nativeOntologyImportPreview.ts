@@ -19,12 +19,7 @@ export interface NativeOntologyImportPreview {
      * Draft operations that bring the target to the parsed definitions.
      */
     changeSet: CreateOntologyChangeSetRequest;
-    /**
-     * Every parsed definition in the order the source lists them, each with the status applying
-     * it would give.
-     */
-    items?:  NativeOntologyImportItem[];
-    summary: NativeOntologyImportSummary;
+    summary:   NativeOntologyImportSummary;
 }
 
 /**
@@ -1246,6 +1241,72 @@ export enum ChangeSetState {
 }
 
 /**
+ * What a native ontology import would change, counted from one parse of the source. Nothing
+ * is persisted.
+ */
+export interface NativeOntologyImportSummary {
+    counts: Counts;
+    /**
+     * Format the server parsed: the requested format, or the detected one when the request
+     * omits it.
+     */
+    detectedFormat: Format;
+    /**
+     * Every parsed definition in the order the source lists them, each with the status applying
+     * it would give. On a preview against a target each NEW or UPDATE item names its change set
+     * operation; a preview against a new ontology has no operations yet.
+     */
+    items?: NativeOntologyImportItem[];
+    /**
+     * Label of the source ontology, when the source declares exactly one ontology header with a
+     * label.
+     */
+    ontologyLabel?: string;
+}
+
+/**
+ * Every parsed concept, property, and axiom is counted once as new, updated, or skipped.
+ * `newMappings` counts mappings inside new and updated concepts, so it overlaps the concept
+ * counts.
+ */
+export interface Counts {
+    newConcepts: number;
+    /**
+     * Concept mappings the target does not hold yet.
+     */
+    newMappings:   number;
+    newProperties: number;
+    /**
+     * Parsed axioms the target does not hold yet.
+     */
+    newRelations: number;
+    /**
+     * Parsed concepts and properties identical to the stored ones.
+     */
+    skippedDefinitions: number;
+    /**
+     * Parsed axioms the target already holds.
+     */
+    skippedRelations:  number;
+    updatedConcepts:   number;
+    updatedProperties: number;
+}
+
+/**
+ * Format the server parsed: the requested format, or the detected one when the request
+ * omits it.
+ *
+ * Serialization of a native ontology import source.
+ */
+export enum Format {
+    CSV = "csv",
+    Jsonld = "jsonld",
+    Ntriples = "ntriples",
+    Rdfxml = "rdfxml",
+    Turtle = "turtle",
+}
+
+/**
  * One definition an import source states, with what applying it would do to the target.
  */
 export interface NativeOntologyImportItem {
@@ -1258,7 +1319,8 @@ export interface NativeOntologyImportItem {
      */
     detail?: string;
     /**
-     * Stable within one preview; identifies the item in the list.
+     * Derived from what the item states, so it is the same in every preview of one source and a
+     * selection survives a second preview.
      */
     id: string;
     /**
@@ -1309,64 +1371,4 @@ export enum Status {
     New = "NEW",
     Skipped = "SKIPPED",
     Update = "UPDATE",
-}
-
-/**
- * What a native ontology import would change, counted from one parse of the source. Nothing
- * is persisted.
- */
-export interface NativeOntologyImportSummary {
-    counts: Counts;
-    /**
-     * Format the server parsed: the requested format, or the detected one when the request
-     * omits it.
-     */
-    detectedFormat: Format;
-    /**
-     * Label of the source ontology, when the source declares exactly one ontology header with a
-     * label.
-     */
-    ontologyLabel?: string;
-}
-
-/**
- * Every parsed concept, property, and axiom is counted once as new, updated, or skipped.
- * `newMappings` counts mappings inside new and updated concepts, so it overlaps the concept
- * counts.
- */
-export interface Counts {
-    newConcepts: number;
-    /**
-     * Concept mappings the target does not hold yet.
-     */
-    newMappings:   number;
-    newProperties: number;
-    /**
-     * Parsed axioms the target does not hold yet.
-     */
-    newRelations: number;
-    /**
-     * Parsed concepts and properties identical to the stored ones.
-     */
-    skippedDefinitions: number;
-    /**
-     * Parsed axioms the target already holds.
-     */
-    skippedRelations:  number;
-    updatedConcepts:   number;
-    updatedProperties: number;
-}
-
-/**
- * Format the server parsed: the requested format, or the detected one when the request
- * omits it.
- *
- * Serialization of a native ontology import source.
- */
-export enum Format {
-    CSV = "csv",
-    Jsonld = "jsonld",
-    Ntriples = "ntriples",
-    Rdfxml = "rdfxml",
-    Turtle = "turtle",
 }
