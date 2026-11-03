@@ -276,6 +276,32 @@ def test_case_column_value_length_to_be_between_no_min():
 
 
 @pytest.fixture
+def test_case_column_value_length_to_be_between_no_bounds():
+    """A lengths window with neither side set lets every row through"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_FNAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_between_no_bounds():
+    """A values window with neither side set lets every row through"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_column_value_max_to_be_between():
     """Test case for test column_value_max_to_be_between"""
     return TestCase(
@@ -618,6 +644,47 @@ def test_case_column_to_match_set_ordered():
 
 
 @pytest.fixture
+def test_case_column_to_match_set_ordered_false():
+    """ordered='false' (string) must enable unordered matching (same set, shuffled order -> Success)."""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="columnNames",
+                # All 11 User table columns listed in a different order than their
+                # DDL order so that ordered=True would fail but ordered=False should succeed.
+                value="age,id,name,first name,fullname,nickname,inserted_date,postal_code,lat,lon,is_active",
+            ),
+            TestCaseParameterValue(name="ordered", value="false"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_to_match_set_ordered_false_sqa():
+    """Same as test_case_column_to_match_set_ordered_false, for the SQLAlchemy runner.
+
+    The SQLAlchemy validator reads the ORM column keys, so the `first name` column is reported as `first_name`.
+    """
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="columnNames",
+                value="age,id,name,first_name,fullname,nickname,inserted_date,postal_code,lat,lon,is_active",
+            ),
+            TestCaseParameterValue(name="ordered", value="false"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_table_custom_sql_query():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(
@@ -663,6 +730,37 @@ def test_case_table_custom_sql_query_with_threshold_success():
                 name="threshold",
                 value="50",
             ),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_table_custom_sql_query_lowercase_strategy():
+    """`strategy` in any case, with spaces around it, reads as COUNT"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="SELECT COUNT(*) FROM users WHERE age > 30"),
+            TestCaseParameterValue(name="strategy", value=" count "),
+            TestCaseParameterValue(name="threshold", value="50"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_table_custom_sql_query_blank_strategy():
+    """A blank `strategy` reads as ROWS, the definition's default"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="SELECT * FROM users WHERE age > 20"),
+            TestCaseParameterValue(name="strategy", value="  "),
         ],
     )  # type: ignore
 
@@ -861,6 +959,65 @@ def test_case_column_value_in_set_boolean():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="allowedValues", value="[True, False]"),
+        ],
+        computePassedFailedRowCount=True,
+    )
+
+
+@pytest.fixture
+def test_case_column_values_not_in_set_boolean_strings():
+    """The forbidden set as the UI writes it, and a generated test can: a JSON array of strings"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_IS_ACTIVE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="forbiddenValues", value='["true"]'),
+        ],
+        computePassedFailedRowCount=True,
+    )
+
+
+@pytest.fixture
+def test_case_column_values_not_in_set_boolean_json():
+    """The forbidden set as a generated test can write it: a JSON array with a lowercase boolean"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_IS_ACTIVE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="forbiddenValues", value="[false]"),
+        ],
+        computePassedFailedRowCount=True,
+    )
+
+
+@pytest.fixture
+def test_case_column_value_in_set_missing_column():
+    """A set test on a column the table no longer has"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink="<#E::table::service.db.users::columns::dropped_column>",
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="allowedValues", value='["John"]'),
+        ],
+    )
+
+
+@pytest.fixture
+def test_case_column_value_in_set_boolean_strings():
+    """The allowed set as the UI writes it, and a generated test can: a JSON array of strings"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_IS_ACTIVE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="allowedValues", value='["true", "false"]'),
         ],
         computePassedFailedRowCount=True,
     )

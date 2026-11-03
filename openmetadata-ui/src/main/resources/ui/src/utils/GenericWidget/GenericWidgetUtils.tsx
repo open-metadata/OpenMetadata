@@ -32,6 +32,7 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import type { EntityReference } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/tests/testCase';
+import { TableShardingWidget } from '../../pages/TableDetailsPageV1/Sharding/TableSharding';
 import domainClassBase from '../Domain/DomainClassBase';
 import tableClassBase from '../TableClassBase';
 
@@ -284,9 +285,9 @@ export const WIDGET_COMPONENTS = {
       showLabel={false}
     />
   ),
-  [DetailPageWidgetKeys.DESCRIPTION]: (data?: EntityUnion) => (
-    <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />
-  ),
+  [DetailPageWidgetKeys.DESCRIPTION]: (
+    data?: Pick<EntityUnion, 'description'>
+  ) => <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />,
   [DetailPageWidgetKeys.TABLE_SCHEMA]: () => <SchemaTable />,
   [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: () => (
     <FrequentlyJoinedTables renderAsExpandableCard={false} />
@@ -338,6 +339,7 @@ export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => (
     <PartitionedKeys renderAsExpandableCard={false} />
   ),
+  [DetailPageWidgetKeys.TABLE_SHARDING]: () => <TableShardingWidget />,
   [DetailPageWidgetKeys.TABLE_ALIASES]: () => (
     <TableAliases renderAsExpandableCard={false} />
   ),

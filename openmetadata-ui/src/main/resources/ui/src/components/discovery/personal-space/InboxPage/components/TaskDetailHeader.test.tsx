@@ -63,4 +63,16 @@ describe('TaskDetailHeader', () => {
 
     expect(screen.getByTestId('task-actions-menu')).toBeDisabled();
   });
+
+  // Passed as an element, the icon kept its own 16px and the menu button sat
+  // 4px shorter than Reject and Approve beside it.
+  it('lets the button size the overflow icon like its neighbours', () => {
+    renderHeader();
+
+    expect(
+      screen
+        .getByTestId('task-actions-menu')
+        .querySelector('[data-icon="leading"]')
+    ).toBeInTheDocument();
+  });
 });

@@ -43,6 +43,16 @@ export const cardStyles = sortCx({
     },
     outlined: { root: 'tw:border-2 tw:border-primary tw:bg-surface' },
     ghost: { root: 'tw:bg-transparent' },
+    // Matches the Explore search card: a solid border, white in light mode and
+    // one step below the surrounding surface in dark mode (bg-primary_alt).
+    muted: {
+      root: 'tw:border-1 tw:border-secondary tw:bg-primary_alt',
+    },
+    // A clickable grid tile (Connections, Marketplace, Domains cards): white in
+    // light, one step below the surface in dark, and it lightens on hover.
+    tile: {
+      root: 'tw:border-1 tw:border-secondary tw:bg-primary_alt tw:shadow-xs',
+    },
   },
   colors: {
     default: { root: '' },
@@ -71,6 +81,10 @@ export const cardStyles = sortCx({
     ghost: {
       root: 'tw:hover:bg-secondary tw:hover:border-1 tw:hover:border-inset tw:hover:border-secondary',
     },
+    muted: {
+      root: 'tw:hover:shadow-lg tw:motion-safe:hover:-translate-y-0.5',
+    },
+    tile: { root: 'tw:hover:bg-primary_hover' },
   },
   selected: { root: 'tw:border-2 tw:border-brand' },
 });

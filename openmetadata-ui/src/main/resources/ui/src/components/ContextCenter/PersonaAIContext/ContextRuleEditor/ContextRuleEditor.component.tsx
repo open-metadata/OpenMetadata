@@ -30,6 +30,7 @@ import {
   InfoCircle,
   LinkExternal01,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import {
   FC,
   ReactNode,
@@ -39,6 +40,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Checkbox as AriaCheckbox } from 'react-aria-components';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -101,8 +103,10 @@ const Field = ({
   </div>
 );
 
-const SECTION_CARD_CLASS =
-  'tw:flex tw:cursor-pointer tw:select-none tw:items-center tw:justify-between tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-[11px] tw:transition';
+const SECTION_CARD_CLASS = [
+  'tw:relative tw:flex tw:cursor-pointer tw:select-none tw:items-center tw:justify-between tw:gap-2',
+  'tw:rounded-lg tw:border tw:px-3 tw:py-[11px] tw:transition',
+].join(' ');
 
 const BEHAVIOR_CARD_CLASS =
   'tw:min-h-[70px] tw:rounded-lg tw:border tw:border-secondary tw:px-4 tw:py-[13px]';
@@ -680,39 +684,39 @@ export const ContextRuleEditor = ({
                   const selected = selectedSections.includes(section);
 
                   return (
-                    <div
-                      aria-checked={selected}
-                      aria-disabled={sectionsDisabled}
-                      className={`${SECTION_CARD_CLASS} ${
-                        sectionsDisabled
-                          ? 'tw:cursor-not-allowed tw:opacity-60'
-                          : ''
-                      }`}
+                    <AriaCheckbox
+                      className={({ isSelected, isDisabled }) =>
+                        classNames(SECTION_CARD_CLASS, {
+                          'tw:border-brand tw:bg-brand-primary': isSelected,
+                          'tw:border-secondary tw:bg-overlay-surface':
+                            !isSelected,
+                          'tw:cursor-not-allowed tw:opacity-60': isDisabled,
+                        })
+                      }
+                      isDisabled={sectionsDisabled}
+                      isSelected={selected}
                       key={section}
-                      role="checkbox"
-                      tabIndex={sectionsDisabled ? -1 : 0}
-                      onClick={() => toggleSection(section)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          toggleSection(section);
-                        }
-                      }}>
-                      <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
-                        <CheckboxBase
-                          isDisabled={sectionsDisabled}
-                          isSelected={selected}
-                        />
-                        <span className="tw:truncate tw:text-[13px]">
-                          {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
-                        </span>
-                      </span>
-                      {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
-                        <Badge color="gray" size="sm">
-                          {t('label.heavy')}
-                        </Badge>
+                      onChange={() => toggleSection(section)}>
+                      {({ isSelected, isDisabled, isFocusVisible }) => (
+                        <>
+                          <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+                            <CheckboxBase
+                              isDisabled={isDisabled}
+                              isFocusVisible={isFocusVisible}
+                              isSelected={isSelected}
+                            />
+                            <span className="tw:truncate tw:text-[13px]">
+                              {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
+                            </span>
+                          </span>
+                          {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
+                            <Badge color="gray" size="sm">
+                              {t('label.heavy')}
+                            </Badge>
+                          )}
+                        </>
                       )}
-                    </div>
+                    </AriaCheckbox>
                   );
                 })}
               </Box>

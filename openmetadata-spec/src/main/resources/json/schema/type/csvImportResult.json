@@ -41,6 +41,10 @@
     "numberOfRowsFailed" : {
       "$ref": "#/definitions/rowCount"
     },
+    "numberOfRowsPendingApproval" : {
+      "description": "Rows accepted as change requests awaiting approval; counted in numberOfRowsPassed but not yet published.",
+      "$ref": "#/definitions/rowCount"
+    },
     "importResultsCsv" : {
       "description": "CSV file that captures the result of import operation.",
       "type" : "string"

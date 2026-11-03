@@ -70,6 +70,8 @@ export interface DomainDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
   feedCount?: FeedCounts;
   onFeedUpdate?: () => void;
+  // Reloads the domain after a task on it is decided, so its status and fields are current.
+  onUpdateEntityDetails?: () => void;
 }
 
 type DomainWidgetKeys =

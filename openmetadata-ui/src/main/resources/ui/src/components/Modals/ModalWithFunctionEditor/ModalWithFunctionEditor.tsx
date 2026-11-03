@@ -11,15 +11,18 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   Dialog,
+  FieldTypes,
+  FormFields,
+  HookForm,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Form, Input } from 'antd';
-import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -33,11 +36,13 @@ export const ModalWithFunctionEditor = ({
   visible,
 }: ModalWithFunctionEditorProps) => {
   const { t } = useTranslation();
-  const [form] = useForm();
+  const form = useForm<{ functionValue: string }>({
+    defaultValues: { functionValue: '' },
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  const onFinish: FormProps['onFinish'] = async (values) => {
+  const onFinish = async (values: { functionValue: string }) => {
     setIsSaving(true);
     try {
       await onSave?.(values.functionValue ?? '');
@@ -50,7 +55,7 @@ export const ModalWithFunctionEditor = ({
 
   useEffect(() => {
     if (visible) {
-      form.setFieldsValue({ functionValue: value });
+      form.reset({ functionValue: value ?? '' });
       setIsLoading(false);
     }
   }, [form, visible]);
@@ -74,33 +79,34 @@ export const ModalWithFunctionEditor = ({
             {isLoading ? (
               <Loader />
             ) : (
-              <Form form={form} layout="vertical" onFinish={onFinish}>
-                <Form.Item
-                  data-testid="function-editor-container"
-                  label={t('label.sql-function')}
-                  name="functionValue"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('label.field-required', {
-                        field: t('label.sql-function'),
-                      }),
-                    },
-                  ]}
-                  trigger="onChange">
-                  <Input
-                    data-testid="sql-function-input"
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.sql-function'),
-                    })}
+              <HookForm form={form} onSubmit={form.handleSubmit(onFinish)}>
+                <Box data-testid="function-editor-container" direction="col">
+                  <FormFields
+                    fields={[
+                      {
+                        name: 'functionValue',
+                        label: t('label.sql-function'),
+                        type: FieldTypes.TEXT,
+                        required: true,
+                        placeholder: t('label.enter-entity', {
+                          entity: t('label.sql-function'),
+                        }),
+                        props: { inputDataTestId: 'sql-function-input' },
+                        rules: {
+                          required: t('label.field-required', {
+                            field: t('label.sql-function'),
+                          }),
+                        },
+                      },
+                    ]}
                   />
-                </Form.Item>
-              </Form>
+                </Box>
+              </HookForm>
             )}
           </Dialog.Content>
           <Dialog.Footer>
             <Button
-              color="link-color"
+              color="secondary"
               data-testid="cancel"
               isDisabled={isLoading}
               key="cancelButton"
@@ -111,7 +117,7 @@ export const ModalWithFunctionEditor = ({
               color="primary"
               data-testid="save"
               key="saveButton"
-              onClick={() => form.submit()}>
+              onClick={form.handleSubmit(onFinish)}>
               {isSaving ? (
                 <Loader size="small" type="white" />
               ) : (

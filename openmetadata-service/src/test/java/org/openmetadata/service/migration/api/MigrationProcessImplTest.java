@@ -7,32 +7,63 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.util.EntityUtil.hash;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import org.jdbi.v3.core.Handle;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.utils.MigrationCodeFingerprint;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.SqlUnit;
+import org.slf4j.LoggerFactory;
 
 class MigrationProcessImplTest {
-
   @TempDir Path tempDir;
 
   private MigrationDAO migrationDAO;
   private OpenMetadataApplicationConfig config;
+  private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
+  private final List<Logger> loggers =
+      List.of(
+          (Logger) LoggerFactory.getLogger(MigrationFile.class),
+          (Logger) LoggerFactory.getLogger(MigrationProcessImpl.class));
 
   @BeforeEach
   void setUp() {
     migrationDAO = mock(MigrationDAO.class);
     config = mock(OpenMetadataApplicationConfig.class);
+    logs.start();
+    loggers.forEach(logger -> logger.addAppender(logs));
+  }
+
+  @AfterEach
+  void tearDown() {
+    loggers.forEach(logger -> logger.detachAppender(logs));
+  }
+
+  private List<String> warnings() {
+    return logs.list.stream()
+        .filter(event -> event.getLevel() == Level.WARN)
+        .map(ILoggingEvent::getFormattedMessage)
+        .toList();
   }
 
   @Test
@@ -78,6 +109,78 @@ class MigrationProcessImplTest {
     assertEquals(
         List.of("INSERT INTO sample VALUES ('value;with-semicolon')", "UPDATE sample SET id = 2"),
         statements);
+  }
+
+  @Test
+  void reportsAStatementAlreadyRunInThisVersionAsSkipped() {
+    Handle handle = mock(Handle.class);
+    String sql = "PREPARE stmt FROM @ddl";
+    when(migrationDAO.getSqlQuery("2.1.0", hash(sql))).thenReturn(sql);
+
+    Map<String, QueryStatus> statuses =
+        MigrationProcessImpl.performSqlExecutionAndUpdate(
+            handle, migrationDAO, List.of(SqlUnit.of(sql)), "2.1.0", false);
+
+    assertEquals(QueryStatus.Status.SKIPPED, statuses.get(sql).getStatus());
+    assertEquals(
+        List.of(
+            "[MigrationWorkflow] Skipping a statement of version 2.1.0 because identical text"
+                + " already ran earlier in this version: PREPARE stmt FROM @ddl"),
+        warnings());
+    verify(handle, never()).execute(sql);
+    verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
+  }
+
+  @Test
+  void executesAndRecordsANewStatement() {
+    Handle handle = mock(Handle.class);
+    String sql = "ALTER TABLE test ADD COLUMN a INT";
+
+    Map<String, QueryStatus> statuses =
+        MigrationProcessImpl.performSqlExecutionAndUpdate(
+            handle, migrationDAO, List.of(SqlUnit.of(sql)), "2.1.0", false);
+
+    assertEquals(QueryStatus.Status.SUCCESS, statuses.get(sql).getStatus());
+    verify(handle).execute(sql);
+    verify(migrationDAO).upsertServerMigrationSQL("2.1.0", sql, hash(sql));
+  }
+
+  @Test
+  void warnsWhenAStatementIsDroppedBecauseAnotherVersionRanIt() throws IOException {
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn("2.0.0");
+    MigrationFile file = createMigrationDir("2.1.0", "UPDATE test SET a = 1;", "");
+
+    file.parseSQLFiles();
+
+    assertFalse(file.hasNewStatements());
+    assertEquals(
+        List.of(
+            "[MigrationWorkflow] Skipping a statement of version 2.1.0 because identical text"
+                + " already ran in version 2.0.0: UPDATE test SET a = 1"),
+        warnings());
+  }
+
+  @Test
+  void doesNotWarnWhenTheSameVersionRanTheStatement() throws IOException {
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn("2.1.0");
+    MigrationFile file = createMigrationDir("2.1.0", "UPDATE test SET a = 1;", "");
+
+    file.parseSQLFiles();
+
+    assertFalse(file.hasNewStatements());
+    assertEquals(List.of(), warnings());
+  }
+
+  @Test
+  void doesNotWarnWhileReprocessingAVersion() throws IOException {
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn("2.0.0");
+    MigrationFile file = createMigrationDir("2.1.0", "UPDATE test SET a = 1;", "");
+    file.setReprocessing(true);
+
+    file.parseSQLFiles();
+
+    assertFalse(file.hasNewStatements());
+    assertEquals(List.of(), warnings());
   }
 
   @Test

@@ -14,6 +14,7 @@
 package org.openmetadata.service.governance.workflows.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,12 +24,33 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.FieldDiff;
 
 class ChangePreviewUtilsTest {
+
+  @Test
+  void mcpTaskPreviewMasksConnectionChangesWithoutChangingPendingValues() {
+    final ChangeDescription pending =
+        new ChangeDescription()
+            .withFieldsUpdated(
+                List.of(
+                    new FieldChange()
+                        .withName("connectionConfig")
+                        .withOldValue("old-secret")
+                        .withNewValue("new-secret")));
+    final String original = JsonUtils.pojoToJson(pending);
+
+    final Object payload =
+        ChangePreviewUtils.buildProposedChangesPayload(new McpServer(), null, pending);
+
+    assertFalse(JsonUtils.pojoToJson(payload).contains("-secret"));
+    assertEquals(original, JsonUtils.pojoToJson(pending));
+  }
 
   // ---------------------------------------------------------------------------
   // extractIdentifiers
@@ -558,5 +580,62 @@ class ChangePreviewUtilsTest {
 
     assertTrue(result instanceof Map<?, ?>);
     assertTrue(!((Map<?, ?>) result).containsKey("proposedChanges"));
+  }
+
+  @Test
+  void buildProposedChangesPayload_newTermMovedToInReview_hasNoProposedChanges() {
+    EntityInterface<?> entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withIncrementalChangeDescription(
+                new ChangeDescription().withFieldsUpdated(List.of(statusChange())));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, null);
+
+    assertTrue(ChangePreviewUtils.extractProposedChanges(result).isEmpty());
+  }
+
+  @Test
+  void buildProposedChangesPayload_editAlongsideStatusMove_keepsOnlyTheEdit() {
+    EntityInterface<?> entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsAdded(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withNewValue("[{\"tagFQN\":\"PII.Sensitive\"}]")))
+                    .withFieldsUpdated(List.of(statusChange())));
+    Map<String, Object> priorPayload = new LinkedHashMap<>();
+    priorPayload.put(
+        "proposedChanges",
+        Map.of("entityStatus", Map.of("added", List.of("In Review"), "removed", List.of("Draft"))));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, priorPayload);
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+    assertEquals(List.of("tags"), List.copyOf(proposed.keySet()));
+    assertEquals(List.of("PII.Sensitive"), proposed.get("tags").added());
+  }
+
+  @Test
+  void buildProposedChangesPayload_changeRequestStatusEdit_isKept() {
+    EntityInterface<?> entity = new GlossaryTerm().withName("t");
+    ChangeDescription pending = new ChangeDescription().withFieldsUpdated(List.of(statusChange()));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, null, pending);
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+    assertEquals(List.of("In Review"), proposed.get("entityStatus").added());
+    assertEquals(List.of("Draft"), proposed.get("entityStatus").removed());
+  }
+
+  private static FieldChange statusChange() {
+    return new FieldChange()
+        .withName("entityStatus")
+        .withOldValue("Draft")
+        .withNewValue("In Review");
   }
 }

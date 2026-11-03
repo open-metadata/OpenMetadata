@@ -68,136 +68,141 @@ const AINotFoundPage: FC = () => {
   const navigate = useNavigate();
 
   return (
-    <Box
-      align="center"
-      className="tw:relative tw:w-full tw:h-full tw:overflow-hidden tw:px-6"
-      data-testid="ai-not-found-page"
-      direction="col"
-      justify="center">
-      {/* Faded 404 watermark — inherits text color at low opacity so it
-          stays subtle in both light and dark themes. */}
-      <Typography
-        aria-hidden
-        className={classNames(
-          'tw:pointer-events-none tw:select-none tw:absolute tw:top-1/2 tw:left-1/2 tw:z-0',
-          'tw:-translate-x-1/2 tw:translate-y-[-52%] tw:leading-none',
-          'tw:text-[360px] tw:tracking-[-0.04em] tw:opacity-[0.05]'
-        )}
-        weight="bold">
-        404
-      </Typography>
-
+    // The page surface lives on a native wrapper: core Box is layout only.
+    <div className="tw:min-h-screen tw:w-full tw:bg-primary">
       <Box
         align="center"
-        className="tw:relative tw:z-10 tw:text-center tw:max-w-lg"
-        direction="col">
-        <Box className="tw:relative tw:w-150 tw:h-33 tw:mb-6">
-          <svg
-            className="tw:pointer-events-none tw:absolute tw:inset-0 tw:w-full tw:h-full"
-            fill="none"
-            viewBox="0 0 600 132"
-            xmlns="http://www.w3.org/2000/svg">
-            {EDGES.map((d) => (
-              <path
-                className="tw:stroke-brand-300"
-                d={d}
-                fill="none"
-                key={d}
-                strokeDasharray="4 4"
-                strokeLinecap="round"
-                strokeWidth={2}>
-                <animate
-                  attributeName="stroke-dashoffset"
-                  dur="1.4s"
-                  from={0}
-                  repeatCount="indefinite"
-                  to={-16}
-                />
-              </path>
-            ))}
-            {DOT_X.map((cx) => (
-              <circle
-                className="tw:fill-(--color-bg-primary) tw:stroke-warning-600"
-                cx={cx}
-                cy={66}
-                key={cx}
-                r={3}
-                strokeWidth={1.75}
-              />
-            ))}
-          </svg>
+        className="tw:relative tw:w-full tw:min-h-screen tw:overflow-hidden tw:px-6"
+        data-testid="ai-not-found-page"
+        direction="col"
+        justify="center">
+        {/* Faded 404 watermark — inherits text color at low opacity so it
+          stays subtle in both light and dark themes. */}
+        <Typography
+          aria-hidden
+          className={classNames(
+            'tw:pointer-events-none tw:select-none tw:absolute tw:top-1/2 tw:left-1/2 tw:z-0',
+            'tw:-translate-x-1/2 tw:translate-y-[-52%] tw:leading-none',
+            'tw:text-[360px] tw:tracking-[-0.04em] tw:opacity-[0.05]'
+          )}
+          weight="bold">
+          404
+        </Typography>
 
-          <LineageNode
-            logo={getServiceLogo(
-              'Snowflake',
-              'tw:w-full tw:h-full tw:object-contain'
-            )}
-            positionClassName="tw:top-1/2 tw:-translate-y-1/2 tw:left-0"
-            subtitle="snowflake · prod"
-            title="raw_events"
-          />
-          <Box
-            className={classNames(
-              'tw:absolute tw:top-1/2 tw:left-53.75 tw:-translate-y-1/2 tw:flex-col',
-              'tw:items-center tw:justify-center tw:gap-1.25 tw:w-42.5 tw:min-h-19.5',
-              'tw:px-2.5 tw:py-1 tw:rounded-[10px] tw:bg-secondary',
-              'tw:border-[1.5px] tw:border-dashed tw:border-subtle'
-            )}>
-            <Box className="tw:items-center tw:justify-center tw:w-7 tw:h-7 tw:rounded-full tw:bg-surface tw:border tw:border-subtle">
-              <Link02 className="tw:w-4 tw:h-4 tw:text-fg-quaternary" />
+        <Box
+          align="center"
+          className="tw:relative tw:z-10 tw:text-center tw:max-w-lg"
+          direction="col">
+          <Box className="tw:relative tw:w-150 tw:h-33 tw:mb-6">
+            <svg
+              className="tw:pointer-events-none tw:absolute tw:inset-0 tw:w-full tw:h-full"
+              fill="none"
+              viewBox="0 0 600 132"
+              xmlns="http://www.w3.org/2000/svg">
+              {EDGES.map((d) => (
+                <path
+                  className="tw:stroke-brand-300"
+                  d={d}
+                  fill="none"
+                  key={d}
+                  strokeDasharray="4 4"
+                  strokeLinecap="round"
+                  strokeWidth={2}>
+                  <animate
+                    attributeName="stroke-dashoffset"
+                    dur="1.4s"
+                    from={0}
+                    repeatCount="indefinite"
+                    to={-16}
+                  />
+                </path>
+              ))}
+              {DOT_X.map((cx) => (
+                <circle
+                  className="tw:fill-(--color-bg-primary) tw:stroke-warning-600"
+                  cx={cx}
+                  cy={66}
+                  key={cx}
+                  r={3}
+                  strokeWidth={1.75}
+                />
+              ))}
+            </svg>
+
+            <LineageNode
+              logo={getServiceLogo(
+                'Snowflake',
+                'tw:w-full tw:h-full tw:object-contain'
+              )}
+              positionClassName="tw:top-1/2 tw:-translate-y-1/2 tw:left-0"
+              subtitle="snowflake · prod"
+              title="raw_events"
+            />
+            <Box
+              className={classNames(
+                'tw:absolute tw:top-1/2 tw:left-53.75 tw:-translate-y-1/2 tw:flex-col',
+                'tw:items-center tw:justify-center tw:gap-1.25 tw:w-42.5 tw:min-h-19.5',
+                'tw:px-2.5 tw:py-1 tw:rounded-[10px] tw:bg-secondary',
+                'tw:border-[1.5px] tw:border-dashed tw:border-subtle'
+              )}>
+              <Box className="tw:items-center tw:justify-center tw:w-7 tw:h-7 tw:rounded-full tw:bg-surface tw:border tw:border-subtle">
+                <Link02 className="tw:w-4 tw:h-4 tw:text-fg-quaternary" />
+              </Box>
+              <Typography
+                className="tw:text-[11px] tw:text-quaternary"
+                weight="semibold">
+                {t('label.asset-not-found')}
+              </Typography>
+              <Typography className="tw:text-[10px] tw:text-utility-error-700 tw:bg-utility-error-50 tw:border tw:border-utility-error-200 tw:rounded-[5px] tw:px-1.5 tw:py-0.5">
+                404
+              </Typography>
             </Box>
-            <Typography
-              className="tw:text-[11px] tw:text-quaternary"
-              weight="semibold">
-              {t('label.asset-not-found')}
-            </Typography>
-            <Typography className="tw:text-[10px] tw:text-utility-error-700 tw:bg-utility-error-50 tw:border tw:border-utility-error-200 tw:rounded-[5px] tw:px-1.5 tw:py-0.5">
-              404
-            </Typography>
+
+            <LineageNode
+              logo={getServiceLogo(
+                'Tableau',
+                'tw:w-full tw:h-full tw:object-contain'
+              )}
+              positionClassName="tw:top-1/2 tw:-translate-y-1/2 tw:left-[430px]"
+              subtitle="tableau"
+              title="sales_dashboard"
+            />
           </Box>
 
-          <LineageNode
-            logo={getServiceLogo(
-              'Tableau',
-              'tw:w-full tw:h-full tw:object-contain'
-            )}
-            positionClassName="tw:top-1/2 tw:-translate-y-1/2 tw:left-[430px]"
-            subtitle="tableau"
-            title="sales_dashboard"
-          />
-        </Box>
+          <Typography
+            as="p"
+            className="tw:pt-2.5 tw:text-[28px] tw:leading-[1.2] tw:tracking-[-0.02em] tw:text-primary"
+            weight="bold">
+            {t('message.ai-asset-not-found-title')}
+          </Typography>
+          <Typography
+            as="p"
+            className="tw:pt-2 tw:max-w-105 tw:text-[15px] tw:leading-[1.55] tw:text-tertiary">
+            {t('message.ai-asset-not-found-description')}
+          </Typography>
 
-        <Typography
-          as="p"
-          className="tw:pt-2.5 tw:text-[28px] tw:leading-[1.2] tw:tracking-[-0.02em] tw:text-primary"
-          weight="bold">
-          {t('message.ai-asset-not-found-title')}
-        </Typography>
-        <Typography
-          as="p"
-          className="tw:pt-2 tw:max-w-105 tw:text-[15px] tw:leading-[1.55] tw:text-tertiary">
-          {t('message.ai-asset-not-found-description')}
-        </Typography>
-
-        <Box className="tw:items-center tw:gap-3 tw:mt-6">
-          <Button
-            data-testid="ai-not-found-home-button"
-            iconLeading={<Home01 className="tw:w-5 tw:h-5 tw:text-fg-white" />}
-            size="md"
-            onPress={() => navigate(ROUTES.HOME)}>
-            {t('label.back-to-home')}
-          </Button>
-          <Button
-            color="secondary"
-            data-testid="ai-not-found-explore-button"
-            iconLeading={<Search className="tw:w-5 tw:h-5" />}
-            size="md"
-            onPress={() => navigate(ROUTES.EXPLORE)}>
-            {t('label.explore')}
-          </Button>
+          <Box className="tw:items-center tw:gap-3 tw:mt-6">
+            <Button
+              data-testid="ai-not-found-home-button"
+              iconLeading={
+                <Home01 className="tw:w-5 tw:h-5 tw:text-fg-white" />
+              }
+              size="md"
+              onPress={() => navigate(ROUTES.HOME)}>
+              {t('label.back-to-home')}
+            </Button>
+            <Button
+              color="secondary"
+              data-testid="ai-not-found-explore-button"
+              iconLeading={<Search className="tw:w-5 tw:h-5" />}
+              size="md"
+              onPress={() => navigate(ROUTES.EXPLORE)}>
+              {t('label.explore')}
+            </Button>
+          </Box>
         </Box>
       </Box>
-    </Box>
+    </div>
   );
 };
 

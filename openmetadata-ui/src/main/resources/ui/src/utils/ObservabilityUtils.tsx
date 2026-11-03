@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MailOutlined } from '@ant-design/icons';
+import { Mail } from '@openmetadata/ui-core-components/icons';
 import { includes, isNil } from 'lodash';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored-icon.svg';
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
@@ -35,7 +35,7 @@ const ALERT_DESTINATION_CATEGORY_ICONS = {
   Mentions: MentionIcon,
   GChat: GChatIcon,
   Slack: SlackIcon,
-  Email: MailOutlined,
+  Email: Mail,
   MsTeams: MSTeamsIcon,
   Followers: FollowingIcon,
   Webhook: GenericIcon,

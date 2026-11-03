@@ -12,7 +12,6 @@
  */
 
 import {
-  AlertType,
   ArgumentsInput,
   Effect,
   EventFilterRule,
@@ -21,7 +20,6 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
-import { EventType } from '../../../generated/type/changeEvent';
 import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import { AlertAiFormValue } from './AlertAiFormFields.interface';
@@ -30,8 +28,8 @@ import {
   getAlertAiSectionVisibility,
   getDestinationTypeUpdate,
   getDestinationWithNotifyDownstream,
-  getRuleEventTypes,
   getRuleItems,
+  getRuleSectionFlags,
   getRulesWithAddedRule,
   getRulesWithEffect,
   getRulesWithName,
@@ -47,7 +45,7 @@ describe('AlertAiFormFieldsPureUtils', () => {
     const visibility = getAlertAiSectionVisibility({
       isViewOnly: true,
       selectedFilters: [],
-      selectedSource: undefined,
+      selectedSources: [],
       selectedTriggers: [],
       shouldShowActionsSection: true,
       shouldShowFiltersSection: true,
@@ -64,7 +62,7 @@ describe('AlertAiFormFieldsPureUtils', () => {
     const visibility = getAlertAiSectionVisibility({
       isViewOnly: false,
       selectedFilters: [],
-      selectedSource: undefined,
+      selectedSources: [],
       selectedTriggers: [],
       shouldShowActionsSection: true,
       shouldShowFiltersSection: true,
@@ -91,15 +89,14 @@ describe('AlertAiFormFieldsPureUtils', () => {
         shouldShowFiltersSection: true,
         value: viewValueWithRules,
         isViewOnly: true,
-        selectedFilterResource: undefined,
-        selectedSource: 'table',
-        supportedFilters: undefined,
-        supportedTriggers: undefined,
+        selectedSources: ['table'],
+        hasFilters: undefined,
+        hasTriggers: undefined,
       });
       const visibility = getAlertAiSectionVisibility({
         isViewOnly: true,
         selectedFilters: inputs.selectedFilters,
-        selectedSource: 'table',
+        selectedSources: ['table'],
         selectedTriggers: inputs.selectedTriggers,
         shouldShowActionsSection: inputs.shouldDisplayActionsSection,
         shouldShowFiltersSection: inputs.shouldDisplayFiltersSection,
@@ -118,27 +115,14 @@ describe('AlertAiFormFieldsPureUtils', () => {
         shouldShowFiltersSection: true,
         value: viewValueWithRules,
         isViewOnly: true,
-        selectedFilterResource: undefined,
-        selectedSource: 'table',
-        supportedFilters: [
-          {
-            condition: '',
-            effect: Effect.Include,
-            name: 'domainList',
-          },
-        ],
-        supportedTriggers: [
-          {
-            condition: '',
-            effect: Effect.Include,
-            name: 'testResultTrigger',
-          },
-        ],
+        selectedSources: ['table'],
+        hasFilters: true,
+        hasTriggers: true,
       });
       const visibility = getAlertAiSectionVisibility({
         isViewOnly: true,
         selectedFilters: inputs.selectedFilters,
-        selectedSource: 'table',
+        selectedSources: ['table'],
         selectedTriggers: inputs.selectedTriggers,
         shouldShowActionsSection: inputs.shouldDisplayActionsSection,
         shouldShowFiltersSection: inputs.shouldDisplayFiltersSection,
@@ -154,26 +138,40 @@ describe('AlertAiFormFieldsPureUtils', () => {
         shouldShowFiltersSection: true,
         value: viewValueWithRules,
         isViewOnly: true,
-        selectedFilterResource: undefined,
-        selectedSource: 'table',
-        supportedFilters: [],
-        supportedTriggers: [],
+        selectedSources: ['table'],
+        hasFilters: false,
+        hasTriggers: false,
       });
 
       expect(inputs.shouldDisplayFiltersSection).toBe(false);
       expect(inputs.shouldDisplayActionsSection).toBe(false);
     });
 
-    it('still applies the descriptor override in edit mode when lists are unavailable', () => {
+    // The server has not answered yet for the saved sources, or its answer failed.
+    it('keeps the saved rules in edit mode while what the sources support is unknown', () => {
       const inputs = getAlertAiSectionInputs({
         shouldShowActionsSection: true,
         shouldShowFiltersSection: true,
         value: viewValueWithRules,
         isViewOnly: false,
-        selectedFilterResource: undefined,
-        selectedSource: 'table',
-        supportedFilters: undefined,
-        supportedTriggers: undefined,
+        selectedSources: ['table'],
+        hasFilters: undefined,
+        hasTriggers: undefined,
+      });
+
+      expect(inputs.shouldDisplayFiltersSection).toBe(true);
+      expect(inputs.shouldDisplayActionsSection).toBe(true);
+    });
+
+    it('shows no empty section in edit mode while what the sources support is unknown', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: { input: {} } as unknown as AlertAiFormValue,
+        isViewOnly: false,
+        selectedSources: ['table'],
+        hasFilters: undefined,
+        hasTriggers: undefined,
       });
 
       expect(inputs.shouldDisplayFiltersSection).toBe(false);
@@ -189,15 +187,14 @@ describe('AlertAiFormFieldsPureUtils', () => {
         shouldShowFiltersSection: true,
         value: emptyValue,
         isViewOnly: true,
-        selectedFilterResource: undefined,
-        selectedSource: 'table',
-        supportedFilters: undefined,
-        supportedTriggers: undefined,
+        selectedSources: ['table'],
+        hasFilters: undefined,
+        hasTriggers: undefined,
       });
       const visibility = getAlertAiSectionVisibility({
         isViewOnly: true,
         selectedFilters: inputs.selectedFilters,
-        selectedSource: 'table',
+        selectedSources: ['table'],
         selectedTriggers: inputs.selectedTriggers,
         shouldShowActionsSection: inputs.shouldDisplayActionsSection,
         shouldShowFiltersSection: inputs.shouldDisplayFiltersSection,
@@ -205,6 +202,63 @@ describe('AlertAiFormFieldsPureUtils', () => {
 
       expect(visibility.shouldRenderFiltersSection).toBe(false);
       expect(visibility.shouldRenderActionsSection).toBe(false);
+    });
+  });
+
+  describe('getRuleSectionFlags', () => {
+    const trigger = (name: string): EventFilterRule => ({
+      condition: '',
+      effect: Effect.Include,
+      name,
+    });
+    const supportedRules = [
+      trigger('GetPipelineStatusUpdates'),
+      trigger('GetIngestionPipelineStatusUpdates'),
+    ];
+
+    it('lets an alert on several sources take a trigger for each of them', () => {
+      expect(
+        getRuleSectionFlags({
+          selectedRules: [{ name: 'GetPipelineStatusUpdates' }],
+          selectedSources: ['pipeline', 'ingestionPipeline'],
+          supportedRules,
+        })
+      ).toEqual({
+        canAddRule: true,
+        isAddDisabled: false,
+        showAddButton: true,
+      });
+    });
+
+    it('offers no more rules once every rule on offer is chosen', () => {
+      expect(
+        getRuleSectionFlags({
+          selectedRules: [
+            { name: 'GetPipelineStatusUpdates' },
+            { name: 'GetIngestionPipelineStatusUpdates' },
+          ],
+          selectedSources: ['pipeline', 'ingestionPipeline'],
+          supportedRules,
+        }).canAddRule
+      ).toBe(false);
+    });
+
+    it('waits for a source, and adds nothing in the view of a saved alert', () => {
+      expect(
+        getRuleSectionFlags({
+          selectedRules: [],
+          selectedSources: [],
+          supportedRules,
+        }).isAddDisabled
+      ).toBe(true);
+      expect(
+        getRuleSectionFlags({
+          isViewOnly: true,
+          selectedRules: [],
+          selectedSources: ['pipeline'],
+          supportedRules,
+        }).showAddButton
+      ).toBe(false);
     });
   });
 
@@ -232,6 +286,17 @@ describe('AlertAiFormFieldsPureUtils', () => {
         isDisabled: false,
         label: 'Pipeline State',
       },
+    ]);
+  });
+
+  it('lists a saved rule nobody offers by its name, disabled, so it never shows blank', () => {
+    expect(
+      getRuleItems(undefined, [
+        { name: 'filterByOwner' },
+        { name: 'filterByOwner' },
+      ])
+    ).toEqual([
+      { id: 'filterByOwner', isDisabled: true, label: 'filterByOwner' },
     ]);
   });
 
@@ -528,25 +593,6 @@ describe('AlertAiFormFieldsPureUtils', () => {
         } as ModifiedDestination,
       ])
     ).toBe(false);
-  });
-
-  describe('getRuleEventTypes (per-flow classic parity)', () => {
-    const resource = {
-      name: 'table',
-      supportedEventTypes: [EventType.EntityCreated],
-    };
-
-    it('narrows event types for notification alerts, like Settings → Notifications', () => {
-      expect(getRuleEventTypes(AlertType.Notification, resource)).toEqual([
-        EventType.EntityCreated,
-      ]);
-    });
-
-    it('never narrows observability alerts, like Observability → Alerts', () => {
-      expect(
-        getRuleEventTypes(AlertType.Observability, resource)
-      ).toBeUndefined();
-    });
   });
 });
 

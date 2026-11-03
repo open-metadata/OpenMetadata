@@ -48,11 +48,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -323,6 +325,11 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(Entity.PAGE);
+  }
+
+  @Override
   public void setFullyQualifiedName(Page page) {
     if (page.getParent() == null) {
       page.setFullyQualifiedName(page.getName());
@@ -447,19 +454,30 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearch(
-      String parent, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
+      String parent,
+      PageType pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchy(parent, pageTypeValue, sortFilter, offset, limit);
+        .listPageHierarchy(parent, pageTypeValue, sortFilter, offset, limit, caller);
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearchForActivePage(
-      String activeFqn, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
+      String activeFqn,
+      PageType pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchyForActivePage(activeFqn, pageTypeValue, sortFilter, offset, limit);
+        .listPageHierarchyForActivePage(
+            activeFqn, pageTypeValue, sortFilter, offset, limit, caller);
   }
 
   public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {
@@ -544,6 +562,36 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
     store(knowledgePage, update);
     knowledgePage.withRelatedEntities(relatedEntities).withParent(parent).withChildren(children);
+  }
+
+  @Override
+  protected void storeEntityWithVersion(
+      Page page, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    Page stored =
+        JsonUtils.deepCopy(page, Page.class)
+            .withRelatedEntities(null)
+            .withParent(null)
+            .withChildren(null);
+    if (stored.getPageType() == PageType.ARTICLE) {
+      stored.setPage(
+          JsonUtils.convertValue(stored.getPage(), Article.class).withRelatedArticles(null));
+    }
+    if (expectedUpdatedAt == null) {
+      store(stored, update, expectedVersion);
+    } else {
+      int updatedRows =
+          daoExtension.updateWithVersionAndTimestamp(
+              stored.getId().toString(),
+              stored.getFullyQualifiedName(),
+              serializeForStorage(stored),
+              expectedVersion.toString(),
+              expectedUpdatedAt);
+      if (updatedRows == 0) {
+        throw new PreconditionFailedException(
+            "The entity has been modified by another user. Please refresh and retry.");
+      }
+      invalidate(page);
+    }
   }
 
   @Override
@@ -670,6 +718,10 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public class KnowledgePageUpdater extends EntityUpdater {
     public KnowledgePageUpdater(Page original, Page updated, Operation operation) {
       super(original, updated, operation);
+      // Consolidated edits still need distinct timestamps for conditional processing writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
     }
 
     @Override

@@ -7,8 +7,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -32,6 +34,8 @@ public class ListFilter extends Filter<ListFilter> {
   /** The severity filter value for incidents with no severity. */
   public static final String NO_INCIDENT_SEVERITY = "none";
 
+  private static final Pattern ENTITY_TYPE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
+
   public static final String NULL_PARAM = "null";
 
   // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
@@ -45,6 +49,9 @@ public class ListFilter extends Filter<ListFilter> {
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
+  private static final String ONTOLOGY_CONCEPT_TABLE = "ontology_concept_entity";
+  private static final String ONTOLOGY_PROPERTY_TABLE = "ontology_property_entity";
+  private static final String ONTOLOGY_RELEASE_TABLE = "ontology_release_entity";
   // An fqnHash joins one MD5 hex digest per FQN segment.
   private static final int FQN_HASH_SEGMENT_LENGTH = 32;
   private static final String FQN_HASH_COLUMN = "fqnHash";
@@ -63,7 +70,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   public ListFilter(Include include) {
-    this.include = include;
+    this.include = include == null ? Include.ALL : include;
   }
 
   public String getConditionForEntity(String tableName) {
@@ -115,6 +122,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getClassificationTagsCondition(tableName));
     conditions.add(getGlossaryTermsCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
+    conditions.add(getWorkflowInstanceIdCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
     conditions.add(getTestCaseOwnerCondition());
@@ -130,15 +138,19 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getSpreadsheetCondition(tableName));
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
+    conditions.add(getTaskReviewerOrAssigneeCondition());
     conditions.add(getCreatedByCondition());
     conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
+    conditions.add(getAboutEntityIdsCondition(tableName));
+    conditions.add(getAboutEntityTypeCondition(tableName));
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getNotificationTemplateCondition());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
+    conditions.add(getEntityLinkHashCondition());
     conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAnnouncementStatusCondition());
@@ -159,27 +171,31 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
+    conditions.add(getAgentIdCondition());
     conditions.add(getNameFilterCondition());
     conditions.add(getSourceFileCondition());
     conditions.add(getSourceEntityCondition());
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
     conditions.add(getAssetCondition());
-    conditions.add(getGlossaryIdCondition(tableName));
+    conditions.add(getOntologyIdCondition(tableName));
     conditions.add(getOntologyChangeSetStateCondition(tableName));
     conditions.add(getMemorySourcedChangeSetCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
-  private String getGlossaryIdCondition(String tableName) {
-    String glossaryId = queryParams.get("glossaryId");
-    String condition = "";
-    if (!nullOrEmpty(glossaryId) && tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)) {
-      queryParams.put("glossaryIdParam", glossaryId);
-      condition = qualifyColumn(tableName, "glossaryId") + " = :glossaryIdParam";
+  private String getOntologyIdCondition(final String tableName) {
+    final String ontologyId = queryParams.get("ontologyId");
+    if (!nullOrEmpty(ontologyId)
+        && (tableMatches(tableName, ONTOLOGY_CONCEPT_TABLE)
+            || tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)
+            || tableMatches(tableName, ONTOLOGY_PROPERTY_TABLE)
+            || tableMatches(tableName, ONTOLOGY_RELEASE_TABLE))) {
+      queryParams.put("ontologyIdParam", ontologyId);
+      return qualifyColumn(tableName, "ontologyId") + " = :ontologyIdParam";
     }
-    return condition;
+    return "";
   }
 
   /** Matches any of the comma-separated states, each bound as its own parameter. */
@@ -396,6 +412,27 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
+   * Tasks that any of the given users or teams review or are assigned, by comma-separated id. A
+   * vote removes the voter from a task's assignees, so a reviewer's own listing keeps the task
+   * through the reviewer relationship.
+   */
+  private String getTaskReviewerOrAssigneeCondition() {
+    String ids = queryParams.get("reviewerOrAssigneeIds");
+    if (nullOrEmpty(ids)) {
+      return "";
+    }
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromEntity IN ('user', 'team') "
+            + "AND entity_relationship.fromId IN (%s) "
+            + "AND entity_relationship.toEntity = 'task' "
+            + "AND entity_relationship.relation IN (%d, %d)))",
+        buildIndexedBindParams("reviewerOrAssigneeId", ids),
+        Relationship.ASSIGNED_TO.ordinal(),
+        Relationship.REVIEWS.ordinal());
+  }
+
+  /**
    * Hash a user/team name (assignee, creator, approver) the same way its stored {@code nameHash} was
    * computed. A user or team {@code nameHash} is {@code buildHash(fullyQualifiedName)} where the FQN
    * is the quoted name (e.g. {@code "john.doe"} for a name containing a dot). Calling {@code
@@ -419,6 +456,28 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
     return buildFqnPrefixOrCondition("about", aboutEntityFqn);
+  }
+
+  private String getAboutEntityIdsCondition(String tableName) {
+    String ids = queryParams.get("aboutEntityIds");
+    return nullOrEmpty(ids)
+        ? ""
+        : String.format(
+            "%s IN (SELECT toId FROM entity_relationship WHERE toEntity = '%s' "
+                + "AND relation = %d AND deleted = FALSE AND fromId IN (%s))",
+            qualifyColumn(tableName, "id"),
+            Entity.TASK,
+            Relationship.MENTIONED_IN.ordinal(),
+            buildIndexedBindParams("aboutEntityId", ids));
+  }
+
+  private String getAboutEntityTypeCondition(String tableName) {
+    return nullOrEmpty(queryParams.get("aboutEntityType"))
+        ? ""
+        : String.format(
+            "%s IN (SELECT toId FROM entity_relationship WHERE fromEntity = :aboutEntityType "
+                + "AND toEntity = '%s' AND relation = %d AND deleted = FALSE)",
+            qualifyColumn(tableName, "id"), Entity.TASK, Relationship.MENTIONED_IN.ordinal());
   }
 
   /**
@@ -503,6 +562,24 @@ public class ListFilter extends Filter<ListFilter> {
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
+  }
+
+  /**
+   * Matches workflow runs by the md5 of their entityLink, in the exact form the
+   * idx_wf_instance_entity_link key takes (2.0.7 migration), so the run list for an entity is an
+   * index lookup; entityLink is unbounded TEXT and has no index of its own. See
+   * ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
+   */
+  private String getEntityLinkHashCondition() {
+    final String entityLinkHash = queryParams.get("entityLinkHash");
+    String condition = "";
+    if (entityLinkHash != null) {
+      condition =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? "entityLinkHash = :entityLinkHash"
+              : "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+    }
+    return condition;
   }
 
   /**
@@ -966,10 +1043,13 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
-    if (include == Include.NON_DELETED || include == Include.DELETED) {
-      return columnName + String.format(" = %s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
-    }
-    return "";
+    // Exhaustive on purpose: ALL must stay a named "" and not a siloed fall-through that a
+    // refactor could turn back into a deleted clause (invalid on time-series tables).
+    return switch (include) {
+      case NON_DELETED -> columnName + " = FALSE";
+      case DELETED -> columnName + " = TRUE";
+      case ALL -> "";
+    };
   }
 
   public String getDatabaseCondition(String tableName) {
@@ -1077,19 +1157,68 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
-    String domainInClause = buildIndexedBindParams("domainId", domainId.replace("'", ""));
+    String domainInClause = domainIdList(domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
-      return String.format(
-          "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain' AND er.toId = %s) OR "
-              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
-          entityIdColumn, entityIdColumn, domainInClause);
+      return domainAccessCondition(entityIdColumn, domainInClause);
     }
 
     return String.format(
-        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain'%s AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
-        entityIdColumn, domainInClause);
+        entityIdColumn, domainEntityTypeCondition("entity_relationship"), domainInClause);
+  }
+
+  // Keeps entities with no domain or with a listed one. Postgres hashes every domain link in the
+  // database for the OR form before returning a row, so it gets one anti-join; MySQL checks the
+  // OR per row and is faster with it (e.g. one index lookup less per table that has a domain).
+  private String domainAccessCondition(String entityIdColumn, String domainIds) {
+    String hasDomain =
+        "SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain'"
+            + domainEntityTypeCondition("er")
+            + " AND er.toId = "
+            + entityIdColumn;
+    String listedDomain =
+        "SELECT er2.toId FROM entity_relationship er2 WHERE er2.relation=10 AND er2.fromEntity='domain'"
+            + domainEntityTypeCondition("er2")
+            + " AND er2.fromId IN ("
+            + domainIds
+            + ")";
+    return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+        ? String.format("(NOT EXISTS (%s) OR %s IN (%s))", hasDomain, entityIdColumn, listedDomain)
+        : String.format(
+            "(NOT EXISTS (%s AND NOT EXISTS (%s AND er2.toId = er.toId)))",
+            hasDomain, listedDomain);
+  }
+
+  // Domain ids are inlined as canonical UUIDs rather than bound, so Postgres plans each statement
+  // with the selected domains' real asset counts; a generic plan guesses an average domain (e.g. it
+  // scans a whole schema for an empty domain, or probes every asset of a large one).
+  private String domainIdList(String domainIds) {
+    List<String> ids =
+        Arrays.stream(domainIds.split(",")).map(String::trim).filter(id -> !id.isEmpty()).toList();
+    List<String> uuids = ids.stream().map(ListFilter::canonicalUuid).toList();
+    return ids.isEmpty() || uuids.contains(null)
+        ? buildIndexedBindParams("domainId", domainIds)
+        : uuids.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
+  }
+
+  private static String canonicalUuid(String value) {
+    try {
+      return UUID.fromString(value).toString();
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  // Keeps a domain's membership rows to the listed type, so a table list doesn't collect the
+  // domain's other assets (e.g. its dashboards) before matching ids. Inlined for the same planning
+  // reason as the ids; it is an entity type name (e.g. "table"), never user input.
+  private String domainEntityTypeCondition(String alias) {
+    String entityType = getQueryParam("domainEntityType");
+    return entityType == null || !ENTITY_TYPE_NAME.matcher(entityType).matches()
+        ? ""
+        : String.format(" AND %s.toEntity = '%s'", alias, entityType);
   }
 
   private String getDomainSelfCondition(String tableName) {
@@ -1283,9 +1412,19 @@ public class ListFilter extends Filter<ListFilter> {
     return serverId == null ? "" : "serverId = :serverId";
   }
 
+  private String getAgentIdCondition() {
+    String agentId = queryParams.get("agentId");
+    return agentId == null ? "" : "agentId = :agentId";
+  }
+
   private String getEntityFQNHashCondition() {
     String entityFQN = getQueryParam("entityFQNHash");
     return entityFQN == null ? "" : "entityFQNHash = :entityFQNHash";
+  }
+
+  private String getWorkflowInstanceIdCondition() {
+    String workflowInstanceId = queryParams.get("workflowInstanceId");
+    return workflowInstanceId == null ? "" : "workflowInstanceId = :workflowInstanceId";
   }
 
   public String getParentCondition(String tableName) {

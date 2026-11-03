@@ -131,7 +131,7 @@ const KpiProgressRow: React.FC<KpiProgressRowProps> = ({ kpi }) => {
         <Typography
           className="tw:min-w-0 tw:text-text-primary!"
           ellipsis={{ rows: 1 }}
-          size="text-sm"
+          size="text-xs"
           weight="semibold">
           {kpi.name}
         </Typography>
@@ -145,7 +145,7 @@ const KpiProgressRow: React.FC<KpiProgressRowProps> = ({ kpi }) => {
         <Typography
           className="tw:ml-auto tw:shrink-0 tw:text-text-tertiary!"
           data-testid="kpi-target"
-          size="text-sm">
+          size="text-xs">
           {targetLabel}
         </Typography>
       </div>
@@ -154,14 +154,14 @@ const KpiProgressRow: React.FC<KpiProgressRowProps> = ({ kpi }) => {
         <Typography
           className="tw:text-text-primary!"
           data-testid="kpi-current"
-          size="text-xl"
+          size="text-sm"
           weight="semibold">
           {format.value(kpi.current)}
         </Typography>
         <Typography
           className="tw:text-text-tertiary!"
           data-testid="kpi-remaining"
-          size="text-sm">
+          size="text-xs">
           {t('message.value-to-go', { value: format.value(remaining) })}
         </Typography>
       </div>
@@ -185,7 +185,7 @@ const KpiProgressRow: React.FC<KpiProgressRowProps> = ({ kpi }) => {
         <Typography
           className="tw:text-text-tertiary!"
           data-testid="kpi-delta"
-          size="text-sm">
+          size="text-xs">
           {deltaLabel}
         </Typography>
         {/* Two facts side by side, not one sentence: the separator is drawn
@@ -197,7 +197,7 @@ const KpiProgressRow: React.FC<KpiProgressRowProps> = ({ kpi }) => {
         <Typography
           className="tw:text-text-tertiary!"
           data-testid="kpi-days-left"
-          size="text-sm">
+          size="text-xs">
           {t('message.count-days-left', { count: kpi.daysLeft })}
         </Typography>
       </div>
@@ -206,7 +206,7 @@ const KpiProgressRow: React.FC<KpiProgressRowProps> = ({ kpi }) => {
         <Typography
           className="tw:text-utility-warning-700!"
           data-testid="kpi-projection"
-          size="text-sm">
+          size="text-xs">
           {t('message.at-this-pace-projection-value', {
             date: formatDate(kpi.endDate),
             value: format.value(kpi.projected),

@@ -118,7 +118,7 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
     <Box className="tw:h-full tw:min-h-0" direction="col" justify="between">
       <HookForm form={form}>
         <Box
-          className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pt-0 tw:pb-6 tw:max-w-[640px] tw:w-full"
+          className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pt-0 tw:pb-6 tw:max-w-[50%] tw:w-full tw:mx-auto"
           data-testid="add-persona-container"
           direction="col"
           gap={5}>
@@ -144,7 +144,7 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
       </HookForm>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-8 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4"
         data-testid="add-persona-footer"
         direction="row"
         gap={3}

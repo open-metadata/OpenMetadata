@@ -26,10 +26,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { useDomainStore } from '../../../hooks/useDomainStore';
+import { useSwitchActiveDomain } from '../../../hooks/useSwitchActiveDomain';
 import { getDomainDisplayName } from '../../../utils/EntityNameUtils';
 
 // Each usage renders its own trigger as the Suspense fallback, so the control
@@ -56,8 +56,8 @@ export interface DomainScopeControlProps {
 /**
  * Global domain scope switcher. It shares `useDomainStore` with the classic
  * navbar selector, so picking a domain here changes the app-wide active domain
- * — and, like the navbar, reloads via `navigate(0)` so every domain-scoped view
- * refetches.
+ * and persists it as the user's `defaultDomain`, through the same switch as the
+ * navbar.
  */
 const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   variant = 'menu',
@@ -65,15 +65,14 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   children,
 }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const {
     activeDomain,
     activeDomainEntityRef,
-    updateActiveDomain,
     userDomains,
     isDomainRestricted,
   } = useDomainStore();
   const [isOpen, setIsOpen] = useState(false);
+  const switchActiveDomain = useSwitchActiveDomain();
 
   const domainDisplayName = useMemo(
     () => getDomainDisplayName(activeDomainEntityRef, activeDomain),
@@ -90,11 +89,10 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
       // `undefined` is the "All Domains" reset row clearing the scope; the
       // store takes the sentinel rather than a reference in that case.
       const next = Array.isArray(domain) ? domain[0] : domain;
-      updateActiveDomain(next as EntityReference);
       setIsOpen(false);
-      navigate(0);
+      await switchActiveDomain(next);
     },
-    [navigate, updateActiveDomain]
+    [switchActiveDomain]
   );
 
   // A single-domain user still gets the pill, rendered disabled, since there is

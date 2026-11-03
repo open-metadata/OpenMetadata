@@ -2288,18 +2288,15 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
       failTables.add(t);
     }
 
-    // Pass-before-fail ordering: the lone passing asset is iterated first, so the
-    // apply-while-no-failures gate writes `addingTag` to it before any failure
-    // closes the gate. The /v1/tags/{id}/assets/add endpoint is *asynchronous*
-    // (EntityResource.bulkAddToAssetsAsync): the HTTP body is just a jobId ack,
+    // Each asset is saved on its own: the lone passing asset gets `addingTag` and
+    // the failing ones keep their tags. The /v1/tags/{id}/assets/add endpoint is
+    // *asynchronous* (EntityResource.bulkAddToAssetsAsync): the HTTP body is just a jobId ack,
     // and the final BulkOperationResult — whose status is computed by the shared
     // deriveBulkOperationStatus helper (the `> 0` fix) — is delivered via
     // websocket, not in the HTTP body. The Tag path's status fix is therefore
     // covered by EntityRepositoryBulkOperationStatusTest plus the synchronous
     // glossary ITs; this test verifies the Tag path's validation+apply behavior
-    // via the observable side effect — exactly one asset passes (gets the tag)
-    // and the rest are gated off — which only happens when numberOfRowsPassed
-    // reaches 1.
+    // via the observable side effect: exactly one asset passes and gets the tag.
     List<EntityReference> assets = new ArrayList<>();
     assets.add(passTable.getEntityReference());
     assets.addAll(failTables.stream().map(Table::getEntityReference).toList());
@@ -2315,9 +2312,8 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .pollInterval(Duration.ofSeconds(1))
         .atMost(Duration.ofSeconds(60))
         .untilAsserted(() -> assertTrue(tableHasTag(client, passTableId, addingTagFqn)));
-    // The failing assets already carry the mutually-exclusive sibling, so the
-    // apply gate (closed after the first failure) must leave them untouched by
-    // addingTag.
+    // The failing assets already carry the mutually-exclusive sibling, so they
+    // must not receive addingTag.
     for (Table t : failTables) {
       assertFalse(
           tableHasTag(client, t.getId(), addingTagFqn),

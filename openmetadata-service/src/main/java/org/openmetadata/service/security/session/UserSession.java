@@ -47,4 +47,10 @@ public class UserSession {
         && refreshLeaseUntil != null
         && refreshLeaseUntil <= now;
   }
+
+  /**
+   * Lombok fills in this builder. It is declared so javadoc, which runs no annotation processors,
+   * can resolve method signatures that name it; without it the {@code release} build fails.
+   */
+  public static class UserSessionBuilder {}
 }

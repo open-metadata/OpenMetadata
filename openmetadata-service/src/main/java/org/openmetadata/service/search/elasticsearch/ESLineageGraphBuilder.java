@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -539,17 +541,31 @@ public class ESLineageGraphBuilder
     }
   }
 
-  private void addRootEntityWithPagingCounts(
-      SearchLineageRequest lineageRequest, SearchLineageResult result, boolean isDirectionBased)
-      throws IOException {
-    Map<String, Object> rootEntityMap =
-        EsUtils.searchEntityByKey(
+  /**
+   * The entity the search lineage endpoints root a graph on for {@code fqn}: the single hit of the
+   * FQN-hash lookup {@link #addRootEntityWithPagingCounts} runs, whatever entity type the caller
+   * named. Empty when nothing is indexed under the FQN.
+   */
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return LineageUtil.lineageRoot(
+        EsUtils.searchEntitiesByKey(
             esClient,
             null,
             GLOBAL_SEARCH_ALIAS,
             FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
-            Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
-            SOURCE_FIELDS_TO_EXCLUDE);
+            Set.of(FullyQualifiedName.buildHash(fqn)),
+            0,
+            1,
+            LineageUtil.ROOT_SOURCE_FIELDS,
+            null,
+            null));
+  }
+
+  private void addRootEntityWithPagingCounts(
+      SearchLineageRequest lineageRequest, SearchLineageResult result, boolean isDirectionBased)
+      throws IOException {
+    final Map<String, Object> rootEntityMap =
+        loadRootEntity(lineageRequest.getFqn(), this::fetchRootEntity);
 
     if (!rootEntityMap.isEmpty()) {
       String rootFqn = rootEntityMap.get(FQN_FIELD).toString();
@@ -571,6 +587,16 @@ public class ESLineageGraphBuilder
           getNodeInformation(rootEntityMap, downstreamCount, upstreamCount, 0);
       result.getNodes().put(rootFqn, rootNode);
     }
+  }
+
+  private Map<String, Object> fetchRootEntity(final String fqn) throws IOException {
+    return EsUtils.searchEntityByKey(
+        esClient,
+        null,
+        GLOBAL_SEARCH_ALIAS,
+        FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+        Pair.of(FullyQualifiedName.buildHash(fqn), fqn),
+        SOURCE_FIELDS_TO_EXCLUDE);
   }
 
   private int countDownstreamEntities(String fqn, SearchLineageRequest lineageRequest)
@@ -1371,6 +1397,8 @@ public class ESLineageGraphBuilder
             new ArrayList<>(allEntitiesUpToDepth.values()),
             entityData -> entityData.depth,
             entityData -> entityData.fqn);
+    allEntitiesUpToDepthList.removeIf(
+        entityData -> entityData.depth == 0 && entityData.fqn.equals(request.getFqn()));
     List<EntityData> paginatedEntities =
         paginateList(allEntitiesUpToDepthList, request.getFrom(), request.getSize());
 
@@ -1399,6 +1427,19 @@ public class ESLineageGraphBuilder
       result.getNodes().put(entityData.fqn, getNodeInformation(document, null, null, entityDepth));
 
       addLineageEdges(result, document, request, allCollectedFqns);
+    }
+
+    // The root is excluded from the page window above, but its document still
+    // holds the lineage edges connecting it to its neighbours (e.g. upstream
+    // parents → root for UPSTREAM). Process those edges so the graph stays
+    // connected on every page, not just the first. Use the full root document
+    // from result.getNodes() rather than allEntitiesUpToDepth: for UPSTREAM the
+    // depth-0 walk overwrites that entry with a slim LINEAGE_WALK_FIELDS document
+    // that lacks id/entityType, which would make addLineageEdges throw inside
+    // getRelationshipRef.
+    NodeInformation rootNode = result.getNodes().get(request.getFqn());
+    if (rootNode != null && rootNode.getEntity() != null) {
+      addLineageEdges(result, JsonUtils.getMap(rootNode.getEntity()), request, allCollectedFqns);
     }
 
     Map<Integer, Integer> depthCounts = new LinkedHashMap<>();

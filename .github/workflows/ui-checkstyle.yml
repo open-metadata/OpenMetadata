@@ -719,7 +719,7 @@ jobs:
             const failures = checks.filter(c => c.result === 'failure');
             const commentId = '${{ steps.fc.outputs.comment-id }}';
 
-            const eslintFindings = '${{ needs.checkstyle.outputs.eslint_has_findings }}' === 'true';
+            const eslintFindings = ${{ toJSON(needs.checkstyle.outputs.eslint_has_findings) }} === 'true';
             const eslintSummary  = ${{ toJSON(needs.checkstyle.outputs.eslint_summary) }} || '';
             const eslintDetails  = ${{ toJSON(needs.checkstyle.outputs.eslint_details) }} || '';
 

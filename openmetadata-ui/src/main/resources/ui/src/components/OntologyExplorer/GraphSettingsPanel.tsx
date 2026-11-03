@@ -19,7 +19,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Settings01, X } from '@openmetadata/ui-core-components/icons';
+import { Settings01, XClose } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LayoutType } from './OntologyExplorer.constants';
@@ -68,7 +68,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
         <ButtonUtility
           color="tertiary"
           data-testid="graph-settings-close"
-          icon={X}
+          icon={XClose}
           size="xs"
           tooltip={t('label.close')}
           onClick={() => setOpen(false)}

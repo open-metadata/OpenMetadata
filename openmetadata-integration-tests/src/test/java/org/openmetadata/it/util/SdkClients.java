@@ -3,6 +3,7 @@ package org.openmetadata.it.util;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.bench.ApiLatencyRecorder;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.fluent.AIApplications;
@@ -290,7 +291,7 @@ public class SdkClients {
     String token =
         JwtAuthProvider.tokenFor(subject, email, roles, INTEGRATION_TEST_TOKEN_TTL_SECONDS);
     OpenMetadataConfig cfg =
-        OpenMetadataConfig.builder()
+        ApiLatencyRecorder.instrument(OpenMetadataConfig.builder())
             .serverUrl(BASE_URL)
             .accessToken(token)
             .header("X-Auth-Params-Email", email)
@@ -359,7 +360,7 @@ public class SdkClients {
 
   private static OpenMetadataClient buildAdminClientWithToken(String accessToken) {
     OpenMetadataConfig cfg =
-        OpenMetadataConfig.builder()
+        ApiLatencyRecorder.instrument(OpenMetadataConfig.builder())
             .serverUrl(BASE_URL)
             .accessToken(accessToken)
             .header("X-Auth-Params-Email", "admin@open-metadata.org")

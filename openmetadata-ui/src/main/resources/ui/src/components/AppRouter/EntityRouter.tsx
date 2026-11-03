@@ -20,6 +20,7 @@ import { EntityType } from '../../enums/entity.enum';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import EntityImportRouter from './EntityImportRouter';
+import { withSuggestions } from './withSuggestions';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
 const EntityVersionPage = withPageSuspenseFallback(
@@ -31,10 +32,12 @@ const EntityVersionPage = withPageSuspenseFallback(
 const EntityRouter = () => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
-  const Component = useMemo(
-    () => entityUtilClassBase.getEntityDetailComponent(entityType),
-    [entityType]
-  );
+  const Component = useMemo(() => {
+    const EntityDetailPage =
+      entityUtilClassBase.getEntityDetailComponent(entityType);
+
+    return EntityDetailPage ? withSuggestions(EntityDetailPage) : null;
+  }, [entityType]);
 
   return (
     <Routes>

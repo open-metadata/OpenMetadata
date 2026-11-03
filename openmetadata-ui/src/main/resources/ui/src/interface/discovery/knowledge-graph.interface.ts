@@ -195,7 +195,6 @@ export interface KnowledgeGraphDetailsControl {
 }
 
 export interface KnowledgeGraphToolbarProps {
-  hasFilters?: boolean;
   selectedLevel: KnowledgeGraphLevel;
   layout: KnowledgeGraphLayout;
   labelMode: KnowledgeGraphLabelMode;
@@ -205,8 +204,6 @@ export interface KnowledgeGraphToolbarProps {
   filterOptions?: GraphFilterOptions;
   presentation: KnowledgeGraphPresentation;
   showBands: boolean;
-  excludedFamilies: RelationCategory[];
-  familyCounts: Record<RelationCategory, number>;
   ontology: {
     concepts: GraphNode[];
     selectedId?: string;
@@ -215,8 +212,6 @@ export interface KnowledgeGraphToolbarProps {
   viewport: { isFullscreen: boolean; onFullscreen: () => void };
   onPresentationChange: (presentation: KnowledgeGraphPresentation) => void;
   onToggleBands: () => void;
-  onToggleFamily: (family: RelationCategory) => void;
-  onClearFilters: () => void;
   onFindNode: (nodeId: string) => void;
   onLevelChange: (level: KnowledgeGraphLevel) => void;
   onLayoutChange: (layout: KnowledgeGraphLayout) => void;

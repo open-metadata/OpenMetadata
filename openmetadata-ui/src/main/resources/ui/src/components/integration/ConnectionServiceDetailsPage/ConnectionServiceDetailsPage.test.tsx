@@ -17,12 +17,17 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import React from 'react';
 import { getDatabases } from '../../../rest/databaseAPI';
 import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getTopics } from '../../../rest/topicsAPI';
-import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
+import {
+  EXTENSION_POINTS,
+  TestConnectionActionProps,
+} from '../../../utils/ExtensionPointTypes';
+import { RenderTestConnectionFailureAction } from '../../common/TestConnection/TestConnectionModal/TestConnectionModal.interface';
 import ConnectionServiceDetailsPage from './ConnectionServiceDetailsPage';
 
 // ── Mock Data ─────────────────────────────────────────────────────────────
@@ -40,9 +45,14 @@ const MOCK_SERVICE = {
 const mockNavigate = jest.fn();
 let mockTabParam: string | undefined = undefined;
 let mockServiceCategory = 'databaseServices';
+let mockFqn = 'test-service';
 const mockPermissions: { database: Record<string, boolean> } = { database: {} };
 const FULL_SERVICE_PERMISSION = { EditAll: true, Delete: true, ViewAll: true };
 let mockServicePermission: Record<string, boolean> = FULL_SERVICE_PERMISSION;
+// Stable like the real provider's memoised getter: a fresh function per render would refetch forever.
+const mockGetEntityPermissionByFqn = jest.fn(() =>
+  Promise.resolve(mockServicePermission)
+);
 const mockTableFilters: { showDeletedTables: boolean; schema?: string } = {
   showDeletedTables: false,
 };
@@ -56,7 +66,7 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
   useParams: () => ({
     serviceCategory: mockServiceCategory,
-    fqn: 'test-service',
+    fqn: mockFqn,
     tab: mockTabParam,
   }),
 }));
@@ -64,9 +74,7 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
     permissions: mockPermissions,
-    getEntityPermissionByFqn: jest.fn(() =>
-      Promise.resolve(mockServicePermission)
-    ),
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   }),
 }));
 
@@ -213,9 +221,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         return (
           <button type="button" onClick={() => onSelect(id)}>
             {label}
-            {badge ? (
+            {badge === undefined ? null : (
               <span data-testid={`tab-badge-${id}`}>{badge}</span>
-            ) : null}
+            )}
           </button>
         );
       },
@@ -262,7 +270,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Menu: ({ children }: { children: React.ReactNode }) => (
         <div>{children}</div>
       ),
-      Item: ({ label }: { label: string }) => <div>{label}</div>,
+      Item: ({ label, onAction }: { label: string; onAction?: () => void }) => (
+        <button type="button" onClick={onAction}>
+          {label}
+        </button>
+      ),
     },
     Typography: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
@@ -275,6 +287,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         PageHeader: ({
           icon,
           title,
+          badge,
           meta,
           actions,
           subtitle,
@@ -282,6 +295,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         }: {
           icon?: React.ReactNode;
           title?: React.ReactNode;
+          badge?: React.ReactNode;
           meta?: React.ReactNode;
           actions?: React.ReactNode;
           subtitle?: React.ReactNode;
@@ -290,6 +304,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           <div data-testid="service-header">
             {icon}
             {title}
+            {badge}
             {meta}
             {actions}
             {subtitle}
@@ -314,19 +329,92 @@ jest.mock('../../common/Loader/Loader', () => ({
   default: () => <div data-testid="loader" />,
 }));
 
+const mockDeleteEntityModal = jest.fn();
 jest.mock('../../common/DeleteWidget/DeleteEntityModal', () => ({
   __esModule: true,
-  default: () => null,
+  default: (props: { allowSoftDelete?: boolean }) => {
+    mockDeleteEntityModal(props);
+
+    return (
+      <div data-testid="delete-modal">
+        {props.allowSoftDelete ? 'soft-and-hard-delete' : 'hard-delete-only'}
+      </div>
+    );
+  },
+}));
+
+const mockAnnouncementDrawer = jest.fn();
+jest.mock(
+  '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
+  () => ({
+    __esModule: true,
+    default: (props: Record<string, unknown>) => {
+      mockAnnouncementDrawer(props);
+
+      return <div data-testid="announcement-drawer" />;
+    },
+  })
+);
+
+const mockAnnouncementsBanner = jest.fn();
+jest.mock(
+  '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
+  () => ({
+    __esModule: true,
+    default: (props: Record<string, unknown>) => {
+      mockAnnouncementsBanner(props);
+
+      return <div data-testid="entity-header-announcements" />;
+    },
+  })
+);
+
+const mockAnnouncements = [{ id: 'announcement-1' }];
+const mockRefetchAnnouncements = jest.fn();
+const mockUseActiveAnnouncements = jest.fn((..._args: unknown[]) => ({
+  announcements: mockAnnouncements,
+  refetch: mockRefetchAnnouncements,
+}));
+jest.mock('./useActiveAnnouncements', () => ({
+  useActiveAnnouncements: (...args: unknown[]) =>
+    mockUseActiveAnnouncements(...args),
 }));
 
 jest.mock(
-  '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
-  () => ({ __esModule: true, default: () => null })
+  '../../common/HeaderVersionButton/HeaderVersionButton.component',
+  () => ({
+    HeaderVersionButton: ({
+      version,
+      onClick,
+    }: {
+      version: string;
+      onClick: () => void;
+    }) => (
+      <button data-testid="version-btn" type="button" onClick={onClick}>
+        {version}
+      </button>
+    ),
+  })
+);
+
+const mockServiceFollowButton = jest.fn();
+jest.mock('./ServiceFollowButton', () => ({
+  ServiceFollowButton: (props: Record<string, unknown>) => {
+    mockServiceFollowButton(props);
+
+    return <div data-testid="entity-follow-button" />;
+  },
+}));
+
+const mockTestConnection = jest.fn(
+  (_props: { renderFailureAction?: RenderTestConnectionFailureAction }) => null
 );
 
 jest.mock('../../common/TestConnection/TestConnection', () => ({
   __esModule: true,
-  default: () => null,
+  default: (props: {
+    renderFailureAction?: RenderTestConnectionFailureAction;
+  }) => mockTestConnection(props),
 }));
 
 jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => ({
@@ -348,22 +436,60 @@ jest.mock(
   })
 );
 
+const mockDataModelTable = jest.fn();
+jest.mock('../../Dashboard/DataModel/DataModels/DataModelsTable', () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => {
+    mockDataModelTable(props);
+
+    return <div data-testid="data-model-table" />;
+  },
+}));
+
+const mockServiceFilesTab = jest.fn();
+const mockServiceSpreadsheetsTab = jest.fn();
+jest.mock('./ServiceDriveAssetTabs', () => ({
+  ServiceFilesTab: (props: Record<string, unknown>) => {
+    mockServiceFilesTab(props);
+
+    return <div data-testid="service-files-tab" />;
+  },
+  ServiceSpreadsheetsTab: (props: Record<string, unknown>) => {
+    mockServiceSpreadsheetsTab(props);
+
+    return <div data-testid="service-spreadsheets-tab" />;
+  },
+}));
+
+let mockAssetCounts: Record<string, number> = {};
+const mockUseServiceAssetCounts = jest.fn(
+  (..._args: unknown[]) => mockAssetCounts
+);
+jest.mock('./useServiceAssetCounts', () => ({
+  ...jest.requireActual('./useServiceAssetCounts'),
+  useServiceAssetCounts: (...args: unknown[]) =>
+    mockUseServiceAssetCounts(...args),
+}));
+
+const mockDataAssetsTab = jest.fn();
 jest.mock('./DataAssetsTab', () => ({
   __esModule: true,
-  default: ({
-    data,
-    onShowDeletedChange,
-  }: {
+  default: (props: {
     data: { name: string }[];
     onShowDeletedChange: (value: boolean) => void;
-  }) => (
-    <div data-testid="data-assets-tab">
-      <button onClick={() => onShowDeletedChange(true)}>show-deleted</button>
-      {data.map(({ name }) => (
-        <span key={name}>{name}</span>
-      ))}
-    </div>
-  ),
+  }) => {
+    mockDataAssetsTab(props);
+    const { data, onShowDeletedChange } = props;
+
+    return (
+      <div data-testid="data-assets-tab">
+        <button onClick={() => onShowDeletedChange(true)}>show-deleted</button>
+        {data.map(({ name }) => (
+          <span key={name}>{name}</span>
+        ))}
+      </div>
+    );
+  },
 }));
 
 // Exercises the owner/domain/tier editing UI on its own OSS primitives (DomainSelectableList,
@@ -397,6 +523,13 @@ jest.mock('../../../constants/constants', () => ({
 
 jest.mock('fast-json-patch', () => ({ compare: jest.fn(() => []) }));
 
+// ROUTES comes from the constants mocked above; the path itself is RouterUtils' to test.
+jest.mock('../../../utils/RouterUtils', () => ({
+  ...jest.requireActual('../../../utils/RouterUtils'),
+  getServiceVersionPath: (category: string, fqn: string, version: string) =>
+    `/service/${category}/${fqn}/versions/${version}`,
+}));
+
 // Holds each list request open until the test resolves it — by index, in request order — so a
 // request can be made to resolve after the one that followed it.
 type ResolveList = (names: string[]) => void;
@@ -428,21 +561,45 @@ const CONTRIBUTED_TAB = {
   condition: () => true,
 };
 
+const tabLabels = () =>
+  within(screen.getByRole('tablist'))
+    .getAllByRole('button')
+    .map((tab) => tab.textContent);
+
+// The footer slot's measured height. jsdom lays nothing out, so the measuring itself is
+// useSlotInset's own test; here it only feeds the page.
+let mockFooterInset = 0;
+jest.mock('../hooks/useSlotInset', () => ({
+  useSlotInset: () => ({ ref: jest.fn(), inset: mockFooterInset }),
+}));
+
 describe('ConnectionServiceDetailsPage', () => {
   beforeEach(() => {
+    mockFooterInset = 0;
     jest.clearAllMocks();
     mockTabParam = undefined;
     mockServiceCategory = 'databaseServices';
+    mockFqn = 'test-service';
     mockPermissions.database = {};
     mockServicePermission = FULL_SERVICE_PERMISSION;
     mockTableFilters.showDeletedTables = false;
     delete mockTableFilters.schema;
     delete mockPagingCursor.cursorType;
     delete mockPagingCursor.cursorValue;
+    mockAssetCounts = {};
     Object.keys(contributionsByPoint).forEach(
       (key) => delete contributionsByPoint[key]
     );
   });
+
+  const renderOnDataAssets = async () => {
+    await act(async () => {
+      render(<ConnectionServiceDetailsPage />);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
+    );
+  };
 
   it('resolves a soft-deleted service instead of 404ing on it', async () => {
     await act(async () => {
@@ -503,6 +660,266 @@ describe('ConnectionServiceDetailsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument();
+    });
+  });
+
+  describe('secondary asset tabs', () => {
+    const renderPage = async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+      await waitFor(() =>
+        expect(screen.getByRole('tablist')).toBeInTheDocument()
+      );
+    };
+
+    it('offers a dashboard service its data models, between its dashboards and its connection', async () => {
+      mockServiceCategory = 'dashboardServices';
+      await renderPage();
+
+      const labels = tabLabels();
+
+      expect(labels).toContain('label.data-model');
+      expect(labels.indexOf('label.data-model')).toBe(
+        labels.indexOf('label.connection') - 1
+      );
+    });
+
+    it('offers a drive service its files and spreadsheets, before its connection', async () => {
+      mockServiceCategory = 'driveServices';
+      await renderPage();
+
+      const labels = tabLabels();
+
+      expect(labels.slice(-3)).toEqual([
+        'label.file-plural',
+        'label.spreadsheet-plural',
+        'label.connection',
+      ]);
+    });
+
+    it('offers neither to a service without such assets', async () => {
+      await renderPage();
+
+      expect(tabLabels()).not.toEqual(
+        expect.arrayContaining(['label.data-model'])
+      );
+      expect(tabLabels()).not.toEqual(
+        expect.arrayContaining([
+          'label.file-plural',
+          'label.spreadsheet-plural',
+        ])
+      );
+    });
+
+    it("lists a dashboard service's data models, sharing the deleted switch", async () => {
+      mockServiceCategory = 'dashboardServices';
+      mockTabParam = 'data-model';
+      mockTableFilters.showDeletedTables = true;
+      await renderPage();
+
+      expect(screen.getByTestId('data-model-table')).toBeInTheDocument();
+      expect(mockDataModelTable).toHaveBeenLastCalledWith(
+        expect.objectContaining({ showDeleted: true })
+      );
+
+      const { handleShowDeleted } = mockDataModelTable.mock.calls.at(-1)[0];
+      act(() => handleShowDeleted(false));
+
+      expect(mockSetFilters).toHaveBeenCalledWith({
+        showDeletedTables: undefined,
+      });
+    });
+
+    it.each([
+      ['files', 'service-files-tab', mockServiceFilesTab],
+      ['spreadsheets', 'service-spreadsheets-tab', mockServiceSpreadsheetsTab],
+    ])("lists a drive service's %s", async (tabKey, testId, tabComponent) => {
+      mockServiceCategory = 'driveServices';
+      mockTabParam = tabKey;
+      await renderPage();
+
+      expect(screen.getByTestId(testId)).toBeInTheDocument();
+      expect(tabComponent).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          serviceFqn: 'test-service',
+          showDeleted: false,
+        })
+      );
+    });
+
+    // The tab param mounts content before the fallback runs; a tab the category lacks must
+    // never mount, or it fetches assets the service cannot have.
+    it.each([
+      ['data-model', mockDataModelTable],
+      ['files', mockServiceFilesTab],
+      ['spreadsheets', mockServiceSpreadsheetsTab],
+    ])(
+      'never mounts %s for a service without it',
+      async (tabKey, tabComponent) => {
+        mockTabParam = tabKey;
+        await renderPage();
+
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
+        expect(tabComponent).not.toHaveBeenCalled();
+      }
+    );
+  });
+
+  describe('tab counts', () => {
+    it('counts the assets of the loaded service, on the side of the deleted switch shown', async () => {
+      mockTableFilters.showDeletedTables = true;
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(mockUseServiceAssetCounts).toHaveBeenLastCalledWith(
+        'databaseServices',
+        'test-service',
+        'deleted'
+      );
+    });
+
+    it('badges each asset tab with its count, zero included', async () => {
+      mockServiceCategory = 'driveServices';
+      mockAssetCounts = { dataAssets: 9, files: 3, spreadsheets: 0 };
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(screen.getByTestId('tab-badge-dataAssets')).toHaveTextContent('9');
+      expect(screen.getByTestId('tab-badge-files')).toHaveTextContent('3');
+      expect(screen.getByTestId('tab-badge-spreadsheets')).toHaveTextContent(
+        '0'
+      );
+      expect(
+        screen.queryByTestId('tab-badge-connection')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows no badge for a count that has not loaded', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(
+        screen.queryByTestId('tab-badge-dataAssets')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('loads the other service when the route moves to it without remounting', async () => {
+    const { rerender } = render(<ConnectionServiceDetailsPage />);
+    await waitFor(() =>
+      expect(getServiceByFQN).toHaveBeenCalledWith(
+        'databaseServices',
+        'test-service',
+        expect.anything()
+      )
+    );
+
+    mockFqn = 'other-service';
+    rerender(<ConnectionServiceDetailsPage />);
+
+    await waitFor(() =>
+      expect(getServiceByFQN).toHaveBeenCalledWith(
+        'databaseServices',
+        'other-service',
+        expect.anything()
+      )
+    );
+
+    expect(mockGetEntityPermissionByFqn).toHaveBeenLastCalledWith(
+      expect.anything(),
+      'other-service'
+    );
+  });
+
+  it("keeps the new service when the previous one's answers arrive after it", async () => {
+    const pendingService: Array<(value: unknown) => void> = [];
+    const pendingPermission: Array<(value: Record<string, boolean>) => void> =
+      [];
+    (getServiceByFQN as jest.Mock)
+      .mockImplementationOnce(
+        () => new Promise((resolve) => pendingService.push(resolve))
+      )
+      .mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        id: 'svc-2',
+        name: 'other-service',
+        fullyQualifiedName: 'other-service',
+      });
+    mockGetEntityPermissionByFqn
+      .mockImplementationOnce(
+        () => new Promise((resolve) => pendingPermission.push(resolve))
+      )
+      .mockResolvedValueOnce({ ViewAll: true, ViewBasic: true });
+    const { rerender } = render(<ConnectionServiceDetailsPage />);
+    await waitFor(() => expect(pendingService).toHaveLength(1));
+
+    mockFqn = 'other-service';
+    rerender(<ConnectionServiceDetailsPage />);
+    const header = () => screen.getByTestId('service-header');
+    await waitFor(() => expect(header()).toHaveTextContent('other-service'));
+
+    await act(async () => {
+      pendingService[0]({ ...MOCK_SERVICE, owners: [], tags: [] });
+      pendingPermission[0](FULL_SERVICE_PERMISSION);
+    });
+
+    expect(header()).toHaveTextContent('other-service');
+    expect(header()).not.toHaveTextContent('test-service');
+    // The read-only answer for the new service stands; the old one's EditAll does not.
+    expect(screen.getByTestId('entity-meta-strip')).toHaveAttribute(
+      'data-can-edit-owners',
+      'false'
+    );
+  });
+
+  // As classic: metadata and security services have no child assets, so no data-assets tab.
+  describe.each(['metadataServices', 'securityServices'])('%s', (category) => {
+    beforeEach(() => {
+      mockServiceCategory = category;
+    });
+
+    it('offers no data-assets tab and opens on the connection', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument()
+      );
+
+      expect(tabLabels()).toEqual(['label.connection']);
+      expect(mockDataAssetsTab).not.toHaveBeenCalled();
+      expect(getDatabases).not.toHaveBeenCalled();
+    });
+
+    it('lands a data-assets deep link on the connection instead', async () => {
+      mockTabParam = 'dataAssets';
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument()
+      );
+
+      expect(mockDataAssetsTab).not.toHaveBeenCalled();
+    });
+
+    // Classic also hides the connection from those who may not edit it, leaving no tab.
+    it('offers a read-only user no tab, as classic', async () => {
+      mockServicePermission = { ViewAll: true, ViewBasic: true };
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(
+        within(screen.getByRole('tablist')).queryAllByRole('button')
+      ).toEqual([]);
+      expect(mockDataAssetsTab).not.toHaveBeenCalled();
     });
   });
 
@@ -621,6 +1038,12 @@ describe('ConnectionServiceDetailsPage', () => {
 
     expect(screen.getByText('label.delete')).toBeInTheDocument();
     expect(screen.queryByText('label.restore')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.delete'));
+
+    expect(screen.getByTestId('delete-modal')).toHaveTextContent(
+      'soft-and-hard-delete'
+    );
   });
 
   describe('data assets fetch', () => {
@@ -778,6 +1201,123 @@ describe('ConnectionServiceDetailsPage', () => {
     });
   });
 
+  describe('header actions', () => {
+    it("opens the service's version history from its current version", async () => {
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        version: 0.3,
+      });
+      await renderOnDataAssets();
+
+      expect(screen.getByTestId('version-btn')).toHaveTextContent('0.3');
+
+      fireEvent.click(screen.getByTestId('version-btn'));
+
+      // The version route, as Context Center articles use: that version beside the history.
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/service/databaseServices/test-service/versions/0.3'
+      );
+    });
+
+    it('lets a database service be followed, and keeps the followers it reports', async () => {
+      const follower = { id: 'user-1', type: 'user' };
+      await renderOnDataAssets();
+
+      expect(mockServiceFollowButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ serviceId: 'svc-1', followers: [] })
+      );
+
+      act(() =>
+        mockServiceFollowButton.mock.calls
+          .at(-1)[0]
+          .onFollowersChange([follower])
+      );
+
+      expect(mockServiceFollowButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ followers: [follower] })
+      );
+    });
+
+    // As classic: the followers endpoint exists for database services only.
+    it('offers no follow on another kind of service', async () => {
+      mockServiceCategory = 'dashboardServices';
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        version: 0.1,
+      });
+      await renderOnDataAssets();
+
+      expect(
+        screen.queryByTestId('entity-follow-button')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('version-btn')).toBeInTheDocument();
+    });
+
+    it('offers no follow on a soft-deleted service', async () => {
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        deleted: true,
+      });
+      await renderOnDataAssets();
+
+      expect(
+        screen.queryByTestId('entity-follow-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it("lands on the service's list once it is deleted", async () => {
+      await renderOnDataAssets();
+
+      fireEvent.click(screen.getByText('label.delete'));
+      act(() => mockDeleteEntityModal.mock.calls.at(-1)[0].afterDeleteAction());
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/connections?category=databaseServices'
+      );
+    });
+  });
+
+  describe('announcements', () => {
+    it("shows the service's active announcements on every tab", async () => {
+      await renderOnDataAssets();
+
+      expect(mockUseActiveAnnouncements).toHaveBeenLastCalledWith(
+        'databaseService',
+        'test-service'
+      );
+      expect(mockAnnouncementsBanner).toHaveBeenLastCalledWith(
+        expect.objectContaining({ announcements: mockAnnouncements })
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /label\.connection/i })
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument()
+      );
+
+      expect(
+        screen.getByTestId('entity-header-announcements')
+      ).toBeInTheDocument();
+    });
+
+    it('opens an announcement in the drawer, and reloads them once it closes', async () => {
+      await renderOnDataAssets();
+
+      act(() => mockAnnouncementsBanner.mock.calls.at(-1)[0].onItemClick());
+
+      expect(screen.getByTestId('announcement-drawer')).toBeInTheDocument();
+
+      act(() => mockAnnouncementDrawer.mock.calls.at(-1)[0].onClose());
+
+      expect(
+        screen.queryByTestId('announcement-drawer')
+      ).not.toBeInTheDocument();
+      expect(mockRefetchAnnouncements).toHaveBeenCalled();
+    });
+  });
+
   describe('deleted service', () => {
     const renderDeleted = async () => {
       (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
@@ -800,7 +1340,7 @@ describe('ConnectionServiceDetailsPage', () => {
       );
     });
 
-    it('offers restore instead of delete', async () => {
+    it('offers restore alongside delete', async () => {
       await renderDeleted();
 
       await waitFor(() =>
@@ -809,7 +1349,21 @@ describe('ConnectionServiceDetailsPage', () => {
 
       // A soft delete is meant to be reversible; without restore the page is a dead end.
       expect(screen.getByText('label.restore')).toBeInTheDocument();
-      expect(screen.queryByText('label.delete')).not.toBeInTheDocument();
+      expect(screen.getByText('label.delete')).toBeInTheDocument();
+    });
+
+    it('offers only a permanent delete', async () => {
+      await renderDeleted();
+
+      await waitFor(() =>
+        expect(screen.getByTestId('deleted-badge')).toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByText('label.delete'));
+
+      expect(screen.getByTestId('delete-modal')).toHaveTextContent(
+        'hard-delete-only'
+      );
     });
 
     it('has no deleted badge on a live service', async () => {
@@ -1007,6 +1561,62 @@ describe('ConnectionServiceDetailsPage', () => {
     });
   });
 
+  describe('SERVICE_DETAILS_TEST_CONNECTION_ACTIONS contributions', () => {
+    const getRenderFailureAction = () =>
+      mockTestConnection.mock.calls.at(-1)?.[0].renderFailureAction;
+
+    it('gives the test connection no failure action when no plugin contributes one', async () => {
+      mockTabParam = 'connection';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() => {
+        expect(mockTestConnection).toHaveBeenCalled();
+      });
+
+      expect(getRenderFailureAction()).toBeUndefined();
+    });
+
+    it('renders the contributed action with the raw log, page context and close callback', async () => {
+      mockTabParam = 'connection';
+      const onClose = jest.fn();
+      contributionsByPoint[
+        EXTENSION_POINTS.SERVICE_DETAILS_TEST_CONNECTION_ACTIONS
+      ] = [
+        {
+          key: 'diagnose',
+          component: ({
+            failure,
+            onClose: close,
+            serviceDetails,
+          }: TestConnectionActionProps) => (
+            <button data-testid="diagnose-action" onClick={close}>
+              {`${serviceDetails?.name}: ${failure}`}
+            </button>
+          ),
+        },
+      ];
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() => {
+        expect(getRenderFailureAction()).toBeDefined();
+      });
+
+      render(<>{getRenderFailureAction()?.('Connection refused', onClose)}</>);
+      fireEvent.click(screen.getByTestId('diagnose-action'));
+
+      expect(screen.getByTestId('diagnose-action')).toHaveTextContent(
+        'test-service: Connection refused'
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
   describe('SERVICE_DETAILS_FOOTER contributions', () => {
     it('renders nothing in the footer region when no plugin contributes one', async () => {
       await act(async () => {
@@ -1040,6 +1650,31 @@ describe('ConnectionServiceDetailsPage', () => {
           screen.getByTestId('service-details-footer-slot')
         ).toBeInTheDocument();
       });
+    });
+
+    // The footer (Collate's composer) overlays the bottom of the page, so the tab content reserves
+    // its height to let the last rows scroll clear of it.
+    it("reserves the footer's height at the bottom of the tab content", async () => {
+      mockFooterInset = 149;
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(
+        screen.getByTestId('service-details-scroll-container')
+      ).toHaveStyle({ paddingBottom: '149px' });
+    });
+
+    it('reserves nothing when no footer is contributed', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(
+        screen.getByTestId('service-details-scroll-container').style
+          .paddingBottom
+      ).toBe('');
     });
   });
 });

@@ -326,7 +326,7 @@ const CoreOneOfField = (props: FieldProps) => {
                 className={classNames(
                   'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
                   isSelected
-                    ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
+                    ? 'tw:border-primary tw:bg-surface tw:font-medium tw:text-primary tw:shadow-xs'
                     : 'tw:border-transparent tw:font-medium tw:text-tertiary'
                 )}
                 data-selected={isSelected}

@@ -42,6 +42,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -63,6 +64,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
@@ -94,7 +96,9 @@ import org.openmetadata.service.lineage.LineageSceneCache;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
+import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -833,15 +837,18 @@ public class LineageRepository {
     CsvDocumentation documentation = getCsvDocumentation("lineage", false);
     List<CsvHeader> headers = documentation.getHeaders();
     SearchLineageResult result =
-        Entity.getSearchRepository()
-            .searchLineageForExport(
-                fqn,
-                upstreamDepth,
-                downstreamDepth,
-                queryFilter,
-                deleted,
-                entityType,
-                subjectContext);
+        SearchLineagePermissionFilter.filterFor(
+            subjectContext,
+            Entity.getSearchRepository()
+                .searchLineageForExport(
+                    fqn,
+                    upstreamDepth,
+                    downstreamDepth,
+                    queryFilter,
+                    deleted,
+                    entityType,
+                    subjectContext),
+            fqn);
     CsvFile csvFile = new CsvFile().withHeaders(headers);
 
     addRecords(csvFile, result.getUpstreamEdges().values().stream().toList());
@@ -917,6 +924,7 @@ public class LineageRepository {
                       .withEndTime(endTime)
                       .withDirection(null),
                   subjectContext);
+      response = SearchLineagePermissionFilter.filterFor(subjectContext, response, fqn);
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 
@@ -1087,7 +1095,8 @@ public class LineageRepository {
       pipelineServiceName,
       pipelineServiceType
     };
-    csvWriter.writeNext(row);
+    // Cells are user-controlled, so formula triggers are escaped (e.g. a =HYPERLINK description).
+    csvWriter.writeNext(Arrays.stream(row).map(CsvUtil::neutralizeFormula).toArray(String[]::new));
   }
 
   private static String getText(JsonNode node, String fieldName) {
@@ -1678,12 +1687,17 @@ public class LineageRepository {
     }
   }
 
-  public Response getLineageEdgeByFQN(
-      String fromEntity, String fromFQN, String toEntity, String toFQN) {
-    EntityReference from =
-        Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
-    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.NON_DELETED);
-    return getLineageEdge(from.getId(), to.getId());
+  /** The typed ends of the upstream edge between two entities, so callers can authorize them. */
+  public List<EntityReference> getLineageEdgeEnds(UUID fromId, UUID toId) {
+    CollectionDAO.EntityRelationshipObject edge =
+        dao.relationshipDAO().getRecord(fromId, toId, Relationship.UPSTREAM.ordinal());
+    if (edge == null) {
+      throw new EntityNotFoundException(
+          "Lineage edge not found between " + fromId + " and " + " " + toId);
+    }
+    return List.of(
+        new EntityReference().withId(fromId).withType(edge.getFromEntity()),
+        new EntityReference().withId(toId).withType(edge.getToEntity()));
   }
 
   public Response patchLineageEdge(
@@ -1947,25 +1961,25 @@ public class LineageRepository {
       Long endTime,
       SubjectContext subjectContext) {
     try {
+      EntityCountLineageRequest request =
+          new EntityCountLineageRequest()
+              .withFqn(fqn)
+              .withDirection(direction)
+              .withFrom(from)
+              .withSize(size)
+              .withNodeDepth(nodeDepth)
+              .withMaxDepth(maxDepth)
+              .withQueryFilter(queryFilter)
+              .withIncludeDeleted(deleted)
+              .withIsConnectedVia(isConnectedVia(entityType))
+              .withStartTime(startTime)
+              .withEndTime(endTime)
+              .withIncludeSourceFields(SearchUtils.getRequiredLineageFields(includeSourceFields));
       SearchLineageResult response =
-          Entity.getSearchRepository()
-              .searchLineageByEntityCount(
-                  new org.openmetadata.schema.api.lineage.EntityCountLineageRequest()
-                      .withFqn(fqn)
-                      .withDirection(direction)
-                      .withFrom(from)
-                      .withSize(size)
-                      .withNodeDepth(nodeDepth)
-                      .withMaxDepth(maxDepth)
-                      .withQueryFilter(queryFilter)
-                      .withIncludeDeleted(deleted)
-                      .withIsConnectedVia(isConnectedVia(entityType))
-                      .withStartTime(startTime)
-                      .withEndTime(endTime)
-                      .withIncludeSourceFields(
-                          org.openmetadata.service.search.SearchUtils.getRequiredLineageFields(
-                              includeSourceFields)),
-                  subjectContext);
+          SearchLineagePermissionFilter.filterPageFor(
+              subjectContext,
+              Entity.getSearchRepository().searchLineageByEntityCount(request, subjectContext),
+              request);
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 

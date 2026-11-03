@@ -25,10 +25,6 @@ jest.mock('../rest/alertsAPI', () => ({
   getAlertCapabilities: jest.fn(),
 }));
 
-jest.mock('../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
-
 jest.mock('../utils/AlertsClassBase', () => ({
   __esModule: true,
   default: { getSourceNameSearch: jest.fn().mockReturnValue({}) },
@@ -70,6 +66,83 @@ describe('useAlertSelection', () => {
     );
   });
 
+  it('is ready once the server has answered, and stays ready', async () => {
+    const { result, rerender, waitFor } = renderHook(
+      (props: { sources: string[] }) =>
+        useAlertSelection({
+          alertType: AlertType.Notification,
+          sources: props.sources,
+        }),
+      { initialProps: { sources: [] as string[] } }
+    );
+
+    expect(result.current.ready).toBe(false);
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    rerender({ sources: ['task'] });
+
+    expect(result.current.ready).toBe(true);
+  });
+
+  // The empty form asks first; a saved alert's sources only arrive after it has loaded.
+  it('does not describe the saved sources with the answer for an empty form', async () => {
+    let answerTask: (value: unknown) => void = jest.fn();
+    mockGetAlertCapabilities.mockImplementation(({ sources }) =>
+      sources.length
+        ? new Promise((resolve) => (answerTask = resolve))
+        : Promise.resolve(answer([], ['Owners', 'Users']))
+    );
+    const { result, rerender, waitFor } = renderHook(
+      (props: { sources: string[] }) =>
+        useAlertSelection({
+          alertType: AlertType.Notification,
+          sources: props.sources,
+        }),
+      { initialProps: { sources: [] as string[] } }
+    );
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    rerender({ sources: ['task'] });
+
+    expect(result.current.support.supportedFilters).toBeUndefined();
+
+    answerTask(answer(['task'], ['Owners', 'Mentions']));
+    await waitFor(() =>
+      expect(result.current.support.supportedFilters).toHaveLength(1)
+    );
+  });
+
+  // A filter one source supports may not hold for the one just added, and the save would refuse it.
+  it('offers no rule from the previous answer while it asks about a new source', async () => {
+    let answerBoth: (value: unknown) => void = jest.fn();
+    mockGetAlertCapabilities.mockImplementation(({ sources }) =>
+      sources.length > 1
+        ? new Promise((resolve) => (answerBoth = resolve))
+        : Promise.resolve(answer(sources, ['Owners']))
+    );
+    const { result, rerender, waitFor } = renderHook(
+      (props: { sources: string[] }) =>
+        useAlertSelection({
+          alertType: AlertType.Notification,
+          sources: props.sources,
+        }),
+      { initialProps: { sources: ['task'] } }
+    );
+    await waitFor(() =>
+      expect(result.current.support.supportedFilters).toHaveLength(1)
+    );
+
+    rerender({ sources: ['task', 'conversation'] });
+
+    expect(result.current.support.supportedFilters).toBeUndefined();
+    expect(result.current.support.hasFilters).toBe(true);
+
+    answerBoth(answer(['task', 'conversation'], ['Owners']));
+    await waitFor(() =>
+      expect(result.current.support.supportedFilters).toHaveLength(1)
+    );
+  });
+
   it('says what the chosen sources support, from one answer of the server', async () => {
     const { result, waitFor } = renderHook(() =>
       useAlertSelection({
@@ -89,6 +162,28 @@ describe('useAlertSelection', () => {
     expect(
       result.current.support.supportedFilters?.map((filter) => filter.name)
     ).toEqual(['filterByMentionedName']);
+  });
+
+  it('keeps the same search when a new answer says the same thing', async () => {
+    const { result, rerender, waitFor } = renderHook(
+      ({ input }) =>
+        useAlertSelection({
+          alertType: AlertType.Notification,
+          sources: ['task'],
+          input,
+        }),
+      { initialProps: { input: {} } }
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const firstSearch = result.current.search;
+
+    rerender({ input: { filters: [{ name: 'filterByMentionedName' }] } });
+    await waitFor(() =>
+      expect(mockGetAlertCapabilities).toHaveBeenCalledTimes(2)
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.search).toBe(firstSearch);
   });
 
   it('lets every field inside the page read the same selection', async () => {

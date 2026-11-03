@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -28,11 +29,7 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 
 class CollectionRegistryTest {
   private static final List<String> HIGH_ORDER_ONTOLOGY_COLLECTIONS =
-      List.of(
-          "/v1/ontology/subsets",
-          "/v1/ontology/structure",
-          "/v1/ontology/bulk",
-          "/v1/ontology/reasoning");
+      List.of("/v1/ontology/bulk", "/v1/ontology/reasoning");
 
   @Test
   void resolvesKnownConstructorSignaturesInExistingPrecedenceOrder() throws Exception {
@@ -65,6 +62,16 @@ class CollectionRegistryTest {
 
     HIGH_ORDER_ONTOLOGY_COLLECTIONS.forEach(
         path -> assertTrue(registry.hasCollection(path), () -> "Missing collection " + path));
+  }
+
+  @Test
+  void doesNotRegisterRetiredGlossaryModelingCollections() {
+    final CollectionRegistry registry = CollectionRegistry.getInstance();
+
+    for (String path :
+        List.of("/v1/ontology/subsets", "/v1/ontology/structure", "/v1/ontology/modeling")) {
+      assertFalse(registry.hasCollection(path), () -> "Retired collection " + path);
+    }
   }
 
   private static void assertSignature(Class<?> resourceClass, Class<?>... parameterTypes)

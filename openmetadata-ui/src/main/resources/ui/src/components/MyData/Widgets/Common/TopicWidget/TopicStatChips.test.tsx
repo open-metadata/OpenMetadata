@@ -13,35 +13,66 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import TopicStatChips from './TopicStatChips';
 
+const STATS = [
+  { id: 'failing', label: '3 failing', tone: 'critical' as const },
+  { id: 'healthy', label: '12 healthy', tone: 'success' as const },
+];
+
 describe('TopicStatChips', () => {
-  it('renders one chip per stat and reports a press', () => {
-    const onPress = jest.fn();
+  it('marks the selected bucket and reports a pick', () => {
+    const onChange = jest.fn();
     render(
       <TopicStatChips
-        stats={[
-          { id: 'failing', label: '3 failing', onPress, tone: 'critical' },
-          { id: 'healthy', label: '12 healthy', onPress, tone: 'success' },
-        ]}
+        label="Buckets"
+        stats={STATS}
+        value="failing"
+        onChange={onChange}
       />
     );
 
+    expect(screen.getByRole('group', { name: 'Buckets' })).toBeInTheDocument();
     expect(screen.getByTestId('topic-stat-failing')).toHaveTextContent(
       '3 failing'
     );
+    expect(screen.getByTestId('topic-stat-failing')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('topic-stat-healthy')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
 
-    fireEvent.click(screen.getByTestId('topic-stat-failing'));
+    fireEvent.click(screen.getByTestId('topic-stat-healthy'));
 
-    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith('healthy');
   });
 
-  // An empty bucket is not worth a click, so a stat with no handler is inert.
-  it('disables a chip that has nothing to open', () => {
+  // An empty bucket has no list to show, so it cannot be picked.
+  it('disables an empty bucket unless it is the one selected', () => {
     render(
       <TopicStatChips
-        stats={[{ id: 'not-run', label: '0 not run', tone: 'muted' }]}
+        label="Buckets"
+        stats={[
+          {
+            id: 'failing',
+            isDisabled: true,
+            label: '0 failing',
+            tone: 'critical',
+          },
+          {
+            id: 'not-run',
+            isDisabled: true,
+            label: '0 not run',
+            tone: 'muted',
+          },
+        ]}
+        value="failing"
+        onChange={jest.fn()}
       />
     );
 
     expect(screen.getByTestId('topic-stat-not-run')).toBeDisabled();
+    expect(screen.getByTestId('topic-stat-failing')).not.toBeDisabled();
   });
 });

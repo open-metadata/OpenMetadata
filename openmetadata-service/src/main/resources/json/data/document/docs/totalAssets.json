@@ -1,0 +1,10 @@
+{
+  "name": "TotalAssets",
+  "displayName": "Total Data Assets",
+  "description": "How many data assets the estate holds, split by asset type, and how each type changed over the selected window.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.TotalAssets",
+  "data": {
+    "gridSizes": ["small", "medium", "large"]
+  }
+}

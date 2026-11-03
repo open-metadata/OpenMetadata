@@ -166,6 +166,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   isFormValidationPending = false,
   hostIp,
   extraInfo,
+  renderFailureAction,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -850,6 +851,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}
+        renderFailureAction={renderFailureAction}
         serviceType={serviceType}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}

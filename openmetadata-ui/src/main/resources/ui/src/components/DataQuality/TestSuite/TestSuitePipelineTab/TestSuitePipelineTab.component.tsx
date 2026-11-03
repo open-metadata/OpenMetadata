@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Skeleton,
   Table,
   TableCard,
@@ -28,15 +27,12 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
-import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { DISABLED, NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
@@ -65,13 +61,13 @@ import {
   renderStatusField,
 } from '../../../../utils/IngestionListTableUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import { getTestSuiteIngestionPath } from '../../../../utils/RouterUtils';
 import { getSkeletonMockData } from '../../../../utils/Skeleton.utils';
 import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import AirflowSetupGuide from '../../../common/AirflowSetupGuide/AirflowSetupGuide';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
@@ -79,9 +75,21 @@ import IngestionStatusCount from '../../../Settings/Services/Ingestion/Ingestion
 import PipelineActions from '../../../Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions';
 import { IngestionRecentRuns } from '../../../Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 
+const TestSuitePipelineFormDrawer = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../AddDataQualityTest/components/TestSuitePipelineFormDrawer')
+  )
+);
+
 interface Props {
   testSuite: TableType['testSuite'] | TestSuite;
-  isLogicalTestSuite?: boolean;
+  showAddPipelineButton?: boolean;
+  // Lets a host with its own add drawer (and toolbar button) take over Add.
+  onAddPipeline?: () => void;
+  // Reports the pipeline total after each load or delete, so a host that shows
+  // its own count or toolbar action stays in sync with the list.
+  onPipelinesChange?: (total: number) => void;
 }
 
 interface SelectedRowDetails {
@@ -98,7 +106,9 @@ interface PipelineTableRow extends IngestionPipeline {
 
 const TestSuitePipelineTab = ({
   testSuite,
-  isLogicalTestSuite = false,
+  showAddPipelineButton = true,
+  onAddPipeline,
+  onPipelinesChange,
 }: Props) => {
   const airflowInformation = useAirflowStatus();
   const { t } = useTranslation();
@@ -115,7 +125,6 @@ const TestSuitePipelineTab = ({
     paging,
     showPagination,
   } = pipelinePaging;
-  const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -127,6 +136,11 @@ const TestSuitePipelineTab = ({
   const [ingestionPipelinePermissions, setIngestionPipelinePermissions] =
     useState<Map<string, OperationPermission>>();
   const permissionFetchId = useRef(0);
+  const hasLoadedPipelinesRef = useRef(false);
+  const [pipelineDrawer, setPipelineDrawer] = useState<{
+    open: boolean;
+    pipeline?: IngestionPipeline;
+  }>({ open: false });
   const [deleteSelection, setDeleteSelection] = useState<SelectedRowDetails>({
     id: '',
     name: '',
@@ -167,6 +181,7 @@ const TestSuitePipelineTab = ({
         });
         setTestSuitePipelines(response.data);
         handlePagingChange(response.paging);
+        hasLoadedPipelinesRef.current = true;
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -223,14 +238,30 @@ const TestSuitePipelineTab = ({
     [getAllIngestionWorkflows, paging, pageSize, handlePageChange]
   );
 
-  const handleAddPipelineRedirection = () => {
-    navigate({
-      pathname: getTestSuiteIngestionPath(testSuiteFQN),
-      search: isLogicalTestSuite
-        ? QueryString.stringify({ testSuiteId: testSuite?.id })
-        : undefined,
-    });
+  const handleAddPipeline = () => {
+    if (onAddPipeline) {
+      onAddPipeline();
+
+      return;
+    }
+    setPipelineDrawer({ open: true });
   };
+
+  const handleEditPipeline = useCallback(
+    (fqn: string) =>
+      setPipelineDrawer({
+        open: true,
+        pipeline: testSuitePipelines.find(
+          (pipeline) => pipeline.fullyQualifiedName === fqn
+        ),
+      }),
+    [testSuitePipelines]
+  );
+
+  const handlePipelineSaved = useCallback(
+    () => getAllIngestionWorkflows(undefined, pageSize),
+    [getAllIngestionWorkflows, pageSize]
+  );
 
   const handleEnableDisableIngestion = useCallback(async (id: string) => {
     try {
@@ -356,11 +387,16 @@ const TestSuitePipelineTab = ({
     }));
   }, [testSuitePipelines, ingestionPipelinePermissions]);
 
+  const isAddPipelineButtonVisible = useMemo(
+    () => showAddPipelineButton && dataSource.length > 0,
+    [showAddPipelineButton, dataSource.length]
+  );
+
   const emptyPlaceholder = useMemo(
     () =>
       testSuite ? (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               createPermission
                 ? [
@@ -371,7 +407,7 @@ const TestSuitePipelineTab = ({
                       }),
                       color: 'primary' as const,
                       iconLeading: Plus,
-                      onPress: handleAddPipelineRedirection,
+                      onPress: handleAddPipeline,
                     },
                   ]
                 : undefined
@@ -379,14 +415,15 @@ const TestSuitePipelineTab = ({
             description={t('message.no-table-pipeline')}
             icon={<Dataflow03 className="tw:text-fg-brand-primary" />}
             title={t('message.no-pipelines-yet')}
-            variant="blank"
           />
         </Box>
       ) : (
-        <ErrorPlaceHolder
-          placeholderText={t('message.no-test-suite-table-pipeline')}
-          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={t('message.no-test-suite-table-pipeline')}
+          />
+        </div>
       ),
     [testSuite, createPermission, t]
   );
@@ -414,8 +451,16 @@ const TestSuitePipelineTab = ({
     fetchIngestionPipelineExtraDetails();
   }, [fetchIngestionPipelineExtraDetails]);
 
+  useEffect(() => {
+    // Until a load succeeds, paging.total is usePaging's default 0, which
+    // would overwrite the host's own count (e.g. after a failed fetch).
+    if (!isLoading && hasLoadedPipelinesRef.current) {
+      onPipelinesChange?.(paging.total);
+    }
+  }, [isLoading, paging.total]);
+
   if (!isAirflowAvailable && !(isLoading || isFetchingStatus)) {
-    return <ErrorPlaceHolderIngestion />;
+    return <AirflowSetupGuide />;
   }
 
   return (
@@ -423,11 +468,9 @@ const TestSuitePipelineTab = ({
       className="test-suite-pipeline-tab tw:px-2 m-l-0 m-r-0 m-t-md m-b-md"
       direction="col"
       gap={4}>
-      {dataSource.length > 0 && (
+      {isAddPipelineButtonVisible && (
         <Box justify="end">
-          <Button
-            data-testid="add-pipeline-button"
-            onPress={handleAddPipelineRedirection}>
+          <Button data-testid="add-pipeline-button" onPress={handleAddPipeline}>
             {t('label.add-entity', { entity: t('label.pipeline') })}
           </Button>
         </Box>
@@ -550,6 +593,7 @@ const TestSuitePipelineTab = ({
                       <PipelineActions
                         deployIngestion={handleDeployIngestion}
                         handleDeleteSelection={(row) => setDeleteSelection(row)}
+                        handleEditClick={handleEditPipeline}
                         handleEnableDisableIngestion={
                           handleEnableDisableIngestion
                         }
@@ -571,9 +615,8 @@ const TestSuitePipelineTab = ({
           </Table.Body>
         </Table>
 
-        {showPagination && (
+        {showPagination && paging.total > 0 && (
           <NextPrevious
-            isNumberBased
             currentPage={currentPage}
             isLoading={isLoading}
             pageSize={pageSize}
@@ -591,6 +634,16 @@ const TestSuitePipelineTab = ({
         open={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
         onDelete={handleDeleteConfirm}
+      />
+
+      <TestSuitePipelineFormDrawer
+        ingestionPipeline={pipelineDrawer.pipeline}
+        open={pipelineDrawer.open}
+        testSuite={testSuite}
+        // Keep the pipeline while the drawer slides out, so an edit drawer does
+        // not flip to its Add title mid-animation; Add clears it on open.
+        onClose={() => setPipelineDrawer((prev) => ({ ...prev, open: false }))}
+        onSuccess={handlePipelineSaved}
       />
     </Box>
   );

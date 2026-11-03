@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Play: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const Play: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M5 4.99c0-.972 0-1.457.202-1.725a1 1 0 0 1 .738-.395c.335-.02.74.25 1.548.788l10.515 7.01c.668.446 1.002.668 1.118.949a1 1 0 0 1 0 .766c-.116.28-.45.503-1.118.948l-10.515 7.01c-.809.54-1.213.809-1.548.789a1 1 0 0 1-.738-.395C5 20.467 5 19.98 5 19.01z"
+      d="M4.167 4.158c0-.81 0-1.214.168-1.438a.83.83 0 0 1 .615-.329c.279-.017.617.208 1.29.657l8.763 5.842c.557.372.835.557.932.791a.83.83 0 0 1 0 .638c-.097.233-.375.419-.932.79L6.24 16.951c-.674.45-1.011.674-1.29.658a.83.83 0 0 1-.615-.329c-.168-.224-.168-.63-.168-1.438z"
       stroke="currentColor"
       strokeWidth={1.3}
     />

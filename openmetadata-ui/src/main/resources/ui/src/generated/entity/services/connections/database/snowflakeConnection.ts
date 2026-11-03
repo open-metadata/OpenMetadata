@@ -118,6 +118,12 @@ export interface SnowflakeConnection {
     supportsSystemProfile?:                 boolean;
     supportsUsageExtraction?:               boolean;
     /**
+     * Number of tables whose DML history is read from QUERY_HISTORY with a single query when
+     * the profiler computes system metrics. Higher values issue fewer scans but hold more
+     * history in memory at once.
+     */
+    systemMetricsBatchSize?: number;
+    /**
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;

@@ -11,18 +11,16 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
-import { Grid, SimpleModal } from '@openmetadata/ui-core-components';
-import { Input } from 'antd';
+import { Grid, Input, SimpleModal } from '@openmetadata/ui-core-components';
+import { Check, Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoSearchResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
@@ -149,18 +147,20 @@ const AddAttributeModal: FC<Props> = ({
       ) : (
         <>
           <Input
-            data-testid="search-input"
+            aria-label={t('label.search-entity', {
+              entity: type,
+            })}
+            icon={Search}
+            inputDataTestId="search-input"
             placeholder={t('label.search-entity', {
               entity: type,
             })}
-            prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={handleSearch}
           />
           {isEmpty(searchedData) ? (
-            <ErrorPlaceHolder
-              className="mt-0-important p-y-lg"
-              type={ERROR_PLACEHOLDER_TYPE.FILTER}
-            />
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+            </div>
           ) : (
             <div>
               {searchedData.map((option) => (
@@ -192,7 +192,10 @@ const AddAttributeModal: FC<Props> = ({
                   </Grid.Item>
                   <Grid.Item className="layout-column" span={2}>
                     {selectedValues.includes(option.id) && (
-                      <CheckOutlined className="text-primary" />
+                      <Check
+                        className="tw:shrink-0 tw:text-brand-secondary"
+                        data-testid="selected-check-icon"
+                      />
                     )}
                   </Grid.Item>
                 </Grid>

@@ -284,12 +284,6 @@ test.describe('Task Navigation - Entity Page', () => {
 
         // Should have task ID
         await expect(drawer.getByText(/TASK-/)).toBeVisible();
-
-        // Should have comments section
-        const commentsSection = drawer.locator(
-          '[data-testid="comments-section"], [data-testid="task-comments"]'
-        );
-        // Comments section might exist
       }
     }
   });
@@ -301,14 +295,6 @@ test.describe('Task Navigation - Entity Page', () => {
     const activityFeedTab = page.getByRole('tab', {
       name: /activity feeds & tasks/i,
     });
-    const countBadge = activityFeedTab.getByTestId('count');
-
-    let displayedCount = 0;
-    if (await countBadge.isVisible()) {
-      const countText = await countBadge.textContent();
-      displayedCount = parseInt(countText || '0', 10);
-    }
-
     // Click on tab and go to tasks
     await activityFeedTab.click();
     await waitForPageLoaded(page);
@@ -484,7 +470,7 @@ test.describe('Task Navigation - URL Validation', () => {
       (r) => r.url().includes('/api/v1/tables/name/TASK-00001'),
       { timeout: ACTION_TIMEOUT }
     );
-    await page.goto('/table/TASK-00001');
+    await page.goto('/table/TASK-00001', { waitUntil: 'domcontentloaded' });
     const response = await tableNotFound;
 
     expect(response.status()).toBe(404);
@@ -514,7 +500,7 @@ test.describe('Task Navigation - URL Validation', () => {
           assignees: [adminUser.responseData.name],
         },
       });
-      const task = await taskResponse.json();
+      expect(taskResponse.ok()).toBeTruthy();
 
       const page = await browser.newPage();
       await adminUser.signIn(page);
@@ -524,7 +510,9 @@ test.describe('Task Navigation - URL Validation', () => {
       const entityFqn = table.entityResponseData?.fullyQualifiedName;
 
       if (entityFqn) {
-        await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
+        await page.goto(`/table/${encodeURIComponent(entityFqn)}`, {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForPageLoaded(page);
 
         // Should NOT be 404
@@ -598,10 +586,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
 
     await test.step('Log in and navigate to entity page', async () => {
       await adminUser.signIn(page);
-      const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
-      await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
-      await waitForPageLoaded(page);
-      await waitForAllLoadersToDisappear(page);
+      await table.visitEntityPage(page);
     });
 
     await test.step('Open Activity Feed & Tasks tab and stay there', async () => {
@@ -650,7 +635,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       await expect(notificationBox).toBeVisible();
 
       const latestNotification = notificationBox
-        .locator('li.ant-list-item.notification-dropdown-list-btn')
+        .locator('li.notification-dropdown-list-btn')
         .first();
       await expect(latestNotification).toBeVisible();
 
@@ -704,9 +689,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       });
 
       await test.step('Other user navigates to entity Activity Feed & Tasks tab', async () => {
-        await userPage.goto(`/table/${encodeURIComponent(entityFqn)}`);
-        await waitForPageLoaded(userPage);
-        await waitForAllLoadersToDisappear(userPage);
+        await table.visitEntityPage(userPage);
         const feedResponse = userPage.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/activity') &&
@@ -752,7 +735,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         await expect(notificationBox).toBeVisible();
 
         const latestNotification = notificationBox
-          .locator('li.ant-list-item.notification-dropdown-list-btn')
+          .locator('li.notification-dropdown-list-btn')
           .first();
         await expect(latestNotification).toBeVisible();
 

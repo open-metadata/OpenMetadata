@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Terminal: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,10 +29,14 @@ export const Terminal: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="m4 17 6-6-6-6m8 14h8" stroke="currentColor" strokeWidth={1.3} />
+    <path
+      d="m3.333 14.167 5-5-5-5M10 15.834h6.667"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 Terminal.displayName = 'Terminal';

@@ -16,6 +16,7 @@ import { Navigate, useParams } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { withSuggestions } from '../../AppRouter/withSuggestions';
 
 /**
  * Resolves the entity-detail component for the `:entityType` path param and
@@ -31,7 +32,12 @@ const EntityDetailPage: React.FC = () => {
       return null;
     }
 
-    return entityUtilClassBase.getEntityDetailComponent(entityType);
+    const EntityDetailComponent =
+      entityUtilClassBase.getEntityDetailComponent(entityType);
+
+    return EntityDetailComponent
+      ? withSuggestions(EntityDetailComponent)
+      : null;
   }, [entityType]);
 
   if (!Component) {

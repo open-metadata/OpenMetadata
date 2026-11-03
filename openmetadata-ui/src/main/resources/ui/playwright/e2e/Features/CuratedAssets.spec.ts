@@ -128,7 +128,9 @@ test.describe('Curated Assets Widget', () => {
         CURATED_ASSETS_WIDGET_KEY
       );
 
-      await curatedAssetsWidget.getByText('Create').click();
+      await curatedAssetsWidget
+        .getByRole('button', { name: 'Create', exact: true })
+        .click();
 
       // Update widget name
       await page.locator('[data-testid="title-input"]').clear();
@@ -251,7 +253,9 @@ test.describe('Curated Assets Widget', () => {
       CURATED_ASSETS_WIDGET_KEY
     );
 
-    await curatedAssetsWidget.getByText('Create').click();
+    await curatedAssetsWidget
+      .getByRole('button', { name: 'Create', exact: true })
+      .click();
 
     await expect(
       page.getByTestId('curated-assets-modal-container')
@@ -335,7 +339,9 @@ test.describe('Curated Assets Widget', () => {
       CURATED_ASSETS_WIDGET_KEY
     );
 
-    await curatedAssetsWidget.getByText('Create').click();
+    await curatedAssetsWidget
+      .getByRole('button', { name: 'Create', exact: true })
+      .click();
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
@@ -443,7 +449,9 @@ test.describe('Curated Assets Widget', () => {
       CURATED_ASSETS_WIDGET_KEY
     );
 
-    await curatedAssetsWidget.getByText('Create').click();
+    await curatedAssetsWidget
+      .getByRole('button', { name: 'Create', exact: true })
+      .click();
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
@@ -572,7 +580,9 @@ test.describe('Curated Assets Widget', () => {
       CURATED_ASSETS_WIDGET_KEY
     );
 
-    await curatedAssetsWidget.getByText('Create').click();
+    await curatedAssetsWidget
+      .getByRole('button', { name: 'Create', exact: true })
+      .click();
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();

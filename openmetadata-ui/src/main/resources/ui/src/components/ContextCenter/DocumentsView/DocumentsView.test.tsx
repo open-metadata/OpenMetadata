@@ -187,20 +187,38 @@ const mockFiles: ContextFile[] = [
 
 describe('DocumentsView', () => {
   it('renders the documents view container', () => {
-    render(<DocumentsView data={mockFiles} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        totalFileCount={mockFiles.length}
+      />
+    );
 
     expect(screen.getByTestId('documents-view')).toBeInTheDocument();
   });
 
   it('renders a row for each file when data is provided', () => {
-    render(<DocumentsView data={mockFiles} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        totalFileCount={mockFiles.length}
+      />
+    );
 
     expect(screen.getByTestId('document-row-file-1')).toBeInTheDocument();
     expect(screen.getByTestId('document-row-file-2')).toBeInTheDocument();
   });
 
   it('renders file name and size for each file', () => {
-    render(<DocumentsView data={mockFiles} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        totalFileCount={mockFiles.length}
+      />
+    );
 
     expect(screen.getByText('report.pdf')).toBeInTheDocument();
     expect(screen.getByText('2.0 MB')).toBeInTheDocument();
@@ -209,19 +227,37 @@ describe('DocumentsView', () => {
   });
 
   it('renders uploadedBy and uploadedAt when provided', () => {
-    render(<DocumentsView data={mockFiles} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        totalFileCount={mockFiles.length}
+      />
+    );
 
     expect(screen.getByText('alice')).toBeInTheDocument();
   });
 
   it('renders the file icon for pdf files', () => {
-    render(<DocumentsView data={[mockFiles[0]]} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={[mockFiles[0]]}
+        isLoading={false}
+        totalFileCount={1}
+      />
+    );
 
     expect(screen.getByTestId('file-icon-pdf')).toBeInTheDocument();
   });
 
   it('renders the file icon for csv files', () => {
-    render(<DocumentsView data={[mockFiles[1]]} isLoading={false} />);
+    render(
+      <DocumentsView
+        data={[mockFiles[1]]}
+        isLoading={false}
+        totalFileCount={1}
+      />
+    );
 
     expect(screen.getByTestId('file-icon-csv')).toBeInTheDocument();
   });
@@ -248,7 +284,7 @@ describe('DocumentsView', () => {
   });
 
   it('renders skeletons when isLoading is true', () => {
-    render(<DocumentsView isLoading data={[]} />);
+    render(<DocumentsView isLoading data={[]} totalFileCount={0} />);
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
@@ -260,6 +296,7 @@ describe('DocumentsView', () => {
       <DocumentsView
         data={[mockFiles[0]]}
         isLoading={false}
+        totalFileCount={1}
         onDownload={onDownload}
       />
     );
@@ -275,6 +312,7 @@ describe('DocumentsView', () => {
       <DocumentsView
         data={mockFiles}
         isLoading={false}
+        totalFileCount={mockFiles.length}
         onOpenPreview={onOpenPreview}
       />
     );

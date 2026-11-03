@@ -12,12 +12,9 @@
  */
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { CustomPropertyTable } from './CustomPropertyTable';
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
-});
 
 jest.mock('./EditCustomPropertyModal/EditCustomPropertyModal', () => {
   return jest
@@ -208,11 +205,34 @@ describe('CustomPropertyTable', () => {
 
     const confirmationModal = await screen.findByTestId('confirmation-modal');
 
+    expect(
+      within(confirmationModal).getByTestId('save-button')
+    ).toHaveTextContent('label.delete');
+
     await act(async () => {
       fireEvent.click(within(confirmationModal).getByTestId('save-button'));
     });
 
     expect(mockOnDeleteProperty).toHaveBeenCalledWith('priority');
+  });
+
+  it('lists the config values hidden behind +N in a tooltip', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<CustomPropertyTable {...mockProp} />);
+
+    const hiddenCount = within(getRow('priority')).getByTestId(
+      'config-hidden-count'
+    );
+
+    expect(hiddenCount).toHaveTextContent('label.plus-count');
+
+    // react-aria opens hover tooltips only after it has seen a pointer move.
+    fireEvent.mouseMove(document);
+    await user.hover(hiddenCount);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Critical, Trivial'
+    );
   });
 
   it('opens the edit modal for the property picked from the row menu', async () => {
@@ -237,7 +257,11 @@ describe('CustomPropertyTable', () => {
   it('renders the empty placeholder when there are no properties', () => {
     render(<CustomPropertyTable {...mockProp} customProperties={[]} />);
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('masks the rows with a loader while loading', () => {

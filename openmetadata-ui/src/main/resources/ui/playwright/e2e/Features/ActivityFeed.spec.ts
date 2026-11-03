@@ -289,20 +289,26 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await expect(mentionsList).toBeVisible();
 
-      const firstNotificationItem = mentionsList
-        .locator('li.ant-list-item.notification-dropdown-list-btn')
-        .first();
+      const mentionNotificationItem = mentionsList
+        .getByRole('listitem')
+        .filter({
+          has: adminPage.getByTestId(
+            'notification-link-' +
+              (entity.entity.displayName || entity.entity.name)
+          ),
+        });
 
-      const firstNotificationText = await firstNotificationItem.textContent();
+      const mentionNotificationText =
+        await mentionNotificationItem.textContent();
 
-      expect(firstNotificationText?.toLowerCase()).toContain(
+      expect(mentionNotificationText?.toLowerCase()).toContain(
         user1.responseData.name.toLowerCase()
       );
-      expect(firstNotificationText?.toLowerCase()).not.toContain(
+      expect(mentionNotificationText?.toLowerCase()).not.toContain(
         adminUser.responseData.name.toLowerCase()
       );
 
-      const mentionNotificationLink = firstNotificationItem.locator(
+      const mentionNotificationLink = mentionNotificationItem.locator(
         '[data-testid^="notification-link-"]'
       );
 
@@ -825,26 +831,30 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   test('All badge, header and rendered list agree on the count', async ({
     adminPage,
   }) => {
-    const feedList = await openActivityFeedTab(adminPage);
-    await waitForBothFeedKinds(feedList);
+    // Each retry reopens the entity page.
+    test.slow();
 
     // The "All" badge must equal the number of rendered items (conversations +
     // activity events) — not the old activity-only / double-counted value.
-    // Polled rather than compared once because the consumer can deliver this
-    // table's own "Created" event mid-test, growing both numbers a beat apart.
-    await expect
-      .poll(
-        async () => {
-          const rendered = await feedList.count();
-          const allBadge = (
-            await adminPage.getByTestId('left-panel-all-count').innerText()
-          ).trim();
+    // The badge is counted on page load and the list fetched when the tab
+    // opens, so the table's own "Created" event, which the consumer delivers
+    // at an arbitrary moment, can land between the two and leave them one
+    // apart for good. Reopening the page refetches both together.
+    let attempt = 0;
+    let feedList = await openActivityFeedTab(adminPage);
+    await expect(async () => {
+      if (attempt++ > 0) {
+        feedList = await openActivityFeedTab(adminPage);
+      }
+      await waitForBothFeedKinds(feedList);
 
-          return Number(allBadge) === rendered;
-        },
-        { timeout: 15_000, intervals: [1_000] }
-      )
-      .toBe(true);
+      const rendered = await feedList.count();
+      const allBadge = (
+        await adminPage.getByTestId('left-panel-all-count').innerText()
+      ).trim();
+
+      expect(Number(allBadge)).toBe(rendered);
+    }).toPass({ timeout: 90_000, intervals: [1_000, 2_000] });
 
     // With no tasks, the entity tab header total equals the same count.
     const renderedCount = await feedList.count();
@@ -905,5 +915,82 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await expect(
       panel.locator('[data-testid="feed-reaction-container"]')
     ).toContainText('🎉', { timeout: 15_000 });
+  });
+});
+
+test.describe('ActivityFeed: conversation actions on the Activity tab', () => {
+  let owner: UserClass;
+  let entity: TableClass;
+  const message = `Activity tab conversation ${uuid()}`;
+
+  const test = base.extend<{ ownerPage: Page }>({
+    ownerPage: async ({ browser }, use) => {
+      const page = await browser.newPage({ storageState: undefined });
+      await owner.signIn(page);
+      await use(page);
+      await page.close();
+    },
+  });
+
+  test.beforeAll('Setup entity and conversation', async ({ browser }) => {
+    test.slow(true);
+
+    owner = new UserClass();
+    entity = new TableClass();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await owner.create(apiContext);
+    await owner.setAdminRole(apiContext);
+    await entity.create(apiContext);
+
+    await apiContext.post('/api/v1/conversations', {
+      data: {
+        message,
+        about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
+      },
+    });
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await entity.delete(apiContext);
+    await owner.delete(apiContext);
+    await afterAction();
+  });
+
+  test('opens the reply drawer from the comment icon and keeps only Edit and Delete in the menu', async ({
+    ownerPage,
+  }) => {
+    await entity.visitEntityPage(ownerPage);
+    await ownerPage.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(ownerPage);
+
+    const card = ownerPage
+      .locator('#feedData [data-testid="message-container"]')
+      .filter({ hasText: message });
+    await expect(card).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+
+    // The menu renders in a popover outside the card.
+    await card.getByTestId('conversation-actions').click();
+    await expect(ownerPage.getByRole('menuitem')).toHaveText([
+      'Edit',
+      'Delete',
+    ]);
+    await ownerPage.keyboard.press('Escape');
+
+    // The drawer shows the comment input as the side panel does; the editor
+    // opens, focused, from that input.
+    await card.getByTestId('reply-button').click();
+    const drawerComments = ownerPage.getByTestId('activity-feed-drawer');
+    const editor = drawerComments.locator('[contenteditable="true"]');
+    await expect(
+      drawerComments.getByTestId('comments-input-field')
+    ).toBeVisible();
+    await expect(editor).toHaveCount(0);
+
+    await drawerComments.getByTestId('comments-input-field').click();
+    await expect(editor).toBeFocused();
   });
 });

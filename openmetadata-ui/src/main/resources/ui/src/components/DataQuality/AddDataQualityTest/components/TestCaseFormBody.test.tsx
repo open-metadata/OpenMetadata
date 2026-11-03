@@ -458,6 +458,44 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
   });
 
+  it('keeps a test type picked before the selected table details finish loading', async () => {
+    // A table missing from the search cache loads through getTableDetailsByFQN.
+    mockSearchQuery.mockResolvedValue({
+      hits: { total: { value: 0 }, hits: [] },
+    } as never);
+    let resolveTable: (table: Table) => void = jest.fn();
+    mockGetTableDetailsByFQN.mockReturnValue(
+      new Promise((resolve) => {
+        resolveTable = resolve;
+      }) as never
+    );
+
+    await act(async () => {
+      renderBody();
+    });
+
+    await act(async () => {
+      formRef?.setValue('selectedTable', TABLE_FQN);
+    });
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveTable(SELECTED_TABLE);
+    });
+
+    expect(screen.getByTestId('parameter-minValue')).toBeInTheDocument();
+    expect(formRef?.getValues('testTypeId')).toEqual(
+      expect.objectContaining({ id: TEST_DEFINITION_FQN })
+    );
+  });
+
   it('defaults the data quality dimension to the selected test definition one', async () => {
     mockGetListTestDefinitions.mockResolvedValue({
       data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
@@ -638,6 +676,75 @@ describe('TestCaseFormBody', () => {
       expect(
         screen.queryByTestId('parameter-dimensionFailurePolicy')
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('failure threshold with a dynamic assertion', () => {
+    // threshold/thresholdUnit are not learned bounds — ingestion widens the
+    // bound they configure downstream of bound resolution, so they must stay
+    // editable when the assertion is dynamic.
+    const DYNAMIC_THRESHOLD_DEFINITION = {
+      ...DYNAMIC_DEFINITION,
+      parameterDefinition: [
+        ...(DYNAMIC_DEFINITION.parameterDefinition ?? []),
+        {
+          name: 'threshold',
+          displayName: 'Failure Threshold',
+          dataType: 'NUMBER',
+          required: false,
+        },
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: 'STRING',
+          required: false,
+          optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const renderWithDynamicAssertion = async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [DYNAMIC_THRESHOLD_DEFINITION],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: TEST_DEFINITION_FQN,
+          label: 'Column Values To Be Between',
+        } as never);
+      });
+
+      expect(
+        await screen.findByTestId('parameter-minValue')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        formRef?.setValue('useDynamicAssertion', true);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('parameter-minValue')
+        ).not.toBeInTheDocument();
+      });
+    };
+
+    it('keeps the threshold editable once the bounds are learned', async () => {
+      await renderWithDynamicAssertion();
+
+      expect(screen.getByTestId('threshold-row')).toBeInTheDocument();
+      expect(screen.getByTestId('parameter-threshold')).toBeInTheDocument();
+      expect(screen.getByTestId('parameter-thresholdUnit')).toBeInTheDocument();
     });
   });
 

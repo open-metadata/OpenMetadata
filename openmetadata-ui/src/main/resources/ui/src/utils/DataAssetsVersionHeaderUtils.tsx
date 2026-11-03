@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
-import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Chart } from '../generated/entity/data/chart';
@@ -46,7 +44,7 @@ export const VersionExtraInfoLink = ({
 }) => (
   <>
     <Divider
-      className="self-center m-x-sm tw:h-[0.9em]"
+      className="tw:self-center tw:mx-3 tw:h-[0.9em]"
       orientation="vertical"
     />
     <div className="d-flex items-center text-xs">
@@ -68,7 +66,7 @@ export const VersionExtraInfoLabel = ({
 }) => (
   <>
     <Divider
-      className="self-center m-x-sm tw:h-[0.9em]"
+      className="tw:self-center tw:mx-3 tw:h-[0.9em]"
       orientation="vertical"
     />
     <Box
@@ -117,7 +115,7 @@ export const getExtraInfoSourceUrl = (
       {isUndefined(changedEntityName) ? (
         <>
           <Divider
-            className="self-center m-x-sm tw:h-[0.9em]"
+            className="tw:self-center tw:mx-3 tw:h-[0.9em]"
             orientation="vertical"
           />
           <div className="d-flex items-center text-xs">
@@ -129,11 +127,7 @@ export const getExtraInfoSourceUrl = (
               )}
             </Typography>
             {safeSourceUrl && (
-              <Icon
-                className="m-l-xss"
-                component={IconExternalLink}
-                style={DATA_ASSET_ICON_DIMENSION}
-              />
+              <IconExternalLink className="tw:ml-1 tw:size-3.5 tw:shrink-0" />
             )}
           </div>
         </>

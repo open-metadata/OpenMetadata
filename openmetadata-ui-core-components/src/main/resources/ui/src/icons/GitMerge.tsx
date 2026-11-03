@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const GitMerge: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const GitMerge: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M15 18a3 3 0 1 0 6 0 3 3 0 0 0-6 0m0 0a9 9 0 0 1-9-9m0 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6m0 0v12"
+      d="M12.5 15a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0m0 0A7.5 7.5 0 0 1 5 7.5m0 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5m0 0v10"
       stroke="currentColor"
       strokeWidth={1.3}
     />

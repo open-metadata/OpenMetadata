@@ -10,6 +10,8 @@
 #  limitations under the License.
 """Unit tests for the ErrorPack classifier."""
 
+import pytest
+
 from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
     Matchers,
@@ -133,3 +135,28 @@ def test_any_of_binds_one_diagnosis_to_several_signals():
     )
     assert pack.classify(Exception("alpha")).title == "Same"
     assert pack.classify(Exception(1045, "x")).remediation == "one fix"
+
+
+@pytest.mark.parametrize(
+    "error,expected",
+    [
+        (Exception(1045, "alpha"), True),
+        (Exception("alpha"), False),
+        (Exception(1045, "beta"), False),
+        (Exception("beta"), False),
+    ],
+)
+def test_all_of_requires_every_matcher(error, expected):
+    matcher = Matchers.all_of(Matchers.contains("alpha"), Matchers.errno(1045))
+    assert matcher(error) is expected
+
+
+def test_all_of_matches_signals_across_the_cause_chain():
+    outer = RuntimeError("ALPHA")
+    outer.__cause__ = ValueError("BETA")
+    pack = ErrorPack(when(Matchers.all_of(Matchers.contains("alpha"), Matchers.contains("beta"))).diagnose("Both"))
+    assert pack.classify(outer).title == "Both"
+
+
+def test_all_of_without_matchers_matches():
+    assert Matchers.all_of()(Exception("anything")) is True
