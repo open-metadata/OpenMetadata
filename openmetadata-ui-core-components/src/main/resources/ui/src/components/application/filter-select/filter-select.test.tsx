@@ -566,10 +566,30 @@ describe('FilterSelect', () => {
     // The brand set replaces the Button's neutral colours rather than racing them.
     expect(selected).not.toContain('tw:text-secondary ');
     expect(selected).not.toContain('tw:after:outline-primary');
+    // The chevron stays neutral; only the label and outline turn brand.
+    expect(selected).not.toContain('data-icon:text-fg-brand-primary');
 
     rerender(renderTrigger([]));
 
     expect(screen.getByTestId('trigger-test').className).not.toContain(
+      'text-fg-brand-primary'
+    );
+  });
+
+  it('keeps the chip trigger chevron neutral when a value is selected', () => {
+    render(
+      <FilterSelect
+        data-testid="chip-trigger"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={['snowflake']}
+        onChange={() => undefined}
+      />
+    );
+    const chevron = screen.getByTestId('chip-trigger').querySelector('svg');
+
+    expect(chevron?.getAttribute('class')).toContain('tw:text-fg-quaternary');
+    expect(chevron?.getAttribute('class')).not.toContain(
       'text-fg-brand-primary'
     );
   });

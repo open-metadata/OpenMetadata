@@ -602,10 +602,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
     };
 
-    if (canViewCustomFields) {
+    if (canViewCustomFields && entityType === EntityType.TABLE) {
       fetchEntityTypeDetail();
     }
-  }, [canViewCustomFields]);
+  }, [canViewCustomFields, entityType]);
 
   useEffect(() => {
     setActiveColumn(column);

@@ -28,12 +28,16 @@ import {
 import {
   Copy01,
   Edit01 as Edit,
+  Policy as PolicyIcon,
+  Teams,
   Trash01 as Delete,
+  User01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, {
   FC,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -177,6 +181,7 @@ interface EntityTableProps {
   ariaLabel: string;
   canEditAll: boolean;
   columns: DetailColumn[];
+  emptyIcon: ReactNode;
   emptyTitle: string;
   isLoadingOnSave: boolean;
   items: EntityReference[] | undefined;
@@ -190,6 +195,7 @@ const EntityTable: FC<EntityTableProps> = ({
   ariaLabel,
   canEditAll,
   columns,
+  emptyIcon,
   emptyTitle,
   isLoadingOnSave,
   items,
@@ -222,9 +228,9 @@ const EntityTable: FC<EntityTableProps> = ({
       renderEmptyState={() => (
         <Box
           align="center"
-          className="tw:min-h-32 tw:relative"
+          className="tw:relative tw:min-h-60"
           justify="center">
-          <NoDataPlaceholder title={emptyTitle} />
+          <NoDataPlaceholder icon={emptyIcon} title={emptyTitle} />
         </Box>
       )}>
       {(item) => (
@@ -883,6 +889,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           ariaLabel={t('label.policy-plural')}
           canEditAll={canEditAll}
           columns={columns}
+          emptyIcon={<PolicyIcon />}
           emptyTitle={t('label.no-entity-found', {
             entity: t('label.policy-plural'),
           })}
@@ -927,6 +934,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         ariaLabel={t('label.team-plural')}
         canEditAll={Boolean(isAdminUser)}
         columns={columns}
+        emptyIcon={<Teams />}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.team-plural'),
         })}
@@ -949,6 +957,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         ariaLabel={t('label.user-plural')}
         canEditAll={Boolean(isAdminUser)}
         columns={columns}
+        emptyIcon={<User01 />}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.user-plural'),
         })}
