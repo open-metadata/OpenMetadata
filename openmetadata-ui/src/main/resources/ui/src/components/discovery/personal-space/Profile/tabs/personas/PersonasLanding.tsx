@@ -23,7 +23,10 @@ import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GRID_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
+import {
+  GRID_PAGE_SIZE_BASE,
+  GRID_PAGE_SIZE_OPTIONS,
+} from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { Paging } from '../../../../../../generated/type/paging';
@@ -67,7 +70,11 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   const navigationRef = useRef(0);
 
   const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
+    () =>
+      Boolean(paging.before || paging.after) ||
+      paging.total > pageSize ||
+      // ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
+      pageSize !== GRID_PAGE_SIZE_BASE,
     [paging, pageSize]
   );
 
@@ -254,7 +261,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
                       });
                     }
                   }}>
-                  <Card.Content>
+                  <Card.Content className="tw:px-3">
                     <Box className="tw:min-w-0" direction="col" gap={2}>
                       <Box
                         align="center"
