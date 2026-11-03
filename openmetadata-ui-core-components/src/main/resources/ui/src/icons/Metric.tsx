@@ -33,12 +33,12 @@ export const Metric: FC<Props> = ({
     width={size}
     {...props}>
     <path
-      d="M2 13.414a8 8 0 1 1 16 0m-8-.001L13.733 10"
+      d="M3.75 12.668a6.25 6.25 0 1 1 12.5 0M10 12.667 12.917 10"
       stroke="currentColor"
       strokeWidth={1.3}
     />
     <path
-      d="M9.998 14.589a1.173 1.173 0 1 0 0-2.347 1.173 1.173 0 0 0 0 2.347"
+      d="M10.917 12.667a.917.917 0 1 1-1.833 0 .917.917 0 0 1 1.833 0"
       stroke="currentColor"
       strokeWidth={1.3}
     />
