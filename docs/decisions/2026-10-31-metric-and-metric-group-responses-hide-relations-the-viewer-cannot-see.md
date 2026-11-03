@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-31 (initial)
 - **Deciders:** PR #36764 (fixes #36762)
-- **Guard:** reviewer — `MetricResourceIT.hierarchyEndpointsFilterAndSanitizeEveryRestrictedMetricReference` and the metric repository/resource unit tests
+- **Guard:** reviewer — `MetricResourceIT.hierarchyEndpointsFilterAndSanitizeEveryRestrictedMetricReference`, `McpMetricRelationVisibilityIT` (the MCP `get_entity_details` read) and the metric repository/resource unit tests
 - **Related:** #36762, PR #36764, the hierarchy-endpoint filtering introduced in `e4e88a41f268`
 
 ## Context

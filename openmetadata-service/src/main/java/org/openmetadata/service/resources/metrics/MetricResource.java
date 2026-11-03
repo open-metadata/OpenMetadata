@@ -174,7 +174,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
             authorizer.getPermission(securityContext, user, Entity.METRIC_GROUP));
   }
 
-  static boolean hasUnconditionalView(ResourcePermission resourcePermission) {
+  public static boolean hasUnconditionalView(ResourcePermission resourcePermission) {
     return resourcePermission != null
         && listOrEmpty(resourcePermission.getPermissions()).stream()
             .anyMatch(
@@ -219,9 +219,9 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   /**
    * Request-scoped authorization cache: one evaluation per referenced entity, falling back to an
    * uncached evaluation when the reference carries no id. Shared by the metric and metric group
-   * resources so both decision caches behave the same.
+   * resources and the MCP entity read so every decision cache behaves the same.
    */
-  static Predicate<EntityReference> cachedDecisions(
+  public static Predicate<EntityReference> cachedDecisions(
       Map<UUID, Boolean> decisions, Predicate<EntityReference> decide) {
     return reference ->
         reference.getId() == null
