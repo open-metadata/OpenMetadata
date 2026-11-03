@@ -1017,53 +1017,35 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     }
   });
 
-  test('warns about child metrics on delete and shows a child restored under a deleted parent as a root', async ({
+  test('warns on the metric page that deleting a metric deletes its child metrics', async ({
     browser,
   }) => {
     const { page, apiContext, afterAction } = await performAdminLogin(browser, {
       navigate: true,
     });
     const suffix = uuid();
-    const parentName = `pw-metric-orphan-parent-${suffix}`;
-    const childName = `pw-metric-orphan-child-${suffix}`;
+    const parentName = `pw-metric-delwarn-parent-${suffix}`;
     let parent: MetricResponse | undefined;
 
     try {
       parent = await createMetric(apiContext, parentName);
-      const child = await createMetric(apiContext, childName, parentName);
+      await createMetric(
+        apiContext,
+        `pw-metric-delwarn-child-${suffix}`,
+        parentName
+      );
 
       await page.goto(`/metric/${parentName}`);
       await openDeleteModal(page);
 
-      await expect(page.getByTestId('delete-modal')).toContainText(
+      const deleteModal = page.getByTestId('delete-modal');
+
+      await expect(deleteModal).toContainText(
         `Any child metrics under "${parentName}" will be soft deleted as well.`
       );
-
-      await page.getByTestId('discard-button').click();
-      const deleted = await apiContext.delete(
-        `/api/v1/metrics/${parent.id}?recursive=true`
+      await expect(deleteModal).toContainText(
+        `Any child metrics under "${parentName}" will be permanently deleted as well.`
       );
-
-      expect(deleted.ok()).toBeTruthy();
-
-      const restored = await apiContext.put('/api/v1/metrics/restore', {
-        data: { id: child.id },
-      });
-
-      expect(restored.ok()).toBeTruthy();
-
-      const hierarchyResponse = page.waitForResponse(
-        (response) =>
-          new URL(response.url()).pathname ===
-          `/api/v1/metrics/${child.id}/hierarchy`
-      );
-      await page.goto(`/metric/${childName}`);
-
-      expect((await hierarchyResponse).status()).toBe(200);
-      await expect(page.getByTestId('metric-tree-current')).toContainText(
-        childName
-      );
-      await expect(page.getByText(parentName)).not.toBeVisible();
     } finally {
       if (parent) {
         await apiContext.delete(

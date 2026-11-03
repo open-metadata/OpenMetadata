@@ -1370,48 +1370,24 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
-  void restore_childOfDeletedParent_readsAsRoot(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
+  void restore_childOfDeletedParent_isRejectedUntilTheParentIsRestored(TestNamespace ns) {
     Metric parent = createEntity(createRequest(ns.prefix("orphan_parent"), ns));
     Metric child = createChild(ns, "orphan_child", parent);
-    Metric grandchild = createChild(ns, "orphan_grandchild", child);
-    client.metrics().delete(parent.getId().toString(), Map.of("recursive", "true"));
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
 
-    restoreEntity(child.getId().toString());
+    OpenMetadataException rejected =
+        assertThrows(OpenMetadataException.class, () -> restoreEntity(child.getId().toString()));
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), rejected.getStatusCode());
+    assertTrue(
+        getEntityIncludeDeleted(child.getId().toString()).getDeleted(),
+        "A rejected restore must leave the child deleted");
 
-    JsonNode childContext = getHierarchyContext(client, child);
-    assertEquals(0, childContext.get("ancestors").size(), "A soft-deleted parent is no ancestor");
-    assertEquals(
-        grandchild.getId().toString(), childContext.get("children").get(0).get("id").asText());
-    JsonNode grandchildAncestors = getHierarchyContext(client, grandchild).get("ancestors");
-    assertEquals(1, grandchildAncestors.size());
-    assertEquals(child.getId().toString(), grandchildAncestors.get(0).get("id").asText());
+    restoreEntity(parent.getId().toString());
 
-    JsonNode roots =
-        JSON.valueToTree(
-            client
-                .getHttpClient()
-                .execute(
-                    HttpMethod.GET,
-                    "/v1/metrics/hierarchy?q=" + child.getName() + "&limit=10&offset=0",
-                    null,
-                    Object.class));
-    assertEquals(1, roots.get("paging").get("total").asInt());
-    assertEquals(
-        child.getId().toString(), roots.get("data").get(0).get("metric").get("id").asText());
-  }
-
-  private JsonNode getHierarchyContext(OpenMetadataClient client, Metric metric) {
-    return JSON.valueToTree(
-        client
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                "/v1/metrics/"
-                    + metric.getId()
-                    + "/hierarchy?childLimit=10&childOffset=0&siblingLimit=10&siblingOffset=0",
-                null,
-                Object.class));
+    assertFalse(getEntityIncludeDeleted(child.getId().toString()).getDeleted());
+    assertEquals(1, getWithHierarchy(parent).getChildrenCount());
   }
 
   @Test

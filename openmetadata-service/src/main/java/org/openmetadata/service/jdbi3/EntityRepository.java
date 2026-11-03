@@ -5591,6 +5591,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     getCountingParents(entity).forEach(this::refreshCountingParent);
   }
 
+  /** Runs only for the entity a restore request names; its cascade restores children without it. */
+  protected void validateRestore(T entity) {}
+
   @FunctionalInterface
   protected interface DeleteLifecycle extends AutoCloseable {
     DeleteLifecycle NOOP = () -> {};
@@ -8052,6 +8055,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
     T restoredEntity = find(id, ALL);
+    validateRestore(restoredEntity);
     return RdfUpdater.restoring(
         () ->
             executeEntityWrite(

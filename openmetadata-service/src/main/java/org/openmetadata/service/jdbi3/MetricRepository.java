@@ -1254,7 +1254,6 @@ public class MetricRepository extends EntityRepository<Metric> {
       Predicate<EntityReference> canViewMetric,
       Predicate<EntityReference> canViewGroup) {
     Metric current = get(null, metricId, getFields(HIERARCHY_FIELDS));
-    current.setParent(liveParent(current.getParent()));
     List<Metric> ancestors = getAncestors(current, canViewMetric, canViewGroup);
     MetricPage children = childPage(current, childLimit, childOffset, canViewMetric, canViewGroup);
     MetricPage siblings =
@@ -1284,15 +1283,10 @@ public class MetricRepository extends EntityRepository<Metric> {
         ancestors.add(
             sanitizeHierarchyMetricWithVisibleCount(ancestor, canViewMetric, canViewGroup));
       }
-      parent = liveParent(ancestor.getParent());
+      parent = ancestor.getParent();
     }
     Collections.reverse(ancestors);
     return ancestors;
-  }
-
-  // A soft-deleted parent keeps its CONTAINS edge; a metric restored without it reads as a root.
-  private static EntityReference liveParent(EntityReference parent) {
-    return parent == null || Boolean.TRUE.equals(parent.getDeleted()) ? null : parent;
   }
 
   private MetricGroup loadGroup(
@@ -1752,6 +1746,19 @@ public class MetricRepository extends EntityRepository<Metric> {
   protected void postRestore(Metric metric) {
     super.postRestore(metric);
     refreshSearchDocument(metric.getMetricGroup());
+  }
+
+  // ADR:2026-11-03-a-metric-is-restored-with-its-parent-never-under-a-deleted-one
+  @Override
+  protected void validateRestore(Metric metric) {
+    EntityReference parent = getParent(metric);
+    if (parent != null && Boolean.TRUE.equals(parent.getDeleted())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Metric '%s' cannot be restored while its parent '%s' is deleted. Restore '%s' to"
+                  + " bring back the whole hierarchy.",
+              metric.getName(), parent.getName(), parent.getName()));
+    }
   }
 
   @Override
