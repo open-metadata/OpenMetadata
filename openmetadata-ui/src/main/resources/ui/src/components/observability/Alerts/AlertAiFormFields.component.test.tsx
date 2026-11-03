@@ -963,6 +963,71 @@ describe('AlertAi form field components', () => {
     );
   });
 
+  it('resolves the label of a saved value that arrives after the field mounted, once', async () => {
+    (searchQuery as jest.Mock).mockClear();
+    (searchQuery as jest.Mock).mockImplementation(({ queryFilter }) =>
+      Promise.resolve({
+        hits: {
+          hits: queryFilter
+            ? [
+                {
+                  _source: {
+                    displayName: 'Finance',
+                    fullyQualifiedName: 'finance',
+                  },
+                },
+              ]
+            : [],
+        },
+      })
+    );
+    const valueWith = (input: string[]) =>
+      ({
+        ...baseValue,
+        input: {
+          filters: [
+            {
+              arguments: [{ input, name: 'domainList' }],
+              effect: Effect.Include,
+              name: 'matchAnyDomain',
+            },
+          ],
+        },
+      } as ModifiedCreateEventSubscription);
+    const renderField = (input: string[]) => (
+      <RuleArgumentField
+        argument="domainList"
+        field="filters"
+        index={0}
+        name={0}
+        sourceSearch={makeSourceSearch()}
+        value={valueWith(input)}
+        onChange={jest.fn()}
+      />
+    );
+
+    const { rerender } = render(renderField([]));
+    await act(async () => {
+      rerender(renderField(['finance']));
+    });
+
+    expect(
+      screen.getByTestId('domainList-autocomplete-clear-finance')
+    ).toHaveTextContent('Finance');
+
+    await act(async () => {
+      rerender(renderField(['finance']));
+    });
+
+    const lookups = (searchQuery as jest.Mock).mock.calls.filter(
+      ([request]) => request.queryFilter
+    );
+
+    expect(lookups).toHaveLength(1);
+
+    (searchQuery as jest.Mock).mockReset();
+  });
+
   it('renders fixed runtime options with the fqn autocomplete contract', () => {
     const onChange = jest.fn();
     const selectedRule: ArgumentsInput = {
