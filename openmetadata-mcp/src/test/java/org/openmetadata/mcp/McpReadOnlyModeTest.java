@@ -16,19 +16,47 @@ package org.openmetadata.mcp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.mcp.tools.DefaultToolContext;
+import org.openmetadata.mcp.usage.McpUsageRecorder;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 class McpReadOnlyModeTest {
 
-  private static final Set<String> WRITE_TOOLS =
-      Set.of("create_entity", "patch_entity", "create_lineage", "create_test_case");
+  private static final String TOKEN = "token";
+
+  private static final Set<String> WITHHELD_TOOLS =
+      Set.of(
+          "create_entity",
+          "patch_entity",
+          "create_lineage",
+          "create_test_case",
+          "describe_entity_type");
 
   private static final MCPConfiguration READ_ONLY = new MCPConfiguration().withReadOnly(true);
+
+  private static final McpSchema.CallToolResult SUCCESS =
+      McpSchema.CallToolResult.builder()
+          .content(List.of(new McpSchema.TextContent("{}")))
+          .isError(false)
+          .build();
 
   @Test
   void readOnlyModeWithholdsTheWriteToolsAndKeepsTheReadTools() {
@@ -36,8 +64,8 @@ class McpReadOnlyModeTest {
 
     List<String> exposed = names(McpServer.exposedTools(tools, READ_ONLY));
 
-    WRITE_TOOLS.forEach(tool -> assertFalse(exposed.contains(tool), tool + " changes metadata"));
-    assertEquals(tools.size() - WRITE_TOOLS.size(), exposed.size());
+    WITHHELD_TOOLS.forEach(tool -> assertFalse(exposed.contains(tool), tool + " is a write tool"));
+    assertEquals(tools.size() - WITHHELD_TOOLS.size(), exposed.size());
     assertTrue(exposed.contains("search_metadata"));
   }
 
@@ -54,6 +82,49 @@ class McpReadOnlyModeTest {
 
     assertEquals(tools, McpServer.exposedTools(tools, new MCPConfiguration()));
     assertEquals(tools, McpServer.exposedTools(tools, null));
+  }
+
+  @Test
+  void aRegisteredWriteToolIsRefusedOnceReadOnlyIsTurnedOn() {
+    DefaultToolContext toolContext = mock(DefaultToolContext.class);
+    when(toolContext.callToolWithMetadata(any(), any(), any(), any(), any()))
+        .thenReturn(new DefaultToolContext.CallToolOutcome(SUCCESS, 0L, null));
+    McpServer server = new McpServer(toolContext, new DefaultPromptsContext());
+    server.jwtFilter = jwtFilterFor("alice");
+    McpSchema.Tool patchEntity = toolNamed("patch_entity");
+    McpSchema.CallToolRequest request =
+        McpSchema.CallToolRequest.builder().name("patch_entity").arguments(Map.of()).build();
+
+    try (MockedStatic<SecurityConfigurationManager> config =
+            mockStatic(SecurityConfigurationManager.class);
+        MockedStatic<McpUsageRecorder> usage = mockStatic(McpUsageRecorder.class)) {
+      config.when(SecurityConfigurationManager::getCurrentMcpConfig).thenReturn(READ_ONLY);
+
+      McpSchema.CallToolResult result =
+          server.getTool(patchEntity).callHandler().apply(callerContext(), request);
+
+      assertTrue(result.isError(), "patch_entity must not run in read-only mode");
+      assertEquals(403, ((Map<?, ?>) result.structuredContent()).get("statusCode"));
+      verify(toolContext, never()).callToolWithMetadata(any(), any(), any(), any(), any());
+    }
+  }
+
+  private static McpSchema.Tool toolNamed(String name) {
+    return new McpServer()
+        .getTools().stream().filter(tool -> tool.name().equals(name)).findFirst().orElseThrow();
+  }
+
+  private static JwtFilter jwtFilterFor(String userName) {
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    when(securityContext.getUserPrincipal()).thenReturn(() -> userName);
+    JwtFilter jwtFilter = mock(JwtFilter.class);
+    when(jwtFilter.getCatalogSecurityContext(TOKEN)).thenReturn(securityContext);
+    return jwtFilter;
+  }
+
+  private static McpTransportContext callerContext() {
+    return McpTransportContext.create(
+        Map.of(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER, TOKEN));
   }
 
   private static List<String> names(List<McpSchema.Tool> tools) {

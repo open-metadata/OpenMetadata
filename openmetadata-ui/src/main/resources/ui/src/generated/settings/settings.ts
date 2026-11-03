@@ -712,8 +712,8 @@ export interface PipelineServiceClientConfiguration {
     path?: string;
     /**
      * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
-     * user including admins. Write tools are left out of tools/list and cannot be called. Read
-     * when the MCP server starts, so a change applies after a restart.
+     * user including admins. Turning it on blocks write tools right away; they leave tools/list
+     * after a restart, and turning it off applies after a restart.
      */
     readOnly?: boolean;
     /**

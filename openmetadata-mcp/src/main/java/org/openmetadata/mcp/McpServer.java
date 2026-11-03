@@ -111,6 +111,8 @@ public class McpServer implements McpServerProvider {
   private static final Set<String> RDF_DEPENDENT_TOOLS =
       Set.of("sparql_query", "entity_neighborhood", "find_by_tag", "shacl_validate");
 
+  private static final Set<String> WRITE_HELPER_TOOLS = Set.of("describe_entity_type");
+
   /**
    * Advertises the knowledge-graph tools only where they can actually run.
    *
@@ -142,14 +144,15 @@ public class McpServer implements McpServerProvider {
 
   /**
    * Read-only mode, for every caller including admins, whom no policy can deny. It filters here,
-   * after a subclass has added its own tools in {@link #getTools()}, so those are covered too. The
-   * SDK answers a call to a tool that was never registered with "Unknown tool", so a hidden tool
-   * cannot be called either. See ADR:2026-11-04-mcp-read-only-mode-hides-write-tools.
+   * after a subclass has added its own tools in {@link #getTools()}, so those are covered too.
+   * Tools are registered once at startup, so {@link #executeTool} checks again on every call:
+   * turning the mode on blocks writes before the restart that drops them from tools/list. See
+   * ADR:2026-11-04-mcp-read-only-mode-hides-write-tools.
    */
   static List<McpSchema.Tool> exposedTools(List<McpSchema.Tool> tools, MCPConfiguration config) {
     List<McpSchema.Tool> exposed = tools;
-    if (config != null && Boolean.TRUE.equals(config.getReadOnly())) {
-      exposed = tools.stream().filter(McpServer::isReadOnlyTool).toList();
+    if (isReadOnlyMode(config)) {
+      exposed = tools.stream().filter(McpServer::isAvailableInReadOnlyMode).toList();
       LOG.info(
           "[MCP] Read-only mode; withholding {} write tool(s) from tools/list",
           tools.size() - exposed.size());
@@ -157,9 +160,21 @@ public class McpServer implements McpServerProvider {
     return exposed;
   }
 
+  private static boolean isReadOnlyMode(MCPConfiguration config) {
+    return config != null && Boolean.TRUE.equals(config.getReadOnly());
+  }
+
   // The MCP spec defaults readOnlyHint to false, so a tool without it counts as a write tool.
-  private static boolean isReadOnlyTool(McpSchema.Tool tool) {
-    return tool.annotations() != null && Boolean.TRUE.equals(tool.annotations().readOnlyHint());
+  // describe_entity_type only reads, but it exists to prepare a create_entity call.
+  private static boolean isAvailableInReadOnlyMode(McpSchema.Tool tool) {
+    boolean readOnlyHint =
+        tool.annotations() != null && Boolean.TRUE.equals(tool.annotations().readOnlyHint());
+    return readOnlyHint && !WRITE_HELPER_TOOLS.contains(tool.name());
+  }
+
+  private static boolean isRefusedInReadOnlyMode(McpSchema.Tool tool) {
+    return isReadOnlyMode(SecurityConfigurationManager.getCurrentMcpConfig())
+        && !isAvailableInReadOnlyMode(tool);
   }
 
   protected List<McpSchema.Prompt> getPrompts() {
@@ -347,7 +362,11 @@ public class McpServer implements McpServerProvider {
     try {
       ImpersonationContext.setImpersonatedBy(getMcpBotName());
       outcome =
-          toolContext.callToolWithMetadata(authorizer, limits, tool.name(), securityContext, req);
+          isRefusedInReadOnlyMode(tool)
+              ? DefaultToolContext.forbidden(
+                  "The MCP server is in read-only mode, so " + tool.name() + " is unavailable")
+              : toolContext.callToolWithMetadata(
+                  authorizer, limits, tool.name(), securityContext, req);
       return outcome.result();
     } finally {
       recordUsage(tool.name(), userName, clientName, outcome);
