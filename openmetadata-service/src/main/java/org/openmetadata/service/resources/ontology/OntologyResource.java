@@ -59,6 +59,7 @@ import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
+import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
@@ -90,6 +91,7 @@ import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Query;
 import org.openmetadata.service.ontology.NativeOntologyTopologyCursorCodec;
 import org.openmetadata.service.ontology.OntologyConceptBindingService;
 import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
+import org.openmetadata.service.ontology.OntologyDraftQuery;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
@@ -100,6 +102,8 @@ import org.openmetadata.service.ontology.OntologyReleaseComparison;
 import org.openmetadata.service.ontology.OntologyReleaseHistory;
 import org.openmetadata.service.ontology.OntologyReleaseQuery;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
+import org.openmetadata.service.ontology.OntologyStructureValidator;
+import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
@@ -189,14 +193,29 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       operationId = "queryActiveOntologyRelease",
       summary = "Query the active ontology release",
       description =
-          "Runs read-only SPARQL over the active release's verified SQL projection. Requires view access to every captured member and cannot access other graphs or external services. Working edits are excluded.")
+          "Runs read-only SPARQL over the active release's verified SQL projection. Requires view access to every captured member and cannot access other graphs or external services. Working edits are excluded unless scope=draft, which queries the working draft and requires edit rights on the ontology.")
   public Response query(
       @Context final UriInfo uriInfo,
       @Context final SecurityContext context,
       @PathParam("id") final UUID id,
+      @QueryParam("scope")
+          @DefaultValue("release")
+          @Pattern(
+              regexp = "release|draft",
+              message = "Invalid scope. Allowed values: release, draft.")
+          final String scope,
       @Valid final SparqlQuery request) {
     getInternal(uriInfo, context, id, "", Include.NON_DELETED, null);
-    final var service =
+    final Consumer<List<? extends OntologyDefinition>> authorize =
+        definition -> OntologyResourceAccess.requireView(authorizer, context, definition);
+    final boolean draft = "draft".equals(scope);
+    if (draft) {
+      authorizer.authorize(
+          context,
+          new OperationContext(Entity.ONTOLOGY, MetadataOperation.EDIT_ALL),
+          getResourceContextById(id));
+    }
+    final var release =
         new OntologyReleaseQuery(
             repository,
             (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE));
@@ -206,11 +225,10 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
               .execute(
                   user(context),
                   () ->
-                      service.query(
-                          id,
-                          request,
-                          definition ->
-                              OntologyResourceAccess.requireView(authorizer, context, definition)));
+                      draft
+                          ? new OntologyDraftQuery(releaseCapture.snapshot()::read)
+                              .query(id, request, authorize)
+                          : release.query(id, request, authorize));
       return Response.ok(result.body(), result.mediaType()).build();
     } catch (SparqlFederationGuard.FederationDisallowedException exception) {
       throw new ForbiddenException(exception.getMessage(), exception);
@@ -289,6 +307,30 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
                 groupBy == null
                     ? comparison.compareWorking(working, limit, after, authorize)
                     : comparison.compareWorkingByConcept(working, limit, after, authorize));
+  }
+
+  @GET
+  @Path("/{id}/working/validation")
+  @Operation(
+      operationId = "validateOntologyWorkingDraft",
+      summary = "Validate every definition in the working draft")
+  public OntologyProfileReport validateWorking(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final Consumer<List<? extends OntologyDefinition>> authorize =
+        definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions);
+    return releaseCapture
+        .snapshot()
+        .read(
+            id,
+            authorize,
+            working ->
+                OntologyStructureValidator.validateDraft(
+                    working.entries().stream()
+                        .map(OntologyWorkingSnapshot.Entry::definition)
+                        .toList()));
   }
 
   @POST

@@ -800,6 +800,14 @@ export const validateOntologyAxiom = async (request: CreateOntologyAxiom) => {
   return response.data;
 };
 
+export const getOntologyWorkingValidation = async (ontologyId: string) => {
+  const response = await APIClient.get<OntologyProfileReport>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/working/validation`
+  );
+
+  return response.data;
+};
+
 export const createOntologyAxiom = async (request: CreateOntologyAxiom) => {
   const response = await APIClient.post<
     CreateOntologyAxiom,

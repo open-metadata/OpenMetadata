@@ -16,7 +16,6 @@ import {
   BadgeWithDot,
   Box,
   Button,
-  Select,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -54,6 +53,7 @@ import { OntologyGraphSearchSlotContext } from '../../components/governance/onto
 import { OntologyModelStats } from '../../components/governance/ontology/OntologyGraphView/OntologyGraphView';
 import OntologyNativeImportDialog from '../../components/governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog';
 import OntologyPublicationModal from '../../components/governance/ontology/OntologyPublicationModal/OntologyPublicationModal';
+import OntologyQueryPicker from '../../components/governance/ontology/OntologyQueryPicker/OntologyQueryPicker';
 import OntologyStudioHeader from '../../components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader';
 import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
 import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
@@ -2016,6 +2016,17 @@ const OntologyExplorerContent: React.FC = () => {
   }
 
   function renderQuerySurface() {
+    // Queries follow the version the Studio reads: a reader is held to the active release,
+    // an editor to whatever the Draft and Published switch shows.
+    const queryScope =
+      isNativeOntology && selectedOntology
+        ? {
+            ontologyName: getEntityName(selectedOntology),
+            version,
+            releaseVersion: releaseStatus?.active?.semanticVersion,
+          }
+        : undefined;
+
     return (
       <div className="tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto">
         {querySurface === 'console' ? (
@@ -2028,6 +2039,7 @@ const OntologyExplorerContent: React.FC = () => {
                 : undefined
             }
             key={queryConsoleKey}
+            queryScope={queryScope}
             relationTypes={isNativeOntology ? [] : relationTypes}
             selectedGlossaryIds={isNativeOntology ? [] : selectedGlossaryIds}
             selectedOntologyId={selectedOntology?.id}
@@ -2037,6 +2049,7 @@ const OntologyExplorerContent: React.FC = () => {
           <OntologyVisualQueryBuilder
             graphData={isNativeOntology ? undefined : graphData}
             ontology={isNativeOntology ? selectedOntology : undefined}
+            queryScope={queryScope}
             relationTypes={relationTypes}
             selectedGlossaryIds={selectedGlossaryIds}
             onEditAsSparql={(query) => {
@@ -2356,29 +2369,11 @@ const OntologyExplorerContent: React.FC = () => {
     <>
       {renderSubModeNav()}
       {mode === 'query' ? (
-        <Box className="tw:p-4" direction="col" gap={3}>
-          <Select
-            className="tw:w-75"
-            items={availableOntologies.map((ontology) => ({
-              id: ontology.id,
-              label: getEntityName(ontology),
-            }))}
-            label={t('label.select-entity', {
-              entity: t('label.ontology'),
-            })}
-            onChange={(id) => {
-              const ontology = availableOntologies.find(
-                (item) => item.id === id
-              );
-              if (ontology) {
-                selectOntology(ontology, undefined, mode);
-              }
-            }}>
-            {(item) => (
-              <Select.Item id={item.id} key={item.id} label={item.label} />
-            )}
-          </Select>
-        </Box>
+        <OntologyQueryPicker
+          ontologies={availableOntologies}
+          surface={querySurface}
+          onSelect={(ontology) => selectOntology(ontology, undefined, mode)}
+        />
       ) : null}
       {mode === 'query' ? null : (
         <div className="tw:flex tw:min-h-0 tw:flex-1">

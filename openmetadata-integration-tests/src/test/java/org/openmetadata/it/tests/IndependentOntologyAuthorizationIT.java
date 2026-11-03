@@ -194,6 +194,50 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void userDeniedViewCannotReadTheWorkingDraftValidation(final TestNamespace ns) {
+    final String prefix = ns.shortPrefix("noView");
+    final var admin = SdkClients.adminClient();
+    final Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(prefix + "Policy")
+                    .withRules(
+                        List.of(
+                            new Rule()
+                                .withName(prefix + "Rule")
+                                .withResources(List.of(Entity.ONTOLOGY))
+                                .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                                .withEffect(Rule.Effect.DENY))));
+    ns.trackRoot(Entity.POLICY, policy);
+    final Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "Role")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    ns.trackRoot(Entity.ROLE, role);
+    final User blocked =
+        ns.trackRoot(
+            Entity.USER,
+            admin
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(prefix)
+                        .withEmail(prefix + "@test.om.org")
+                        .withDescription("v7 user")
+                        .withRoles(List.of(role.getId()))));
+    final Ontology ontology = createOntologyWith(ns, "validationRead", List.of(), List.of());
+    final String path = "/v1/ontologies/" + ontology.getId() + "/working/validation";
+
+    assertEquals(403, status(blocked, "GET", path, null));
+    assertEquals(200, statusAsAdmin("GET", path, null));
+  }
+
+  @Test
   void dataConsumerCannotStartGlossaryDraftsOrLocks(final TestNamespace ns) throws Exception {
     final User consumer = createUser(ns, "drafter", "DataConsumer");
     final Glossary glossary = GlossaryTestFactory.createSimple(ns);

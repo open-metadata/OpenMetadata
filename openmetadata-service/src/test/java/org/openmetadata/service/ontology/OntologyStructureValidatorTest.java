@@ -539,6 +539,20 @@ class OntologyStructureValidatorTest {
   }
 
   @Test
+  void validateDraftReportsOneClashRowWithBothConceptIds() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept dog = concept("Dog");
+    var report =
+        OntologyStructureValidator.validateDraft(
+            List.of(animal, dog, subclass(dog, animal), disjoint(dog, animal)));
+    assertFalse(report.getValid());
+    assertEquals(1, report.getViolations().size());
+    var violation = report.getViolations().getFirst();
+    assertEquals(OntologyProfileViolationCode.DISJOINT_CLASH, violation.getCode());
+    assertEquals(List.of(dog.getId(), animal.getId()), violation.getConceptIds());
+  }
+
+  @Test
   void aClassUnderTwoDisjointAncestorsIsAClashAndTheDiamondReportsOnce() {
     OntologyConcept left = concept("Left");
     OntologyConcept right = concept("Right");
@@ -602,6 +616,37 @@ class OntologyStructureValidatorTest {
         report.getViolations().getFirst().getMessage());
     OntologyStructureValidator.requireValidWorking(
         List.of(animal, dog, subclass(dog, animal), disjoint(dog, animal)));
+  }
+
+  @Test
+  void draftValidationReportsEveryClashAsAnErrorThatASingleSaveCouldNotSee() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept plant = concept("Plant");
+    OntologyConcept dog = concept("Dog");
+    OntologyConcept puppy = concept("Puppy");
+    var definitions =
+        List.<OntologyDefinition>of(
+            animal,
+            plant,
+            dog,
+            puppy,
+            subclass(puppy, dog),
+            subclass(dog, plant),
+            subclass(dog, animal),
+            disjoint(animal, plant));
+    var report = OntologyStructureValidator.validateDraft(definitions);
+    assertFalse(report.getValid());
+    assertEquals(1, report.getViolations().size());
+    var clash = report.getViolations().getFirst();
+    assertEquals(OntologyProfileViolationCode.DISJOINT_CLASH, clash.getCode());
+    assertEquals(OntologyProfileViolationSeverity.ERROR, clash.getSeverity());
+    assertEquals(
+        "urn:class:Dog has disjoint ancestors urn:class:Animal and urn:class:Plant",
+        clash.getMessage());
+    assertEquals(List.of(dog.getId(), animal.getId(), plant.getId()), clash.getConceptIds());
+    assertTrue(
+        OntologyStructureValidator.validateDraft(List.of(animal, plant, dog, subclass(dog, animal)))
+            .getValid());
   }
 
   private static OntologyReleaseStructureReport validate(OntologyDefinition... definitions) {
