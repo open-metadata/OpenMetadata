@@ -20,7 +20,7 @@ import types
 from collections.abc import Callable, Iterable
 from copy import copy
 from datetime import date, datetime
-from functools import cache, wraps
+from functools import lru_cache, wraps
 from itertools import groupby
 from typing import ClassVar, cast
 from urllib.parse import SplitResult, urlsplit
@@ -74,6 +74,7 @@ from metadata.pii.constants import (
     SPACY_EN_MODEL,
     SUPPORTED_LANG,
 )
+from metadata.pii.model_loading import ClassificationModelLoadError
 from metadata.pii.model_registry import example_language_for_model, get_model_for_language
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
@@ -131,7 +132,7 @@ def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bo
     return False
 
 
-@cache
+@lru_cache(maxsize=32)
 def load_nlp_engine(
     model_name: str | None = None,
     supported_language: str | None = None,
@@ -149,7 +150,19 @@ def load_nlp_engine(
         "lang_code": supported_language,
         "model_name": model_name,
     }
-    return SpacyNlpEngine(models=[model])
+    nlp_engine = SpacyNlpEngine(models=[model])
+    try:
+        nlp_engine.load()
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise ClassificationModelLoadError(
+            model_name,
+            classification_language.value if classification_language else None,
+            supported_language,
+            "engine_load",
+        ) from exc
+    return nlp_engine
 
 
 def build_analyzer_engine(
@@ -195,10 +208,13 @@ def _load_spacy_model(
     If the model is not found locally, it will be downloaded.
     """
 
+    requested_language = classification_language.value if classification_language else None
+    language = requested_language or example_language_for_model(model_name)
     try:
         _ = spacy.load(model_name)
+    except MemoryError:
+        raise
     except OSError:
-        language = classification_language.value if classification_language else example_language_for_model(model_name)
         guidance = f"metadata install-classification-models --languages {language}" if language else None
         if guidance:
             logger.warning(
@@ -212,8 +228,23 @@ def _load_spacy_model(
                 "run `metadata install-classification-models --help` for supported mapped models.",
                 model_name,
             )
-        download(model_name)
-        _ = spacy.load(model_name)
+        try:
+            download(model_name)
+        except MemoryError:
+            raise
+        except SystemExit as exc:
+            if exc.code:
+                raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
+        except Exception as exc:
+            raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
+        try:
+            _ = spacy.load(model_name)
+        except MemoryError:
+            raise
+        except Exception as exc:
+            raise ClassificationModelLoadError(model_name, requested_language, language, "reload") from exc
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "local_load") from exc
 
 
 def _get_all_entity_recognizer_classes() -> Iterable[type[EntityRecognizer]]:
