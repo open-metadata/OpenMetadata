@@ -14,6 +14,7 @@
 package org.openmetadata.service.rdf;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -113,10 +114,23 @@ final class AssertedGraphTrackingRdfStorage extends ForwardingRdfStorage {
     try {
       delegate.executeSparqlUpdate(sparqlUpdate);
     } finally {
-      // A failed or timed-out update may still have been applied.
-      targetGraphs(sparqlUpdate)
-          .ifPresentOrElse(assertedOnlyQueries::graphsWritten, assertedOnlyQueries::graphsChanged);
+      recordTargets(sparqlUpdate);
     }
+  }
+
+  @Override
+  public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
+    try {
+      delegate.executeMaintenanceUpdate(sparqlUpdate, timeout);
+    } finally {
+      recordTargets(sparqlUpdate);
+    }
+  }
+
+  // A failed or timed-out update may still have been applied.
+  private void recordTargets(final String sparqlUpdate) {
+    targetGraphs(sparqlUpdate)
+        .ifPresentOrElse(assertedOnlyQueries::graphsWritten, assertedOnlyQueries::graphsChanged);
   }
 
   @Override

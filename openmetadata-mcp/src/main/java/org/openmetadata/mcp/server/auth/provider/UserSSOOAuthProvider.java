@@ -47,7 +47,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
-import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.SamlAuthServletHandler;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -111,7 +110,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private static final long REFRESH_TOKEN_EXPIRY_SECONDS = REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60;
 
   private final JWTTokenGenerator jwtGenerator;
-  private final AuthenticatorHandler credentialAuthenticator;
 
   private final OAuthClientRepository clientRepository;
   private final OAuthAuthorizationCodeRepository codeRepository;
@@ -129,10 +127,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // sets it again whenever the configured base URL changes while the server is running.
   private volatile String issuer;
 
-  public UserSSOOAuthProvider(
-      JWTTokenGenerator jwtGenerator, AuthenticatorHandler credentialAuthenticator) {
+  public UserSSOOAuthProvider(JWTTokenGenerator jwtGenerator) {
     this.jwtGenerator = jwtGenerator;
-    this.credentialAuthenticator = credentialAuthenticator;
 
     this.clientRepository = new OAuthClientRepository();
     this.codeRepository = new OAuthAuthorizationCodeRepository();
@@ -150,10 +146,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   @Override
   public void setIssuer(String issuer) {
     this.issuer = issuer;
-  }
-
-  public AuthenticatorHandler getCredentialAuthenticator() {
-    return credentialAuthenticator;
   }
 
   /**
@@ -519,8 +511,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // Without this check, non-OM users who authenticate via SSO see the success page
     // but then fail silently at token exchange with a confusing "invalid_grant" error.
     // getEntityByName throws EntityNotFoundException (never returns null).
+    final User user;
     try {
-      Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
+      user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
     } catch (EntityNotFoundException e) {
       LOG.warn("SSO-authenticated user not found in OpenMetadata. Denying access.");
       LOG.debug("Denied user details: {}", userName);
@@ -572,9 +565,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // pending request row, not in the HttpSession, so any server can answer the POST.
     // ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
     // The id is read back from the stored row, so the page never echoes the request's RelayState.
+    // The grant is kept under the account's own name, not the provider's spelling of it, so
+    // revoking the user's grants finds it.
     final PendingConsent consent =
-        new PendingConsent(generateSecureToken(32), pendingRequest.authRequestId(), userName);
-    if (pendingAuthRepository.storeConsent(consent.authRequestId(), consent.token(), userName)) {
+        new PendingConsent(generateSecureToken(32), pendingRequest.authRequestId(), user.getName());
+    if (pendingAuthRepository.storeConsent(
+        consent.authRequestId(), consent.token(), user.getName())) {
       serveConsentPage(response, client, URI.create(pendingRequest.redirectUri()), consent);
     } else {
       LOG.warn("MCP authorization request {} already has a sign-in waiting", authRequestId);

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Layer } from '../../../../generated/api/data/createOntology';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -42,6 +42,16 @@ beforeAll(() => jest.useRealTimers());
 
 afterAll(() => jest.useFakeTimers());
 
+const ontology = {
+  id: 'sales',
+  name: 'Sales',
+  fullyQualifiedName: 'Sales',
+  iri: 'urn:sales',
+  namespace: 'urn:sales:',
+  version: 0.3,
+  reviewers: [{ id: 'reviewer', type: 'user', name: 'Reviewer' }],
+};
+
 describe('OntologyCreateForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,15 +61,6 @@ describe('OntologyCreateForm', () => {
 
   it('edits ontology metadata while preserving its identity and reviewers', async () => {
     const user = userEvent.setup();
-    const ontology = {
-      id: 'sales',
-      name: 'Sales',
-      fullyQualifiedName: 'Sales',
-      iri: 'urn:sales',
-      namespace: 'urn:sales:',
-      version: 0.3,
-      reviewers: [{ id: 'reviewer', type: 'user', name: 'Reviewer' }],
-    };
     const saved = jest.fn();
     const patch = APIClient.patch as jest.MockedFunction<
       typeof APIClient.patch
@@ -68,7 +69,7 @@ describe('OntologyCreateForm', () => {
       data: { ...ontology, displayName: 'Sales model' },
     });
     renderWithQueryClient(
-      <OntologyCreateForm canCreate ontology={ontology} onSaved={saved} />
+      <OntologyCreateForm canEdit ontology={ontology} onSaved={saved} />
     );
 
     expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue(
@@ -99,89 +100,13 @@ describe('OntologyCreateForm', () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it('requires ontology identity and assigns the creator as owner', async () => {
-    const user = userEvent.setup();
-    const saved = jest.fn();
-    renderWithQueryClient(
-      <OntologyCreateForm canCreate currentUserId="author" onSaved={saved} />
-    );
-    await act(async () => {
-      fireEvent.submit(screen.getByTestId('ontology-create-form'));
-    });
-
-    expect(await screen.findAllByText('label.field-required')).toHaveLength(3);
-    expect(post).not.toHaveBeenCalled();
-
-    await user.type(
-      screen.getByRole('textbox', { name: 'label.name' }),
-      'Sales'
-    );
-    await user.type(
-      screen.getByRole('textbox', { name: 'label.ontology-iri' }),
-      'urn:sales'
-    );
-    await user.type(
-      screen.getByRole('textbox', { name: 'label.namespace' }),
-      'urn:sales:'
-    );
-    await act(async () => {
-      fireEvent.submit(screen.getByTestId('ontology-create-form'));
-    });
-
-    await waitFor(() =>
-      expect(saved).toHaveBeenCalledWith({ id: 'ontology-id', name: 'Sales' })
-    );
-
-    expect(post).toHaveBeenCalledWith(
-      '/ontologies',
-      expect.objectContaining({
-        name: 'Sales',
-        iri: 'urn:sales',
-        namespace: 'urn:sales:',
-        layer: Layer.L1,
-        owners: [{ id: 'author', type: 'user' }],
-        reviewers: [],
-      })
-    );
-  });
-
-  it('keeps invalid namespace input visible without writing', async () => {
-    const user = userEvent.setup();
+  it('prevents saving when the edit permission is denied', () => {
     renderWithQueryClient(
       <OntologyCreateForm
-        canCreate
-        currentUserId="author"
+        canEdit={false}
+        ontology={ontology}
         onSaved={jest.fn()}
       />
-    );
-    await user.type(
-      screen.getByRole('textbox', { name: 'label.name' }),
-      'Sales'
-    );
-    await user.type(
-      screen.getByRole('textbox', { name: 'label.ontology-iri' }),
-      'urn:sales'
-    );
-    await user.type(
-      screen.getByRole('textbox', { name: 'label.namespace' }),
-      'relative/path'
-    );
-    await act(async () => {
-      fireEvent.submit(screen.getByTestId('ontology-create-form'));
-    });
-
-    expect(
-      await screen.findByText('message.invalid-concept-iri')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('textbox', { name: 'label.namespace' })
-    ).toHaveValue('relative/path');
-    expect(post).not.toHaveBeenCalled();
-  });
-
-  it('prevents creation when the permission is denied', () => {
-    renderWithQueryClient(
-      <OntologyCreateForm canCreate={false} onSaved={jest.fn()} />
     );
 
     expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
@@ -192,60 +117,39 @@ describe('OntologyCreateForm', () => {
 
     afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
 
-    it('creates with editable identity rows and the segmented layer', async () => {
+    it('saves the settings rows and the segmented layer through a patch', async () => {
       const user = userEvent.setup();
       const saved = jest.fn();
+      const patch = APIClient.patch as jest.MockedFunction<
+        typeof APIClient.patch
+      >;
+      patch.mockResolvedValue({ data: { ...ontology, layer: Layer.L2 } });
       renderWithQueryClient(
-        <OntologyCreateForm canCreate currentUserId="author" onSaved={saved} />
+        <OntologyCreateForm canEdit ontology={ontology} onSaved={saved} />
       );
 
-      expect(screen.getByText('label.new-entity')).toBeInTheDocument();
       expect(screen.getByText('label.owner-plural')).toBeInTheDocument();
       expect(screen.getByText('label.reviewer-plural')).toBeInTheDocument();
 
-      await act(async () => {
-        fireEvent.submit(screen.getByTestId('ontology-create-form'));
-      });
-
-      expect(await screen.findAllByText('label.field-required')).toHaveLength(
-        3
-      );
-
-      await user.type(
-        screen.getByRole('textbox', { name: 'label.name' }),
-        'Sales'
-      );
-      await user.type(
-        screen.getByRole('textbox', { name: 'label.ontology-iri' }),
-        'urn:sales'
-      );
-      await user.type(
-        screen.getByRole('textbox', { name: 'label.namespace' }),
-        'urn:sales:'
-      );
       await user.click(screen.getByRole('tab', { name: Layer.L2 }));
-      await act(async () => {
-        fireEvent.submit(screen.getByTestId('ontology-create-form'));
-      });
+      fireEvent.submit(screen.getByTestId('ontology-create-form'));
 
       await waitFor(() => expect(saved).toHaveBeenCalled());
 
-      expect(post).toHaveBeenCalledWith(
-        '/ontologies',
-        expect.objectContaining({
-          name: 'Sales',
-          iri: 'urn:sales',
-          namespace: 'urn:sales:',
-          layer: Layer.L2,
-          owners: [{ id: 'author', type: 'user' }],
-        })
+      expect(patch).toHaveBeenCalledWith(
+        '/ontologies/sales',
+        expect.arrayContaining([
+          { op: 'replace', path: '/layer', value: Layer.L2 },
+        ]),
+        expect.anything()
       );
+      expect(post).not.toHaveBeenCalled();
     });
 
     it('keeps name and IRI read-only in settings and gates save', () => {
       renderWithQueryClient(
         <OntologyCreateForm
-          canCreate={false}
+          canEdit={false}
           ontology={{
             id: 'sales',
             name: 'Sales',

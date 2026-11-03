@@ -112,7 +112,7 @@ class TestHexApiClient(TestCase):
         self.assertEqual(projects[1].id, "proj_456")
 
         # Verify API call
-        self.client.client.get.assert_called_once_with("/projects", data={"limit": 100})
+        self.client.client.get.assert_called_once_with("/projects", data={"includeComponents": "true", "limit": 100})
 
     def test_get_projects_with_pagination(self):
         """Test fetching projects with multiple pages"""
@@ -205,7 +205,7 @@ class TestHexApiClient(TestCase):
     def test_get_project_url_published_opens_app(self):
         """A published project links to the app, which viewers can open"""
         self.client.client.get = MagicMock(return_value={"org": {"id": "ws-uuid"}})
-        project = Project(id="proj_789", title="Test", last_published_at="2026-10-01T00:00:00Z")
+        project = Project.model_validate({"id": "proj_789", "title": "Test", "lastPublishedAt": "2026-10-01T00:00:00Z"})
 
         self.assertEqual(self.client.get_project_url(project), "https://app.hex.tech/ws-uuid/app/proj_789")
 

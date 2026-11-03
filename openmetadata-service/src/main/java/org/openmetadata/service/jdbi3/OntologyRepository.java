@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import java.net.URI;
 import java.util.ArrayList;
@@ -89,10 +88,8 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
   }
 
   @Override
-  protected String serializeForVersionHistory(final Ontology entity) {
-    final ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
-    node.remove(PUBLICATION_STATUS);
-    return node.toString();
+  protected List<String> getFieldsHiddenFromHistory() {
+    return List.of(PUBLICATION_STATUS);
   }
 
   private void fetchPublicationStatus(final List<Ontology> ontologies, final Fields fields) {

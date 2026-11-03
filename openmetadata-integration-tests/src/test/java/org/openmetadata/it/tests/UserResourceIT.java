@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -116,6 +117,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   private static final Profile PROFILE =
       new Profile().withImages(new ImageList().withImage(URI.create("https://image.com")));
+  private static final String AUDIT_LOGS_PATH = "/v1/audit/logs";
+  private static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
+  private static final String BCRYPT_HASH_PREFIX = "$2a$";
 
   private Team lastCreatedTeam;
 
@@ -740,6 +744,34 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     User reread = Users.get(user.getId().toString(), "defaultDomain");
     assertNotNull(reread.getDefaultDomain(), "a PUT must keep the saved navbar selection");
     assertEquals(domain.getId(), reread.getDefaultDomain().getId());
+  }
+
+  @Test
+  void test_isFirstTimeUserPersistsAcrossSessionsAndPut(TestNamespace ns) {
+    // Whether the user is accessing the product for the first time lives on the user, not in the
+    // browser, so a new browser must read it back; clearing it is not an edit and must not version
+    // the user.
+    CreateUser create = selfLoginUserRequest();
+    User user = createEntity(create);
+    assertTrue(user.getIsFirstTimeUser());
+
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch.addObject().put("op", "add").put("path", "/isFirstTimeUser").put("value", false);
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch);
+
+    User reread = Users.get(user.getId().toString());
+    assertFalse(reread.getIsFirstTimeUser());
+    assertEquals(user.getVersion(), reread.getVersion());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/users", create.withDescription("updated by PUT"), User.class);
+
+    assertFalse(
+        Users.get(user.getId().toString()).getIsFirstTimeUser(),
+        "a PUT must not make a returning user first-time again");
   }
 
   @Test
@@ -2704,6 +2736,358 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
   }
 
+  /** A user created by an admin with a password, so its stored record carries the hash. */
+  private User createPasswordUser(TestNamespace ns, String base) {
+    String userName = ns.shortPrefix(base);
+    String password = "Keep!Passw0rd" + ns.uniqueShortId();
+    return createEntity(
+        new CreateUser()
+            .withName(userName)
+            .withEmail(userName + "@example.com")
+            .withPassword(password)
+            .withConfirmPassword(password)
+            .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+            .withIsBot(false));
+  }
+
+  @Test
+  void test_writeResponsesNeverCarryAPersonsPasswordHash(TestNamespace ns) {
+    User created = createPasswordUser(ns.shortPrefix("nohash"));
+    assertNull(created.getAuthenticationMechanism());
+
+    User fetched = getEntity(created.getId().toString());
+    fetched.setDescription("Edited after creation");
+    assertNull(patchEntity(fetched.getId().toString(), fetched).getAuthenticationMechanism());
+
+    User putResponse =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/users",
+                new CreateUser()
+                    .withName(created.getName())
+                    .withEmail(created.getEmail())
+                    .withDisplayName("Renamed by PUT")
+                    .withIsBot(false),
+                User.class);
+    assertNull(putResponse.getAuthenticationMechanism());
+  }
+
+  @Test
+  void test_versionsAndHistoryNeverShowAPersonsPasswordHash(TestNamespace ns) {
+    long startTs = System.currentTimeMillis() - 1000;
+    User user = createPasswordUser(ns.shortPrefix("versionpwd"));
+    User fetched = getEntity(user.getId().toString());
+    fetched.setDescription("Edited after creation");
+    patchEntity(fetched.getId().toString(), fetched);
+    String userPath = "/v1/users/" + user.getId();
+
+    String versions = readAsNonAdmin(userPath + "/versions");
+    String firstVersion = readAsNonAdmin(userPath + "/versions/0.1");
+    String history =
+        readAsNonAdmin(
+            "/v1/users/history?limit=100&startTs="
+                + startTs
+                + "&endTs="
+                + (System.currentTimeMillis() + 60_000));
+
+    assertTrue(versions.contains(user.getName()), versions);
+    assertFalse(versions.contains(BCRYPT_HASH_PREFIX), versions);
+    assertFalse(firstVersion.contains(BCRYPT_HASH_PREFIX), firstVersion);
+    assertFalse(history.contains(BCRYPT_HASH_PREFIX), history);
+    JsonUtils.readTree(versions)
+        .path("versions")
+        .forEach(UserResourceIT::assertCarriesNoAuthenticationMechanism);
+    assertCarriesNoAuthenticationMechanism(JsonUtils.readTree(firstVersion));
+    // History spans every user changed meanwhile; their change descriptions may name the field.
+    JsonUtils.readTree(history)
+        .path("data")
+        .forEach(UserResourceIT::assertCarriesNoAuthenticationMechanism);
+  }
+
+  private static void assertCarriesNoAuthenticationMechanism(JsonNode snapshot) {
+    JsonNode user = snapshot.isTextual() ? JsonUtils.readTree(snapshot.asText()) : snapshot;
+    assertFalse(user.has(AUTH_MECHANISM_FIELD), user.toString());
+  }
+
+  @Test
+  void test_auditLogNeverShowsAPersonsPasswordHash(TestNamespace ns) {
+    User user = createPasswordUser(ns.shortPrefix("auditpwd"));
+    User fetched = getEntity(user.getId().toString());
+    fetched.setDescription("Edited after creation");
+    patchEntity(fetched.getId().toString(), fetched);
+
+    String auditLog = awaitAuditLogOf(user.getFullyQualifiedName(), 2);
+
+    assertFalse(auditLog.contains(AUTH_MECHANISM_FIELD), auditLog);
+    assertFalse(auditLog.contains(BCRYPT_HASH_PREFIX), auditLog);
+  }
+
+  @Test
+  void test_auditLogNeverShowsABotsToken(TestNamespace ns) {
+    String name = ns.prefix("auditbot");
+    User bot =
+        createEntity(
+            new CreateUser()
+                .withName(name)
+                .withEmail(toValidEmail(name))
+                .withIsBot(true)
+                .withAuthenticationMechanism(
+                    new AuthenticationMechanism()
+                        .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                        .withConfig(
+                            new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited))));
+
+    String auditLog = awaitAuditLogOf(bot.getFullyQualifiedName(), 1);
+
+    assertFalse(auditLog.contains(AUTH_MECHANISM_FIELD), auditLog);
+    assertFalse(auditLog.contains("JWTToken"), auditLog);
+  }
+
+  @Test
+  void test_auditLogNeverShowsTheSeededAdminsPasswordHash() {
+    String auditLog = awaitAuditLogOf("admin", 1);
+
+    assertFalse(auditLog.contains(AUTH_MECHANISM_FIELD), auditLog);
+    assertFalse(auditLog.contains(BCRYPT_HASH_PREFIX), auditLog);
+  }
+
+  private User createPasswordUser(String userName) {
+    String password = "Audit!Passw0rd" + userName.length();
+    return createEntity(
+        new CreateUser()
+            .withName(userName)
+            .withEmail(userName + "@example.com")
+            .withPassword(password)
+            .withConfirmPassword(password)
+            .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+            .withIsBot(false));
+  }
+
+  /**
+   * Version and history snapshots answer like the live read: another user's email stays masked
+   * and no credential appears, through every snapshot route.
+   */
+  @Test
+  void test_versionsAndHistoryMaskAnotherUsersEmail(TestNamespace ns) throws Exception {
+    User target = createPasswordUser(ns, "histmask");
+    OpenMetadataClient viewer = clientFor(createEntity(selfLoginUserRequest()));
+    String live =
+        viewer
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/" + target.getId(), null);
+    assertFalse(live.contains(target.getEmail()), "the live read masks the email for this viewer");
+
+    String history =
+        viewer
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/users/history?startTs="
+                    + target.getUpdatedAt()
+                    + "&endTs="
+                    + target.getUpdatedAt()
+                    + "&limit=500",
+                null);
+    assertTrue(history.contains(target.getId().toString()), "history must list the user");
+    List<String> snapshots =
+        List.of(
+            viewer
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET, "/v1/users/" + target.getId() + "/versions", null),
+            viewer
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/users/" + target.getId() + "/versions/" + target.getVersion(),
+                    null),
+            history);
+    for (String snapshot : snapshots) {
+      assertFalse(snapshot.contains(target.getEmail()), snapshot);
+      assertFalse(snapshot.contains("authenticationMechanism"), snapshot);
+    }
+  }
+
+  /** A write answers with the user as a read would, never with the stored password hash. */
+  @Test
+  void test_writeResponsesCarryNoPasswordHash(TestNamespace ns) throws Exception {
+    User user = createPasswordUser(ns, "writemask");
+    OpenMetadataClient self = clientFor(user);
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/description")
+        .put("value", "edited by its owner");
+
+    String patched =
+        self.getHttpClient().executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch);
+    String put =
+        self.getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users",
+                new CreateUser()
+                    .withName(user.getName())
+                    .withEmail(user.getEmail())
+                    .withDescription("put by its owner"));
+
+    assertTrue(patched.contains("edited by its owner"), patched);
+    assertTrue(put.contains("put by its owner"), put);
+    for (String response : List.of(patched, put)) {
+      assertFalse(response.contains("authenticationMechanism"), response);
+    }
+  }
+
+  /** EditAll on users lets a non-admin edit an admin's record, never take its admin flag away. */
+  @Test
+  void test_nonAdminPutCannotRevokeAdmin(TestNamespace ns) {
+    String name = "keptadmin" + ns.shortPrefix();
+    User target =
+        createEntity(
+            new CreateUser().withName(name).withEmail(name + "@test.com").withIsAdmin(true));
+    OpenMetadataClient editor = createUserEditorClient(ns);
+
+    editor
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser()
+                .withName(target.getName())
+                .withEmail(target.getEmail())
+                .withDescription("edited by a user editor"),
+            User.class);
+
+    User reread = Users.get(target.getId().toString());
+    assertEquals("edited by a user editor", reread.getDescription());
+    assertTrue(Boolean.TRUE.equals(reread.getIsAdmin()), "a non-admin PUT revoked admin");
+  }
+
+  /**
+   * A users CSV names the team it covers, not a user. Matching that name against a user who happens
+   * to share it would let that user, who owns only their own account, import into the team.
+   */
+  @Test
+  void test_usersImportIsNotAuthorizedByAUserOfTheTeamsName(TestNamespace ns) {
+    String name = "csvteam" + ns.shortPrefix();
+    createGroupTeam(name);
+    User namesake = createEntity(new CreateUser().withName(name).withEmail(name + "@test.com"));
+
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> usersImport(clientFor(namesake), name, "name\n", true));
+    assertEquals(403, denied.getStatusCode(), denied.getMessage());
+  }
+
+  /** EditAll on users lets a non-admin import users, never take an admin's admin flag away. */
+  @Test
+  void test_usersImportCannotRevokeAdmin(TestNamespace ns) throws Exception {
+    String teamName = "csvadmins" + ns.shortPrefix();
+    Team team = createGroupTeam(teamName);
+    String adminName = "teamadmin" + ns.shortPrefix();
+    User teamAdmin =
+        createEntity(
+            new CreateUser()
+                .withName(adminName)
+                .withEmail(adminName + "@test.com")
+                .withIsAdmin(true)
+                .withTeams(List.of(team.getId())));
+    String header =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/export?team=" + teamName, null)
+            .lines()
+            .findFirst()
+            .orElseThrow();
+    String row =
+        String.join(",", adminName, "", "", teamAdmin.getEmail(), "", "false", teamName, "");
+
+    String result =
+        usersImport(createUserEditorClient(ns), teamName, header + "\n" + row + "\n", false);
+
+    assertEquals(1, PATCH_MAPPER.readTree(result).path("numberOfRowsFailed").asInt(), result);
+    assertTrue(Boolean.TRUE.equals(Users.get(teamAdmin.getId().toString()).getIsAdmin()));
+  }
+
+  /**
+   * A users CSV carries every member's email in the clear, which a user read masks for anyone but
+   * an admin or a bot. ViewAll on users, which the default policies give every user, is not enough
+   * to export one, on either route.
+   */
+  @Test
+  void test_usersExportNeedsAccessToEmails(TestNamespace ns) {
+    String teamName = "csvexport" + ns.shortPrefix();
+    Team team = createGroupTeam(teamName);
+    String memberName = "csvmember" + ns.shortPrefix();
+    User member =
+        createEntity(
+            new CreateUser()
+                .withName(memberName)
+                .withEmail(memberName + "@test.com")
+                .withTeams(List.of(team.getId())));
+    String readerName = "csvreader" + ns.shortPrefix();
+    User reader =
+        createEntity(new CreateUser().withName(readerName).withEmail(readerName + "@test.com"));
+    OpenMetadataClient asReader = clientFor(reader);
+
+    for (String path :
+        List.of("/v1/users/export?team=" + teamName, "/v1/users/exportAsync?team=" + teamName)) {
+      OpenMetadataException denied =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> asReader.getHttpClient().executeForString(HttpMethod.GET, path, null));
+      assertEquals(403, denied.getStatusCode(), path + ": " + denied.getMessage());
+    }
+    assertTrue(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/export?team=" + teamName, null)
+            .contains(member.getEmail()));
+  }
+
+  private static Team createGroupTeam(String name) {
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(name);
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    return SdkClients.adminClient().teams().create(createTeam);
+  }
+
+  private static String usersImport(
+      OpenMetadataClient client, String team, String csv, boolean dryRun) {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/import",
+            csv,
+            RequestOptions.builder()
+                .header("Content-Type", "text/plain; charset=UTF-8")
+                .queryParam("team", team)
+                .queryParam("dryRun", String.valueOf(dryRun))
+                .build());
+  }
+
+  private static String awaitAuditLogOf(String userFqn, int minimumEntries) {
+    return Awaitility.await()
+        .atMost(Duration.ofSeconds(90))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () ->
+                readAsNonAdmin(
+                    AUDIT_LOGS_PATH
+                        + "?entityType=user&limit=50&entityFQN="
+                        + URLEncoder.encode(userFqn, StandardCharsets.UTF_8)),
+            auditLog -> JsonUtils.readTree(auditLog).path("data").size() >= minimumEntries);
+  }
+
+  private static String readAsNonAdmin(String path) {
+    return SdkClients.testUserClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
+  }
+
   private static HttpResponse<String> basicLogin(String email, String password) throws Exception {
     LoginRequest request =
         new LoginRequest()
@@ -2796,6 +3180,47 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             HttpMethod.PATCH, "/v1/users/" + user.getId(), replaceOp("/description", "my own"));
 
     assertEquals("my own", Users.get(user.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_updateUser_keepsLoginAndActivityTimes(TestNamespace ns) {
+    CreateUser createRequest = createMinimalRequest(ns);
+    String userId = createEntity(createRequest).getId().toString();
+    long loginTime = 1_700_000_000_000L;
+    long activityTime = loginTime + 500;
+    ArrayNode setTimes = PATCH_MAPPER.createArrayNode();
+    setTimes.addObject().put("op", "add").put("path", "/lastLoginTime").put("value", loginTime);
+    setTimes
+        .addObject()
+        .put("op", "add")
+        .put("path", "/lastActivityTime")
+        .put("value", activityTime);
+    patchUserAsAdmin(userId, setTimes);
+
+    patchUserAsAdmin(userId, replaceOp("/description", "edited"));
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, "/v1/users", createRequest.withDescription("put again"));
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
+
+    // A soft-deleted user is not readable by default, so check after the restore.
+    deleteEntity(userId);
+    restoreEntity(userId);
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
+  }
+
+  private void patchUserAsAdmin(String userId, ArrayNode patch) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + userId, patch);
+  }
+
+  private void assertLoginAndActivityTimes(String userId, long loginTime, long activityTime) {
+    User stored = Users.get(userId, "lastLoginTime,lastActivityTime");
+    assertEquals(loginTime, stored.getLastLoginTime());
+    assertEquals(activityTime, stored.getLastActivityTime());
   }
 
   @Test

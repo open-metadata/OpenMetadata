@@ -1,23 +1,38 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.ai.Env;
+import org.openmetadata.schema.entity.ai.McpConnectionConfig;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.ai.McpTransportType;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -99,25 +114,106 @@ class McpServerRepositoryTest {
   }
 
   @Test
-  void testClearFieldsIsNoOp() {
+  void testClearFieldsPreservesConnectionConfigForInternalReads() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
-      McpServer server = new McpServer().withId(UUID.randomUUID()).withName("s1");
+      McpServer server =
+          new McpServer()
+              .withId(UUID.randomUUID())
+              .withName("s1")
+              .withConnectionConfig(connectionWithCredentials());
       Fields fields = Fields.EMPTY_FIELDS;
 
-      assertDoesNotThrow(() -> repo.clearFields(server, fields));
+      repo.clearFields(server, fields);
+
+      assertEquals(connectionWithCredentials(), server.getConnectionConfig());
     }
   }
 
   @Test
-  void testPrepareIsNoOp() {
+  void testPrepareWithoutConnectionConfig() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
       McpServer server = new McpServer().withId(UUID.randomUUID()).withName("s1");
 
       assertDoesNotThrow(() -> repo.prepare(server, false));
       assertDoesNotThrow(() -> repo.prepare(server, true));
+      assertNull(server.getConnectionConfig());
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testPreparePreservesConnectionConfig(boolean update) {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      final McpServerRepository repo = createRepo(entityMock);
+      final McpServer server =
+          new McpServer().withName("credentials").withConnectionConfig(connectionWithCredentials());
+
+      repo.prepare(server, update);
+      assertEquals(connectionWithCredentials(), server.getConnectionConfig());
+      repo.prepare(server, update);
+      assertEquals(connectionWithCredentials(), server.getConnectionConfig());
+    }
+  }
+
+  @Test
+  void testPreparePreservesEmptyConnectionConfig() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      final McpServerRepository repo = createRepo(entityMock);
+      final McpConnectionConfig config = new McpConnectionConfig().withEnv(new Env());
+      final McpServer server = new McpServer().withName("empty").withConnectionConfig(config);
+
+      repo.prepare(server, false);
+
+      assertTrue(server.getConnectionConfig().getArgs().isEmpty());
+      assertTrue(server.getConnectionConfig().getEnv().getAdditionalProperties().isEmpty());
+      assertNull(server.getConnectionConfig().getUrl());
+    }
+  }
+
+  @Test
+  void testPreparePreservesAbsentConnectionFields() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      final McpServerRepository repo = createRepo(entityMock);
+      final McpServer server =
+          new McpServer()
+              .withName("absent")
+              .withConnectionConfig(new McpConnectionConfig().withArgs(null));
+
+      repo.prepare(server, false);
+
+      assertNull(server.getConnectionConfig().getArgs());
+      assertNull(server.getConnectionConfig().getEnv());
+      assertNull(server.getConnectionConfig().getUrl());
+    }
+  }
+
+  private static McpConnectionConfig connectionWithCredentials() {
+    return new McpConnectionConfig()
+        .withCommand("npx")
+        .withArgs(
+            List.of("--token=argument-secret", "postgresql://user:database-secret@localhost/db"))
+        .withEnv(
+            new Env()
+                .withAdditionalProperty("DATABASE_PASSWORD", "environment-secret")
+                .withAdditionalProperty("CUSTOM_SETTING", "unrecognised-secret"))
+        .withUrl("https://user:url-secret@example.com/mcp?api_key=query-secret")
+        .withWorkingDirectory("/opt/mcp")
+        .withTimeout(3000)
+        .withRetryAttempts(2);
+  }
+
+  private static void assertMaskedConnection(McpConnectionConfig config) {
+    assertEquals(List.of(PASSWORD_MASK, PASSWORD_MASK), config.getArgs());
+    assertEquals(
+        Map.of("DATABASE_PASSWORD", PASSWORD_MASK, "CUSTOM_SETTING", PASSWORD_MASK),
+        config.getEnv().getAdditionalProperties());
+    assertEquals(PASSWORD_MASK, config.getUrl());
+    assertEquals("npx", config.getCommand());
+    assertEquals("/opt/mcp", config.getWorkingDirectory());
+    assertEquals(3000, config.getTimeout());
+    assertEquals(2, config.getRetryAttempts());
   }
 
   @Test
@@ -155,6 +251,66 @@ class McpServerRepositoryTest {
 
       assertNotNull(updater);
       assertTrue(updater instanceof McpServerRepository.McpServerUpdater);
+    }
+  }
+
+  @Test
+  void testApprovedChangeEventMasksCopyOfStoredConnection() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      final McpServerRepository repo = createRepo(entityMock);
+      final CollectionDAO.ChangeEventDAO eventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+      when(Entity.getCollectionDAO().changeEventDAO()).thenReturn(eventDAO);
+      final McpServer original =
+          mcpServerForConsolidation().withConnectionConfig(connectionWithCredentials());
+      final McpServer updated = JsonUtils.deepCopy(original, McpServer.class);
+      final ChangeDescription changes =
+          new ChangeDescription()
+              .withFieldsUpdated(
+                  List.of(
+                      new FieldChange()
+                          .withName("connectionConfig")
+                          .withOldValue("old-secret")
+                          .withNewValue("new-secret")));
+      updated.setChangeDescription(changes);
+      final String before = JsonUtils.pojoToJson(updated);
+
+      repo.createAndInsertChangeEvent(original, updated, changes, EventType.ENTITY_UPDATED);
+
+      final ArgumentCaptor<String> eventJson = ArgumentCaptor.forClass(String.class);
+      verify(eventDAO).insert(eventJson.capture());
+      assertFalse(eventJson.getValue().contains("-secret"));
+      final ChangeEvent event = JsonUtils.readValue(eventJson.getValue(), ChangeEvent.class);
+      assertMaskedConnection(
+          JsonUtils.readOrConvertValue(event.getEntity(), McpServer.class).getConnectionConfig());
+      assertEquals(before, JsonUtils.pojoToJson(updated));
+    }
+  }
+
+  @Test
+  void testGetUpdaterPreservesConnectionsWhenRecordingChanges() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      final McpServerRepository repo = createRepo(entityMock);
+      final McpServer original =
+          mcpServerForConsolidation().withConnectionConfig(connectionWithCredentials());
+      final McpServer updated =
+          mcpServerForConsolidation()
+              .withConnectionConfig(connectionWithCredentials().withTimeout(4000));
+      final EntityRepository<McpServer>.EntityUpdater updater =
+          repo.getUpdater(original, updated, EntityRepository.Operation.SOFT_DELETE, null);
+      assertEquals(connectionWithCredentials(), original.getConnectionConfig());
+      assertEquals(
+          original.getConnectionConfig().getArgs(), updated.getConnectionConfig().getArgs());
+      assertEquals(original.getConnectionConfig().getEnv(), updated.getConnectionConfig().getEnv());
+      assertEquals(connectionWithCredentials().getUrl(), updated.getConnectionConfig().getUrl());
+      assertEquals(4000, updated.getConnectionConfig().getTimeout());
+
+      updater.changeDescription = new ChangeDescription();
+      updater.entitySpecificUpdate(false);
+
+      assertEquals(
+          "connectionConfig", updater.changeDescription.getFieldsUpdated().getFirst().getName());
+      assertEquals(connectionWithCredentials(), original.getConnectionConfig());
+      assertEquals(connectionWithCredentials().withTimeout(4000), updated.getConnectionConfig());
     }
   }
 
