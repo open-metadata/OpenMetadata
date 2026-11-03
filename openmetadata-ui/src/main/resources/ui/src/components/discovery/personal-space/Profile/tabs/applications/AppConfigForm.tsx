@@ -39,7 +39,7 @@ import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import { getFormDisplayLabel } from '../../../../../common/FormBuilderV1/formBuilderV1LabelUtils';
 import { CoreFieldTemplate } from '../../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
-import { useFormFieldDocs } from '../platform-settings/useFormFieldDocs';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { AppFooter } from './AppFooter';
 
 export interface AppConfigFormProps {

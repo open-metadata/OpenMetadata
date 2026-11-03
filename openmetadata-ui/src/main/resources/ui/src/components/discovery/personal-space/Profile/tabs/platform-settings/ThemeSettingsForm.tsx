@@ -48,7 +48,7 @@ import {
   toThemeConfig,
   toThemeFormValues,
 } from './ThemeSettings.utils';
-import { useFormFieldDocs } from './useFormFieldDocs';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 
 // Shades of the primary palette the classic page derives hover/selected from.
 const HOVER_SHADE = 2;

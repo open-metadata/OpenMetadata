@@ -374,7 +374,7 @@ const TestSuiteDetailsPage = () => {
         ),
         children: (
           <div className="tw:w-full tw:p-4">
-            <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+            <TestSuitePipelineTab testSuite={testSuite} />
           </div>
         ),
       },

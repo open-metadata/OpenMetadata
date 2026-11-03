@@ -33,7 +33,7 @@ import SettingsFormLayout, {
   SettingsSkeleton,
 } from './SettingsFormLayout';
 import { useDeploymentManagedFields } from './useDeploymentManagedFields';
-import { useFormFieldDocs } from './useFormFieldDocs';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { useSettingsFetch } from './useSettingsFetch';
 
 interface BrandUrlFormValues {

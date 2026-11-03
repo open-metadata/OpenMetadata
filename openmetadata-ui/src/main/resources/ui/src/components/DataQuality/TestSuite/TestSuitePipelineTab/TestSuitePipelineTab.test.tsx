@@ -277,9 +277,41 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(() => (
-        <div data-testid="pipeline-actions">PipelineActions</div>
-      ))
+      .mockImplementation(
+        ({
+          pipeline,
+          handleEditClick,
+        }: {
+          pipeline: { fullyQualifiedName: string };
+          handleEditClick: (fqn: string) => void;
+        }) => (
+          <button
+            data-testid="pipeline-actions"
+            onClick={() => handleEditClick(pipeline.fullyQualifiedName)}>
+            PipelineActions
+          </button>
+        )
+      )
+);
+
+jest.mock(
+  '../../AddDataQualityTest/components/TestSuitePipelineFormDrawer',
+  () =>
+    jest.fn(
+      ({
+        open,
+        ingestionPipeline,
+      }: {
+        open: boolean;
+        ingestionPipeline?: { fullyQualifiedName: string };
+      }) => (
+        <div
+          data-open={String(open)}
+          data-pipeline={ingestionPipeline?.fullyQualifiedName ?? ''}
+          data-testid="pipeline-form-drawer"
+        />
+      )
+    )
 );
 
 jest.mock(
@@ -480,15 +512,54 @@ describe('TestSuite Pipeline component', () => {
     );
   });
 
-  it('should navigate to the add pipeline page on add pipeline button press', async () => {
+  it('should open the pipeline drawer to add a pipeline without navigating', async () => {
     await act(async () => {
       render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
     });
 
+    const drawer = await screen.findByTestId('pipeline-form-drawer');
+
+    expect(drawer).toHaveAttribute('data-open', 'false');
+
     fireEvent.click(screen.getByTestId('add-pipeline-button'));
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({ search: undefined })
+    expect(drawer).toHaveAttribute('data-open', 'true');
+    expect(drawer).toHaveAttribute('data-pipeline', '');
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should let the host take over Add through onAddPipeline', async () => {
+    const onAddPipeline = jest.fn();
+    await act(async () => {
+      render(
+        <TestSuitePipelineTab
+          testSuite={mockTestSuite}
+          onAddPipeline={onAddPipeline}
+        />
+      );
+    });
+
+    fireEvent.click(screen.getByTestId('add-pipeline-button'));
+
+    expect(onAddPipeline).toHaveBeenCalledTimes(1);
+    expect(await screen.findByTestId('pipeline-form-drawer')).toHaveAttribute(
+      'data-open',
+      'false'
     );
+  });
+
+  it('should open the pipeline drawer in edit mode for the edited row', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    const [firstRowActions] = await screen.findAllByTestId('pipeline-actions');
+    fireEvent.click(firstRowActions);
+
+    const drawer = screen.getByTestId('pipeline-form-drawer');
+
+    expect(drawer).toHaveAttribute('data-open', 'true');
+    expect(drawer.getAttribute('data-pipeline')).toMatch(/^svc\.pipeline\d$/);
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

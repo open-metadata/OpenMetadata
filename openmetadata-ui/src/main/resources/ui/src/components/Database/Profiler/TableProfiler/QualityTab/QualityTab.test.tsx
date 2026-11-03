@@ -251,6 +251,14 @@ jest.mock(
   () => jest.fn().mockReturnValue(<div>TestSuitePipelineTab</div>)
 );
 
+jest.mock(
+  '../../../../DataQuality/AddDataQualityTest/components/TestSuitePipelineFormDrawer',
+  () =>
+    jest.fn(({ open }: { open: boolean }) => (
+      <div data-open={String(open)} data-testid="pipeline-form-drawer" />
+    ))
+);
+
 jest.mock('../../../../common/SummaryCard/SummaryCardV1', () =>
   jest.fn().mockImplementation(({ title, value }) => (
     <div data-testid="summary-card">
@@ -523,6 +531,38 @@ describe('QualityTab', () => {
     });
 
     expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('5');
+  });
+
+  it('should open the add pipeline drawer from the toolbar on the pipeline tab', async () => {
+    const { default: useCustomLocation } = jest.requireMock(
+      '../../../../../hooks/useCustomLocation/useCustomLocation'
+    );
+    const defaultLocation = useCustomLocation.getMockImplementation();
+    useCustomLocation.mockReturnValue({
+      pathname: '/test-path',
+      search: '?qualityTab=pipeline',
+      state: undefined,
+    });
+    (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+      paging: { total: 1 },
+    });
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        testSuite: { fullyQualifiedName: 'test.suite.name' },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('quality-tab-toolbar')).toContainElement(
+      await screen.findByTestId('add-pipeline-button')
+    );
+
+    useCustomLocation.mockImplementation(defaultLocation);
   });
 
   it('should show zero count when no test cases or pipelines exist', async () => {
