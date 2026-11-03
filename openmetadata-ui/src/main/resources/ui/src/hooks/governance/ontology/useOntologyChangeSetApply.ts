@@ -205,6 +205,7 @@ export const useOntologyChangeSetApply = ({
       const response = await listOntologyChangeSets({
         fields: CHANGE_SET_FIELDS,
         limit: 100,
+        ontology: plan.ontology,
         after,
       });
       const found = response.data.find((draft) => draft.name === plan.name);
@@ -249,7 +250,14 @@ export const useOntologyChangeSetApply = ({
       return created;
     } catch (error) {
       setStatus({ kind: 'busy', step: 'reconciling' });
-      const found = await recoverDraft(current.plan);
+      // A caller refused the create is refused the list too; the refusal is the answer.
+      const found = await recoverDraft(current.plan).catch((recoverError) => {
+        if (isRefusedByServer(error) && isRefusedByServer(recoverError)) {
+          return undefined;
+        }
+
+        throw recoverError;
+      });
       outcomeUnknown.current = false;
       if (found) {
         return found;

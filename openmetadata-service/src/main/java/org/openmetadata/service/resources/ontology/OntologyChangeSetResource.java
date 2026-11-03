@@ -109,6 +109,12 @@ public class OntologyChangeSetResource
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @QueryParam("fields") final String fields,
+      @Parameter(description = "Only change sets scoped to the ontology with this name")
+          @QueryParam("ontology")
+          final String ontology,
+      @Parameter(description = "Only change sets scoped to the ontology with this id")
+          @QueryParam("ontologyId")
+          final UUID ontologyId,
       @Parameter(description = "Comma-separated change set states to include") @QueryParam("state")
           final String state,
       @Parameter(description = "Return only drafts proposed from context memories")
@@ -119,7 +125,12 @@ public class OntologyChangeSetResource
       @QueryParam("before") final String before,
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
+    final UUID scopeId = requestedOntologyId(ontology, ontologyId);
+    OntologyResourceAccess.requireDraftListRead(authorizer, securityContext, scopeId);
     final ListFilter filter = new ListFilter(include);
+    if (scopeId != null) {
+      filter.addQueryParam("changeSetOntologyId", scopeId.toString());
+    }
     if (state != null && !state.isBlank()) {
       filter.addQueryParam("state", requireStates(state));
     }
@@ -138,6 +149,7 @@ public class OntologyChangeSetResource
       @PathParam("id") final UUID id,
       @QueryParam("fields") final String fields,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
+    authorizeScopeRead(securityContext, readableChangeSet(id));
     return getInternal(uriInfo, securityContext, id, fields, include, null);
   }
 
@@ -247,6 +259,7 @@ public class OntologyChangeSetResource
   @Operation(operationId = "listOntologyChangeSetVersions", summary = "List change-set versions")
   public EntityHistory listVersions(
       @Context final SecurityContext securityContext, @PathParam("id") final UUID id) {
+    authorizeScopeRead(securityContext, readableChangeSet(id));
     return listVersionsInternal(securityContext, id);
   }
 
@@ -257,6 +270,7 @@ public class OntologyChangeSetResource
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       @PathParam("version") final String version) {
+    authorizeScopeRead(securityContext, readableChangeSet(id));
     return getVersionInternal(securityContext, id, version);
   }
 
@@ -285,6 +299,21 @@ public class OntologyChangeSetResource
     return repository.get(null, id, repository.getFields(FIELDS), Include.NON_DELETED, false);
   }
 
+  private OntologyChangeSet readableChangeSet(final UUID id) {
+    return repository.get(null, id, repository.getFields(FIELDS), Include.ALL, false);
+  }
+
+  private static UUID requestedOntologyId(final String name, final UUID id) {
+    final UUID named =
+        name == null
+            ? null
+            : Entity.getEntityReferenceByName(Entity.ONTOLOGY, name, Include.NON_DELETED).getId();
+    if (named != null && id != null && !named.equals(id)) {
+      throw new BadRequestException("ontology and ontologyId name different ontologies");
+    }
+    return named != null ? named : id;
+  }
+
   // Normalizes a comma-separated filter such as "DRAFT,SUBMITTED" and rejects unknown states.
   private static String requireStates(final String states) {
     try {
@@ -305,6 +334,23 @@ public class OntologyChangeSetResource
         getResourceContextById(changeSetId));
   }
 
+  /**
+   * Operations no release has published are read with the right that edits their scope
+   * (ADR:2026-11-03-ontology-working-draft-reads-require-edit-rights), whatever the change set's
+   * state: applying one writes the working draft, and a release is a separate publish.
+   */
+  private void authorizeScopeRead(
+      final SecurityContext securityContext, final OntologyChangeSet changeSet) {
+    if (changeSet.getOntology() != null) {
+      OntologyResourceAccess.requireDraftRead(
+          authorizer,
+          securityContext,
+          new ResourceContext<>(Entity.ONTOLOGY, changeSet.getOntology().getId(), null));
+      return;
+    }
+    authorizeGlossaryScope(securityContext, changeSet, MetadataOperation.EDIT_ALL);
+  }
+
   private void authorizeScope(
       final SecurityContext securityContext,
       final OntologyChangeSet changeSet,
@@ -314,6 +360,13 @@ public class OntologyChangeSetResource
       authorizeNativeScope(securityContext, changeSet);
       return;
     }
+    authorizeGlossaryScope(securityContext, changeSet, operation);
+  }
+
+  private void authorizeGlossaryScope(
+      final SecurityContext securityContext,
+      final OntologyChangeSet changeSet,
+      final MetadataOperation operation) {
     for (final EntityReference glossary : changeSet.getGlossaries()) {
       final Glossary planned =
           listOrEmpty(changeSet.getOperations()).stream()
