@@ -24,10 +24,13 @@ import { NativeOntologyDataGraphPage } from '../../../../generated/api/data/nati
 import { AssetType } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import {
+  deleteOntologyConceptBinding,
   getNativeOntologyDataGraphPage,
   getOntologyConceptBindings,
   putOntologyConceptBinding,
 } from '../../../../rest/ontologyAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import {
   pageFixture,
@@ -36,9 +39,18 @@ import {
 import OntologyNativeDataMode from './OntologyNativeDataMode';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
+  deleteOntologyConceptBinding: jest.fn(),
   getNativeOntologyDataGraphPage: jest.fn(),
   getOntologyConceptBindings: jest.fn(),
   putOntologyConceptBinding: jest.fn(),
+}));
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+jest.mock('../../../../rest/searchAPI', () => ({ searchQuery: jest.fn() }));
+jest.mock('../../../../utils/governance/ontology/OntologyUndoToast', () => ({
+  showUndoToast: jest.fn(),
 }));
 
 const fetchPage = getNativeOntologyDataGraphPage as jest.MockedFunction<
@@ -663,5 +675,171 @@ describe('the concept picker', () => {
     expect(
       await screen.findByTestId('ontology-data-cluster-account')
     ).toBeVisible();
+  });
+});
+
+describe('bound columns, unlinking and linking', () => {
+  const amountColumn = {
+    columnPath: ['amount'],
+    propertyId: 'p-amount',
+    property: {
+      id: 'p-amount',
+      name: 'amountProperty',
+      type: 'ontologyProperty',
+    },
+    column: {
+      name: 'amount',
+      dataType: 'DECIMAL',
+      dataTypeDisplay: 'decimal(10,2)',
+    },
+    state: 'resolved',
+  };
+  const boundAsset = {
+    assetId: 'a1',
+    assetType: 'table',
+    asset: {
+      id: 'a1',
+      name: 'table_1',
+      type: 'table',
+      fullyQualifiedName: 'svc.db.schema.table_1',
+    },
+    columns: [amountColumn],
+  };
+
+  it('draws the bound columns of an asset under its row, counts them in the chip and names them in the legend', async () => {
+    (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
+      kind: 'complete',
+      revision: 2,
+      assets: [boundAsset],
+    });
+    fetchPage.mockResolvedValue(firstPage());
+    renderMode();
+
+    const toggle = await screen.findByTestId(
+      'ontology-data-asset-columns-toggle-asset:transfer:a1'
+    );
+
+    expect(
+      screen.queryByTestId('ontology-data-asset-columns-asset:transfer:a1')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    const list = screen.getByTestId(
+      'ontology-data-asset-columns-asset:transfer:a1'
+    );
+
+    expect(list).toHaveTextContent('amount');
+    expect(list).toHaveTextContent('decimal(10,2)');
+    expect(list).toHaveTextContent('amountProperty');
+    expect(
+      screen.getByTestId('ontology-data-concept-summary')
+    ).toHaveTextContent('label.bound-column-count');
+    expect(
+      screen.getByTestId('ontology-data-legend-column-binding')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId(
+        'ontology-data-asset-columns-toggle-asset:transfer:a2'
+      )
+    ).not.toBeInTheDocument();
+  });
+
+  it('unlinks from the panel after naming the asset, the concept and the columns, and Undo puts the columns back', async () => {
+    let isRemoved = false;
+    (getOntologyConceptBindings as jest.Mock).mockImplementation(async () =>
+      isRemoved
+        ? { kind: 'complete', revision: 3, assets: [] }
+        : { kind: 'complete', revision: 2, assets: [boundAsset] }
+    );
+    (deleteOntologyConceptBinding as jest.Mock).mockImplementation(async () => {
+      isRemoved = true;
+    });
+    fetchPage.mockResolvedValue(firstPage());
+    renderMode(jest.fn(), { canEditBindings: true });
+    await screen.findByTestId('ontology-data-cluster-transfer');
+    fireEvent.click(
+      screen.getByTestId('ontology-data-asset-asset:transfer:a1')
+    );
+    const panel = await screen.findByTestId('ontology-data-asset-panel');
+    const unlink = within(panel).getByTestId('ontology-data-asset-unlink');
+    await waitFor(() => expect(unlink).toBeEnabled());
+
+    expect(
+      within(panel).getByTestId('ontology-data-asset-panel-columns')
+    ).toHaveTextContent('amount');
+
+    fireEvent.click(unlink);
+    const confirm = await screen.findByTestId('ontology-unlink');
+
+    expect(confirm).toHaveTextContent('message.ontology-unlink-asset-title');
+    expect(confirm).toHaveTextContent('message.ontology-unlink-asset-columns');
+    expect(deleteOntologyConceptBinding).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByTestId('ontology-unlink-confirm'));
+    await waitFor(() =>
+      expect(deleteOntologyConceptBinding).toHaveBeenCalledWith('transfer', {
+        assetId: 'a1',
+        assetType: 'table',
+        expectedRevision: 2,
+      })
+    );
+    await waitFor(() => expect(showUndoToast).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await (showUndoToast as jest.Mock).mock.calls[0][1]();
+    });
+
+    expect(putOntologyConceptBinding).toHaveBeenCalledWith('transfer', {
+      expectedRevision: 3,
+      asset: {
+        assetId: 'a1',
+        assetType: 'table',
+        columns: [{ columnPath: ['amount'], propertyId: 'p-amount' }],
+      },
+    });
+  });
+
+  it('links a table from the empty state through Link Asset', async () => {
+    fetchPage.mockResolvedValue(firstPage());
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        total: { value: 1 },
+        hits: [
+          {
+            _source: {
+              id: 'new-table',
+              name: 'new_table',
+              entityType: 'table',
+              fullyQualifiedName: 'svc.db.schema.new_table',
+            },
+          },
+        ],
+      },
+    });
+    renderMode(jest.fn(), {
+      initialConceptId: 'unused',
+      canEditBindings: true,
+    });
+    const link = await screen.findByTestId('ontology-data-link-asset');
+    await waitFor(() => expect(link).toBeEnabled());
+
+    fireEvent.click(link);
+    const dialog = await screen.findByTestId('ontology-data-link-dialog');
+    fireEvent.click(
+      await within(dialog).findByRole('checkbox', { name: 'new_table' })
+    );
+    fireEvent.click(within(dialog).getByTestId('ontology-data-asset-save'));
+
+    await waitFor(() =>
+      expect(putOntologyConceptBinding).toHaveBeenCalledWith('unused', {
+        expectedRevision: 0,
+        asset: { assetId: 'new-table', assetType: 'table', columns: [] },
+      })
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-data-link-dialog')
+      ).not.toBeInTheDocument()
+    );
   });
 });

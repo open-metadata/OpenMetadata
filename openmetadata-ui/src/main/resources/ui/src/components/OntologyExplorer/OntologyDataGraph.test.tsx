@@ -810,3 +810,131 @@ describe('native Data mode in English', () => {
     ).toHaveTextContent('BigQuery · 0 cols');
   });
 });
+
+describe('native Data mode of one concept', () => {
+  const singleConceptData = () => {
+    const graph = applyClustersPage(
+      EMPTY_NATIVE_DATA_GRAPH,
+      pageFixture({
+        clusters: [
+          {
+            id: 'transfer',
+            name: 'Funds Transfer',
+            count: 2,
+            assets: [
+              {
+                id: 't0',
+                name: 'table_0',
+                serviceType: 'Snowflake',
+                columns: 2,
+              },
+              { id: 't1', name: 'table_1', serviceType: 'BigQuery' },
+            ],
+          },
+        ],
+        loaded: [prefixFixture('transfer')],
+      })
+    );
+
+    return buildNativeDataGraph(
+      graph,
+      new Set(),
+      'label.lineage',
+      new Map([
+        [
+          't0',
+          [
+            {
+              path: ['amount'],
+              type: 'decimal(10,2)',
+              propertyLabel: 'amount',
+              isResolved: true,
+            },
+            {
+              path: ['gone'],
+              propertyLabel: 'status',
+              isResolved: false,
+            },
+          ],
+        ],
+      ])
+    );
+  };
+
+  it('counts the bound columns on the row that has them, and opens them as named column nodes', () => {
+    renderGraph({ data: singleConceptData(), isSingleConcept: true });
+
+    const toggle = screen.getByTestId(
+      'ontology-data-asset-columns-toggle-asset:transfer:t0'
+    );
+
+    expect(toggle).toHaveTextContent('label.bound-column-count');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByTestId(
+        'ontology-data-asset-columns-toggle-asset:transfer:t1'
+      )
+    ).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId('ontology-data-column')).toHaveLength(0);
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const columns = screen.getAllByTestId('ontology-data-column');
+
+    expect(columns.map((column) => column.textContent)).toEqual([
+      'amountdecimal(10,2)amount',
+      'gonestatus',
+    ]);
+  });
+
+  it('names the column binding in the legend only when a column is bound, and drops the multi-concept heading and inferred legend', () => {
+    const { rerender } = renderGraph({
+      data: singleConceptData(),
+      isSingleConcept: true,
+    });
+
+    expect(
+      screen.getByTestId('ontology-data-legend-column-binding')
+    ).toBeVisible();
+    expect(screen.queryByTestId('ontology-data-legend-inferred')).toBeNull();
+    expect(screen.queryByTestId('ontology-data-layer-heading')).toBeNull();
+
+    rerender(
+      <OntologyDataGraph
+        isSingleConcept
+        data={buildNativeDataGraph(
+          applyClustersPage(
+            EMPTY_NATIVE_DATA_GRAPH,
+            pageFixture({
+              clusters: [
+                {
+                  id: 'transfer',
+                  name: 'Funds Transfer',
+                  count: 1,
+                  assets: [{ id: 't1', name: 'table_1' }],
+                },
+              ],
+              loaded: [prefixFixture('transfer')],
+            })
+          ),
+          new Set(),
+          'label.lineage'
+        )}
+        glossaryColorMap={{}}
+        hasMoreTerms={false}
+        isLoadingMoreTerms={false}
+        relationTypes={[]}
+        variant="native"
+        onLoadMore={jest.fn()}
+        onLoadMoreTerms={jest.fn()}
+        onPaneClick={jest.fn()}
+        onSelectNode={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('ontology-data-legend-column-binding')
+    ).toBeNull();
+  });
+});
