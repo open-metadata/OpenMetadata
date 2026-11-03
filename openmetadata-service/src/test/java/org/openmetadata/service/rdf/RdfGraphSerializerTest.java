@@ -25,6 +25,9 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.shared.JenaException;
+import org.apache.jena.vocabulary.OWL2;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -134,5 +137,36 @@ class RdfGraphSerializerTest {
         NodeFactory.createURI("https://example.com/subject"),
         NodeFactory.createURI("https://example.com/predicate"),
         NodeFactory.createLiteralDirLang("قطة", "ar", "rtl"));
+  }
+
+  @Test
+  void writesAnOntologyWhoseIriIsABareUrnInEveryFormatAndReadsItBack() {
+    final Model model = ModelFactory.createDefaultModel();
+    model
+        .createResource("urn:orders")
+        .addProperty(RDFS.label, "Orders")
+        .addProperty(RDF.type, OWL2.Ontology);
+
+    for (final RdfSerializationFormat format : RdfSerializationFormat.values()) {
+      final Model readBack =
+          new SafeRdfModelParser().parse(RdfGraphSerializer.asString(model, format), format);
+
+      assertTrue(
+          readBack.contains(readBack.createResource("urn:orders"), RDF.type, OWL2.Ontology),
+          format.externalName() + " keeps the ontology IRI");
+      assertTrue(
+          readBack.contains(readBack.createResource("urn:orders"), RDFS.label, "Orders"),
+          format.externalName() + " keeps the label");
+    }
+  }
+
+  @Test
+  void writesANamespacedUrnAsRdfXml() {
+    final Model model = ModelFactory.createDefaultModel();
+    model.createResource("urn:example:orders").addProperty(RDF.type, OWL2.Ontology);
+
+    assertTrue(
+        RdfGraphSerializer.asString(model, RdfSerializationFormat.RDF_XML)
+            .contains("rdf:about=\"urn:example:orders\""));
   }
 }
