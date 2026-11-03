@@ -312,6 +312,9 @@ const CustomEntityDetailV1 = () => {
         entityType={selectedEntityTypeDetail.name as EntityType}
         loading={isButtonLoading}
         open={isDrawerOpen}
+        typeDetail={
+          selectedEntityTypeDetail.id ? selectedEntityTypeDetail : undefined
+        }
         onClose={handleDrawerClose}
         onSubmit={handleDrawerSubmit}
       />

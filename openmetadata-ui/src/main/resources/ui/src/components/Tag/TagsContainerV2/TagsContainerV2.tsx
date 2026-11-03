@@ -12,6 +12,7 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -428,13 +429,18 @@ const TagsContainerV2 = ({
     entityFqn,
   ]);
 
+  // The table cell keeps its add/edit button in the same row as the task icons.
+  const showActionRow = showBottomEditButton && !showInlineEditButton;
+
   const tagBody = useMemo(() => {
     if (isHoriZontalLayout) {
       return horizontalLayout;
     }
 
     const shouldShowVerticalLayout =
-      showInlineEditButton || !isEmpty(renderTags) || !newLook;
+      showInlineEditButton ||
+      !isEmpty(renderTags) ||
+      (!newLook && !showActionRow);
 
     if (!shouldShowVerticalLayout) {
       return null;
@@ -442,7 +448,7 @@ const TagsContainerV2 = ({
 
     return (
       <Box align="center" data-testid="entity-tags" gap={2} wrap="wrap">
-        {addTagButton && (
+        {addTagButton && !showActionRow && (
           <div className="m-t-xss">
             {withSelectorPopover(addTagButton, 'body')}
           </div>
@@ -461,6 +467,7 @@ const TagsContainerV2 = ({
     editTagButton,
     withSelectorPopover,
     showInlineEditButton,
+    showActionRow,
   ]);
 
   const suggestionDataRender = useMemo(() => {
@@ -526,10 +533,13 @@ const TagsContainerV2 = ({
         <>
           {tagBody}
           {(children || showBottomEditButton) && (
-            <div className="m-t-xs w-full d-flex items-center">
-              {showBottomEditButton && !showInlineEditButton && (
+            <div
+              className={classNames('w-full d-flex items-center', {
+                'm-t-xs': tagBody,
+              })}>
+              {showActionRow && (
                 <div className="d-flex m-r-xs">
-                  {withSelectorPopover(editTagButton, 'body')}
+                  {withSelectorPopover(addTagButton ?? editTagButton, 'body')}
                 </div>
               )}
               {children}
