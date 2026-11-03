@@ -15,6 +15,8 @@ Pydantic definition for storing entities for patching
 import json
 import logging
 import traceback
+from collections.abc import Mapping
+from typing import Any
 
 import jsonpatch
 from pydantic import BaseModel, RootModel
@@ -278,7 +280,7 @@ class JsonPatchUpdater:
             replace_with_none_op_fixer=ReplaceWithNoneOpFixer.default(),
         )
 
-    def _determine_restricted_operation(self, patch_ops: dict, override_metadata: bool) -> bool:
+    def _determine_restricted_operation(self, patch_ops: Mapping[str, Any], override_metadata: bool) -> bool:
         """
         Only retain add operation for restrict_update_fields fields
         """
@@ -298,7 +300,7 @@ class JsonPatchUpdater:
                     return False
         return True
 
-    def _is_replace_with_none_operation(self, patch_ops: dict) -> bool:
+    def _is_replace_with_none_operation(self, patch_ops: Mapping[str, Any]) -> bool:
         """Check if the Operation is a Replace operation to a None value."""
         return (patch_ops.get("op") == PatchOperation.REPLACE.value) and (patch_ops.get("value") is None)
 
