@@ -136,6 +136,7 @@ const TestSuitePipelineTab = ({
   const [ingestionPipelinePermissions, setIngestionPipelinePermissions] =
     useState<Map<string, OperationPermission>>();
   const permissionFetchId = useRef(0);
+  const hasLoadedPipelinesRef = useRef(false);
   const [pipelineDrawer, setPipelineDrawer] = useState<{
     open: boolean;
     pipeline?: IngestionPipeline;
@@ -180,6 +181,7 @@ const TestSuitePipelineTab = ({
         });
         setTestSuitePipelines(response.data);
         handlePagingChange(response.paging);
+        hasLoadedPipelinesRef.current = true;
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -450,8 +452,9 @@ const TestSuitePipelineTab = ({
   }, [fetchIngestionPipelineExtraDetails]);
 
   useEffect(() => {
-    // Skip the initial 0 before the first load lands.
-    if (!isLoading) {
+    // Until a load succeeds, paging.total is usePaging's default 0, which
+    // would overwrite the host's own count (e.g. after a failed fetch).
+    if (!isLoading && hasLoadedPipelinesRef.current) {
       onPipelinesChange?.(paging.total);
     }
   }, [isLoading, paging.total]);

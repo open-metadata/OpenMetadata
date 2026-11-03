@@ -579,4 +579,25 @@ describe('TestSuite Pipeline component', () => {
     // The initial pre-load state is never reported.
     expect(onPipelinesChange).not.toHaveBeenCalledWith(0);
   });
+
+  it('should not report a total when the list fails to load', async () => {
+    const { getIngestionPipelines } = jest.requireMock(
+      '../../../../rest/ingestionPipelineAPI'
+    );
+    getIngestionPipelines.mockImplementationOnce(() =>
+      Promise.reject(new Error('fetch failed'))
+    );
+    const onPipelinesChange = jest.fn();
+    await act(async () => {
+      render(
+        <TestSuitePipelineTab
+          testSuite={mockTestSuite}
+          onPipelinesChange={onPipelinesChange}
+        />
+      );
+    });
+
+    expect(getIngestionPipelines).toHaveBeenCalled();
+    expect(onPipelinesChange).not.toHaveBeenCalled();
+  });
 });
