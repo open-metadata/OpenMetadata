@@ -445,7 +445,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           String name,
       @Valid BulkAssets request) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok()
         .entity(
@@ -477,7 +477,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           String name,
       @Valid BulkAssets request) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok()
         .entity(

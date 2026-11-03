@@ -34,22 +34,29 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -59,6 +66,7 @@ import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for Team entity operations.
@@ -1390,13 +1398,171 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
     BulkAssets addRequest = new BulkAssets().withAssets(List.of(user1.getEntityReference()));
 
-    // testUserClient has no admin/special roles - should get 403 for EDIT_ALL operation
+    // testUserClient has no admin/special roles - should get 403 for EDIT_USERS operation
     ForbiddenException exception =
         assertThrows(
             ForbiddenException.class,
             () -> bulkAddAssetsWithResult(SdkClients.testUserClient(), team.getName(), addRequest),
             "Non-admin user should not be able to bulk add assets");
     assertEquals(403, exception.getStatusCode(), "Should return 403 Forbidden");
+  }
+
+  @Test
+  void test_bulkAssetsAreAuthorizedAsEditUsers(TestNamespace ns) {
+    User member = createTestUser(ns, "editUsersMember");
+    User candidate = createTestUser(ns, "editUsersCandidate");
+    Team team =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("editUsersTeam"))
+                .withTeamType(TeamType.GROUP)
+                .withUsers(List.of(member.getId()))
+                .withDescription("Team for EditUsers authorization"));
+    Rule allowEditAll = teamRule(ns, "allowEdit", MetadataOperation.EDIT_ALL, Rule.Effect.ALLOW);
+    Rule denyEditUsers = teamRule(ns, "denyUsers", MetadataOperation.EDIT_USERS, Rule.Effect.DENY);
+    OpenMetadataClient denied = userWithRules(ns, "editUsersDenied", allowEditAll, denyEditUsers);
+    OpenMetadataClient allowed = userWithRules(ns, "editUsersAllowed", allowEditAll);
+    BulkAssets addCandidate = new BulkAssets().withAssets(List.of(candidate.getEntityReference()));
+    BulkAssets removeMember = new BulkAssets().withAssets(List.of(member.getEntityReference()));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> bulkAddAssetsWithResult(denied, team.getName(), addCandidate));
+    assertThrows(
+        ForbiddenException.class,
+        () -> bulkRemoveAssetsWithResult(denied, team.getName(), removeMember));
+    assertEquals(List.of(member.getId()), memberIds(team));
+
+    bulkAddAssetsWithResult(allowed, team.getName(), addCandidate);
+    bulkRemoveAssetsWithResult(allowed, team.getName(), removeMember);
+    assertEquals(List.of(candidate.getId()), memberIds(team));
+  }
+
+  @Test
+  void test_membershipEndpointsApplyToPermissionsImmediately(TestNamespace ns) {
+    Policy createGlossary =
+        SdkClients.adminClient()
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(ns.shortPrefix("p_glossaryCreate"))
+                    .withRules(
+                        List.of(
+                            new Rule()
+                                .withName(ns.shortPrefix("createGlossary"))
+                                .withResources(List.of(Entity.GLOSSARY))
+                                .withOperations(List.of(MetadataOperation.CREATE))
+                                .withEffect(Rule.Effect.ALLOW))));
+    User deleted = loginUser(ns, "deleted");
+    User replaced = loginUser(ns, "replaced");
+    User bulkRemoved = loginUser(ns, "bulkremoved");
+    User bulkAdded = loginUser(ns, "bulkadded");
+    Team team =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("glossaryAuthors"))
+                .withTeamType(TeamType.GROUP)
+                .withPolicies(List.of(createGlossary.getId()))
+                .withUsers(List.of(deleted.getId(), replaced.getId(), bulkRemoved.getId()))
+                .withDescription("Members may create glossaries"));
+
+    assertCanCreateGlossary(ns, deleted, true);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/teams/" + team.getId() + "/users/" + deleted.getId(),
+            null,
+            null);
+    assertCanCreateGlossary(ns, deleted, false);
+
+    assertCanCreateGlossary(ns, replaced, true);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/teams/" + team.getId() + "/users",
+            List.of(bulkRemoved.getEntityReference()),
+            null);
+    assertCanCreateGlossary(ns, replaced, false);
+
+    assertCanCreateGlossary(ns, bulkRemoved, true);
+    bulkRemoveAssetsWithResult(
+        SdkClients.adminClient(),
+        team.getName(),
+        new BulkAssets().withAssets(List.of(bulkRemoved.getEntityReference())));
+    assertCanCreateGlossary(ns, bulkRemoved, false);
+
+    assertCanCreateGlossary(ns, bulkAdded, false);
+    bulkAddAssetsWithResult(
+        SdkClients.adminClient(),
+        team.getName(),
+        new BulkAssets().withAssets(List.of(bulkAdded.getEntityReference())));
+    assertCanCreateGlossary(ns, bulkAdded, true);
+  }
+
+  private static Rule teamRule(
+      TestNamespace ns, String name, MetadataOperation operation, Rule.Effect effect) {
+    return new Rule()
+        .withName(ns.shortPrefix(name))
+        .withResources(List.of(Entity.TEAM))
+        .withOperations(List.of(operation))
+        .withEffect(effect);
+  }
+
+  private OpenMetadataClient userWithRules(TestNamespace ns, String name, Rule... rules) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy().withName(ns.shortPrefix("p_" + name)).withRules(List.of(rules)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.shortPrefix("r_" + name))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = ns.shortPrefix("u_" + name).toLowerCase();
+    User user =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withRoles(List.of(role.getId())));
+    return SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
+  }
+
+  /** A user whose name is its email's local part, which is how a token resolves to it. */
+  private static User loginUser(TestNamespace ns, String suffix) {
+    String userName = ns.shortPrefix("u_" + suffix).toLowerCase();
+    return SdkClients.adminClient()
+        .users()
+        .create(new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+  }
+
+  private static List<UUID> memberIds(Team team) {
+    Team fetched = SdkClients.adminClient().teams().get(team.getId().toString(), "users");
+    return fetched.getUsers() == null
+        ? List.of()
+        : fetched.getUsers().stream().map(EntityReference::getId).toList();
+  }
+
+  private static void assertCanCreateGlossary(TestNamespace ns, User user, boolean expected) {
+    OpenMetadataClient client =
+        SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.shortPrefix("g_" + UUID.randomUUID().toString().substring(0, 8)))
+            .withDescription("Created by a team member");
+    if (expected) {
+      ns.trackRoot(Entity.GLOSSARY, client.glossaries().create(create));
+    } else {
+      assertThrows(ForbiddenException.class, () -> client.glossaries().create(create));
+    }
   }
 
   @Test

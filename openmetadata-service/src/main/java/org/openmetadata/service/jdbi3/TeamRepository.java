@@ -607,14 +607,34 @@ public class TeamRepository extends EntityRepository<Team> {
     Team team = getByName(null, teamName, getFields("id,teamType"));
     validateAllRefUsers(request.getAssets());
     validateDirectUserAddition(team, request.getAssets());
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
+    BulkOperationResult result =
+        bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
+    evictCachedSubjectsUnlessDryRun(request);
+    return result;
   }
 
   public BulkOperationResult bulkRemoveAssets(
       String teamName, BulkAssets request, String userName) {
     Team team = getByName(null, teamName, getFields("id"));
     validateAllRefUsers(request.getAssets());
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
+    BulkOperationResult result =
+        bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
+    evictCachedSubjectsUnlessDryRun(request);
+    return result;
+  }
+
+  private static void evictCachedSubjectsUnlessDryRun(BulkAssets request) {
+    if (!Boolean.TRUE.equals(request.getDryRun())) {
+      evictCachedSubjects();
+    }
+  }
+
+  /**
+   * Members carry the team's policies, default roles and ownership through their cached subject, so
+   * every membership write drops it, as the team updater does for a change to users.
+   */
+  private static void evictCachedSubjects() {
+    UserRepository.evictNowAndAfterCommit(SubjectCache::invalidateAll);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {
@@ -1274,6 +1294,9 @@ public class TeamRepository extends EntityRepository<Team> {
         .ifPresent(
             ids ->
                 bulkRemoveToRelationship(teamId, ids, Entity.TEAM, Entity.USER, Relationship.HAS));
+    if (!addedUserIds.isEmpty() || !removedUserIds.isEmpty()) {
+      evictCachedSubjects();
+    }
     reindexMembership(team, Stream.concat(addedUserIds.stream(), removedUserIds.stream()).toList());
 
     setFieldsInternal(team, new EntityUtil.Fields(allowedFields, USERS_FIELD));
@@ -1306,6 +1329,7 @@ public class TeamRepository extends EntityRepository<Team> {
     EntityReference user = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED);
 
     deleteRelationship(teamId, Entity.TEAM, userId, Entity.USER, Relationship.HAS);
+    evictCachedSubjects();
     reindexMembership(team, List.of(userId));
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(team.getVersion());
