@@ -18,6 +18,7 @@ import {
 import { User } from '../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import MemoriesView from './MemoriesView.component';
 
 const DISPLAY_NAMES: Record<string, string> = {
@@ -40,9 +41,14 @@ jest.mock('../../../rest/userAPI', () => ({
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: () => ({
-    // Echoes the count, so a test can tell which count a label shows.
-    t: (key: string, options?: { count?: number }) =>
-      options?.count === undefined ? key : `${key}:${options.count}`,
+    // Echoes the count or user, so a test can tell which one a label shows.
+    t: (key: string, options?: { count?: number; user?: string }) => {
+      if (options?.count !== undefined) {
+        return `${key}:${options.count}`;
+      }
+
+      return options?.user === undefined ? key : `${key} ${options.user}`;
+    },
     i18n: { language: 'en-US' },
   }),
 }));
@@ -205,7 +211,7 @@ describe('MemoriesView', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('memory-updated-by')).toHaveTextContent(
-        'label.updated-by Memory Reconciliation Agent'
+        'label.updated-by-user-time-ago Memory Reconciliation Agent'
       )
     );
 
@@ -248,7 +254,33 @@ describe('MemoriesView', () => {
     );
 
     expect(screen.getByTestId('memory-updated-by')).toHaveTextContent(
-      'label.updated-by MemoryReconciliationApplicationBot'
+      'label.updated-by-user-time-ago MemoryReconciliationApplicationBot'
+    );
+  });
+
+  it('shows a team owner with a team avatar', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            owners: [
+              {
+                id: 'team-id',
+                type: 'team',
+                name: 'finance',
+                displayName: 'Finance',
+              },
+            ],
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(ProfilePicture).toHaveBeenCalledWith(
+      expect.objectContaining({ isTeam: true, name: 'finance' }),
+      expect.anything()
     );
   });
 

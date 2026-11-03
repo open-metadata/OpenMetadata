@@ -530,7 +530,8 @@ public class ContextFileProcessingService {
         return false;
       }
       try {
-        repository.updateIfCurrent(null, current, updated, current.getUpdatedBy());
+        repository.updateIfCurrent(
+            null, current, updated, ContextProcessingEngine.lastEditorOf(current));
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file {} changed during extraction update", fileId);
@@ -558,7 +559,7 @@ public class ContextFileProcessingService {
       try {
         repository
             .getContentRepository()
-            .updateIfCurrent(null, current, updated, current.getUpdatedBy());
+            .updateIfCurrent(null, current, updated, ContextProcessingEngine.lastEditorOf(current));
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file content {} changed during extraction update", contentId);

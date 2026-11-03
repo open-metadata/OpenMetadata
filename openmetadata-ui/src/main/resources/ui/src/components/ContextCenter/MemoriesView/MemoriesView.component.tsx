@@ -35,6 +35,7 @@ import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   ContextMemory,
   ContextMemoryStatus,
@@ -128,6 +129,7 @@ const MemoryRowHeader: FC<{
   updatedAt?: number;
 }> = ({ owner, updatedBy, updatedAt }) => {
   const { t } = useTranslation();
+  const showsUpdater = Boolean(owner && updatedBy);
 
   return (
     <Box align="center" gap={2} wrap="wrap">
@@ -139,7 +141,7 @@ const MemoryRowHeader: FC<{
           {owner ?? updatedBy}
         </Typography>
       )}
-      {owner && updatedBy && (
+      {showsUpdater && (
         <>
           <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
             &middot;
@@ -148,11 +150,14 @@ const MemoryRowHeader: FC<{
             className="tw:text-quaternary"
             data-testid="memory-updated-by"
             size="text-xs">
-            {`${t('label.updated-by')} ${updatedBy}`}
+            {t('label.updated-by-user-time-ago', {
+              user: updatedBy,
+              time: getShortRelativeTime(updatedAt),
+            })}
           </Typography>
         </>
       )}
-      {updatedAt !== undefined && (
+      {!showsUpdater && updatedAt !== undefined && (
         <>
           <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
             &middot;
@@ -410,10 +415,16 @@ const useMemoryAuthors = (memory: ContextMemory) => {
   return owner
     ? {
         avatar: owner.name,
+        isTeamAvatar: owner.type === EntityType.TEAM,
         owner: getEntityName(owner),
         updatedBy: owner.name === memory.updatedBy ? undefined : updater,
       }
-    : { avatar: memory.updatedBy, owner: undefined, updatedBy: updater };
+    : {
+        avatar: memory.updatedBy,
+        isTeamAvatar: false,
+        owner: undefined,
+        updatedBy: updater,
+      };
 };
 
 const MemoryRow: FC<MemoryRowProps> = ({
@@ -477,7 +488,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
       onClick={() => onViewMemory?.(memory)}>
       {authors.avatar && (
         <div className="tw:shrink-0 tw:mt-0.5">
-          <ProfilePicture name={authors.avatar} />
+          <ProfilePicture isTeam={authors.isTeamAvatar} name={authors.avatar} />
         </div>
       )}
       <Box
