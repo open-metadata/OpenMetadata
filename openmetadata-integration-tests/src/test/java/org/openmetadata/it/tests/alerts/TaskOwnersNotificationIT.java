@@ -26,6 +26,7 @@ import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -125,7 +126,7 @@ class TaskOwnersNotificationIT {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("task_owners"))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of(Entity.TASK))
             .withEnabled(true)
             .withBatchSize(100)
