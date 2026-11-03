@@ -36,7 +36,7 @@
       "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
       "oneOf": [
         {
-          "title": "SapS4HanaBasicAuth",
+          "title": "Basic Auth",
           "description": "Username and password credentials for SAP S/4HANA.",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
@@ -69,7 +69,7 @@
           "additionalProperties": false
         },
         {
-          "title": "SapS4HanaOAuthCredentials",
+          "title": "OAuth 2.0 Client Credentials",
           "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",

@@ -94,7 +94,7 @@
       "description": "Source to get the .pbit files to extract lineage information",
       "oneOf": [
         {
-          "title": "PowerBILocalConfig",
+          "title": "Local Config",
           "description": "Local config source where no extra information needs to be sent.",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.PowerBILocalConfig",

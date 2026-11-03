@@ -28,7 +28,8 @@
       "description": "Global manifest source. When configured, entries here take precedence over any bucket-level openmetadata.json and over defaultManifest for buckets whose containerName matches.",
       "oneOf": [
         {
-          "$ref": "./storage/storageMetadataNoConfig.json"
+          "$ref": "./storage/storageMetadataNoConfig.json",
+          "title": "No Global Manifest"
         },
         {
           "$ref": "./storage/storageMetadataLocalConfig.json"

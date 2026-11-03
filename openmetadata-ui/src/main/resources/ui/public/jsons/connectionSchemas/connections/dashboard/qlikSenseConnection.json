@@ -41,7 +41,7 @@
       "mask": true,
       "oneOf": [
         {
-          "title": "QlikCertificateValues",
+          "title": "Qlik Certificates By Values",
           "description": "Qlik Authentication Certificate By Values",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
@@ -105,7 +105,7 @@
           ]
         },
         {
-          "title": "QlikCertificatePath",
+          "title": "Qlik Certificates By File Path",
           "description": "Qlik Authentication Certificate File Path",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",

@@ -1586,7 +1586,7 @@
                   "description": "Global manifest source. When configured, entries here take precedence over any bucket-level openmetadata.json and over defaultManifest for buckets whose containerName matches.",
                   "oneOf": [
                     {
-                      "title": "StorageMetadataNoConfig",
+                      "title": "No Global Manifest",
                       "description": "No manifest file available. Ingestion would look for bucket-level metadata file instead",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataNoConfig",
@@ -6198,7 +6198,7 @@
                           "description": "Source to get the .pbit files to extract lineage information",
                           "oneOf": [
                             {
-                              "title": "PowerBILocalConfig",
+                              "title": "Local Config",
                               "description": "Local config source where no extra information needs to be sent.",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.PowerBILocalConfig",
@@ -7185,7 +7185,7 @@
                           "mask": true,
                           "oneOf": [
                             {
-                              "title": "QlikCertificateValues",
+                              "title": "Qlik Certificates By Values",
                               "description": "Qlik Authentication Certificate By Values",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
@@ -7199,7 +7199,7 @@
                               ]
                             },
                             {
-                              "title": "QlikCertificatePath",
+                              "title": "Qlik Certificates By File Path",
                               "description": "Qlik Authentication Certificate File Path",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",
@@ -8016,7 +8016,7 @@
                           "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
                           "oneOf": [
                             {
-                              "title": "SapS4HanaBasicAuth",
+                              "title": "Basic Auth",
                               "description": "Username and password credentials for SAP S/4HANA.",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
@@ -8049,7 +8049,7 @@
                               "additionalProperties": false
                             },
                             {
-                              "title": "SapS4HanaOAuthCredentials",
+                              "title": "OAuth 2.0 Client Credentials",
                               "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
@@ -16537,7 +16537,7 @@
                           "description": "NATS authentication method. Leave empty for anonymous authentication.",
                           "oneOf": [
                             {
-                              "title": "NatsBasicAuth",
+                              "title": "Username and Password",
                               "description": "Username and password authentication for NATS.",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
@@ -16561,7 +16561,7 @@
                               "additionalProperties": false
                             },
                             {
-                              "title": "NatsTokenAuth",
+                              "title": "Token",
                               "description": "Token-based authentication for NATS.",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
@@ -16579,7 +16579,7 @@
                               "additionalProperties": false
                             },
                             {
-                              "title": "NatsNkeyAuth",
+                              "title": "NKey Seed",
                               "description": "NKey seed authentication for NATS.",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth",
