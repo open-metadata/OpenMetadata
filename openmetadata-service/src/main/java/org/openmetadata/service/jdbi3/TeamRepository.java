@@ -927,15 +927,11 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    Set<UUID> expandedTeams = new HashSet<>();
     for (Team team : joinableTeams) {
       if (team.getParents() == null) {
         continue;
       }
-      // Sorted so the parent that carries a multi-parent team's children is the same on every call
-      List<EntityReference> parents =
-          team.getParents().stream().sorted(EntityUtil.compareEntityReference).toList();
-      for (EntityReference parentRef : parents) {
+      for (EntityReference parentRef : team.getParents()) {
         if (parentRef.getName().equals(ORGANIZATION_NAME)) {
           continue;
         }
@@ -951,12 +947,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
         hierarchyMap.putIfAbsent(parentTeam.getId(), getTeamHierarchy(parentTeam));
         TeamHierarchy parentNode = hierarchyMap.get(parentTeam.getId());
-        // A team with multiple parents is listed below each of them, but its own children only
-        // below the first one. Sharing the node would serialize its subtree once per path.
-        TeamHierarchy childNode =
-            expandedTeams.add(team.getId())
-                ? hierarchyMap.get(team.getId())
-                : getTeamHierarchy(team);
+        TeamHierarchy childNode = hierarchyMap.get(team.getId());
 
         if (parentNode.getChildren() == null) {
           parentNode.setChildren(new ArrayList<>());
@@ -980,10 +971,12 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    return hierarchyMap.values().stream()
-        .filter(node -> !childIds.contains(node.getId()))
-        .sorted(Comparator.comparing(TeamHierarchy::getName))
-        .collect(Collectors.toList());
+    List<TeamHierarchy> roots =
+        hierarchyMap.values().stream()
+            .filter(node -> !childIds.contains(node.getId()))
+            .sorted(Comparator.comparing(TeamHierarchy::getName))
+            .toList();
+    return TeamHierarchyTree.expand(roots, hierarchyMap.size());
   }
 
   private List<EntityReference> getUsers(Team team) {

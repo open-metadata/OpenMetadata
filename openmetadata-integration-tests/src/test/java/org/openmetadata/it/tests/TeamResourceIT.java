@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,7 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
@@ -1597,6 +1599,30 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
     assertEquals(2 * layers + 1, teamCsv.lines().count() - 1, teamCsv);
     assertEquals(1, userCsv.lines().count() - 1, userCsv);
+    assertSubtreeUnderEveryParent(top, layers);
+  }
+
+  /** In the hierarchy listing, both teams of a layer list the next layer with its subtree. */
+  private static void assertSubtreeUnderEveryParent(Team top, int layers) {
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/teams/hierarchy", null);
+    JsonNode node = null;
+    for (JsonNode root : JsonUtils.readTree(json).path("data")) {
+      if (top.getName().equals(root.path("name").asText())) {
+        node = root;
+      }
+    }
+    assertNotNull(node, "the lattice root is listed");
+    assertFullLayers(node, layers);
+  }
+
+  private static void assertFullLayers(JsonNode node, int layersBelow) {
+    if (layersBelow > 0) {
+      assertEquals(2, node.path("children").size(), node.path("name").asText());
+      node.path("children").forEach(child -> assertFullLayers(child, layersBelow - 1));
+    }
   }
 
   private Team createLatticeDepartment(TestNamespace ns, String name, List<UUID> children) {
