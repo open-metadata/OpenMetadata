@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { Input } from '../../base/input/input';
 import { DatePicker } from './date-picker';
@@ -56,5 +56,14 @@ describe('DatePicker trigger variants', () => {
     // the picker itself or an errored date stays neutral next to an errored
     // Input.
     expect(screen.getByRole('button')).toHaveClass('tw:outline-error_subtle');
+  });
+
+  it('draws the calendar dialog with a shadow only, no outline', () => {
+    render(<DatePicker aria-label="Start date" />);
+    fireEvent.click(screen.getByRole('button'));
+
+    // An outline on the rounded dialog leaks past its corners inside the
+    // popover's rectangular overflow clip.
+    expect(screen.getByRole('dialog').className).not.toMatch(/outline/);
   });
 });

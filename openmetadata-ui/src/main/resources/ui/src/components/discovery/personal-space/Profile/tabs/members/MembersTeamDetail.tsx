@@ -17,7 +17,7 @@ import {
   TableCard,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import { Reorder } from '@openmetadata/ui-core-components/icons';
+import { Policy, Reorder, Role } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -1410,6 +1410,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={roleColumns}
             dataSource={team.defaultRoles ?? []}
+            emptyIcon={<Role />}
             entityDescription={t('message.page-sub-header-for-roles')}
             entityLabel={t('label.role')}
             entityPluralLabel={t('label.role-plural')}
@@ -1435,6 +1436,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={policyColumns}
             dataSource={team.policies ?? []}
+            emptyIcon={<Policy />}
             entityDescription={t('message.page-sub-header-for-policies')}
             entityLabel={t('label.policy')}
             entityPluralLabel={t('label.policy-plural')}
