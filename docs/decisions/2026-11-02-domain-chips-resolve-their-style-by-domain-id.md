@@ -23,8 +23,8 @@ itself.
 - `DomainStyleReader` reads only the styled rows (`listStyledJson` on the domain and data product
   DAOs) on each request, with no server-side cache to invalidate.
 - The UI loads the list once into the React Query entry `['domain-styles']`. It is fresh for 5
-  minutes and refetched whenever the window regains focus. Every chip reads it by the id its
-  reference holds (`useDomainStyles`).
+  minutes, and refetched when the window regains focus only once it is older than that, since
+  colours rarely change. Every chip reads it by the id its reference holds (`useDomainStyles`).
 - Every UI write of a domain or data product invalidates that entry (`invalidateDomainStyles`):
   updates in `DomainDetailPage`, `DomainTreeView` and `DataProductsPage`, and creation through
   `createEntityWithCoverImage`.
@@ -32,7 +32,7 @@ itself.
 ## Consequences
 `EntityReference`, search documents and change events carry no style, and a restyle is one row
 update. A chip draws the default until the list first loads in a session. A restyle made in
-another tab shows when this tab regains focus or the entry goes stale. A new UI path that writes a
+another tab shows here within 5 minutes, on the next focus or page load after the entry goes stale. A new UI path that writes a
 domain's or data product's style must call `invalidateDomainStyles`. A component that renders
 `DomainTags` or `DomainSelect` needs a `QueryClientProvider` in tests, or a stubbed
 `useDomainStyles`. If references ever need to carry display data in general, that is a separate

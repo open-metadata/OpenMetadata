@@ -17,14 +17,15 @@ import { getDomainStyles } from '../domainAPI';
 export const DOMAIN_STYLES_QUERY_KEY = ['domain-styles'] as const;
 
 // Every chip on every page reads this one cached list. A restyle in this tab
-// invalidates it (invalidateDomainStyles); other tabs refetch on focus.
+// invalidates it (invalidateDomainStyles); another tab refetches it when it
+// regains focus with a list older than this.
 export const DOMAIN_STYLES_STALE_TIME = 5 * 60 * 1000;
 
 export const domainStylesQueryOptions = {
   queryKey: DOMAIN_STYLES_QUERY_KEY,
   queryFn: getDomainStyles,
   staleTime: DOMAIN_STYLES_STALE_TIME,
-  refetchOnWindowFocus: 'always',
+  refetchOnWindowFocus: true,
 } as const;
 
 /**
