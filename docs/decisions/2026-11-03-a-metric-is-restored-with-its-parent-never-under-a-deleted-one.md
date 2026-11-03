@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial)
 - **Deciders:** Anujkumar Yadav
-- **Guard:** `MetricResourceIT#restore_childOfDeletedParent_isRejectedUntilTheParentIsRestored`
+- **Guard:** `MetricResourceIT#restore_childOfDeletedParent_isRejectedUntilTheParentIsRestored`,
+  `MetricResourceIT#put_childOfDeletedParent_withoutParent_restoresItAsARoot`
 - **Related:** `MetricRepository.validateRestore`, `EntityRepository.validateRestore`
 
 ## Context
@@ -18,9 +19,11 @@ delete of the old parent hard-deleted the live child with it.
 - `PUT /v1/metrics/restore` (sync or `?async=true`) for a metric whose parent is soft-deleted is
   rejected with 400, naming the parent to restore instead. Restoring that parent restores the
   subtree, as before.
-- The check runs only for the metric a restore request names (`EntityRepository.validateRestore`,
-  called from `restoreEntityInternal` and from the async pre-check). A cascade restore brings
-  children back before their parent is flipped, through `bulkRestoreSubtree`, which does not call it.
+- The check runs only on the restore endpoint, for the metric the request names
+  (`EntityRepository.validateRestore`, called from `EntityResource.restoreEntity` and from the async
+  pre-check). It is not in the repository's `restoreEntity`, because PUT and CSV-import upserts of a
+  deleted entity restore through it before applying the update. A cascade restore brings children
+  back before their parent is flipped, through `bulkRestoreSubtree`, which does not call it either.
 - The restore endpoint never cuts the parent edge.
 - This relies on how a PUT upsert (SDK, ingestion, CSV import) of a deleted metric behaves today,
   without deciding it: a PUT that names no parent removes the edge, so the metric comes back as a

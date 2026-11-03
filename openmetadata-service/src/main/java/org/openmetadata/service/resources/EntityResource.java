@@ -1033,6 +1033,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    T existing = repository.find(id, Include.ALL);
+    if (Boolean.TRUE.equals(existing.getDeleted())) {
+      repository.validateRestore(existing);
+    }
     PutResponse<T> response =
         repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     if (response == null) {

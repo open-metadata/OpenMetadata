@@ -1403,6 +1403,27 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void put_childOfDeletedParent_withoutParent_restoresItAsARoot(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("put_orphan_parent"), ns));
+    Metric child = createChild(ns, "put_orphan_child", parent);
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
+
+    Metric restored =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/metrics",
+                new CreateMetric().withName(child.getName()).withDescription("Child metric"),
+                Metric.class);
+
+    assertFalse(restored.getDeleted());
+    assertNull(getWithHierarchy(child).getParent(), "A PUT without a parent restores a root");
+  }
+
+  @Test
   void inactiveContainsEdgeIsExcludedFromHierarchyReads(TestNamespace ns) {
     Metric parent = createEntity(createRequest(ns.prefix("inactive_edge_parent"), ns));
     Metric child = createChild(ns, "inactive_edge_child", parent);
