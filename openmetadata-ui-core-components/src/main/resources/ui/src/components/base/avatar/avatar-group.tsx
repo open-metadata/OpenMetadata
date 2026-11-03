@@ -19,6 +19,7 @@ import {
   getOwnerRenderer,
   resolveOwnerHref,
 } from '../../application/owner/owner-renderer';
+import { OwnerInheritedBadge } from '../../application/owner/owner-inherited-badge';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
 import type { AvatarSize, OwnerEntityReference } from '../../../types';
 import { getFirstAlphanumeric } from './utils';
@@ -89,6 +90,7 @@ export const AvatarGroup = ({
     const avatar = (
       <Avatar
         alt={nameStr}
+        badge={owner.inherited ? <OwnerInheritedBadge /> : undefined}
         className={isTeam ? 'tw:bg-utility-gray-200' : undefined}
         contrastBorder={!isTeam}
         initials={
