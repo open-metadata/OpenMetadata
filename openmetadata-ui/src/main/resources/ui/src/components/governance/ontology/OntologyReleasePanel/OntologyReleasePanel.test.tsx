@@ -2157,7 +2157,10 @@ describe('reviewing what changed (G7)', () => {
     propertyCount: 0,
     changes: members,
   });
-  const serveGroups = (groups: ReturnType<typeof groupOf>[]) => {
+  const serveGroups = (
+    groups: ReturnType<typeof groupOf>[],
+    paging: { total: number; after?: string } = { total: groups.length }
+  ) => {
     const defaultGet = get.getMockImplementation();
     get.mockImplementation(async (url, config) =>
       url.endsWith('/working/diff')
@@ -2166,7 +2169,7 @@ describe('reviewing what changed (G7)', () => {
               state: currentState,
               data: [],
               groups,
-              paging: { total: groups.length },
+              paging,
             },
           }
         : defaultGet?.(url, config)
@@ -2296,5 +2299,31 @@ describe('reviewing what changed (G7)', () => {
     expect(
       await screen.findByTestId('ontology-working-violations')
     ).toHaveTextContent('Customer is its own ancestor');
+  });
+
+  it('tells the reader the counts cover only the first page when the diff has a next page', async () => {
+    serveGroups(
+      [groupOf('Alpha', 'ADDED', [memberOf('CONCEPT', 'ADDED', 'Alpha')])],
+      { total: 1400, after: 'page-two' }
+    );
+    await renderPanel(true, 'changes');
+
+    expect(
+      await screen.findByTestId('ontology-changes-truncated')
+    ).toHaveTextContent(
+      'Only the first change is counted. The filter counts, per-kind counts and suggested version may be incomplete.'
+    );
+  });
+
+  it('shows no truncation note when the whole diff fits in one page', async () => {
+    serveGroups([
+      groupOf('Alpha', 'ADDED', [memberOf('CONCEPT', 'ADDED', 'Alpha')]),
+    ]);
+    await renderPanel(true, 'changes');
+    await screen.findByTestId('ontology-change-counts');
+
+    expect(
+      screen.queryByTestId('ontology-changes-truncated')
+    ).not.toBeInTheDocument();
   });
 });

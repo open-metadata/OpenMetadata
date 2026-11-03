@@ -19,13 +19,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import {
-  AssigneeStatus,
   EntityStatus,
   OntologyReleaseReview,
 } from '../../../../generated/api/data/ontologyReleaseReview';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { releaseChangeCount } from '../OntologyReleasePanel/OntologyReleasePanel.utils';
+import { getReviewStatusMessage } from './OntologyReviewBanner.utils';
 
 type Props = {
   review: OntologyReleaseReview;
@@ -88,26 +88,24 @@ const PendingBanner = ({
   onOpenTask,
 }: Pick<Props, 'review' | 'release' | 'viewerName' | 'onOpenTask'>) => {
   const { t } = useTranslation();
-  const pending = review.assignees
-    .filter((entry) => entry.status === AssigneeStatus.Pending)
-    .map((entry) => getEntityName(entry.assignee))
-    .join(', ');
+  const status = getReviewStatusMessage(review);
 
   return (
     <Alert
       data-testid="ontology-review-banner"
-      title={t(
+      title={
         review.callerCanVote
-          ? 'message.ontology-review-waiting-for-you'
-          : 'message.ontology-review-waiting-on',
-        { name: viewerName, names: pending }
-      )}
+          ? t('message.ontology-review-waiting-for-you', { name: viewerName })
+          : t(status.key, status.values)
+      }
       variant={review.callerCanVote ? 'warning' : 'brand'}>
       <Box align="center" gap={3} justify="between" wrap="wrap">
         <Typography>
           {getEntityName(review.ontology)} ·{' '}
-          {release.semanticVersion ?? t('label.unavailable')} ·{' '}
-          {releaseChangeCount(release) ?? t('label.unavailable')}{' '}
+          {release.semanticVersion
+            ? 'v' + release.semanticVersion
+            : t('label.draft')}{' '}
+          · {releaseChangeCount(release) ?? t('label.unavailable')}{' '}
           {t('label.change-plural')} · {getEntityName(review.requester)} ·{' '}
           {review.taskId ?? review.task.id}
         </Typography>

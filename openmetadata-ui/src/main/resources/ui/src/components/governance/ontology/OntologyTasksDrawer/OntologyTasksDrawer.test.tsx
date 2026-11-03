@@ -21,6 +21,10 @@ import { useState } from 'react';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import APIClient from '../../../../rest/axiosClient';
 import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
+import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
@@ -78,13 +82,22 @@ const release = {
   version: 0.2,
 };
 
-function Harness({ initialTask }: { initialTask?: string }) {
+function Harness({
+  initialTask,
+  ontologyId = 'ontology',
+}: {
+  initialTask?: string;
+  ontologyId?: string | null;
+}) {
   const [taskId, setTaskId] = useState(initialTask);
 
   return (
     <>
       <button onClick={() => setTaskId('task-b')}>Task B</button>
-      <OntologyTasksDrawer taskId={taskId} onTaskChange={setTaskId}>
+      <OntologyTasksDrawer
+        ontologyId={ontologyId ?? undefined}
+        taskId={taskId}
+        onTaskChange={setTaskId}>
         {({ tasksAction, banner }) => (
           <>
             {tasksAction}
@@ -740,4 +753,137 @@ it('keeps approve available but disables combined publication when activation st
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'label.approve' })).toBeEnabled()
   );
+});
+
+describe('the Studio review banner scope', () => {
+  const reviewOf = (ontologyName: string, taskId: string) => ({
+    ...review,
+    ontology: { id: ontologyName, name: ontologyName, type: 'ontology' },
+    task: { id: 'uuid-' + taskId, type: 'task' },
+    taskId,
+    callerCanVote: false,
+    requester: { id: 'reviewer', name: 'reviewer', type: 'user' },
+    assignees: [
+      {
+        assignee: { id: 'alice', name: 'alice', type: 'user' },
+        status: 'Pending',
+      },
+    ],
+  });
+  const serveOpenReviews = (reviews: ReturnType<typeof reviewOf>[]) => {
+    const read = get.getMockImplementation();
+    get.mockImplementation(async (url: string, config) => {
+      if (url === '/ontologies/reviews') {
+        return {
+          data: {
+            data: config.params.view === 'created' ? reviews : [],
+            paging: { total: reviews.length },
+          },
+        };
+      }
+      if (url.startsWith('/ontologyReleases/')) {
+        return { data: { ...release, semanticVersion: '0.1.0' } };
+      }
+
+      return read?.(url, config);
+    });
+  };
+
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  it('announces only the review of the ontology in view', async () => {
+    serveOpenReviews([
+      reviewOf('Sales', 'TASK-1'),
+      reviewOf('Finance', 'TASK-2'),
+    ]);
+    renderWithQueryClient(<Harness ontologyId="Finance" />);
+
+    expect(
+      await screen.findByTestId('ontology-review-banner')
+    ).toHaveTextContent('Finance · v0.1.0 · ');
+    expect(screen.getByTestId('ontology-review-banner')).toHaveTextContent(
+      'TASK-2'
+    );
+    expect(screen.queryByText(/Sales/)).not.toBeInTheDocument();
+  });
+
+  it('shows no banner on an ontology whose only open review is another one', async () => {
+    serveOpenReviews([reviewOf('Sales', 'TASK-1')]);
+    renderWithQueryClient(<Harness ontologyId="Finance" />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-tasks-trigger')).toHaveTextContent(
+        '1'
+      )
+    );
+
+    expect(
+      screen.queryByTestId('ontology-review-banner')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Sales/)).not.toBeInTheDocument();
+  });
+
+  it('lists one line per open review, naming its ontology, in All ontologies', async () => {
+    serveOpenReviews([
+      reviewOf('Sales', 'TASK-1'),
+      reviewOf('Finance', 'TASK-2'),
+    ]);
+    renderWithQueryClient(<Harness ontologyId={null} />);
+
+    const banner = await screen.findByTestId('ontology-open-reviews-banner');
+
+    expect(
+      within(banner)
+        .getAllByText(/waiting on/)
+        .map((line) => line.textContent)
+    ).toEqual([
+      'Sales · In review · waiting on alice · TASK-1',
+      'Finance · In review · waiting on alice · TASK-2',
+    ]);
+  });
+});
+
+it('titles each queue row with the task title that names the ontology and version', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) =>
+    url === '/ontologies/reviews' && config.params.limit === 25
+      ? Promise.resolve({
+          data: {
+            data: [
+              {
+                ...review,
+                task: { ...review.task, displayName: 'Review Sales v0.1.0' },
+              },
+              {
+                ...review,
+                taskId: 'TASK-00043',
+                task: {
+                  id: 'task-c',
+                  type: 'task',
+                  displayName: 'Review Finance v1.2.0',
+                },
+              },
+            ],
+            paging: { total: 2 },
+          },
+        })
+      : read?.(url, config)
+  );
+  renderWithQueryClient(<Harness />);
+  fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
+
+  expect(
+    await screen.findByRole('button', {
+      name: 'TASK-00042 · Review Sales v0.1.0',
+    })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'TASK-00043 · Review Finance v1.2.0' })
+  ).toBeInTheDocument();
 });
