@@ -250,7 +250,14 @@ export const useOntologyChangeSetApply = ({
       return created;
     } catch (error) {
       setStatus({ kind: 'busy', step: 'reconciling' });
-      const found = await recoverDraft(current.plan);
+      // A caller refused the create is refused the list too; the refusal is the answer.
+      const found = await recoverDraft(current.plan).catch((recoverError) => {
+        if (isRefusedByServer(error) && isRefusedByServer(recoverError)) {
+          return undefined;
+        }
+
+        throw recoverError;
+      });
       outcomeUnknown.current = false;
       if (found) {
         return found;
