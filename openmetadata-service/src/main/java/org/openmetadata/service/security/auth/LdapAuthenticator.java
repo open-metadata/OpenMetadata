@@ -388,7 +388,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         }
 
         String ldapEmail = emailAttr.getValue();
-        if (!email.equalsIgnoreCase(ldapEmail)) {
+        if (!SecurityUtil.sameIdentifier(email, ldapEmail)) {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
 
