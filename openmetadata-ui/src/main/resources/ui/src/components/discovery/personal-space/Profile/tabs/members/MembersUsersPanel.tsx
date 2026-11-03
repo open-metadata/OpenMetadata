@@ -15,12 +15,15 @@ import {
   Box,
   Button,
   ButtonUtility,
-  PaginationCardWithControls,
-  SimpleModal,
+  ConfirmPopover,
   TableCard,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  RefreshCcw01,
+  Trash01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
@@ -37,6 +40,7 @@ import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
+  pagingObject,
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -45,14 +49,16 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../../../../enums/entity.enum';
-import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { Include } from '../../../../../../generated/type/include';
+import { Paging } from '../../../../../../generated/type/paging';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { usePaging } from '../../../../../../hooks/paging/usePaging';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getUsers, restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -62,8 +68,10 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
+import type { PagingHandlerParams } from '../../../../../common/NextPrevious/NextPrevious.interface';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
@@ -90,21 +98,31 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User>();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
   const latestSearchIdRef = useRef(0);
 
+  // Only page + size go to the settings hash; cursors stay in state, so a
+  // reloaded page > 1 has no cursor to resume from and restarts at page 1.
   const {
-    currentPage,
-    handlePageChange,
-    handlePageSizeChange,
-    handlePagingChange,
-    pageSize,
-    paging,
-    showPagination,
-  } = usePaging();
+    page: currentPage,
+    pageSize: hashPageSize,
+    setPage: setHashPage,
+  } = useHashPagingParams();
+  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const showPagination =
+    Boolean(paging.before || paging.after) ||
+    paging.total > pageSize ||
+    pageSize !== PAGE_SIZE_BASE;
+
+  const handlePageChange = useCallback(
+    (page: number) => setHashPage(page, undefined, undefined, pageSize),
+    [setHashPage, pageSize]
+  );
+  const handlePageSizeChange = useCallback(
+    (size: number) =>
+      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size),
+    [setHashPage]
+  );
 
   const canCreateUser = useMemo(
     () =>
@@ -127,7 +145,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           ...params,
         });
         setUsers(response.data);
-        handlePagingChange(response.paging);
+        setPaging(response.paging);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -138,7 +156,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setIsLoading(false);
       }
     },
-    [pageSize, isAdmin, showDeleted, handlePagingChange, t]
+    [pageSize, isAdmin, showDeleted, setPaging, t]
   );
 
   const searchUsers = useCallback(
@@ -162,7 +180,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         }
         const data = response.hits.hits.map(({ _source }) => _source as User);
         setUsers(data);
-        handlePagingChange({ total: response.hits.total.value });
+        setPaging({ total: response.hits.total.value });
       } catch (error) {
         showErrorToast(error as AxiosError);
         setUsers([]);
@@ -170,7 +188,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setIsLoading(false);
       }
     },
-    [pageSize, isAdmin, showDeleted, handlePagingChange]
+    [pageSize, isAdmin, showDeleted, setPaging]
   );
 
   const handleSearch = useCallback(
@@ -195,11 +213,10 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [handlePageChange]
   );
 
-  const handlePageNavigation = (newPage: number) => {
-    if (newPage === currentPage) {
-      return;
-    }
-
+  const handlePageNavigation = ({
+    currentPage: newPage,
+    cursorType,
+  }: PagingHandlerParams) => {
     if (searchValue) {
       handlePageChange(newPage);
       void searchUsers(searchValue, newPage);
@@ -207,12 +224,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       return;
     }
 
-    // ponytail: cursor paging only supports ±1 steps; numbered/jump beyond adjacent no-ops.
-    const cursorType =
-      newPage > currentPage ? CursorType.AFTER : CursorType.BEFORE;
-    const cursor = paging[cursorType];
+    const cursor = cursorType && paging[cursorType];
 
-    if (Math.abs(newPage - currentPage) !== 1 || !cursor) {
+    if (!cursorType || !cursor) {
       return;
     }
 
@@ -220,25 +234,24 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     void fetchUsers({ [cursorType]: cursor });
   };
 
-  const handleRestoreUser = useCallback(async () => {
-    if (!selectedUser) {
-      return;
-    }
-    setIsRestoring(true);
-    try {
-      await restoreUser(selectedUser.id);
-      showSuccessToast(
-        t('message.entity-restored-success', { entity: t('label.user') })
-      );
-      void fetchUsers();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsRestoring(false);
-      setShowRestoreModal(false);
-      setSelectedUser(undefined);
-    }
-  }, [selectedUser, t, fetchUsers]);
+  const handleRestoreUser = useCallback(
+    async (user: User): Promise<boolean> => {
+      try {
+        await restoreUser(user.id);
+        showSuccessToast(
+          t('message.entity-restored-success', { entity: t('label.user') })
+        );
+        void fetchUsers();
+
+        return true;
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        return false;
+      }
+    },
+    [t, fetchUsers]
+  );
 
   // Latest refetch closure. The pageSize/deleted effect runs on those keys only
   // (plus mount) and must use the *current* search term + fetchers without
@@ -254,7 +267,11 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   };
 
   useEffect(() => {
+    if (currentPage !== INITIAL_PAGING_VALUE) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+    }
     refetchUsers.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on size/deleted only
   }, [pageSize, showDeleted]);
 
   useEffect(() => {
@@ -338,46 +355,56 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       render: (_: unknown, record: User) => (
         <Box align="center" direction="row" gap={2}>
           {showDeleted && (
+            <ConfirmPopover
+              confirmText={t('label.restore')}
+              data-testid="restore-user-popover"
+              description={t('message.are-you-want-to-restore', {
+                entity: getEntityName(record),
+              })}
+              title={t('label.restore-entity', { entity: t('label.user') })}
+              variant="primary"
+              onConfirm={() => handleRestoreUser(record)}>
+              <ButtonUtility
+                aria-label={t('label.restore')}
+                color="tertiary"
+                data-testid={`restore-user-btn-${record.name}`}
+                icon={<RefreshCcw01 className="tw:size-4" />}
+                isDisabled={!isAdminUser}
+                size="sm"
+                tooltip={
+                  isAdminUser
+                    ? t('label.restore-entity', {
+                        entity: t('label.user'),
+                      })
+                    : t(ADMIN_ONLY_ACTION)
+                }
+              />
+            </ConfirmPopover>
+          )}
+
+          <DeleteEntityPopover
+            afterDeleteAction={() => handleSearch('')}
+            allowSoftDelete={!showDeleted}
+            data-testid="delete-user-popover"
+            entityId={record.id}
+            entityName={getEntityName(record)}
+            entityType={EntityType.USER}>
             <ButtonUtility
-              aria-label={t('label.restore')}
+              aria-label={t('label.delete')}
               color="tertiary"
-              data-testid={`restore-user-btn-${record.name}`}
-              icon={<RefreshCcw01 className="tw:size-4" />}
+              data-testid={`delete-user-btn-${record.name}`}
+              icon={<Trash01 className="tw:size-4" />}
               isDisabled={!isAdminUser}
               size="sm"
               tooltip={
                 isAdminUser
-                  ? t('label.restore-entity', {
+                  ? t('label.delete-entity', {
                       entity: t('label.user'),
                     })
                   : t(ADMIN_ONLY_ACTION)
               }
-              onPress={() => {
-                setSelectedUser(record);
-                setShowRestoreModal(true);
-              }}
             />
-          )}
-
-          <ButtonUtility
-            aria-label={t('label.delete')}
-            color="tertiary"
-            data-testid={`delete-user-btn-${record.name}`}
-            icon={<Trash01 className="tw:size-4" />}
-            isDisabled={!isAdminUser}
-            size="sm"
-            tooltip={
-              isAdminUser
-                ? t('label.delete-entity', {
-                    entity: t('label.user'),
-                  })
-                : t(ADMIN_ONLY_ACTION)
-            }
-            onPress={() => {
-              setSelectedUser(record);
-              setShowDeleteModal(true);
-            }}
-          />
+          </DeleteEntityPopover>
         </Box>
       ),
     };
@@ -391,16 +418,25 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     baseColumns.push(actionColumn);
 
     return baseColumns;
-  }, [showDeleted, isAdminUser, isAdmin, t, goTo]);
-
-  const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
+  }, [
+    showDeleted,
+    isAdminUser,
+    isAdmin,
+    t,
+    goTo,
+    handleRestoreUser,
+    handleSearch,
+  ]);
 
   return (
     <Box
       className="tw:pt-1 tw:h-full tw:px-8 tw:pb-8"
       data-testid="users-list-container"
       direction="col">
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
         <div className="tw:overflow-y-auto">
           <Table
             className="user-list-table"
@@ -426,6 +462,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
                   className="tw:min-h-32 tw:relative"
                   justify="center">
                   <NoDataPlaceholder
+                    icon={<User01 />}
                     title={t('label.no-entity-found', {
                       entity: t('label.user-plural'),
                     })}
@@ -445,58 +482,27 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
               onSearch: handleSearch,
             }}
             size="small"
+            variant="muted"
           />
         </div>
         {showPagination && (
-          <PaginationCardWithControls
-            minimal
-            page={currentPage}
+          <NextPrevious
+            className="tw:py-3"
+            currentPage={currentPage}
+            isLoading={isLoading}
+            isNumberBased={Boolean(searchValue)}
             pageSize={pageSize}
             pageSizeOptions={[
               PAGE_SIZE_BASE,
               PAGE_SIZE_MEDIUM,
               PAGE_SIZE_LARGE,
             ]}
-            total={totalPages}
-            onPageChange={handlePageNavigation}
-            onPageSizeChange={handlePageSizeChange}
+            paging={paging}
+            pagingHandler={handlePageNavigation}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>
-      {showDeleteModal && selectedUser && (
-        <DeleteEntityModal
-          afterDeleteAction={() => {
-            handleSearch('');
-          }}
-          allowSoftDelete={!showDeleted}
-          entityId={selectedUser.id}
-          entityName={getEntityName(selectedUser)}
-          entityType={EntityType.USER}
-          visible={showDeleteModal}
-          onCancel={() => {
-            setShowDeleteModal(false);
-            setSelectedUser(undefined);
-          }}
-        />
-      )}
-
-      {showRestoreModal && selectedUser && (
-        <SimpleModal
-          data-testid="restore-user-modal"
-          isOkLoading={isRestoring}
-          isOpen={showRestoreModal}
-          okText={t('label.restore')}
-          title={t('label.restore-entity', { entity: t('label.user') })}
-          onCancel={() => {
-            setShowRestoreModal(false);
-            setSelectedUser(undefined);
-          }}
-          onOk={handleRestoreUser}>
-          {t('message.are-you-want-to-restore', {
-            entity: getEntityName(selectedUser),
-          })}
-        </SimpleModal>
-      )}
     </Box>
   );
 };

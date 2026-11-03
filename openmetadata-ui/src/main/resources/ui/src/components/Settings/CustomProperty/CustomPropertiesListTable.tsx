@@ -18,9 +18,9 @@ import {
   FilterSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit05, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
@@ -112,6 +112,7 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation();
+  const actionsButtonRef = useRef<HTMLButtonElement>(null);
 
   if (!canEdit && !canDelete) {
     return null;
@@ -122,18 +123,21 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
       <Dropdown.DotsButton
         className={ACTIONS_BUTTON_CLASS}
         data-testid="property-actions"
+        ref={actionsButtonRef}
       />
       <Dropdown.Popover className="tw:w-55">
         <Dropdown.Menu
           aria-label={t('label.action-plural')}
           selectionMode="none"
           onAction={(key) =>
-            key === OPERATION.DELETE ? onDelete(property) : onEdit(property)
+            key === OPERATION.DELETE
+              ? onDelete(property, actionsButtonRef.current ?? undefined)
+              : onEdit(property)
           }>
           {canEdit && (
             <Dropdown.Item
               data-testid="edit-button"
-              icon={Edit05}
+              icon={Edit01}
               id={OPERATION.UPDATE}
               label={t('label.edit')}
             />
@@ -168,6 +172,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
   canDelete,
   emptyText,
   containerClassName,
+  variant,
   'data-testid': dataTestId = 'entity-custom-properties-table',
   onEdit,
   onDelete,
@@ -323,6 +328,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
         typingInterval: 300,
         onSearch: setSearchText,
       }}
+      variant={variant}
     />
   );
 };

@@ -12,6 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -97,7 +98,9 @@ let DRAFT_ARTICLE_B_DISPLAY_NAME: string;
 
 let articleEntity: KnowledgeCenterClass;
 // Unique part of the article's title: searching the whole title also matches
-// every newer "CC Article" from other workers (see verifyArticleSearch).
+// every newer "CC Article" from other workers (see verifyArticleSearch). Letters
+// only: the page index fuzzy-matches ngrams, and digit grams match thousands of
+// pages, pushing this beforeAll-created article off the first "Recently updated" page.
 let articleSearchTerm: string;
 let articleTagClassification: ClassificationClass;
 let articleTags: TagClass[] = [];
@@ -125,7 +128,10 @@ test.describe('Context Center Articles', () => {
     DRAFT_ARTICLE_A_DISPLAY_NAME = `Draft Persist A ${uuid()}`;
     DRAFT_ARTICLE_B_DISPLAY_NAME = `Draft Persist B ${uuid()}`;
 
-    articleSearchTerm = uuid();
+    articleSearchTerm = cryptoRandomString({
+      length: 8,
+      characters: 'abcdefghijklmnopqrstuvwxyz',
+    });
     articleEntity = new KnowledgeCenterClass({
       displayName: `CC Article ${articleSearchTerm}`,
       name: `cc_article_${uuid()}`,
@@ -467,6 +473,24 @@ test.describe('Context Center Articles', () => {
     page,
   }) => {
     test.slow();
+    // Our own tag, indexed before use: the seeded KnowledgeCenter.QuickLink is
+    // only searchable if the CI fixture's tag index is complete, and a fixture
+    // snapshotted mid-reindex (Oct 25) dropped it, failing every attempt.
+    const quickLinkTag = new TagClass({
+      classification: articleTagClassification.data.name,
+    });
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await quickLinkTag.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        quickLinkTag.responseData.fullyQualifiedName,
+        'tag'
+      );
+    } finally {
+      await afterAction();
+    }
+
     const testQuickLink = {
       displayName: `CC QL Test ${uuid()}`,
       updatedDisplayName: `CC QL Test Updated ${uuid()}`,
@@ -474,8 +498,8 @@ test.describe('Context Center Articles', () => {
       updatedDescription: 'Quick link updated from Playwright modal',
       url: RELATED_QUICK_LINK_URL,
       updatedUrl: UPDATED_QUICK_LINK_URL,
-      tag: 'QuickLink',
-      tagFqn: 'KnowledgeCenter.QuickLink',
+      tag: quickLinkTag.data.displayName,
+      tagFqn: quickLinkTag.responseData.fullyQualifiedName,
     };
 
     await navigateToArticles(page);
@@ -1408,12 +1432,13 @@ test.describe('Context Center Articles', () => {
       await page.locator('[data-testid="send-button"]').click();
       const createdConversationResponse = await feedResponse;
       const createdConversation = await createdConversationResponse.json();
-      await expect(page.getByText(conversationMessage)).toBeVisible();
-
+      // A card still mounting its preview also holds the text in an sr-only
+      // skeleton span, so a page-wide getByText resolves to two elements.
       const mainMessage = page.locator(
         `[data-testid="feed-card-v2-sidebar"][data-conversation-id="${createdConversation.id}"]`
       );
       await expect(mainMessage).toBeVisible();
+      await expect(mainMessage).toContainText(conversationMessage);
       await mainMessage.getByTestId('add-reactions').click();
       const reactionResponse = page.waitForResponse(
         (response) =>
@@ -1436,7 +1461,7 @@ test.describe('Context Center Articles', () => {
       // The reply count opens the conversation inside the drawer. That view
       // already lists the replies, so it shows no reply count of its own.
       await mainMessage.getByTestId('reply-button').click();
-      await expect(page.getByTestId('thread-panel-comments')).toBeVisible();
+      await expect(page.getByTestId('comments-input-field')).toBeVisible();
       await expect(mainMessage.getByTestId('reply-button')).toHaveCount(0);
       await page.getByTestId('thread-back').click();
       await expect(mainMessage.getByTestId('reply-button')).toBeVisible();
@@ -1460,7 +1485,7 @@ test.describe('Context Center Articles', () => {
       );
       await editForm.getByTestId('send-button').click();
       await updateThreadPromise;
-      await expect(page.getByText(updatedMessage)).toBeVisible();
+      await expect(mainMessage).toContainText(updatedMessage);
 
       await mainMessage.getByTestId('conversation-actions').click();
       await page.getByRole('menuitem', { name: 'Delete' }).click();
@@ -1991,7 +2016,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, articleToDelete.fullyQualifiedName);
 
         const deleteResponse = page.waitForResponse(
-          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=false`
+          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=true`
         );
 
         await page.getByTestId('manage-button').first().click();

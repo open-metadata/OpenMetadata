@@ -13,6 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { AssetSelectionDrawer } from './AssetSelectionDrawer';
+import AssetSelectionFooter from './AssetSelectionFooter';
 import { useAssetSelectionState } from './useAssetSelectionState';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -107,6 +108,7 @@ const baseState = {
   dryRunWarnings: undefined,
   exportJob: undefined,
   selectedItems: new Map(),
+  activeEntity: { id: 'entity-1' },
   isLoading: false,
   isSaveLoading: false,
   assetJobResponse: undefined,
@@ -320,5 +322,25 @@ describe('AssetSelectionDrawer', () => {
     );
 
     expect(screen.getByTestId('content-body')).toBeInTheDocument();
+  });
+
+  it('should keep save disabled until the target entity has loaded', () => {
+    (useAssetSelectionState as jest.Mock).mockReturnValue({
+      ...baseState,
+      activeEntity: undefined,
+    });
+
+    render(
+      <AssetSelectionDrawer
+        open
+        entityFqn="glossary.term"
+        onCancel={mockOnCancel}
+      />
+    );
+
+    expect(AssetSelectionFooter).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isLoading: true }),
+      expect.anything()
+    );
   });
 });

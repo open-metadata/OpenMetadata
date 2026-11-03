@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.jena.vocabulary.OWL2;
 import org.openmetadata.schema.OntologyDefinition;
@@ -45,6 +46,7 @@ public final class OntologyStructureValidator {
           RelationshipCharacteristic.ASYMMETRIC,
           RelationshipCharacteristic.IRREFLEXIVE);
 
+  private final Set<String> concepts;
   private final Map<String, List<OntologyProperty>> properties;
   private final OntologyPropertyHierarchy propertyHierarchy;
   private final OntologyClassHierarchy hierarchy;
@@ -53,6 +55,12 @@ public final class OntologyStructureValidator {
 
   private OntologyStructureValidator(final List<Definition> definitions) {
     hierarchy = new OntologyClassHierarchy(definitions.stream().map(Definition::value).toList());
+    concepts =
+        definitions.stream()
+            .map(Definition::value)
+            .filter(OntologyConcept.class::isInstance)
+            .map(concept -> ((OntologyConcept) concept).getIri().toString())
+            .collect(Collectors.toUnmodifiableSet());
     properties =
         definitions.stream()
             .map(Definition::value)
@@ -151,9 +159,41 @@ public final class OntologyStructureValidator {
   private void validate(final Definition definition) {
     hierarchy.validate(definition.value(), violation -> add(definition.member(), violation));
     switch (definition.value()) {
-      case OntologyProperty property -> validateProperty(definition.member(), property);
+      case OntologyConcept concept -> requireReplacement(
+          definition.member(),
+          concept.getIri(),
+          concept.getReplacedBy(),
+          concepts::contains,
+          OntologyProfileViolationCode.UNDECLARED_CLASS);
+      case OntologyProperty property -> {
+        validateProperty(definition.member(), property);
+        requireReplacement(
+            definition.member(),
+            property.getIri(),
+            property.getReplacedBy(),
+            properties::containsKey,
+            OntologyProfileViolationCode.UNDECLARED_PROPERTY);
+      }
       case OntologyAxiom axiom -> validateAxiom(definition.member(), axiom);
       default -> {}
+    }
+  }
+
+  private void requireReplacement(
+      final OntologyReleaseMember member,
+      final URI iri,
+      final URI replacement,
+      final Predicate<String> declared,
+      final OntologyProfileViolationCode code) {
+    if (replacement != null
+        && (replacement.toString().equals(iri.toString())
+            || !declared.test(replacement.toString()))) {
+      add(
+          member,
+          code,
+          "/replacedBy",
+          "A replacement must be another definition of the same kind in this ontology: "
+              + replacement);
     }
   }
 

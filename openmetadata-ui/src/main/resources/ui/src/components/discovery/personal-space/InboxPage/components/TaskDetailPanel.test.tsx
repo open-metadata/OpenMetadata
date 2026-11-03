@@ -103,6 +103,7 @@ jest.mock('context/PermissionProvider/PermissionProvider', () => ({
 jest.mock('utils/FeedUtilsPure', () => ({
   MarkdownToHTMLConverter: { makeHtml: (m: string) => m },
   getFrontEndFormat: (m: string) => m,
+  getFeedChangeFieldLabel: () => undefined,
 }));
 
 jest.mock('components/common/DeleteModal/DeleteModal', () => ({

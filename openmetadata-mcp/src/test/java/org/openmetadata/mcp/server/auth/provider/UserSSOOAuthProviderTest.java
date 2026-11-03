@@ -2,9 +2,12 @@ package org.openmetadata.mcp.server.auth.provider;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -18,25 +21,33 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
+import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
+import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
  * Unit tests for {@link UserSSOOAuthProvider#handleSSOErrorCallback}, which relays an upstream
- * IdP OAuth error callback back to the MCP client's redirect_uri, and for the consent step between
- * {@link UserSSOOAuthProvider#handleSSOCallbackWithDbState} and the authorization code.
+ * IdP OAuth error callback back to the MCP client's redirect_uri, for the consent step between
+ * {@link UserSSOOAuthProvider#handleSSOCallbackWithDbState} and the authorization code, and for the
+ * lifetime of the grant across {@link UserSSOOAuthProvider#exchangeRefreshToken}.
  *
  * <p>The provider's public constructor builds its repositories via {@code Entity.getCollectionDAO()}
  * (requires a live DB), so tests allocate the instance with {@code sun.misc.Unsafe} (bypassing the
@@ -356,6 +367,129 @@ class UserSSOOAuthProviderTest {
     assertThat(html).doesNotContain("&iss=");
   }
 
+  @Test
+  void exchangeRefreshToken_rotationKeepsTheEndOfTheGrant() throws Exception {
+    // Using a refresh token must not prolong the grant: only a new sign-in starts a new lifetime.
+    long endOfGrant = System.currentTimeMillis() + 60_000L;
+    RefreshToken stored = new RefreshToken("old-token", CLIENT_ID, List.of("openid"), endOfGrant);
+    stored.setUserName("alice");
+    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
+    when(tokenRepo.findRefreshToken("old-token")).thenReturn(stored);
+    JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
+    when(jwtGenerator.generateJWTToken(
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any(), any()))
+        .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
+
+    UserSSOOAuthProvider provider = newProvider(null, null, ISSUER);
+    setField(provider, "tokenRepository", tokenRepo);
+    setField(provider, "jwtGenerator", jwtGenerator);
+    OAuthClientInformation client = registeredClient();
+    RefreshToken presented = new RefreshToken();
+    presented.setToken("old-token");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), eq("alice"), anyString(), eq(Include.NON_DELETED)))
+          .thenReturn(new User().withName("alice").withEmail("alice@corp.example"));
+      provider.exchangeRefreshToken(client, presented, null).join();
+    }
+
+    ArgumentCaptor<RefreshToken> rotated = ArgumentCaptor.forClass(RefreshToken.class);
+    verify(tokenRepo)
+        .rotateRefreshToken(eq("old-token"), rotated.capture(), eq(CLIENT_ID), eq("alice"), any());
+    assertThat(rotated.getValue().getExpiresAt()).isEqualTo(endOfGrant);
+    // The new access token names its client and is stored, so a revoke can reach it.
+    verify(jwtGenerator)
+        .generateJWTToken(
+            eq("alice"),
+            any(),
+            anyBoolean(),
+            any(),
+            anyLong(),
+            anyBoolean(),
+            any(),
+            any(),
+            eq(CLIENT_ID));
+    verify(tokenRepo).storeAccessToken(any(), eq(CLIENT_ID), eq("alice"), any());
+  }
+
+  /** The access token is stored before the rotation, so a failed write keeps the grant usable. */
+  @Test
+  void exchangeRefreshToken_aFailedAccessTokenWriteLeavesTheRefreshTokenUnrotated()
+      throws Exception {
+    RefreshToken stored =
+        new RefreshToken(
+            "old-token", CLIENT_ID, List.of("openid"), System.currentTimeMillis() + 60_000L);
+    stored.setUserName("alice");
+    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
+    when(tokenRepo.findRefreshToken("old-token")).thenReturn(stored);
+    doThrow(new IllegalStateException("database unavailable"))
+        .when(tokenRepo)
+        .storeAccessToken(any(), any(), any(), any());
+    JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
+    when(jwtGenerator.generateJWTToken(
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any(), any()))
+        .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
+    UserSSOOAuthProvider provider = newProvider(null, null, ISSUER);
+    setField(provider, "tokenRepository", tokenRepo);
+    setField(provider, "jwtGenerator", jwtGenerator);
+    RefreshToken presented = new RefreshToken();
+    presented.setToken("old-token");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), eq("alice"), anyString(), eq(Include.NON_DELETED)))
+          .thenReturn(new User().withName("alice").withEmail("alice@corp.example"));
+      TokenException failed =
+          assertThrows(
+              TokenException.class,
+              () -> provider.exchangeRefreshToken(registeredClient(), presented, null).join());
+
+      assertThat(failed.getError()).isEqualTo("server_error");
+    }
+    verify(tokenRepo, never()).rotateRefreshToken(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void exchangeRefreshToken_afterTheEndOfTheGrant_mustSignInAgain() throws Exception {
+    RefreshToken stored =
+        new RefreshToken("old-token", CLIENT_ID, List.of("openid"), System.currentTimeMillis() - 1);
+    stored.setUserName("alice");
+    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
+    when(tokenRepo.findRefreshToken("old-token")).thenReturn(stored);
+    JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
+    when(jwtGenerator.generateJWTToken(
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any(), any()))
+        .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
+    UserSSOOAuthProvider provider = newProvider(null, null, ISSUER);
+    setField(provider, "tokenRepository", tokenRepo);
+    setField(provider, "jwtGenerator", jwtGenerator);
+    RefreshToken presented = new RefreshToken();
+    presented.setToken("old-token");
+
+    // A live user, so only the end of the grant can refuse this refresh.
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), eq("alice"), anyString(), eq(Include.NON_DELETED)))
+          .thenReturn(new User().withName("alice").withEmail("alice@corp.example"));
+      TokenException refused =
+          assertThrows(
+              TokenException.class,
+              () -> provider.exchangeRefreshToken(registeredClient(), presented, null).join());
+
+      assertThat(refused.getError()).isEqualTo("invalid_grant");
+    }
+  }
+
   // ── consent: an SSO sign-in alone must not hand a code to the MCP client ─────────
 
   private static final String USER_NAME = "alice";
@@ -542,6 +676,37 @@ class UserSSOOAuthProviderTest {
   }
 
   @Test
+  void handleSSOCallbackWithDbState_keepsTheGrantUnderTheAccountsOwnName() throws Exception {
+    // A SAML NameID keeps the provider's casing; the account it resolves to is lowercase.
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
+    when(pendingRepo.storeConsent(eq(AUTH_REQUEST_ID), anyString(), anyString())).thenReturn(true);
+    UserSSOOAuthProvider provider =
+        newProvider(pendingRepo, clientRepositoryWithRegisteredClient(), ISSUER);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    captureHtmlResponse(response);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<SecurityConfigurationManager> config =
+            mockStatic(SecurityConfigurationManager.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.USER, "Alice", "", Include.NON_DELETED))
+          .thenReturn(new User().withName(USER_NAME));
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withBaseUrl(MCP_BASE_URL));
+      provider.handleSSOCallbackWithDbState(
+          mock(HttpServletRequest.class),
+          response,
+          "Alice",
+          "alice@corp.example",
+          "mcp:" + AUTH_REQUEST_ID);
+    }
+
+    verify(pendingRepo).storeConsent(eq(AUTH_REQUEST_ID), anyString(), eq(USER_NAME));
+  }
+
+  @Test
   void handleSSOCallbackWithDbState_secondSignInForTheSameRequest_isRefused() throws Exception {
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
     when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
@@ -572,6 +737,63 @@ class UserSSOOAuthProviderTest {
                 consentRequest(CONSENT_TOKEN, UserSSOOAuthProvider.CONSENT_APPROVE),
                 mock(HttpServletResponse.class)));
     verifyNoInteractions(codeRepo);
+  }
+
+  // ── refresh token exchange ────────────────────────────────────────────────
+
+  @Test
+  void exchangeRefreshToken_aGrantHoldingUnknownScopes_stillRefreshes() throws Exception {
+    List<String> granted = new ArrayList<>(List.of("openid"));
+    IntStream.range(0, 10_000).mapToObj(index -> "scope" + index).forEach(granted::add);
+
+    assertThat(refreshFailure(mock(OAuthTokenRepository.class), granted, null)).isNull();
+  }
+
+  @Test
+  void exchangeRefreshToken_askingForAScopeNeverGranted_isRefused() throws Exception {
+    TokenException refused =
+        refreshFailure(
+            mock(OAuthTokenRepository.class), List.of("openid"), List.of("openid", "email"));
+
+    assertThat(refused.getError()).isEqualTo("invalid_scope");
+  }
+
+  /**
+   * Refreshes a live token granted {@code granted}, asking for {@code requested}, and returns why
+   * it was refused, or null when it went through.
+   */
+  private TokenException refreshFailure(
+      OAuthTokenRepository tokenRepo, List<String> granted, List<String> requested)
+      throws Exception {
+    RefreshToken stored =
+        new RefreshToken("refresh-token", CLIENT_ID, granted, System.currentTimeMillis() + 60_000L);
+    stored.setUserName("alice");
+    when(tokenRepo.findRefreshToken("refresh-token")).thenReturn(stored);
+    JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
+    when(jwtGenerator.generateJWTToken(
+            anyString(), any(), anyBoolean(), any(), anyLong(), anyBoolean(), any(), any(), any()))
+        .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
+    UserSSOOAuthProvider provider =
+        newProvider(
+            mock(McpPendingAuthRequestRepository.class), mock(OAuthClientRepository.class), ISSUER);
+    setField(provider, "tokenRepository", tokenRepo);
+    setField(provider, "jwtGenerator", jwtGenerator);
+    RefreshToken presented = new RefreshToken();
+    presented.setToken("refresh-token");
+    TokenException failure = null;
+    // A live user, so a refresh that passes the scope checks goes through.
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), eq("alice"), anyString(), eq(Include.NON_DELETED)))
+          .thenReturn(new User().withName("alice").withEmail("alice@example.com"));
+      provider.exchangeRefreshToken(registeredClient(), presented, requested).join();
+    } catch (TokenException refused) {
+      failure = refused;
+    }
+    return failure;
   }
 
   // ── reflection helpers (mirror AuthenticationCodeFlowHandlerTest) ─────────

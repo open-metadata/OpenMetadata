@@ -16,6 +16,7 @@
  */
 export interface CreateOntologyProperty {
     characteristics?: Characteristic[];
+    deprecated?:      boolean;
     description?:     string;
     disjointWith?:    string[];
     displayName?:     string;
@@ -38,6 +39,7 @@ export interface CreateOntologyProperty {
     propertyChain?: string[];
     provider?:      ProviderType;
     range?:         string[];
+    replacedBy?:    string;
     unit?:          string;
 }
 

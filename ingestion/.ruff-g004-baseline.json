@@ -54,7 +54,6 @@
       "19a7f4e3adb937a4faf420ac4debff5e45d74673e36e665e6e95ca3a023dcf2d": 1,
       "255d2a9bb0d0dbc3c475fed2fd00add30cb46241ac8265a2e07dd734c2c51d75": 1,
       "31f088851c0019be2c27f30434f4fb937ffe7c252f651fd1197a818acd2f82ff": 1,
-      "432394ce2e9104120c6042632011c6a4472515a0eea6088e5a4d4c4bbc3634af": 1,
       "45671dcdd5c1be06df3a03504e8e50ca217302a896d5c7dbd25b497b6da0aa86": 1,
       "4cafe79b776e948b95945a07d980d5e107afeefd4d07047e281407da95aa678f": 1,
       "51c0fd95d7a97e69c2a88317d6a05b497807d0c3173e5d6786f17a19d8cb8ee9": 1,
@@ -608,7 +607,6 @@
     "ingestion/src/metadata/ingestion/source/dashboard/hex/metadata.py": {
       "09aea5182e0d5ac91934a5567bd5411bd3e64f2110b780585a3a5befde8ccfb9": 1,
       "0a4292774fc783942b74e3aaa37c52b9c6e7ab8cd7dd3a16bfff772aaacaaa94": 1,
-      "61f33e84d0d4457f90e8ce845cbe72bd1bb9bd86a1526cd5d712cfb2f3556b8c": 1,
       "81da475627f188577801bf7216d749ff1d4cf72d64de2961a1f5d4a76bcc3dfb": 1,
       "badf9709a3ab56079e9a320c99f999935dc36380126f31ff972ed10df4a1e337": 1,
       "c67529378a207aafa25207322e7762c75df082767652f009b85f88b39d158f8b": 1,
@@ -2672,9 +2670,6 @@
     },
     "ingestion/src/metadata/profiler/metrics/static/regexp_match_count.py": {
       "b8c909a5514af189747276ab1b171a29ca9bf0f3bfd288e0f777c7897ed12144": 1
-    },
-    "ingestion/src/metadata/profiler/metrics/static/row_count.py": {
-      "12f73ce99f611d31217ce22900e33427c48470d2cfbe29714059206e4d7129be": 1
     },
     "ingestion/src/metadata/profiler/metrics/static/stddev.py": {
       "5efd5c31379b3eb87110baeaea7eeec76938c9cc283a241accf13858d59eeb69": 1,

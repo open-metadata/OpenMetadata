@@ -20,15 +20,21 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AssetType } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { Include } from '../../../../generated/type/include';
 import { useDebouncedValue } from '../../../../hooks/common/useDebouncedValue';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { searchTableColumnsById } from '../../../../rest/tableAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getOntologyColumnOptions } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
+import {
+  getOntologyBindingWriteMessage,
+  getOntologyColumnOptions,
+} from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { ConceptFormCard } from './OntologyConceptSection';
 
 interface OntologyColumnBindingEditorProps {
   conceptId: string;
@@ -42,13 +48,20 @@ const OntologyColumnBindingEditor = ({
   onClose,
 }: OntologyColumnBindingEditorProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const bindings = useOntologyConceptBindings(conceptId);
   const tables =
     bindings.data?.assets.filter(
       (asset) => asset.assetType === AssetType.Table
     ) ?? [];
   const [tableId, setTableId] = useState(tables[0]?.assetId ?? '');
-  const revision = bindings.data?.revision;
+  const lifecycle = useRef<AbortController>();
+  useEffect(() => {
+    const controller = new AbortController();
+    lifecycle.current = controller;
+
+    return () => controller.abort();
+  }, [conceptId, propertyId]);
   const [search, setSearch] = useState('');
   const query = useDebouncedValue(search, 250);
   const [page, setPage] = useState(0);
@@ -69,43 +82,55 @@ const OntologyColumnBindingEditor = ({
   });
   const options = useMemo(
     () =>
-      getOntologyColumnOptions(
-        columns.data?.data ?? [],
-        table?.asset.fullyQualifiedName ?? ''
-      ),
+      table?.asset.fullyQualifiedName
+        ? getOntologyColumnOptions(
+            columns.data?.data ?? [],
+            table.asset.fullyQualifiedName
+          )
+        : [],
     [columns.data, table?.asset.fullyQualifiedName]
   );
   const selected = options.find((option) => option.id === columnId);
-  const save = () => {
-    if (!table || !selected || revision === undefined) {
+  const save = async () => {
+    const signal = lifecycle.current?.signal;
+    if (!signal || signal.aborted) {
       return;
     }
-    bindings.update.mutate(
-      {
-        id: conceptId,
-        request: {
-          expectedRevision: revision,
-          asset: {
-            assetId: table.assetId,
-            assetType: AssetType.Table,
-            columns: [
-              ...table.columns
-                .filter(
-                  (column) =>
-                    column.propertyId !== propertyId ||
-                    JSON.stringify(column.columnPath) !== selected.id
-                )
-                .map(({ propertyId, columnPath }) => ({
-                  propertyId,
-                  columnPath,
-                })),
-              { propertyId, columnPath: selected.path },
-            ],
-          },
-        },
-      },
-      { onSuccess: onClose }
+    const snapshot = bindings.editableSnapshot;
+    const editableTable = snapshot?.assets.find(
+      (asset) => asset.assetId === tableId
     );
+    if (!editableTable || !selected || !snapshot) {
+      return;
+    }
+    const result = await bindings.replaceAsset({
+      expectedRevision: snapshot.revision,
+      asset: {
+        assetId: editableTable.assetId,
+        assetType: AssetType.Table,
+        columns: [
+          ...editableTable.columns
+            .filter(
+              (column) =>
+                column.propertyId !== propertyId ||
+                JSON.stringify(column.columnPath) !== selected.id
+            )
+            .map(({ propertyId, columnPath }) => ({
+              propertyId,
+              columnPath,
+            })),
+          { propertyId, columnPath: selected.path },
+        ],
+      },
+    });
+    if (!signal.aborted) {
+      const notify =
+        result.kind === 'confirmed' ? showSuccessToast : showErrorToast;
+      notify(t(getOntologyBindingWriteMessage(result)));
+      if (result.kind === 'confirmed') {
+        onClose();
+      }
+    }
   };
 
   const renderColumns = () => (
@@ -169,6 +194,77 @@ const OntologyColumnBindingEditor = ({
     </>
   );
 
+  const renderTableFields = () => (
+    <>
+      <Select
+        items={tables.map((item) => ({
+          id: item.assetId,
+          label: getEntityName(item.asset),
+        }))}
+        label={t('label.table')}
+        size="sm"
+        value={tableId}
+        onChange={(id) => {
+          setTableId(String(id));
+          setPage(0);
+          setColumnId('');
+        }}>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} label={item.label} />
+        )}
+      </Select>
+      <Input
+        aria-label={t('label.search-entity', {
+          entity: t('label.column-plural'),
+        })}
+        icon={Search}
+        inputDataTestId="ontology-binding-column-search"
+        size="sm"
+        value={search}
+        onChange={(value) => {
+          setSearch(value);
+          setPage(0);
+          setColumnId('');
+        }}
+      />
+    </>
+  );
+
+  const renderAiEditor = () => (
+    <ConceptFormCard testId="ontology-column-binding-editor">
+      {tables.length === 0 ? (
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {t('message.ontology-link-table-before-binding')}
+        </Typography>
+      ) : (
+        <>
+          {renderTableFields()}
+          {renderColumns()}
+        </>
+      )}
+      <Box gap={2} justify="end">
+        <Button color="secondary" size="sm" onPress={onClose}>
+          {t('label.cancel')}
+        </Button>
+        {tables.length > 0 ? (
+          <Button
+            color="primary"
+            data-testid="ontology-binding-save"
+            isDisabled={!selected || !table || columns.isFetching}
+            isLoading={bindings.isWriting}
+            size="sm"
+            onPress={save}>
+            {t('label.save')}
+          </Button>
+        ) : null}
+      </Box>
+    </ConceptFormCard>
+  );
+
+  if (isAiMode) {
+    return renderAiEditor();
+  }
+
   return (
     <Box data-testid="ontology-column-binding-editor" direction="col" gap={3}>
       {tables.length === 0 ? (
@@ -177,42 +273,17 @@ const OntologyColumnBindingEditor = ({
         </Typography>
       ) : (
         <>
-          <Select
-            items={tables.map((item) => ({
-              id: item.assetId,
-              label: getEntityName(item.asset),
-            }))}
-            label={t('label.table')}
-            size="sm"
-            value={tableId}
-            onChange={(id) => {
-              setTableId(String(id));
-              setPage(0);
-              setColumnId('');
-            }}>
-            {(item) => (
-              <Select.Item id={item.id} key={item.id} label={item.label} />
-            )}
-          </Select>
-          <Input
-            aria-label={t('label.search-entity', {
-              entity: t('label.column-plural'),
-            })}
-            icon={Search}
-            inputDataTestId="ontology-binding-column-search"
-            size="sm"
-            value={search}
-            onChange={(value) => {
-              setSearch(value);
-              setPage(0);
-              setColumnId('');
-            }}
-          />
+          {renderTableFields()}
           {renderColumns()}
           <Button
             data-testid="ontology-binding-save"
-            isDisabled={!selected || !table || columns.isFetching}
-            isLoading={bindings.update.isPending}
+            isDisabled={
+              !selected ||
+              !table ||
+              columns.isFetching ||
+              !bindings.editableSnapshot
+            }
+            isLoading={bindings.isWriting}
             size="xs"
             onPress={save}>
             {t('label.save')}

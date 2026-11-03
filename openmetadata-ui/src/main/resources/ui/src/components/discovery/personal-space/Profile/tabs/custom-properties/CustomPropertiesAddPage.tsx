@@ -111,6 +111,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
             className="tw:flex tw:flex-col tw:gap-6"
             data-testid="custom-property-form"
             fieldDocDisplay="popover"
+            fieldDocVariant="muted"
             form={form}
             id="add-custom-property-form"
             renderFieldDoc={(text) => (

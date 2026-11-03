@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
@@ -24,6 +25,7 @@ import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.service.Entity;
 
 abstract class BaseOntologyApprovalIT {
   @AfterEach
@@ -52,6 +54,22 @@ abstract class BaseOntologyApprovalIT {
         ontology.getId(),
         new CaptureOntologyRelease()
             .withExpectedWorkingRevision(service.state(ontology.getId()).getWorkingRevision()));
+  }
+
+  protected static OntologyRelease activate(TestNamespace ns, Ontology ontology) {
+    final OntologyRelease release = capture(ontology);
+    final var task = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(task.getId().toString(), decision(TaskResolutionType.Approved));
+    SdkClients.adminClient()
+        .ontologies()
+        .activate(
+            ontology.getId(),
+            new ActivateOntologyRelease()
+                .withReleaseId(release.getId())
+                .withExpectedActivationRevision(0L));
+    return release;
   }
 
   protected static Ontology createOntology(TestNamespace ns, String name) {

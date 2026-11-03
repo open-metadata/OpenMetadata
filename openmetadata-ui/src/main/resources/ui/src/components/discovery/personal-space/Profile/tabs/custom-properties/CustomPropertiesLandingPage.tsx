@@ -150,11 +150,11 @@ const CustomPropertiesLandingPage: React.FC<
                     handleCardClick(entityTypeName, item.key)
                   }
                   onKeyDown={handleKeyDown}>
-                  <Card.Content>
+                  <Card.Content className="tw:px-3">
                     <Box align="start" direction="row" gap={3}>
                       {getEntityIconWithBg(
                         entityTypeName,
-                        { className: 'tw:h-10 tw:w-10 tw:rounded-lg' },
+                        { className: 'tw:mt-1 tw:h-10 tw:w-10 tw:rounded-lg' },
                         { size: 25 }
                       )}
                       <Box className="tw:min-w-0" direction="col" gap={1}>

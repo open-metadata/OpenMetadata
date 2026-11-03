@@ -62,6 +62,7 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
@@ -334,7 +335,7 @@ const ExploreExportScopeModal = ({
           </Dialog.Content>
           <Dialog.Footer className="tw:mt-0 tw:border-secondary tw:sm:mt-0 tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
             <Button
-              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
+              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--theme-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--theme-primary-color-hover)]"
               color="tertiary"
               data-testid="export-scope-cancel-button"
               onPress={onCancel}>
@@ -394,6 +395,8 @@ const ExploreFilterStatusRow = ({
   onEditQueryFilter,
   t,
 }: ExploreFilterStatusRowProps) => {
+  const isAiMode = useIsAiMode();
+
   return (
     <>
       {shouldShowQueryFilterChips && (
@@ -410,7 +413,8 @@ const ExploreFilterStatusRow = ({
             onRemoveBrowseLevel={handleRemoveBrowseLevel}
             onRemoveValue={handleRemoveQuickFilterValue}
           />
-          <DomainFilterChip className="tw:mt-2" />
+          {/* AI mode shows the chip in its search header. */}
+          {!isAiMode && <DomainFilterChip className="tw:mt-2" />}
         </div>
       )}
       {isElasticSearchIssue ? (

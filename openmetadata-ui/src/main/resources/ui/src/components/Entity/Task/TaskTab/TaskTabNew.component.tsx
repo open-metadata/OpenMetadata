@@ -18,6 +18,7 @@ import {
   FormItemLabel,
   Grid,
   HintText,
+  Input,
   Modal,
   ModalOverlay,
   Owner,
@@ -745,7 +746,9 @@ export const TaskTabNew = ({
   );
 
   const refreshIncidentStatus = async (taskId: string) => {
-    const refreshed = await getListTestCaseIncidentByStateId(taskId);
+    const refreshed = await getListTestCaseIncidentByStateId(taskId, {
+      limit: 1,
+    });
     const latest = refreshed?.data?.[0];
     if (latest) {
       updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
@@ -1977,16 +1980,14 @@ export const TaskTabNew = ({
                   </UserPopOverCard>
                 </div>
 
-                {/* Only opens the editor, so it is a button rather than an input. */}
-                <Button
-                  ellipsis
-                  className="comments-input-field tw:w-full tw:justify-start"
-                  color="secondary"
-                  data-testid="comments-input-field"
+                {/* Read-only: focusing it reveals the editor, which takes the focus. */}
+                <Input
+                  isReadOnly
+                  inputDataTestId="comments-input-field"
+                  placeholder={t('message.input-placeholder')}
                   size="sm"
-                  onPress={() => setShowFeedEditor(true)}>
-                  {t('message.input-placeholder')}
-                </Button>
+                  onFocus={() => setShowFeedEditor(true)}
+                />
               </div>
             )
           )}
