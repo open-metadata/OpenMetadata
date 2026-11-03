@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
 import {
   ContextMemory,
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
 import MemoriesView from './MemoriesView.component';
 
 jest.mock('react-i18next', () => ({

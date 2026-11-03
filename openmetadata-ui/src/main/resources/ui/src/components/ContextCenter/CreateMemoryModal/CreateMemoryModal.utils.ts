@@ -13,14 +13,11 @@
 import { compare } from 'fast-json-patch';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
-import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getQueryPath } from '../../../utils/RouterUtils';
 import {
   CONTEXT_FILE_ENTITY_TYPE,
   MEMORY_TYPE_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   ContextMemory,
   EntityReference,
@@ -32,7 +29,10 @@ import {
   createContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getQueryPath } from '../../../utils/RouterUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import {
   MemoryFormState,

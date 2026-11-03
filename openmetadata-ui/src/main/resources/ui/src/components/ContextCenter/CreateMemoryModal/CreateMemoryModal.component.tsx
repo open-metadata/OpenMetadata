@@ -82,9 +82,9 @@ import {
   ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
+import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
-import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';

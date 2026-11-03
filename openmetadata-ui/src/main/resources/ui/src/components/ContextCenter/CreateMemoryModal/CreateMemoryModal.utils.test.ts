@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { EntityType } from '../../../enums/entity.enum';
 import {
   ContextMemory,
   MemoryType,
   ShareVisibility,
 } from '../../../generated/entity/context/contextMemory';
 import { updateContextMemory } from '../../../rest/contextMemoryAPI';
-import { EntityType } from '../../../enums/entity.enum';
 import {
   getLinkedAssetPath,
   getQueryTableFqn,
