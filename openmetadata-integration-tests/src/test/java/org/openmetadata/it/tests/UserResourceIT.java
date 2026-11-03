@@ -2442,6 +2442,22 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_userNamedLikeTheAdminWithASlash_cannotMakeItselfAdmin(TestNamespace ns) {
+    String userName = "admin/" + ns.uniqueShortId();
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@example.com")
+                .withDescription("User whose name starts with the admin's name"));
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch.addObject().put("op", "replace").put("path", "/isAdmin").put("value", true);
+
+    assertPatchForbidden(clientFor(user), user, patch);
+    assertFalse(getEntity(user.getId().toString()).getIsAdmin());
+  }
+
+  @Test
   void test_userEmailCaseInsensitive(TestNamespace ns) {
 
     String userName = ns.prefix("emailCaseUser");

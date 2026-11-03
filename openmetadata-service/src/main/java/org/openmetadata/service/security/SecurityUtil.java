@@ -78,9 +78,13 @@ public final class SecurityUtil {
         && first.toLowerCase(Locale.ROOT).equals(second.toLowerCase(Locale.ROOT));
   }
 
+  /**
+   * The authentication filters build the principal from the account name, so the name is used whole:
+   * a user named {@code admin/x} is not the user {@code admin}.
+   */
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
-    return principal == null ? null : principal.getName().split("[/@]")[0];
+    return principal == null ? null : principal.getName();
   }
 
   public static String getImpersonatedByUser(SecurityContext securityContext) {

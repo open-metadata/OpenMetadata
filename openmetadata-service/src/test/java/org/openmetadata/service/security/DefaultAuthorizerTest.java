@@ -163,6 +163,27 @@ class DefaultAuthorizerTest {
   }
 
   @Test
+  void aUserWhoseNameStartsWithAnotherUsersNameIsAuthorizedAsItself() {
+    try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class)) {
+      for (SubjectContext subject :
+          List.of(
+              subjectContext("admin", true, false, null),
+              subjectContext("ingestion-bot", false, true, null),
+              subjectContext("admin/mallory", false, false, null),
+              subjectContext("ingestion-bot/mallory", false, false, null))) {
+        mockedSubjectContext
+            .when(() -> SubjectContext.getSubjectContext(subject.user().getName()))
+            .thenReturn(subject);
+      }
+
+      assertThrows(
+          AuthorizationException.class,
+          () -> authorizer.authorizeAdmin(securityContext("admin/mallory")));
+      assertTrue(authorizer.shouldMaskPasswords(securityContext("ingestion-bot/mallory")));
+    }
+  }
+
+  @Test
   void authorizeSkipsPolicyEvaluationForReviewers() {
     SecurityContext securityContext = securityContext("reviewer");
     SubjectContext reviewerContext = subjectContext("reviewer", false, false, null);
