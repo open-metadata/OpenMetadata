@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -36,7 +37,8 @@ class IndependentOntologyDraftReadIT extends BaseOntologyApprovalIT {
     final Ontology ontology = createOntology(ns, "draftRead");
     declareClass(ontology, "Published", URI.create(ontology.getNamespace() + "Published"));
     final OntologyRelease release = activate(ns, ontology);
-    declareClass(ontology, "Unpublished", URI.create(ontology.getNamespace() + "Unpublished"));
+    final var unpublished =
+        declareClass(ontology, "Unpublished", URI.create(ontology.getNamespace() + "Unpublished"));
 
     final String id = ontology.getId().toString();
     final String name = ontology.getFullyQualifiedName();
@@ -66,6 +68,14 @@ class IndependentOntologyDraftReadIT extends BaseOntologyApprovalIT {
           assertEquals(codes[0], consumerStatus.get(call), "consumer " + call);
           assertEquals(codes[1], adminStatus.get(call), "admin " + call);
         });
+
+    final int malformed = statusOf(token(consumer), "GET /v1/ontologyAxioms?ontologyId=not-a-uuid");
+    assertTrue(malformed >= 400 && malformed < 500, "malformed ontologyId gave " + malformed);
+
+    assertEquals(
+        200,
+        statusOf(token(consumer), "GET /v1/ontologyConcepts/" + unpublished.getId()),
+        "a single definition is still read by id");
 
     final String releaseId = release.getId().toString();
     final List<String> publishedReads =

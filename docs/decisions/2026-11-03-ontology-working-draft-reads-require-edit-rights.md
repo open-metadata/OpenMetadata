@@ -25,7 +25,12 @@ endpoints and not others.
   list that names none needs `EditAll` on ontologies as a type, so an owner-scoped grant does not
   open it.
 - The existing per-definition view check on the snapshot stays in place after the new check.
-- Reading one definition by id or name is unchanged.
+- Reading one definition by id or name is unchanged: any viewer reads the working version of a
+  concept, property or axiom, including one no release contains. This is an exception to the rule,
+  kept because deep links and the Studio's concept panel read a single definition this way, and
+  because gating it would need a release-membership lookup on every read. It exposes one
+  definition at a time to a caller who already knows its id or name; it exposes no listing, diff,
+  validation, export or query.
 - The Studio reads the active release when the working list is refused, and shows an ontology
   with no active release as empty, so a reader never sees an error
   (`useOntologyStudioModel.ts`).
@@ -35,4 +40,6 @@ endpoints and not others.
 - A concept owner without `EditAll` on the ontology edits that concept, but the Studio draws the
   graph from the active release while they do. Loading the draft for them would need a per-concept
   read path.
+- Closing the by-id exception needs a membership lookup against the active release and a
+  published-version fallback for the single-definition read.
 - To revert to view access for a read, change `requireDraftRead` and the Viewer IT together.
