@@ -93,6 +93,20 @@ class ContextMemoryExtractorTest {
     assertEquals("25% (HR)", memories.get(1).getAnswer());
   }
 
+  @Test
+  void keepsBothPositiveAndNegativeValuesOfOneFact() {
+    EntityReference source = fileRef(UUID.randomUUID(), "forecast");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenReturn(
+            List.of(
+                new KnowledgePill("Growth", "Expected growth?", "−15%", "Downside", "Faq"),
+                new KnowledgePill("Growth", "Expected growth?", "+15%", "Upside", "Faq")));
+
+    assertEquals(
+        List.of("−15%", "+15%"),
+        derive("text", source).stream().map(ContextMemory::getAnswer).toList());
+  }
+
   /** The same fact reworded in two chunks is one pill; only a different number makes a second. */
   @Test
   void aRewordedAnswerIsTheSameFact() {

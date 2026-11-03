@@ -14,6 +14,15 @@ class MemoryTextSimilarityTest {
   }
 
   @Test
+  void oppositeSignsAreConflictingValues() {
+    assertTrue(MemoryTextSimilarity.hasConflictingNumbers("-15%", "15%"));
+    assertTrue(MemoryTextSimilarity.hasConflictingNumbers("−15%", "+15%"));
+    assertFalse(MemoryTextSimilarity.hasConflictingNumbers("−15%", "-15%"));
+    assertFalse(MemoryTextSimilarity.hasConflictingNumbers("+15%", "15%"));
+    assertFalse(MemoryTextSimilarity.hasConflictingNumbers("10-20 days", "10–20 days"));
+  }
+
+  @Test
   void anAddedOrDroppedNumberIsARewording() {
     assertFalse(MemoryTextSimilarity.hasConflictingNumbers("15%", "15% (section 3)"));
     assertFalse(MemoryTextSimilarity.hasConflictingNumbers("As of 2025, 30 days", "30 days"));

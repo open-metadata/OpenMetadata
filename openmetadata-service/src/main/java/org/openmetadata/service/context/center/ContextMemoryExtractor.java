@@ -41,7 +41,9 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
           + "return one element per value, each answer stating only its own value, with the "
           + "section it comes from named in the summary, never in the question or the answer; "
           + "never merge them or choose one, even when a section says it is newer. "
-          + "Return ONLY the JSON array, no prose.";
+          + "Never extract personal data (names, email addresses, phone numbers or other "
+          + "contact details of a person), nor credentials, tokens, keys or connection "
+          + "strings: describe the role or team instead. Return ONLY the JSON array, no prose.";
 
   private final LLMCompletionClient llmClient;
   private final ContextMemoryStatus initialStatus;

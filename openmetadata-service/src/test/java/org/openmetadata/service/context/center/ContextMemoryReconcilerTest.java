@@ -526,6 +526,22 @@ class ContextMemoryReconcilerTest {
     assertEquals("20 days", captor.getValue().getAnswer());
   }
 
+  @Test
+  void aCorrectionNeverClaimsAnotherQuestionsEqualValue() {
+    existing(
+        pill(
+            "How many vacation days do employees in the UK get?",
+            "20 days",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED));
+    ContextMemory us = derived("How many vacation days do employees in the US get?", "20 days");
+
+    ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(us));
+
+    assertEquals(1, result.created());
+    verify(memoryRepository).create(isNull(), eq(us));
+  }
+
   /** With only another fact's value derived, the correction must not swallow it. */
   @Test
   void aCorrectedPillNeverTakesAnotherQuestionsValue() {

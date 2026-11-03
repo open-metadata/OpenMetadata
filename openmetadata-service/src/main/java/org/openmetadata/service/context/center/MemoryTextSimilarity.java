@@ -39,7 +39,9 @@ final class MemoryTextSimilarity {
       Set.of("a", "an", "the", "is", "are", "was", "were", "s", "do", "does", "did");
 
   private static final Pattern NUMBERS =
-      Pattern.compile("\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?");
+      Pattern.compile(
+          "(?:(?<![\\p{L}\\p{N}])[+\\-−])?"
+              + "(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)");
   private static final double QUESTION_WEIGHT = 0.6;
   private static final double ANSWER_WEIGHT = 0.4;
 
@@ -74,7 +76,7 @@ final class MemoryTextSimilarity {
    * fraction stays as written, so "3.10" is not "3.1".
    */
   private static String byValue(String number) {
-    BigDecimal value = new BigDecimal(number.replace(",", ""));
+    BigDecimal value = new BigDecimal(number.replace(",", "").replace('−', '-'));
     return value.stripTrailingZeros().scale() <= 0
         ? value.setScale(0).toPlainString()
         : value.toPlainString();

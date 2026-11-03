@@ -221,7 +221,9 @@ public class ContextMemoryReconciler {
     List<Candidate> clearing = candidatesClearingTheBar(derivedByQuestion, pill);
     Candidate best =
         clearing.stream()
-            .filter(candidate -> !candidate.conflicting())
+            .filter(
+                candidate ->
+                    !candidate.conflicting() && (!isHumanOwned(pill) || candidate.sameQuestion()))
             .max(Comparator.comparingDouble(Candidate::score))
             .orElse(null);
     if (best == null && isHumanOwned(pill)) {
