@@ -78,6 +78,11 @@ export interface OntologyChangeOperation {
     rationale?:    string;
     relationship?: OntologyRelationship;
     /**
+     * IRIs of concepts that an import expects to create in the same change set. Applying the
+     * operation without an UPSERT_CONCEPT operation for each of them is refused.
+     */
+    requiresConceptIris?: string[];
+    /**
      * Published context memories that support this AI suggestion.
      */
     sourceMemoryIds?: string[];

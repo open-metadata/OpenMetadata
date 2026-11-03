@@ -13,10 +13,12 @@
 
 package org.openmetadata.service.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.BadRequestException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +54,7 @@ public final class OntologyChangePreflight {
         validateSourceMemories(operation, activeSourceMemories);
         NativeOntologyChanges.validateTarget(changeSet, operation, entityLoader);
       }
+      requireImportedConcepts(operations);
       return;
     }
     final Set<UUID> scope = glossaryScope(changeSet);
@@ -61,6 +64,33 @@ public final class OntologyChangePreflight {
       validateSourceMemories(operation, activeSourceMemories);
       validateScope(operation, scope, plannedTerms);
       validateTargetVersion(operation, plannedTerms, versionGuards);
+    }
+  }
+
+  /**
+   * An import lists the concepts it creates that an operation states a fact about. Applying the
+   * operation without them would store a relationship or rule on a concept that does not exist.
+   */
+  private static void requireImportedConcepts(final List<OntologyChangeOperation> operations) {
+    final Set<String> created =
+        operations.stream()
+            .filter(
+                operation ->
+                    operation.getOperationType() == OntologyChangeOperationType.UPSERT_CONCEPT
+                        && operation.getConcept() != null)
+            .map(operation -> operation.getConcept().getIri().toString())
+            .collect(Collectors.toSet());
+    for (final OntologyChangeOperation operation : operations) {
+      for (final URI required : listOrEmpty(operation.getRequiresConceptIris())) {
+        if (!created.contains(required.toString())) {
+          throw new BadRequestException(
+              "Ontology operation '"
+                  + operation.getId()
+                  + "' needs the concept "
+                  + required
+                  + ", which is not part of this change set");
+        }
+      }
     }
   }
 

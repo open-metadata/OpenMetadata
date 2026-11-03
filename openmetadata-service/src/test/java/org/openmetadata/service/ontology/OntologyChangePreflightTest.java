@@ -14,9 +14,11 @@
 package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import jakarta.ws.rs.BadRequestException;
+import java.net.URI;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -25,7 +27,9 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
@@ -33,6 +37,59 @@ import org.openmetadata.schema.type.OntologyRelationship;
 import org.openmetadata.service.exception.EntityNotFoundException;
 
 class OntologyChangePreflightTest {
+  @Test
+  void refusesAnImportedRelationshipWhoseNewConceptIsNotInTheChangeSet() {
+    final URI account = URI.create("https://example.org/Account");
+    final OntologyChangeOperation relationship = axiomNeeding(account);
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) -> {
+              throw new AssertionError("New definitions are not loaded");
+            });
+
+    final BadRequestException refusal =
+        assertThrows(
+            BadRequestException.class,
+            () -> preflight.validate(nativeChangeSet(), List.of(relationship)));
+
+    assertEquals(
+        "Ontology operation '"
+            + relationship.getId()
+            + "' needs the concept https://example.org/Account, which is not part of this change set",
+        refusal.getMessage());
+  }
+
+  @Test
+  void acceptsAnImportedRelationshipWhenItsNewConceptIsApplied() {
+    final URI account = URI.create("https://example.org/Account");
+    final OntologyChangeOperation concept =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.UPSERT_CONCEPT)
+            .withConcept(new OntologyConcept().withId(UUID.randomUUID()).withIri(account));
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) -> {
+              throw new AssertionError("New definitions are not loaded");
+            });
+
+    assertDoesNotThrow(
+        () -> preflight.validate(nativeChangeSet(), List.of(concept, axiomNeeding(account))));
+  }
+
+  private static OntologyChangeSet nativeChangeSet() {
+    return new OntologyChangeSet()
+        .withOntology(new EntityReference().withId(UUID.randomUUID()).withType("ontology"));
+  }
+
+  private static OntologyChangeOperation axiomNeeding(final URI concept) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.UPSERT_AXIOM)
+        .withAxiom(new OntologyAxiom().withId(UUID.randomUUID()))
+        .withRequiresConceptIris(List.of(concept));
+  }
+
   @Test
   void rejectsAProposalWhoseSourceMemoryWasRetired() {
     final UUID glossaryId = UUID.randomUUID();

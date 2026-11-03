@@ -13,6 +13,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -523,6 +524,7 @@ public final class NativeOntologyRdfImporter {
     private final Map<String, Integer> idCounts = new HashMap<>();
     private final List<OntologyChangeOperation> operations = new ArrayList<>();
     private final List<NativeOntologyImportItem> items = new ArrayList<>();
+    private final Set<String> newConceptIris = new HashSet<>();
 
     private Plan(
         final Stored stored,
@@ -546,6 +548,10 @@ public final class NativeOntologyRdfImporter {
 
     private CreateOntologyChangeSet of(final Outcomes outcomes) {
       outcomes.concepts().forEach(outcome -> remember(outcome));
+      outcomes.concepts().stream()
+          .filter(Added.class::isInstance)
+          .forEach(
+              outcome -> newConceptIris.add(iriOf(((Added<OntologyConcept>) outcome).parsed())));
       outcomes.properties().forEach(outcome -> remember(outcome));
       outcomes.concepts().forEach(this::concept);
       outcomes.properties().forEach(this::property);
@@ -731,11 +737,15 @@ public final class NativeOntologyRdfImporter {
                               .toLowerCase(Locale.ROOT))
                   .withDescription("Imported from native " + family)
                   .withProvenance(RelationProvenance.IMPORTED);
+          final List<URI> needs = referencedNewConcepts(added.parsed());
           final OntologyChangeOperation operation =
-              operation(OntologyChangeOperationType.UPSERT_AXIOM, null).withAxiom(axiom);
+              operation(OntologyChangeOperationType.UPSERT_AXIOM, null)
+                  .withAxiom(axiom)
+                  .withRequiresConceptIris(needs.isEmpty() ? null : needs);
           operations.add(operation);
           items.add(
-              axiomItem(NativeOntologyImportItemStatus.NEW, added.parsed(), operation.getId()));
+              axiomItem(NativeOntologyImportItemStatus.NEW, added.parsed(), operation.getId())
+                  .withDependsOnIris(needs));
         }
         case Unchanged<OntologyAxiom> same -> items.add(
             axiomItem(NativeOntologyImportItemStatus.ALREADY_EXISTS, same.parsed(), null));
@@ -747,6 +757,34 @@ public final class NativeOntologyRdfImporter {
                 .withReason(DUPLICATE_REASON));
         case Updated<OntologyAxiom> ignored -> {}
       }
+    }
+
+    /** The concepts this import creates that the axiom states a fact about, in IRI order. */
+    private List<URI> referencedNewConcepts(final OntologyAxiom axiom) {
+      final Set<String> referenced = new TreeSet<>();
+      collectIris(axiom.getSubjectIri(), referenced);
+      collectIris(axiom.getTargetIri(), referenced);
+      listOrEmpty(axiom.getExpressions())
+          .forEach(expression -> collectIris(expression, referenced));
+      referenced.retainAll(newConceptIris);
+      return referenced.stream().map(URI::create).toList();
+    }
+
+    private static void collectIris(final URI iri, final Set<String> into) {
+      if (iri != null) {
+        into.add(iri.toString());
+      }
+    }
+
+    private static void collectIris(final OntologyExpression expression, final Set<String> into) {
+      if (expression == null) {
+        return;
+      }
+      collectIris(expression.getClassIri(), into);
+      collectIris(expression.getIndividualIri(), into);
+      listOrEmpty(expression.getIndividualIris()).forEach(iri -> collectIris(iri, into));
+      listOrEmpty(expression.getOperands()).forEach(operand -> collectIris(operand, into));
+      collectIris(expression.getFiller(), into);
     }
 
     /** Repeats of one id get a numbered suffix, so every id in a preview is unique. */

@@ -176,6 +176,81 @@ export const initialSelection = (
       .map(({ id }) => id)
   );
 
+/** The NEW concepts of the same import that an item states a fact about. */
+const requiredConcepts = (
+  items: readonly NativeOntologyImportItem[],
+  item: NativeOntologyImportItem
+) =>
+  (item.dependsOnIris ?? []).flatMap((iri) =>
+    items.filter(
+      (candidate) =>
+        candidate.kind === Kind.Concept &&
+        candidate.status === Status.New &&
+        candidate.iri === iri
+    )
+  );
+
+/** The unticked concept that blocks ticking this item, if any. */
+export const unmetRequirement = (
+  items: readonly NativeOntologyImportItem[],
+  selection: ReadonlySet<string>,
+  item: NativeOntologyImportItem
+) =>
+  requiredConcepts(items, item).find((concept) => !selection.has(concept.id));
+
+export interface UntickedDependents {
+  readonly name: string;
+  readonly relationships: number;
+  readonly rules: number;
+}
+
+/**
+ * Unticks `ids`, and with each concept the relationships and rules that
+ * state a fact about it, because applying one without the concept is refused.
+ * Ticking the concept again leaves them unticked.
+ */
+export const untickWithDependents = (
+  items: readonly NativeOntologyImportItem[],
+  selection: ReadonlySet<string>,
+  ids: readonly string[]
+): {
+  readonly selection: ReadonlySet<string>;
+  readonly notices: readonly UntickedDependents[];
+} => {
+  const next = new Set(selection);
+  const removed = new Set(ids);
+  removed.forEach((id) => next.delete(id));
+  const notices = items
+    .filter(
+      (item) =>
+        removed.has(item.id) &&
+        selection.has(item.id) &&
+        item.kind === Kind.Concept &&
+        item.iri
+    )
+    .flatMap((concept) => {
+      const dependents = items.filter(
+        (item) =>
+          next.has(item.id) && item.dependsOnIris?.includes(concept.iri ?? '')
+      );
+      dependents.forEach(({ id }) => next.delete(id));
+
+      return dependents.length === 0
+        ? []
+        : [
+            {
+              name: concept.label,
+              relationships: dependents.filter(
+                ({ kind }) => kind === Kind.Relationship
+              ).length,
+              rules: dependents.filter(({ kind }) => kind === Kind.Rule).length,
+            },
+          ];
+    });
+
+  return { selection: next, notices };
+};
+
 const reduceParse = (
   state: NativeImportState,
   action: Exclude<NativeImportAction, FileAction>

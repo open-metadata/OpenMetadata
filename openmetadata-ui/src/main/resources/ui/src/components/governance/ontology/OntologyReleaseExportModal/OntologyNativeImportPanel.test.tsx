@@ -727,3 +727,177 @@ describe('OntologyNativeImportPanel item review', () => {
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 });
+
+describe('OntologyNativeImportPanel dependents of an unticked concept', () => {
+  const ACCOUNT = 'concept:https://example.org/Account';
+  const LEDGER = 'concept:https://example.org/Ledger';
+  const LINK = 'axiom:aaaaaaaaaaaaaaaa';
+  const RULE = 'axiom:bbbbbbbbbbbbbbbb';
+  const itemSummary: NativeOntologyImportSummary = {
+    ...summary,
+    items: [
+      {
+        id: ACCOUNT,
+        kind: Kind.Concept,
+        label: 'Account',
+        iri: 'https://example.org/Account',
+        status: Status.New,
+        operationId: 'op-account',
+        conceptIds: [],
+      },
+      {
+        id: LEDGER,
+        kind: Kind.Concept,
+        label: 'Ledger',
+        iri: 'https://example.org/Ledger',
+        status: Status.New,
+        operationId: 'op-ledger',
+        conceptIds: [],
+      },
+      {
+        id: LINK,
+        kind: Kind.Relationship,
+        label: 'Ledger is a kind of Account',
+        iri: 'https://example.org/Ledger',
+        status: Status.New,
+        operationId: 'op-link',
+        dependsOnIris: [
+          'https://example.org/Account',
+          'https://example.org/Ledger',
+        ],
+        conceptIds: [],
+      },
+      {
+        id: RULE,
+        kind: Kind.Rule,
+        label: 'Account and Ledger are disjoint',
+        iri: 'https://example.org/Account',
+        status: Status.New,
+        operationId: 'op-rule',
+        dependsOnIris: [
+          'https://example.org/Account',
+          'https://example.org/Ledger',
+        ],
+        conceptIds: [],
+      },
+    ],
+  };
+  const check = (id: string) =>
+    within(
+      screen.getByTestId(`ontology-native-import-item-check-${id}`)
+    ).getByRole('checkbox');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (detectNativeOntologyImportFormat as jest.Mock).mockResolvedValue({
+      detectedFormat: 'turtle',
+    });
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: itemSummary,
+      changeSet: {
+        ...changeSet,
+        operations: ['op-account', 'op-ledger', 'op-link', 'op-rule'].map(
+          (id) => ({
+            id,
+            operationType: OperationType.UpsertConcept,
+            state: OperationState.Active,
+          })
+        ),
+      },
+    });
+    let stored = draft;
+    (createOntologyChangeSet as jest.Mock).mockImplementation(
+      async (request: CreateOntologyChangeSet) => {
+        stored = {
+          ...draft,
+          operations: request.operations,
+          undoCursor: request.undoCursor ?? 0,
+        };
+
+        return stored;
+      }
+    );
+    (getOntologyChangeSet as jest.Mock).mockImplementation(async () => stored);
+    (applyOntologyChangeSet as jest.Mock).mockImplementation(async () => ({
+      ...stored,
+      state: OntologyChangeSetState.Applied,
+    }));
+  });
+
+  it('unticks the relationship and rule that use the concept and says so', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    await user.click(check(ACCOUNT));
+
+    expect(check(LINK)).not.toBeChecked();
+    expect(check(RULE)).not.toBeChecked();
+    expect(check(LEDGER)).toBeChecked();
+    expect(
+      screen.getByTestId('ontology-native-import-unticked-notice')
+    ).toHaveTextContent(
+      'message.native-import-also-unticked-relationshipmessage.native-import-also-unticked-rule'
+    );
+    expect(
+      screen.getByTestId('ontology-native-import-apply')
+    ).toHaveTextContent('label.import-selected-count');
+  });
+
+  it('keeps them unticked and unavailable until the concept is ticked, then lets the user tick them', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+    await user.click(check(ACCOUNT));
+
+    expect(check(LINK)).toBeDisabled();
+    expect(
+      screen.getByTestId(`ontology-native-import-item-needs-${LINK}`)
+    ).toHaveTextContent('message.native-import-needs-concept');
+
+    await user.click(check(ACCOUNT));
+
+    expect(check(ACCOUNT)).toBeChecked();
+    expect(check(LINK)).not.toBeChecked();
+    expect(check(LINK)).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-native-import-unticked-notice')
+    ).not.toBeInTheDocument();
+
+    await user.click(check(LINK));
+
+    expect(check(LINK)).toBeChecked();
+  });
+
+  it('sends only the operations of what stays ticked', async () => {
+    const { onApplied } = renderPanel();
+    dropFile();
+    await parse();
+    await user.click(check(ACCOUNT));
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
+
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+
+    expect(
+      (createOntologyChangeSet as jest.Mock).mock.calls[0][0].operations.map(
+        ({ id }: { id: string }) => id
+      )
+    ).toEqual(['op-ledger']);
+  });
+
+  it('unticks the dependents of every concept when the concept group is unticked', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    await user.click(
+      within(
+        screen.getByTestId('ontology-native-import-group-check-CONCEPT')
+      ).getByRole('checkbox')
+    );
+
+    expect(check(LINK)).not.toBeChecked();
+    expect(check(RULE)).not.toBeChecked();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+});

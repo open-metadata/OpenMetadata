@@ -248,15 +248,104 @@ test.describe(
         await itemRow(page, 'Receipt')
           .locator('[data-testid^="ontology-native-import-item-check-"]')
           .click();
-        await page
-          .getByTestId('ontology-native-import-group-check-RELATIONSHIP')
-          .click();
         await expect(
           page.getByTestId('ontology-native-import-apply')
         ).toHaveText('Import 1 selected');
         await applyImport(page);
 
         expect(await conceptNames(api, ontology)).toEqual(['Invoice']);
+      } finally {
+        await remove(api, ontology.id);
+      }
+    });
+
+    test('unticking a concept also unticks the relationship that uses it and keeps it unticked', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const { api, ontology } = await createOntology(`pw_review_${uuid()}`);
+      const link = page
+        .getByTestId('ontology-native-import-group-RELATIONSHIP')
+        .getByTestId(/^ontology-native-import-item-axiom:/);
+      const linkCheck = link.getByRole('checkbox');
+
+      try {
+        await openImport(page, ontology);
+        await parseFile(page, 'billing.ttl', TURTLE(NS(ontology.name)));
+        await expect(
+          page.getByTestId('ontology-native-import-apply')
+        ).toHaveText('Import 4 selected');
+
+        await itemRow(page, 'Payment')
+          .locator('[data-testid^="ontology-native-import-item-check-"]')
+          .click();
+
+        await expect(
+          page.getByTestId('ontology-native-import-unticked-notice')
+        ).toHaveText('Also unticked 1 relationship that uses Payment');
+        await expect(linkCheck).not.toBeChecked();
+        await expect(linkCheck).toBeDisabled();
+        await expect(link).toContainText('Needs Payment, which is not ticked');
+        await expect(
+          page.getByTestId('ontology-native-import-apply')
+        ).toHaveText('Import 2 selected');
+
+        await itemRow(page, 'Payment')
+          .locator('[data-testid^="ontology-native-import-item-check-"]')
+          .click();
+
+        await expect(
+          page.getByTestId('ontology-native-import-unticked-notice')
+        ).toBeHidden();
+        await expect(linkCheck).not.toBeChecked();
+        await expect(linkCheck).toBeEnabled();
+        await expect(
+          page.getByTestId('ontology-native-import-apply')
+        ).toHaveText('Import 3 selected');
+        await applyImport(page);
+
+        expect(await conceptNames(api, ontology)).toEqual([
+          'Invoice',
+          'Payment',
+          'Receipt',
+        ]);
+        const axioms = await okJson<{
+          data: { ontology?: { id: string } }[];
+        }>(
+          await api.get('/api/v1/ontologyAxioms', {
+            params: { ontology: ontology.fullyQualifiedName, limit: 1000 },
+          }),
+          'List imported axioms'
+        );
+
+        expect(
+          axioms.data.filter((axiom) => axiom.ontology?.id === ontology.id)
+        ).toHaveLength(0);
+      } finally {
+        await remove(api, ontology.id);
+      }
+    });
+
+    test('a rule unticks with the concept it names', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const { api, ontology } = await createOntology(`pw_review_${uuid()}`);
+
+      try {
+        await openImport(page, ontology);
+        await parseFile(page, 'rules.ttl', RULES_TURTLE(NS(ontology.name)));
+
+        await itemRow(page, 'Invoice')
+          .locator('[data-testid^="ontology-native-import-item-check-"]')
+          .click();
+
+        await expect(
+          page.getByTestId('ontology-native-import-unticked-notice')
+        ).toHaveText('Also unticked 1 rule that uses Invoice');
+        await expect(
+          page.getByTestId('ontology-native-import-apply')
+        ).toHaveText('Import 2 selected');
       } finally {
         await remove(api, ontology.id);
       }
@@ -345,11 +434,25 @@ test.describe(
 
       try {
         await seedDraft(source.ontology, source.api);
+        await okJson(
+          await source.api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Settlement',
+              iri: `${NS(source.ontology.name)}c7f3a`,
+              ontology: source.ontology.fullyQualifiedName,
+              conceptType: 'OWL_CLASS',
+            },
+          }),
+          'Create a concept without a display name'
+        );
         const csv = await source.api.get(
           `/api/v1/ontologies/${source.ontology.id}/export`,
           { params: { format: 'csv' } }
         );
         expect(csv.ok()).toBeTruthy();
+        expect(await csv.text()).toContain(
+          `${NS(source.ontology.name)}c7f3a,Settlement,`
+        );
 
         await openImport(page, ontology);
         await chooseFile(page, 'billing.csv', await csv.text());
@@ -361,6 +464,7 @@ test.describe(
         await page.getByTestId('ontology-native-import-parse').click();
         await expect(itemRow(page, 'Invoice')).toContainText('New');
         await expect(itemRow(page, 'Receipt')).toContainText('New');
+        await expect(itemRow(page, 'Settlement')).toContainText('New');
 
         const create = page.waitForResponse(
           (response) =>
@@ -377,7 +481,7 @@ test.describe(
         expect(made.iri).toMatch(/^https:\/\//);
         await expect
           .poll(() => conceptNames(api, made))
-          .toEqual(['Invoice', 'Payment', 'Receipt']);
+          .toEqual(['Invoice', 'Payment', 'Receipt', 'Settlement']);
       } finally {
         for (const id of created) {
           await remove(api, id);
@@ -720,6 +824,47 @@ test.describe(
             '[data-testid^="ontology-native-import-item-warning-"]'
           )
         ).toHaveCount(0);
+      } finally {
+        await remove(api, ontology.id);
+      }
+    });
+
+    test('choosing an existing ontology as the target keeps the selected modules', async ({
+      isolatedUserPage: page,
+    }) => {
+      const { api, ontology } = await createOntology(`pw_mods_${uuid()}`);
+      const modules = page.locator('[data-testid^="ontology-module-"]');
+      const checkedModules = async () =>
+        Promise.all(
+          (await modules.all()).map(async (module) => [
+            await module.getAttribute('data-testid'),
+            await module.getByRole('checkbox').isChecked(),
+          ])
+        );
+
+      try {
+        await page.goto(`/governance/ontology?ontology=${ontology.id}`);
+        await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+        await page.getByTestId('ontology-library-trigger').click();
+        await page.getByTestId('ontology-pack-details-fibo').click();
+        await expect.poll(() => modules.count()).toBeGreaterThan(1);
+        await page.getByTestId('ontology-module-business-entities').click();
+        const initial = await checkedModules();
+
+        expect(initial).toEqual([
+          ['ontology-module-foundations', true],
+          ['ontology-module-business-entities', false],
+        ]);
+
+        await page.getByTestId('ontology-library-target').click();
+        await page
+          .getByRole('option', { name: new RegExp(ontology.name) })
+          .click();
+        await expect(
+          page.getByTestId('ontology-library-pack-review')
+        ).toBeVisible();
+
+        expect(await checkedModules()).toEqual(initial);
       } finally {
         await remove(api, ontology.id);
       }
