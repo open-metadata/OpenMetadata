@@ -244,6 +244,10 @@ const TeamUserSelectInput = ({
     if (!isDropdownOpen) {
       return undefined;
     }
+    const closeDropdown = () => {
+      setIsDropdownOpen(false);
+      setSearchText('');
+    };
     // Capture phase: a parent stopping propagation must not keep the picker open.
     const handleOutsidePointerDown = (e: PointerEvent) => {
       const target = e.target as Node;
@@ -251,18 +255,26 @@ const TeamUserSelectInput = ({
         !dropdownRef.current?.contains(target) &&
         !triggerRef.current?.contains(target)
       ) {
-        setIsDropdownOpen(false);
-        setSearchText('');
+        closeDropdown();
+      }
+    };
+    // On the document so Escape works from the search box, options or trigger.
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeDropdown();
       }
     };
     document.addEventListener('pointerdown', handleOutsidePointerDown, true);
+    document.addEventListener('keydown', handleEscape, true);
 
-    return () =>
+    return () => {
       document.removeEventListener(
         'pointerdown',
         handleOutsidePointerDown,
         true
       );
+      document.removeEventListener('keydown', handleEscape, true);
+    };
   }, [isDropdownOpen]);
 
   const optionsContent = isEmpty(options) ? (
@@ -352,12 +364,11 @@ const TeamUserSelectInput = ({
         isOpen={isDropdownOpen}
         placement="bottom left"
         triggerRef={triggerRef}
-        onOpenChange={(isOpen) => {
-          setIsDropdownOpen(isOpen);
-          if (!isOpen) {
-            setSearchText('');
-          }
-        }}>
+        // `isNonModal` makes react-aria close the popover on any ancestor scroll,
+        // so a drawer still settling after a destination is added closed the
+        // picker right after it opened. The listeners above own dismissal, so
+        // like core TreeSelect only react-aria's open request is honoured.
+        onOpenChange={(isOpen) => isOpen && setIsDropdownOpen(true)}>
         <div
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
           ref={focusDropdown}>
