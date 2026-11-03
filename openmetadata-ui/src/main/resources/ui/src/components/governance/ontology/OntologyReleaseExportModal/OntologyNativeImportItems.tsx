@@ -17,6 +17,7 @@ import {
   Checkbox,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   NativeOntologyImportItem,
@@ -27,6 +28,9 @@ import {
   itemsOfKind,
   NATIVE_IMPORT_ITEM_GROUPS,
   NATIVE_IMPORT_STATUS_LABEL_KEYS,
+  unmetRequirement,
+  UntickedDependents,
+  untickWithDependents,
 } from './OntologyNativeImportPanel.utils';
 
 interface OntologyNativeImportItemsProps {
@@ -44,18 +48,48 @@ const STATUS_BADGE_COLORS = {
   [Status.Update]: 'brand',
 } as const satisfies Record<Status, 'gray' | 'warning' | 'success' | 'brand'>;
 
-const withIds = (
+const withTicked = (
   selection: ReadonlySet<string>,
-  ids: readonly string[],
-  isSelected: boolean
-): ReadonlySet<string> => {
-  const next = new Set(selection);
-  ids.forEach((id) => (isSelected ? next.add(id) : next.delete(id)));
+  ids: readonly string[]
+): ReadonlySet<string> => new Set([...selection, ...ids]);
 
-  return next;
+const DependentsNotice = ({
+  notice,
+}: {
+  readonly notice: UntickedDependents;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {notice.relationships > 0 && (
+        <Typography color="secondary" size="text-sm">
+          {t('message.native-import-also-unticked-relationship', {
+            count: notice.relationships,
+            name: notice.name,
+          })}
+        </Typography>
+      )}
+      {notice.rules > 0 && (
+        <Typography color="secondary" size="text-sm">
+          {t('message.native-import-also-unticked-rule', {
+            count: notice.rules,
+            name: notice.name,
+          })}
+        </Typography>
+      )}
+    </>
+  );
 };
 
-const ItemNotes = ({ item }: { readonly item: NativeOntologyImportItem }) => {
+const ItemNotes = ({
+  blockedBy,
+  item,
+}: {
+  readonly blockedBy?: NativeOntologyImportItem;
+  readonly item: NativeOntologyImportItem;
+}) => {
+  const { t } = useTranslation();
   const note = item.reason ?? item.detail;
 
   return (
@@ -66,6 +100,14 @@ const ItemNotes = ({ item }: { readonly item: NativeOntologyImportItem }) => {
           data-testid={`ontology-native-import-item-note-${item.id}`}
           size="text-xs">
           {note}
+        </Typography>
+      )}
+      {blockedBy && (
+        <Typography
+          color="secondary"
+          data-testid={`ontology-native-import-item-needs-${item.id}`}
+          size="text-xs">
+          {t('message.native-import-needs-concept', { name: blockedBy.label })}
         </Typography>
       )}
       {item.warning && (
@@ -81,11 +123,13 @@ const ItemNotes = ({ item }: { readonly item: NativeOntologyImportItem }) => {
 };
 
 const ImportItemRow = ({
+  blockedBy,
   isDisabled,
   isSelected,
   item,
   onToggle,
 }: {
+  readonly blockedBy?: NativeOntologyImportItem;
   readonly isDisabled: boolean;
   readonly isSelected: boolean;
   readonly item: NativeOntologyImportItem;
@@ -103,13 +147,13 @@ const ImportItemRow = ({
           name: item.label,
         })}
         data-testid={`ontology-native-import-item-check-${item.id}`}
-        isDisabled={isDisabled || !isSelectableItem(item)}
+        isDisabled={isDisabled || !isSelectableItem(item) || Boolean(blockedBy)}
         isSelected={isSelected}
         onChange={onToggle}
       />
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
         <Typography className="tw:break-words">{item.label}</Typography>
-        <ItemNotes item={item} />
+        <ItemNotes blockedBy={blockedBy} item={item} />
       </Box>
       <Badge
         color={STATUS_BADGE_COLORS[item.status]}
@@ -127,8 +171,20 @@ const OntologyNativeImportItems = ({
   onSelectionChange,
 }: OntologyNativeImportItemsProps) => {
   const { t } = useTranslation();
+  const [notices, setNotices] = useState<readonly UntickedDependents[]>([]);
   const selectable = items.filter(isSelectableItem);
   const chosen = selectable.filter(({ id }) => selection.has(id)).length;
+  const change = (ids: readonly string[], isSelected: boolean) => {
+    if (isSelected) {
+      setNotices([]);
+      onSelectionChange(withTicked(selection, ids));
+
+      return;
+    }
+    const unticked = untickWithDependents(items, selection, ids);
+    setNotices(unticked.notices);
+    onSelectionChange(unticked.selection);
+  };
 
   return (
     <Box data-testid="ontology-native-import-items" direction="col" gap={4}>
@@ -147,7 +203,13 @@ const OntologyNativeImportItems = ({
           if (group.length === 0) {
             return null;
           }
-          const groupIds = group.filter(isSelectableItem).map(({ id }) => id);
+          const groupIds = group
+            .filter(
+              (item) =>
+                isSelectableItem(item) &&
+                !unmetRequirement(items, selection, item)
+            )
+            .map(({ id }) => id);
           const picked = groupIds.filter((id) => selection.has(id)).length;
 
           return (
@@ -162,25 +224,35 @@ const OntologyNativeImportItems = ({
                 isIndeterminate={picked > 0 && picked < groupIds.length}
                 isSelected={groupIds.length > 0 && picked === groupIds.length}
                 label={`${t(labelKey)} (${group.length})`}
-                onChange={(isSelected) =>
-                  onSelectionChange(withIds(selection, groupIds, isSelected))
-                }
+                onChange={(isSelected) => change(groupIds, isSelected)}
               />
               {group.map((item) => (
                 <ImportItemRow
+                  blockedBy={unmetRequirement(items, selection, item)}
                   isDisabled={isDisabled}
                   isSelected={selection.has(item.id)}
                   item={item}
                   key={item.id}
-                  onToggle={(isSelected) =>
-                    onSelectionChange(withIds(selection, [item.id], isSelected))
-                  }
+                  onToggle={(isSelected) => change([item.id], isSelected)}
                 />
               ))}
             </Box>
           );
         })}
       </Box>
+      {notices.length > 0 && (
+        <Box
+          data-testid="ontology-native-import-unticked-notice"
+          direction="col"
+          gap={1}>
+          {notices.map((notice) => (
+            <DependentsNotice
+              key={`${notice.name}-${notice.relationships}-${notice.rules}`}
+              notice={notice}
+            />
+          ))}
+        </Box>
+      )}
       <Typography
         color="secondary"
         data-testid="ontology-native-import-selection-summary"
