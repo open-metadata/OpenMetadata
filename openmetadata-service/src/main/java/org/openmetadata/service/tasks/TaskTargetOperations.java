@@ -79,6 +79,20 @@ public final class TaskTargetOperations {
     return operations;
   }
 
+  /**
+   * The operation each tag label in the given JSON-encoded label lists needs, as {@link
+   * #forTagLabels} works it out for a task.
+   */
+  public static Set<MetadataOperation> forEncodedTagLabels(List<String> encodedLabelLists) {
+    Set<MetadataOperation> operations = new LinkedHashSet<>();
+    encodedLabelLists.stream()
+        .flatMap(encoded -> readEncodedLabels(encoded).stream())
+        .map(JsonPatchUtils::mapTagToOperation)
+        .filter(Objects::nonNull)
+        .forEach(operations::add);
+    return operations;
+  }
+
   private static boolean isAnotherUser(EntityReference about, String userName) {
     return Entity.USER.equals(about.getType())
         && !userName.equals(about.getName())

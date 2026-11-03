@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -157,6 +158,17 @@ class TaskTargetOperationsTest {
             TaskEntityType.DescriptionUpdate,
             Map.of("tagsToAdd", List.of(classificationTag("Tier.Tier1"))));
     assertTrue(TaskTargetOperations.forTagLabels(task, null, null).isEmpty());
+  }
+
+  @Test
+  void everyLabelOfEveryEncodedListCounts() {
+    String filedWith = JsonUtils.pojoToJson(List.of(classificationTag("Tier.Tier1")));
+    String resolvedTo = JsonUtils.pojoToJson(List.of(glossaryTerm("Business.Revenue")));
+
+    assertEquals(
+        Set.of(MetadataOperation.EDIT_TIER, MetadataOperation.EDIT_GLOSSARY_TERMS),
+        TaskTargetOperations.forEncodedTagLabels(Arrays.asList(filedWith, resolvedTo, null)));
+    assertTrue(TaskTargetOperations.forEncodedTagLabels(List.of("not json", "")).isEmpty());
   }
 
   private static EntityReference about(String type, String name) {

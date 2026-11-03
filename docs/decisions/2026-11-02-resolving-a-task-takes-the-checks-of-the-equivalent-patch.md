@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-02 (initial)
 - **Deciders:** yan-3005
-- **Guard:** `TaskTargetOperationsTest`, `TaskTagTargetTest`, `TaskResourceIT#testDescriptionTaskAboutAnotherUserNeedsEditAllOnThatUser`, `TaskResourceIT#testResolvePayloadNamingDifferentAssigneesNeedsReassignTask`, `TaskResourceIT#testFilingAnApprovalTaskAboutAnEntityNeedsEditAllOnIt`, `TaskResourceIT#testTagTaskFieldMustBeATaggedFieldOfItsEntity`, `TaskResourceIT#testTaskTypeIsRefusedAndWorkflowBindingIsKeptOnPatch`, `FeedResourceIT#put_resolveDescriptionTaskAboutAnotherUser_needsEditAllOnThatUser`
+- **Guard:** `TaskTargetOperationsTest`, `TaskTagTargetTest`, `TaskResourceIT#testDescriptionTaskAboutAnotherUserNeedsEditAllOnThatUser`, `TaskResourceIT#testResolvePayloadNamingDifferentAssigneesNeedsReassignTask`, `TaskResourceIT#testFilingAnApprovalTaskAboutAnEntityNeedsEditAllOnIt`, `TaskResourceIT#testTagTaskFieldMustBeATaggedFieldOfItsEntity`, `TaskResourceIT#testTaskTypeIsRefusedAndWorkflowBindingIsKeptOnPatch`, `FeedResourceIT#put_resolveDescriptionTaskAboutAnotherUser_needsEditAllOnThatUser`, `FeedTaskAuthzIT#put_resolveAsTeamAssignee_needsWhatAnAssigneeNeeds`, `FeedTaskAuthzIT#put_resolveTagTask_needsTheOperationOfEachLabel`
 - **Related:** `TaskTargetOperations`, `TaskTagTarget`, `TaskResource`, `FeedRepository`
 
 ## Context
@@ -33,8 +33,9 @@ alone, so the two routes to one write could require different rights.
 - PATCH refuses a change to a task's `type` or `category`, and keeps the workflow instance the task
   belongs to.
 - A description or tag task thread resolved through `/v1/feed/tasks/{id}/resolve` takes the same
-  entity-level operation from its assignee: `EditAll` for another user's profile, otherwise the
-  entity type's operation for the field.
+  checks from its assignee, whether assigned directly or through a team: `EditAll` for another
+  user's profile, otherwise the entity type's operation for the field, and for a tag task the
+  operation of each label in the value it was filed with and the value it is resolved to.
 
 ## Consequences
 

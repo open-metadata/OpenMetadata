@@ -31,6 +31,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.CreateTaskDetails;
 import org.openmetadata.schema.api.feed.CreateThread;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -47,9 +48,12 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.JsonDiff;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
@@ -128,6 +132,124 @@ public class FeedTaskAuthzIT {
         "User with DENY EditTask must not patch task threads");
   }
 
+  @Test
+  void put_resolveAsTeamAssignee_needsWhatAnAssigneeNeeds(TestNamespace ns) throws Exception {
+    RestrictedUser member =
+        createRestrictedUser("teamAssignee", MetadataOperation.EDIT_GLOSSARY_TERMS);
+    User profileOwner = createProfileOwner();
+    Thread profileTask =
+        createDescriptionTask(
+            String.format("<#E::user::%s::description>", profileOwner.getFullyQualifiedName()),
+            member.team().getEntityReference());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> resolve(member.client(), profileTask, "Profile text from a task"),
+        "A team assignee needs EditAll on another user's profile, as a user assignee does");
+    assertEquals(
+        "Original profile text",
+        SdkClients.adminClient().users().get(profileOwner.getId().toString()).getDescription());
+
+    Table table = createTestTable(ns);
+    Thread tableTask =
+        createDescriptionTask(
+            String.format("<#E::table::%s::description>", table.getFullyQualifiedName()),
+            member.team().getEntityReference());
+    resolve(member.client(), tableTask, "Table text from a task");
+    assertEquals(TaskStatus.Closed, getTask(tableTask).getTask().getStatus());
+  }
+
+  @Test
+  void put_resolveTagTask_needsTheOperationOfEachLabel(TestNamespace ns) throws Exception {
+    RestrictedUser assignee =
+        createRestrictedUser("tagLabels", MetadataOperation.EDIT_GLOSSARY_TERMS);
+    Table table = createTestTable(ns);
+    TagLabel classificationTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    TagLabel glossaryTerm =
+        new TagLabel()
+            .withTagFQN("%s.term".formatted(ns.prefix("glossary")))
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    Thread tagTask =
+        createThreadAsAdmin(
+            new CreateThread()
+                .withMessage("Please update tags")
+                .withAbout(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+                .withType(ThreadType.Task)
+                .withTaskDetails(
+                    new CreateTaskDetails()
+                        .withType(TaskType.RequestTag)
+                        .withAssignees(List.of(assignee.user().getEntityReference()))
+                        .withOldValue("[]")
+                        .withSuggestion(JsonUtils.pojoToJson(List.of(classificationTag)))));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> resolve(assignee.client(), tagTask, JsonUtils.pojoToJson(List.of(glossaryTerm))),
+        "Applying a glossary term needs EditGlossaryTerms, as a PATCH of the same change does");
+    assertEquals(TaskStatus.Open, getTask(tagTask).getTask().getStatus());
+
+    resolve(assignee.client(), tagTask, JsonUtils.pojoToJson(List.of(classificationTag)));
+    assertEquals(TaskStatus.Closed, getTask(tagTask).getTask().getStatus());
+  }
+
+  private User createProfileOwner() {
+    String userName = "profileowner_" + UUID.randomUUID().toString().substring(0, 8);
+    return SdkClients.adminClient()
+        .users()
+        .create(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@test.om.org")
+                .withDescription("Original profile text"));
+  }
+
+  private Thread createDescriptionTask(String about, EntityReference assignee) throws Exception {
+    return createThreadAsAdmin(
+        new CreateThread()
+            .withMessage("Please update description")
+            .withAbout(about)
+            .withType(ThreadType.Task)
+            .withTaskDetails(
+                new CreateTaskDetails()
+                    .withType(TaskType.UpdateDescription)
+                    .withAssignees(List.of(assignee))
+                    .withOldValue("old description")
+                    .withSuggestion("new description")));
+  }
+
+  private Thread createThreadAsAdmin(CreateThread create) throws Exception {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.POST, "/v1/feed", create, Thread.class);
+  }
+
+  private void resolve(OpenMetadataClient client, Thread task, String newValue) throws Exception {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/feed/tasks/%d/resolve".formatted(task.getTask().getId()),
+            new ResolveTask().withNewValue(newValue),
+            Thread.class);
+  }
+
+  private Thread getTask(Thread task) throws Exception {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/feed/tasks/%d".formatted(task.getTask().getId()),
+            null,
+            Thread.class);
+  }
+
   private Thread createTaskAsAdmin(Table table, String message) throws Exception {
     String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
     return SdkClients.adminClient()
@@ -160,7 +282,13 @@ public class FeedTaskAuthzIT {
         .execute(HttpMethod.PATCH, "/v1/feed/" + threadId, patch, Thread.class);
   }
 
+  private record RestrictedUser(OpenMetadataClient client, User user, Team team) {}
+
   private OpenMetadataClient createUserWithDenyRule(String label, MetadataOperation deniedOp) {
+    return createRestrictedUser(label, deniedOp).client();
+  }
+
+  private RestrictedUser createRestrictedUser(String label, MetadataOperation deniedOp) {
     OpenMetadataClient admin = SdkClients.adminClient();
     String shortId = UUID.randomUUID().toString().substring(0, 8);
     String prefix = "fta_" + label + "_" + shortId;
@@ -196,9 +324,9 @@ public class FeedTaskAuthzIT {
     createUser.setName(userName);
     createUser.setEmail(email);
     createUser.setTeams(List.of(team.getId()));
-    admin.users().create(createUser);
+    User user = admin.users().create(createUser);
 
-    return SdkClients.createClient(email, email, new String[] {});
+    return new RestrictedUser(SdkClients.createClient(email, email, new String[] {}), user, team);
   }
 
   private Table createTestTable(TestNamespace ns) throws Exception {
