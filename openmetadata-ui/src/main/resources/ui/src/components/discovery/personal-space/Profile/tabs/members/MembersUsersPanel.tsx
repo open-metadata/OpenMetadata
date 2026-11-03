@@ -189,26 +189,33 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [pageSize, isAdmin, showDeleted, setPaging]
   );
 
+  // Writing an unchanged page to the hash is not free: it is a navigation.
+  const resetToFirstPage = useCallback(() => {
+    if (currentPage !== INITIAL_PAGING_VALUE) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+    }
+  }, [currentPage, handlePageChange]);
+
   const handleSearch = useCallback(
     (value: string) => {
       setSearchValue(value);
-      handlePageChange(INITIAL_PAGING_VALUE);
+      resetToFirstPage();
       if (value) {
         void searchUsers(value);
       } else {
         void fetchUsers();
       }
     },
-    [handlePageChange, fetchUsers, searchUsers]
+    [resetToFirstPage, fetchUsers, searchUsers]
   );
 
   const handleShowDeletedChange = useCallback(
     (checked: boolean) => {
       setShowDeleted(checked);
-      handlePageChange(INITIAL_PAGING_VALUE);
+      resetToFirstPage();
       setSearchValue('');
     },
-    [handlePageChange]
+    [resetToFirstPage]
   );
 
   const handlePageNavigation = ({
@@ -265,9 +272,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   };
 
   useEffect(() => {
-    if (currentPage !== INITIAL_PAGING_VALUE) {
-      handlePageChange(INITIAL_PAGING_VALUE);
-    }
+    resetToFirstPage();
     refetchUsers.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on size/deleted only
   }, [pageSize, showDeleted]);
