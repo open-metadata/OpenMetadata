@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial)
 - **Deciders:** Mohit Yadav
-- **Guard:** `UserResourceIT.test_selfDelete_forbiddenForNonAdmin`
+- **Guard:** `UserResourceIT` (`test_selfDelete_forbiddenForNonAdmin`,
+  `test_selfDeleteByQuotedName_forbiddenForNonAdmin`)
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
@@ -14,8 +15,9 @@ deny roles and team memberships that bound it.
 
 ## Decision
 Each delete endpoint checks first: if the target is the caller, it requires an admin. Deleting another
-user is unchanged (still the usual authorization). The by-name endpoint compares the caller's principal
-to the requested name.
+user is unchanged (still the usual authorization). The by-name endpoint resolves the name as the delete
+does, quoting and unquoting included, and compares that account's id with the caller's: `"john.doe"`
+and `"john"` name the same accounts as `john.doe` and `john`.
 
 ## Consequences
 Self-service account deletion is not available to non-admins. If it is wanted later, allow only the

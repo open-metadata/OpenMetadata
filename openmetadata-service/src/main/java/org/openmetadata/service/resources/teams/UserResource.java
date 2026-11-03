@@ -97,6 +97,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
@@ -971,13 +972,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     if (existingUser != null && !mayChangeAdminFlag(securityContext, containerRequestContext)) {
       // A PUT carries the whole user, so a non-admin keeps the stored privileged fields: the admin
-      // and bot flags, and the roles when the request omits them. A request that changes the roles
-      // was already refused above (grantsPrivileges).
+      // and bot flags, and the roles and teams when the request omits them. A request that changes
+      // the roles or a closed team's membership was already refused above (grantsPrivileges).
       User stored = loadPrivilegedFields(existingUser);
       user.setIsAdmin(existingUser.getIsAdmin());
       user.setIsBot(stored.getIsBot());
       if (nullOrEmpty(create.getRoles())) {
         user.setRoles(stored.getRoles());
+      }
+      if (nullOrEmpty(create.getTeams())) {
+        user.setTeams(stored.getTeams());
       }
     }
     PutResponse<User> response =
@@ -1002,9 +1006,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
+  // The name is resolved as the delete resolves it, quoting and unquoting included, so the check
+  // compares accounts rather than spellings of a name.
   private void authorizeSelfDeleteByName(SecurityContext securityContext, String name) {
-    if (sameIdentifier(securityContext.getUserPrincipal().getName(), name)) {
-      authorizer.authorizeAdmin(securityContext);
+    User target = repository.findByNameOrNull(name, ALL);
+    if (target != null) {
+      authorizeSelfDelete(securityContext, target.getId());
     }
   }
 
@@ -1310,9 +1317,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       if (!isSelf && locations.stream().anyMatch(l -> l.startsWith("/defaultDomain"))) {
         throw new AuthorizationException("Users can only update their own default domain");
       }
-      // A team reference copied or moved into the teams skips the joinable check below.
-      if (locations.stream().anyMatch(UserResource::isPrivilegedUserPatchPath)
-          || (copiesValue && path.startsWith("/" + TEAMS_FIELD))) {
+      if (locations.stream().anyMatch(UserResource::isPrivilegedUserPatchPath)) {
         authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
         continue;
       }
@@ -1321,7 +1326,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
         if (!isSelf && locations.stream().anyMatch(l -> l.startsWith("/personaPreferences"))) {
           throw new AuthorizationException("Users can only update their own persona preferences");
         }
-        // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
             && patchOpObject.getString("op").equals("add")
             && path.startsWith("/teams/")) {
@@ -1332,15 +1336,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
             // ignore exception if value is not an object
           }
           if (value != null) {
-            String teamId = value.getString("id");
-            repository.validateTeamAddition(id, UUID.fromString(teamId));
-            if (!repository.isTeamJoinable(teamId)) {
-              // Only admin can join closed teams
-              authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
-            }
+            repository.validateTeamAddition(id, UUID.fromString(value.getString("id")));
           }
         }
       }
+    }
+    if (JsonUtils.extractPatchedFields(patch).contains(TEAMS_FIELD)) {
+      authorizeTeamChangesByPatch(securityContext, containerRequestContext, id, patch);
     }
     return withRedactedEntity(
         patchInternal(uriInfo, securityContext, id, patch),
@@ -1384,7 +1386,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // or a domain - nothing else can be an elevation.
     User currentUser = loadPrivilegedFields(existingUser);
     return changesRoles(currentUser, updatedUser)
-        || joinsClosedTeam(currentUser, create.getTeams())
+        || changesClosedTeamMembership(currentUser, create.getTeams())
         || hasDomainElevation(currentUser, updatedUser);
   }
 
@@ -1429,13 +1431,42 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   // Members of a team hold the team's defaultRoles as inherited roles and are governed by its
   // policies, so joining a team that is not open to everyone grants privileges the same way naming
-  // a role does. PATCH has always required an admin for it. Teams the user is already in are
-  // dropped first so the joinable lookup only runs for the ones actually being added.
-  private boolean joinsClosedTeam(User currentUser, List<UUID> requestedTeamIds) {
+  // a role does, and leaving one sheds them, deny rules included, the way dropping a role does.
+  // Only the teams that change are looked up. Every user belongs to the organization, which is
+  // never left.
+  private boolean changesClosedTeamMembership(User currentUser, List<UUID> requestedTeamIds) {
     Set<UUID> currentTeamIds = currentUser == null ? Set.of() : entityIds(currentUser.getTeams());
-    return listOrEmpty(requestedTeamIds).stream()
-        .filter(teamId -> !currentTeamIds.contains(teamId))
-        .anyMatch(this::isClosedTeam);
+    Set<UUID> requested = new HashSet<>(listOrEmpty(requestedTeamIds));
+    Stream<UUID> joined = requested.stream().filter(teamId -> !currentTeamIds.contains(teamId));
+    Stream<UUID> left =
+        currentTeamIds.stream()
+            .filter(teamId -> !requested.contains(teamId) && !isOrganization(teamId));
+    return Stream.concat(joined, left).anyMatch(this::isClosedTeam);
+  }
+
+  private static boolean isOrganization(UUID teamId) {
+    return teamId.equals(
+        Entity.getEntityReferenceByName(Entity.TEAM, Entity.ORGANIZATION_NAME, ALL).getId());
+  }
+
+  // Decided on the teams the patched user is left in, not on each operation's shape: a replace, a
+  // write of the whole list or of one reference's id changes a membership as surely as an add or a
+  // remove. The user is loaded with the fields the PATCH itself loads, so the operations apply here
+  // as they will there.
+  private void authorizeTeamChangesByPatch(
+      SecurityContext securityContext,
+      ContainerRequestContext requestContext,
+      UUID id,
+      JsonPatch patch) {
+    User stored = repository.get(null, id, repository.getPatchFields(), Include.NON_DELETED, false);
+    List<UUID> patchedTeamIds =
+        listOrEmpty(JsonUtils.applyPatch(stored, patch, User.class).getTeams()).stream()
+            .map(EntityReference::getId)
+            .filter(Objects::nonNull)
+            .toList();
+    if (changesClosedTeamMembership(stored, patchedTeamIds)) {
+      authorizeAdminForPrivilegedFields(securityContext, requestContext);
+    }
   }
 
   private boolean isClosedTeam(UUID teamId) {
@@ -1448,7 +1479,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Boolean.TRUE.equals(create.getIsAdmin())
         || Boolean.TRUE.equals(create.getIsBot())
         || grantsRolesFromRequestBody(create)
-        || joinsClosedTeam(null, create.getTeams())
+        || changesClosedTeamMembership(null, create.getTeams())
         || !nullOrEmpty(create.getDomains());
   }
 
@@ -1484,7 +1515,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private static boolean isImpersonated(ContainerRequestContext requestContext) {
+  static boolean isImpersonated(ContainerRequestContext requestContext) {
     return requestContext.getSecurityContext()
             instanceof CatalogSecurityContext catalogSecurityContext
         && catalogSecurityContext.impersonatedUser() != null;

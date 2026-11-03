@@ -40,6 +40,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -50,6 +51,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -75,13 +77,16 @@ import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonPatchUtils;
 
 @Slf4j
 @Path("/v1/teams")
@@ -98,6 +103,10 @@ import org.openmetadata.service.util.EntityUtil.Fields;
     requiredForOps = true) // Load after roles, and policy resources
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
+  private static final String IMPERSONATED_GRANT_CHANGE =
+      "Impersonated requests cannot change a team's default roles or policies";
+  private static final String GRANT_FIELDS = "defaultRoles,policies";
+  private static final List<String> GRANT_POINTERS = List.of("/defaultRoles", "/policies");
   private final TeamMapper mapper = new TeamMapper();
   static final String FIELDS =
       "owners,profile,users,owns,defaultRoles,defaultPersona,parents,children,descendantTeams,policies,userCount,childrenCount,domains,extension";
@@ -458,8 +467,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
+      @Valid CreateTeam ct) {
     Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
+    rejectImpersonatedGrant(containerRequestContext, team);
     return create(uriInfo, securityContext, team);
   }
 
@@ -479,8 +492,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
+      @Valid CreateTeam ct) {
     Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
+    rejectImpersonatedGrant(containerRequestContext, team);
     return createOrUpdate(uriInfo, securityContext, team);
   }
 
@@ -654,6 +671,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @RequestBody(
@@ -665,6 +683,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    rejectImpersonatedGrant(containerRequestContext, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -682,6 +701,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Parameter(description = "Name of the team", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
@@ -694,6 +714,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    rejectImpersonatedGrant(containerRequestContext, patch);
     return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
@@ -848,6 +869,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @PUT
   @Path("/name/{name}/import")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
@@ -941,6 +963,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @PUT
   @Path("/name/{name}/importAsync")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
@@ -992,6 +1015,51 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         getResourceContext());
     java.util.Map<String, Integer> result = repository.getAllTeamsWithAssetsCount(securityContext);
     return Response.ok(result).build();
+  }
+
+  /**
+   * Members hold a team's default roles and are governed by its policies, so an impersonated
+   * request may not change either: the grant would outlive the request
+   * (ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges). A PATCH is
+   * judged by the locations it touches.
+   */
+  private static void rejectImpersonatedGrant(
+      ContainerRequestContext requestContext, JsonPatch patch) {
+    if (UserResource.isImpersonated(requestContext)
+        && JsonPatchUtils.touchedLocations(patch).stream()
+            .anyMatch(TeamResource::isGrantLocation)) {
+      throw new AuthorizationException(IMPERSONATED_GRANT_CHANGE);
+    }
+  }
+
+  /** A create or a PUT is judged against the stored team, when there is one. */
+  private void rejectImpersonatedGrant(ContainerRequestContext requestContext, Team written) {
+    if (UserResource.isImpersonated(requestContext)
+        && changesGrants(storedGrants(written.getName()), written)) {
+      throw new AuthorizationException(IMPERSONATED_GRANT_CHANGE);
+    }
+  }
+
+  private static boolean isGrantLocation(String location) {
+    return GRANT_POINTERS.stream()
+        .anyMatch(pointer -> JsonPatchUtils.isAtOrUnder(location, pointer));
+  }
+
+  private Team storedGrants(String name) {
+    Team stored = repository.findByNameOrNull(name, Include.ALL);
+    return stored == null
+        ? new Team()
+        : repository.get(
+            null, stored.getId(), repository.getFields(GRANT_FIELDS), Include.ALL, false);
+  }
+
+  private static boolean changesGrants(Team stored, Team written) {
+    return !referenceIds(stored.getDefaultRoles()).equals(referenceIds(written.getDefaultRoles()))
+        || !referenceIds(stored.getPolicies()).equals(referenceIds(written.getPolicies()));
+  }
+
+  private static Set<UUID> referenceIds(List<EntityReference> references) {
+    return listOrEmpty(references).stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   @Override

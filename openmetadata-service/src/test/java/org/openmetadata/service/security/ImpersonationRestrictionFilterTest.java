@@ -25,6 +25,7 @@ import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.resources.scim.ScimResource;
 import org.openmetadata.service.resources.system.SystemResource;
 import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -81,6 +82,13 @@ class ImpersonationRestrictionFilterTest {
       assertFalse(writes.isEmpty(), resource.getSimpleName());
       assertEquals(writes, identityEndpoints(resource), resource.getSimpleName());
     }
+  }
+
+  @Test
+  void teamImportsAreBoundToTheFilter() {
+    // A team CSV row sets the team's default roles and policies, and the async import runs where
+    // the request's impersonation cannot be seen, so an impersonated import is refused whole.
+    assertEquals(Set.of("importCsv", "importCsvAsync"), identityEndpoints(TeamResource.class));
   }
 
   @Test
