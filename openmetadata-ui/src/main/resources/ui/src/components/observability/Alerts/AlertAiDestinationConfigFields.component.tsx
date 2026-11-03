@@ -236,7 +236,7 @@ const TeamUserSelectInput = ({
   const focusDropdown = useCallback((element: HTMLDivElement | null) => {
     dropdownRef.current = element;
     // The portal can mount after the open-state change; focusing without scrolling keeps
-    // an ancestor scroll from dismissing the non-modal popover.
+    // the drawer from jumping when the picker opens.
     element?.querySelector('input')?.focus({ preventScroll: true });
   }, []);
 
@@ -258,23 +258,34 @@ const TeamUserSelectInput = ({
         closeDropdown();
       }
     };
-    // On the document so Escape works from the search box, options or trigger.
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    // react-aria's close-on-scroll is ignored below, so close on a scroll the user
+    // starts outside the picker; otherwise the portalled popover would stay put
+    // while the form moves under it. Programmatic settling scrolls fire neither event.
+    const handleOutsideUserScroll = (e: Event) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) {
         closeDropdown();
       }
     };
-    document.addEventListener('pointerdown', handleOutsidePointerDown, true);
-    document.addEventListener('keydown', handleEscape, true);
-
-    return () => {
-      document.removeEventListener(
-        'pointerdown',
-        handleOutsidePointerDown,
-        true
-      );
-      document.removeEventListener('keydown', handleEscape, true);
+    // On the document so Escape works from the search box, options or trigger.
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.isComposing) {
+        closeDropdown();
+      }
     };
+    const listeners: [string, EventListener][] = [
+      ['pointerdown', handleOutsidePointerDown as EventListener],
+      ['wheel', handleOutsideUserScroll],
+      ['touchmove', handleOutsideUserScroll],
+      ['keydown', handleEscape as EventListener],
+    ];
+    listeners.forEach(([type, listener]) =>
+      document.addEventListener(type, listener, true)
+    );
+
+    return () =>
+      listeners.forEach(([type, listener]) =>
+        document.removeEventListener(type, listener, true)
+      );
   }, [isDropdownOpen]);
 
   const optionsContent = isEmpty(options) ? (

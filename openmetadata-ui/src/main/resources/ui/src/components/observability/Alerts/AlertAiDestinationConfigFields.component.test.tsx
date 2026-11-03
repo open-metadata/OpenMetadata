@@ -79,6 +79,28 @@ describe('AlertAiDestinationConfigFields team/user picker', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('keeps the search when Escape ends an IME composition', () => {
+    renderOpenPicker();
+
+    fireEvent.keyDown(document, { isComposing: true, key: 'Escape' });
+
+    expect(screen.getByTestId('team-user-search-input-0')).toBeInTheDocument();
+  });
+
+  it('closes when the user scrolls the form, not when they scroll the options', () => {
+    renderOpenPicker();
+
+    fireEvent.wheel(screen.getByTestId('team-user-select-dropdown-0'));
+
+    expect(screen.getByTestId('team-user-search-input-0')).toBeInTheDocument();
+
+    fireEvent.wheel(screen.getByTestId('scroll-container'));
+
+    expect(
+      screen.queryByTestId('team-user-search-input-0')
+    ).not.toBeInTheDocument();
+  });
+
   it('closes on a pointer press outside the picker', () => {
     renderOpenPicker();
 
