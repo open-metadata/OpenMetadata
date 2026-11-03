@@ -188,10 +188,49 @@ const NavigateTo = ({ to }: { to: string }) => {
   );
 };
 
+const NavigateBack = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button data-testid="navigate-back" onClick={() => navigate(-1)}>
+      Back
+    </button>
+  );
+};
+
 describe('ContextCenterDocumentsPage — previewed document', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetResourcePermission.mockResolvedValue({});
+  });
+
+  it('closes the preview when Back returns to the documents list', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          '/context-center/documents',
+          '/context-center/documents?document=file-1',
+        ]}>
+        <ContextCenterDocumentsPage />
+        <NavigateBack />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByTestId('document-preview-panel')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('navigate-back'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('document-preview-panel')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-preview-file-id',
+        ''
+      );
+    });
   });
 
   // A memory previewed from a document can link the copy it was reused from; the page stays mounted.
