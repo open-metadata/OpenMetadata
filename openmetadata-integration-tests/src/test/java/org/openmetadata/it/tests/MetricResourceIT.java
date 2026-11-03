@@ -1398,7 +1398,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
     restoreEntity(parent.getId().toString());
 
-    assertFalse(getEntityIncludeDeleted(child.getId().toString()).getDeleted());
+    assertFalse(getEntity(child.getId().toString()).getDeleted());
     assertEquals(1, getWithHierarchy(parent).getChildrenCount());
   }
 
