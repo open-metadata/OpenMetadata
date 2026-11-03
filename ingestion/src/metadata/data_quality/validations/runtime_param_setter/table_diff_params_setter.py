@@ -35,7 +35,7 @@ from metadata.data_quality.validations.runtime_param_setter.base_diff_params_set
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
-from metadata.generated.schema.entity.data.table import Constraint, Table
+from metadata.generated.schema.entity.data.table import Constraint, Table, TableType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.tests.testCase import TestCase
@@ -91,6 +91,8 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         self.get_service_url = service_url_getter
 
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
+        if self.table_entity.tableType == TableType.Sharded:
+            raise ValueError("Data diff is not supported for sharded tables yet")
         if self.table_entity.service is None:
             raise ValueError("Table service must be set")
         service1_id = require_entity_reference_id(self.table_entity.service, "Table service")
@@ -106,6 +108,8 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         table2: Table = self.ometa_client.get_by_name(Table, fqn=table2_fqn, nullable=False)
         if table2.service is None:
             raise ValueError("Table2 service must be set")
+        if table2.tableType == TableType.Sharded:
+            raise ValueError("Data diff is not supported for sharded tables yet")
         service2_id = require_entity_reference_id(table2.service, "Table2 service")
         service2 = cast(
             "DatabaseService",

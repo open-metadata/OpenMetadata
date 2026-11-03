@@ -24,6 +24,7 @@ public class TestCaseResultMapper
         .withTestCaseStatus(create.getTestCaseStatus())
         .withResult(create.getResult())
         .withSampleData(create.getSampleData())
+        .withEvaluationScope(create.getEvaluationScope())
         .withTestResultValue(create.getTestResultValue())
         .withPassedRows(create.getPassedRows())
         .withFailedRows(create.getFailedRows())

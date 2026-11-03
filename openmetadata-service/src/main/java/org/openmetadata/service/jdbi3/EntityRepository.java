@@ -276,6 +276,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
+import org.openmetadata.service.util.LifeCycles;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.PostCommitActionQueue;
@@ -3037,6 +3038,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final void prepareInternal(T entity, boolean update) {
     validateTags(entity);
+    entity.setLifeCycle(LifeCycles.withoutPlaceholderTimestamps(entity.getLifeCycle()));
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
@@ -4476,6 +4478,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
+
+    updated.setLifeCycle(
+        LifeCycles.withoutPlaceholderTimestamps(updated.getLifeCycle(), original.getLifeCycle()));
 
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
@@ -10050,7 +10055,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (origLifeCycle.getCreated() != null
             && (updatedLifeCycle.getCreated() == null
                 || updatedLifeCycle.getCreated().getTimestamp()
-                    < origLifeCycle.getCreated().getTimestamp())) {
+                    > origLifeCycle.getCreated().getTimestamp())) {
           updatedLifeCycle.setCreated(origLifeCycle.getCreated());
         }
 

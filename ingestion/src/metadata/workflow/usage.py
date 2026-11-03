@@ -14,6 +14,7 @@ Usage Workflow Definition
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import BulkSink, Processor, Source, Stage
+from metadata.ingestion.bulksink.metadata_usage import MetadataUsageBulkSink
 from metadata.utils.importer import (
     import_bulk_sink_type,
     import_processor_class,
@@ -87,6 +88,11 @@ class UsageWorkflow(IngestionWorkflow):
         bulk_sink_class = import_bulk_sink_type(bulk_sink_type=bulk_sink_type)
         bulk_sink_config = self.config.bulkSink.model_dump().get("config", {})
         bulk_sink: BulkSink = bulk_sink_class.create(bulk_sink_config, self.metadata)
-        logger.info(f"BulkSink type:{self.config.bulkSink.type},{bulk_sink_class} configured")
+        if isinstance(bulk_sink, MetadataUsageBulkSink) and self.config.source.serviceName:
+            connection = self.config.source.serviceConnection
+            if connection is None or connection.root.config is None or connection.root.config.type is None:
+                raise WorkflowExecutionError("A service connection type is required for usage table resolution")
+            bulk_sink.table_service_types = {self.config.source.serviceName: connection.root.config.type.value}
+        logger.info("BulkSink type:%s,%s configured", bulk_sink_type, bulk_sink_class)
 
         return bulk_sink

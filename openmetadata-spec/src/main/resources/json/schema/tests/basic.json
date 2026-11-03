@@ -90,7 +90,12 @@
       "description": "Status of Test Case run.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseStatus",
       "type": "string",
-      "enum": ["Success", "Failed", "Aborted", "Queued"],
+      "enum": [
+        "Success",
+        "Failed",
+        "Aborted",
+        "Queued"
+      ],
       "javaEnums": [
         {
           "name": "Success"
@@ -109,7 +114,9 @@
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
-      "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EntityTimeSeriesInterface"
+      ],
       "type": "object",
       "properties": {
         "id": {
@@ -186,15 +193,35 @@
           "items": {
             "$ref": "#/definitions/testCaseDimensionResult"
           }
+        },
+        "evaluationScope": {
+          "$ref": "#/definitions/testCaseEvaluationScope"
         }
       },
-      "required": ["timestamp"]
+      "required": [
+        "timestamp"
+      ]
+    },
+    "testCaseEvaluationScope": {
+      "description": "Physical execution source of a test case run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseEvaluationScope",
+      "type": "object",
+      "properties": {
+        "executionSource": {
+          "$ref": "../type/tableExecutionSource.json"
+        }
+      },
+      "additionalProperties": false
     },
     "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",
       "javaType": "org.openmetadata.schema.tests.type.TestSuiteExecutionFrequency",
       "type": "string",
-      "enum": ["Hourly", "Daily", "Weekly"],
+      "enum": [
+        "Hourly",
+        "Daily",
+        "Weekly"
+      ],
       "javaEnums": [
         {
           "name": "Hourly"
@@ -221,13 +248,18 @@
           "type": "string"
         }
       },
-      "required": ["name", "value"],
+      "required": [
+        "name",
+        "value"
+      ],
       "additionalProperties": false
     },
     "testCaseDimensionResult": {
       "description": "Test case result for dimensional analysis - supports both single and multi-dimensional groupings",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseDimensionResult",
-      "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EntityTimeSeriesInterface"
+      ],
       "type": "object",
       "properties": {
         "id": {
@@ -293,9 +325,19 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "evaluationScope": {
+          "$ref": "#/definitions/testCaseEvaluationScope"
         }
       },
-      "required": ["id", "testCaseResultId", "timestamp", "dimensionValues", "dimensionKey", "testCaseStatus"],
+      "required": [
+        "id",
+        "testCaseResultId",
+        "timestamp",
+        "dimensionValues",
+        "dimensionKey",
+        "testCaseStatus"
+      ],
       "additionalProperties": false
     }
   }

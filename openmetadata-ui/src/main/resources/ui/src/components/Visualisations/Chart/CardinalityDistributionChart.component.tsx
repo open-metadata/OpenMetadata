@@ -44,8 +44,10 @@ import {
 } from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ExecutionSource } from '../../observability/profiler/ExecutionSource/ExecutionSource';
 
 export interface CardinalityDistributionChartProps {
+  isSharded?: boolean;
   data: {
     firstDayData?: ColumnProfile;
     currentDayData?: ColumnProfile;
@@ -55,6 +57,7 @@ export interface CardinalityDistributionChartProps {
 
 const CardinalityDistributionChart = ({
   data,
+  isSharded,
   noDataPlaceholderText,
 }: CardinalityDistributionChartProps) => {
   const { t } = useTranslation();
@@ -224,6 +227,10 @@ const CardinalityDistributionChart = ({
 
             return (
               <div className={colClassName} key={key}>
+                <ExecutionSource
+                  isSharded={isSharded}
+                  source={columnProfile?.executionSource}
+                />
                 {isAllUnique ? (
                   renderPlaceholder(allValuesUniqueMessage)
                 ) : (

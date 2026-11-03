@@ -99,6 +99,7 @@ class TestBaseTestValidator:
         test_case = MagicMock(spec=TestCase)
         test_case.name = "test_case"
         test_case.fullyQualifiedName = "test.test_case"
+        test_case.parameterValues = None
         return test_case
 
     @pytest.fixture

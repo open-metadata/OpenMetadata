@@ -53,6 +53,8 @@ logger = ingestion_logger()
 class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
+    BYPASSES_SAMPLER = True
+
     def _replace_where_clause(self, sql_query: str, partition_expression: str) -> Optional[str]:  # noqa: UP045
         """Replace or add WHERE clause in SQL query using sqlparse.
 
