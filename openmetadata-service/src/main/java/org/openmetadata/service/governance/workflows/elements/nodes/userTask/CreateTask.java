@@ -790,7 +790,7 @@ public class CreateTask implements TaskListener {
     return task;
   }
 
-  private void supersedePriorApprovalTask(
+  void supersedePriorApprovalTask(
       DelegateTask delegateTask,
       TaskRepository taskRepository,
       EntityInterface<?> entity,
@@ -800,16 +800,19 @@ public class CreateTask implements TaskListener {
       String updatedBy) {
     // Best-effort cleanup: failing to supersede a prior task must never abort creation of the new
     // approval task, so all exceptions are contained here instead of bubbling up as a BpmnError.
-    if (taskCategory == TaskCategory.Approval && !reviewsStaleRevision(delegateTask)) {
+    if (taskCategory == TaskCategory.Approval) {
       try {
         // A change request's review keeps one live approval per (entity, workflow, requester): a
         // new held edit supersedes only the same requester's prior review, so other requesters'
         // reviews survive. Every other run keeps the entity-level supersede (requesterToMatch =
         // null).
         String requesterToMatch = reviewsChangeRequest(delegateTask) ? updatedBy : null;
-        taskRepository
-            .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
-            .stream()
+        List<Task> priors =
+            reviewsStaleRevision(delegateTask)
+                ? List.of()
+                : taskRepository.listNonTerminalTasksByEntityAndCategory(
+                    entity.getFullyQualifiedName(), taskCategory);
+        priors.stream()
             .filter(
                 prior ->
                     isSupersedablePriorApprovalTask(

@@ -720,6 +720,7 @@ class PersonaAIContextIT extends McpTestBase {
     JsonNode personaPage =
         OBJECT_MAPPER.readTree(getResponse("personas?limit=1", authToken).body());
     assertThat(statusPage.path("data")).hasSize(1);
+    assertThat(personaPage.path("data")).hasSize(1);
     assertThat(statusPage.path("data").get(0).path("personaId").asText())
         .isEqualTo(personaPage.path("data").get(0).path("id").asText());
     assertThat(statusPage.path("paging").path("total").asInt())
@@ -734,6 +735,7 @@ class PersonaAIContextIT extends McpTestBase {
     JsonNode nextPersona =
         OBJECT_MAPPER.readTree(getResponse("personas?limit=1&after=" + after, authToken).body());
     assertThat(nextStatus.path("data")).hasSize(1);
+    assertThat(nextPersona.path("data")).hasSize(1);
     assertThat(nextStatus.path("data").get(0).path("personaId").asText())
         .isEqualTo(nextPersona.path("data").get(0).path("id").asText());
   }

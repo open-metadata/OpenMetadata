@@ -141,6 +141,20 @@ public interface EntityManagementClient {
       throws IOException;
 
   /**
+   * Same as {@link #updateChildren(List, Pair, Pair)}, for an inherited-field propagation from the
+   * parent {@code parentMatch} names. An engine that runs it in the background reindexes that
+   * parent when the task fails or skips a child
+   * (ADR:2026-11-03-a-failed-child-propagation-reindexes-its-parent).
+   */
+  default void propagateInheritedFields(
+      List<String> indexNames,
+      Pair<String, String> parentMatch,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    updateChildren(indexNames, parentMatch, updates);
+  }
+
+  /**
    * Updates child entities whose {@code field} matches ANY of {@code values} with a script across
    * multiple indices, in a single update-by-query. Lets a caller fan a change out to the children of
    * many parents at once instead of issuing one update-by-query per parent.

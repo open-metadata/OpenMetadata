@@ -14,11 +14,13 @@
 package org.openmetadata.service.search;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,29 +28,38 @@ import lombok.extern.slf4j.Slf4j;
  * Inherited fields reach a parent's children through an update-by-query the cluster runs in the
  * background, after the request that changed the parent has returned. A task that fails under load,
  * or skips a child on a version conflict, leaves that child stale until the next reindex, and
- * nothing would notice. This waits for each task and queues the parent of one that left children
- * stale; the retry worker then reindexes the parent and its children from the database.
+ * nothing would notice. This polls each task until it finishes and queues the parent of one that
+ * left children stale; the retry worker then reindexes the parent and its children from the
+ * database (ADR:2026-11-03-a-failed-child-propagation-reindexes-its-parent).
+ *
+ * <p>Each poll is a short status read, so no search connection is held while a task runs.
  */
 @Slf4j
 public final class ChildPropagationWatcher {
-  private static final int WATCHER_THREADS = 2;
-  private static final int MAX_PENDING_TASKS = 1_000;
-  private static final Executor WATCHERS =
-      new ThreadPoolExecutor(
-          WATCHER_THREADS,
-          WATCHER_THREADS,
-          0L,
-          TimeUnit.MILLISECONDS,
-          new ArrayBlockingQueue<>(MAX_PENDING_TASKS),
-          Thread.ofPlatform().name("search-child-propagation-watcher-", 0).daemon().factory(),
-          (task, executor) ->
-              LOG.warn(
-                  "{} child propagation tasks are already being watched; not watching another",
-                  MAX_PENDING_TASKS));
+  static final Duration POLL_INTERVAL = Duration.ofSeconds(5);
+  static final int MAX_WATCHED_TASKS = 1_000;
+  static final int MAX_POLLS =
+      (int)
+          (SearchPropagationLimits.CHILD_PROPAGATION_WAIT.toSeconds() / POLL_INTERVAL.toSeconds());
+  private static final ScheduledExecutorService POLLER =
+      Executors.newSingleThreadScheduledExecutor(
+          Thread.ofPlatform().name("search-child-propagation-watcher").daemon().factory());
+  private static final ChildPropagationWatcher WATCHER =
+      new ChildPropagationWatcher(
+          (poll, delay) -> POLLER.schedule(poll, delay.toMillis(), TimeUnit.MILLISECONDS),
+          SearchIndexRetryQueue::enqueueParent);
 
-  private ChildPropagationWatcher() {}
+  private final Scheduler scheduler;
+  private final BiConsumer<String, String> repairParent;
+  private final AtomicInteger watched = new AtomicInteger();
+  private final AtomicLong unwatched = new AtomicLong();
 
-  /** What a background update-by-query did, once the cluster says it finished. */
+  ChildPropagationWatcher(Scheduler scheduler, BiConsumer<String, String> repairParent) {
+    this.scheduler = scheduler;
+    this.repairParent = repairParent;
+  }
+
+  /** What a background update-by-query did; {@code finished} is false while it still runs. */
   public record TaskOutcome(boolean finished, List<String> failureReasons, long versionConflicts) {
     public static TaskOutcome unfinished() {
       return new TaskOutcome(false, List.of(), 0);
@@ -65,52 +76,87 @@ public final class ChildPropagationWatcher {
     }
   }
 
-  /** Blocks until the cluster reports the task finished, or its own wait times out. */
+  /** Reads a task's status once, without waiting for it to finish. */
   @FunctionalInterface
-  public interface TaskAwaiter {
-    TaskOutcome await(String taskId) throws IOException;
+  public interface TaskPoller {
+    TaskOutcome poll(String taskId) throws IOException;
   }
+
+  @FunctionalInterface
+  interface Scheduler {
+    void schedule(Runnable poll, Duration delay);
+  }
+
+  private record Watch(String taskId, String parentKey, TaskPoller poller) {}
 
   /**
    * Watches the task that propagates to the children of {@code parentKey}, the parent id or FQN the
    * propagation matched children on.
    */
-  public static void watch(String taskId, String parentKey, TaskAwaiter awaiter) {
-    watch(taskId, parentKey, awaiter, WATCHERS, SearchIndexRetryQueue::enqueueParent);
+  public static void watch(String taskId, String parentKey, TaskPoller poller) {
+    WATCHER.watchTask(taskId, parentKey, poller);
   }
 
-  static void watch(
-      String taskId,
-      String parentKey,
-      TaskAwaiter awaiter,
-      Executor executor,
-      BiConsumer<String, String> repairParent) {
+  void watchTask(String taskId, String parentKey, TaskPoller poller) {
     if (taskId != null && parentKey != null) {
-      executor.execute(() -> repairIfStale(taskId, parentKey, awaiter, repairParent));
+      if (watched.incrementAndGet() > MAX_WATCHED_TASKS) {
+        watched.decrementAndGet();
+        reportUnwatched();
+      } else {
+        schedulePoll(new Watch(taskId, parentKey, poller), 1);
+      }
     }
   }
 
-  private static void repairIfStale(
-      String taskId,
-      String parentKey,
-      TaskAwaiter awaiter,
-      BiConsumer<String, String> repairParent) {
+  private void schedulePoll(Watch watch, int attempt) {
+    scheduler.schedule(() -> poll(watch, attempt), POLL_INTERVAL);
+  }
+
+  private void poll(Watch watch, int attempt) {
+    TaskOutcome outcome = readOutcome(watch);
+    if (outcome.finished() || attempt >= MAX_POLLS) {
+      watched.decrementAndGet();
+      repairIfStale(watch, outcome);
+    } else {
+      schedulePoll(watch, attempt + 1);
+    }
+  }
+
+  // An unreadable status ends the watch: it reads as finished, with nothing known to repair.
+  private TaskOutcome readOutcome(Watch watch) {
+    TaskOutcome outcome;
     try {
-      TaskOutcome outcome = awaiter.await(taskId);
-      if (outcome.leftChildrenStale()) {
-        LOG.warn(
-            "Child propagation task {} for parent {} left children stale ({}); reindexing them",
-            taskId,
-            parentKey,
-            outcome.describe());
-        repairParent.accept(parentKey, "updateChildren: %s".formatted(outcome.describe()));
-      }
+      outcome = watch.poller().poll(watch.taskId());
     } catch (IOException | RuntimeException e) {
       LOG.warn(
-          "Could not learn how child propagation task {} for parent {} ended: {}",
-          taskId,
-          parentKey,
+          "Could not read child propagation task {} for parent {}: {}",
+          watch.taskId(),
+          watch.parentKey(),
           e.getMessage());
+      outcome = new TaskOutcome(true, List.of(), 0);
+    }
+    return outcome;
+  }
+
+  private void repairIfStale(Watch watch, TaskOutcome outcome) {
+    if (outcome.leftChildrenStale()) {
+      LOG.warn(
+          "Child propagation task {} for parent {} left children stale ({}); reindexing them",
+          watch.taskId(),
+          watch.parentKey(),
+          outcome.describe());
+      repairParent.accept(watch.parentKey(), "updateChildren: %s".formatted(outcome.describe()));
+    }
+  }
+
+  // Logged on the first and every thousandth miss, so a burst of propagations cannot flood the log.
+  private void reportUnwatched() {
+    long misses = unwatched.incrementAndGet();
+    if (misses == 1 || misses % MAX_WATCHED_TASKS == 0) {
+      LOG.warn(
+          "{} child propagation task(s) went unwatched: {} were already being watched",
+          misses,
+          MAX_WATCHED_TASKS);
     }
   }
 }

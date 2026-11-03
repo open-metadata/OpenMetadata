@@ -3019,7 +3019,8 @@ public class SearchRepository {
               entityType,
               descriptor -> !view.skippedFields().contains(descriptor.fieldName()));
       if (!nullOrEmpty(updates.getKey())) {
-        searchClient.updateChildren(withClusterAlias(group.getValue()), parentMatch, updates);
+        searchClient.propagateInheritedFields(
+            withClusterAlias(group.getValue()), parentMatch, updates);
       }
     }
     Pair<String, Map<String, Object>> updates =

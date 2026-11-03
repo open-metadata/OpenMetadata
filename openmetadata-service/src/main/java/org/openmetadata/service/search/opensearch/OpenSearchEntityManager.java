@@ -543,23 +543,29 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates)
       throws IOException {
-    UpdateByQueryResponse submitted =
-        client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
-    ChildPropagationWatcher.watch(
-        submitted.task(), fieldAndValue.getValue(), this::awaitChildPropagation);
+    client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
   }
 
-  private ChildPropagationWatcher.TaskOutcome awaitChildPropagation(String taskId)
+  @Override
+  public void propagateInheritedFields(
+      List<String> indexNames,
+      Pair<String, String> parentMatch,
+      Pair<String, Map<String, Object>> updates)
       throws IOException {
-    GetTasksResponse task =
-        client
-            .tasks()
-            .get(
-                g ->
-                    g.taskId(taskId)
-                        .waitForCompletion(true)
-                        .timeout(t -> t.time(SearchPropagationLimits.CHILD_PROPAGATION_WAIT)));
-    return childPropagationOutcome(task);
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot propagate inherited fields.");
+      return;
+    }
+    UpdateByQueryResponse submitted =
+        client.updateByQuery(buildUpdateChildrenRequest(indexNames, parentMatch, updates));
+    ChildPropagationWatcher.watch(
+        submitted.task(), parentMatch.getValue(), this::readChildPropagation);
+    LOG.info("Submitted inherited-field propagation in OpenSearch for indices: {}", indexNames);
+  }
+
+  private ChildPropagationWatcher.TaskOutcome readChildPropagation(String taskId)
+      throws IOException {
+    return childPropagationOutcome(client.tasks().get(g -> g.taskId(taskId)));
   }
 
   static ChildPropagationWatcher.TaskOutcome childPropagationOutcome(GetTasksResponse task) {

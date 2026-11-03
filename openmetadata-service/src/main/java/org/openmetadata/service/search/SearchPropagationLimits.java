@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.search;
 
+import java.time.Duration;
+
 /** Bounds shared by the ElasticSearch and OpenSearch inherited-field child propagations. */
 public final class SearchPropagationLimits {
 
@@ -30,8 +32,8 @@ public final class SearchPropagationLimits {
   public static final float REQUESTS_PER_SECOND = 2000f;
 
   /**
-   * How long a watcher waits for a child propagation to finish before giving up on learning its
-   * outcome. Covers the million-document service above with room to spare.
+   * How long a child propagation is watched before its outcome is given up on. Covers the
+   * million-document service above with room to spare.
    */
-  public static final String CHILD_PROPAGATION_WAIT = "15m";
+  public static final Duration CHILD_PROPAGATION_WAIT = Duration.ofMinutes(15);
 }
