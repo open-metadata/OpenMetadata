@@ -397,6 +397,36 @@ describe('LineageTable depth sync', () => {
       expect(handlePageChange).not.toHaveBeenCalled();
     });
 
+    it('does NOT reset the page when paging to page 2 at the same depth', async () => {
+      mockPagingWith(jest.fn(), 1);
+
+      render(buildTree('/?dir=Downstream&depth=3'));
+
+      await waitFor(() =>
+        expect(mockGetLineageByEntityCount).toHaveBeenCalled()
+      );
+
+      // usePaging hands out a new handlePageChange whenever currentPage
+      // changes, so a page change must not be mistaken for a depth change.
+      const pageTwoHandlePageChange = jest.fn();
+      mockPagingWith(pageTwoHandlePageChange, 2);
+
+      await act(async () => {
+        navigateRef(
+          { search: '?dir=Downstream&depth=3&currentPage=2' },
+          { replace: true }
+        );
+      });
+
+      await waitFor(() =>
+        expect(mockGetLineageByEntityCount).toHaveBeenLastCalledWith(
+          expect.objectContaining({ from: 50 })
+        )
+      );
+
+      expect(pageTwoHandlePageChange).not.toHaveBeenCalled();
+    });
+
     it('resets currentPage to 1 each time the depth narrows further', async () => {
       const handlePageChange = jest.fn();
 
