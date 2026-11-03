@@ -328,6 +328,30 @@ class ConnectionSecretsGuardTest {
     assertThrows(BadRequestException.class, () -> guardKafka(incoming, stored));
   }
 
+  /** A reference other than the stored one cannot be shown to be the stored entry. */
+  @Test
+  void replacingAMapEntryWithAnotherSecretReferenceCannotKeepTheMaskedSecret() {
+    Map<String, Object> stored = kafka("secret:/om/kafka/token_endpoint", "fernet:stored-secret");
+
+    assertThrows(
+        BadRequestException.class,
+        () -> guardKafka(kafka("secret:/attacker/token_endpoint", PASSWORD_MASK), stored));
+    assertDoesNotThrow(
+        () -> guardKafka(kafka("secret:/om/kafka/token_endpoint", PASSWORD_MASK), stored));
+  }
+
+  /** A fresh Fernet token of the stored cleartext is the same entry; another token is an edit. */
+  @Test
+  void aMapEntryTokenCountsAsUnchangedOnlyWhenItDecryptsToTheStoredValue() {
+    Map<String, Object> stored = storedKafka(IDP_URL);
+
+    assertDoesNotThrow(
+        () -> guardKafka(kafka(Fernet.getInstance().encrypt(IDP_URL), PASSWORD_MASK), stored));
+    assertThrows(
+        BadRequestException.class,
+        () -> guardKafka(kafka(Fernet.getInstance().encrypt(ATTACKER_URL), PASSWORD_MASK), stored));
+  }
+
   /** A caller echoing the masked config it read changes nothing and keeps the masked secrets. */
   @Test
   void aFullyMaskedEchoOfTheConfigMapKeepsItsSecrets() {

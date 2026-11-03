@@ -199,9 +199,11 @@ public final class ConnectionSecretsGuard {
    * entry - the OAuth token endpoint URL next to the client secret - is invisible in the masked
    * comparison above. Before maps were masked the edit was visible and the guard caught it, so
    * without this check an editor could redirect a map setting while keeping the map's secrets
-   * masked and have them restored. A typed (plaintext) value at a masked map entry counts as an
-   * edit unless it still equals the stored entry; a value arriving as the mask, a Fernet token or
-   * a {@code secret:} reference is the stored entry kept, not a change.
+   * masked and have them restored. Any value at a masked map entry other than the mask counts as
+   * an edit unless it is provably the stored entry: the stored value itself, or a value whose local
+   * cleartext equals the stored entry's. A different {@code secret:} reference or a Fernet token
+   * that does not decrypt to the stored cleartext cannot be shown to be the stored entry, so it
+   * counts as an edit too.
    *
    * <p>The check is scoped to password-map entries deliberately: at a scalar password field a
    * typed value is a re-entered secret, which the guard has always accepted, and only the map
@@ -244,26 +246,25 @@ public final class ConnectionSecretsGuard {
       return false;
     }
     String value = incoming.asText();
-    if (PASSWORD_MASK.equals(value)
-        || Fernet.isTokenized(value)
-        || value.startsWith(SecretsManager.SECRET_FIELD_PREFIX)) {
-      return false;
-    }
-    return !value.equals(cleartextOfStoredEntry(stored));
+    return !PASSWORD_MASK.equals(value)
+        && !(stored.isTextual() && value.equals(stored.asText()))
+        && !provablyEqual(localCleartext(value), stored.isTextual() ? stored.asText() : null);
+  }
+
+  private static boolean provablyEqual(String incomingCleartext, String storedValue) {
+    return incomingCleartext != null && incomingCleartext.equals(localCleartext(storedValue));
   }
 
   /**
-   * The cleartext a stored map entry holds when it can be recovered locally: the value itself for
-   * rows saved before maps were encrypted, a Fernet decrypt for current rows. An entry whose value
-   * cannot be recovered - an external {@code secret:} reference the server never fetches, or a
-   * token that does not decrypt - yields null, and the caller treats the typed value as an edit:
-   * it cannot be shown to be the stored one.
+   * The cleartext a map entry holds when it can be recovered locally: the value itself for a
+   * plaintext entry (rows saved before maps were encrypted), a Fernet decrypt for a token. An
+   * external {@code secret:} reference, which the server never fetches, or a token that does not
+   * decrypt yields null: such a value cannot be shown to equal anything.
    */
-  private static String cleartextOfStoredEntry(JsonNode stored) {
-    if (!stored.isTextual()) {
+  private static String localCleartext(String value) {
+    if (value == null || value.startsWith(SecretsManager.SECRET_FIELD_PREFIX)) {
       return null;
     }
-    String value = stored.asText();
     if (!Fernet.isTokenized(value)) {
       return value;
     }
