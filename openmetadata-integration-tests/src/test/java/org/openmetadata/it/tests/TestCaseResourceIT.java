@@ -39,6 +39,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -46,13 +48,16 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
@@ -65,6 +70,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -655,6 +661,143 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         List.of(new TestCaseParameterValue().withName("minValue").withValue("1")));
 
     assertThrows(Exception.class, () -> createEntity(request), "Should fail with invalid column");
+  }
+
+  @Test
+  void post_nestedColumnLevelTest_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableWithNestedColumn(ns);
+    TagLabel nestedColumnTag = SharedEntities.get().PERSONAL_DATA_TAG_LABEL;
+    table.getColumns().getFirst().getChildren().getFirst().setTags(List.of(nestedColumnTag));
+    client.tables().update(table.getId().toString(), table);
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.city");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("nested_column_test"));
+    request.setEntityLink(columnLink);
+    // city is VARCHAR, so the definition must be one whose supportedDataTypes include it.
+    request.setTestDefinition("columnValuesToMatchRegex");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
+
+    TestCase created = createEntity(request);
+    assertTrue(
+        created.getEntityLink().contains("::columns::address.city"),
+        "Nested column link should be preserved, got " + created.getEntityLink());
+
+    long timestamp = System.currentTimeMillis();
+    CreateTestCaseResult result =
+        new CreateTestCaseResult()
+            .withTimestamp(timestamp)
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withResult("All nested city values match the regex");
+    client.testCaseResults().create(created.getFullyQualifiedName(), result);
+
+    List<TestCaseResult> storedResults = listTestCaseResults(created.getFullyQualifiedName());
+    assertEquals(1, storedResults.size());
+    assertEquals(timestamp, storedResults.getFirst().getTimestamp());
+    assertEquals(TestCaseStatus.Success, storedResults.getFirst().getTestCaseStatus());
+    assertEquals(result.getResult(), storedResults.getFirst().getResult());
+
+    TestCase fetched = client.testCases().get(created.getId().toString(), "tags,testCaseResult");
+    assertEquals(columnLink, fetched.getEntityLink());
+    assertNotNull(fetched.getTestCaseResult());
+    assertEquals(timestamp, fetched.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, fetched.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), fetched.getTestCaseResult().getResult());
+    assertNotNull(fetched.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        fetched.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "GET must inherit the tag attached only to the nested column");
+
+    ListResponse<TestCase> listed =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setFields("tags,testCaseResult")
+                    .setLimit(10)
+                    .addQueryParam("includeAllTests", "true")
+                    .addQueryParam("entityLink", tableEntityLink(table)));
+    assertEquals(List.of(created.getId()), idsOf(listed));
+    TestCase listedTestCase = listed.getData().getFirst();
+    assertEquals(columnLink, listedTestCase.getEntityLink());
+    assertNotNull(listedTestCase.getTestCaseResult());
+    assertEquals(timestamp, listedTestCase.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, listedTestCase.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), listedTestCase.getTestCaseResult().getResult());
+    assertNotNull(listedTestCase.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        listedTestCase.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "List responses must inherit the tag attached only to the nested column");
+  }
+
+  @Test
+  void post_testWithInvalidNestedColumn_4xx(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    String invalidNestedLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.state");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("invalid_nested_column"));
+    request.setEntityLink(invalidNestedLink);
+    request.setTestDefinition("columnValuesToMatchRegex");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
+
+    Exception error =
+        assertThrows(
+            Exception.class, () -> createEntity(request), "Should fail with missing nested column");
+    assertTrue(
+        error.getMessage().contains("Invalid column name address.state"), error.getMessage());
+  }
+
+  private Table createTableWithNestedColumn(TestNamespace ns) {
+    String shortId = ns.uniqueShortId();
+
+    PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
+
+    DatabaseService service =
+        DatabaseServices.builder()
+            .name("pg_" + shortId)
+            .connection(conn)
+            .description("Test Postgres service")
+            .create();
+
+    CreateDatabase dbReq = new CreateDatabase();
+    dbReq.setName("db_" + shortId);
+    dbReq.setService(service.getFullyQualifiedName());
+    Database database = SdkClients.adminClient().databases().create(dbReq);
+
+    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
+    schemaReq.setName("s_" + shortId);
+    schemaReq.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName("t_" + shortId);
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(List.of(nestedAddressColumn()));
+
+    return SdkClients.adminClient().tables().create(tableRequest);
+  }
+
+  private Column nestedAddressColumn() {
+    return new Column()
+        .withName("address")
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(
+            List.of(
+                new Column()
+                    .withName("city")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
   }
 
   @Test
@@ -5543,6 +5686,27 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   private String getTestSuiteSearchIndexName() {
     return "openmetadata_test_suite_search_index";
+  }
+
+  private List<TestCaseResult> listTestCaseResults(String testCaseFQN) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/testCaseResults/" + testCaseFQN,
+                null,
+                RequestOptions.builder().build());
+    return JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseResult>>() {})
+        .getData();
+  }
+
+  private static String tableEntityLink(Table table) {
+    return String.format("<#E::table::%s>", table.getFullyQualifiedName());
+  }
+
+  private static List<UUID> idsOf(ListResponse<TestCase> response) {
+    return response.getData().stream().map(TestCase::getId).toList();
   }
 
   private void refreshSearchIndex(Rest5Client searchClient, String indexName) throws Exception {

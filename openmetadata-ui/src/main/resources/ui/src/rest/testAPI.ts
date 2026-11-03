@@ -89,6 +89,7 @@ export type ListTestCaseParamsBySearch = Omit<
   dataQualityDimension?: string;
   followedBy?: string;
   dataProductFqn?: string;
+  includePermissions?: boolean;
   testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
 

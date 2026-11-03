@@ -479,7 +479,7 @@
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Registered entity type to create, e.g. 'glossary', 'glossaryTerm', 'domain', 'metric', 'team', 'chart' or 'page' for a Knowledge Center article. Types requiring a dedicated create lifecycle, including users, bots, apps, event subscriptions, ingestion pipelines, test cases, services and automation workflows, are rejected."
+            "description": "Registered entity type to create, e.g. 'glossary', 'glossaryTerm', 'domain', 'metric', 'team', 'chart' or 'page' for a Knowledge Center article. Types requiring a dedicated create lifecycle, including users, bots, apps, event subscriptions, ingestion pipelines, test cases, test suites, announcements, tasks, personas, intake forms, documents, audit reports, services and automation workflows, are rejected."
           },
           "name": {
             "type": "string",

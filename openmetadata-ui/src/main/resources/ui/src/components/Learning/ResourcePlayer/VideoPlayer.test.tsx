@@ -143,14 +143,23 @@ describe('VideoPlayer', () => {
     expect(screen.getByTitle('test-video-name')).toBeInTheDocument();
   });
 
+  it('should show the invalid-URL state, not a frame, for a URL that does not parse', () => {
+    render(<VideoPlayer resource={createMockResource('not-a-valid-url')} />);
+
+    expect(screen.getByText('label.invalid-url')).toBeInTheDocument();
+    expect(screen.queryByTitle('Test Video')).not.toBeInTheDocument();
+  });
+
   it.each([
-    'not-a-valid-url',
     'javascript:alert(document.domain)',
     'data:text/html,<script>alert(1)</script>',
   ])('should never load a non-web URL into the frame: %s', (url) => {
-    render(<VideoPlayer resource={createMockResource(url)} />);
+    const { container } = render(
+      <VideoPlayer resource={createMockResource(url)} />
+    );
 
-    expect(screen.getByTitle('Test Video').getAttribute('src')).toBeNull();
+    expect(container.querySelector('iframe')).toBeNull();
+    expect(screen.getByText('label.invalid-url')).toBeInTheDocument();
   });
 
   it('should reject URLs with youtube.com in path but different host', () => {

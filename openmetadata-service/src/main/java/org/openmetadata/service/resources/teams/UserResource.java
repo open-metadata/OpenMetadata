@@ -690,6 +690,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @POST
+  @IdentityEndpoint
   @Operation(
       operationId = "createUser",
       summary = "Create a user",
@@ -846,6 +847,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     repository.setFullyQualifiedName(user);
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     repository.prepareInternal(user, existingUser != null);
+    boolean createsOrRestores =
+        existingUser == null || Boolean.TRUE.equals(existingUser.getDeleted());
+    if (createsOrRestores) {
+      // Impersonated requests update active users only.
+      rejectPrivilegedImpersonation(containerRequestContext);
+    }
     if (existingUser == null) {
       limits.enforceLimits(
           securityContext,
@@ -1519,6 +1526,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/restore")
+  @IdentityEndpoint
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted User.",
@@ -2086,6 +2094,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/import")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
@@ -2123,6 +2132,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/importAsync")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(

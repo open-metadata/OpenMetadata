@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { Spin } from 'antd';
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
 import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import './storylane-tour.less';
@@ -22,13 +24,23 @@ interface StorylaneTourProps {
 }
 
 export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
-  // The frame allows scripts and same-origin, so only an http(s) URL may become its src.
   const tourUrl = getSafeHttpUrl(resource.source.url);
 
   const handleLoad = useCallback(() => {
     setIsLoading(false);
   }, []);
+
+  if (!tourUrl) {
+    return (
+      <div className="tw:p-4">
+        <Typography as="span" size="text-sm">
+          {t('label.invalid-url')}
+        </Typography>
+      </div>
+    );
+  }
 
   return (
     <div className="storylane-tour-wrapper">
