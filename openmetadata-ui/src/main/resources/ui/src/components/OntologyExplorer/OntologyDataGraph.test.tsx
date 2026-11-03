@@ -880,6 +880,7 @@ describe('native Data mode of one concept', () => {
     fireEvent.click(toggle);
 
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
     const columns = screen.getAllByTestId('ontology-data-column');
 
     expect(columns.map((column) => column.textContent)).toEqual([

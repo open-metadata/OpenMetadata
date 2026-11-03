@@ -2629,6 +2629,7 @@ describe('OntologyGraphView', () => {
     await waitFor(() =>
       expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2)
     );
+
     expect(
       await screen.findByTestId(`ontology-data-cluster-${customer.id}`)
     ).toBeVisible();

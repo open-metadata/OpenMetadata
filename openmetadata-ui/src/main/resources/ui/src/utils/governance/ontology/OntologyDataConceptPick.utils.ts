@@ -62,7 +62,7 @@ export const buildDataPickerGroups = (
           byName(left, right)
       ),
     withoutData: rest
-      .filter((item) => !((item.assetCount ?? 0) > 0))
+      .filter((item) => (item.assetCount ?? 0) <= 0)
       .sort(byName),
   };
 };

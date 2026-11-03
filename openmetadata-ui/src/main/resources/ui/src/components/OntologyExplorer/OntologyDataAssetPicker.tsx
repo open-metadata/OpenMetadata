@@ -427,14 +427,7 @@ const OntologyDataAssetPicker = ({
     return (
       <li
         className={isAiMode ? 'tw:px-3.5 tw:py-3' : 'tw:px-3 tw:py-2.5'}
-        key={asset.id}
-        title={
-          isLinked
-            ? t('message.ontology-asset-already-linked', {
-                concept: native?.concept?.name,
-              })
-            : undefined
-        }>
+        key={asset.id}>
         <Checkbox
           aria-label={asset.displayName ?? asset.name}
           data-testid={`ontology-data-asset-option-${asset.id}`}
@@ -460,6 +453,17 @@ const OntologyDataAssetPicker = ({
                   {entityUtilClassBase.getFormattedEntityType(asset.type)}
                 </Typography>
               </span>
+              {isLinked ? (
+                <Typography
+                  as="span"
+                  className="tw:text-tertiary"
+                  data-testid={`ontology-data-asset-linked-${asset.id}`}
+                  size="text-xs">
+                  {t('message.ontology-asset-already-linked', {
+                    concept: native?.concept?.name,
+                  })}
+                </Typography>
+              ) : null}
               {reason ? (
                 <Typography
                   as="span"
@@ -552,6 +556,99 @@ const OntologyDataAssetPicker = ({
       </Alert>
     ) : null;
 
+  const renderList = () => (
+    <ul className="tw:m-0 tw:flex tw:max-h-80 tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-y-auto tw:p-0">
+      {suggestions.length > 0 ? (
+        <li
+          className="tw:bg-secondary tw:px-3 tw:py-1.5"
+          data-testid="ontology-data-asset-suggested-heading">
+          <Typography
+            as="span"
+            color="secondary"
+            size="text-xs"
+            weight="semibold">
+            {t('label.suggested')}
+          </Typography>
+        </li>
+      ) : null}
+      {suggestions.map(({ asset, reason }) => renderOption(asset, reason))}
+      {suggestions.length > 0 && listed.length > 0 ? (
+        <li className="tw:bg-secondary tw:px-3 tw:py-1.5">
+          <Typography
+            as="span"
+            color="secondary"
+            size="text-xs"
+            weight="semibold">
+            {t('label.all-other-assets')}
+          </Typography>
+        </li>
+      ) : null}
+      {listed.map((asset) => renderOption(asset))}
+    </ul>
+  );
+
+  const renderSearch = () => (
+    <Input
+      aria-label={
+        native
+          ? t('label.search-entity', { entity: t('label.data-asset-plural') })
+          : t('message.search-tables-and-columns')
+      }
+      data-testid="ontology-data-asset-search"
+      icon={SearchIcon}
+      placeholder={
+        native
+          ? t('label.search-entity', { entity: t('label.data-asset-plural') })
+          : t('message.search-tables-and-columns')
+      }
+      value={query}
+      onChange={setQuery}
+    />
+  );
+
+  const renderFilters = () =>
+    native ? (
+      <Box gap={2}>
+        <Select
+          aria-label={t('label.type')}
+          data-testid="ontology-data-asset-type-filter"
+          items={[
+            {
+              id: ANY,
+              label: t('label.any-entity', { entity: t('label.type') }),
+            },
+            ...native.assetTypes.map((type) => ({
+              id: type,
+              label: entityUtilClassBase.getFormattedEntityType(type),
+            })),
+          ]}
+          size="sm"
+          value={typeFilter}
+          onChange={(id) => setTypeFilter(String(id))}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
+        <Select
+          aria-label={t('label.service')}
+          data-testid="ontology-data-asset-service-filter"
+          items={[
+            {
+              id: ANY,
+              label: t('label.any-entity', { entity: t('label.service') }),
+            },
+            ...[...services].sort().map((name) => ({ id: name, label: name })),
+          ]}
+          size="sm"
+          value={serviceFilter}
+          onChange={(id) => setServiceFilter(String(id))}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
+      </Box>
+    ) : null;
+
   return (
     <Card
       className="tw:flex tw:flex-col tw:gap-3 tw:p-4"
@@ -569,65 +666,8 @@ const OntologyDataAssetPicker = ({
           onClick={onCancel}
         />
       </Box>
-      <Input
-        aria-label={
-          native
-            ? t('label.search-entity', { entity: t('label.data-asset-plural') })
-            : t('message.search-tables-and-columns')
-        }
-        data-testid="ontology-data-asset-search"
-        icon={SearchIcon}
-        placeholder={
-          native
-            ? t('label.search-entity', { entity: t('label.data-asset-plural') })
-            : t('message.search-tables-and-columns')
-        }
-        value={query}
-        onChange={setQuery}
-      />
-      {native ? (
-        <Box gap={2}>
-          <Select
-            aria-label={t('label.type')}
-            data-testid="ontology-data-asset-type-filter"
-            items={[
-              {
-                id: ANY,
-                label: t('label.any-entity', { entity: t('label.type') }),
-              },
-              ...native.assetTypes.map((type) => ({
-                id: type,
-                label: entityUtilClassBase.getFormattedEntityType(type),
-              })),
-            ]}
-            size="sm"
-            value={typeFilter}
-            onChange={(id) => setTypeFilter(String(id))}>
-            {(item) => (
-              <Select.Item id={item.id} key={item.id} label={item.label} />
-            )}
-          </Select>
-          <Select
-            aria-label={t('label.service')}
-            data-testid="ontology-data-asset-service-filter"
-            items={[
-              {
-                id: ANY,
-                label: t('label.any-entity', { entity: t('label.service') }),
-              },
-              ...[...services]
-                .sort()
-                .map((name) => ({ id: name, label: name })),
-            ]}
-            size="sm"
-            value={serviceFilter}
-            onChange={(id) => setServiceFilter(String(id))}>
-            {(item) => (
-              <Select.Item id={item.id} key={item.id} label={item.label} />
-            )}
-          </Select>
-        </Box>
-      ) : null}
+      {renderSearch()}
+      {renderFilters()}
       <Card className="tw:flex tw:flex-col tw:overflow-hidden tw:p-0">
         <Box className="tw:border-b tw:border-secondary tw:p-3">
           <Tabs
@@ -660,34 +700,7 @@ const OntologyDataAssetPicker = ({
             onChange={toggleAll}
           />
         </Box>
-        <ul className="tw:m-0 tw:flex tw:max-h-80 tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-y-auto tw:p-0">
-          {suggestions.length > 0 ? (
-            <li
-              className="tw:bg-secondary tw:px-3 tw:py-1.5"
-              data-testid="ontology-data-asset-suggested-heading">
-              <Typography
-                as="span"
-                color="secondary"
-                size="text-xs"
-                weight="semibold">
-                {t('label.suggested')}
-              </Typography>
-            </li>
-          ) : null}
-          {suggestions.map(({ asset, reason }) => renderOption(asset, reason))}
-          {suggestions.length > 0 && listed.length > 0 ? (
-            <li className="tw:bg-secondary tw:px-3 tw:py-1.5">
-              <Typography
-                as="span"
-                color="secondary"
-                size="text-xs"
-                weight="semibold">
-                {t('label.all-other-assets')}
-              </Typography>
-            </li>
-          ) : null}
-          {listed.map((asset) => renderOption(asset))}
-        </ul>
+        {renderList()}
         {renderListFooter()}
       </Card>
       {renderBatchStatus()}

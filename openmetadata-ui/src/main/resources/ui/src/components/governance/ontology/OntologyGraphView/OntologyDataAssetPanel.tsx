@@ -26,6 +26,11 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getUnlinkDescription } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
 
+const PANEL_CLASS = [
+  'tw:absolute tw:top-16 tw:right-3.5 tw:bottom-3.5 tw:z-20 tw:flex tw:w-80 tw:flex-col tw:gap-4',
+  'tw:overflow-y-auto tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-4 tw:shadow-lg',
+].join(' ');
+
 interface OntologyDataAssetPanelProps {
   /** The bound asset with its columns, once the concept's bindings have loaded. */
   readonly binding?: AssetBinding;
@@ -65,7 +70,7 @@ const OntologyDataAssetPanel = ({
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <aside
       aria-label={name}
-      className="tw:absolute tw:top-16 tw:right-3.5 tw:bottom-3.5 tw:z-20 tw:flex tw:w-80 tw:flex-col tw:gap-4 tw:overflow-y-auto tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-4 tw:shadow-lg"
+      className={PANEL_CLASS}
       data-testid="ontology-data-asset-panel"
       onKeyDown={handleKeyDown}>
       <Box align="start" gap={2} justify="between">

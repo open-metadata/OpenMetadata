@@ -104,6 +104,7 @@ const OntologyDataConceptPicker = ({
       data-testid="ontology-data-concept-picker"
       onKeyDown={handleKeyDown}>
       <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- the picker opens on the user's own click, to be typed into
         autoFocus
         aria-activedescendant={
           options[active] ? `${listId}-${options[active].id}` : undefined

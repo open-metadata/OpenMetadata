@@ -375,6 +375,65 @@ function BoundColumnList({
   );
 }
 
+interface AssetRowButtonProps {
+  asset: OntologyNode;
+  index: number;
+  isNative: boolean;
+  onSelectNode: (node: OntologyNode) => void;
+}
+
+function AssetRowButton({
+  asset,
+  index,
+  isNative,
+  onSelectNode,
+}: AssetRowButtonProps) {
+  const { t } = useTranslation();
+  const entityType = getAssetEntityType(asset);
+  const lineageNotes = isNative ? getLineageNotes(asset, t) : [];
+  const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
+
+  return (
+    // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
+    <Button
+      noTextPadding
+      aria-describedby={lineageNotes.length > 0 ? descriptionId : undefined}
+      className={classNames(
+        'tw:flex tw:min-h-16 tw:w-full tw:items-center tw:gap-3 tw:rounded-none tw:px-5 tw:py-3 tw:text-left tw:whitespace-normal',
+        'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
+        index > 0 && 'tw:border-t tw:border-secondary'
+      )}
+      color="tertiary"
+      data-testid={`ontology-data-asset-${asset.id}`}
+      onClick={() => onSelectNode(asset)}>
+      <AssetLogo asset={asset} entityType={entityType} />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Typography
+          ellipsis
+          className="tw:text-primary"
+          data-testid="ontology-data-asset-name"
+          size="text-sm"
+          weight="medium">
+          {asset.originalLabel ?? asset.label}
+        </Typography>
+        <Typography ellipsis color="secondary" size="text-xs">
+          {isNative
+            ? getNativeAssetSummary(asset, lineageNotes, t)
+            : getAssetPath(asset)}
+        </Typography>
+      </Box>
+      {isNative && entityType === 'table' ? null : (
+        <AssetTypeBadge entityType={entityType} />
+      )}
+      {lineageNotes.length > 0 ? (
+        <span hidden id={descriptionId}>
+          {lineageNotes.join(' · ')}
+        </span>
+      ) : null}
+    </Button>
+  );
+}
+
 function AssetRowList({
   assets,
   expandedColumnIds,
@@ -382,58 +441,19 @@ function AssetRowList({
   onSelectNode,
   onToggleColumns,
 }: AssetRowsProps) {
-  const { t } = useTranslation();
-
   return (
     <>
       {assets.map((asset, index) => {
-        const entityType = getAssetEntityType(asset);
-        const lineageNotes = isNative ? getLineageNotes(asset, t) : [];
-        const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
-        const hasColumns = isNative && (asset.boundColumns?.length ?? 0) > 0;
-
         const row = (
-          // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
-          <Button
-            noTextPadding
-            aria-describedby={
-              lineageNotes.length > 0 ? descriptionId : undefined
-            }
-            className={classNames(
-              'tw:flex tw:min-h-16 tw:w-full tw:items-center tw:gap-3 tw:rounded-none tw:px-5 tw:py-3 tw:text-left tw:whitespace-normal',
-              'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
-              index > 0 && 'tw:border-t tw:border-secondary'
-            )}
-            color="tertiary"
-            data-testid={`ontology-data-asset-${asset.id}`}
+          <AssetRowButton
+            asset={asset}
+            index={index}
+            isNative={isNative}
             key={asset.id}
-            onClick={() => onSelectNode(asset)}>
-            <AssetLogo asset={asset} entityType={entityType} />
-            <Box className="tw:min-w-0 tw:flex-1" direction="col">
-              <Typography
-                ellipsis
-                className="tw:text-primary"
-                data-testid="ontology-data-asset-name"
-                size="text-sm"
-                weight="medium">
-                {asset.originalLabel ?? asset.label}
-              </Typography>
-              <Typography ellipsis color="secondary" size="text-xs">
-                {isNative
-                  ? getNativeAssetSummary(asset, lineageNotes, t)
-                  : getAssetPath(asset)}
-              </Typography>
-            </Box>
-            {isNative && entityType === 'table' ? null : (
-              <AssetTypeBadge entityType={entityType} />
-            )}
-            {lineageNotes.length > 0 ? (
-              <span hidden id={descriptionId}>
-                {lineageNotes.join(' · ')}
-              </span>
-            ) : null}
-          </Button>
+            onSelectNode={onSelectNode}
+          />
         );
+        const hasColumns = isNative && (asset.boundColumns?.length ?? 0) > 0;
 
         return hasColumns && onToggleColumns ? (
           <div key={asset.id}>
@@ -452,17 +472,20 @@ function AssetRowList({
   );
 }
 
+const hasSameAssets = (previous: OntologyNode[], next: OntologyNode[]) =>
+  previous.length === next.length &&
+  previous.every((asset, index) => asset === next[index]);
+
+const areSameRowProps = (previous: AssetRowsProps, next: AssetRowsProps) =>
+  [
+    previous.isNative === next.isNative,
+    previous.onSelectNode === next.onSelectNode,
+    previous.expandedColumnIds === next.expandedColumnIds,
+    previous.onToggleColumns === next.onToggleColumns,
+  ].every(Boolean) && hasSameAssets(previous.assets, next.assets);
+
 // Rows keep their render while the graph re-renders for a scroll or a drag.
-const AssetRows = memo(
-  AssetRowList,
-  (previous, next) =>
-    previous.isNative === next.isNative &&
-    previous.onSelectNode === next.onSelectNode &&
-    previous.expandedColumnIds === next.expandedColumnIds &&
-    previous.onToggleColumns === next.onToggleColumns &&
-    previous.assets.length === next.assets.length &&
-    previous.assets.every((asset, index) => asset === next.assets[index])
-);
+const AssetRows = memo(AssetRowList, areSameRowProps);
 
 // jsdom and a card that is not laid out read 0, so the CSS sizes stand in.
 function measureRows(container: HTMLElement): RowMetrics | undefined {

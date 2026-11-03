@@ -12,11 +12,15 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
+import { Task } from '../../../src/generated/entity/tasks/task';
+import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
+import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { OntologyAssetConceptLinks } from '../../../src/generated/type/ontologyAssetConceptLinks';
 import { OntologyConceptBindingsResponse } from '../../../src/generated/type/ontologyConceptBindingsResponse';
 import { TableClass } from '../../support/entity/TableClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
@@ -35,7 +39,7 @@ interface Fixture {
   tables: TableClass[];
 }
 
-const createOntology = async (api: APIRequestContext) => {
+const createOntology = async (api: APIRequestContext, reviewerId?: string) => {
   const name = `pw_g17_${uuid()}`;
 
   return okJson<Ontology>(
@@ -45,10 +49,70 @@ const createOntology = async (api: APIRequestContext) => {
         displayName: 'LC Clinical',
         iri: `urn:${name}`,
         namespace: `urn:${name}:`,
+        ...(reviewerId
+          ? { reviewers: [{ id: reviewerId, type: 'user' }] }
+          : {}),
       },
     }),
     'Create Data mode ontology'
   );
+};
+
+/** A reader sees an ontology only once a release is active, so publish one first. */
+const publish = async (
+  api: APIRequestContext,
+  reviewerPage: Page,
+  ontology: Ontology
+) => {
+  const state = await okJson<OntologyState>(
+    await api.get(`/api/v1/ontologies/${ontology.id}/state`),
+    'Read ontology revision'
+  );
+  const release = await okJson<OntologyRelease>(
+    await api.post(`/api/v1/ontologies/${ontology.id}/releases`, {
+      data: { expectedWorkingRevision: state.workingRevision },
+    }),
+    'Capture release'
+  );
+  const task = await okJson<Task>(
+    await api.post('/api/v1/tasks', {
+      data: {
+        name: `Review ${release.fullyQualifiedName}`,
+        category: 'Approval',
+        type: 'RequestApproval',
+        about: `<#E::ontologyRelease::${release.fullyQualifiedName}>`,
+      },
+    }),
+    'Submit release review'
+  );
+  await expect
+    .poll(async () => {
+      const ready = await okJson<Task>(
+        await api.get(`/api/v1/tasks/${task.id}`),
+        'Read release review'
+      );
+
+      return ready.availableTransitions?.length;
+    })
+    .toBe(2);
+  await reviewerPage.goto(`/tasks/${task.id}`);
+  await reviewerPage.getByTestId('task-approve').click();
+  await expect(reviewerPage.getByTestId('task-approve')).toBeHidden();
+  const activated = await okJson<OntologyState>(
+    await api.get(`/api/v1/ontologies/${ontology.id}/state`),
+    'Read ontology state'
+  );
+  await okJson<OntologyState>(
+    await api.put(`/api/v1/ontologies/${ontology.id}/activation`, {
+      data: {
+        releaseId: release.id,
+        expectedActivationRevision: activated.activationRevision,
+      },
+    }),
+    'Activate release'
+  );
+
+  return task.id;
 };
 
 const createConcept = async (
@@ -178,6 +242,9 @@ const assetRow = (page: Page, table: TableClass) =>
       `[data-testid^="ontology-data-asset-asset:"][data-testid$="${table.entityResponseData.id}"]`
     );
 
+const labelOf = (table: TableClass) =>
+  table.entityResponseData.displayName ?? table.entityResponseData.name;
+
 const readBindings = async (api: APIRequestContext, concept: OntologyConcept) =>
   okJson<OntologyConceptBindingsResponse>(
     await api.get(`/api/v1/ontologyConcepts/${concept.id}/bindings`),
@@ -220,7 +287,7 @@ test.describe(
           await expect(page).toHaveURL(/\/governance\/ontology/);
           await expect(
             panel.getByTestId('ontology-data-asset-panel-name')
-          ).toContainText(table.entityResponseData.name);
+          ).toContainText(labelOf(table));
           await expect(
             panel.getByTestId('ontology-data-asset-panel-columns')
           ).toContainText(table.entityResponseData.columns?.[0].name ?? '');
@@ -256,7 +323,9 @@ test.describe(
           [customer, tables[0], tables[1]],
           [order, tables[1], tables[0]],
         ] as const) {
-          await page.getByTestId('ontology-data-concept-picker').click();
+          if (concept !== customer) {
+            await page.getByTestId('ontology-data-concept-change').click();
+          }
           await page
             .getByTestId(`ontology-data-concept-option-${concept.id}`)
             .click();
@@ -265,6 +334,10 @@ test.describe(
           await expect(assetRow(page, hidden)).toHaveCount(0);
           await expect(
             page.getByTestId('ontology-data-concept-chip')
+          ).toContainText(concept.name);
+          // Choosing a concept opens its inspector; the picker must be reopened after that settles.
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
           ).toContainText(concept.name);
         }
         await page.screenshot({ path: `${SCREENSHOTS}/g17-picker.png` });
@@ -311,6 +384,7 @@ test.describe(
         const picker = page.getByTestId('ontology-data-asset-picker');
         await picker
           .getByTestId('ontology-data-asset-search')
+          .locator('input')
           .fill(table.entityResponseData.name);
         const option = picker.getByTestId(
           `ontology-data-asset-option-${table.entityResponseData.id}`
@@ -353,8 +427,17 @@ test.describe(
       test.slow();
       const api = await getWorkerAdminAPIContext();
       const ontology = await createOntology(api);
-      const [match] = await createTables(api, 1, 'prescription_orders');
-      const [other] = await createTables(api, 1, 'inventory_items');
+      // Own services, because tables otherwise share one service per worker.
+      const match = new TableClass({
+        name: `prescription_orders_${uuid()}`,
+        service: new DatabaseServiceClass(),
+      });
+      const other = new TableClass({
+        name: `inventory_items_${uuid()}`,
+        service: new DatabaseServiceClass(),
+      });
+      await match.create(api);
+      await other.create(api);
       try {
         const concept = await createConcept(api, ontology, 'Prescription');
         await openData(page, ontology, concept);
@@ -371,6 +454,7 @@ test.describe(
 
         await picker
           .getByTestId('ontology-data-asset-search')
+          .locator('input')
           .fill('inventory');
         await expect(
           picker.getByTestId(
@@ -381,10 +465,16 @@ test.describe(
           picker.getByTestId(`ontology-data-asset-option-${matchId}`)
         ).toHaveCount(0);
 
-        await picker.getByTestId('ontology-data-asset-search').fill('');
+        await picker
+          .getByTestId('ontology-data-asset-search')
+          .locator('input')
+          .fill('');
         await picker.getByTestId('ontology-data-asset-service-filter').click();
         await page
-          .getByRole('option', { name: match.service.name, exact: true })
+          .getByRole('option', {
+            name: match.serviceResponseData.name,
+            exact: true,
+          })
           .click();
         await expect(
           picker.getByTestId(`ontology-data-asset-option-${matchId}`)
@@ -417,7 +507,7 @@ test.describe(
         await page.getByTestId('ontology-data-asset-unlink').click();
 
         await expect(page.getByTestId('ontology-unlink-title')).toContainText(
-          `${table.entityResponseData.name} from Customer`
+          `${labelOf(table)} from Customer`
         );
         await expect(
           page.getByTestId('ontology-unlink-description')
@@ -543,16 +633,24 @@ test.describe(
     });
 
     test('a DataConsumer reads Data mode but sees no write action', async ({
+      isolatedUserPage: reviewerPage,
+      isolatedUser: reviewer,
       freshUserPage: { page },
     }) => {
+      test.slow();
       const api = await getWorkerAdminAPIContext();
-      const ontology = await createOntology(api);
+      const ontology = await createOntology(api, reviewer.responseData.id);
       const [table] = await createTables(api, 1);
+      let taskId: string | undefined;
       try {
         const concept = await createConcept(api, ontology, 'Customer');
         const empty = await createConcept(api, ontology, 'Lonely');
         await bindTable(api, concept, table, 0);
-        await openData(page, ontology, concept);
+        taskId = await publish(api, reviewerPage, ontology);
+        await page.goto(
+          `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}&version=published`
+        );
+        await page.getByTestId('ontology-graph-mode-data').click();
 
         await assetRow(page, table).click();
         await expect(
@@ -575,6 +673,12 @@ test.describe(
           0
         );
       } finally {
+        if (taskId) {
+          await deleteFixtureEntity(
+            api,
+            `/api/v1/tasks/${taskId}?hardDelete=true`
+          );
+        }
         await cleanUp(api, { ontology, tables: [table] });
       }
     });

@@ -589,6 +589,7 @@ describe('unlinking an asset', () => {
         columns: retainedColumns,
       });
       state.revision += 1;
+
       expect((data as UpdateOntologyConceptBinding).asset.columns).toEqual([
         { columnPath: ['customer_id'], propertyId: 'retained' },
       ]);

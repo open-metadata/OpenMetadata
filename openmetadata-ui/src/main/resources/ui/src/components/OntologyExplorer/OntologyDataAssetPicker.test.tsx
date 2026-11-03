@@ -479,6 +479,7 @@ describe('OntologyDataAssetPicker', () => {
       expect(
         screen.getAllByRole('checkbox', { name: 'medication_events' })
       ).toHaveLength(1);
+
       const labels = screen
         .getAllByRole('checkbox')
         .map((box) => box.getAttribute('aria-label'));
@@ -523,10 +524,12 @@ describe('OntologyDataAssetPicker', () => {
       const box = await screen.findByRole('checkbox', { name: 'customers' });
 
       expect(box).toBeDisabled();
-      expect(box.closest('li')).toHaveAttribute(
-        'title',
-        'message.ontology-asset-already-linked'
-      );
+      expect(
+        screen.getByTestId('ontology-data-asset-linked-t-1')
+      ).toHaveTextContent('message.ontology-asset-already-linked');
+      expect(
+        screen.queryByTestId('ontology-data-asset-linked-t-2')
+      ).not.toBeInTheDocument();
     });
   });
 });

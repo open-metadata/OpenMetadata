@@ -30,12 +30,12 @@ import {
   putOntologyConceptBinding,
 } from '../../../../rest/ontologyAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import {
   pageFixture,
   prefixFixture,
 } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import OntologyNativeDataMode from './OntologyNativeDataMode';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
@@ -292,6 +292,7 @@ it('selects the concept from its header, opens an asset in a panel that stays in
   fireEvent.click(screen.getByTestId('ontology-data-asset-asset:transfer:a1'));
 
   expect(onSelectConcept).toHaveBeenCalledWith('transfer');
+
   const panel = await screen.findByTestId('ontology-data-asset-panel');
 
   expect(
@@ -598,6 +599,7 @@ describe('the concept picker', () => {
     expect(
       await screen.findByText('message.ontology-data-pick-title')
     ).toBeVisible();
+
     await waitFor(() =>
       expect(optionNames()).toEqual([
         'Funds Transferlabel.count-asset',

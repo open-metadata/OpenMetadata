@@ -27,14 +27,14 @@ import { useOntologyAssetUnlink } from '../../../../hooks/governance/ontology/us
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
+  getOntologyAssetPath,
+  NATIVE_BINDING_ASSET_TYPES,
+} from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
+import {
   DataPickerConcept,
   readDataPick,
   rememberDataPick,
 } from '../../../../utils/governance/ontology/OntologyDataConceptPick.utils';
-import {
-  getOntologyAssetPath,
-  NATIVE_BINDING_ASSET_TYPES,
-} from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import {
   buildNativeDataGraph,
   NATIVE_CONTEXT_CONCEPT_LIMIT,
@@ -43,11 +43,11 @@ import {
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
 import OntologyDataGraph from '../../../OntologyExplorer/OntologyDataGraph';
 import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
-import { AI_GRAPH_BACKDROP_CLASS } from './OntologyGraphView.constants';
 import OntologyDataAssetPanel from './OntologyDataAssetPanel';
 import OntologyDataConceptPicker, {
   OntologyDataConceptChip,
 } from './OntologyDataConceptPicker';
+import { AI_GRAPH_BACKDROP_CLASS } from './OntologyGraphView.constants';
 
 const NO_RELATION_TYPES: never[] = [];
 const NO_COLORS: Record<string, never> = {};
@@ -56,8 +56,10 @@ const CLASSIC_BACKDROP_CLASS = [
   'tw:pointer-events-none tw:absolute tw:inset-0 tw:bg-canvas tw:[background-size:22px_22px]',
   'tw:[background-image:radial-gradient(circle,var(--tw-border-color-secondary)_1px,transparent_1px)]',
 ].join(' ');
-const CENTERED_CARD_CLASS =
-  'tw:absolute tw:top-1/2 tw:left-1/2 tw:z-10 tw:flex tw:w-96 tw:max-w-[calc(100%-2rem)] tw:-translate-x-1/2 tw:-translate-y-1/2 tw:flex-col tw:gap-4 tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-6 tw:shadow-lg';
+const CENTERED_CARD_CLASS = [
+  'tw:absolute tw:top-1/2 tw:left-1/2 tw:z-10 tw:flex tw:w-96 tw:max-w-[calc(100%-2rem)]',
+  'tw:-translate-x-1/2 tw:-translate-y-1/2 tw:flex-col tw:gap-4 tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-6 tw:shadow-lg',
+].join(' ');
 
 interface OntologyNativeDataModeProps {
   /** Whether the person may link and unlink assets of the picked concept. */
@@ -145,20 +147,18 @@ const OntologyNativeDataMode = ({
   const hasMoreClusters =
     graph.nextClusterOffset !== undefined && !graph.contextFull;
   // Picker counts and the picked cluster need every page of clusters.
-  useEffect(() => {
-    if (isActive && hasMoreClusters && !isLoading && !isLoadingClusters) {
-      if (!failure) {
-        loadMoreClusters();
-      }
-    }
-  }, [
-    failure,
-    hasMoreClusters,
+  const canLoadClusters = [
     isActive,
-    isLoading,
-    isLoadingClusters,
-    loadMoreClusters,
-  ]);
+    hasMoreClusters,
+    !isLoading,
+    !isLoadingClusters,
+    !failure,
+  ].every(Boolean);
+  useEffect(() => {
+    if (canLoadClusters) {
+      loadMoreClusters();
+    }
+  }, [canLoadClusters, loadMoreClusters]);
 
   const picked = concepts.find((item) => item.id === pickedId);
   const pickedCluster = graph.clusters.find(
@@ -194,13 +194,13 @@ const OntologyNativeDataMode = ({
       })),
     [concepts, graph.clusters]
   );
-  const isCountPending = isLoading || hasMoreClusters || isLoadingClusters;
-  const isBeyondContext = Boolean(
-    picked && !pickedCluster && graph.contextFull
+  const isCountPending = [isLoading, hasMoreClusters, isLoadingClusters].some(
+    Boolean
   );
-  const isEmpty = Boolean(
-    picked && !isCountPending && !failure && !pickedCluster && !isBeyondContext
-  );
+  const isUndrawn = Boolean(picked) && !pickedCluster;
+  const isBeyondContext = isUndrawn && graph.contextFull;
+  const isEmpty =
+    isUndrawn && [!isCountPending, !failure, !isBeyondContext].every(Boolean);
   const panelNode = data.nodes.find(
     (node) => node.type === 'dataAsset' && node.entityRef?.id === panelAssetId
   );

@@ -153,12 +153,12 @@ const OntologyConceptAssets = ({
           cancelText={t('label.cancel')}
           confirmText={t('label.unlink')}
           data-testid="ontology-unlink"
+          description={getUnlinkDescription(unlink.target.binding, t)}
           isConfirmDisabled={
             !canEdit ||
             !bindings.editableSnapshot ||
             unlink.target.conceptId !== conceptId
           }
-          description={getUnlinkDescription(unlink.target.binding, t)}
           title={t('message.ontology-unlink-asset-title', {
             asset: unlink.target.name,
             concept: conceptName,
