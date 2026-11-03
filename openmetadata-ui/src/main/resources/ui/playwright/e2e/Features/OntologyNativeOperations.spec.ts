@@ -500,7 +500,10 @@ test.describe(
           await submitted,
           'Retry real review task submission'
         );
-        await expect(page).toHaveURL(new RegExp(`/tasks/${task.id}$`));
+        await expect(
+          page.getByTestId('ontology-publication-notice-requested')
+        ).toBeVisible();
+        await expect(page).toHaveURL(/\/governance\/ontology/);
         const history = await okJson<{ data: OntologyRelease[] }>(
           await api.get(`/api/v1/ontologies/${ontology.id}/releases`),
           'Read owner release history'

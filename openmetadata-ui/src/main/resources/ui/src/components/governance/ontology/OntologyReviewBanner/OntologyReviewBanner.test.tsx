@@ -12,7 +12,14 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { EntityStatus } from '../../../../generated/api/data/ontologyReleaseReview';
+import {
+  EntityStatus,
+  ReviewVoteDecision,
+} from '../../../../generated/api/data/ontologyReleaseReview';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
 import {
   release,
   review,
@@ -77,4 +84,84 @@ it('shows the blue requester variant and hides prior voters and decided tasks', 
   );
 
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+describe('decision banner for the requester', () => {
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  const decided = (status: EntityStatus, reason?: string) => ({
+    ...review,
+    callerCanVote: false,
+    status,
+    latestDecision: {
+      user: { id: 'reviewer', name: 'Reviewer', type: 'user' },
+      decision:
+        status === EntityStatus.Approved
+          ? ReviewVoteDecision.Approved
+          : ReviewVoteDecision.Rejected,
+      reason,
+      timestamp: 1,
+    },
+  });
+
+  it('tells the author who approved which version', () => {
+    render(
+      <OntologyReviewBanner
+        release={{ ...release, semanticVersion: '1.5.0' }}
+        review={decided(EntityStatus.Approved)}
+        viewerId="author"
+        viewerName="Author"
+        onOpenTask={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('ontology-review-decision-banner')
+    ).toHaveTextContent(
+      'Reviewer approved v1.5.0. Publish it from Review & publish.'
+    );
+  });
+
+  it('shows the rejection reason to the author and opens the request', () => {
+    const open = jest.fn();
+    render(
+      <OntologyReviewBanner
+        release={{ ...release, semanticVersion: '1.5.0' }}
+        review={decided(EntityStatus.Rejected, 'Missing owners')}
+        viewerId="author"
+        viewerName="Author"
+        onOpenTask={open}
+      />
+    );
+
+    expect(
+      screen.getByTestId('ontology-review-decision-banner')
+    ).toHaveTextContent('Reviewer rejected v1.5.0: Missing owners');
+
+    fireEvent.click(screen.getByRole('button', { name: 'View request' }));
+
+    expect(open).toHaveBeenCalledWith('task');
+  });
+
+  it('does not show a decision to anyone but the requester', () => {
+    render(
+      <OntologyReviewBanner
+        release={release}
+        review={decided(EntityStatus.Approved)}
+        viewerId="someone-else"
+        viewerName="Other"
+        onOpenTask={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('ontology-review-decision-banner')
+    ).not.toBeInTheDocument();
+  });
 });

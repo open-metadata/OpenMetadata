@@ -381,7 +381,12 @@ it('keeps a successful final vote approved when its reconciliation read fails', 
   expect(
     screen.queryByRole('button', { name: 'label.approve' })
   ).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'label.publish' })).toBeDisabled();
+  expect(
+    screen.queryByRole('button', { name: 'label.publish' })
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByTestId('ontology-only-author-publishes')
+  ).toHaveTextContent('message.ontology-publication-only-author-publishes');
 });
 
 it('keeps writes disabled after an ambiguous outcome until an authoritative read succeeds', async () => {

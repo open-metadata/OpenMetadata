@@ -17,6 +17,7 @@ import {
   Box,
   Button,
   Select,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -1776,18 +1777,22 @@ const OntologyExplorerContent: React.FC = () => {
 
     return (
       <>
-        <Button
-          color={isAiMode ? 'secondary-brand' : 'primary'}
-          data-testid="ontology-publication-trigger"
-          iconLeading={GitBranch01}
-          isDisabled={isAllOntologies && studioScopes.isOntologyError}
-          size={headerActionSize}
-          onPress={() => {
-            setPublicationTab('changes');
-            setIsPublicationOpen(true);
-          }}>
-          {renderPublicationLabel()}
-        </Button>
+        <Tooltip
+          isDisabled={!isAllOntologies}
+          title={t('message.ontology-choose-ontology-to-publish')}>
+          <Button
+            color={isAiMode ? 'secondary-brand' : 'primary'}
+            data-testid="ontology-publication-trigger"
+            iconLeading={GitBranch01}
+            isDisabled={isAllOntologies}
+            size={headerActionSize}
+            onPress={() => {
+              setPublicationTab('changes');
+              setIsPublicationOpen(true);
+            }}>
+            {renderPublicationLabel()}
+          </Button>
+        </Tooltip>
         {isolatedCount > 0 && (
           <BadgeWithDot color="warning" size="sm">
             {isolatedCount} {t('label.isolated')}
@@ -2447,20 +2452,8 @@ const OntologyExplorerContent: React.FC = () => {
         />
       );
     }
-    if (!isAllOntologies) {
-      return null;
-    }
 
-    return (
-      <OntologyPublicationModal
-        canEdit={false}
-        initialTab={publicationTab}
-        key={String(userId)}
-        ontologies={availableOntologies}
-        onClose={() => setIsPublicationOpen(false)}
-        onOpenTask={selectReviewTask}
-      />
-    );
+    return null;
   }
 
   const renderLibrary = () => {
@@ -2564,6 +2557,7 @@ const OntologyExplorerContent: React.FC = () => {
         data-testid="ontology-studio-shell"
         style={ONTOLOGY_STUDIO_STYLE}>
         <OntologyTasksDrawer
+          ontologyId={selectedOntology?.id}
           taskId={selectedReviewTaskId}
           onTaskChange={selectReviewTask}>
           {({ tasksAction, banner }) => (
