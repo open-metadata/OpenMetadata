@@ -35,7 +35,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -275,6 +274,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     for (Status taskStatus : listOrEmpty(pipelineStatus.getTaskStatus())) {
       validateTask(pipeline, taskStatus.getName());
     }
+    String statusJson = JsonUtils.pojoToJson(pipelineStatus);
+    requireListableSize(pipelineStatus, statusJson);
 
     StatusChange statusChange =
         resolveStatusChange(pipeline.getFullyQualifiedName(), pipelineStatus);
@@ -291,14 +292,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           .update(
               pipeline.getFullyQualifiedName(),
               PIPELINE_STATUS_EXTENSION,
-              JsonUtils.pojoToJson(pipelineStatus),
+              statusJson,
               pipelineStatus.getTimestamp());
     } else {
       storeTimeSeries(
           pipeline.getFullyQualifiedName(),
           PIPELINE_STATUS_EXTENSION,
           "pipelineStatus",
-          JsonUtils.pojoToJson(pipelineStatus));
+          statusJson);
     }
 
     applyStatusChange(pipeline, pipelineStatus, statusChange.previous());
@@ -340,26 +341,52 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       return new RestUtil.PutResponse<>(Response.Status.OK, pipeline, ENTITY_NO_CHANGE);
     }
     validateTasks(pipeline, incoming);
+    incoming.forEach(status -> requireListableSize(status, JsonUtils.pojoToJson(status)));
 
-    Map<Long, PipelineStatus> stored = loadStoredStatuses(pipeline, incoming);
-    List<PipelineStatus> written = new ArrayList<>();
-    List<String> changeEvents = new ArrayList<>();
-
-    // incoming is ordered oldest first, so change events are emitted chronologically.
-    for (PipelineStatus status : incoming) {
-      StatusChange statusChange = resolveStatusChange(stored.get(status.getTimestamp()), status);
-      if (statusChange.outcome() == StatusOutcome.UNCHANGED) {
-        continue;
+    // Process in chunks so the stored rows loaded to compare against and the per-status
+    // change-event
+    // snapshots never grow with the request: a parsed status can take tens of times its stored
+    // size.
+    PipelineStatus latestStatus = incoming.getLast();
+    boolean latestChanged = false;
+    PipelineStatus latestPrevious = null;
+    for (int start = 0; start < incoming.size(); start += STATUS_WRITE_CHUNK_SIZE) {
+      List<PipelineStatus> chunk =
+          incoming.subList(start, Math.min(start + STATUS_WRITE_CHUNK_SIZE, incoming.size()));
+      Map<Long, PipelineStatus> stored = loadStoredStatuses(pipeline, chunk);
+      List<PipelineStatus> written = writeStatusChunk(pipeline, chunk, stored, updatedBy);
+      if (containsTimestamp(written, latestStatus.getTimestamp())) {
+        latestChanged = true;
+        latestPrevious = stored.get(latestStatus.getTimestamp());
       }
-      written.add(status);
-      buildStatusChangeEvent(pipeline, status, statusChange.previous(), updatedBy)
-          .ifPresent(changeEvents::add);
     }
 
-    PipelineStatus latestStatus = incoming.getLast();
-    boolean latestChanged =
-        !written.isEmpty() && written.getLast().getTimestamp().equals(latestStatus.getTimestamp());
+    if (latestChanged) {
+      applyStatusChange(pipeline, latestStatus, latestPrevious);
+      refreshPipelineIndexes(pipeline);
+    }
 
+    return new RestUtil.PutResponse<>(
+        Response.Status.OK, pipeline.withPipelineStatus(latestStatus), ENTITY_NO_CHANGE);
+  }
+
+  /** Persists, indexes and emits change events for one chunk; returns the statuses it wrote. */
+  private List<PipelineStatus> writeStatusChunk(
+      Pipeline pipeline,
+      List<PipelineStatus> chunk,
+      Map<Long, PipelineStatus> stored,
+      String updatedBy) {
+    List<PipelineStatus> written = new ArrayList<>();
+    List<String> changeEvents = new ArrayList<>();
+    // chunk is ordered oldest first, so change events are emitted chronologically.
+    for (PipelineStatus status : chunk) {
+      StatusChange statusChange = resolveStatusChange(stored.get(status.getTimestamp()), status);
+      if (statusChange.outcome() != StatusOutcome.UNCHANGED) {
+        written.add(status);
+        buildStatusChangeEvent(pipeline, status, statusChange.previous(), updatedBy)
+            .ifPresent(changeEvents::add);
+      }
+    }
     if (!written.isEmpty()) {
       bulkUpsertPipelineStatuses(pipeline.getFullyQualifiedName(), written);
       searchRepository.bulkIndexPipelineExecutions(pipeline, written);
@@ -367,18 +394,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         written.forEach(status -> storePipelineExecutionInRdf(pipeline, status));
       }
     }
-
-    if (latestChanged) {
-      applyStatusChange(pipeline, latestStatus, stored.get(latestStatus.getTimestamp()));
-      refreshPipelineIndexes(pipeline);
-    }
-
     // This endpoint emits one change event per status, which the response filter cannot do, so the
     // repository owns emission and ENTITY_NO_CHANGE stops the filter adding a duplicate.
     insertChangeEventsInChunks(changeEvents);
+    return written;
+  }
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.OK, pipeline.withPipelineStatus(latestStatus), ENTITY_NO_CHANGE);
+  private static boolean containsTimestamp(List<PipelineStatus> statuses, Long timestamp) {
+    return statuses.stream().anyMatch(status -> timestamp.equals(status.getTimestamp()));
   }
 
   private static List<PipelineStatus> dedupeByTimestamp(List<PipelineStatus> pipelineStatuses) {
@@ -389,6 +412,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return byTimestamp.values().stream()
         .sorted(Comparator.comparing(PipelineStatus::getTimestamp))
         .toList();
+  }
+
+  /** A status larger than the reader will load could never be listed, so it is refused, not stored. */
+  private static void requireListableSize(PipelineStatus status, String statusJson) {
+    if (statusJson.length() > PipelineStatusReader.MAX_STATUS_JSON_LENGTH) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Pipeline status at %d is %d characters of JSON; a status may be at most %d",
+              status.getTimestamp(),
+              statusJson.length(),
+              PipelineStatusReader.MAX_STATUS_JSON_LENGTH));
+    }
   }
 
   private void validateTasks(Pipeline pipeline, List<PipelineStatus> statuses) {
@@ -402,14 +437,25 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
   }
 
+  /** Only the rows at the request's timestamps: the span between them may hold any number more. */
   private Map<Long, PipelineStatus> loadStoredStatuses(
       Pipeline pipeline, List<PipelineStatus> incoming) {
-    long from = incoming.getFirst().getTimestamp();
-    long to = incoming.getLast().getTimestamp();
+    List<Long> timestamps = incoming.stream().map(PipelineStatus::getTimestamp).toList();
     Map<Long, PipelineStatus> stored = new HashMap<>();
     for (String json :
-        getResultsFromAndToTimestamps(
-            pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, from, to)) {
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .listAtTimestamps(
+                pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, timestamps)) {
+      // A status stored before writes were size-capped is left unparsed and treated as absent: the
+      // incoming (capped) status overwrites it, and parsing it could take many times its size.
+      if (json.length() > PipelineStatusReader.MAX_STATUS_JSON_LENGTH) {
+        LOG.warn(
+            "Pipeline {}: skipping an oversized stored status of {} characters; it will be replaced",
+            pipeline.getFullyQualifiedName(),
+            json.length());
+        continue;
+      }
       PipelineStatus status = JsonUtils.readValue(json, PipelineStatus.class);
       stored.put(status.getTimestamp(), status);
     }
@@ -453,6 +499,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   record StatusChange(StatusOutcome outcome, PipelineStatus previous) {}
 
   private static final int CHANGE_EVENT_CHUNK_SIZE = 100;
+
+  // Bulk statuses are written a chunk at a time so the stored rows loaded to compare against, and
+  // the
+  // pipeline snapshot each change event copies, stay bounded however many the request carries.
+  private static final int STATUS_WRITE_CHUNK_SIZE = 25;
 
   private static final Comparator<Status> BY_TASK_NAME =
       Comparator.comparing(Status::getName, Comparator.nullsFirst(String::compareTo));
@@ -587,35 +638,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             "Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
   }
 
-  private Long calculateActualDuration(PipelineStatus pipelineStatus) {
-    if (pipelineStatus.getTaskStatus() == null || pipelineStatus.getTaskStatus().isEmpty()) {
-      return null;
-    }
-
-    Long minStartTime =
-        pipelineStatus.getTaskStatus().stream()
-            .map(Status::getStartTime)
-            .filter(java.util.Objects::nonNull)
-            .min(Long::compare)
-            .orElse(null);
-
-    Long maxEndTime =
-        pipelineStatus.getTaskStatus().stream()
-            .map(Status::getEndTime)
-            .filter(java.util.Objects::nonNull)
-            .max(Long::compare)
-            .orElse(null);
-
-    if (minStartTime != null && maxEndTime != null && maxEndTime >= minStartTime) {
-      return maxEndTime - minStartTime;
-    }
-
-    return null;
-  }
-
+  /**
+   * A page of a pipeline's statuses in [startTs, endTs], newest first. See {@link
+   * PipelineStatusReader} for how a page is bounded; {@code paging.after} leads to the rest.
+   */
   public ResultList<PipelineStatus> getPipelineStatuses(
       String fqn,
-      Long starTs,
+      Long startTs,
       Long endTs,
       Integer limit,
       String before,
@@ -624,117 +653,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String search,
       Long minDuration,
       Long maxDuration) {
-    List<PipelineStatus> pipelineStatuses;
-    pipelineStatuses =
-        JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs),
-            PipelineStatus.class);
-
-    // Apply multi-value status filter
-    if (status != null && !status.isEmpty()) {
-      List<String> statusValues =
-          Arrays.asList(status.split(",")).stream()
-              .map(String::trim)
-              .collect(java.util.stream.Collectors.toList());
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .filter(
-                  ps ->
-                      ps.getExecutionStatus() != null
-                          && statusValues.contains(ps.getExecutionStatus().value()))
-              .collect(java.util.stream.Collectors.toList());
-    }
-
-    // Apply search filter on taskStatus names
-    if (search != null && !search.isEmpty()) {
-      String searchLower = search.toLowerCase();
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .map(
-                  ps -> {
-                    if (ps.getTaskStatus() == null || ps.getTaskStatus().isEmpty()) {
-                      return ps;
-                    }
-                    List<org.openmetadata.schema.type.Status> filteredTasks =
-                        ps.getTaskStatus().stream()
-                            .filter(
-                                task ->
-                                    task.getName() != null
-                                        && task.getName().toLowerCase().contains(searchLower))
-                            .collect(java.util.stream.Collectors.toList());
-                    return ps.withTaskStatus(filteredTasks);
-                  })
-              .filter(ps -> ps.getTaskStatus() != null && !ps.getTaskStatus().isEmpty())
-              .collect(java.util.stream.Collectors.toList());
-    }
-
-    // Apply duration filters using task-level timings
-    if (minDuration != null || maxDuration != null) {
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .filter(
-                  ps -> {
-                    Long actualDuration = calculateActualDuration(ps);
-                    if (actualDuration == null) {
-                      return false;
-                    }
-                    boolean meetsMin = minDuration == null || actualDuration >= minDuration;
-                    boolean meetsMax = maxDuration == null || actualDuration <= maxDuration;
-                    return meetsMin && meetsMax;
-                  })
-              .collect(java.util.stream.Collectors.toList());
-    }
-
-    // Sort by timestamp (descending - newest first)
-    pipelineStatuses.sort((a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
-
-    // Store total count before pagination
-    int total = pipelineStatuses.size();
-
-    // Apply cursor-based pagination
-    // Note: With DESCENDING sort (newest first), cursor semantics are:
-    // - "before" cursor: get newer records (previous page, higher timestamps)
-    // - "after" cursor: get older records (next page, lower timestamps)
-    if (before != null) {
-      // Pagination BACKWARDS: get newer/previous page records (higher timestamps)
-      // Decode base64-encoded cursor before parsing
-      String decodedBefore = RestUtil.decodeCursor(before);
-      Long beforeTs = Long.parseLong(decodedBefore);
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .filter(ps -> ps.getTimestamp() > beforeTs)
-              .collect(java.util.stream.Collectors.toList());
-    } else if (after != null) {
-      // Pagination FORWARD: get older/next page records (lower timestamps)
-      // Decode base64-encoded cursor before parsing
-      String decodedAfter = RestUtil.decodeCursor(after);
-      Long afterTs = Long.parseLong(decodedAfter);
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .filter(ps -> ps.getTimestamp() < afterTs)
-              .collect(java.util.stream.Collectors.toList());
-    }
-
-    // Apply limit only if provided
-    List<PipelineStatus> paginatedResults;
-    if (limit != null && limit > 0 && pipelineStatuses.size() > limit) {
-      paginatedResults = pipelineStatuses.subList(0, limit);
-    } else {
-      paginatedResults = pipelineStatuses;
-    }
-
-    // Build cursors for pagination - only when limit is provided
-    String beforeCursor = null;
-    String afterCursor = null;
-
-    // Only generate cursors if pagination is active (limit was provided)
-    if (limit != null && !paginatedResults.isEmpty()) {
-      beforeCursor = String.valueOf(paginatedResults.get(0).getTimestamp());
-      afterCursor =
-          String.valueOf(paginatedResults.get(paginatedResults.size() - 1).getTimestamp());
-    }
-
-    return new ResultList<>(paginatedResults, beforeCursor, afterCursor, total);
+    return new PipelineStatusReader(daoCollection.entityExtensionTimeSeriesDao(), fqn)
+        .list(
+            new PipelineStatusReader.StatusListing(startTs, endTs, limit, before, after),
+            PipelineStatusFilter.of(status, search, minDuration, maxDuration));
   }
 
   // Validate if a given task exists in the pipeline
@@ -1931,11 +1853,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       long thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000);
       long now = System.currentTimeMillis();
 
+      // The newest runs that fit one bounded page, rather than every run of the 30 days: a
+      // pipeline's statuses have no bound in number or size, and this runs once per pipeline.
       List<PipelineStatus> statuses =
-          JsonUtils.readObjects(
-              getResultsFromAndToTimestamps(
-                  pipelineFqn, PIPELINE_STATUS_EXTENSION, thirtyDaysAgo, now),
-              PipelineStatus.class);
+          new PipelineStatusReader(daoCollection.entityExtensionTimeSeriesDao(), pipelineFqn)
+              .listNewest(thirtyDaysAgo, now);
 
       if (statuses == null || statuses.isEmpty()) {
         return null;

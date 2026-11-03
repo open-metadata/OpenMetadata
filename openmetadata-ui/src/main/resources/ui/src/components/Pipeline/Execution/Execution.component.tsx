@@ -34,7 +34,7 @@ import {
   SEGMENT_TOGGLE_ITEM_CLASS,
 } from '../../../constants/SegmentToggle.constants';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
-import { getPipelineStatus } from '../../../rest/pipelineAPI';
+import { getAllPipelineStatuses } from '../../../rest/pipelineAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
   getCurrentMillis,
@@ -67,11 +67,11 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     try {
       setIsLoading(true);
 
-      const response = await getPipelineStatus(pipelineFQN, {
+      const statuses = await getAllPipelineStatuses(pipelineFQN, {
         startTs: startRange,
         endTs: endRange,
       });
-      setExecutions(response.data);
+      setExecutions(statuses);
     } catch (error) {
       showErrorToast(
         error as AxiosError,

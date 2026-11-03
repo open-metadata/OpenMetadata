@@ -137,6 +137,26 @@ export const getPipelineStatus = async (
   return response.data;
 };
 
+/**
+ * Every status in the range, newest first. The server bounds each page by size
+ * as well as by `limit`, so the rest of the range is behind `paging.after`.
+ */
+export const getAllPipelineStatuses = async (
+  fqn: string,
+  params: Pick<ListTestCaseResultsParams, 'startTs' | 'endTs'>
+) => {
+  const statuses: PipelineStatus[] = [];
+  let after: string | undefined;
+
+  do {
+    const response = await getPipelineStatus(fqn, { ...params, after });
+    statuses.push(...response.data);
+    after = response.paging?.after;
+  } while (after);
+
+  return statuses;
+};
+
 export interface ListPipelineSummariesParams {
   /** Latest-run status to keep. Pipelines that have never run match none. */
   status?: LastRunStatus;
