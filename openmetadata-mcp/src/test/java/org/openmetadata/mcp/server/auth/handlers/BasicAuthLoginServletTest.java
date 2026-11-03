@@ -181,6 +181,27 @@ class BasicAuthLoginServletTest {
     verify(authenticator, never()).recordFailedLoginAttempt(anyString(), anyString());
   }
 
+  @Test
+  void loginForm_namesTheHostTheCodeIsSentTo() throws Exception {
+    User user = mock(User.class);
+    when(user.getName()).thenReturn("user");
+    when(authenticator.lookUserInProvider(EMAIL, PASSWORD)).thenReturn(user);
+    doThrow(new AuthenticationException("invalid username or password"))
+        .when(authenticator)
+        .validatePassword(any(String.class), any(String.class), any(User.class));
+
+    servlet.doPost(request, response);
+
+    // The pending request's redirect URI is https://client.example.com/callback: the page names
+    // its scheme and host, and leaves out the path, which can be made to look like a host.
+    assertThat(responseBody.toString())
+        .contains("<strong>https://client.example.com</strong>")
+        .doesNotContain("client.example.com/callback");
+    // Never framed, so another page cannot cover that line.
+    verify(response).setHeader("X-Frame-Options", "DENY");
+    verify(response).addHeader("Content-Security-Policy", "frame-ancestors 'none'");
+  }
+
   // ── the re-rendered form stays bound to its auth request ─────────────────
 
   @Test
