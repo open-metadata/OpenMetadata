@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { OntologyNode } from './OntologyExplorer.interface';
 import {
@@ -171,6 +172,20 @@ const NativeOntologyTreeView = ({
 
     return roots;
   }, [rows, index, density, onConnect, t]);
+  // React Aria stops firing onAction once a row is selected (toggle behaviour),
+  // and reports the next row through onSelectionChange instead.
+  const openRow = (key: Key) => {
+    const row = byKey.get(String(key));
+    if (row) {
+      setState({
+        ...state,
+        selectedId: row.node.id,
+        selectedKey: row.key,
+        reveal: undefined,
+      });
+      onSelect(row.node);
+    }
+  };
   if (!index.nodes.size) {
     return (
       <Box data-testid="ontology-tree-view">
@@ -288,16 +303,11 @@ const NativeOntologyTreeView = ({
             : []
         }
         selectionMode="single"
-        onAction={(key) => {
-          const row = byKey.get(String(key));
-          if (row) {
-            setState({
-              ...state,
-              selectedId: row.node.id,
-              selectedKey: row.key,
-              reveal: undefined,
-            });
-            onSelect(row.node);
+        onAction={openRow}
+        onSelectionChange={(keys) => {
+          const [key] = keys === 'all' ? [] : keys;
+          if (key !== undefined) {
+            openRow(key);
           }
         }}
         onExpandedChange={(keys) => {

@@ -27,7 +27,7 @@ import {
   Share07,
 } from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useMemo, useState } from 'react';
-import { Key } from 'react-aria-components';
+import { Key, Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import NativeOntologyTreeView from './NativeOntologyTreeView';
@@ -301,6 +301,15 @@ const GlossaryTreeView = ({
     }
   };
 
+  // React Aria stops firing onAction once a row is selected (toggle behaviour),
+  // and reports the next row through onSelectionChange instead.
+  const handleSelectionChange = (keys: Selection) => {
+    const [key] = keys === 'all' ? [] : keys;
+    if (key !== undefined) {
+      handleAction(key);
+    }
+  };
+
   if (rows.length === 0 && metrics.length === 0) {
     return (
       <Box
@@ -336,6 +345,7 @@ const GlossaryTreeView = ({
               selectedKeys={selectedNodeId ? [selectedNodeId] : []}
               selectionMode="single"
               onAction={handleAction}
+              onSelectionChange={handleSelectionChange}
               onExpandedChange={(keys) =>
                 setCollapsedIds(
                   new Set(parentIds.filter((id) => !keys.has(id)))
@@ -365,7 +375,8 @@ const GlossaryTreeView = ({
               className={TREE_CLASS}
               selectedKeys={selectedNodeId ? [selectedNodeId] : []}
               selectionMode="single"
-              onAction={handleAction}>
+              onAction={handleAction}
+              onSelectionChange={handleSelectionChange}>
               {metrics.map(({ measures, node }) => (
                 <Tree.Item
                   className={ROW_CLASS}
@@ -420,7 +431,8 @@ const GlossaryTreeView = ({
               className={TREE_CLASS}
               selectedKeys={selectedNodeId ? [selectedNodeId] : []}
               selectionMode="single"
-              onAction={handleAction}>
+              onAction={handleAction}
+              onSelectionChange={handleSelectionChange}>
               {unconnected.map(({ node }) => (
                 <Tree.Item
                   className={ROW_CLASS}
