@@ -157,6 +157,7 @@ describe('native change-set application', () => {
       params: {
         fields: 'operations,applicationResult',
         limit: 100,
+        ontology: 'Sales',
         after: 'next',
       },
     });
@@ -323,6 +324,7 @@ describe('native change-set application', () => {
 
     expect(result.current.status.kind).toBe('blocked');
     expect(post).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
   });
 
   it('blocks after lease contention and reacquires before retrying the retained draft', async () => {

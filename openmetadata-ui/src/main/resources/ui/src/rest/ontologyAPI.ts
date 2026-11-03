@@ -852,6 +852,9 @@ export const listOntologyChangeSets = async (
     // Several states are sent comma-separated, which the server accepts.
     state?: OntologyChangeSetState | OntologyChangeSetState[];
     memorySourced?: boolean;
+    // Naming the ontology lets an ontology editor list without type-wide rights.
+    ontology?: string;
+    ontologyId?: string;
   }
 ) => {
   const response = await APIClient.get<PagingResponse<OntologyChangeSet[]>>(

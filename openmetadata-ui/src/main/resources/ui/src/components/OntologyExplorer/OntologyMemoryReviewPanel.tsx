@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQueries } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
+import { AxiosError, isAxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -215,6 +215,22 @@ async function loadMemoryDrafts(
   after?: string,
   ontologyId?: string
 ): Promise<{ drafts: OntologyChangeSet[]; after?: string }> {
+  try {
+    return await fetchMemoryDrafts(initialDraftId, after, ontologyId);
+  } catch (error) {
+    // Drafts are unpublished content; a refused list means nothing to review, not a failure.
+    if (isAxiosError(error) && error.response?.status === 403) {
+      return { drafts: [] };
+    }
+    throw error;
+  }
+}
+
+async function fetchMemoryDrafts(
+  initialDraftId?: string,
+  after?: string,
+  ontologyId?: string
+): Promise<{ drafts: OntologyChangeSet[]; after?: string }> {
   const [linked, page] = await Promise.all([
     initialDraftId && !after
       ? getOntologyChangeSet(initialDraftId, CHANGE_SET_FIELDS).catch(
@@ -226,6 +242,7 @@ async function loadMemoryDrafts(
       fields: CHANGE_SET_FIELDS,
       limit: PAGE_SIZE,
       memorySourced: true,
+      ...(ontologyId ? { ontologyId } : {}),
       state: REVIEWABLE_STATES,
     }),
   ]);
@@ -562,7 +579,16 @@ const OntologyMemoryReviewPanel = ({
     resourceType: 'ontologyChangeSet',
   });
 
+  const canReadDrafts = canApply || canSubmit || canDiscard;
+
   const loadChangeSets = useCallback(async () => {
+    if (!canReadDrafts) {
+      setChangeSets([]);
+      setNextCursor(undefined);
+      setIsLoading(false);
+
+      return;
+    }
     setIsLoading(true);
     try {
       const page = await loadMemoryDrafts(
@@ -582,7 +608,7 @@ const OntologyMemoryReviewPanel = ({
     } finally {
       setIsLoading(false);
     }
-  }, [initialDraftId, ontologyId]);
+  }, [canReadDrafts, initialDraftId, ontologyId]);
 
   useEffect(() => {
     void loadChangeSets();

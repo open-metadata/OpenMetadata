@@ -205,6 +205,7 @@ export const useOntologyChangeSetApply = ({
       const response = await listOntologyChangeSets({
         fields: CHANGE_SET_FIELDS,
         limit: 100,
+        ontology: plan.ontology,
         after,
       });
       const found = response.data.find((draft) => draft.name === plan.name);
