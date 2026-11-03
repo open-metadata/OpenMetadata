@@ -28,6 +28,7 @@ import {
   ConceptMappingType,
   OntologyConcept,
 } from '../../../../generated/entity/data/ontologyConcept';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyConcept,
@@ -61,6 +62,7 @@ const OntologyConceptEditor = ({
   const form = useForm<OntologyConceptFormValues>({
     defaultValues: conceptFormValues(concept),
   });
+  const markSaved = useOntologyDirtyForm(form.formState.isDirty);
   const [isSaving, setIsSaving] = useState(false);
   const mappings = useFieldArray({
     control: form.control,
@@ -79,6 +81,8 @@ const OntologyConceptEditor = ({
       const result = concept
         ? await patchOntologyConcept(concept.id, conceptPatch(concept, request))
         : await createOntologyConcept(request);
+      form.reset(conceptFormValues(result));
+      markSaved();
       onSaved(result);
     } catch (error) {
       showErrorToast(

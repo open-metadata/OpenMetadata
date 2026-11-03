@@ -186,8 +186,8 @@ export const TriggerButton = ({
       <ChevronDown
         className={cx(
           'tw:size-5 tw:shrink-0 tw:transition-transform tw:duration-200',
-          isOpen && 'tw:rotate-180',
-          hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+          'tw:text-fg-quaternary',
+          isOpen && 'tw:rotate-180'
         )}
       />
     </AriaButton>

@@ -29,7 +29,9 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
@@ -59,14 +61,11 @@ public class BasicAuthLoginServlet extends HttpServlet {
   record LoginForm(String csrfToken, String authRequestId) implements Serializable {}
 
   private final UserSSOOAuthProvider authProvider;
-  private final AuthenticatorHandler authenticator;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
   private final OAuthClientRepository clientRepository;
 
-  public BasicAuthLoginServlet(
-      UserSSOOAuthProvider authProvider, AuthenticatorHandler authenticator) {
+  public BasicAuthLoginServlet(UserSSOOAuthProvider authProvider) {
     this.authProvider = authProvider;
-    this.authenticator = authenticator;
     this.pendingAuthRepository = new McpPendingAuthRequestRepository();
     this.clientRepository = new OAuthClientRepository();
   }
@@ -167,6 +166,15 @@ public class BasicAuthLoginServlet extends HttpServlet {
         }
       }
 
+      // Resolved per login: a security reload registers a new authenticator without rebuilding MCP.
+      AuthenticatorHandler authenticator =
+          SecurityConfigurationManager.getInstance().getAuthenticatorHandler();
+      if (authenticator instanceof NoopAuthenticator) {
+        LOG.warn("MCP password login refused: the configured provider does not use passwords");
+        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Password login is not enabled");
+        return;
+      }
+
       try {
         authenticator.checkIfLoginBlocked(email);
       } catch (AuthenticationException e) {
@@ -178,11 +186,9 @@ public class BasicAuthLoginServlet extends HttpServlet {
 
       try {
         // lookUserInProvider validates credentials for LDAP (via LDAP bind) but NOT for
-        // BasicAuth (just finds user). Call validatePassword separately for non-LDAP providers.
+        // BasicAuth (just finds user). Call validatePassword separately for other authenticators.
         User user = authenticator.lookUserInProvider(email, password);
-        org.openmetadata.schema.services.connections.metadata.AuthProvider provider =
-            SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
-        if (provider != org.openmetadata.schema.services.connections.metadata.AuthProvider.LDAP) {
+        if (!(authenticator instanceof LdapAuthenticator)) {
           authenticator.validatePassword(email, password, user);
         }
         LoginAttemptCache.getInstance().recordSuccessfulLogin(email);
@@ -233,12 +239,8 @@ public class BasicAuthLoginServlet extends HttpServlet {
       } catch (AuthenticationException e) {
         // Wrong password for an existing account. A rejected credential is an expected outcome of
         // this endpoint, so it is logged as an event and never as a stack trace.
+        // validatePassword already counted the failed attempt, as for the REST login.
         LOG.warn("Basic Auth login failed: invalid credentials");
-        try {
-          authenticator.recordFailedLoginAttempt(email, email);
-        } catch (Exception recordEx) {
-          LOG.error("Failed to record login attempt for security tracking", recordEx);
-        }
         renderLoginFormWithError(request, response, pending, "Invalid username or password");
       } catch (CustomExceptionMessage e) {
         // Both authenticators report an unknown account as CustomExceptionMessage, and LDAP uses

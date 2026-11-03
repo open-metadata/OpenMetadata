@@ -27,7 +27,7 @@ import {
   getPipelineTypeLabel,
 } from '../../PlatformHealthWidget/PlatformHealthWidget.utils';
 import { FailingService } from '../../PlatformHealthWidget/useIngestionPipelineStats';
-import { TOPIC_ROW_CLASSES } from './topicRowStyles';
+import { TOPIC_ROW_CLASSES, TOPIC_ROW_DIVIDER_CLASSES } from './topicRowStyles';
 
 export interface FailingServiceRowProps {
   service: FailingService;
@@ -42,12 +42,12 @@ const FailingServiceRow: React.FC<FailingServiceRowProps> = ({
   const { t } = useTranslation();
 
   return (
-    <li>
+    <li className={classNames(TOPIC_ROW_CLASSES, TOPIC_ROW_DIVIDER_CLASSES)}>
+      {/* The row's bleed and rule sit on the `li` so the hover tint and the
+        divider share one width; the button's `::after` stretches its hit area
+        over the row's padding. */}
       <button
-        className={classNames(
-          'tw:flex tw:w-[calc(100%+1rem)] tw:cursor-pointer tw:items-center tw:gap-3 tw:py-3 tw:text-left',
-          TOPIC_ROW_CLASSES
-        )}
+        className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:gap-3 tw:py-3 tw:text-left tw:after:absolute tw:after:inset-0 tw:after:rounded-lg"
         data-testid={`failing-service-${service.id}`}
         type="button"
         onClick={() => onOpen(service)}>

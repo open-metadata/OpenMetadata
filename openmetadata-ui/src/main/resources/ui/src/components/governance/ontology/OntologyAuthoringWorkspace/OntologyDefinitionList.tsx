@@ -29,6 +29,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
+import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { ListParams } from '../../../../interface/API.interface';
@@ -87,6 +88,7 @@ const OntologyDefinitionList = <
 }: OntologyDefinitionListProps<T>) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const guard = useOntologyDraftGuard();
   const label = definitionType === 'axiom' ? 'constraint' : definitionType;
   const entityLabel = t(`label.${label}`);
   const pluralLabel = t(`label.${label}-plural`);
@@ -220,20 +222,24 @@ const OntologyDefinitionList = <
         color="secondary"
         isDisabled={page.isFetching || !page.data?.paging.before}
         size={isAiMode ? 'sm' : undefined}
-        onPress={() => {
-          setSelected(undefined);
-          setPagination({ before: page.data?.paging.before });
-        }}>
+        onPress={() =>
+          guard(() => {
+            setSelected(undefined);
+            setPagination({ before: page.data?.paging.before });
+          })
+        }>
         {t('label.previous')}
       </Button>
       <Button
         color="secondary"
         isDisabled={page.isFetching || !page.data?.paging.after}
         size={isAiMode ? 'sm' : undefined}
-        onPress={() => {
-          setSelected(undefined);
-          setPagination({ after: page.data?.paging.after });
-        }}>
+        onPress={() =>
+          guard(() => {
+            setSelected(undefined);
+            setPagination({ after: page.data?.paging.after });
+          })
+        }>
         {t('label.next')}
       </Button>
     </>
@@ -262,7 +268,7 @@ const OntologyDefinitionList = <
                 <Button
                   color="link-gray"
                   size="sm"
-                  onPress={() => setSelected(item)}>
+                  onPress={() => guard(() => setSelected(item))}>
                   {getEntityName(item)}
                 </Button>
               </Table.Cell>
@@ -304,7 +310,7 @@ const OntologyDefinitionList = <
               data-testid={`ontology-add-${definitionType}`}
               iconLeading={Plus}
               size="sm"
-              onPress={() => setSelected('new')}>
+              onPress={() => guard(() => setSelected('new'))}>
               {t('label.add-entity', { entity: entityLabel })}
             </Button>
           )}
@@ -329,7 +335,7 @@ const OntologyDefinitionList = <
           <Button
             color="secondary"
             data-testid={`ontology-add-${definitionType}`}
-            onPress={() => setSelected('new')}>
+            onPress={() => guard(() => setSelected('new'))}>
             {t('label.add-entity', { entity: entityLabel })}
           </Button>
         )}
@@ -340,7 +346,9 @@ const OntologyDefinitionList = <
         <ul className="tw:m-0 tw:list-none tw:p-0">
           {page.data.data.map((item) => (
             <li key={item.id}>
-              <Button color="link-color" onPress={() => setSelected(item)}>
+              <Button
+                color="link-color"
+                onPress={() => guard(() => setSelected(item))}>
                 {getEntityName(item)}
               </Button>
             </li>

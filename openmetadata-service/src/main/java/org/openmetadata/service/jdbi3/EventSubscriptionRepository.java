@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,21 +27,24 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.alerting.AlertLimits;
+import org.openmetadata.service.alerting.channel.DestinationSecretGuards;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationValidation;
 import org.openmetadata.service.alerting.definition.AlertDefinitionPolicy;
@@ -58,6 +62,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   static final String ALERT_UPDATE_FIELDS =
       "trigger,enabled,batchSize,input,filteringRules,notificationTemplate,destinations";
   private static final String FIELD_ENABLED = "enabled";
+  private static final String AMBIGUOUS_DESTINATION =
+      "More than one destination is stored with id %s; provide its actual values to test it";
 
   public EventSubscriptionRepository() {
     super(
@@ -226,6 +232,14 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
+  protected EventSubscription createNewEntity(EventSubscription entity) {
+    // PUT reaches prepare with update=true even when it creates an alert. At this point the
+    // repository knows it is a create, and encryption runs before the retryable store.
+    entity.withDestinations(DestinationSecrets.ofANewAlert(entity.getDestinations()));
+    return super.createNewEntity(entity);
+  }
+
+  @Override
   public void storeEntity(EventSubscription entity, boolean update) {
     // Ensure all destinations have unique IDs before storage (handles all operations: POST, PUT,
     // PATCH)
@@ -239,8 +253,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     List<String> jsons = new ArrayList<>(entities.size());
     for (EventSubscription entity : entities) {
       ensureDestinationIds(entity);
+      // Batch inserts can be retried after a rollback; keep the submitted values unchanged so
+      // server-produced ciphertext is not mistaken for caller-supplied ciphertext on retry.
+      EventSubscription stored = JsonUtils.deepCopy(entity, EventSubscription.class);
+      stored.withDestinations(DestinationSecrets.ofANewAlert(stored.getDestinations()));
       fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
+      jsons.add(serializeForStorage(stored));
     }
     dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
@@ -266,12 +284,70 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
+  protected EventSubscription forChangeEvent(EventSubscription entity) {
+    return DestinationSecrets.mask(entity);
+  }
+
+  /** A destination as stored, and the alert it belongs to. */
+  public record StoredDestination(UUID alertId, SubscriptionDestination destination) {}
+
+  /**
+   * The stored destination with this id, whichever alert holds it. A request may set a
+   * destination's id, so more than one may hold it; then none is chosen for the caller.
+   */
+  public Optional<StoredDestination> findDestination(UUID destinationId) {
+    List<StoredDestination> found =
+        daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+            .map(json -> JsonUtils.readValue(json, EventSubscription.class))
+            .flatMap(alert -> storedDestinations(alert, destinationId))
+            .limit(2)
+            .toList();
+    if (found.size() > 1) {
+      throw new BadRequestException(AMBIGUOUS_DESTINATION.formatted(destinationId));
+    }
+    return found.stream().findFirst();
+  }
+
+  private static Stream<StoredDestination> storedDestinations(
+      EventSubscription alert, UUID destinationId) {
+    return listOrEmpty(alert.getDestinations()).stream()
+        .filter(destination -> destinationId.equals(destination.getId()))
+        .map(destination -> new StoredDestination(alert.getId(), destination));
+  }
+
+  @Override
   public EntityRepository<EventSubscription>.EntityUpdater getUpdater(
       EventSubscription original,
       EventSubscription updated,
       Operation operation,
       ChangeSource changeSource) {
+    // Every update path builds its updater here: the one point where the stored and the incoming
+    // alert meet before the diff and the store. A secret sent back as read is the stored one, and
+    // the rest is encrypted before the diff, so the change description and the stored row carry
+    // ciphertext only.
+    DestinationSecretGuards.requireServedChannelUnchanged(original, updated);
+    DestinationSecrets.restore(original, updated);
+    if (operation != Operation.SOFT_DELETE) {
+      DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, updated);
+      DestinationSecretGuards.requireNoMaskedSecrets(updated.getDestinations());
+      DestinationSecretGuards.requireStoredCiphertext(original, updated);
+    }
+    DestinationSecrets.encrypt(updated.getDestinations());
     return new EventSubscriptionUpdater(original, updated, operation);
+  }
+
+  /**
+   * PATCH is the one write that can read a stored secret, through a copy or move operation, and
+   * the one that carries a stored secret it never wrote: a row stored before secrets were
+   * encrypted holds plaintext, which the updater's guard cannot tell from a value entered again.
+   * A carried secret is judged by the patch itself, and stays protected by the destination that
+   * keeps it.
+   */
+  @Override
+  protected void validatePatch(
+      EventSubscription original, EventSubscription updated, JsonPatch patch) {
+    DestinationSecretGuards.requireSecretsOnlyInSecretFields(original, updated, patch);
+    DestinationSecretGuards.requireUnwrittenSecretsStayProtected(original, updated, patch);
   }
 
   public class EventSubscriptionUpdater extends EntityUpdater {
@@ -296,7 +372,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       compareAndUpdate(
           "batchSize",
           () -> recordChange("batchSize", original.getBatchSize(), updated.getBatchSize()));
-      if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+      if (!original.getAlertType().equals(AlertType.ACTIVITY_FEED)) {
         compareAndUpdate(
             "filteringRules",
             () ->
@@ -314,7 +390,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                 recordChange(
                     "destinations",
                     original.getDestinations(),
-                    DestinationSecrets.encrypt(updated.getDestinations()),
+                    updated.getDestinations(),
                     true,
                     objectMatch,
                     false));

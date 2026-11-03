@@ -39,6 +39,7 @@ import {
 import {
   clickIgnoringToasts,
   clickOutside,
+  expectNoErrorToast,
   getAuthContext,
   getRandomLastName,
   getToken,
@@ -657,7 +658,7 @@ test.describe('Glossary tests', () => {
         await openGlossaryPicker(
           page,
           page.locator(
-            '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
+            '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="add-tag"]'
           )
         );
 
@@ -1146,8 +1147,8 @@ test.describe('Glossary tests', () => {
         await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary2.data.displayName);
 
-        // check .ant-alert-error is not visible
-        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+        // Other workers' success toasts reach this page too; only an error means a broken relation.
+        await expectNoErrorToast(page);
       });
     } finally {
       await glossary2.delete(apiContext);

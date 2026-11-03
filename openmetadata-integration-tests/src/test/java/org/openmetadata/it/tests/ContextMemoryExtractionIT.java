@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -81,6 +82,7 @@ class ContextMemoryExtractionIT {
   private AiProvider previousProvider;
   private boolean partial;
   private DocumentMemoryExtractor extractor;
+  private Runnable duringDerivation = () -> {};
   private GenericBackgroundWorker worker;
   private TestNamespace namespace;
   private final Set<UUID> trackedMemories = new HashSet<>();
@@ -94,6 +96,7 @@ class ContextMemoryExtractionIT {
     extractor =
         (text, source, type) -> {
           calls.incrementAndGet();
+          duringDerivation.run();
           List<ContextMemory> pills =
               text.isBlank() ? List.of() : List.of(pill(text, source, type));
           return new DocumentMemoryExtractor.DeriveResult(pills, partial ? 2 : 1, 1);
@@ -213,6 +216,55 @@ class ContextMemoryExtractionIT {
     assertGone(FILES + "/" + first.getId());
     assertGone(FILES + "/" + second.getId());
     assertGone("v1/contextCenter/memories/" + pill.getId());
+  }
+
+  @Test
+  void fileProcessingKeepsMetadataEditedDuringDerivation(TestNamespace ns) throws Exception {
+    ContextFile file = file(ns, "edited-file", "Definition " + ns.shortPrefix());
+    duringDerivation =
+        () ->
+            assertDoesNotThrow(
+                () -> {
+                  ContextFile current =
+                      RestClient.admin().getById(FILES, file.getId(), "", ContextFile.class);
+                  RestClient.admin()
+                      .patch(
+                          FILES,
+                          file.getId(),
+                          JsonUtils.pojoToJson(current),
+                          JsonUtils.deepCopy(current, ContextFile.class)
+                              .withDescription("Current description")
+                              .withShareConfig(
+                                  new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)),
+                          ContextFile.class);
+                });
+
+    runFile(file);
+
+    ContextFile stored = RestClient.admin().getById(FILES, file.getId(), "", ContextFile.class);
+    assertEquals("Current description", stored.getDescription());
+    assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
+    assertEquals(ProcessingStatus.Processed, stored.getProcessingStatus());
+    assertNotNull(stored.getExtractionStats().getSourceHash());
+    assertEquals(1, calls.get());
+  }
+
+  @Test
+  void pageProcessingKeepsBodyEditedDuringDerivation(TestNamespace ns) throws Exception {
+    Page page = page(ns, "Original definition");
+    duringDerivation = () -> assertDoesNotThrow(() -> edit(readPage(page), "Current definition"));
+
+    runPage(
+        Entity.getJobDAO()
+            .findPendingMemoryJobId(
+                ContextMemoryExtractionJobHandler.Args.page(page.getId()).jobKey()));
+
+    Page stored = readPage(page);
+    assertEquals("Current definition", stored.getDescription());
+    assertEquals(PageProcessingStatus.Processed, stored.getProcessingStatus());
+    assertEquals(
+        DigestUtils.sha256Hex("Original definition"), stored.getExtractionStats().getSourceHash());
+    assertEquals(1, calls.get());
   }
 
   @Test
