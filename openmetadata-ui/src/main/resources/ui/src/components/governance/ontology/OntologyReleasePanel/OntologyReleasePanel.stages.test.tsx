@@ -1591,6 +1591,27 @@ describe('publication state table', () => {
     expect(text()).toHaveTextContent('Only an author or owner can publish.');
   });
 
+  it('the release in force with nothing newer: no action and the nothing-to-capture line', async () => {
+    setStage(Stage.Published);
+    ontology.publicationStatus!.unpublishedChanges = 0;
+    await renderPanel();
+
+    expect(screen.getByTestId('ontology-release-stage')).toHaveTextContent(
+      'Published'
+    );
+    expect(
+      primaryAndSecondary([
+        'ontology-publish-release',
+        'ontology-capture-release',
+        'ontology-request-review',
+        'ontology-withdraw-request',
+      ])
+    ).toEqual([null, null, null, null]);
+    expect(text()).toHaveTextContent(
+      'There are no unpublished changes to capture.'
+    );
+  });
+
   it('rejected, nothing changed since: Request review again is disabled and the reviewer and reason show', async () => {
     setStage(Stage.ChangesRequested);
     release.sourceWorkingRevision = state.workingRevision;

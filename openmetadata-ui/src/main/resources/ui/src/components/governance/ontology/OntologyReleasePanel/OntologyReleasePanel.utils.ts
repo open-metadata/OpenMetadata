@@ -221,6 +221,9 @@ export const derivePublicationState = (
   input: PublicationActionInput
 ): PublicationState => {
   const { stage, canEdit } = input;
+  if (stage === Stage.Published && !input.hasChanges) {
+    return 'published';
+  }
   if (stage === Stage.Approved) {
     return canEdit ? 'approvedCanPublish' : 'approvedCannotPublish';
   }
@@ -254,6 +257,11 @@ type PublicationRow = (
  * and sentence for each row are rendered by the panel.
  */
 const PUBLICATION_ROWS: Record<PublicationState, PublicationRow> = {
+  published: () => ({
+    primary: null,
+    secondary: null,
+    text: 'message.ontology-publication-no-changes',
+  }),
   cannotEdit: () => ({
     primary: null,
     secondary: null,

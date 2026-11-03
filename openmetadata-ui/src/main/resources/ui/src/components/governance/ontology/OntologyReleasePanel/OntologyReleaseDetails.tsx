@@ -148,13 +148,15 @@ const ReleaseActions = ({
           {t('label.approval')}
         </Link>
       )}
-      <ActivationActions
-        activeRelease={isRollback ? activeRelease : undefined}
-        canActivate={canPublish && isApproved && !isActive}
-        ontologyName={ontologyName}
-        release={release}
-        onActivate={onActivate}
-      />
+      {!isActive && (
+        <ActivationActions
+          activeRelease={isRollback ? activeRelease : undefined}
+          canActivate={canPublish && isApproved}
+          ontologyName={ontologyName}
+          release={release}
+          onActivate={onActivate}
+        />
+      )}
     </Box>
   );
 };
