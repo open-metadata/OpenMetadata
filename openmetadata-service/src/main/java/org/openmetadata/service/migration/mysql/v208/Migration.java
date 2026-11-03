@@ -19,6 +19,7 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
@@ -34,6 +35,11 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ConnectionSecretsEncryptionMigration.STEP_NAME,
         () -> ConnectionSecretsEncryptionMigration.encryptConnectionSecrets(handle, MYSQL));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        McpGrantUserNameIndexes.STEP_NAME,
+        () -> McpGrantUserNameIndexes.addOnMySql(handle));
     runOnce(
         migrationDAO,
         getVersion(),
