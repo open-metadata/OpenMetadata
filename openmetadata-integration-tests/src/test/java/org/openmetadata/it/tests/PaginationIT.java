@@ -11,16 +11,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.DatabaseTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -51,6 +54,9 @@ import org.openmetadata.sdk.models.ListResponse;
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.SAME_THREAD) // Run sequentially for isolation
 public class PaginationIT {
+
+  // A cursor that stops advancing would page forever; cap it and let the assertions report it.
+  private static final int MAX_TIE_TEST_PAGES = 50;
 
   /**
    * Test comprehensive pagination for Table entities.
@@ -83,6 +89,119 @@ public class PaginationIT {
     testPaginationForEntityType(client, "table", createdIds, 3, schemaFqn);
     testPaginationForEntityType(client, "table", createdIds, 5, schemaFqn);
     testPaginationForEntityType(client, "table", createdIds, 7, schemaFqn);
+  }
+
+  /**
+   * Tables with the same name in different schemas tie on name, the first sort key, so a page
+   * boundary inside a group of equal names must fall back to id. TableDAO lists tables through the
+   * EntityDAO listAfter/listBefore pair that takes separate MySQL and PostgreSQL conditions.
+   */
+  @Test
+  void testTablePaginationWithSameNameInSeveralSchemas(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String databaseFqn =
+        createSameNamedTables(client, ns, 3, List.of("orders", "customers", "events"));
+    assertPagesMatchOnePage(
+        params -> client.tables().list(params.setDatabase(databaseFqn)), Table::getId, 9);
+  }
+
+  /**
+   * Schemas with the same name in different databases tie on name the same way. Schemas are listed
+   * through the listAfter/listBefore queries shared by every DAO that does not override them.
+   */
+  @Test
+  void testSchemaPaginationWithSameNameInSeveralDatabases(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String serviceName = createSameNamedSchemas(ns, 3, List.of("sales", "staging", "raw"));
+    assertPagesMatchOnePage(
+        params -> client.databaseSchemas().list(params.setService(serviceName)),
+        DatabaseSchema::getId,
+        9);
+  }
+
+  /**
+   * Paging two at a time must return every entity once, in the same order as one big page, in both
+   * directions.
+   */
+  private <T> void assertPagesMatchOnePage(
+      Function<ListParams, ListResponse<T>> list, Function<T, UUID> idOf, int expectedCount) {
+    List<UUID> expected = ids(List.of(list.apply(pageParams(100, null, null))), idOf);
+    assertEquals(expectedCount, expected.size(), "the listing should hold exactly what we created");
+
+    List<ListResponse<T>> forwardPages = pageForward(list);
+    assertEquals(
+        expected,
+        ids(forwardPages, idOf),
+        "forward pages must not skip or repeat entities with equal names");
+
+    List<ListResponse<T>> backwardPages = pageBackward(list, forwardPages.getLast());
+    assertEquals(
+        expected,
+        ids(backwardPages, idOf),
+        "backward pages must not skip or repeat entities with equal names");
+  }
+
+  private <T> List<ListResponse<T>> pageForward(Function<ListParams, ListResponse<T>> list) {
+    List<ListResponse<T>> pages = new ArrayList<>(List.of(list.apply(pageParams(2, null, null))));
+    while (pages.getLast().getPaging().getAfter() != null && pages.size() < MAX_TIE_TEST_PAGES) {
+      pages.add(list.apply(pageParams(2, pages.getLast().getPaging().getAfter(), null)));
+    }
+    return pages;
+  }
+
+  private <T> List<ListResponse<T>> pageBackward(
+      Function<ListParams, ListResponse<T>> list, ListResponse<T> lastPage) {
+    List<ListResponse<T>> pages = new ArrayList<>(List.of(lastPage));
+    while (pages.getFirst().getPaging().getBefore() != null && pages.size() < MAX_TIE_TEST_PAGES) {
+      pages.addFirst(list.apply(pageParams(2, null, pages.getFirst().getPaging().getBefore())));
+    }
+    return pages;
+  }
+
+  private <T> List<UUID> ids(List<ListResponse<T>> pages, Function<T, UUID> idOf) {
+    return pages.stream().flatMap(page -> page.getData().stream()).map(idOf).toList();
+  }
+
+  private ListParams pageParams(int limit, String after, String before) {
+    ListParams params = new ListParams();
+    params.setLimit(limit);
+    params.setAfter(after);
+    params.setBefore(before);
+    return params;
+  }
+
+  private String createSameNamedSchemas(
+      TestNamespace ns, int databaseCount, List<String> schemaNames) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    for (int databaseIndex = 0; databaseIndex < databaseCount; databaseIndex++) {
+      Database database =
+          DatabaseTestFactory.createWithName(
+              service.getFullyQualifiedName(), ns.prefix("db_" + databaseIndex));
+      for (String schemaName : schemaNames) {
+        DatabaseSchemaTestFactory.create(database.getFullyQualifiedName(), schemaName);
+      }
+    }
+    return service.getName();
+  }
+
+  private String createSameNamedTables(
+      OpenMetadataClient client, TestNamespace ns, int schemaCount, List<String> tableNames) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    for (int schemaIndex = 0; schemaIndex < schemaCount; schemaIndex++) {
+      DatabaseSchema schema =
+          DatabaseSchemaTestFactory.create(
+              database.getFullyQualifiedName(), ns.prefix("schema_" + schemaIndex));
+      for (String tableName : tableNames) {
+        CreateTable request = new CreateTable();
+        request.setName(tableName);
+        request.setDatabaseSchema(schema.getFullyQualifiedName());
+        request.setColumns(
+            List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+        client.tables().create(request);
+      }
+    }
+    return database.getFullyQualifiedName();
   }
 
   private void testPaginationForEntityType(
