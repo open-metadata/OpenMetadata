@@ -69,6 +69,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -711,6 +712,37 @@ public class MetricGroupResourceIT {
   }
 
   @Test
+  void list_groupMembersCarryTheirTags(TestNamespace ns) {
+    Metric tagged =
+        SdkClients.adminClient()
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(ns.prefix("tagged_member"))
+                    .withDescription("Group member")
+                    .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN))));
+    MetricGroup group =
+        createGroup(
+            new CreateMetricGroup()
+                .withName(ns.prefix("tagged_group"))
+                .withMetrics(List.of(tagged.getFullyQualifiedName())));
+
+    JsonNode members =
+        JSON.valueToTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.GET,
+                    GROUPS_PATH + "/" + group.getId() + "/metrics?rootOnly=true",
+                    null,
+                    Object.class));
+
+    JsonNode tags = members.get("data").get(0).get("tags");
+    assertEquals(1, tags.size(), "Group members must be hydrated with the hierarchy row fields");
+    assertEquals(RESTRICTED_TAG_FQN, tags.get(0).get("tagFQN").asText());
+  }
+
+  @Test
   void list_groupMembersCanPageHierarchyRootsOnly(TestNamespace ns) {
     Metric root = createMetric(ns, "page_root");
     createChild(ns, "page_child", root);
@@ -989,6 +1021,85 @@ public class MetricGroupResourceIT {
           assertEquals("Edited group description", document.path("description").asText());
           assertEquals(3, document.path("metricCount").asInt());
         });
+  }
+
+  @Test
+  void patchMovesRefreshEveryParentAMetricPassesThrough(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric first = createMetric(ns, "move_first");
+    Metric second = createMetric(ns, "move_second");
+    Metric third = createMetric(ns, "move_third");
+    Metric child = createChild(ns, "move_child", first);
+    awaitChildrenCount(rest, first, 1);
+
+    moveTo(rest, child, second);
+    awaitChildrenCount(rest, first, 0);
+    awaitChildrenCount(rest, second, 1);
+
+    // The same user's next edit in the session is consolidated into the previous version, so the
+    // update compares the first parent with the third and must still refresh the second.
+    moveTo(rest, child, third);
+    awaitChildrenCount(rest, second, 0);
+    awaitChildrenCount(rest, third, 1);
+  }
+
+  private static void moveTo(RestClient rest, Metric child, Metric parent) throws Exception {
+    Metric current = SdkClients.adminClient().metrics().get(child.getId().toString(), "parent");
+    String currentJson = JSON.writeValueAsString(current);
+    current.setParent(parent.getEntityReference());
+    rest.patch("/v1/metrics", current.getId(), currentJson, current, Metric.class);
+  }
+
+  private static void awaitChildrenCount(RestClient rest, Metric metric, int count) {
+    awaitMetricSearchDocument(
+        rest,
+        metric.getId(),
+        document -> assertEquals(count, document.path("childrenCount").asInt()));
+  }
+
+  @Test
+  void csvReimportKeepsAParentsChildrenCount(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric parent = createMetric(ns, "csv_count_parent");
+    createChild(ns, "csv_count_child", parent);
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(1, document.path("childrenCount").asInt()));
+
+    String exported = SdkClients.adminClient().metrics().exportCsv(parent.getFullyQualifiedName());
+    String reimported = exported.replace("Group member", "Re-imported through CSV");
+    CsvImportResult result =
+        JSON.readValue(
+            SdkClients.adminClient().metrics().importCsv("*", reimported, false),
+            CsvImportResult.class);
+    assertEquals(1, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+
+    awaitMetricSearchDocument(
+        rest,
+        parent.getId(),
+        document -> {
+          assertEquals("Re-imported through CSV", document.path("description").asText());
+          assertEquals(1, document.path("childrenCount").asInt());
+        });
+  }
+
+  @Test
+  void csvReparentRefreshesBothParentsChildrenCount(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric oldParent = createMetric(ns, "csv_move_old_parent");
+    Metric newParent = createMetric(ns, "csv_move_new_parent");
+    Metric child = createChild(ns, "csv_move_child", oldParent);
+    awaitChildrenCount(rest, oldParent, 1);
+
+    String exported = SdkClients.adminClient().metrics().exportCsv(child.getFullyQualifiedName());
+    String moved =
+        exported.replace(oldParent.getFullyQualifiedName(), newParent.getFullyQualifiedName());
+    CsvImportResult result =
+        JSON.readValue(
+            SdkClients.adminClient().metrics().importCsv("*", moved, false), CsvImportResult.class);
+    assertEquals(1, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+
+    awaitChildrenCount(rest, oldParent, 0);
+    awaitChildrenCount(rest, newParent, 1);
   }
 
   @Test

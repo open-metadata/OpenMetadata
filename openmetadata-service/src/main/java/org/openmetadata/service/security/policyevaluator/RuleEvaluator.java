@@ -2,6 +2,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -633,7 +634,7 @@ public class RuleEvaluator {
     }
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     return impersonatedBy != null
-        && Arrays.stream(botNames).anyMatch(impersonatedBy::equalsIgnoreCase);
+        && Arrays.stream(botNames).anyMatch(botName -> sameIdentifier(impersonatedBy, botName));
   }
 
   /**

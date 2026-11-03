@@ -6,6 +6,8 @@ import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +40,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -176,13 +177,66 @@ public class PIIMasker {
       SecurityContext securityContext) {
     boolean authorizePII = authorizer.authorizePII(securityContext, owners);
     if (authorizePII) return columns;
-    for (Column c : listOrEmpty(columns)) {
-      if (hasPiiSensitiveTag(c)) {
-        c.setProfile(null);
-        c.setName(flagMaskedName(c.getName()));
-      }
-    }
+    maskColumnProfiles(columns);
     return columns;
+  }
+
+  public static List<Column> getSingleColumnProfile(
+      String tableFqn,
+      List<Column> ancestors,
+      Column column,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    Table table = Entity.getEntityByName(Entity.TABLE, tableFqn, "owners", Include.ALL);
+    return getSingleColumnProfile(
+        table.getOwners(), ancestors, column, authorizer, securityContext);
+  }
+
+  /**
+   * A single-column GET serialises one column, so the {@link #getTableProfile} walk cannot see a
+   * {@code PII.Sensitive} tag sitting on a column above it in the tree. The caller hands the
+   * ancestor chain resolved from the table's own columns, and a direct tag on any of them masks
+   * this column and the subtree beneath it the way the full-tree walk would — the walk then still
+   * covers the column's own tag set, as {@link #getTableProfile} does.
+   */
+  public static List<Column> getSingleColumnProfile(
+      List<EntityReference> owners,
+      List<Column> ancestors,
+      Column column,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    boolean authorizePII = authorizer.authorizePII(securityContext, owners);
+    if (authorizePII) {
+      return new ArrayList<>(List.of(column));
+    }
+    boolean ancestorSensitive =
+        listOrEmpty(ancestors).stream().anyMatch(PIIMasker::hasDirectPiiSensitiveTag);
+    List<Column> columns = new ArrayList<>(List.of(column));
+    maskNestedColumnProfiles(columns, ancestorSensitive);
+    return columns;
+  }
+
+  private static void maskColumnProfiles(List<Column> columns) {
+    maskNestedColumnProfiles(columns, false);
+  }
+
+  /**
+   * The masking rule for a column and its children mirrors the resolved-path walk: a direct
+   * {@code PII.Sensitive} tag on any ancestor covers the nested fields beneath it, while the
+   * column's own tag set ({@code getAllTags}) additionally covers its whole subtree. Every nested
+   * child carries a profile of its own once the repository flattens the column tree, so the walk
+   * must not stop at the top level.
+   */
+  private static void maskNestedColumnProfiles(List<Column> columns, boolean ancestorSensitive) {
+    for (Column column : listOrEmpty(columns)) {
+      boolean masked = ancestorSensitive || hasPiiSensitiveTag(column);
+      if (masked) {
+        column.setProfile(null);
+        column.setName(flagMaskedName(column.getName()));
+      }
+      maskNestedColumnProfiles(
+          column.getChildren(), ancestorSensitive || hasDirectPiiSensitiveTag(column));
+    }
   }
 
   public static List<ColumnProfile> getColumnProfile(
@@ -193,14 +247,9 @@ public class PIIMasker {
     Table table =
         Entity.getEntityByName(
             Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags,owners", Include.ALL);
-    Column column =
-        table.getColumns().stream()
-            .filter(c -> c.getFullyQualifiedName().equals(fqn))
-            .findFirst()
-            .orElse(null);
     boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwners());
 
-    if (column != null && hasPiiSensitiveTag(column) && !authorizePII) {
+    if (!authorizePII && isPiiSensitiveOrUnresolvedColumn(table, fqn)) {
       return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
     }
     return columnProfiles;
@@ -208,18 +257,88 @@ public class PIIMasker {
 
   public static ColumnProfile maskColumnProfile(String fqn, ColumnProfile columnProfile) {
     Table table = Entity.getEntityByName(Entity.TABLE, fqn, "columns,tags", Include.ALL);
-    Column columnObj = EntityUtil.getColumn(table, columnProfile.getName());
-    String columnFQN = columnObj.getFullyQualifiedName();
-    Column column =
-        table.getColumns().stream()
-            .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
-            .findFirst()
-            .orElse(null);
+    String profileName = columnProfile.getName();
+    List<Column> columnPath = ColumnUtil.resolveColumnChainByPath(table.getColumns(), profileName);
 
-    if (column != null && hasPiiSensitiveTag(column)) {
-      return new ColumnProfile().withName(columnProfile.getName());
+    if (isPiiSensitiveOrUnresolvedProfile(table, profileName, columnPath)) {
+      return new ColumnProfile().withName(profileName);
     }
     return columnProfile;
+  }
+
+  /**
+   * Whether a column FQN resolves to a PII.Sensitive column: the path is walked through nested
+   * children (a top-level-only match would leave nested profiles unmasked), and a tag on any
+   * column along the path covers the leaf. An unresolved FQN counts as sensitive — profile rows
+   * outlive the columns they describe, so unknown names must fail closed.
+   */
+  private static boolean isPiiSensitiveOrUnresolvedColumn(Table table, String columnFqn) {
+    List<Column> columnPath = resolveColumnPath(table, columnFqn);
+    return columnPath.isEmpty() || hasPiiSensitiveTagInPath(columnPath);
+  }
+
+  /**
+   * Whether a stored column profile must be masked: an unresolved column name fails closed (the
+   * row outlives its column), and a dotted name a nested path shadows also covers the literal
+   * top-level column it could name — when both resolve, masking follows the one that is
+   * sensitive.
+   */
+  private static boolean isPiiSensitiveOrUnresolvedProfile(
+      Table table, String profileName, List<Column> columnPath) {
+    if (columnPath.isEmpty() || hasPiiSensitiveTagInPath(columnPath)) {
+      return true;
+    }
+    if (columnPath.size() < 2) {
+      return false;
+    }
+    Column shadowed =
+        findTopLevelColumn(table.getColumns(), FullyQualifiedName.unquoteName(profileName));
+    return shadowed != null && hasPiiSensitiveTag(shadowed);
+  }
+
+  private static Column findTopLevelColumn(List<Column> columns, String name) {
+    return listOrEmpty(columns).stream()
+        .filter(column -> column.getName().equals(name) || column.getName().equalsIgnoreCase(name))
+        .findFirst()
+        .orElse(null);
+  }
+
+  /** The chain of columns a column FQN resolves to, from the path relative to its table. */
+  private static List<Column> resolveColumnPath(Table table, String columnFqn) {
+    String[] parts = FullyQualifiedName.split(columnFqn);
+    if (parts.length < 5) {
+      return List.of();
+    }
+    return ColumnUtil.resolveColumnChainByPath(table.getColumns(), columnPathOf(parts));
+  }
+
+  /**
+   * The dotted path of a column within its table, per FQN segment (re-quoted so a segment's own
+   * dots stay inside quotes). Splitting rather than slicing the raw string keeps the path aligned
+   * with how the profile rows are looked up: {@code getTableFQN} normalizes redundant quotes in
+   * the table prefix, so a character offset against it can split the path mid-segment while the
+   * hashed DB lookup still resolves the real column.
+   */
+  private static String columnPathOf(String[] parts) {
+    return Arrays.stream(parts)
+        .skip(4)
+        .map(FullyQualifiedName::quoteName)
+        .collect(Collectors.joining(Entity.SEPARATOR));
+  }
+
+  private static boolean hasPiiSensitiveTagInPath(List<Column> columnPath) {
+    // The leaf's tag set covers itself and its descendants (getAllTags); ancestors only their own.
+    if (hasPiiSensitiveTag(columnPath.getLast())) {
+      return true;
+    }
+    return columnPath.subList(0, columnPath.size() - 1).stream()
+        .anyMatch(PIIMasker::hasDirectPiiSensitiveTag);
+  }
+
+  private static boolean hasDirectPiiSensitiveTag(Column column) {
+    return listOrEmpty(column.getTags()).stream()
+        .map(TagLabel::getTagFQN)
+        .anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
   public static TestCase getTestCase(
@@ -309,9 +428,12 @@ public class PIIMasker {
       return !authorized
           && (table == null
               || (link.getFieldName() != null
-                  && ColumnUtil.findColumnByName(table.getColumns(), link.getArrayFieldName())
-                      .map(PIIMasker::hasPiiSensitiveTag)
-                      .orElse(false)));
+                  && isSensitiveColumn(table, link.getArrayFieldName())));
+    }
+
+    private boolean isSensitiveColumn(Table table, String columnName) {
+      final List<Column> path = ColumnUtil.resolveColumnChainByPath(table.getColumns(), columnName);
+      return !path.isEmpty() && hasPiiSensitiveTagInPath(path);
     }
 
     TestCaseResult maskResult(TestCaseResult result) {
@@ -420,7 +542,15 @@ public class PIIMasker {
     return row;
   }
 
+  /**
+   * Idempotency matters: column profiles masking can visit a nested column twice when the caller
+   * passes the repository's flattened column list, where a node is both a child of its parent and
+   * its own entry.
+   */
   static String flagMaskedName(String name) {
+    if (name.endsWith(MASKED_NAME)) {
+      return name;
+    }
     return String.format("%s %s", name, MASKED_NAME);
   }
 

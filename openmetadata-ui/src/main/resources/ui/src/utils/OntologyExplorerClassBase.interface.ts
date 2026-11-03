@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactNode } from 'react';
+import { ComponentType, ReactNode } from 'react';
 import {
   OntologyEdge,
   OntologyNode,
@@ -19,6 +19,7 @@ import {
   OntologyProposalRef,
 } from '../components/OntologyExplorer/OntologyExplorer.interface';
 import { OntologyHealthAiProposals } from '../components/OntologyExplorer/OntologyHealthPanel';
+import { OntologyConceptQuery } from '../generated/api/data/ontologyConceptQuery';
 import { Glossary } from '../generated/entity/data/glossary';
 import { RelationshipType } from '../generated/entity/data/relationshipType';
 
@@ -52,3 +53,12 @@ export interface OntologyAiProposals {
   readonly drawer: ReactNode;
   readonly openProposal: (ref: OntologyProposalRef) => void;
 }
+
+export interface OntologyConceptLiveDataExtensionProps {
+  readonly conceptId: string;
+  /** The generated SQL with its service, dialect and hops, as the server returned it. */
+  readonly query: OntologyConceptQuery;
+}
+
+export type OntologyConceptLiveDataExtension =
+  ComponentType<OntologyConceptLiveDataExtensionProps>;

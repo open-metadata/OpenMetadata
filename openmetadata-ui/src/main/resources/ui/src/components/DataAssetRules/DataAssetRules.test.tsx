@@ -26,7 +26,7 @@ const rule = {
   name: 'Tiered',
   description: 'Assets must have a tier',
   enabled: true,
-  rule: '{"!!":{"var":"tier"}}',
+  rule: '{"!!":{"var":"tags"}}',
 };
 
 const renderModal = (onSave = jest.fn()) => {

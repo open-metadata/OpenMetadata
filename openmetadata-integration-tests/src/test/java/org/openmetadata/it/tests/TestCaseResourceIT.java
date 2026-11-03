@@ -53,6 +53,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -60,10 +62,12 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
@@ -71,6 +75,7 @@ import org.openmetadata.schema.tests.type.DimensionValue;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
 import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -94,6 +99,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.fluent.TestCases;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
@@ -704,6 +710,161 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_nestedColumnLevelTest_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableWithNestedColumn(ns);
+    TagLabel nestedColumnTag = SharedEntities.get().PERSONAL_DATA_TAG_LABEL;
+    table.getColumns().getFirst().getChildren().getFirst().setTags(List.of(nestedColumnTag));
+    client.tables().update(table.getId().toString(), table);
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.city");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("nested_column_test"));
+    request.setEntityLink(columnLink);
+    // city is VARCHAR, so the definition must be one whose supportedDataTypes include it.
+    request.setTestDefinition("columnValuesToMatchRegex");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
+
+    TestCase created = createEntity(request);
+    assertTrue(
+        created.getEntityLink().contains("::columns::address.city"),
+        "Nested column link should be preserved, got " + created.getEntityLink());
+
+    long timestamp = System.currentTimeMillis();
+    CreateTestCaseResult result =
+        new CreateTestCaseResult()
+            .withTimestamp(timestamp)
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withResult("All nested city values match the regex");
+    client.testCaseResults().create(created.getFullyQualifiedName(), result);
+
+    List<TestCaseResult> storedResults = listTestCaseResults(created.getFullyQualifiedName());
+    assertEquals(1, storedResults.size());
+    assertEquals(timestamp, storedResults.getFirst().getTimestamp());
+    assertEquals(TestCaseStatus.Success, storedResults.getFirst().getTestCaseStatus());
+    assertEquals(result.getResult(), storedResults.getFirst().getResult());
+
+    TestCase fetched = client.testCases().get(created.getId().toString(), "tags,testCaseResult");
+    assertEquals(columnLink, fetched.getEntityLink());
+    assertNotNull(fetched.getTestCaseResult());
+    assertEquals(timestamp, fetched.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, fetched.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), fetched.getTestCaseResult().getResult());
+    assertNotNull(fetched.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        fetched.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "GET must inherit the tag attached only to the nested column");
+
+    ListResponse<TestCase> listed =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setFields("tags,testCaseResult")
+                    .setLimit(10)
+                    .addQueryParam("includeAllTests", "true")
+                    .addQueryParam("entityLink", tableEntityLink(table)));
+    assertEquals(List.of(created.getId()), idsOf(listed));
+    TestCase listedTestCase = listed.getData().getFirst();
+    assertEquals(columnLink, listedTestCase.getEntityLink());
+    assertNotNull(listedTestCase.getTestCaseResult());
+    assertEquals(timestamp, listedTestCase.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, listedTestCase.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), listedTestCase.getTestCaseResult().getResult());
+    assertNotNull(listedTestCase.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        listedTestCase.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "List responses must inherit the tag attached only to the nested column");
+  }
+
+  @Test
+  void post_testWithInvalidNestedColumn_4xx(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    String invalidNestedLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.state");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("invalid_nested_column"));
+    request.setEntityLink(invalidNestedLink);
+    request.setTestDefinition("columnValuesToMatchRegex");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
+
+    Exception error =
+        assertThrows(
+            Exception.class, () -> createEntity(request), "Should fail with missing nested column");
+    assertTrue(
+        error.getMessage().contains("Invalid column name address.state"), error.getMessage());
+  }
+
+  @Test
+  void post_testOnUnsupportedNestedColumnType_4xx(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("between_on_varchar_child"));
+    // city is VARCHAR; columnValuesToBeBetween supports only numeric and temporal types.
+    request.setEntityLink(
+        "<#E::table::" + table.getFullyQualifiedName() + "::columns::address.city>");
+    request.setTestDefinition("columnValuesToBeBetween");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("minValue").withValue("1"),
+            new TestCaseParameterValue().withName("maxValue").withValue("1000")));
+
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("does not support column type"), error.getMessage());
+  }
+
+  private Table createTableWithNestedColumn(TestNamespace ns) {
+    String shortId = ns.uniqueShortId();
+
+    PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
+
+    DatabaseService service =
+        DatabaseServices.builder()
+            .name("pg_" + shortId)
+            .connection(conn)
+            .description("Test Postgres service")
+            .create();
+
+    CreateDatabase dbReq = new CreateDatabase();
+    dbReq.setName("db_" + shortId);
+    dbReq.setService(service.getFullyQualifiedName());
+    Database database = SdkClients.adminClient().databases().create(dbReq);
+
+    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
+    schemaReq.setName("s_" + shortId);
+    schemaReq.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName("t_" + shortId);
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(List.of(nestedAddressColumn()));
+
+    return SdkClients.adminClient().tables().create(tableRequest);
+  }
+
+  private Column nestedAddressColumn() {
+    return new Column()
+        .withName("address")
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(
+            List.of(
+                new Column()
+                    .withName("city")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+  }
+
+  @Test
   void test_createMultipleTestsOnSameTable_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -793,6 +954,93 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     TestCase restored = getEntity(testCaseId);
     assertEquals(testCase.getName(), restored.getName());
+  }
+
+  @Test
+  void test_testCaseSoftDeleteAndRestoreWithIncident_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("soft_delete_incident_restore"))
+            .forTable(createTable(ns))
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    addResolutionStatusChild(client, testCase);
+
+    String testCaseId = testCase.getId().toString();
+    softDeleteTestCaseRecursively(client, testCaseId);
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+    assertTrue(
+        getEntityIncludeDeleted(testCaseId).getDeleted(),
+        "Test case must be soft-deleted, not gone");
+
+    restoreEntity(testCaseId);
+
+    // include=all returns the entity regardless of deleted state, so the deleted flag is
+    // observable on the restored entity.
+    TestCase restored = client.testCases().get(testCaseId, null, "all");
+    assertEquals(testCase.getName(), restored.getName());
+    assertFalse(restored.getDeleted(), "Restored test case must not be marked deleted");
+  }
+
+  @Test
+  void test_testCaseCreateOrUpdateOnSoftDeletedWithIncident_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTestCase createRequest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("soft_delete_incident_upsert"))
+            .forTable(createTable(ns))
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    TestCase testCase = client.testCases().create(createRequest);
+    addResolutionStatusChild(client, testCase);
+
+    String testCaseId = testCase.getId().toString();
+    softDeleteTestCaseRecursively(client, testCaseId);
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+    assertTrue(
+        getEntityIncludeDeleted(testCaseId).getDeleted(),
+        "Test case must be soft-deleted, not gone");
+
+    // PUT create-or-update on the soft-deleted entity funnels through restoreEntity, so it
+    // exercises the same restoreChildren PARENT_OF walk as the /restore endpoint.
+    TestCase updated = updateEntity(testCaseId, createRequest);
+    assertFalse(updated.getDeleted(), "Upsert must restore the soft-deleted test case");
+
+    TestCase restored = client.testCases().get(testCaseId, null, "all");
+    assertEquals(testCase.getName(), restored.getName());
+    assertFalse(restored.getDeleted(), "Restored test case must not be marked deleted");
+  }
+
+  /**
+   * Creates a resolution-status record so the test case has the TestCase --PARENT_OF-->
+   * testCaseResolutionStatus child the regression walks over. The record and its PARENT_OF edge
+   * are written synchronously in one transaction (persistRecord → storeRelationship), unlike the
+   * incident-task mirror records, which are written asynchronously and best-effort by the incident
+   * workflow. Asserting the edge count guards against a vacuous pass: without this child, neither
+   * restore test reaches the time-series branch that the regression is about.
+   */
+  private void addResolutionStatusChild(OpenMetadataClient client, TestCase testCase) {
+    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    TestCaseResolutionStatus status = client.testCaseResolutionStatuses().create(newStatus);
+    assertEquals(
+        1,
+        countRelationshipsTo(status.getId()),
+        "PARENT_OF edge to the resolution-status child must exist before soft delete");
+  }
+
+  /**
+   * Soft-deletes a test case that has incident history. Its PARENT_OF child makes the entity
+   * non-empty, so DELETE without recursive=true is rejected with "testCase is not empty".
+   */
+  private void softDeleteTestCaseRecursively(OpenMetadataClient client, String testCaseId) {
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    client.testCases().delete(testCaseId, params);
   }
 
   @Test

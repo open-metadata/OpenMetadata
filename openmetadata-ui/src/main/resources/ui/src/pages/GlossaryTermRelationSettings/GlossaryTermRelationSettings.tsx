@@ -267,7 +267,7 @@ const GlossaryTermRelationSettingsPage = () => {
     async (selectedRelationshipType: RelationshipType) => {
       setIsSaving(true);
       try {
-        await deleteRelationshipType(selectedRelationshipType.id);
+        await deleteRelationshipType(selectedRelationshipType.id, true);
         const updatedRelationshipTypes = relationshipTypes.filter(
           (relationshipType) =>
             relationshipType.id !== selectedRelationshipType.id
@@ -331,7 +331,9 @@ const GlossaryTermRelationSettingsPage = () => {
             {t('label.loading')}
           </div>
         ) : (
-          <>
+          // A block, not a fragment: the parent's flex gap would split the
+          // pager (a footer with no top edge) from the table card above it.
+          <div>
             <RelationshipTypeTable
               isAdminUser={Boolean(isAdminUser)}
               relationshipTypes={visibleRelationshipTypes}
@@ -352,7 +354,7 @@ const GlossaryTermRelationSettingsPage = () => {
                 }}
               />
             ) : null}
-          </>
+          </div>
         )}
 
         <SlideoutMenu

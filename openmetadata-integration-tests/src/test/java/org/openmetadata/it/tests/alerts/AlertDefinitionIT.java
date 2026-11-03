@@ -20,9 +20,10 @@ import org.openmetadata.schema.api.events.AlertCapabilities;
 import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -50,7 +51,7 @@ class AlertDefinitionIT {
   private static final EventFilterRule WRITTEN =
       new EventFilterRule()
           .withName("writtenByHand")
-          .withEffect(ArgumentsInput.Effect.INCLUDE)
+          .withEffect(Effect.INCLUDE)
           .withCondition("matchAnyEventType({'entityCreated'})");
 
   @Test
@@ -88,7 +89,7 @@ class AlertDefinitionIT {
     EventFilterRule written =
         new EventFilterRule()
             .withName("writtenByHand")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withEffect(Effect.INCLUDE)
             .withCondition("matchAnyEventType({'entityCreated'})");
     alert.getFilteringRules().setRules(new ArrayList<>(List.of(written)));
     AlertFixtures.writeBehindTheServer(alert);
@@ -112,7 +113,7 @@ class AlertDefinitionIT {
     EventFilterRule replacement =
         new EventFilterRule()
             .withName("replacement")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withEffect(Effect.INCLUDE)
             .withCondition("matchAnyEventType({'entityUpdated'})");
     EventSubscription whole = AlertFixtures.stored(alert.getId());
     whole.getFilteringRules().setRules(new ArrayList<>(List.of(replacement)));
@@ -565,7 +566,7 @@ class AlertDefinitionIT {
         };
     return new ArgumentsInput()
         .withName(filter)
-        .withEffect(ArgumentsInput.Effect.INCLUDE)
+        .withEffect(Effect.INCLUDE)
         .withArguments(List.of(new Argument().withName(argument).withInput(List.of(value))));
   }
 }
