@@ -38,6 +38,8 @@ from metadata.data_quality.validations.checkers.between_bounds_checker import (
 from metadata.data_quality.validations.column.pandas.columnValueLengthsToBeBetween import (
     ColumnValueLengthsToBeBetweenValidator as PandasLengthsValidator,
 )
+from metadata.data_quality.validations.column.pandas.columnValueMaxToBeBetween import ColumnValueMaxToBeBetweenValidator
+from metadata.data_quality.validations.column.pandas.columnValueMinToBeBetween import ColumnValueMinToBeBetweenValidator
 from metadata.data_quality.validations.column.pandas.columnValuesToBeBetween import (
     ColumnValuesToBeBetweenValidator as PandasValuesValidator,
 )
@@ -55,8 +57,10 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import PandasRunner, QueryRunner
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 
@@ -479,3 +483,40 @@ def test_pandas_datetime_bounds_preserve_microseconds_across_chunks():
         "2023-02-01 05:00:00.125123",
         "2023-02-01 06:00:00.500456",
     ]
+
+
+@pytest.mark.parametrize(
+    "validator_class,metric",
+    [
+        (ColumnValueMinToBeBetweenValidator, Metrics.min),
+        (ColumnValueMaxToBeBetweenValidator, Metrics.max),
+    ],
+)
+def test_dimensional_datetime_extrema_keep_numeric_bounds(validator_class, metric):
+    runner = PandasRunner.from_dataframe(
+        DataFrame(
+            {
+                "value": [datetime(2023, 2, 1), datetime(2023, 2, 3)],
+                "group": ["A", "B"],
+            }
+        )
+    )
+    bounds = {validator_class.MIN_BOUND: 1675209600000, validator_class.MAX_BOUND: 1675296000000}
+    test_case = _test_case(
+        ENTITY_LINK_VALUE,
+        [TestCaseParameterValue(name=name, value=str(value)) for name, value in bounds.items()],
+        threshold=None,
+        unit=None,
+    )
+    validator = validator_class(runner, test_case, EXECUTION_DATE.timestamp())
+    results = validator._execute_dimensional_validation(
+        SQALikeColumn(name="value", type=DataType.DATETIME),
+        SQALikeColumn(name="group", type=DataType.STRING),
+        {metric.name: metric},
+        bounds,
+        5,
+    )
+    assert {result.dimensionValues[0].value: result.testCaseStatus for result in results} == {
+        "A": TestCaseStatus.Success,
+        "B": TestCaseStatus.Failed,
+    }

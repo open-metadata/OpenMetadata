@@ -125,14 +125,16 @@ class Max(StaticMetric):
         """Returns the logic to compute this metrics using Pandas"""
         return PandasComputation[float | datetime | None, float | datetime | None](
             create_accumulator=lambda: None,
-            update_accumulator=lambda acc, df: Max.update_accumulator(acc, df, self.col),
-            aggregate_accumulator=lambda acc: (
-                int(acc.timestamp() * 1000) if isinstance(acc, datetime) and not self.preserve_datetime else acc
+            update_accumulator=lambda acc, df: Max.update_accumulator(
+                acc, df, self.col, preserve_datetime=self.preserve_datetime
             ),
+            aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(current_max: float | datetime | None, df: "pd.DataFrame", column) -> float | datetime | None:
+    def update_accumulator(
+        current_max: float | datetime | None, df: "pd.DataFrame", column, preserve_datetime: bool = False
+    ) -> float | datetime | None:
         """Computes one DataFrame chunk and updates the running maximum
 
         Maintains a single maximum value (not a list). Compares chunk's max
@@ -150,7 +152,7 @@ class Max(StaticMetric):
             if column.type in {DataType.DATETIME, DataType.DATE}:
                 max_val = pd.to_datetime(df[column.name], utc=True).max()
                 if isinstance(max_val, Timestamp) and not pd.isnull(max_val):
-                    chunk_max = max_val.tz_localize(None)
+                    chunk_max = max_val.tz_localize(None) if preserve_datetime else int(max_val.timestamp() * 1000)
             elif column.type == DataType.TIME:
                 max_val = pd.to_timedelta(df[column.name]).max()
                 if not pd.isnull(max_val):

@@ -24,10 +24,11 @@ timezone offsets are honored; dates and datetimes without an offset use UTC. The
 seconds since the Unix epoch, with fractional seconds preserved. Invalid dates and non-finite
 numeric values raise `ValueError`.
 
-The shared pandas min/max calculations accumulate datetime values at their original precision.
-Their default output remains epoch milliseconds for compatibility. The between validator requests
+The shared pandas min/max calculations preserve their default epoch-millisecond accumulators
+and output for compatibility. The between validator requests
 `preserve_datetime=True` through the existing metric configuration mechanism, so it compares
-datetimes with its parsed bounds using the same aggregation code as other callers.
+datetimes at their original precision with its parsed bounds using the same aggregation code as
+other callers.
 
 ## Consequences
 

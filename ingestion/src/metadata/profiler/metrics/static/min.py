@@ -126,14 +126,16 @@ class Min(StaticMetric):
         """Returns the logic to compute this metrics using Pandas"""
         return PandasComputation[float | datetime | None, float | datetime | None](
             create_accumulator=lambda: None,
-            update_accumulator=lambda acc, df: Min.update_accumulator(acc, df, self.col),
-            aggregate_accumulator=lambda acc: (
-                int(acc.timestamp() * 1000) if isinstance(acc, datetime) and not self.preserve_datetime else acc
+            update_accumulator=lambda acc, df: Min.update_accumulator(
+                acc, df, self.col, preserve_datetime=self.preserve_datetime
             ),
+            aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(current_min: float | datetime | None, df: "pd.DataFrame", column) -> float | datetime | None:
+    def update_accumulator(
+        current_min: float | datetime | None, df: "pd.DataFrame", column, preserve_datetime: bool = False
+    ) -> float | datetime | None:
         """Computes one DataFrame chunk and updates the running minimum
 
         Maintains a single minimum value (not a list). Compares chunk's min
@@ -151,7 +153,7 @@ class Min(StaticMetric):
             if column.type in {DataType.DATETIME, DataType.DATE}:
                 min_val = pd.to_datetime(df[column.name], utc=True).min()
                 if isinstance(min_val, Timestamp) and not pd.isnull(min_val):
-                    chunk_min = min_val.tz_localize(None)
+                    chunk_min = min_val.tz_localize(None) if preserve_datetime else int(min_val.timestamp() * 1000)
             elif column.type == DataType.TIME:
                 min_val = pd.to_timedelta(df[column.name]).min()
                 if not pd.isnull(min_val):
