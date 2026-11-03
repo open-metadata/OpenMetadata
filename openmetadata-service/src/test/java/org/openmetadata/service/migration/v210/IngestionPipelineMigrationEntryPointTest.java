@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -51,6 +52,7 @@ import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
+import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
 
 class IngestionPipelineMigrationEntryPointTest {
 
@@ -96,6 +98,8 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
             mockStatic(GlossaryAutomationReviewMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
+            mockStatic(WorkflowRedeployMigration.class);
         // v206, v207 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
@@ -130,10 +134,11 @@ class IngestionPipelineMigrationEntryPointTest {
                 org.openmetadata.service.migration.utils.v207.MigrationUtil
                     .addMcpConsentColumnsOnMySql(handle));
       }
-      // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
-      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
+      // `migrate` runs before Flowable starts, so each step that deploys a workflow starts it.
+      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
+      workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
     }
   }
 

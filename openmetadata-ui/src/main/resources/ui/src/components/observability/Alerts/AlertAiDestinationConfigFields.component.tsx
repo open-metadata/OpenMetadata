@@ -46,7 +46,6 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedWebhookConfig } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
   ALERT_AI_FORM_CLASS_NAMES,
   ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER,
@@ -236,7 +235,7 @@ const TeamUserSelectInput = ({
   const focusDropdown = useCallback((element: HTMLDivElement | null) => {
     dropdownRef.current = element;
     // The portal can mount after the open-state change; focusing without scrolling keeps
-    // an ancestor scroll from dismissing the non-modal popover.
+    // the drawer from jumping when the picker opens.
     element?.querySelector('input')?.focus({ preventScroll: true });
   }, []);
 
@@ -244,24 +243,49 @@ const TeamUserSelectInput = ({
     if (!isDropdownOpen) {
       return undefined;
     }
+    const closeDropdown = () => {
+      setIsDropdownOpen(false);
+      setSearchText('');
+    };
     // Capture phase: a parent stopping propagation must not keep the picker open.
-    const handleOutsidePointerDown = (e: PointerEvent) => {
+    // Also used for focus moving elsewhere, which react-aria's blur close handled.
+    const handleOutsideInteraction = (e: Event) => {
       const target = e.target as Node;
       if (
         !dropdownRef.current?.contains(target) &&
         !triggerRef.current?.contains(target)
       ) {
-        setIsDropdownOpen(false);
-        setSearchText('');
+        closeDropdown();
       }
     };
-    document.addEventListener('pointerdown', handleOutsidePointerDown, true);
+    // react-aria's close-on-scroll is ignored below, so close on a scroll the user
+    // starts outside the picker; otherwise the portalled popover would stay put
+    // while the form moves under it. Programmatic settling scrolls fire neither event.
+    const handleOutsideUserScroll = (e: Event) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) {
+        closeDropdown();
+      }
+    };
+    // On the document so Escape works from the search box, options or trigger.
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.isComposing) {
+        closeDropdown();
+      }
+    };
+    const listeners: [string, EventListener][] = [
+      ['pointerdown', handleOutsideInteraction],
+      ['focusin', handleOutsideInteraction],
+      ['wheel', handleOutsideUserScroll],
+      ['touchmove', handleOutsideUserScroll],
+      ['keydown', handleEscape as EventListener],
+    ];
+    listeners.forEach(([type, listener]) =>
+      document.addEventListener(type, listener, true)
+    );
 
     return () =>
-      document.removeEventListener(
-        'pointerdown',
-        handleOutsidePointerDown,
-        true
+      listeners.forEach(([type, listener]) =>
+        document.removeEventListener(type, listener, true)
       );
   }, [isDropdownOpen]);
 
@@ -352,12 +376,11 @@ const TeamUserSelectInput = ({
         isOpen={isDropdownOpen}
         placement="bottom left"
         triggerRef={triggerRef}
-        onOpenChange={(isOpen) => {
-          setIsDropdownOpen(isOpen);
-          if (!isOpen) {
-            setSearchText('');
-          }
-        }}>
+        // `isNonModal` makes react-aria close the popover on any ancestor scroll,
+        // so a drawer still settling after a destination is added closed the
+        // picker right after it opened. The listeners above own dismissal, so
+        // like core TreeSelect only react-aria's open request is honoured.
+        onOpenChange={(isOpen) => isOpen && setIsDropdownOpen(true)}>
         <div
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
           ref={focusDropdown}>
@@ -480,7 +503,7 @@ interface KeyValueListProps {
   isViewOnly?: boolean;
   name: number;
   onChange: (entries: { key: string; value: string }[]) => void;
-  type: keyof Pick<ModifiedWebhookConfig, 'headers' | 'queryParams'>;
+  type: 'headers' | 'queryParams';
   value: { key: string; value: string }[];
 }
 
