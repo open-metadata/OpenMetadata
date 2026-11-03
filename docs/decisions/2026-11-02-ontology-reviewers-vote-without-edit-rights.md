@@ -1,9 +1,9 @@
 # Ontology writes require edit rights; reviewers vote on assigned reviews
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial)
+- **Revisions:** v1 2026-11-02 (initial); v2 2026-11-02 (change-set create and submit, AI draft)
 - **Deciders:** Ontology Studio program
-- **Guard:** `DefaultAuthorizerTest` (ontology reviewer case, glossary term reviewer case) and `IndependentOntologyAuthorizationIT`
+- **Guard:** `DefaultAuthorizerTest` (ontology reviewer case, glossary term reviewer case), `IndependentOntologyAuthorizationIT` and `OntologyAiResourceTest`
 - **Related:** `DefaultAuthorizer.isReviewer`, `OntologyResourceAccess.requireEditForContentPatch`
 
 ## Context
@@ -23,6 +23,8 @@ it, and a vote needs no edit right because it is resolved through the assigned r
   same right as the rest of the content instead of the per-field stewardship default.
 - Bulk authoring, pattern instantiation, impact-based reassignment and glossary edit locks require
   `EditAll` on the glossary in place of `EditGlossaryTerms`.
+- Creating or submitting a glossary-scope change set, and requesting an AI domain draft for a
+  glossary, require `EditAll` on the glossary scope.
 
 ## Consequences
 - Ontology authoring is granted through roles or ownership. Listing a person as a reviewer grants
