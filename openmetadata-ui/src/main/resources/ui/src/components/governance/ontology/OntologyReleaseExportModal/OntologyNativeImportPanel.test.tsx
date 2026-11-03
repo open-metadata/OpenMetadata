@@ -33,6 +33,7 @@ import {
   createOntology,
   createOntologyChangeSet,
   detectNativeOntologyImportFormat,
+  getOntologyByName,
   getOntologyChangeSet,
   previewNativeOntologyImport,
   previewNativeOntologyImportWithoutTarget,
@@ -53,13 +54,16 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   previewNativeOntologyImport: jest.fn(),
   previewNativeOntologyImportWithoutTarget: jest.fn(),
 }));
+const mockListed: unknown[] = [];
+const mockIdentityOf = (listed: unknown[]) => (title: string) =>
+  jest
+    .requireActual('../OntologyCreateForm/OntologyCreateForm.utils')
+    .generatedOntologyIdentity(title, 'https://open-metadata.org', listed);
 jest.mock('../OntologyCreateForm/useOntologyIdentitySource', () => ({
   useOntologyIdentitySource: () => ({
     isReady: true,
-    identityOf: (title: string) =>
-      jest
-        .requireActual('../OntologyCreateForm/OntologyCreateForm.utils')
-        .generatedOntologyIdentity(title, 'https://open-metadata.org', []),
+    identityOf: mockIdentityOf([]),
+    refreshIdentityOf: async () => mockIdentityOf(mockListed),
   }),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -417,6 +421,54 @@ describe('OntologyNativeImportPanel', () => {
     expect(
       within(screen.getByTestId('location')).queryByText(/concept|scope/)
     ).toBeNull();
+  });
+
+  it('never writes into an ontology that took the name after the panel opened', async () => {
+    const taken = {
+      id: 'old-ontology-id',
+      name: 'fibo-sample',
+      displayName: 'Fibo sample',
+      iri: 'https://open-metadata.org/onto/fibosamp',
+      namespace: 'https://open-metadata.org/onto/fibosamp#',
+    };
+    (createOntology as jest.Mock).mockRejectedValueOnce(
+      Object.assign(new AxiosError('Conflict'), {
+        response: { status: 409, data: { message: 'Entity already exists' } },
+      })
+    );
+    (getOntologyByName as jest.Mock).mockResolvedValue({
+      ...taken,
+      fullyQualifiedName: taken.name,
+    });
+    renderPanel({ ontology: undefined });
+    dropFile();
+    await parse();
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'message.ontology-install-name-taken'
+    );
+    expect(previewNativeOntologyImport).not.toHaveBeenCalled();
+    expect(createOntologyChangeSet).not.toHaveBeenCalled();
+    expect(screen.getByTestId('location')).not.toHaveTextContent('ontology=');
+
+    mockListed.push(taken);
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '?ontology=new-ontology-id'
+      )
+    );
+
+    expect(createOntology).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        name: 'fibo-sample-2',
+        displayName: 'Fibo sample (2)',
+      })
+    );
+
+    mockListed.length = 0;
   });
 
   it('shows the server error that names a CSV row and creates nothing', async () => {
