@@ -149,7 +149,9 @@ public class HtmlTemplates {
                   </svg>
               </div>
               <h1>Welcome to OpenMetadata</h1>
-              <p class="subtitle">%s is requesting access to your account</p>
+              <p class="subtitle">%s is requesting access to your account. If you sign in, it can act
+                 on your behalf and you will be sent to <strong>%s</strong>. Do not sign in if you
+                 did not start this request.</p>
               %s
               <form method="POST" action="login">
                   <input type="hidden" name="csrf_token" value="%s">
@@ -298,7 +300,13 @@ public class HtmlTemplates {
         escapeHtml(destination));
   }
 
-  public static String generateLoginForm(String clientName, String errorMessage, String csrfToken) {
+  /**
+   * The password sign-in page. It names where the code goes before the user types a password, so
+   * signing in is the approval the SSO flow asks for on its consent page.
+   * ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+   */
+  public static String generateLoginForm(
+      String clientName, String redirectTarget, String errorMessage, String csrfToken) {
 
     String errorHtml =
         errorMessage != null && !errorMessage.isEmpty()
@@ -308,7 +316,8 @@ public class HtmlTemplates {
     String safeClientName = escapeHtml(clientName != null ? clientName : "An application");
     String safeCsrfToken = escapeHtml(csrfToken != null ? csrfToken : "");
 
-    return String.format(LOGIN_FORM_TEMPLATE, safeClientName, errorHtml, safeCsrfToken);
+    return String.format(
+        LOGIN_FORM_TEMPLATE, safeClientName, escapeHtml(redirectTarget), errorHtml, safeCsrfToken);
   }
 
   public static String generateConsentForm(

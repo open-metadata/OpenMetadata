@@ -283,7 +283,10 @@ public class BasicAuthLoginServlet extends HttpServlet {
       clientName = client.getClientName();
     }
 
-    String html = HtmlTemplates.generateLoginForm(clientName, errorMessage, csrfToken);
+    // The host comes from the pending request, the same redirect URI the code is sent to.
+    String redirectTarget = UriUtils.describeRedirectTarget(URI.create(pending.redirectUri()));
+    String html =
+        HtmlTemplates.generateLoginForm(clientName, redirectTarget, errorMessage, csrfToken);
     response.setContentType("text/html; charset=UTF-8");
     response.setStatus(HttpServletResponse.SC_OK);
     response.getWriter().write(html);
