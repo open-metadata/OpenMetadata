@@ -93,6 +93,40 @@ class SessionServiceTest {
   }
 
   @Test
+  void recordPendingUser_attachesTheAccountAndClearsTheMatchedState() {
+    UserSession pending =
+        UserSession.builder()
+            .id(validSessionId('p'))
+            .status(SessionStatus.PENDING)
+            .state("request-id")
+            .version(3L)
+            .build();
+    when(repository.updateIfVersion(any(UserSession.class), eq(3L))).thenReturn(true);
+    User user = new User().withId(UUID.randomUUID()).withName("jane").withEmail("jane@x.com");
+
+    UserSession recorded = sessionService.recordPendingUser(pending, user).orElseThrow();
+
+    assertEquals(SessionStatus.PENDING, recorded.getStatus());
+    assertEquals(user.getId().toString(), recorded.getUserId());
+    assertEquals("jane", recorded.getUsername());
+    assertNull(recorded.getState());
+    assertEquals(4L, recorded.getVersion());
+  }
+
+  @Test
+  void recordPendingState_losesToAConcurrentChange() {
+    UserSession pending =
+        UserSession.builder()
+            .id(validSessionId('p'))
+            .status(SessionStatus.PENDING)
+            .version(1L)
+            .build();
+    when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(false);
+
+    assertTrue(sessionService.recordPendingState(pending, "request-id").isEmpty());
+  }
+
+  @Test
   void activatePendingSession_promotesPendingSessionAndEncryptsTokens() {
     long now = System.currentTimeMillis();
     String pendingId = validSessionId('p');

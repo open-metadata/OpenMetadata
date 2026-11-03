@@ -28,6 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.onelogin.saml2.Auth;
+import com.onelogin.saml2.authn.AuthnRequestParams;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -250,7 +251,7 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
-  void handleLogin_carriesPendingSessionIdInRelayState() throws Exception {
+  void handleLogin_carriesPendingSessionIdInRelayStateAndKeepsTheRequestId() throws Exception {
     when(request.getParameter("callback")).thenReturn("https://example.com/callback");
     UserSession pending = UserSession.builder().id("pending-session-id").build();
     when(sessionService.createPendingSession(
@@ -262,16 +263,43 @@ class SamlAuthServletHandlerTest {
             any(),
             any()))
         .thenReturn(pending);
+    when(sessionService.recordPendingState(pending, "request-id")).thenReturn(Optional.of(pending));
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
             mockStatic(SamlSettingsHolder.class);
-        MockedConstruction<Auth> authConstruction = mockConstruction(Auth.class)) {
+        MockedConstruction<Auth> authConstruction =
+            mockConstruction(
+                Auth.class,
+                (auth, context) -> {
+                  when(auth.login(
+                          eq("pending-session-id"), any(AuthnRequestParams.class), eq(true)))
+                      .thenReturn("https://idp.example.com/sso?SAMLRequest=request");
+                  when(auth.getLastRequestId()).thenReturn("request-id");
+                })) {
       samlSettingsHolder.when(SamlSettingsHolder::getSaml2Settings).thenReturn(null);
 
       handler.handleLogin(request, response);
 
-      verify(authConstruction.constructed().get(0)).login("pending-session-id");
+      verify(sessionService).recordPendingState(pending, "request-id");
+      verify(response).sendRedirect("https://idp.example.com/sso?SAMLRequest=request");
     }
+  }
+
+  @Test
+  void handleCallback_refusesAPendingLoginThatSentNoRequest() {
+    UserSession pending =
+        UserSession.builder()
+            .id("pending-session-id")
+            .status(SessionStatus.PENDING)
+            .redirectUri("https://example.com/callback")
+            .build();
+    when(request.getParameter("RelayState")).thenReturn("pending-session-id");
+    when(sessionService.getPendingSessionById("pending-session-id"))
+        .thenReturn(Optional.of(pending));
+
+    handler.handleCallback(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
   }
 
   @Test

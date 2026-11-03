@@ -16,6 +16,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
@@ -322,6 +323,46 @@ public class SessionService implements Managed {
       }
     }
     return result;
+  }
+
+  /**
+   * Stores what a pending login must later match, such as the id of the SAML request sent to the
+   * identity provider. Loses to any concurrent change of the session, and then returns empty.
+   */
+  public Optional<UserSession> recordPendingState(UserSession pendingSession, String state) {
+    return updatePendingSession(pendingSession, builder -> builder.state(state));
+  }
+
+  /**
+   * Attaches the account an identity provider vouched for to a pending login, for the browser that
+   * started the login to complete. The state it matched is cleared, so one answer is used once.
+   */
+  public Optional<UserSession> recordPendingUser(UserSession pendingSession, User user) {
+    return updatePendingSession(
+        pendingSession,
+        builder ->
+            builder
+                .state(null)
+                .userId(user.getId().toString())
+                .username(user.getName())
+                .email(user.getEmail()));
+  }
+
+  private Optional<UserSession> updatePendingSession(
+      UserSession pendingSession, UnaryOperator<UserSession.UserSessionBuilder> change) {
+    long expectedVersion = safeVersion(pendingSession);
+    UserSession updated =
+        change
+            .apply(pendingSession.toBuilder())
+            .updatedAt(now())
+            .version(expectedVersion + 1)
+            .build();
+    if (!repository.updateIfVersion(updated, expectedVersion)) {
+      cache.invalidate(pendingSession.getId());
+      return Optional.empty();
+    }
+    cache.put(updated.getId(), updated);
+    return Optional.of(updated);
   }
 
   public Optional<UserSession> getActiveSession(

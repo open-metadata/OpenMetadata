@@ -74,12 +74,28 @@ public final class MockSamlIdp {
     return signedResponse(subjectEmail, acsUrl, spEntityId, Instant.now());
   }
 
+  /** A signed response answering the SP's AuthnRequest {@code inResponseTo}. */
+  public String signedResponse(
+      String subjectEmail, String acsUrl, String spEntityId, String inResponseTo) {
+    return signedResponse(subjectEmail, acsUrl, spEntityId, Instant.now(), inResponseTo);
+  }
+
   /** As above, issued at {@code issuedAt}; its validity window is five minutes either side. */
   public String signedResponse(
       String subjectEmail, String acsUrl, String spEntityId, Instant issuedAt) {
+    return signedResponse(subjectEmail, acsUrl, spEntityId, issuedAt, null);
+  }
+
+  private String signedResponse(
+      String subjectEmail,
+      String acsUrl,
+      String spEntityId,
+      Instant issuedAt,
+      String inResponseTo) {
     String result;
     try {
-      Document doc = Util.loadXML(buildResponseXml(subjectEmail, acsUrl, spEntityId, issuedAt));
+      Document doc =
+          Util.loadXML(buildResponseXml(subjectEmail, acsUrl, spEntityId, issuedAt, inResponseTo));
       // Message-level (Response) signature: addSign signs the document root and returns the whole
       // signed document. onelogin unconditionally requires a valid Response- or Assertion-level
       // signature, so this is sufficient when the SP's want_assertions_signed is left false.
@@ -98,7 +114,8 @@ public final class MockSamlIdp {
     String result;
     try {
       result =
-          Util.base64encoder(buildResponseXml(subjectEmail, acsUrl, spEntityId, Instant.now()));
+          Util.base64encoder(
+              buildResponseXml(subjectEmail, acsUrl, spEntityId, Instant.now(), null));
     } catch (Exception e) {
       throw new IllegalStateException("Failed to build unsigned SAML response", e);
     }
@@ -106,13 +123,18 @@ public final class MockSamlIdp {
   }
 
   private String buildResponseXml(
-      String subjectEmail, String acsUrl, String spEntityId, Instant issuedAt) {
+      String subjectEmail,
+      String acsUrl,
+      String spEntityId,
+      Instant issuedAt,
+      String inResponseTo) {
     Instant now = issuedAt.truncatedTo(ChronoUnit.SECONDS);
     String issueInstant = DateTimeFormatter.ISO_INSTANT.format(now);
     String notBefore = DateTimeFormatter.ISO_INSTANT.format(now.minus(5, ChronoUnit.MINUTES));
     String notOnOrAfter = DateTimeFormatter.ISO_INSTANT.format(now.plus(5, ChronoUnit.MINUTES));
+    String answers = inResponseTo == null ? "" : " InResponseTo=\"" + inResponseTo + "\"";
     return """
-        <samlp:Response xmlns:samlp="%s" xmlns:saml="%s" ID="%s" Version="2.0" IssueInstant="%s" Destination="%s">
+        <samlp:Response xmlns:samlp="%s" xmlns:saml="%s" ID="%s" Version="2.0" IssueInstant="%s" Destination="%s"%s>
           <saml:Issuer>%s</saml:Issuer>
           <samlp:Status><samlp:StatusCode Value="%s"/></samlp:Status>
           <saml:Assertion ID="%s" Version="2.0" IssueInstant="%s">
@@ -120,7 +142,7 @@ public final class MockSamlIdp {
             <saml:Subject>
               <saml:NameID Format="%s">%s</saml:NameID>
               <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
-                <saml:SubjectConfirmationData Recipient="%s" NotOnOrAfter="%s"/>
+                <saml:SubjectConfirmationData Recipient="%s" NotOnOrAfter="%s"%s/>
               </saml:SubjectConfirmation>
             </saml:Subject>
             <saml:Conditions NotBefore="%s" NotOnOrAfter="%s">
@@ -140,6 +162,7 @@ public final class MockSamlIdp {
             newId(),
             issueInstant,
             acsUrl,
+            answers,
             idpEntityId,
             Constants.STATUS_SUCCESS,
             newId(),
@@ -149,6 +172,7 @@ public final class MockSamlIdp {
             subjectEmail,
             acsUrl,
             notOnOrAfter,
+            answers,
             notBefore,
             notOnOrAfter,
             spEntityId,

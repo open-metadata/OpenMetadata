@@ -9,8 +9,10 @@ import static org.openmetadata.service.security.SecurityUtil.writeMessageRespons
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.onelogin.saml2.Auth;
+import com.onelogin.saml2.authn.AuthnRequestParams;
 import com.onelogin.saml2.exception.SAMLException;
 import com.onelogin.saml2.settings.Saml2Settings;
+import com.onelogin.saml2.util.Util;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.BadRequestException;
@@ -45,6 +47,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
@@ -52,6 +55,7 @@ import org.openmetadata.service.security.SamlIdentityResolver;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.security.saml.SamlLoginCompletionServlet;
 import org.openmetadata.service.security.saml.SamlResponseValidator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.session.SessionRefreshInProgressException;
@@ -190,7 +194,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       // Carry the pending-session id in the SAML RelayState so the ACS callback can recover it from
       // the POST body. The IdP callback is a cross-site POST that drops the SameSite=Lax OM_SESSION
       // cookie, so RelayState — not the cookie — is the reliable correlation across the round-trip.
-      auth.login(pendingSession.getId());
+      // The request id is kept so that only the answer to this request can complete this login.
+      String identityProviderUrl =
+          auth.login(pendingSession.getId(), new AuthnRequestParams(false, false, true), true);
+      if (sessionService.recordPendingState(pendingSession, auth.getLastRequestId()).isEmpty()) {
+        sendError(resp, HttpServletResponse.SC_CONFLICT, "SAML login was changed concurrently");
+        return;
+      }
+      resp.sendRedirect(identityProviderUrl);
 
     } catch (IllegalArgumentException e) {
       LOG.error("Invalid SAML redirect URI", e);
@@ -264,12 +275,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       String relayState = req.getParameter("RelayState");
       boolean mcpCallback = isMcpSamlCallback(relayState);
       UserSession pendingSession = mcpCallback ? null : resolvePendingSession(req, resp);
-      if (!mcpCallback && pendingSession == null) {
+      if (!mcpCallback && (pendingSession == null || nullOrEmpty(pendingSession.getState()))) {
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
         return;
       }
-      String callbackUrl =
-          mcpCallback ? null : requireSamlRedirectUri(pendingSession.getRedirectUri());
+      String expectedRequestId = mcpCallback ? null : pendingSession.getState();
+      if (!mcpCallback) {
+        requireSamlRedirectUri(pendingSession.getRedirectUri());
+      }
 
       // This handles the SAML response from IDP (ACS - Assertion Consumer Service)
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
@@ -277,7 +290,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
       Saml2Settings samlSettings = SamlSettingsHolder.getSaml2Settings();
       Auth auth = new Auth(samlSettings, wrappedRequest, wrappedResponse);
-      auth.processResponse();
+      auth.processResponse(expectedRequestId);
 
       if (!auth.isAuthenticated()) {
         throw new AuthenticationException("SAML authentication failed");
@@ -291,6 +304,9 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         return;
       }
       SamlResponseValidator.validate(samlSettings, wrappedRequest);
+      if (!mcpCallback) {
+        requireAnswerTo(auth, expectedRequestId);
+      }
 
       // Extract user information from SAML response
       SamlIdentityResolver.ResolvedSamlIdentity identity = resolveSamlIdentity(auth);
@@ -340,7 +356,54 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
               ? getOrCreateEmailFirstSamlUser(email, displayName, teamsFromClaim)
               : getOrCreateUser(username, email, displayName, teamsFromClaim);
 
-      // Generate refresh token
+      // The IdP's POST can come from any browser, so it only attaches the account to the pending
+      // login; the browser holding that login's cookie completes it on a same-site GET
+      // (ADR:2026-11-03-a-saml-login-completes-in-the-browser-that-started-it).
+      if (sessionService.recordPendingUser(pendingSession, user).isEmpty()) {
+        throw new AuthenticationException("SAML login is no longer pending");
+      }
+      resp.setStatus(HttpServletResponse.SC_SEE_OTHER);
+      resp.setHeader("Location", req.getContextPath() + SamlLoginCompletionServlet.PATH);
+
+    } catch (IllegalArgumentException e) {
+      LOG.error("Invalid SAML redirect URI in callback", e);
+      sendError(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+    } catch (AuthenticationException e) {
+      LOG.warn("SAML callback rejected: {}", e.getMessage());
+      sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
+    } catch (Exception e) {
+      LOG.error("Error processing SAML callback", e);
+      sendError(
+          resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SAML callback processing failed");
+    }
+  }
+
+  /**
+   * Finishes a SAML login in the browser that started it: the pending session comes from this
+   * request's own cookie, and the ACS must already have attached the account the identity provider
+   * vouched for. A browser without that cookie signs nobody in, and its own cookie is left alone.
+   */
+  public void completeLogin(HttpServletRequest req, HttpServletResponse resp) {
+    try {
+      UserSession pendingSession =
+          sessionService
+              .getSession(req)
+              .filter(session -> session.getStatus() == SessionStatus.PENDING)
+              .filter(session -> !session.isExpired(System.currentTimeMillis()))
+              .filter(session -> !nullOrEmpty(session.getUserId()))
+              .orElse(null);
+      if (pendingSession == null) {
+        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No SAML login to complete");
+        return;
+      }
+      String callbackUrl = requireSamlRedirectUri(pendingSession.getRedirectUri());
+      User user =
+          Entity.getUserRepository()
+              .get(
+                  null,
+                  UUID.fromString(pendingSession.getUserId()),
+                  Entity.getUserRepository().getAuthUpdateFields());
+
       RefreshToken refreshToken = TokenUtil.getRefreshToken(user.getId(), UUID.randomUUID());
       Entity.getTokenRepository().insertToken(refreshToken);
       UserSession activeSession =
@@ -358,33 +421,41 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
                     throw new AuthenticationException("Failed to activate SAML session");
                   });
 
-      // Update last login time
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
       if (Entity.getAuditLogRepository() != null) {
         Entity.getAuditLogRepository()
             .writeAuthEvent(AuditLogRepository.AUTH_EVENT_LOGIN, user.getName(), user.getId());
       }
 
-      LOG.debug("SAML Callback - redirectUri from session: {}", callbackUrl);
       JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
-
       SecurityUtil.sendRedirectWithToken(
           resp,
           callbackUrl,
           jwtAuthMechanism.getJWTToken(),
-          email,
-          displayName == null ? "" : displayName);
-
+          user.getEmail(),
+          user.getDisplayName() == null ? "" : user.getDisplayName());
     } catch (IllegalArgumentException e) {
-      LOG.error("Invalid SAML redirect URI in callback", e);
+      LOG.error("Invalid SAML redirect URI in login completion", e);
       sendError(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
-    } catch (AuthenticationException e) {
-      LOG.warn("SAML callback rejected: {}", e.getMessage());
+    } catch (AuthenticationException | EntityNotFoundException e) {
+      LOG.warn("SAML login completion rejected: {}", e.getMessage());
       sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
     } catch (Exception e) {
-      LOG.error("Error processing SAML callback", e);
-      sendError(
-          resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SAML callback processing failed");
+      LOG.error("Error completing SAML login", e);
+      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SAML login failed");
+    }
+  }
+
+  /**
+   * The response must answer the request this login sent. java-saml checks {@code InResponseTo}
+   * only in strict mode and only when the response carries one; an answer to no request, or to
+   * another login's request, must not complete this one.
+   */
+  private static void requireAnswerTo(Auth auth, String requestId) throws Exception {
+    String inResponseTo =
+        Util.loadXML(auth.getLastResponseXML()).getDocumentElement().getAttribute("InResponseTo");
+    if (!requestId.equals(inResponseTo)) {
+      throw new AuthenticationException("SAML response does not answer this login's request");
     }
   }
 
