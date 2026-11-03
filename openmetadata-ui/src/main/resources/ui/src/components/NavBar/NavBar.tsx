@@ -493,8 +493,8 @@ const NavBar = () => {
       />
     </CoreTooltip>
   ) : (
-    // A domain-restricted user with several domains also gets "All Domains": the server then lists
-    // all of their domains, never more.
+    // A domain-restricted user with several domains also gets "All Domains". It only removes the
+    // filter; what they can see stays with their role.
     <DomainSelect
       bordered
       showAllDomains

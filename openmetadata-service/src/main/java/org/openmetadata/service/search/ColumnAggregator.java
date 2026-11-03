@@ -245,7 +245,6 @@ public interface ColumnAggregator {
     private String databaseName;
     private String schemaName;
     private String domainId;
-    private boolean includeUnassignedDomain;
     private Boolean hasConflicts;
     private Boolean hasMissingMetadata;
     private String metadataStatus;
@@ -322,15 +321,6 @@ public interface ColumnAggregator {
 
     public void setDomainId(String domainId) {
       this.domainId = domainId;
-    }
-
-    /** Also match columns of tables with no domain (e.g. a domain-only user's role scope). */
-    public boolean isIncludeUnassignedDomain() {
-      return includeUnassignedDomain;
-    }
-
-    public void setIncludeUnassignedDomain(boolean includeUnassignedDomain) {
-      this.includeUnassignedDomain = includeUnassignedDomain;
     }
 
     public Boolean getHasConflicts() {

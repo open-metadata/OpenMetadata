@@ -731,14 +731,8 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       // One domain, or a navbar pick with its sub-domains (comma-separated ids).
       List<FieldValue> domainIds =
           Arrays.stream(request.getDomainId().split(",")).map(FieldValue::of).toList();
-      Query inDomains =
-          Query.of(q -> q.terms(t -> t.field("domains.id").terms(tv -> tv.value(domainIds))));
-      Query noDomain =
-          Query.of(q -> q.bool(b -> b.mustNot(m -> m.exists(e -> e.field("domains.id")))));
       boolBuilder.filter(
-          request.isIncludeUnassignedDomain()
-              ? Query.of(q -> q.bool(b -> b.should(inDomains, noDomain).minimumShouldMatch("1")))
-              : inDomains);
+          Query.of(q -> q.terms(t -> t.field("domains.id").terms(tv -> tv.value(domainIds)))));
     }
   }
 

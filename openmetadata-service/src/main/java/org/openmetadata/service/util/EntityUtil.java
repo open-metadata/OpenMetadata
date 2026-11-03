@@ -1097,7 +1097,9 @@ public final class EntityUtil {
       return;
     }
     // Domain-only role: admins are exempt; everyone else is restricted to their assigned domains.
-    if (isDomainRestricted(subjectContext)) {
+    boolean domainRestricted =
+        !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
+    if (domainRestricted) {
       List<EntityReference> allowed = subjectContext.getUserDomains();
       if (!nullOrEmpty(allowed)) {
         // The navbar selection narrows within the role's scope; it can never widen past it.
@@ -1114,7 +1116,7 @@ public final class EntityUtil {
       }
       return;
     }
-    applyNavbarDomain(securityContext, subjectContext, filter, entityType, parent);
+    applyNavbarDomain(securityContext, filter, entityType, parent);
   }
 
   /**
@@ -1126,9 +1128,8 @@ public final class EntityUtil {
       ListFilter filter,
       String entityType,
       Supplier<ResourceContextInterface> parent) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (!subjectContext.isBot()) {
-      applyNavbarDomain(securityContext, subjectContext, filter, entityType, parent);
+    if (!getSubjectContext(securityContext).isBot()) {
+      applyNavbarDomain(securityContext, filter, entityType, parent);
     }
   }
 
@@ -1136,187 +1137,96 @@ public final class EntityUtil {
   // never restricts access, so it applies to admins too.
   private static void applyNavbarDomain(
       SecurityContext securityContext,
-      SubjectContext subjectContext,
       ListFilter filter,
       String entityType,
       Supplier<ResourceContextInterface> parent) {
-    NavbarScope scope = navbarScope(securityContext, subjectContext);
-    List<EntityReference> domains = scope.domains();
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    String selectedFqn = selected == null ? null : selected.getFullyQualifiedName();
     DomainNavFilter.apply(
         filter,
         entityType,
         supportsDomains(entityType),
-        domains.isEmpty() ? null : joinIds(domains),
-        () -> scopeAndSubDomainIds(domains),
+        selected == null ? null : selected.getId().toString(),
+        () -> domainAndSubDomainIds(selected),
         () ->
-            domains.isEmpty()
+            nullOrEmpty(selectedFqn)
                 ? DomainNavFilter.ParentScope.NONE
-                : parentScope(parent.get(), scopeFqns(domains)),
-        scope.keepsUnassigned());
+                : parentScope(parent.get(), selectedFqn));
   }
 
   /** The navbar domain filter for a search-backed list (e.g. articles sorted by update time). */
   public static void addNavbarDomainFilter(
       SecurityContext securityContext, SearchListFilter filter, String entityType) {
-    NavbarScope scope = navbarScope(securityContext, getSubjectContext(securityContext));
-    List<EntityReference> domains = scope.domains();
+    if (getSubjectContext(securityContext).isBot()) {
+      return;
+    }
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
     boolean applies =
-        !domains.isEmpty()
+        selected != null
             && DomainNavFilter.shouldApply(
                 entityType,
                 supportsDomains(entityType),
                 filter.getQueryParam("domains") != null,
-                joinIds(domains));
+                selected.getId().toString());
     if (applies) {
-      filter.addQueryParam(
-          SearchListFilter.NAV_DOMAIN_PARAM, JsonUtils.pojoToJson(scopeFqns(domains)));
+      filter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, selected.getFullyQualifiedName());
       filter.addQueryParam(
           SearchListFilter.NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM,
-          String.valueOf(
-              scope.keepsUnassigned() || DomainFilterExclusions.keepsUnassigned(entityType)));
+          String.valueOf(DomainFilterExclusions.keepsUnassigned(entityType)));
     }
   }
 
-  /** Domain ids a list narrows to, with sub-domains; empty ids means no narrowing. */
-  public record NavbarDomainIds(List<String> ids, boolean keepsUnassigned) {}
-
   /**
-   * The caller's navbar scope for {@code entityType} as domain ids, for lists that build their own
-   * query (e.g. a search aggregation).
+   * The caller's navbar domain and its sub-domains as ids, or empty when the pick does not narrow
+   * {@code entityType}; for lists that build their own query (e.g. a search aggregation).
    */
-  public static NavbarDomainIds navbarDomainIds(
-      SecurityContext securityContext, String entityType) {
-    return domainIds(navbarScope(securityContext, getSubjectContext(securityContext)), entityType);
-  }
-
-  /**
-   * As above, for a domain the caller filtered on (e.g. the column grid's domain filter): kept as
-   * is, unless a domain-only user filters on one outside their domains, where their role scope
-   * applies as it does for such a pick.
-   */
-  public static NavbarDomainIds navbarDomainIds(
-      SecurityContext securityContext, String entityType, String domainId) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    NavbarScope scope =
-        isDomainRestricted(subjectContext)
-            ? navbarScope(subjectContext, domainById(domainId))
-            : NavbarScope.NONE;
-    return scope.keepsUnassigned()
-        ? domainIds(scope, entityType)
-        : new NavbarDomainIds(List.of(domainId), false);
-  }
-
-  private static NavbarDomainIds domainIds(NavbarScope scope, String entityType) {
-    List<EntityReference> domains = scope.domains();
+  public static List<String> navbarDomainIds(SecurityContext securityContext, String entityType) {
+    if (getSubjectContext(securityContext).isBot()) {
+      return List.of();
+    }
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
     boolean applies =
-        !domains.isEmpty()
+        selected != null
             && DomainNavFilter.shouldApply(
-                entityType, supportsDomains(entityType), false, joinIds(domains));
-    return applies
-        ? new NavbarDomainIds(
-            List.of(scopeAndSubDomainIds(domains).split(",")), scope.keepsUnassigned())
-        : new NavbarDomainIds(List.of(), false);
-  }
-
-  // A malformed or unknown id resolves to no domain, as a stale pick does.
-  private static EntityReference domainById(String id) {
-    try {
-      return resolveSelectedDomain(new EntityReference().withId(UUID.fromString(id)));
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
+                entityType, supportsDomains(entityType), false, selected.getId().toString());
+    return applies ? List.of(domainAndSubDomainIds(selected).split(",")) : List.of();
   }
 
   /**
-   * The caller's navbar scope as a search query filter, or null when nothing narrows; for reads
-   * that query search documents directly (e.g. Data Insights charts).
+   * The caller's navbar domain and its sub-domains as a search query filter, or null with no pick;
+   * for reads that query search documents directly (e.g. Data Insights charts).
    */
   public static String navbarDomainSearchFilter(SecurityContext securityContext) {
-    NavbarScope scope = navbarScope(securityContext, getSubjectContext(securityContext));
-    if (scope.domains().isEmpty()) {
+    if (getSubjectContext(securityContext).isBot()) {
       return null;
     }
-    List<Map<String, Object>> inScope = new ArrayList<>();
-    for (String fqn : scopeFqns(scope.domains())) {
-      inScope.add(Map.of("term", Map.of("domains.fullyQualifiedName", fqn)));
-      inScope.add(Map.of("prefix", Map.of("domains.fullyQualifiedName", fqn + Entity.SEPARATOR)));
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    if (selected == null || nullOrEmpty(selected.getFullyQualifiedName())) {
+      return null;
     }
-    if (scope.keepsUnassigned()) {
-      inScope.add(
-          Map.of(
-              "bool",
-              Map.of("must_not", Map.of("exists", Map.of("field", "domains.fullyQualifiedName")))));
-    }
-    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("should", inScope))));
-  }
-
-  // Reference data that pickers search (e.g. owners, tags) is never narrowed, as in the UI.
-  private static final Set<String> UNSCOPED_SEARCH_TYPES =
-      Set.of(Entity.USER, Entity.TEAM, Entity.TAG);
-
-  /**
-   * A domain-only user's role scope as a {@code /search/query} filter when no pick of theirs
-   * narrows it (e.g. "All Domains"): their domains and sub-domains, those Domain documents, and
-   * items with no domain. Null otherwise; search does not enforce the role by default.
-   */
-  public static String navbarRoleSearchFilter(
-      SecurityContext securityContext, SubjectContext subjectContext, String index) {
-    NavbarScope scope = navbarScope(securityContext, subjectContext);
-    boolean applies = scope.keepsUnassigned() && !isPickerSearch(index);
-    return applies ? roleSearchFilter(scope.domains()) : null;
-  }
-
-  private static boolean isPickerSearch(String index) {
-    List<String> types = Entity.getSearchRepository().getEntityTypesForIndex(index);
-    return !types.isEmpty() && UNSCOPED_SEARCH_TYPES.containsAll(types);
-  }
-
-  private static String roleSearchFilter(List<EntityReference> domains) {
-    List<Map<String, Object>> inScope = new ArrayList<>();
-    List<Map<String, Object>> domainDocs = new ArrayList<>();
-    for (String fqn : scopeFqns(domains)) {
-      if (!nullOrEmpty(fqn)) {
-        inScope.add(Map.of("term", Map.of("domains.fullyQualifiedName", fqn)));
-        inScope.add(Map.of("prefix", Map.of("domains.fullyQualifiedName", fqn + Entity.SEPARATOR)));
-        domainDocs.add(Map.of("term", Map.of("fullyQualifiedName", fqn)));
-        domainDocs.add(Map.of("prefix", Map.of("fullyQualifiedName", fqn + Entity.SEPARATOR)));
-      }
-    }
-    if (!domainDocs.isEmpty()) {
-      inScope.add(
-          Map.of(
-              "bool",
-              Map.of(
-                  "must",
-                  Map.of("term", Map.of("entityType", Entity.DOMAIN)),
-                  "should",
-                  domainDocs,
-                  "minimum_should_match",
-                  1)));
-    }
-    inScope.add(
+    String fqn = selected.getFullyQualifiedName();
+    Map<String, Object> inSubtree =
         Map.of(
             "bool",
             Map.of(
-                "must_not",
+                "should",
                 List.of(
-                    Map.of("exists", Map.of("field", "domains.fullyQualifiedName")),
-                    Map.of("term", Map.of("entityType", Entity.DOMAIN))))));
-    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("should", inScope))));
+                    Map.of("term", Map.of("domains.fullyQualifiedName", fqn)),
+                    Map.of(
+                        "prefix", Map.of("domains.fullyQualifiedName", fqn + Entity.SEPARATOR)))));
+    return JsonUtils.pojoToJson(Map.of("query", inSubtree));
   }
 
   /**
-   * Ids of the {@code entityType} entities in the caller's navbar pick or its sub-domains, or empty
-   * when no pick narrows that type; for lists that page their own rows. A scope that comes from the
-   * role is left to those lists' own access checks, which also keep items with no domain.
+   * Ids of the {@code entityType} entities in the caller's navbar domain or its sub-domains, or
+   * empty when the pick does not narrow that type; for lists that page their own rows.
    */
   public static Optional<Set<UUID>> navbarDomainMemberIds(
       SecurityContext securityContext, String entityType) {
-    NavbarDomainIds scope = navbarDomainIds(securityContext, entityType);
-    if (scope.ids().isEmpty() || scope.keepsUnassigned()) {
+    List<String> domainIds = navbarDomainIds(securityContext, entityType);
+    if (domainIds.isEmpty()) {
       return Optional.empty();
     }
-    List<String> domainIds = scope.ids();
     return Optional.of(
         Entity.getCollectionDAO()
             .relationshipDAO()
@@ -1373,8 +1283,8 @@ public final class EntityUtil {
 
   /** Where {@code parent}'s effective domain (own or inherited) sits relative to the selection. */
   private static DomainNavFilter.ParentScope parentScope(
-      ResourceContextInterface parent, List<String> selectedFqns) {
-    if (parent == null || nullOrEmpty(selectedFqns)) {
+      ResourceContextInterface parent, String selectedFqn) {
+    if (parent == null || nullOrEmpty(selectedFqn)) {
       return DomainNavFilter.ParentScope.NONE;
     }
     try {
@@ -1384,78 +1294,16 @@ public final class EntityUtil {
       boolean inSelection =
           listOrEmpty(parent.getDomains()).stream()
               .map(EntityReference::getFullyQualifiedName)
-              .anyMatch(fqn -> fqn != null && inAnySubtree(fqn, selectedFqns));
+              .anyMatch(
+                  fqn ->
+                      selectedFqn.equals(fqn)
+                          || (fqn != null && fqn.startsWith(selectedFqn + Entity.SEPARATOR)));
       return inSelection
           ? DomainNavFilter.ParentScope.IN_SELECTION
           : DomainNavFilter.ParentScope.OUTSIDE_SELECTION;
     } catch (EntityNotFoundException e) {
       return DomainNavFilter.ParentScope.UNRESOLVED;
     }
-  }
-
-  private static boolean inAnySubtree(String fqn, List<String> rootFqns) {
-    return rootFqns.stream()
-        .anyMatch(root -> root.equals(fqn) || fqn.startsWith(root + Entity.SEPARATOR));
-  }
-
-  private static boolean isDomainRestricted(SubjectContext subjectContext) {
-    return !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
-  }
-
-  // Matches no domain: a domain-only user with no domains then keeps only items with no domain.
-  private static final EntityReference NO_DOMAIN =
-      new EntityReference()
-          .withId(new UUID(0, 0))
-          .withType(Entity.DOMAIN)
-          .withFullyQualifiedName("");
-
-  /**
-   * The domains a list that follows the navbar narrows to. {@code keepsUnassigned} is set when the
-   * scope comes from the domain-only role rather than a pick, since the role also allows items
-   * with no domain. Empty domains means no narrowing.
-   */
-  private record NavbarScope(List<EntityReference> domains, boolean keepsUnassigned) {
-    static final NavbarScope NONE = new NavbarScope(List.of(), false);
-  }
-
-  /**
-   * The pick, or for a domain-only user the pick when it is one of theirs, else all of their
-   * domains (e.g. "All Domains"), so these lists never widen past the role.
-   */
-  private static NavbarScope navbarScope(
-      SecurityContext securityContext, SubjectContext subjectContext) {
-    return subjectContext.isBot()
-        ? NavbarScope.NONE
-        : navbarScope(subjectContext, resolveSelectedDomain(activeDomain(securityContext)));
-  }
-
-  private static NavbarScope navbarScope(SubjectContext subjectContext, EntityReference selected) {
-    if (!isDomainRestricted(subjectContext)) {
-      return selected == null ? NavbarScope.NONE : new NavbarScope(List.of(selected), false);
-    }
-    List<EntityReference> allowed = listOrEmpty(subjectContext.getUserDomains());
-    boolean selectedAllowed =
-        selected != null && allowed.stream().anyMatch(d -> coversDomain(d, selected));
-    if (selectedAllowed) {
-      return new NavbarScope(List.of(selected), false);
-    }
-    return new NavbarScope(allowed.isEmpty() ? List.of(NO_DOMAIN) : allowed, true);
-  }
-
-  private static String joinIds(List<EntityReference> domains) {
-    return domains.stream().map(d -> d.getId().toString()).collect(Collectors.joining(","));
-  }
-
-  private static List<String> scopeFqns(List<EntityReference> domains) {
-    return domains.stream().map(EntityReference::getFullyQualifiedName).toList();
-  }
-
-  private static String scopeAndSubDomainIds(List<EntityReference> domains) {
-    return domains.stream()
-        .map(EntityUtil::domainAndSubDomainIds)
-        .flatMap(ids -> Arrays.stream(ids.split(",")))
-        .distinct()
-        .collect(Collectors.joining(","));
   }
 
   /**

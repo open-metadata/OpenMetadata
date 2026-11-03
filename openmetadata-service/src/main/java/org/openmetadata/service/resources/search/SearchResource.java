@@ -78,7 +78,6 @@ import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
@@ -95,7 +94,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
@@ -259,10 +257,7 @@ public class SearchResource {
             .withSize(size)
             .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
             .withFrom(from)
-            .withQueryFilter(
-                DataInsightSystemChartRepository.combineFilters(
-                    queryFilter,
-                    EntityUtil.navbarRoleSearchFilter(securityContext, subjectContext, index)))
+            .withQueryFilter(queryFilter)
             .withPostFilter(postFilter)
             .withFetchSource(fetchSource)
             .withTrackTotalHits(trackTotalHits)
