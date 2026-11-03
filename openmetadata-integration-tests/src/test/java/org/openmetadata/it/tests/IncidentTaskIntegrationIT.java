@@ -579,8 +579,7 @@ public class IncidentTaskIntegrationIT {
                         .withName(ns.prefix("second-incident"))
                         .withCategory(TaskCategory.Incident)
                         .withType(TaskEntityType.TestCaseResolution)
-                        .withAbout(
-                            "<#E::testCase::" + testCase.getFullyQualifiedName() + ">")));
+                        .withAbout("<#E::testCase::" + testCase.getFullyQualifiedName() + ">")));
     assertEquals(1, countIncidentTasksForTestCase(client, testCase));
   }
 
