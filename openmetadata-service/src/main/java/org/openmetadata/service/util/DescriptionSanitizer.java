@@ -149,6 +149,7 @@ public final class DescriptionSanitizer {
   private static final Pattern ENTITY_LINK_PATTERN = Pattern.compile("<#E::[^<>]+>");
 
   private static final String ENTITY_LINK_PLACEHOLDER_PREFIX = "__OM_ENTITY_LINK_";
+  private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
 
   private DescriptionSanitizer() {}
 
@@ -183,23 +184,74 @@ public final class DescriptionSanitizer {
     if (description == null) {
       return null;
     }
+    // A per-call nonce so a description cannot carry a literal placeholder that the restore would
+    // expand, and the restore happens in one pass only where the placeholder is element text, so a
+    // placeholder the sanitizer moved into a tag or attribute is left inert
+    // (ADR:2026-11-03-input-parsing-is-bounded).
+    String token = ENTITY_LINK_PLACEHOLDER_PREFIX + Long.toHexString(RANDOM.nextLong()) + "_";
     Matcher matcher = ENTITY_LINK_PATTERN.matcher(description);
     List<String> entityLinks = new ArrayList<>();
     StringBuilder replaced = new StringBuilder();
     while (matcher.find()) {
       entityLinks.add(matcher.group());
       matcher.appendReplacement(
-          replaced, ENTITY_LINK_PLACEHOLDER_PREFIX + entityLinks.size() + "__");
+          replaced, Matcher.quoteReplacement(token + entityLinks.size() + "__"));
     }
     matcher.appendTail(replaced);
 
     String toSanitize = replaced.toString();
     String sanitized = toSanitize.contains("<") ? policy.sanitize(toSanitize) : toSanitize;
 
-    for (int i = 0; i < entityLinks.size(); i++) {
-      sanitized =
-          sanitized.replace(ENTITY_LINK_PLACEHOLDER_PREFIX + (i + 1) + "__", entityLinks.get(i));
+    return restoreEntityLinksInTextPositions(sanitized, token, entityLinks);
+  }
+
+  /**
+   * Puts each entity-link token back where its placeholder is element text, in a single pass. A
+   * placeholder inside a tag ({@code <...>}) is left as the inert placeholder, so a restored token
+   * can never land in an attribute. The sanitizer escapes any text {@code <}/{@code >} to entities,
+   * so the only unescaped angle brackets delimit tags.
+   */
+  private static String restoreEntityLinksInTextPositions(
+      String sanitized, String token, List<String> entityLinks) {
+    if (entityLinks.isEmpty()) {
+      return sanitized;
     }
-    return sanitized;
+    StringBuilder out = new StringBuilder(sanitized.length());
+    boolean inTag = false;
+    int i = 0;
+    while (i < sanitized.length()) {
+      char c = sanitized.charAt(i);
+      if (c == '<') {
+        inTag = true;
+      } else if (c == '>') {
+        inTag = false;
+      } else if (!inTag && c == '_' && sanitized.startsWith(token, i)) {
+        int numberStart = i + token.length();
+        int numberEnd = sanitized.indexOf("__", numberStart);
+        if (numberEnd > numberStart) {
+          Integer index = parseIndex(sanitized.substring(numberStart, numberEnd));
+          if (index != null && index >= 1 && index <= entityLinks.size()) {
+            out.append(entityLinks.get(index - 1));
+            i = numberEnd + 2;
+            continue;
+          }
+        }
+      }
+      out.append(c);
+      i++;
+    }
+    return out.toString();
+  }
+
+  private static Integer parseIndex(String digits) {
+    if (digits.isEmpty() || digits.length() > 7) {
+      return null;
+    }
+    for (int i = 0; i < digits.length(); i++) {
+      if (!Character.isDigit(digits.charAt(i))) {
+        return null;
+      }
+    }
+    return Integer.parseInt(digits);
   }
 }

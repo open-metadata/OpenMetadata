@@ -748,4 +748,42 @@ class JsonUtilsTest {
             () -> JsonUtils.convertValue(config, AthenaConnection.class));
     return JsonUtils.describeBindingFailure(failure);
   }
+
+  @Test
+  void applyPatch_refusesAPatchThatDoublesTheDocumentPastTheBudget() {
+    JsonObject document =
+        Json.createObjectBuilder().add("items", Json.createArrayBuilder()).build();
+    // Each copy appends the whole "items" array to itself, doubling it every operation.
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    ops.add(
+        Json.createObjectBuilder()
+            .add("op", "add")
+            .add("path", "/items/-")
+            .add("value", "x".repeat(1024)));
+    for (int i = 0; i < 40; i++) {
+      ops.add(
+          Json.createObjectBuilder()
+              .add("op", "copy")
+              .add("from", "/items")
+              .add("path", "/items/-"));
+    }
+    JsonPatch patch = Json.createPatch(ops.build());
+
+    IllegalArgumentException refused =
+        assertThrows(IllegalArgumentException.class, () -> JsonUtils.applyPatch(document, patch));
+    assertTrue(refused.getMessage().contains("size"), refused.getMessage());
+  }
+
+  @Test
+  void applyPatch_allowsAnOrdinaryGrowingPatch() {
+    JsonObject document =
+        Json.createObjectBuilder().add("items", Json.createArrayBuilder()).build();
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    for (int i = 0; i < 1000; i++) {
+      ops.add(Json.createObjectBuilder().add("op", "add").add("path", "/items/-").add("value", i));
+    }
+
+    JsonValue patched = JsonUtils.applyPatch(document, Json.createPatch(ops.build()));
+    assertEquals(1000, patched.asJsonObject().getJsonArray("items").size());
+  }
 }

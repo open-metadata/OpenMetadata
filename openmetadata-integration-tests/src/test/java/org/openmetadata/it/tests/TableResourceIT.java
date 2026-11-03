@@ -112,6 +112,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -230,6 +231,28 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     request.setColumns(columns);
 
     return request;
+  }
+
+  @Test
+  void patch_documentRoot_isRefused(TestNamespace ns) {
+    Table table = createEntity(createRequest(ns.prefix("rootpatch"), ns));
+    String rootPatch =
+        "[{\"op\":\"replace\",\"path\":\"\",\"value\":{\"name\":\"" + table.getName() + "\"}}]";
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        "/v1/tables/" + table.getId(),
+                        rootPatch,
+                        org.openmetadata.sdk.network.RequestOptions.builder()
+                            .header("Content-Type", "application/json-patch+json")
+                            .build()));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
   }
 
   @Override
