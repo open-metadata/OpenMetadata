@@ -1,7 +1,7 @@
 # Ontology writes require edit rights; reviewers vote on assigned reviews
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial); v2 2026-11-02 (change-set create and submit, AI draft)
+- **Revisions:** v1 2026-11-02 (initial); v2 2026-11-02 (change-set create and submit, AI draft); v3 2026-11-03 (impact reassignment requires EditAll on each moved child)
 - **Deciders:** Ontology Studio program
 - **Guard:** `DefaultAuthorizerTest` (ontology reviewer case, glossary term reviewer case), `IndependentOntologyAuthorizationIT`, `OntologyAiResourceTest` and `OntologyImpactIT.movingChildrenRequiresEditAllOnEachMovedChild`
 - **Related:** `DefaultAuthorizer.isReviewer`, `OntologyResourceAccess.requireEditForContentPatch`, `OntologyImpactService.authorizeAffectedTerms`

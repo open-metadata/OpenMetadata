@@ -43,12 +43,14 @@ jest.mock('../../rest/axiosClient', () => ({
   delete: jest.fn(),
 }));
 let mockIdentityReady = true;
+const mockFreshIdentity = jest.fn();
 jest.mock(
   '../governance/ontology/OntologyCreateForm/useOntologyIdentitySource',
   () => ({
     useOntologyIdentitySource: () => ({
       isReady: mockIdentityReady,
       identityOf: () => undefined,
+      refreshIdentityOf: async () => mockFreshIdentity,
     }),
   })
 );
@@ -262,6 +264,7 @@ describe('OntologyLibrary native installation', () => {
     jest.clearAllMocks();
     (useIsAiMode as jest.Mock).mockReturnValue(false);
     permit(true);
+    mockFreshIdentity.mockReset();
     created = { ...target, id: 'created-id' };
     catalogueInstallations = [];
     get.mockImplementation(async (url) => {
@@ -370,6 +373,28 @@ describe('OntologyLibrary native installation', () => {
         url.startsWith('/ontologies/')
       )
     ).toBe(false);
+  });
+
+  it('names the new ontology from the ontology list read when Install is pressed', async () => {
+    mockFreshIdentity.mockReturnValue({
+      name: 'fhir-reference-2',
+      displayName: 'FHIR Reference (2)',
+      iri: 'urn:test:fhir-reference-2',
+      namespace: 'urn:test:fhir-reference-2:',
+    });
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await openPack();
+
+    await install();
+
+    expect(await openInstalledPack()).toBeVisible();
+    expect(creates()[0][1]).toEqual(
+      expect.objectContaining({
+        name: 'fhir-reference-2',
+        displayName: 'FHIR Reference (2)',
+        iri: 'urn:test:fhir-reference-2',
+      })
+    );
   });
 
   it('keeps Install disabled for a new ontology until its name and IRI source has loaded', async () => {

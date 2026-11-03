@@ -81,6 +81,7 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
     final ListFilter filter = ontologyFilter(include, ontologyId);
+    OntologyResourceAccess.requireDraftListRead(authorizer, securityContext, ontologyId);
     return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
   }
 

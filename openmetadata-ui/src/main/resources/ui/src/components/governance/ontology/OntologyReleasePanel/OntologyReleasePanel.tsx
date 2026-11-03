@@ -290,6 +290,7 @@ const OntologyReleasePanel = ({
         signal
       ),
     enabled: [
+      canEdit,
       view === 'changes',
       cursors.length > 1,
       cursorRevision === firstPageRevision,
@@ -355,6 +356,9 @@ const OntologyReleasePanel = ({
     );
   };
   const renderChangeStatus = () => {
+    if (!canEdit) {
+      return null;
+    }
     if (changes.isPending || changes.isFetching || working.isFetching) {
       return <Typography role="status">{t('label.loading')}</Typography>;
     }

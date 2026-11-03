@@ -76,7 +76,7 @@ let currentState: OntologyState;
 let ontology: Ontology;
 let releases: OntologyRelease[];
 
-const setup = async () => {
+const setup = async (canEdit = true) => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
@@ -95,7 +95,7 @@ const setup = async () => {
     | undefined;
   await act(async () => {
     hook = renderHook(
-      ({ ontologyId }) => useOntologyPublication(ontologyId, true, true),
+      ({ ontologyId }) => useOntologyPublication(ontologyId, canEdit, true),
       { wrapper, initialProps: { ontologyId: owner } }
     );
   });
@@ -191,6 +191,30 @@ it('takes the version base from the active release, not from a newer versioned D
   expect(
     hook.result.current.history.data?.pages[0].data[0].semanticVersion
   ).toBe('1.5.0');
+});
+
+it('reads the active release without the working diff when the user cannot edit', async () => {
+  const forbidden = Object.assign(new Error('Forbidden'), {
+    isAxiosError: true,
+    response: { status: 403 },
+  });
+  const read = get.getMockImplementation();
+  get.mockImplementation(async (url, config) => {
+    if (url === `/ontologies/${owner}/working/diff`) {
+      throw forbidden;
+    }
+
+    return read ? read(url, config) : { data: undefined };
+  });
+  const hook = await setup(false);
+
+  await waitFor(() =>
+    expect(hook.result.current.versionBase.isSuccess).toBe(true)
+  );
+
+  expect(hook.result.current.versionBase.data?.id).toBe(releaseId(1));
+  expect(hook.result.current.working.isError).toBe(false);
+  expect(hook.result.current.working.data).toBeUndefined();
 });
 
 it('has no version base until a release is active', async () => {

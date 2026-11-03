@@ -22,6 +22,7 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.RDFWriterI;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.shared.JenaException;
+import org.apache.jena.shared.WrappedIOException;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 /**
@@ -66,6 +67,9 @@ public final class RdfGraphSerializer {
     writer.setProperty("allowBadURIs", "true");
     try {
       writer.write(model, output, null);
+    } catch (WrappedIOException e) {
+      // A client that disconnects mid-write is an I/O failure, not a graph the format cannot carry.
+      throw e;
     } catch (JenaException e) {
       throw new UnsupportedRdfSerializationException(
           RdfSerializationFormat.RDF_XML, e.getMessage());

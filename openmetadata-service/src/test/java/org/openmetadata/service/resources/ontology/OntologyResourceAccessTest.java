@@ -1,11 +1,21 @@
 package org.openmetadata.service.resources.ontology;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 class OntologyResourceAccessTest {
   @Test
@@ -30,6 +40,40 @@ class OntologyResourceAccessTest {
             .replace("/description", "text")
             .build();
     assertTrue(OntologyResourceAccess.touchesContent(patch));
+  }
+
+  @Test
+  void draftReadsNeedEditAllWhileViewAloneIsNotEnough() {
+    final SecurityContext context = Mockito.mock(SecurityContext.class);
+    final ResourceContextInterface ontology = Mockito.mock(ResourceContextInterface.class);
+
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            OntologyResourceAccess.requireDraftRead(
+                grantingOnly(MetadataOperation.VIEW_ALL), context, ontology));
+    assertDoesNotThrow(
+        () ->
+            OntologyResourceAccess.requireDraftRead(
+                grantingOnly(MetadataOperation.EDIT_ALL), context, ontology));
+  }
+
+  private static Authorizer grantingOnly(final MetadataOperation granted) {
+    final Authorizer authorizer = Mockito.mock(Authorizer.class);
+    Mockito.doAnswer(
+            call -> {
+              final OperationContext operation = call.getArgument(1);
+              if (!operation.getOperations(null).equals(List.of(granted))) {
+                throw new AuthorizationException("denied");
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(
+            Mockito.any(SecurityContext.class),
+            Mockito.any(OperationContext.class),
+            Mockito.any(ResourceContextInterface.class));
+    return authorizer;
   }
 
   private static JsonPatch replace(final String path, final String value) {

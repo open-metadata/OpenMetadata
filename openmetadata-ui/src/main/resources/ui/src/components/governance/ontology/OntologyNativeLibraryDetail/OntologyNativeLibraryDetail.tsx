@@ -89,7 +89,7 @@ const OntologyNativeLibraryDetail = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const currentUserId = useApplicationStore((state) => state.currentUser?.id);
-  const { identityOf, isReady: isIdentityReady } =
+  const { refreshIdentityOf, isReady: isIdentityReady } =
     useOntologyIdentitySource(canCreate);
   const [targetId, setTargetId] = useState('new');
   const [target, setTarget] = useState<Ontology>();
@@ -235,6 +235,15 @@ const OntologyNativeLibraryDetail = ({
     onCreated(current.target);
   };
 
+  const newOntologyRequest = async () => {
+    if (targetId !== 'new' || !currentUserId) {
+      return undefined;
+    }
+    const nameOf = await refreshIdentityOf();
+
+    return nativeLibraryOntologyRequest(pack, currentUserId, nameOf(pack.name));
+  };
+
   const install = async () => {
     if (preparing.current || isBusy) {
       return;
@@ -249,17 +258,14 @@ const OntologyNativeLibraryDetail = ({
       if (isInstallDisabled()) {
         return;
       }
+      const request = await newOntologyRequest();
+      if (attempt.current) {
+        return;
+      }
       attempt.current = {
         moduleIds: [...selectedModuleIds],
         target,
-        request:
-          targetId === 'new' && currentUserId
-            ? nativeLibraryOntologyRequest(
-                pack,
-                currentUserId,
-                identityOf(pack.name)
-              )
-            : undefined,
+        request,
       };
     }
     const current = attempt.current;

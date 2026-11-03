@@ -45,7 +45,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateOntologyConceptBinding;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAssetConceptLinks;
@@ -102,16 +101,22 @@ public class OntologyConceptResource
       @QueryParam("before") final String before,
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
-    final ListFilter filter = ontologyFilter(include, ontology);
+    final UUID ontologyId = ontologyIdOf(ontology);
+    OntologyResourceAccess.requireDraftListRead(authorizer, securityContext, ontologyId);
+    final ListFilter filter = ontologyFilter(include, ontologyId);
     return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
   }
 
-  private static ListFilter ontologyFilter(final Include include, final String ontology) {
+  private static UUID ontologyIdOf(final String ontology) {
+    return ontology == null
+        ? null
+        : Entity.getEntityReferenceByName(Entity.ONTOLOGY, ontology, Include.NON_DELETED).getId();
+  }
+
+  private static ListFilter ontologyFilter(final Include include, final UUID ontologyId) {
     final ListFilter filter = new ListFilter(include);
-    if (ontology != null) {
-      final EntityReference reference =
-          Entity.getEntityReferenceByName(Entity.ONTOLOGY, ontology, Include.NON_DELETED);
-      filter.addQueryParam("ontologyId", reference.getId().toString());
+    if (ontologyId != null) {
+      filter.addQueryParam("ontologyId", ontologyId.toString());
     }
     return filter;
   }
