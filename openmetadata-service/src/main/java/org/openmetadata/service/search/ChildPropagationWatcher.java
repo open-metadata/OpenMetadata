@@ -114,26 +114,34 @@ public final class ChildPropagationWatcher {
 
   private void poll(Watch watch, int attempt) {
     TaskOutcome outcome = readOutcome(watch);
-    if (outcome.finished() || attempt >= MAX_POLLS) {
+    if (outcome.finished()) {
       watched.decrementAndGet();
       repairIfStale(watch, outcome);
+    } else if (attempt >= MAX_POLLS) {
+      watched.decrementAndGet();
+      LOG.warn(
+          "Child propagation task {} for parent {} did not finish within {}; its outcome is unknown",
+          watch.taskId(),
+          watch.parentKey(),
+          SearchPropagationLimits.CHILD_PROPAGATION_WAIT);
     } else {
       schedulePoll(watch, attempt + 1);
     }
   }
 
-  // An unreadable status ends the watch: it reads as finished, with nothing known to repair.
+  // The cluster this watches for is often the one under load, so a status read that fails is
+  // tried again on the next poll rather than taken as the task's outcome.
   private TaskOutcome readOutcome(Watch watch) {
     TaskOutcome outcome;
     try {
       outcome = watch.poller().poll(watch.taskId());
     } catch (IOException | RuntimeException e) {
-      LOG.warn(
+      LOG.debug(
           "Could not read child propagation task {} for parent {}: {}",
           watch.taskId(),
           watch.parentKey(),
           e.getMessage());
-      outcome = new TaskOutcome(true, List.of(), 0);
+      outcome = TaskOutcome.unfinished();
     }
     return outcome;
   }

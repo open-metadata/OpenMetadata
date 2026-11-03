@@ -3019,8 +3019,7 @@ public class SearchRepository {
               entityType,
               descriptor -> !view.skippedFields().contains(descriptor.fieldName()));
       if (!nullOrEmpty(updates.getKey())) {
-        searchClient.propagateInheritedFields(
-            withClusterAlias(group.getValue()), parentMatch, updates);
+        propagateToChildAliases(group.getValue(), parentMatch, updates);
       }
     }
     Pair<String, Map<String, Object>> updates =
@@ -3031,6 +3030,24 @@ public class SearchRepository {
   }
 
   /** How one child index takes a change: the fields it skips, and the tag lists it narrows. */
+  // Column documents are built from their table, and the reindex a failed propagation queues does
+  // not rebuild them, so they are updated unwatched; every other child is rebuilt by that reindex.
+  private void propagateToChildAliases(
+      List<String> aliases,
+      Pair<String, String> parentMatch,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    Map<Boolean, List<String>> byColumnIndex =
+        aliases.stream().collect(Collectors.partitioningBy(Entity.TABLE_COLUMN::equals));
+    if (!byColumnIndex.get(false).isEmpty()) {
+      searchClient.propagateInheritedFields(
+          withClusterAlias(byColumnIndex.get(false)), parentMatch, updates);
+    }
+    if (!byColumnIndex.get(true).isEmpty()) {
+      searchClient.updateChildren(withClusterAlias(byColumnIndex.get(true)), parentMatch, updates);
+    }
+  }
+
   private record ChildView(Set<String> skippedFields, Set<String> inheritedTermsOnlyFields) {}
 
   // The entity's non-time-series child aliases, grouped by how they take the propagated fields.

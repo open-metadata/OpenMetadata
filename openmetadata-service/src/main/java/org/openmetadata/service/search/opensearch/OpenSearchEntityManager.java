@@ -518,8 +518,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           updates);
       LOG.info("Successfully submitted child update in OpenSearch for index: {}", indexName);
     } catch (IOException | OpenSearchException e) {
-      SearchIndexRetryQueue.enqueueParent(
-          fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
+      SearchIndexRetryQueue.enqueue(
+          null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
       LOG.error("Failed to update children in OpenSearch for index: {}", indexName, e);
     }
   }

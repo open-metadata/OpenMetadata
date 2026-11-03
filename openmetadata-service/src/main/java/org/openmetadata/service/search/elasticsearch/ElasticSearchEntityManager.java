@@ -488,8 +488,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
           updates);
       LOG.info("Successfully submitted child update in ElasticSearch for index: {}", indexName);
     } catch (IOException | ElasticsearchException e) {
-      SearchIndexRetryQueue.enqueueParent(
-          fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
+      SearchIndexRetryQueue.enqueue(
+          null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
       LOG.error("Failed to update children in ElasticSearch for index: {}", indexName, e);
     }
   }

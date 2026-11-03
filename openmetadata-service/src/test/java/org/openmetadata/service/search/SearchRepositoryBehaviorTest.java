@@ -25,7 +25,6 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -1108,8 +1107,7 @@ class SearchRepositoryBehaviorTest {
         table);
 
     verify(searchClient)
-        .propagateInheritedFields(
-            eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
     ArgumentCaptor<Pair<String, String>> parentMatchCaptor = ArgumentCaptor.forClass(Pair.class);
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
@@ -1198,7 +1196,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> tagUpdateCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .propagateInheritedFields(
+        .updateChildren(
             eq(List.of("cluster_tableColumn")),
             eq(new ImmutablePair<>("table.id", tableId.toString())),
             tagUpdateCaptor.capture());
@@ -1347,7 +1345,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .propagateInheritedFields(
+        .updateChildren(
             eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
     Map<String, Object> params = updatesCaptor.getValue().getValue();
     assertEquals(
@@ -1391,8 +1389,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .propagateInheritedFields(
-            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
 
     assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
     String entityChildScript = updatesCaptor.getValue().getLeft();
@@ -1437,9 +1434,11 @@ class SearchRepositoryBehaviorTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
-    verify(searchClient, times(2))
+    verify(searchClient)
         .propagateInheritedFields(
             targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+    verify(searchClient)
+        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, Map<String, Object>> paramsByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
       paramsByTargets.put(
@@ -1490,9 +1489,11 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
-    verify(searchClient, times(2))
+    verify(searchClient)
         .propagateInheritedFields(
             targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+    verify(searchClient)
+        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, List<TagLabel>> addedByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
       addedByTargets.put(
@@ -1539,9 +1540,11 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
     verify(searchClient)
         .propagateInheritedFields(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
-
-    assertEquals(
-        List.of("cluster_unregisteredChild", "cluster_tableColumn"), targetsCaptor.getValue());
+    assertEquals(List.of("cluster_unregisteredChild"), targetsCaptor.getValue());
+    // Column documents are built from their table, so a parent reindex cannot repair them; they
+    // are updated unwatched.
+    verify(searchClient)
+        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
   }
 
   @Test

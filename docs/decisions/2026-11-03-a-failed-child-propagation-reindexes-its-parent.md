@@ -22,14 +22,15 @@ which the retry worker resolves by name only, so that repair never ran either.
   `EntityManagementClient.propagateInheritedFields`, called from
   `SearchRepository.propagateToEntityChildren`. Every other `updateChildren` caller (deletes,
   renames, reference rewrites) stays unwatched, because reindexing the key they match on would not
-  repair the documents they rewrite.
+  repair the documents they rewrite. Column documents (`tableColumn`) are unwatched too: they are
+  built from their table, and the retry worker's reindex does not rebuild them.
 - `ChildPropagationWatcher` polls the task's status every 5 seconds, a short read each time, so no
   search connection is held while it runs (a single long-poll would be cut off by
   `socketTimeoutSecs`). One scheduler thread serves all watches; at most 1,000 are watched at once,
   and a task past that goes unwatched with a rate-limited warning, never blocking the request path.
 - A task is watched for at most `SearchPropagationLimits.CHILD_PROPAGATION_WAIT` (15 minutes,
-  enough for the million-document service the rate limit is sized for). A task still running then,
-  or whose status cannot be read, is left alone.
+  enough for the million-document service the rate limit is sized for). A status read that fails is
+  retried on the next poll; a task still running at the deadline is logged and left alone.
 - A finished task with failures, a timeout, or any version conflict queues its **parent** in the
   search retry queue. The worker reindexes the parent and, by cascade, its children from the
   database, which is correct whatever the propagation script was.
@@ -38,8 +39,9 @@ which the retry worker resolves by name only, so that repair never ran either.
 
 ## Consequences
 
-Search no longer silently keeps a stale inherited field after a failed propagation; it heals
-within the retry worker's cycle. The cost is one status read per running propagation every 5
+A failed propagation no longer leaves a parent's children stale until the next full reindex; they
+heal within the retry worker's cycle. The repair is bounded by the worker's cascade limit (5,000
+entities), so a larger parent, such as a whole service, is repaired only in part. The cost is one status read per running propagation every 5
 seconds and a cascade reindex (capped by the worker's cascade limit) per failed one. Revisit if
 the retry queue shows conflict-driven requeues dominating under heavy ingest; then drop version
 conflicts from the trigger.

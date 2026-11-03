@@ -91,14 +91,18 @@ class ChildPropagationWatcherTest {
   }
 
   @Test
-  void anUnreadableStatusEndsTheWatchWithoutARepair() {
+  void anUnreadableStatusIsReadAgainOnTheNextPoll() {
+    List<Boolean> readFails = new ArrayList<>(List.of(true, false));
     watch(
         taskId -> {
-          throw new IOException("connection reset");
+          if (readFails.removeFirst()) {
+            throw new IOException("429 Too Many Requests");
+          }
+          return new TaskOutcome(true, List.of("partial shards failure"), 0);
         });
 
-    assertEquals(1, runPolls());
-    assertTrue(repaired.isEmpty());
+    assertEquals(2, runPolls());
+    assertEquals(List.of(PARENT + " updateChildren: partial shards failure"), repaired);
   }
 
   @Test
