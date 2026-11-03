@@ -203,6 +203,54 @@ public class OntologyImpactIT {
   }
 
   @Test
+  void movingChildrenRequiresEditAllOnEachMovedChild(final TestNamespace namespace) {
+    final Hierarchy hierarchy = createHierarchy(namespace, false);
+    final OpenMetadataClient caller =
+        clientWithRules(
+            namespace,
+            List.of(
+                new Rule()
+                    .withName("DeleteTerms")
+                    .withEffect(Rule.Effect.ALLOW)
+                    .withResources(List.of(Entity.GLOSSARY_TERM))
+                    .withOperations(
+                        List.of(MetadataOperation.DELETE, MetadataOperation.EDIT_GLOSSARY_TERMS)),
+                new Rule()
+                    .withName("EditAllOnGlossary")
+                    .withEffect(Rule.Effect.ALLOW)
+                    .withResources(List.of(Entity.GLOSSARY))
+                    .withOperations(List.of(MetadataOperation.EDIT_ALL))));
+    final DeleteOntologyResource request =
+        deleteRequest(caller, hierarchy.parent())
+            .withReassignChildrenTo(hierarchy.glossary().getEntityReference());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> caller.ontologyImpacts().deleteGlossaryTerm(hierarchy.parent().getId(), request));
+
+    assertUnchanged(hierarchy.parent());
+    assertUnchanged(hierarchy.child());
+    assertUnchanged(hierarchy.protectedTerm());
+
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final OntologyDeleteResult result =
+        admin
+            .ontologyImpacts()
+            .deleteGlossaryTerm(
+                hierarchy.parent().getId(),
+                deleteRequest(admin, hierarchy.parent())
+                    .withReassignChildrenTo(hierarchy.glossary().getEntityReference()));
+
+    assertEquals(2, result.getReassignedChildren());
+    for (final GlossaryTerm moved : List.of(hierarchy.child(), hierarchy.protectedTerm())) {
+      final GlossaryTerm current =
+          admin.glossaryTerms().get(moved.getId().toString(), "parent,glossary");
+      assertNull(current.getParent());
+      assertEquals(hierarchy.glossary().getId(), current.getGlossary().getId());
+    }
+  }
+
+  @Test
   void descendantAuthorizationQueriesStayBoundedForWideSubtrees(final TestNamespace namespace) {
     final OpenMetadataClient caller = restrictedClient(namespace, MetadataOperation.DELETE);
     final Hierarchy narrow = createHierarchy(namespace, true);
@@ -386,17 +434,17 @@ public class OntologyImpactIT {
       final TestNamespace namespace,
       final MetadataOperation deniedOperation,
       final String condition) {
+    return clientWithRules(namespace, policyRules(deniedOperation, condition));
+  }
+
+  private static OpenMetadataClient clientWithRules(
+      final TestNamespace namespace, final List<Rule> rules) {
     final OpenMetadataClient admin = SdkClients.adminClient();
     final String name = namespace.shortPrefix("impactUser");
     final Policy policy =
         namespace.trackRoot(
             Entity.POLICY,
-            admin
-                .policies()
-                .create(
-                    new CreatePolicy()
-                        .withName(name + "Policy")
-                        .withRules(policyRules(deniedOperation, condition))));
+            admin.policies().create(new CreatePolicy().withName(name + "Policy").withRules(rules)));
     final Role role =
         namespace.trackRoot(
             Entity.ROLE,

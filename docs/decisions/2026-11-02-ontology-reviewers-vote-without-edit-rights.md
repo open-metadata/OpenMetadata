@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-02 (initial); v2 2026-11-02 (change-set create and submit, AI draft)
 - **Deciders:** Ontology Studio program
-- **Guard:** `DefaultAuthorizerTest` (ontology reviewer case, glossary term reviewer case), `IndependentOntologyAuthorizationIT` and `OntologyAiResourceTest`
-- **Related:** `DefaultAuthorizer.isReviewer`, `OntologyResourceAccess.requireEditForContentPatch`
+- **Guard:** `DefaultAuthorizerTest` (ontology reviewer case, glossary term reviewer case), `IndependentOntologyAuthorizationIT`, `OntologyAiResourceTest` and `OntologyImpactIT.movingChildrenRequiresEditAllOnEachMovedChild`
+- **Related:** `DefaultAuthorizer.isReviewer`, `OntologyResourceAccess.requireEditForContentPatch`, `OntologyImpactService.authorizeAffectedTerms`
 
 ## Context
 `DefaultAuthorizer` lets a user listed in `reviewers` of a persisted entity skip policy evaluation.
@@ -22,7 +22,8 @@ it, and a vote needs no edit right because it is resolved through the assigned r
   `EditAll`. An edit to ontology content lands in the next release for everyone, so it follows the
   same right as the rest of the content instead of the per-field stewardship default.
 - Bulk authoring, pattern instantiation, impact-based reassignment and glossary edit locks require
-  `EditAll` on the glossary in place of `EditGlossaryTerms`.
+  `EditAll` on the glossary in place of `EditGlossaryTerms`. Impact-based reassignment also
+  requires `EditAll` on each child it moves.
 - Creating or submitting a glossary-scope change set, and requesting an AI domain draft for a
   glossary, require `EditAll` on the glossary scope.
 
