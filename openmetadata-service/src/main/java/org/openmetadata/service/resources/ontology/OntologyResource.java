@@ -196,7 +196,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       operationId = "queryActiveOntologyRelease",
       summary = "Query the active ontology release",
       description =
-          "Runs read-only SPARQL over the active release's verified SQL projection. Requires view access to every captured member and cannot access other graphs or external services. Working edits are excluded unless scope=draft, which queries the working draft and requires edit rights on the ontology.")
+          "Runs read-only SPARQL over the active release's verified SQL projection. Requires view access to every captured member and cannot access other graphs or external services. Working edits are excluded unless scope=draft, which queries the working draft and requires EditAll on the ontology.")
   public Response query(
       @Context final UriInfo uriInfo,
       @Context final SecurityContext context,
@@ -213,10 +213,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
         definition -> OntologyResourceAccess.requireView(authorizer, context, definition);
     final boolean draft = "draft".equals(scope);
     if (draft) {
-      authorizer.authorize(
-          context,
-          new OperationContext(Entity.ONTOLOGY, MetadataOperation.EDIT_ALL),
-          getResourceContextById(id));
+      OntologyResourceAccess.requireDraftRead(authorizer, context, getResourceContextById(id));
     }
     final var release =
         new OntologyReleaseQuery(
@@ -296,6 +293,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
           @Pattern(regexp = "concept", message = "Invalid groupBy. Allowed value: concept.")
           final String groupBy) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    OntologyResourceAccess.requireDraftRead(
+        authorizer, securityContext, getResourceContextById(id));
     final var comparison =
         new OntologyReleaseComparison(
             (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE));
@@ -322,6 +321,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    OntologyResourceAccess.requireDraftRead(
+        authorizer, securityContext, getResourceContextById(id));
     final Consumer<List<? extends OntologyDefinition>> authorize =
         definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions);
     return releaseCapture
@@ -447,6 +448,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @QueryParam("limit") @DefaultValue("50") @Min(1) @Max(1000) final int limit,
       @QueryParam("after") final String after) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    OntologyResourceAccess.requireDraftRead(
+        authorizer, securityContext, getResourceContextById(id));
     final ResultList<OntologyReference> references =
         repository.listReferences(id, iri, limit, after);
     for (final OntologyReference reference : references.getData()) {
@@ -586,6 +589,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @QueryParam("format") final String format,
       @QueryParam("includeInverses") @DefaultValue("true") final boolean includeInverses) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    OntologyResourceAccess.requireDraftRead(
+        authorizer, securityContext, getResourceContextById(id));
     final OntologyExportFormat target = OntologyExportFormat.parse(format);
     final OntologyReleaseExportOptions options =
         new OntologyReleaseExportOptions().withIncludeInverses(includeInverses);

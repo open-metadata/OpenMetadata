@@ -15,6 +15,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 /** Applies current policies to the definition snapshot actually being read. */
 final class OntologyResourceAccess {
@@ -38,6 +39,30 @@ final class OntologyResourceAccess {
           new OperationContext(type, MetadataOperation.EDIT_ALL),
           new ResourceContext<>(type, id, null));
     }
+  }
+
+  /**
+   * Working-draft content, which no release has published yet, is read with the right that edits
+   * it (ADR:2026-11-03-ontology-working-draft-reads-require-edit-rights). Everyone else reads the
+   * active release.
+   */
+  static void requireDraftRead(
+      final Authorizer authorizer,
+      final SecurityContext context,
+      final ResourceContextInterface ontology) {
+    authorizer.authorize(
+        context, new OperationContext(Entity.ONTOLOGY, MetadataOperation.EDIT_ALL), ontology);
+  }
+
+  /** The draft rule for a list: one ontology when the request names it, else every ontology. */
+  static void requireDraftListRead(
+      final Authorizer authorizer, final SecurityContext context, final UUID ontologyId) {
+    requireDraftRead(
+        authorizer,
+        context,
+        ontologyId == null
+            ? new ResourceContext<>(Entity.ONTOLOGY)
+            : new ResourceContext<>(Entity.ONTOLOGY, ontologyId, null));
   }
 
   static boolean touchesContent(final JsonPatch patch) {

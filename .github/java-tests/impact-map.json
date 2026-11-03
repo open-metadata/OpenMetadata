@@ -731,6 +731,7 @@
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyReleaseValidationIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyAxiomIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyAuthorizationIT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyDraftReadIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyConceptDeleteImpactIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/OntologyDraftQueryIT.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyDraftQueryTest.java",

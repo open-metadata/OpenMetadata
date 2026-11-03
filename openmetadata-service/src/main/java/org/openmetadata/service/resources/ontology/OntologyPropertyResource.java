@@ -81,6 +81,9 @@ public class OntologyPropertyResource
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
     final ListFilter filter = ontologyFilter(include, ontology);
+    final String ontologyId = filter.getQueryParam("ontologyId");
+    OntologyResourceAccess.requireDraftListRead(
+        authorizer, securityContext, ontologyId == null ? null : UUID.fromString(ontologyId));
     return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
   }
 
