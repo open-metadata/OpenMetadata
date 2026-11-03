@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { useEffect, useState } from 'react';
-import { loadFormFieldDocs } from '../../../../../../utils/DataQuality/FormFieldDocs';
+import { loadFormFieldDocs } from '../utils/DataQuality/FormFieldDocs';
 
 /**
- * Field hints come from the same per-form markdown that backs the classic
- * settings doc panel (`public/locales/en-US/OpenMetadata/<formName>.md`), so
- * both experiences show identical copy.
+ * Per-field Form Hint docs, keyed by field id, parsed from the form's
+ * documentation markdown (`public/locales/en-US/<folder>/<formName>.md`, the
+ * same file that backs the classic doc panel). Empty until loaded.
  */
 export const useFormFieldDocs = (
   formName: string,
