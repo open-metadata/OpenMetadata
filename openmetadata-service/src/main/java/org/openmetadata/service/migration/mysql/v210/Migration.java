@@ -53,6 +53,7 @@ import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -164,5 +165,6 @@ public class Migration extends MigrationProcessImpl {
         });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnMySql(handle);
+    UnsupportedNotificationTemplates.logForReview(handle);
   }
 }
