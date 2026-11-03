@@ -59,7 +59,9 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="tw:mb-4 tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-4">
+    <div
+      className="tw:mb-4 tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-4"
+      data-tour-step="topics-to-catch-up-on">
       <div>
         <Typography size="text-md" weight="semibold">
           {t('label.topics-to-catch-up-on')}

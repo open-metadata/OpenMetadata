@@ -27,7 +27,6 @@ import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityStatus,
@@ -285,7 +284,6 @@ const EntityTitleColumn = ({
   entityLink,
   handlePrefetch,
   hasGlossaryTermStatus,
-  isTourOpen,
   openEntityInNewPage,
   source,
 }: {
@@ -294,7 +292,6 @@ const EntityTitleColumn = ({
   entityLink: ReturnType<typeof searchClassBase.getEntityLink>;
   handlePrefetch: () => void;
   hasGlossaryTermStatus: boolean;
-  isTourOpen: boolean;
   openEntityInNewPage?: boolean;
   source: ExploreSearchCardProps['source'];
 }) => (
@@ -303,64 +300,52 @@ const EntityTitleColumn = ({
     data-testid={`${
       source.service?.name ? `${source.service.name}-` : 'explore-card-'
     }${source.name}`}>
-    {isTourOpen ? (
-      <CoreButton color="link-color" data-testid={source.fullyQualifiedName}>
+    <div className="w-full d-flex items-center">
+      {entityIcon}
+
+      <Link
+        className={classNames('d-flex no-underline line-height-22 ', {
+          'w-max-full': !hasGlossaryTermStatus,
+          'm-r-xs': hasGlossaryTermStatus,
+        })}
+        data-testid="entity-link"
+        state={{ breadcrumbData: breadcrumbs }}
+        target={searchClassBase.getSearchEntityLinkTarget(
+          source,
+          openEntityInNewPage
+        )}
+        to={isObject(entityLink) ? entityLink.pathname : entityLink}
+        onFocus={handlePrefetch}
+        onMouseEnter={handlePrefetch}>
         <Typography
-          className="tw:text-link"
+          className="tw:text-link tw:wrap-anywhere tw:whitespace-normal"
           data-testid="entity-header-display-name"
           size="text-sm"
           weight="medium">
           {renderHighlightedText(searchClassBase.getEntityName(source))}
         </Typography>
-      </CoreButton>
-    ) : (
-      <div className="w-full d-flex items-center">
-        {entityIcon}
+      </Link>
 
-        <Link
-          className={classNames('d-flex no-underline line-height-22 ', {
-            'w-max-full': !hasGlossaryTermStatus,
-            'm-r-xs': hasGlossaryTermStatus,
-          })}
-          data-testid="entity-link"
-          state={{ breadcrumbData: breadcrumbs }}
-          target={searchClassBase.getSearchEntityLinkTarget(
-            source,
-            openEntityInNewPage
-          )}
-          to={isObject(entityLink) ? entityLink.pathname : entityLink}
-          onFocus={handlePrefetch}
-          onMouseEnter={handlePrefetch}>
-          <Typography
-            className="tw:text-link tw:wrap-anywhere tw:whitespace-normal"
-            data-testid="entity-header-display-name"
-            size="text-sm"
-            weight="medium">
-            {renderHighlightedText(searchClassBase.getEntityName(source))}
-          </Typography>
-        </Link>
-
-        {/* Column docs carry the parent table's certification; a column isn't certified itself */}
-        {source.entityType !== EntityType.TABLE_COLUMN &&
-          !isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
-            <div className="tw:ml-1.5">
-              <CertificationTag
-                certification={
-                  (source as Table).certification as AssetCertification
-                }
-              />
-            </div>
-          )}
-
-        {hasGlossaryTermStatus && (
-          <EntityStatusBadge
-            status={
-              (source as GlossaryTerm).entityStatus ?? EntityStatus.Approved
-            }
-          />
+      {/* Column docs carry the parent table's certification; a column isn't certified itself */}
+      {source.entityType !== EntityType.TABLE_COLUMN &&
+        !isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
+          <div className="tw:ml-1.5">
+            <CertificationTag
+              certification={
+                (source as Table).certification as AssetCertification
+              }
+            />
+          </div>
         )}
-      </div>
-    )}
+
+      {hasGlossaryTermStatus && (
+        <EntityStatusBadge
+          status={
+            (source as GlossaryTerm).entityStatus ?? EntityStatus.Approved
+          }
+        />
+      )}
+    </div>
   </div>
 );
 
@@ -561,7 +546,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   ) => {
     const { t } = useTranslation();
     const { tab } = useRequiredParams<{ tab: string }>();
-    const { isTourOpen } = useTourProvider();
     const queryClient = useQueryClient();
 
     const source = useMemo(
@@ -904,7 +888,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             entityLink={entityLink}
             handlePrefetch={handlePrefetch}
             hasGlossaryTermStatus={hasGlossaryTermStatus}
-            isTourOpen={isTourOpen}
             openEntityInNewPage={openEntityInNewPage}
             source={source}
           />
@@ -924,7 +907,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       onCheckboxChange,
       entityIcon,
       handlePrefetch,
-      isTourOpen,
       openEntityInNewPage,
     ]);
 

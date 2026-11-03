@@ -255,6 +255,12 @@ class ServiceBaseClass {
   async submitService(page: Page) {
     await page.getByTestId('next-button').getByText('Next').click();
 
+    // The filters step is a lazy chunk behind a Suspense loader, while the footer
+    // "Create & Deploy" renders enabled at once; clicking it before the form mounts
+    // is a silent no-op, since it submits through a still-null form ref.
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.getByTestId('filters-config-form')).toBeVisible();
+
     if (this.shouldAddDefaultFilters) {
       await this.fillIngestionDetails(page);
     }

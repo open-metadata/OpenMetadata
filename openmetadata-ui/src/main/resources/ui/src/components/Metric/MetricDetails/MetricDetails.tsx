@@ -222,9 +222,12 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     }
   }, [decodedMetricFqn]);
 
+  // A soft-deleted metric stays on this page, so it is shown as deleted as soon as the delete
+  // job is accepted. If the job then fails, fetchMetricDetails restores the server's state.
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate(ROUTES.METRICS),
-    []
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? onToggleDelete(version) : navigate(ROUTES.METRICS),
+    [onToggleDelete]
   );
 
   // Named-flag derivation (Task 8 Batch 9), collapsing the 6-field block below into one
@@ -365,13 +368,14 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                   data-testid="metric-add-assets-button"
                   size="sm"
                   onPress={openAssetModal}>
-                  {t('label.add-entity', { entity: t('label.asset-plural') })}
+                  {t('label.add-entity', { entity: t('label.asset') })}
                 </Button>
               )
             }
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
             onCertificationUpdate={onCertificationUpdate}
+            onDeleteFailure={fetchMetricDetails}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMetric}
             onMetricUpdate={onMetricUpdate}

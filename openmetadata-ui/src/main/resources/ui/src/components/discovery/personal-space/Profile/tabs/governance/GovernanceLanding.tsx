@@ -75,7 +75,7 @@ const GovernanceLanding: FC<GovernanceLandingProps> = ({ onNavigate }) => {
                 onNavigate(card.view);
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box
                 align="start"
                 data-testid={`governance-card-${card.id}`}
@@ -83,7 +83,7 @@ const GovernanceLanding: FC<GovernanceLandingProps> = ({ onNavigate }) => {
                 gap={4}>
                 <Box
                   align="center"
-                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                  className={`tw:mt-1 tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
                     index
                   )}`}
                   justify="center">

@@ -551,6 +551,10 @@ public class SearchResource {
       @RequestBody(description = "Preview request containing search settings", required = true)
           PreviewSearchRequest previewRequest)
       throws IOException {
+    // Preview runs with caller-supplied search settings, which can be made expensive enough to
+    // stall
+    // the cluster; it is an admin tool for tuning those settings, so only admins may call it.
+    authorizer.authorizeAdmin(securityContext);
     requireNonNegative("from", previewRequest.getFrom());
     requireNonNegative("size", previewRequest.getSize());
 

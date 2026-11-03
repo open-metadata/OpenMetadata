@@ -1,11 +1,14 @@
 package org.openmetadata.service.context.center;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
@@ -80,81 +83,107 @@ public class ContextMemoryReconciler {
     Map<String, ContextMemory> derivedByQuestion = indexByQuestion(derived);
     List<ContextMemory> existing =
         memoryRepository.listExtractedMemories(sourceRef.getId(), sourceType);
-    Counts counts = new Counts();
+    ReconciliationPlan plan = new ReconciliationPlan();
 
-    // Pass 1: exact normalized-question match. Always claim the matching question, even for a
-    // human-owned (Manual) pill: it stops a re-derived duplicate from being created alongside it.
-    // Only engine-managed pills are then updated; one a human edited or moved out of Approved is
-    // left as-is.
-    List<ContextMemory> unmatched = new ArrayList<>();
-    for (ContextMemory pill : existing) {
-      ContextMemory match = derivedByQuestion.remove(questionKey(pill));
-      if (match == null) {
-        unmatched.add(pill);
-      } else if (isEngineManaged(pill)) {
-        if (releaseSharedIfChanged(sourceRef, pill, match, derivedByQuestion)) {
-          counts.deleted++;
-        } else if (applyDerived(pill, match)) {
-          counts.updated++;
-        } else {
-          counts.kept++;
-        }
-      }
-    }
-
-    // Pass 2: similarity match for rephrased questions — the same fact reworded keeps its pill
-    // identity instead of being retired and recreated. Runs before retirement so a rephrase can
-    // never look like a removal.
-    for (ContextMemory pill : unmatched) {
-      ContextMemory match = removeMostSimilar(derivedByQuestion, pill);
-      if (match == null) {
-        if (isAutomated(pill)) {
-          memoryRepository.releaseExtractedMemory(pill.getId(), sourceRef);
-          counts.deleted++;
-        }
-      } else if (isEngineManaged(pill)) {
-        if (releaseSharedIfChanged(sourceRef, pill, match, derivedByQuestion)) {
-          counts.deleted++;
-        } else if (applyDerived(pill, match)) {
-          counts.updated++;
-        } else {
-          counts.kept++;
-        }
-      }
-    }
-
-    for (ContextMemory pill : derivedByQuestion.values()) {
-      ContextMemory equivalent = duplicateFinder.findEquivalent(pill);
-      if (equivalent == null) {
-        memoryRepository.create(null, pill);
-        counts.created++;
-      } else {
-        memoryRepository.linkExtractedMemory(equivalent.getId(), sourceRef);
-        counts.kept++;
-      }
-    }
+    List<ContextMemory> unmatched = planExactMatches(sourceRef, derivedByQuestion, existing, plan);
+    planSimilarMatches(sourceRef, derivedByQuestion, unmatched, plan);
+    planNewMemories(sourceRef, derivedByQuestion.values(), plan);
+    // ADR:2026-10-27-memory-reconciliation-resolves-comparisons-before-writes
+    plan.writes.forEach(Runnable::run);
 
     LOG.info(
         "Reconciled pills for {} {}: {} created, {} updated, {} kept, {} deleted",
         sourceRef.getType(),
         sourceRef.getId(),
-        counts.created,
-        counts.updated,
-        counts.kept,
-        counts.deleted);
-    return new ReconcileResult(counts.created, counts.updated, counts.kept, counts.deleted);
+        plan.created,
+        plan.updated,
+        plan.kept,
+        plan.deleted);
+    return new ReconcileResult(plan.created, plan.updated, plan.kept, plan.deleted);
+  }
+
+  private List<ContextMemory> planExactMatches(
+      EntityReference sourceRef,
+      Map<String, ContextMemory> derivedByQuestion,
+      List<ContextMemory> existing,
+      ReconciliationPlan plan) {
+    List<ContextMemory> unmatched = new ArrayList<>();
+    for (ContextMemory pill : existing) {
+      ContextMemory match = derivedByQuestion.remove(questionKey(pill));
+      if (match == null) {
+        unmatched.add(pill);
+      } else {
+        planMatchedMemory(sourceRef, pill, match, derivedByQuestion, plan);
+      }
+    }
+    return unmatched;
+  }
+
+  private void planSimilarMatches(
+      EntityReference sourceRef,
+      Map<String, ContextMemory> derivedByQuestion,
+      List<ContextMemory> unmatched,
+      ReconciliationPlan plan) {
+    for (ContextMemory pill : unmatched) {
+      ContextMemory match = removeMostSimilar(derivedByQuestion, pill);
+      if (match == null) {
+        if (isAutomated(pill)) {
+          planRelease(sourceRef, pill, plan);
+        }
+      } else {
+        planMatchedMemory(sourceRef, pill, match, derivedByQuestion, plan);
+      }
+    }
+  }
+
+  private void planNewMemories(
+      EntityReference sourceRef, Iterable<ContextMemory> derived, ReconciliationPlan plan) {
+    for (ContextMemory pill : derived) {
+      ContextMemory equivalent = duplicateFinder.findEquivalent(pill);
+      if (equivalent == null || plan.changingIds.contains(equivalent.getId())) {
+        plan.writes.add(() -> memoryRepository.create(null, pill));
+        plan.created++;
+      } else {
+        plan.writes.add(() -> memoryRepository.linkExtractedMemory(equivalent.getId(), sourceRef));
+        plan.kept++;
+      }
+    }
+  }
+
+  private void planMatchedMemory(
+      EntityReference sourceRef,
+      ContextMemory existing,
+      ContextMemory derived,
+      Map<String, ContextMemory> unmatched,
+      ReconciliationPlan plan) {
+    if (isEngineManaged(existing)
+        && !releaseSharedIfChanged(sourceRef, existing, derived, unmatched, plan)) {
+      if (planUpdate(existing, derived, plan)) {
+        plan.updated++;
+      } else {
+        plan.kept++;
+      }
+    }
+  }
+
+  private void planRelease(
+      EntityReference sourceRef, ContextMemory memory, ReconciliationPlan plan) {
+    plan.writes.add(() -> memoryRepository.releaseExtractedMemory(memory.getId(), sourceRef));
+    plan.changingIds.add(memory.getId());
+    plan.deleted++;
   }
 
   private boolean releaseSharedIfChanged(
       EntityReference sourceRef,
       ContextMemory existing,
       ContextMemory derived,
-      Map<String, ContextMemory> unmatched) {
+      Map<String, ContextMemory> unmatched,
+      ReconciliationPlan plan) {
     if (sameContent(existing, derived)
         || !memoryRepository.hasOtherSources(existing.getId(), sourceRef)) {
       return false;
     }
-    memoryRepository.releaseExtractedMemory(existing.getId(), sourceRef);
+    planRelease(sourceRef, existing, plan);
     unmatched.put(questionKey(derived), derived);
     return true;
   }
@@ -193,11 +222,12 @@ public class ContextMemoryReconciler {
   }
 
   /**
-   * Updates an existing pill in place from its newly-derived match, preserving id/name/telemetry.
+   * Plans an in-place update from the newly-derived match, preserving id/name/telemetry.
    * Returns true only when something actually changed, so an unchanged pill keeps its embedding
    * instead of being needlessly re-indexed.
    */
-  private boolean applyDerived(ContextMemory existing, ContextMemory derived) {
+  private boolean planUpdate(
+      ContextMemory existing, ContextMemory derived, ReconciliationPlan plan) {
     boolean changed = !sameContent(existing, derived) || needsMetadataRepair(existing);
     if (changed) {
       ContextMemory updated = JsonUtils.deepCopy(existing, ContextMemory.class);
@@ -217,7 +247,9 @@ public class ContextMemoryReconciler {
       }
       updated.setUpdatedBy(Entity.ADMIN_USER_NAME);
       updated.setUpdatedAt(System.currentTimeMillis());
-      memoryRepository.update(null, existing, updated, Entity.ADMIN_USER_NAME);
+      plan.writes.add(
+          () -> memoryRepository.update(null, existing, updated, Entity.ADMIN_USER_NAME));
+      plan.changingIds.add(existing.getId());
     }
     return changed;
   }
@@ -262,8 +294,9 @@ public class ContextMemoryReconciler {
     return question == null ? "" : question.trim().toLowerCase(Locale.ROOT);
   }
 
-  /** Mutable tally threaded through reconciliation to keep each step a small single-purpose method. */
-  private static final class Counts {
+  private static final class ReconciliationPlan {
+    private final List<Runnable> writes = new ArrayList<>();
+    private final Set<UUID> changingIds = new HashSet<>();
     private int created;
     private int updated;
     private int kept;

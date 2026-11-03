@@ -715,7 +715,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
 
   if (isLoading) {
     return (
-      <div data-testid="audit-log-list">
+      <div data-testid="audit-log-list-skeleton">
         <div className="tw:px-4 tw:py-2 tw:bg-secondary tw:border-b tw:border-primary">
           <Skeleton variant="text" width={200} />
         </div>

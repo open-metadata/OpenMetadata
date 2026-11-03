@@ -25,7 +25,6 @@ import {
   REFRESHABLE_AUTH_ERRORS,
   UN_AUTHORIZED_EXCLUDED_PATHS,
 } from '../constants/Auth.constants';
-import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { REDIRECT_PATHNAME } from '../constants/router.constants';
 import {
@@ -392,10 +391,6 @@ export const getNameFromUserData = (
     picture: user.picture,
     displayName: extractNameFromUserProfile(user),
   };
-};
-
-export const isTourRoute = (pathname: string) => {
-  return pathname === ROUTES.TOUR;
 };
 
 /**
