@@ -14,11 +14,16 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.Writer;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.GraphMemFactory;
 import org.apache.jena.graph.Node;
@@ -26,9 +31,13 @@ import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.RDFErrorHandler;
+import org.apache.jena.rdf.model.RDFWriterI;
+import org.apache.jena.rdf.model.impl.ModelCom;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.shared.WrappedIOException;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
@@ -201,5 +210,47 @@ class RdfGraphSerializerTest {
 
     assertTrue(before.isIsomorphicWith(after));
     assertEquals(4, after.size());
+  }
+
+  @Test
+  void aWrappedIoFailureFromTheWriterIsNotRelabelledAsAnUnsupportedFormat() {
+    final WrappedIOException disconnect =
+        new WrappedIOException(new IOException("client disconnected"));
+    final Model model =
+        new ModelCom(GraphMemFactory.createDefaultGraph()) {
+          @Override
+          public RDFWriterI getWriter(final String lang) {
+            return new RDFWriterI() {
+              @Override
+              public void write(final Model m, final Writer out, final String base) {
+                throw disconnect;
+              }
+
+              @Override
+              public void write(final Model m, final OutputStream out, final String base) {
+                throw disconnect;
+              }
+
+              @Override
+              public Object setProperty(final String propName, final Object propValue) {
+                return null;
+              }
+
+              @Override
+              public RDFErrorHandler setErrorHandler(final RDFErrorHandler errHandler) {
+                return null;
+              }
+            };
+          }
+        };
+
+    final WrappedIOException thrown =
+        assertThrows(
+            WrappedIOException.class,
+            () ->
+                RdfGraphSerializer.write(
+                    new ByteArrayOutputStream(), model, RdfSerializationFormat.RDF_XML));
+
+    assertSame(disconnect, thrown);
   }
 }
