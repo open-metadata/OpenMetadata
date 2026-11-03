@@ -1385,8 +1385,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Reading back what the user already holds only pays off once the request names a role, a team
     // or a domain - nothing else can be an elevation.
     User currentUser = loadPrivilegedFields(existingUser);
+    // An omitted team list keeps the stored teams (see createOrUpdateUser), so it leaves none.
     return changesRoles(currentUser, updatedUser)
-        || changesClosedTeamMembership(currentUser, create.getTeams())
+        || (!nullOrEmpty(create.getTeams())
+            && changesClosedTeamMembership(currentUser, create.getTeams()))
         || hasDomainElevation(currentUser, updatedUser);
   }
 
