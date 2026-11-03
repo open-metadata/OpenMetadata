@@ -12,6 +12,7 @@
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from sqlalchemy import create_engine
@@ -67,6 +68,22 @@ def test_get_connection_url_with_credentials_and_defaults():
         TeradataConnection.get_connection_url(connection) == "teradatasql://localhost:1025/?user=openmetadata_user"
         "&password=openmetadata_password&logmech=TD2&tmode=DEFAULT"
     )
+
+
+@pytest.mark.parametrize("logdata", ["demo.jwt/token+value=", "EXAMPLE.REALM", "", None])
+def test_get_connection_url_unwraps_logdata(logdata):
+    connection = TeradataConnectionConfig(username="user", hostPort="localhost:1025", logmech="JWT", logdata=logdata)
+    params = parse_qs(urlsplit(TeradataConnection.get_connection_url(connection)).query)
+    assert params.get("logdata") == ([logdata] if logdata else None)
+    assert params["logmech"] == ["JWT"]
+
+
+def test_get_connection_url_resolves_logdata_secret_reference():
+    connection = TeradataConnectionConfig(username="user", hostPort="localhost:1025", logdata="secret:my_logdata")
+    with patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as factory:
+        factory.return_value.get_secrets_manager.return_value.get_string_value.return_value = "demo.jwt/token+value="
+        params = parse_qs(urlsplit(TeradataConnection.get_connection_url(connection)).query)
+    assert params["logdata"] == ["demo.jwt/token+value="]
 
 
 class _TeradatasqlError(Exception):

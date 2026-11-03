@@ -188,6 +188,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         Entity.TASK, "approvedById", MetadataOperation.RESOLVE_TASK);
     ResourceRegistry.mapEntityFieldOperation(
         Entity.TASK, "approvedAt", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, TaskRepository.FIELD_REVIEW_VOTES, MetadataOperation.RESOLVE_TASK);
     // PATCH on description must require EditAll, not the default EditDescription. `description`
     // is the task's body text, and DataConsumerPolicy grants EditDescription on every resource to
     // every authenticated user — without this any user could rewrite any task's text (issue
@@ -1359,6 +1361,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     if (!Objects.equals(original.getApprovedAt(), patched.getApprovedAt())) {
       throw workflowOwnedFieldRejection("approvedAt");
+    }
+    if (!Objects.equals(original.getReviewVotes(), patched.getReviewVotes())) {
+      throw workflowOwnedFieldRejection(TaskRepository.FIELD_REVIEW_VOTES);
     }
     if (!Objects.equals(original.getAboutFqnHash(), patched.getAboutFqnHash())) {
       throw workflowOwnedFieldRejection("aboutFqnHash");

@@ -55,6 +55,37 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 class CreateTaskTest {
 
   @Test
+  void approvalThresholdKeepsTheNodeValueWithoutTheAllAssigneesMode() {
+    assertEquals(1, CreateTask.resolveApprovalThreshold(null, 1, users(3)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, users(3)));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("anyAssignee", 1, users(3)));
+  }
+
+  @Test
+  void allAssigneesModeRaisesTheThresholdToTheEntryCount() {
+    assertEquals(3, CreateTask.resolveApprovalThreshold("allAssignees", 1, users(3)));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, List.of(team())));
+    assertEquals(2, CreateTask.resolveApprovalThreshold("allAssignees", 2, List.of(team())));
+    assertEquals(2, CreateTask.resolveApprovalThreshold("allAssignees", 2, users(1)));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, null));
+  }
+
+  private static List<EntityReference> users(int count) {
+    return java.util.stream.IntStream.range(0, count)
+        .mapToObj(
+            index ->
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType("user")
+                    .withName("reviewer" + index))
+        .toList();
+  }
+
+  private static EntityReference team() {
+    return new EntityReference().withId(UUID.randomUUID()).withType("team").withName("reviewers");
+  }
+
+  @Test
   void testResolveExistingTaskAssigneesDefersToCurrentDatabaseAssignmentsDuringPendingStart() {
     EntityReference existingAssignee =
         new EntityReference()

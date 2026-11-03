@@ -20,6 +20,7 @@ import {
   ConfirmPopover,
   Grid,
   Input,
+  Skeleton,
   Table,
   TableCard,
   Typography,
@@ -207,7 +208,7 @@ const LearningResourcesSettings = ({
   /** Resolves `false` when the delete failed, keeping the confirmation open. */
   const handleDelete = async (resource: LearningResource) => {
     try {
-      await deleteLearningResource(resource.id);
+      await deleteLearningResource(resource.id, true);
       showSuccessToast(
         t('server.entity-deleted-successfully', {
           entity: t('label.learning-resource'),
@@ -253,7 +254,7 @@ const LearningResourcesSettings = ({
         className: 'tw:w-52',
       },
       { id: 'context', label: t('label.context'), className: 'tw:w-52' },
-      { id: 'updated', label: t('label.updated-at'), className: 'tw:w-32' },
+      { id: 'updated', label: t('label.updated-at'), className: 'tw:w-40' },
       { id: 'actions', label: t('label.action-plural'), className: 'tw:w-24' },
     ],
     [t]
@@ -359,6 +360,14 @@ const LearningResourcesSettings = ({
     </Box>
   );
 
+  const tableSkeleton = (
+    <Box className="tw:p-3" direction="col" gap={2}>
+      {Array.from({ length: pageSize }, (_, i) => (
+        <Skeleton height={28} key={i} variant="rounded" />
+      ))}
+    </Box>
+  );
+
   return (
     <Box data-testid="learning-resources-settings" direction="col">
       <TableCard.Root className="tw:flex tw:flex-col" size="sm" variant="muted">
@@ -418,17 +427,17 @@ const LearningResourcesSettings = ({
             </Table.Header>
             <Table.Body
               items={isLoading ? [] : resources}
-              renderEmptyState={() => (
-                <Box className="tw:justify-center tw:py-12">
-                  {isLoading ? (
-                    <SettingsSkeleton rows={3} variant="default" />
-                  ) : (
+              renderEmptyState={() =>
+                isLoading ? (
+                  tableSkeleton
+                ) : (
+                  <Box className="tw:justify-center tw:py-12">
                     <Typography className="tw:text-tertiary" size="text-sm">
                       {t('server.no-records-found')}
                     </Typography>
-                  )}
-                </Box>
-              )}>
+                  </Box>
+                )
+              }>
               {(record) => (
                 <Table.Row
                   columns={columns}

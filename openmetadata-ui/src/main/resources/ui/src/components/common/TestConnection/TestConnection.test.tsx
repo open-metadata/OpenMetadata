@@ -48,16 +48,6 @@ const mockProps = {
   shouldValidateForm: false,
 };
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Tooltip: jest.fn().mockImplementation(({ children, title }) => (
-    <div>
-      <span data-testid="tooltip">{title}</span>
-      {children}
-    </div>
-  )),
-}));
-
 jest.mock('../../../utils/ServicePureUtils', () => ({
   ...jest.requireActual('../../../utils/ServicePureUtils'),
   getTestConnectionName: jest.fn().mockReturnValue('test-connection-Mysql-01'),

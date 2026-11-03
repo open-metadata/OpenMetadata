@@ -35,7 +35,6 @@ interface OntologyReleaseDetailsProps {
   isActive: boolean;
   showExport?: boolean;
   canPublish: boolean;
-  onRequestApproval: () => Promise<void>;
   onActivate: () => Promise<void>;
 }
 
@@ -44,13 +43,11 @@ const OntologyReleaseDetails = ({
   isActive,
   showExport = true,
   canPublish,
-  onRequestApproval,
   onActivate,
 }: OntologyReleaseDetailsProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const isApproved = release.entityStatus === EntityStatus.Approved;
-  const canRequestReview = release.entityStatus === EntityStatus.Draft;
   const statusLabel = t(
     `label.${release.entityStatus.toLowerCase().replaceAll(' ', '-')}`
   );
@@ -62,14 +59,6 @@ const OntologyReleaseDetails = ({
         <Link to={`/tasks/${encodeURIComponent(release.reviewTask)}`}>
           {t('label.approval')}
         </Link>
-      )}
-      {canRequestReview && (
-        <Button
-          color="secondary"
-          isDisabled={!canPublish}
-          onPress={onRequestApproval}>
-          {t('label.request-approval')}
-        </Button>
       )}
       <Button
         color="primary"

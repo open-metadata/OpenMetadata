@@ -98,28 +98,28 @@ const mockProcessDocMarkdown = processDocMarkdown as jest.MockedFunction<
 >;
 
 const mockScrollIntoView = jest.fn();
-const mockQuerySelector = jest.fn();
-const mockQuerySelectorAll = jest.fn();
 
 Object.defineProperty(window, 'requestAnimationFrame', {
   writable: true,
   value: jest.fn((callback: FrameRequestCallback) => callback(0)),
 });
 
-Object.defineProperty(document, 'querySelector', {
+// jsdom does not implement scrollIntoView.
+Object.defineProperty(Element.prototype, 'scrollIntoView', {
   writable: true,
-  value: mockQuerySelector,
+  value: mockScrollIntoView,
 });
 
-Object.defineProperty(document, 'querySelectorAll', {
-  writable: true,
-  value: mockQuerySelectorAll,
-});
+const getSection = (container: HTMLElement, dataId: string) =>
+  container.querySelector<HTMLElement>(`[data-id="${CSS.escape(dataId)}"]`);
 
-const createMockElement = () => ({
-  scrollIntoView: mockScrollIntoView,
-  dataset: {} as DOMStringMap,
-});
+const appendSection = (dataId: string) => {
+  const section = document.createElement('section');
+  section.dataset.id = dataId;
+  screen.getByTestId('service-requirements').appendChild(section);
+
+  return section;
+};
 
 const defaultProps = {
   serviceName: 'mysql',
@@ -138,8 +138,8 @@ describe('ServiceDocPanel Component', () => {
     jest.clearAllMocks();
     mockLanguage = 'en-US';
     mockFetchMarkdownFile.mockResolvedValue('markdown content');
-    mockQuerySelectorAll.mockReturnValue([]);
-    mockQuerySelector.mockReturnValue(null);
+    // clearAllMocks keeps per-test return values, which would hide the markdown.
+    mockProcessDocMarkdown.mockImplementation((content: string) => content);
     mockGetActiveFieldNameForAppDocs.mockReturnValue(undefined);
   });
 
@@ -1088,22 +1088,17 @@ describe('ServiceDocPanel Component', () => {
   });
 
   describe('Field Highlighting', () => {
-    beforeEach(() => {
-      mockQuerySelector.mockReturnValue(createMockElement());
-      mockQuerySelectorAll.mockReturnValue([createMockElement()]);
-    });
-
     it('should highlight and scroll to active field', async () => {
-      const mockElement = createMockElement();
-      mockQuerySelector.mockReturnValue(mockElement);
+      mockFetchMarkdownFile.mockResolvedValue(
+        '<section data-id="host"></section><section data-id="name"></section>'
+      );
 
-      render(
+      const { container } = render(
         <ServiceDocPanel {...defaultProps} activeField="root/database/name" />
       );
 
       await waitFor(() => {
-        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="name"]');
-        // The mock element has no scrollable ancestor, so the panel falls back
+        // The section has no scrollable ancestor, so the panel falls back
         // to scrollIntoView. It uses inline: 'nearest' to avoid horizontal
         // scrolling of the shared flex container (the scroll-parent path,
         // exercised in the real layout, scrolls only that container so an open
@@ -1113,14 +1108,43 @@ describe('ServiceDocPanel Component', () => {
           behavior: 'smooth',
           inline: 'nearest',
         });
-        expect(mockElement.dataset.highlighted).toBe('true');
+        expect(getSection(container, 'name')?.dataset.highlighted).toBe('true');
+      });
+
+      expect(mockScrollIntoView).toHaveBeenCalledTimes(1);
+      expect(
+        getSection(container, 'host')?.dataset.highlighted
+      ).toBeUndefined();
+    });
+
+    it('should align the selected entity summary to the top of the panel', async () => {
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          activeField="root/selected-entity"
+          selectedEntity={mockSelectedEntity}
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          getSection(container, 'selected-entity')?.dataset.highlighted
+        ).toBe('true');
+        expect(mockScrollIntoView).toHaveBeenCalledWith({
+          block: 'start',
+          behavior: 'smooth',
+          inline: 'nearest',
+        });
       });
     });
 
     it('should handle Applications service type with custom field processing', async () => {
       mockGetActiveFieldNameForAppDocs.mockReturnValue('config.database');
+      mockFetchMarkdownFile.mockResolvedValue(
+        '<section data-id="config.database"></section>'
+      );
 
-      render(
+      const { container } = render(
         <ServiceDocPanel
           activeField="root/config/database"
           serviceName="app-service"
@@ -1132,35 +1156,86 @@ describe('ServiceDocPanel Component', () => {
         expect(mockGetActiveFieldNameForAppDocs).toHaveBeenCalledWith(
           'root/config/database'
         );
-        expect(mockQuerySelector).toHaveBeenCalledWith(
-          `[data-id="${CSS.escape('config.database')}"]`
-        );
+        expect(
+          getSection(container, 'config.database')?.dataset.highlighted
+        ).toBe('true');
       });
     });
 
     it('should clean up previous highlights before highlighting new element', async () => {
-      const previousElement = createMockElement();
-      previousElement.dataset.highlighted = 'true';
-      const currentElement = createMockElement();
+      mockFetchMarkdownFile.mockResolvedValue(
+        '<section data-id="name" data-highlighted="true"></section><section data-id="host"></section>'
+      );
 
-      mockQuerySelectorAll.mockReturnValue([previousElement]);
-      mockQuerySelector.mockReturnValue(currentElement);
-
-      render(
+      const { container } = render(
         <ServiceDocPanel {...defaultProps} activeField="root/database/host" />
       );
 
       await waitFor(() => {
-        expect(mockQuerySelectorAll).toHaveBeenCalledWith(
-          '[data-highlighted="true"]'
+        expect(getSection(container, 'name')?.dataset.highlighted).toBe(
+          'false'
         );
-        expect(previousElement.dataset.highlighted).toBe('false');
-        expect(currentElement.dataset.highlighted).toBe('true');
+        expect(getSection(container, 'host')?.dataset.highlighted).toBe('true');
       });
     });
 
-    it('should handle field names with special patterns', async () => {
+    it('should highlight a field section that renders after the field is focused', async () => {
       render(
+        <ServiceDocPanel {...defaultProps} activeField="root/database/name" />
+      );
+
+      await waitFor(() => {
+        expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1);
+      });
+
+      // The lazily loaded editor renders the section into the panel later.
+      let lateSection: HTMLElement | undefined;
+      await act(async () => {
+        lateSection = appendSection('name');
+      });
+
+      expect(lateSection?.dataset.highlighted).toBe('true');
+      expect(mockScrollIntoView).toHaveBeenCalledTimes(1);
+    });
+
+    it('should stop waiting for a section once another field is focused', async () => {
+      const { rerender } = render(
+        <ServiceDocPanel {...defaultProps} activeField="root/database/host" />
+      );
+
+      await waitFor(() => {
+        expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1);
+      });
+
+      rerender(
+        <ServiceDocPanel {...defaultProps} activeField="root/database/port" />
+      );
+
+      await waitFor(() => {
+        expect(window.requestAnimationFrame).toHaveBeenCalledTimes(2);
+      });
+
+      // Both sections render in one mutation. Async so the MutationObserver
+      // callbacks (microtasks) run before the assertions.
+      let hostSection: HTMLElement | undefined;
+      let portSection: HTMLElement | undefined;
+      await act(async () => {
+        hostSection = appendSection('host');
+        portSection = appendSection('port');
+      });
+
+      // The current field's observer fired, so the stale one would have too
+      // had it not been disconnected.
+      expect(portSection?.dataset.highlighted).toBe('true');
+      expect(hostSection?.dataset.highlighted).toBeUndefined();
+    });
+
+    it('should handle field names with special patterns', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        '<section data-id="database"></section>'
+      );
+
+      const { container } = render(
         <ServiceDocPanel
           {...defaultProps}
           activeField="root/database/items/0"
@@ -1168,7 +1243,9 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
-        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="database"]');
+        expect(getSection(container, 'database')?.dataset.highlighted).toBe(
+          'true'
+        );
       });
     });
   });
@@ -1188,9 +1265,10 @@ describe('ServiceDocPanel Component', () => {
     });
 
     it('should handle complete integration with entity and highlighting', async () => {
-      const mockElement = createMockElement();
-      mockQuerySelector.mockReturnValue(mockElement);
       mockGetActiveFieldNameForAppDocs.mockReturnValue('application.config');
+      mockFetchMarkdownFile.mockResolvedValue(
+        '<section data-id="application.config"></section>'
+      );
 
       const { container } = render(
         <ServiceDocPanel
@@ -1207,9 +1285,9 @@ describe('ServiceDocPanel Component', () => {
         expect(mockGetActiveFieldNameForAppDocs).toHaveBeenCalledWith(
           'root/application/config'
         );
-        expect(mockQuerySelector).toHaveBeenCalledWith(
-          `[data-id="${CSS.escape('application.config')}"]`
-        );
+        expect(
+          getSection(container, 'application.config')?.dataset.highlighted
+        ).toBe('true');
       });
     });
   });
@@ -1506,21 +1584,29 @@ describe('ServiceDocPanel Component', () => {
     });
 
     it('should update highlighting when activeField changes', async () => {
-      const mockElement = createMockElement();
-      mockQuerySelector.mockReturnValue(mockElement);
+      mockFetchMarkdownFile.mockResolvedValue(
+        '<section data-id="field1"></section><section data-id="field2"></section>'
+      );
 
-      const { rerender } = render(
+      const { container, rerender } = render(
         <ServiceDocPanel {...defaultProps} activeField="root/field1" />
       );
 
       await waitFor(() => {
-        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="field1"]');
+        expect(getSection(container, 'field1')?.dataset.highlighted).toBe(
+          'true'
+        );
       });
 
       rerender(<ServiceDocPanel {...defaultProps} activeField="root/field2" />);
 
       await waitFor(() => {
-        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="field2"]');
+        expect(getSection(container, 'field2')?.dataset.highlighted).toBe(
+          'true'
+        );
+        expect(getSection(container, 'field1')?.dataset.highlighted).toBe(
+          'false'
+        );
       });
     });
   });

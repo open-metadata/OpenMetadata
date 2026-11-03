@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,7 +18,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** A local HTTP endpoint that records every request the alert pipeline sends to it. */
 final class RecordingReceiver implements AutoCloseable {
 
-  record Received(String path, String query, String method, String body, boolean signed) {}
+  record Received(
+      String path,
+      String query,
+      String method,
+      String body,
+      boolean signed,
+      Map<String, String> headers) {}
 
   private static final String SIGNATURE_HEADER = "X-OM-Signature";
   private static final byte[] EMPTY_JSON = "{}".getBytes(StandardCharsets.UTF_8);
@@ -66,12 +73,19 @@ final class RecordingReceiver implements AutoCloseable {
     String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
     boolean signed = exchange.getRequestHeaders().containsKey(SIGNATURE_HEADER);
     String query = exchange.getRequestURI().getQuery();
-    received.add(new Received(path, query, exchange.getRequestMethod(), body, signed));
+    received.add(
+        new Received(path, query, exchange.getRequestMethod(), body, signed, headersOf(exchange)));
     waitIfSlow(path);
     exchange.getResponseHeaders().add("Content-Type", "application/json");
     exchange.sendResponseHeaders(statusByPath.getOrDefault(path, 200), EMPTY_JSON.length);
     exchange.getResponseBody().write(EMPTY_JSON);
     exchange.close();
+  }
+
+  private static Map<String, String> headersOf(HttpExchange exchange) {
+    Map<String, String> headers = new HashMap<>();
+    exchange.getRequestHeaders().forEach((name, values) -> headers.put(name, values.getFirst()));
+    return Map.copyOf(headers);
   }
 
   private void waitIfSlow(String path) {

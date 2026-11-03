@@ -31,6 +31,8 @@ export interface UserAssetsViewProps {
   kind: UserAssetsKind;
   // Stat tiles render only for kind === 'owned'.
   showStats?: boolean;
+  // `muted` only inside a modal, whose panel is the default card's colour in dark.
+  cardVariant?: 'default' | 'muted';
 }
 
 /**
@@ -41,6 +43,7 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
   user,
   kind,
   showStats = true,
+  cardVariant = 'default',
 }) => {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
@@ -63,7 +66,9 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
       data-testid="user-assets-view"
       direction="col"
       gap={4}>
-      {showStats && kind === 'owned' && <UserAssetStats user={user} />}
+      {showStats && kind === 'owned' && (
+        <UserAssetStats cardVariant={cardVariant} user={user} />
+      )}
       {hasNoAssets ? (
         <UserAssetsEmpty kind={kind} user={user} />
       ) : (
@@ -100,6 +105,7 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
             ) : (
               <UserAssetCardList
                 assets={assets}
+                cardVariant={cardVariant}
                 hasMore={hasMore}
                 isLoading={isLoading}
                 selectedId={selected?.id}

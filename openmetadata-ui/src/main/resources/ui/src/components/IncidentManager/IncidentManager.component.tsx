@@ -44,6 +44,7 @@ import PermissionPlaceholder from '../common/EmptyPlaceholder/PermissionPlacehol
 import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { IncidentManagerProps } from './IncidentManager.interface';
 import IncidentManagerTable from './IncidentManagerTable.component';
+import { useIncidentAssignees } from './useIncidentFilterOptions';
 import { useIncidentManagerListPage } from './useIncidentManagerListPage';
 
 const toSelection = (value?: string) => (value ? [value] : []);
@@ -81,6 +82,7 @@ const IncidentManager = ({
 
   const captionId = useId();
   const queryClient = useQueryClient();
+  const assignees = useIncidentAssignees();
   const [isTestCasePickerOpen, setIsTestCasePickerOpen] = useState(false);
   const [testCaseSearch, setTestCaseSearch] = useState('');
   const debouncedSearch = useDebouncedValue(testCaseSearch, 300);
@@ -224,6 +226,7 @@ const IncidentManager = ({
           <UserTeamSelectableList
             hasPermission
             label={t('label.assignee')}
+            options={assignees}
             owner={selectedAssignee ? [selectedAssignee] : []}
             onUpdate={onAssigneeFilterUpdate}>
             <TriggerButton
