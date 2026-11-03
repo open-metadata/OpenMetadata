@@ -30,8 +30,10 @@ entity per request, and drops the hit when the entity cannot be read.
 ## Consequences
 
 A Draft, In Review, Rejected, Deprecated or Archived definition never reaches AI context as
-governed knowledge; asking about one anchored gets no concept context or metric definition. Entity
-details still return it, with its stage, for an answer that names it. Attached knowledge now admits
+governed knowledge; asking about one anchored gets no concept context or metric definition. Entity details still return it, with its stage, for an answer that names it. A concept read of
+an unapproved term or metric returns its description without concept context and without a stage;
+the AI platform reads the stage itself and keeps such a concept unresolved (its record
+an-unapproved-definition-is-named-as-a-proposal). Attached knowledge now admits
 a term with no stage, as the other paths already did.
 
 Search pays one cached entity read per term or metric whose hit carries no stage. Stamping the
