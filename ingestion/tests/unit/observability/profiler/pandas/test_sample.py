@@ -362,7 +362,6 @@ class DatalakeSampleTest(TestCase):
             sample_data = sampler.fetch_sample_data()
 
             assert len(sample_data.columns) == 10
-            # we drop na values when fecthing sample data
             assert len(sample_data.rows) == 4
 
     @mock.patch(

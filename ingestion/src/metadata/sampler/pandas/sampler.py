@@ -16,6 +16,8 @@ for the profiler
 from collections.abc import Callable
 from typing import cast
 
+import pandas as pd
+
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
@@ -153,7 +155,17 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         return self.get_sampled_dataframe(raw_dataset, static)
 
     def _fetch_rows(self, data_frame):
-        return [[self._truncate_cell(cell) for cell in row] for row in data_frame.dropna().values.tolist()]
+        """Drop only fully-empty rows, not any-null rows.
+
+        ``dropna()`` drops a row if *any* column is null, so a table with one mostly
+        empty column gives little or no sample data. Missing values arrive as NaN/NaT;
+        normalize them to None so the upload sanitizer emits JSON null instead of the
+        strings "nan"/"NaT". The ``is_scalar`` guard skips list/dict cells, where
+        ``pd.isna`` returns an array and would raise on truthiness."""
+        return [
+            [None if pd.api.types.is_scalar(cell) and pd.isna(cell) else self._truncate_cell(cell) for cell in row]
+            for row in data_frame.dropna(how="all").values.tolist()
+        ]
 
     def fetch_sample_data(self, columns: list[SQALikeColumn] | None = None) -> TableData:
         """Fetch sample data from the table
