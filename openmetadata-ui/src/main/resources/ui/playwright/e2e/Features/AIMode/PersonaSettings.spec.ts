@@ -28,7 +28,11 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { selectOption } from '../../../utils/advancedSearch';
 import { deleteFixtureEntity, settleAll } from '../../../utils/apiResponse';
-import { fillDescriptionBox, uuid } from '../../../utils/common';
+import {
+  fillDescriptionBox,
+  redirectToHomePage,
+  uuid,
+} from '../../../utils/common';
 import {
   addCuratedAssetsWidget,
   selectAssetTypes,
@@ -41,26 +45,33 @@ import { test } from '../../fixtures/pages';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 /**
- * Open the persona settings straight from its hash deep link — the same link
- * the copy-link button produces — and wait for the persona to load.
- */
-/**
  * The Home page customize route renders the real landing page, so every widget
  * on it fetches its own data. `/metadata/types/customProperties` is by far the
  * slowest of those — ~17s against a local stack — and the page sits on its boot
  * spinner until it answers. Waiting for that response is deterministic, where
  * `waitForAllLoadersToDisappear` can only count down a timeout and reports a
- * still-booting page as "no loaders yet".
+ * still-booting page as "no loaders yet". Only a request issued after the wait
+ * is armed counts, so a fetch the booted Home page still has in flight cannot
+ * satisfy it early.
  */
-const waitForCustomProperties = (page: Page) =>
-  waitForResponseWithStatus(
-    page,
-    (response) =>
-      response.url().includes('/api/v1/metadata/types/customProperties') &&
-      response.request().method() === 'GET',
-    200
+const waitForCustomProperties = async (page: Page) => {
+  const request = await page.waitForRequest(
+    (req) =>
+      req.url().includes('/api/v1/metadata/types/customProperties') &&
+      req.method() === 'GET'
   );
+  const response = await request.response();
 
+  expect(response?.status()).toBe(200);
+};
+
+/**
+ * Open the persona settings from its hash deep link — the same link the
+ * copy-link button produces — and wait for the persona to load. The link is
+ * opened in the booted app rather than as a cold load: the boot's auth and
+ * landing redirects can replace the URL before the settings store reads its
+ * hash, and the app then settles on Home without ever requesting the persona.
+ */
 const openPersonaSettings = async (
   page: Page,
   personaName: string,
@@ -68,6 +79,8 @@ const openPersonaSettings = async (
   // Set for the Home page routes, whose widgets pull in custom properties.
   waitsForCustomProperties = false
 ) => {
+  await redirectToHomePage(page);
+
   const personaResponse = waitForResponseWithStatus(
     page,
     (response) =>
@@ -79,7 +92,7 @@ const openPersonaSettings = async (
   const customProperties = waitsForCustomProperties
     ? waitForCustomProperties(page)
     : undefined;
-  await page.goto(`/#personas/${personaName}${subPath}`);
+  await page.goto(`/my-data#personas/${personaName}${subPath}`);
   await personaResponse;
   await customProperties;
   // Home page and entity customize links open full page, without the modal.
@@ -608,64 +621,39 @@ test.describe(
       await openPersonaSettings(page, persona.data.name, '?tab=users');
       await expect(page.getByTestId('persona-users-tab')).toBeVisible();
 
-      await test.step('add', async () => {
+      await test.step('add through the user picker popover', async () => {
         await page.getByTestId('add-persona-user').click();
-        const picker = page
-          .getByTestId('add-persona-users-select')
-          .getByRole('combobox');
 
-        // The picker re-queries the user search index on a 250ms debounce and
-        // replaces its whole option list with the result, so an option found
-        // from the previous result set is torn out mid-click ("element was
-        // detached from the DOM"). Wait for the search that this text triggers
-        // to land before touching the list.
-        //
-        // Match on `q`, not just the index: `onFocus` fires its own
-        // *undebounced* search with an empty query, and `fill()` focuses the
-        // input first. Waiting on the index alone would resolve on that
-        // unfiltered page and leave the assertions racing the debounced
-        // result exactly as before.
-        const searchText = user.responseData.name ?? '';
-        const userSearch = page.waitForResponse((response) => {
-          const params = new URL(response.url()).searchParams;
+        const userSearch = waitForResponseWithStatus(
+          page,
+          (response) => {
+            const params = new URL(response.url()).searchParams;
 
-          return (
-            response.url().includes('/api/v1/search/query') &&
-            params.get('index') === 'user' &&
-            (params.get('q') ?? '').includes(searchText) &&
-            response.status() === 200
-          );
-        });
-        await picker.fill(searchText);
+            return (
+              response.url().includes('/api/v1/search/query') &&
+              params.get('index') === 'user' &&
+              (params.get('q') ?? '').includes(userName)
+            );
+          },
+          200
+        );
+        await page.getByTestId('owner-select-users-search-bar').fill(userName);
         await userSearch;
 
-        // Commit with Enter rather than a click: Autocomplete drops a
-        // selection whenever `isLeavingRef` is set, and `onBlurCapture` arms
-        // that ref for a microtask, so a click whose actionability scroll
-        // blurs the input is silently ignored and Save stays disabled.
-        //
-        // ArrowDown highlights the list's *first* option, so wait for the
-        // list to actually be the filtered one before pressing it. The
-        // response landing is not enough: React still has to re-render, and
-        // until it does the listbox is the 25-row unfiltered page that
-        // `onFocus` fetched, whose first row is some other user.
-        const options = page.getByRole('option');
-        await expect(options.filter({ hasText: userName })).toHaveCount(1);
-        await expect(options).toHaveCount(1);
-        await picker.press('ArrowDown');
-        await picker.press('Enter');
-
-        // Prove the value committed before relying on Save.
-        await expect(
-          page.getByTestId('add-persona-users-select').getByText(userName)
-        ).toBeVisible();
+        await page
+          .getByTestId('owner-option')
+          .filter({ hasText: userName })
+          .click();
 
         const addResponse = waitForResponseWithStatus(
           page,
           isPersonaPatch(persona.responseData.id ?? ''),
           200
         );
-        await page.getByTestId('save-persona-users').click();
+        await page
+          .getByTestId('owner-select-users-panel')
+          .getByTestId('selectable-list-update-btn')
+          .click();
         const response = await addResponse;
 
         expect(response.request().postData()).toContain(
@@ -676,13 +664,34 @@ test.describe(
         );
       });
 
-      await test.step('remove', async () => {
+      await test.step('cancelling the remove confirmation keeps the user', async () => {
+        await page.getByTestId(`remove-user-${userName}`).click();
+        await expect(
+          page.getByTestId('remove-persona-user-popover')
+        ).toBeVisible();
+
+        await page.getByTestId('remove-persona-user-popover-cancel').click();
+
+        await expect(
+          page.getByTestId('remove-persona-user-popover')
+        ).not.toBeVisible();
+        await expect(page.getByTestId('persona-users-table')).toContainText(
+          userName
+        );
+      });
+
+      await test.step('confirming the remove removes the user', async () => {
+        await page.getByTestId(`remove-user-${userName}`).click();
+        await expect(
+          page.getByTestId('remove-persona-user-popover')
+        ).toBeVisible();
+
         const removeResponse = waitForResponseWithStatus(
           page,
           isPersonaPatch(persona.responseData.id ?? ''),
           200
         );
-        await page.getByTestId(`remove-user-${userName}`).click();
+        await page.getByTestId('remove-persona-user-popover-confirm').click();
         await removeResponse;
 
         await expect(page.getByTestId('persona-users-table')).not.toContainText(
@@ -947,7 +956,24 @@ test.describe(
         ).toBeVisible();
 
         await page.getByTestId('title-input').fill(widgetTitle);
+        // Picking an asset type fires a debounced count of the matching
+        // assets, and its banner then renders inside the dialog. If that
+        // lands while a rule dropdown is open, the shift moves the options
+        // under the pointer and the click picks a neighbour. Let the count
+        // settle before building the rule.
+        const assetCount = page.waitForRequest(
+          (req) =>
+            req.url().includes('/api/v1/search/query') &&
+            req.url().includes('index=all') &&
+            decodeURIComponent(req.url()).includes(
+              '"term":{"entityType":"table"}'
+            )
+        );
         await selectAssetTypes(page, ['Table']);
+        await (await assetCount).response();
+        await expect(
+          page.getByTestId('view-assets-banner-count')
+        ).toBeVisible();
 
         // Save needs a valid query: add one Display Name rule.
         const rule = page.getByTestId('query-builder-rule-0');
@@ -957,16 +983,19 @@ test.describe(
           'Display Name',
           true
         );
-        await selectOption(
-          page,
-          rule.getByTestId('advanced-search-operator-select'),
-          'Contains'
+        const operatorSelect = rule.getByTestId(
+          'advanced-search-operator-select'
         );
-        await rule
-          .getByTestId('advanced-search-value')
-          .locator('input')
-          .fill('pw');
+        await selectOption(page, operatorSelect, 'Contains');
+        await expect(
+          operatorSelect.locator('input[role="combobox"]')
+        ).toHaveValue('Contains');
 
+        const valueInput = rule
+          .getByTestId('advanced-search-value')
+          .locator('input');
+        await valueInput.fill('pw');
+        await expect(valueInput).toHaveValue('pw');
         await expect(page.getByTestId('saveButton')).toBeEnabled();
       });
 

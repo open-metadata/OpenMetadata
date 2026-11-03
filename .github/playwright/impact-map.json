@@ -612,6 +612,8 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**",
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/**",
+        "openmetadata-ui/src/main/resources/ui/src/context/OntologyDraft/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts",

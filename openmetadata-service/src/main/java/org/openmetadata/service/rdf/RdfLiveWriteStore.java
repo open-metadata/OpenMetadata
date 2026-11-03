@@ -14,13 +14,17 @@ package org.openmetadata.service.rdf;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.service.monitoring.OntologyMetrics;
+import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
+import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 
 /** Shared, ordered delivery and health state, with exhausted writes retained for reconciliation. */
 @Slf4j
@@ -32,16 +36,52 @@ public final class RdfLiveWriteStore {
   // (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only).
   private static final int MAX_WRITES_PER_ENQUEUE = 500;
   private static final String WRITER_LOCK =
-      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE";
+      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2' FOR UPDATE";
   private static final String RECORD_ENQUEUED =
       "UPDATE rdf_projection_health SET enqueuedWatermark = GREATEST(enqueuedWatermark, ?) "
           + "WHERE id = 'active'";
+  private static final String RECORD_COMPACTION =
+      "UPDATE rdf_projection_health SET lastCompactedAt = GREATEST(lastCompactedAt, ?) "
+          + "WHERE id = 'active'";
+  private static final String START_COMPACTION_CLOCK =
+      "UPDATE rdf_projection_health SET lastCompactedAt = ? WHERE id = 'active' "
+          + "AND lastCompactedAt = 0";
+  private static final String LAST_COMPACTION =
+      "SELECT lastCompactedAt FROM rdf_projection_health WHERE id = 'active'";
+
   private final Jdbi jdbi;
   private final Clock clock;
+  // Null when storage maintenance is off: nothing promises a compaction then.
+  private final Duration compactionDeadline;
 
   public RdfLiveWriteStore(final Jdbi jdbi, final Clock clock) {
+    this(jdbi, clock, null);
+  }
+
+  /**
+   * @param compactionDeadline how long the serving dataset may go without a maintenance compaction
+   *     before the projection reads as degraded, or null when maintenance is off
+   */
+  public RdfLiveWriteStore(final Jdbi jdbi, final Clock clock, final Duration compactionDeadline) {
     this.jdbi = jdbi;
     this.clock = clock;
+    this.compactionDeadline = compactionDeadline;
+  }
+
+  /** New payloads must never reach the queue while legacy consumers can still drain it. */
+  public void requireCurrentWriter() {
+    final boolean ready =
+        jdbi.withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2'")
+                    .mapTo(String.class)
+                    .findOne()
+                    .isPresent());
+    if (!ready) {
+      throw new IllegalStateException(
+          "RDF live-write protocol migration is missing; run database migrations before enabling RDF");
+    }
   }
 
   public void enqueue(final String payload) {
@@ -196,6 +236,12 @@ public final class RdfLiveWriteStore {
 
   private boolean recordFailure(
       final Handle handle, final Entry entry, final RuntimeException failure) {
+    final Optional<RdfStorageMaintenanceException> maintenance =
+        RdfStorageMaintenanceException.find(failure);
+    if (maintenance.isPresent()) {
+      deferForMaintenance(handle, entry, maintenance.get());
+      return false;
+    }
     final int attempts = Math.min(entry.attempts(), Integer.MAX_VALUE - 1) + 1;
     if (attempts >= MAX_DELIVERY_ATTEMPTS) {
       deadLetter(handle, entry, attempts, failure);
@@ -210,6 +256,16 @@ public final class RdfLiveWriteStore {
     LOG.warn(
         "Live RDF write {} failed (attempt {}); retained for retry", entry.id(), attempts, failure);
     return false;
+  }
+
+  /** Nothing reached the store, so the write waits for maintenance without using an attempt. */
+  private void deferForMaintenance(
+      final Handle handle, final Entry entry, final RdfStorageMaintenanceException maintenance) {
+    handle.execute(
+        "UPDATE rdf_live_write_queue SET nextAttemptAt = ? WHERE id = ?",
+        clock.millis() + maintenance.getRetryAfter().toMillis(),
+        entry.id());
+    LOG.debug("Live RDF write {} waits for storage maintenance", entry.id());
   }
 
   private void deadLetter(
@@ -295,11 +351,39 @@ public final class RdfLiveWriteStore {
                           new QueueHead(result.getLong("createdAt"), result.getInt("attempts")))
                   .findOne()
                   .orElse(null);
-          return unrepaired
-              || (head != null
+          // Writes held back by maintenance are late by design, not failing.
+          final boolean lagging =
+              head != null
                   && (head.attempts() > 0
-                      || clock.millis() - head.createdAt() >= MAX_HEALTHY_LAG_MILLIS));
+                      || clock.millis() - head.createdAt() >= MAX_HEALTHY_LAG_MILLIS)
+                  && !RdfLiveWritePause.isPaused(handle, clock.millis());
+          return unrepaired || lagging || compactionOverdue(handle);
         });
+  }
+
+  /** Records that storage maintenance compacted the serving dataset, whichever server ran it. */
+  public void recordCompaction() {
+    jdbi.useHandle(handle -> handle.execute(RECORD_COMPACTION, clock.millis()));
+  }
+
+  /**
+   * When storage maintenance last compacted the serving dataset. The first call starts the clock,
+   * so a new installation is not overdue before maintenance has had a chance to run.
+   */
+  public Instant lastCompaction() {
+    return jdbi.withHandle(
+        handle -> {
+          handle.execute(START_COMPACTION_CLOCK, clock.millis());
+          return Instant.ofEpochMilli(handle.createQuery(LAST_COMPACTION).mapTo(Long.class).one());
+        });
+  }
+
+  private boolean compactionOverdue(final Handle handle) {
+    final long last =
+        compactionDeadline == null
+            ? 0
+            : handle.createQuery(LAST_COMPACTION).mapTo(Long.class).one();
+    return last > 0 && clock.millis() - last > compactionDeadline.toMillis();
   }
 
   public long pendingWrites() {

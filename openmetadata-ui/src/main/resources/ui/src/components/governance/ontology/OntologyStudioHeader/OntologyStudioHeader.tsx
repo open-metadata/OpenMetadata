@@ -60,7 +60,7 @@ const OntologyStudioHeader = <M extends string>({
   if (isAiMode) {
     return (
       <header
-        className="tw:shrink-0 tw:px-2 tw:pt-2"
+        className="tw:shrink-0 tw:p-2"
         data-testid="ontology-studio-header"
         data-tour-step="ontology-studio">
         <PageHeader
@@ -70,7 +70,7 @@ const OntologyStudioHeader = <M extends string>({
           // side panel it ran past the viewport; the tab row can wrap instead.
           footer={
             <Box
-              align="center"
+              align="end"
               className="tw:w-full"
               gap={2}
               justify="between"
@@ -85,7 +85,7 @@ const OntologyStudioHeader = <M extends string>({
               </Tabs>
               <Box
                 align="center"
-                className="tw:min-w-0"
+                className="tw:min-w-0 tw:pb-1.5"
                 gap={2}
                 justify="end"
                 wrap="wrap">
@@ -123,17 +123,19 @@ const OntologyStudioHeader = <M extends string>({
         </Box>
         <Divider className="tw:h-5.5 tw:self-center" orientation="vertical" />
         <Box className="tw:min-w-18 tw:max-w-48 tw:shrink">{scopeMenu}</Box>
-        <Tabs
-          className="tw:w-auto tw:shrink-0"
-          selectedKey={mode}
-          onSelectionChange={handleSelectionChange}>
-          <Tabs.List
-            aria-label={t('label.mode')}
-            size="sm"
-            type="button-border">
-            {modeItems}
-          </Tabs.List>
-        </Tabs>
+        {modes.length > 0 ? (
+          <Tabs
+            className="tw:w-auto tw:shrink-0"
+            selectedKey={mode}
+            onSelectionChange={handleSelectionChange}>
+            <Tabs.List
+              aria-label={t('label.mode')}
+              size="sm"
+              type="button-border">
+              {modeItems}
+            </Tabs.List>
+          </Tabs>
+        ) : null}
         <span className="tw:min-w-0 tw:flex-1" />
         {actions ? (
           <Box align="center" className="tw:shrink-0" gap={2}>

@@ -139,10 +139,13 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
+  private static final String IS_FIRST_TIME_USER_FIELD = "isFirstTimeUser";
+  // lastLoginTime and lastActivityTime are loaded so a PATCH or a soft delete writes them back
+  // instead of clearing them; a PUT keeps them in UserUpdater.
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences,lastLoginTime,lastActivityTime";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences,lastLoginTime,lastActivityTime";
   private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
   private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
@@ -352,13 +355,22 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void storeEntity(User user, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
+  protected User prepareForStorage(User user) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
       secretsManager.encryptAuthenticationMechanism(
           user.getName(), user.getAuthenticationMechanism());
     }
+    return user;
+  }
 
+  @Override
+  public void storeEntity(User user, boolean update) {
     store(user, update);
     // A new user has no other stored credential, so only a JWT mechanism is worth a hint;
     // storeEntities (bulk import) skips it because one hint per row would publish one Redis
@@ -374,21 +386,7 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void storeEntities(List<User> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (User user : entities) {
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
-        secretsManager.encryptAuthenticationMechanism(
-            user.getName(), user.getAuthenticationMechanism());
-      }
-
-      fqns.add(user.getFullyQualifiedName());
-      jsons.add(serializeForStorage(user));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -852,13 +850,10 @@ public class UserRepository extends EntityRepository<User> {
    * Fields an authentication flow must load before it mutates a user and PUTs it back. {@code
    * createOrUpdate} compares the whole entity against the stored one, so any field {@link
    * #clearFields} nulls and the caller did not ask for is recorded as a deletion and erased --
-   * that is the user's profile, their authentication mechanism, personas and domains. The two
-   * login timestamps are added on top of the update fields because they live in the stored JSON
-   * but are not part of the PUT field set.
+   * that is the user's profile, their authentication mechanism, personas and domains.
    */
   public Fields getAuthUpdateFields() {
     Set<String> fields = new HashSet<>(putFields.getFieldList());
-    fields.addAll(Set.of("lastLoginTime", "lastActivityTime"));
     return new Fields(fields);
   }
 
@@ -1676,7 +1671,8 @@ public class UserRepository extends EntityRepository<User> {
 
   /**
    * Every delete path runs this, including the bulk soft delete that removes a deleted bot's user
-   * without calling {@link #postDelete}, so the credential change is announced here.
+   * without calling {@link #postDelete}, so the credential change is announced and the user's MCP
+   * grants end here.
    */
   @Override
   protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
@@ -1684,6 +1680,7 @@ public class UserRepository extends EntityRepository<User> {
     return () -> {
       try (parentLifecycle) {
         Credentials.changed(entity.getName());
+        daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(entity.getName());
       }
     };
   }
@@ -1910,6 +1907,12 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
+      // The server records these on login and on each request, and a PUT body never carries them,
+      // so a PUT keeps the stored values instead of clearing them
+      // (ADR:2026-10-30-user-writes-keep-login-and-activity-times).
+      if (operation.isPut()) {
+        keepServerRecordedTimes();
+      }
       compareAndUpdate(
           "lastLoginTime",
           () ->
@@ -1920,6 +1923,7 @@ public class UserRepository extends EntityRepository<User> {
                   false,
                   objectMatch,
                   false));
+      compareAndUpdate(IS_FIRST_TIME_USER_FIELD, this::updateIsFirstTimeUser);
 
       compareAndUpdate("roles", () -> updateRoles(original, updated));
       compareAndUpdate("teams", () -> updateTeams(original, updated));
@@ -1959,6 +1963,30 @@ public class UserRepository extends EntityRepository<User> {
           "isAdmin");
       JwtFilter.invalidateResolvedEmailIdentity(original.getEmail());
       JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
+    }
+
+    private void keepServerRecordedTimes() {
+      if (updated.getLastLoginTime() == null) {
+        updated.setLastLoginTime(original.getLastLoginTime());
+      }
+      if (updated.getLastActivityTime() == null) {
+        updated.setLastActivityTime(original.getLastActivityTime());
+      }
+    }
+
+    private void updateIsFirstTimeUser() {
+      if (operation.isPut()) {
+        // CreateUser does not carry isFirstTimeUser; PUT must not make a returning user first-time
+        updated.setIsFirstTimeUser(original.getIsFirstTimeUser());
+      } else {
+        recordChange(
+            IS_FIRST_TIME_USER_FIELD,
+            original.getIsFirstTimeUser(),
+            updated.getIsFirstTimeUser(),
+            false,
+            objectMatch,
+            false);
+      }
     }
 
     private void updateAllowImpersonation() {

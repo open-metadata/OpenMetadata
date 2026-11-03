@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getControlledArgumentFieldCoreUI } from './NotificationAlertArgFields';
 
 jest.mock('react-i18next', () => ({
@@ -28,9 +29,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Autocomplete: Object.assign(
     jest
       .fn()
-      .mockImplementation(({ children, items, ...props }) => (
+      .mockImplementation(({ children, items, selectedItems, ...props }) => (
         <div {...props}>
           {items?.map((item: { id: string; label: string }) => children(item))}
+          {selectedItems?.map((item: { id: string; label: string }) => (
+            <span data-testid={`chip-${item.id}`} key={item.id}>
+              {item.label}
+            </span>
+          ))}
         </div>
       )),
     {
@@ -91,6 +97,24 @@ function DisabledWrapper({ argument }: { argument: string }) {
   );
 }
 
+function ValueWrapper({
+  argument,
+  value,
+}: {
+  argument: string;
+  value: string[];
+}) {
+  return getControlledArgumentFieldCoreUI(
+    argument,
+    value,
+    jest.fn(),
+    'table',
+    [],
+    [],
+    false
+  );
+}
+
 describe('NotificationAlertArgFields', () => {
   it('should render fqnList with correct data-testid', () => {
     render(<Wrapper argument="fqnList" />);
@@ -128,5 +152,40 @@ describe('NotificationAlertArgFields', () => {
     const element = screen.getByTestId('event-type-select');
 
     expect(element).toBeInTheDocument();
+  });
+
+  it('resolves the label of a saved value that arrives after the field mounted, once', async () => {
+    (searchQuery as jest.Mock)
+      .mockClear()
+      .mockResolvedValueOnce({ hits: { hits: [] } })
+      .mockResolvedValueOnce({
+        hits: {
+          hits: [
+            {
+              _source: {
+                fullyQualifiedName: 'ada',
+                name: 'ada',
+                displayName: 'Ada Lovelace',
+              },
+            },
+          ],
+        },
+      });
+
+    const { rerender } = render(
+      <ValueWrapper argument="userList" value={[]} />
+    );
+    await act(async () => {
+      rerender(<ValueWrapper argument="userList" value={['ada']} />);
+    });
+
+    expect(screen.getByTestId('chip-ada')).toHaveTextContent('Ada Lovelace');
+    expect(searchQuery).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      rerender(<ValueWrapper argument="userList" value={['ada']} />);
+    });
+
+    expect(searchQuery).toHaveBeenCalledTimes(2);
   });
 });

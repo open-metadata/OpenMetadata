@@ -109,7 +109,13 @@ export const useOntologyGraphEdit = ({
 
   const selectTarget = useCallback(
     (toId: string, at?: Point) => {
-      if (armedFromId === null || toId === armedFromId) {
+      if (toId === armedFromId || toId === pendingRelation?.fromId) {
+        cancel();
+        setPendingRelation(null);
+
+        return;
+      }
+      if (armedFromId === null) {
         return;
       }
       const from = armedAt ?? nodePositionsRef.current[armedFromId];
@@ -129,7 +135,7 @@ export const useOntologyGraphEdit = ({
       });
       cancel();
     },
-    [armedAt, armedFromId, cancel]
+    [armedAt, armedFromId, cancel, pendingRelation]
   );
 
   const setCandidateTarget = useCallback(

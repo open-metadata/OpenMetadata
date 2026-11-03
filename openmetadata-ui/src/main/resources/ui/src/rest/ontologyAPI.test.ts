@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
 import { OntologyConceptType } from '../generated/api/data/createOntologyConcept';
+import { Kind } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { Direction } from '../generated/api/data/ontologyConceptQuery';
 import { AssetType } from '../generated/api/data/updateOntologyConceptBinding';
 import { OntologyChangeSetState } from '../generated/entity/data/ontologyChangeSet';
 import APIClient from './axiosClient';
@@ -23,8 +26,11 @@ import {
   createOntology,
   createOntologyConcept,
   deleteOntologyConceptBinding,
+  exportOntologyRelease,
+  generateOntologyConceptQuery,
   generateOntologyDomainDraft,
   generateOntologySparql,
+  getNativeOntologyDataGraphPage,
   getOntologyBulkTemplate,
   getOntologyByName,
   getOntologyChangeSet,
@@ -101,6 +107,50 @@ describe('ontologyAPI', () => {
       { propertyId: 'name', columnPath: ['customer_name'], state: 'resolved' },
     ],
   };
+
+  it('posts the search-around hops to the concept query and returns the generated SQL', async () => {
+    const signal = new AbortController().signal;
+    const hops = [
+      {
+        property: 'part-of',
+        target: 'customer',
+        direction: Direction.Outgoing,
+      },
+    ];
+    const body = {
+      hops: [{ ...hops[0], label: 'part of' }],
+      sql: 'SELECT t1.name\nFROM payments.transfers t0\nLIMIT 50',
+    };
+    mockedApiClient.post.mockResolvedValueOnce({ data: body });
+
+    expect(await generateOntologyConceptQuery('concept/id', hops, signal)).toBe(
+      body
+    );
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologyConcepts/concept%2Fid/query',
+      { hops },
+      { signal }
+    );
+  });
+
+  it('posts one graph page selection to the ontology and returns the page body', async () => {
+    const signal = new AbortController().signal;
+    const request = {
+      loaded: [],
+      page: { kind: Kind.Clusters, limit: 12, offset: 0 },
+    };
+    const body = { clusters: [], contextFull: false, loaded: [] };
+    mockedApiClient.post.mockResolvedValueOnce({ data: body });
+
+    expect(
+      await getNativeOntologyDataGraphPage('ontology/id', request, signal)
+    ).toBe(body);
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologies/ontology%2Fid/dataGraph/pages',
+      request,
+      { signal }
+    );
+  });
 
   it('collects bindings through empty pages and preserves the starting revision', async () => {
     const signal = new AbortController().signal;
@@ -650,6 +700,22 @@ describe('ontologyAPI', () => {
     );
     expect(result).toEqual(response.data);
   });
+});
+
+it('hands a gated export refusal back with its JSON report parsed from the text body', async () => {
+  const report = { valid: false, shacl: { violationCount: 1 } };
+  (APIClient.get as jest.Mock).mockRejectedValueOnce(
+    new AxiosError('blocked', 'ERR_BAD_REQUEST', undefined, undefined, {
+      data: JSON.stringify(report),
+      status: 422,
+    } as AxiosResponse)
+  );
+
+  const refusal = await exportOntologyRelease('release-id', 'turtle', {
+    shaclGate: true,
+  }).catch((error: AxiosError) => error);
+
+  expect((refusal as AxiosError).response?.data).toEqual(report);
 });
 
 it('reads a bounded review page with the server total and after cursor', async () => {
