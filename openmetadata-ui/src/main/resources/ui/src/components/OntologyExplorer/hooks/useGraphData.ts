@@ -57,6 +57,7 @@ import {
   buildDataModeAssetNodeStyle,
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
+  buildStudioConflictNodeStyle,
   buildStudioMetricNodeStyle,
   buildStudioProposedEdgeStyle,
   buildStudioProposedNodeStyle,
@@ -64,6 +65,11 @@ import {
   getCanvasColor,
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
+import {
+  CONFLICT_COLOR,
+  CONFLICT_COLOR_FALLBACK,
+  conflictEdgeKey,
+} from '../utils/conflictHighlight';
 import {
   computeGlossaryGroupPositions,
   computeOutermostRingRadius,
@@ -875,6 +881,10 @@ function buildStudioKindStyle(node: OntologyNode, isSelected: boolean) {
     return buildStudioProposedNodeStyle(getCanvasColor, isSelected);
   }
 
+  if (node.hasConflict) {
+    return buildStudioConflictNodeStyle(getCanvasColor);
+  }
+
   return node.type === METRIC_NODE_TYPE
     ? buildStudioMetricNodeStyle(getCanvasColor)
     : {};
@@ -959,6 +969,7 @@ interface EdgeBuildContext {
   selectedScopedIds: Set<string> | null;
   searchHighlightActive: boolean;
   searchEdgeSet: Set<string> | null;
+  conflictEdgeKeys?: ReadonlySet<string>;
   clickedEdgeId: string | null;
   customRelationColorMap: Record<string, string>;
   cardinalityMap: Map<string, RelationshipType>;
@@ -1323,11 +1334,13 @@ function buildG6EdgeForSingle(
     isTermTermInDataMode,
     isSemanticProjection
   );
-  const edgeColor = computeEdgeColor(
-    singleEdge,
-    isDataModeAssetEdge,
-    ctx.customRelationColorMap
-  );
+  const edgeColor = ctx.conflictEdgeKeys?.has(conflictEdgeKey(singleEdge))
+    ? getCanvasColor(CONFLICT_COLOR, CONFLICT_COLOR_FALLBACK)
+    : computeEdgeColor(
+        singleEdge,
+        isDataModeAssetEdge,
+        ctx.customRelationColorMap
+      );
 
   const showLabel = computeEdgeLabelVisibility(
     isClickedEdge,
@@ -1585,6 +1598,7 @@ export function useGraphDataBuilder({
   layoutType,
   hierarchyCombos = [],
   graphSearchHighlight = null,
+  conflictEdgeKeys,
   isEditMode = false,
   relationTypes,
   relationColors,
@@ -1756,6 +1770,7 @@ export function useGraphDataBuilder({
       selectedScopedIds,
       searchHighlightActive,
       searchEdgeSet,
+      conflictEdgeKeys,
       clickedEdgeId,
       customRelationColorMap,
       cardinalityMap,
@@ -1802,6 +1817,7 @@ export function useGraphDataBuilder({
     explorationMode,
     hierarchyCombos,
     graphSearchHighlight,
+    conflictEdgeKeys,
     glossaries,
     cardinalityMap,
     customRelationColorMap,

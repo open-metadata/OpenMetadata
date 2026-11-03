@@ -18,6 +18,9 @@ interface OntologyIriInputProps {
   value: string;
   options?: ReadonlyArray<{ iri: string; label: string }>;
   isRequired?: boolean;
+  hint?: string;
+  error?: string;
+  testId?: string;
   onChange: (iri: string) => void;
 }
 
@@ -26,6 +29,9 @@ const OntologyIriInput = ({
   value,
   options,
   isRequired,
+  hint,
+  error,
+  testId,
   onChange,
 }: OntologyIriInputProps) => {
   const [search, setSearch] = useState<string>();
@@ -51,6 +57,9 @@ const OntologyIriInput = ({
   if (!options?.length) {
     return (
       <Input
+        data-testid={testId}
+        hint={error ?? hint}
+        isInvalid={Boolean(error)}
         isRequired={isRequired ?? false}
         label={label}
         value={value}
@@ -62,7 +71,10 @@ const OntologyIriInput = ({
   return (
     <Select.ComboBox
       allowsCustomValue
+      data-testid={testId}
+      hint={error ?? hint}
       inputValue={search ?? selected?.label ?? value}
+      isInvalid={Boolean(error)}
       isRequired={isRequired ?? false}
       items={items}
       label={label}
