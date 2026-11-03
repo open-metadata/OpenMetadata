@@ -123,6 +123,7 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import { getTagPagePermissions } from './TagPage.utils';
 import './tag-page.less';
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
@@ -284,31 +285,10 @@ const TagPage = () => {
     setFeedCount(data);
   }, []);
 
-  const { editTagsPermission, disabledAwarePermissions } = useMemo(() => {
-    if (tagItem) {
-      const isEditable = !tagItem.disabled && !tagItem.deleted;
-
-      return {
-        editTagsPermission: isEditable && tagCanEditAll,
-        disabledAwarePermissions: {
-          ...tagPermissions,
-          EditOwners:
-            isEditable && (tagCanEditAll || tagPermissions.EditOwners),
-          EditAll: isEditable && tagCanEditAll,
-        },
-      };
-    }
-
-    return {
-      editTagsPermission: false,
-      disabledAwarePermissions: tagPermissions,
-    };
-    // `tagItem` itself is the real dependency here — a pre-existing missing-dependency gap
-    // (the `if (tagItem)` branch never re-ran once tagItem loaded, because
-    // `tagItem?.disabled`/`tagItem?.deleted` are `undefined` both before and after the load).
-    // Folded in while touching this memo, per the ColumnDetailPanel/GlossaryTermTab precedent
-    // (Task 8 Batches 3–4) of fixing missing deps in passing.
-  }, [tagPermissions, tagCanEditAll, tagItem]);
+  const { editTagsPermission, disabledAwarePermissions } = useMemo(
+    () => getTagPagePermissions(tagItem, tagPermissions, tagCanEditAll),
+    [tagPermissions, tagCanEditAll, tagItem]
+  );
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
