@@ -1046,33 +1046,31 @@ test.describe(
       }
     });
 
-    // Lane 2 needs the visible publish actions from G5 and G6, which land after this unit.
-    test.fixme(
-      'makes Publish the primary action after creating without reviewers',
-      async ({ isolatedUserPage: page }) => {
-        let created: Ontology | undefined;
-        try {
-          await page.goto('/governance/ontology');
-          await openCreateDialog(page);
-          await page
-            .getByTestId('ontology-create-name')
-            .fill(`PW G9 direct ${uuid()}`);
-          const response = page.waitForResponse((candidate) =>
-            isOntologyPost(candidate.request())
-          );
-          await page.getByTestId('ontology-create-submit').click();
-          created = await okJson<Ontology>(
-            await response,
-            'Create ontology without reviewers'
-          );
+    test('makes Publish the primary action after creating without reviewers', async ({
+      isolatedUserPage: page,
+    }) => {
+      let created: Ontology | undefined;
+      try {
+        await page.goto('/governance/ontology');
+        await openCreateDialog(page);
+        await page
+          .getByTestId('ontology-create-name')
+          .fill(`PW G9 direct ${uuid()}`);
+        const response = page.waitForResponse((candidate) =>
+          isOntologyPost(candidate.request())
+        );
+        await page.getByTestId('ontology-create-submit').click();
+        created = await okJson<Ontology>(
+          await response,
+          'Create ontology without reviewers'
+        );
 
-          await expect(
-            page.getByTestId('ontology-publication-trigger')
-          ).toHaveText(/^Publish/);
-        } finally {
-          await removeOntologies([created]);
-        }
+        await expect(
+          page.getByTestId('ontology-publication-trigger')
+        ).toHaveText(/^Publish/);
+      } finally {
+        await removeOntologies([created]);
       }
-    );
+    });
   }
 );
