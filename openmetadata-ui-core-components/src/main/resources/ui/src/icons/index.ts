@@ -778,7 +778,6 @@ export { LearningLink } from './LearningLink';
 export { LearningPdf } from './LearningPdf';
 export { LearningStorylane } from './LearningStorylane';
 export { LearningVideo } from './LearningVideo';
-export { MicrosoftTeams } from './MicrosoftTeams';
 export { None } from './None';
 export { SectionLineDashed } from './SectionLineDashed';
 export { Silver } from './Silver';
