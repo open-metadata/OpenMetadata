@@ -486,6 +486,102 @@ test.describe(
       await expect(saved).toHaveCount(0);
     });
 
+    for (const appMode of ['ai', 'classic'] as const) {
+      test(`the builder generates SPARQL for a relation, shows exactly that text, and runs it to the expected rows in ${appMode} mode`, async ({
+        isolatedUserPage: page,
+      }) => {
+        test.setTimeout(120_000);
+        const builderApi = await getWorkerAdminAPIContext();
+        const name = `pw_query_builder_${uuid().replaceAll('-', '')}`;
+        const ontology = await okJson<Ontology>(
+          await builderApi.post('/api/v1/ontologies', {
+            data: {
+              name,
+              iri: `https://example.org/${name}`,
+              namespace: `https://example.org/${name}#`,
+            },
+          }),
+          'Create builder ontology'
+        );
+        try {
+          const animal = await createConcept(
+            builderApi,
+            ontology,
+            'Animalroot'
+          );
+          for (const child of ['Dogchild', 'Catchild']) {
+            const concept = await createConcept(builderApi, ontology, child);
+            await okJson(
+              await builderApi.post('/api/v1/ontologyAxioms', {
+                data: {
+                  name: `${child}Is${animal.name}`,
+                  displayName: `${child} is an animal`,
+                  description: `${child} is an animal`,
+                  ontology: ontology.fullyQualifiedName,
+                  axiomType: 'SUBCLASS_OF',
+                  subjectIri: concept.iri,
+                  expressions: [{ kind: 'NAMED_CLASS', classIri: animal.iri }],
+                  provenance: 'Manual',
+                },
+              }),
+              `Relate ${child}`
+            );
+          }
+          await (appMode === 'ai'
+            ? enableAiAppMode(page)
+            : disableAiAppMode(page));
+          await page.goto(queryUrl(ontology, '&view=builder'));
+          await expect(
+            page.getByTestId('ontology-visual-query-builder')
+          ).toBeVisible();
+          await page.getByTestId('ontology-builder-toggle-sparql').click();
+          const generated = page.getByTestId('ontology-generated-sparql');
+
+          await expect(generated).toContainText(
+            `VALUES ?target { <${animal.iri}> }`
+          );
+          await expect(generated).toContainText(
+            '?concept rdfs:subClassOf ?target .'
+          );
+          const shownSparql = (await generated.innerText()).trim();
+
+          const request = page.waitForRequest(
+            (candidate) =>
+              candidate
+                .url()
+                .includes(`/api/v1/ontologies/${ontology.id}/sparql`) &&
+              candidate.method() === 'POST'
+          );
+          await page.getByTestId('ontology-builder-run').click();
+          const sent = (await request).postDataJSON() as { query: string };
+
+          expect(sent.query.trim()).toBe(shownSparql);
+          await expect(
+            page.getByTestId('ontology-builder-result')
+          ).toContainText('2');
+          await expect(
+            page.getByTestId('ontology-sparql-result-status')
+          ).toContainText('2 rows');
+          const rows = (await tableText(page))
+            .slice(1)
+            .map((cells) => cells.join(' '));
+
+          expect(rows).toHaveLength(2);
+          expect(rows.join(' ')).toContain('Dogchild');
+          expect(rows.join(' ')).toContain('Catchild');
+          expect(rows.join(' ')).not.toContain('Animalroot');
+          await page.screenshot({
+            path: `test-results/g16-builder-${appMode}.png`,
+          });
+        } finally {
+          await deleteFixtureEntity(
+            builderApi,
+            `/api/v1/ontologies/${ontology.id}?recursive=true&hardDelete=true`
+          );
+        }
+      });
+    }
+
     test('the builder keeps its SPARQL hidden until asked and hides it again on request', async ({
       isolatedUserPage: page,
     }) => {
