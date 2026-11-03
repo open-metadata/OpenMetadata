@@ -14,12 +14,16 @@
 package org.openmetadata.service.resources.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -27,6 +31,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.json.Json;
+import jakarta.json.JsonException;
+import jakarta.json.JsonPatch;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -52,12 +59,15 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.MetricGroupRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
@@ -263,6 +273,114 @@ class MetricGroupResourceTest {
   }
 
   @Test
+  void patchIsAuthorizedOnTheGroupBeforeItIsSimulated() {
+    UUID groupId = UUID.randomUUID();
+    SecurityContext securityContext = securityContext("alice");
+    AuthorizationException denied = new AuthorizationException("denied");
+    // Cannot be applied to any group: the JSON-P error would print the stored group and members.
+    JsonPatch unapplicable = Json.createPatchBuilder().copy("/displayName", "/x/y").build();
+    try (ResourceFixture fixture = resourceFixture()) {
+      doThrow(denied)
+          .when(fixture.authorizer())
+          .authorize(eq(securityContext), any(OperationContext.class), any());
+
+      AuthorizationException thrown =
+          assertThrows(
+              AuthorizationException.class,
+              () -> fixture.resource().patch(null, securityContext, groupId, unapplicable));
+
+      assertEquals(denied, thrown);
+      verify(fixture.repository(), never()).getWithMembers(any(), any());
+    }
+  }
+
+  @Test
+  void patchAddressingMembersRequiresViewOnEveryMember() {
+    UUID groupId = UUID.randomUUID();
+    SecurityContext securityContext = securityContext("alice");
+    MetricGroup group = groupWithMember(groupId, "kpis");
+    JsonPatch copyMemberDescription =
+        Json.createPatchBuilder().copy("/description", "/metrics/0/description").build();
+    try (ResourceFixture fixture = resourceFixture()) {
+      when(fixture.repository().getWithMembers(groupId, Include.NON_DELETED)).thenReturn(group);
+      doThrow(new AuthorizationException("hidden metric"))
+          .when(fixture.authorizer())
+          .authorize(
+              eq(securityContext),
+              argThat(
+                  context ->
+                      context != null
+                          && Entity.METRIC.equals(context.getResource())
+                          && context.getOperations(null).contains(MetadataOperation.VIEW_BASIC)),
+              any());
+
+      assertThrows(
+          AuthorizationException.class,
+          () -> fixture.resource().patch(null, securityContext, groupId, copyMemberDescription));
+
+      verify(fixture.repository(), never()).prepareInternal(any(), eq(true));
+    }
+  }
+
+  @Test
+  void unapplicablePatchErrorDoesNotQuoteTheGroup() {
+    UUID groupId = UUID.randomUUID();
+    MetricGroup group = groupWithMember(groupId, "kpis").withDescription("board secrets");
+    JsonPatch unapplicable = Json.createPatchBuilder().copy("/description", "/nope/x").build();
+    try (ResourceFixture fixture = resourceFixture()) {
+      when(fixture.repository().getWithMembers(groupId, Include.NON_DELETED)).thenReturn(group);
+
+      IllegalArgumentException thrown =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  fixture.resource().patch(null, securityContext("alice"), groupId, unapplicable));
+
+      assertFalse(thrown.getMessage().contains("board secrets"));
+      assertFalse(thrown.getMessage().contains("margin"));
+    }
+  }
+
+  @Test
+  void memberPatchIsPinnedToTheMembersItWasAuthorizedOn() {
+    EntityReference first = metricReference("ad_spend");
+    EntityReference second = metricReference("net_revenue");
+    MetricGroup authorizedOn =
+        new MetricGroup().withName("kpis").withMetrics(List.of(first, second));
+    JsonPatch removeFirst = Json.createPatchBuilder().remove("/metrics/0").build();
+
+    JsonPatch pinned = MetricGroupResource.pinnedToMembers(authorizedOn, removeFirst);
+
+    assertEquals(
+        List.of(second.getId()),
+        JsonUtils.applyPatch(authorizedOn, pinned, MetricGroup.class).getMetrics().stream()
+            .map(EntityReference::getId)
+            .toList());
+    MetricGroup shifted = new MetricGroup().withName("kpis").withMetrics(List.of(second));
+    assertThrows(
+        JsonException.class, () -> JsonUtils.applyPatch(shifted, pinned, MetricGroup.class));
+  }
+
+  @Test
+  void onlyPatchesThatAddressMembersArePinned() {
+    assertTrue(
+        MetricGroupResource.addressesMembers(
+            Json.createPatchBuilder().remove("/metrics/1").build()));
+    assertTrue(
+        MetricGroupResource.addressesMembers(
+            Json.createPatchBuilder().copy("/description", "/metrics/0/name").build()));
+    assertTrue(
+        MetricGroupResource.addressesMembers(
+            Json.createPatchBuilder().add("", Json.createObjectBuilder().build()).build()));
+    assertFalse(
+        MetricGroupResource.addressesMembers(
+            Json.createPatchBuilder().replace("/description", "x").build()));
+    assertFalse(
+        MetricGroupResource.addressesMembers(
+            Json.createPatchBuilder().replace("/metricsNote", "x").build()));
+  }
+
+  @Test
   void bulkAddDelegatesTheCallerAndPreservesDryRun() {
     String groupName = "profitability";
     EntityReference metric =
@@ -351,6 +469,14 @@ class MetricGroupResourceTest {
     SecurityContext context = mock(SecurityContext.class);
     when(context.getUserPrincipal()).thenReturn(principal);
     return context;
+  }
+
+  private EntityReference metricReference(String name) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.METRIC)
+        .withName(name)
+        .withFullyQualifiedName(name);
   }
 
   private MetricGroup groupWithMember(UUID id, String name) {

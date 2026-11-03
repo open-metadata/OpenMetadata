@@ -91,6 +91,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.CSVExportResponse;
 
 @Path("/v1/metrics")
@@ -747,12 +748,22 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
 
   private void preauthorizeHierarchyPatch(
       SecurityContext securityContext, UUID metricId, JsonPatch patch) {
+    // Simulating the patch reads the stored metric and its errors quote it, so the caller must be
+    // allowed to patch the metric first - the same check patchInternal makes.
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, patch),
+        getResourceContextById(metricId, ResourceContextInterface.Operation.PATCH));
     Metric original = repository.get(null, metricId, repository.getFields("parent,metricGroup"));
     authorizePatchedHierarchy(securityContext, original, patch);
   }
 
   private void preauthorizeHierarchyPatch(
       SecurityContext securityContext, String metricFqn, JsonPatch patch) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, patch),
+        getResourceContextByName(metricFqn, ResourceContextInterface.Operation.PATCH));
     Metric original =
         repository.getByName(null, metricFqn, repository.getFields("parent,metricGroup"));
     authorizePatchedHierarchy(securityContext, original, patch);
@@ -825,6 +836,12 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   }
 
   static void validateMetricPatch(JsonPatch patch) {
+    // The read-only and hierarchy guards work from the field names a patch touches. An operation on
+    // the document root rewrites every field, parent and metricGroup included, while naming none.
+    if (patchesDocumentRoot(patch)) {
+      throw new IllegalArgumentException(
+          "A metric patch operation must name a field; the document root can't be patched");
+    }
     Set<String> fields = JsonUtils.extractPatchedFields(patch);
     if (fields.contains("assets")) {
       throw new IllegalArgumentException(
@@ -838,6 +855,11 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.readOnlyAttribute(Entity.METRIC, "childrenCount"));
     }
+  }
+
+  private static boolean patchesDocumentRoot(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .anyMatch(operation -> "".equals(operation.asJsonObject().getString("path", null)));
   }
 
   @PUT
@@ -1189,12 +1211,19 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     repository.get(null, id, repository.getFields("id"));
     List<MetricAssetDirection> linkedAssets = repository.getAssetsWithDirection(id);
     Set<UUID> visibleAssets = new HashSet<>();
+    Set<UUID> testVisibleAssets = new HashSet<>();
     for (MetricAssetDirection linked : linkedAssets) {
-      if (canViewAsset(securityContext, linked.getAsset())) {
-        visibleAssets.add(linked.getAsset().getId());
+      EntityReference asset = linked.getAsset();
+      if (canViewAsset(securityContext, asset)) {
+        visibleAssets.add(asset.getId());
+        // Data quality endpoints gate a table's tests behind VIEW_TESTS; VIEW_BASIC is not enough.
+        if (Entity.TABLE.equals(asset.getType())
+            && canAccessEntity(securityContext, asset, MetadataOperation.VIEW_TESTS)) {
+          testVisibleAssets.add(asset.getId());
+        }
       }
     }
-    return repository.getObservability(id, linkedAssets, visibleAssets);
+    return repository.getObservability(id, linkedAssets, visibleAssets, testVisibleAssets);
   }
 
   private boolean canViewAsset(SecurityContext securityContext, EntityReference asset) {

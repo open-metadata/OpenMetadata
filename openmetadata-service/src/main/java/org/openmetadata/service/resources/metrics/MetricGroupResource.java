@@ -21,7 +21,11 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.Json;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -64,6 +68,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricGroupRepository;
 import org.openmetadata.service.limits.Limits;
@@ -73,6 +78,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Path("/v1/metricGroups")
 @Tag(
@@ -374,11 +380,78 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
           @PathParam("id")
           UUID id,
       @Valid JsonPatch patch) {
+    // Simulating the patch reads the stored group with its members and its errors quote them, so
+    // the caller must be allowed to patch the group first - the same check patchInternal makes.
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, patch),
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     MetricGroup original = repository.getWithMembers(id, Include.NON_DELETED);
-    MetricGroup updated = JsonUtils.applyPatch(original, patch, MetricGroup.class);
+    boolean addressesMembers = addressesMembers(patch);
+    if (addressesMembers) {
+      authorizeMemberView(securityContext, original);
+    }
+    MetricGroup updated;
+    try {
+      updated = JsonUtils.applyPatch(original, patch, MetricGroup.class);
+    } catch (JsonException e) {
+      // The JSON-P message prints the document the operation failed on, members included.
+      throw new IllegalArgumentException("The JSON Patch cannot be applied to the metric group");
+    }
     repository.prepareInternal(updated, true);
     authorizeMembershipMutation(securityContext, original, updated);
-    return withoutMembers(patchInternal(uriInfo, securityContext, id, patch));
+    JsonPatch applied = addressesMembers ? pinnedToMembers(original, patch) : patch;
+    try {
+      return withoutMembers(patchInternal(uriInfo, securityContext, id, applied));
+    } catch (JsonException e) {
+      // The patch applied cleanly to the members authorized above, so failing on the repository's
+      // fresh load means they changed in between; index-based operations would hit other metrics.
+      throw new PreconditionFailedException(
+          "The members of the metric group changed while it was being patched. Please retry.");
+    }
+  }
+
+  /**
+   * Prepends a {@code test} of {@code /metrics} against the members the patch was authorized on,
+   * so the repository refuses to apply it to a member list that changed since.
+   */
+  static JsonPatch pinnedToMembers(MetricGroup authorizedOn, JsonPatch patch) {
+    JsonValue members = JsonUtils.getJsonStructure(authorizedOn).asJsonObject().get("metrics");
+    if (members == null) {
+      return patch;
+    }
+    JsonArrayBuilder operations =
+        Json.createArrayBuilder()
+            .add(
+                Json.createObjectBuilder()
+                    .add("op", "test")
+                    .add("path", "/metrics")
+                    .add("value", members));
+    patch.toJsonArray().forEach(operations::add);
+    return Json.createPatch(operations.build());
+  }
+
+  static boolean addressesMembers(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonValue::asJsonObject)
+        .anyMatch(
+            operation ->
+                pointsAtMembers(operation.getString("path", null))
+                    || pointsAtMembers(operation.getString("from", null)));
+  }
+
+  private static boolean pointsAtMembers(String pointer) {
+    return pointer != null
+        && (pointer.isEmpty() || pointer.equals("/metrics") || pointer.startsWith("/metrics/"));
+  }
+
+  private void authorizeMemberView(SecurityContext securityContext, MetricGroup group) {
+    for (EntityReference metric : listOrEmpty(group.getMetrics())) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(Entity.METRIC, MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
+    }
   }
 
   @PUT

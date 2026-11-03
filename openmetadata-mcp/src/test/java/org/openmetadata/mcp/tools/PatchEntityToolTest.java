@@ -349,6 +349,8 @@ class PatchEntityToolTest {
         "eventsubscription",
         "ingestionPipeline",
         "intakeForm",
+        "metric",
+        "metricGroup",
         "notificationTemplate",
         "persona",
         "testCase",
