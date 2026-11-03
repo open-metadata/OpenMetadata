@@ -20,8 +20,11 @@ import static org.mockito.Mockito.when;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
@@ -31,6 +34,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,6 +45,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
+import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
@@ -258,6 +263,40 @@ class OAuthHttpStatelessServerTransportProviderTest {
         OAuthHttpStatelessServerTransportProvider.class.getDeclaredField("authProvider");
     unsafe.putObject(transport, unsafe.objectFieldOffset(authProvider), ssoProvider);
     return transport;
+  }
+
+  // ── registration body limit ───────────────────────────────────────────────
+
+  @Test
+  void doPost_oversizedRegistration_answers413WithoutRegistering() throws Exception {
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    RegistrationHandler registrationHandler = mock(RegistrationHandler.class);
+    putField(transport, "registrationHandler", registrationHandler);
+    putField(transport, "registrationAttempts", new ConcurrentHashMap<>());
+    putField(transport, "objectMapper", new ObjectMapper());
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/register");
+    when(request.getRemoteAddr()).thenReturn("203.0.113.7");
+    byte[] oversized =
+        new byte[OAuthHttpStatelessServerTransportProvider.MAX_REGISTRATION_BODY_BYTES + 1];
+    when(request.getInputStream())
+        .thenReturn(
+            HttpServletStatelessServerTransportTest.bodyOf(new ByteArrayInputStream(oversized)));
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+
+    transport.doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
+    verifyNoInteractions(registrationHandler);
+  }
+
+  private static void putField(Object target, String fieldName, Object value) throws Exception {
+    sun.misc.Unsafe unsafe = unsafe();
+    Field field = OAuthHttpStatelessServerTransportProvider.class.getDeclaredField(fieldName);
+    unsafe.putObject(target, unsafe.objectFieldOffset(field), value);
   }
 
   private static sun.misc.Unsafe unsafe() throws Exception {

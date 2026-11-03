@@ -320,4 +320,18 @@ class RegistrationHandlerTest {
 
     verify(clientRepository, never()).register(any());
   }
+
+  @Test
+  void testRedirectUriTooLong_throwsRegistrationException() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setRedirectUris(
+        List.of(URI.create("https://example.com/callback?pad=" + "x".repeat(2048))));
+
+    assertThatThrownBy(() -> handler.handle(metadata).join())
+        .isInstanceOf(CompletionException.class)
+        .hasRootCauseInstanceOf(RegistrationException.class)
+        .hasRootCauseMessage("redirect_uri exceeds maximum length of 2048");
+
+    verify(clientRepository, never()).register(any());
+  }
 }
