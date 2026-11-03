@@ -423,6 +423,27 @@ const useConceptRights = (
   };
 };
 
+// The graph can be drawn from the release when the working list is refused, so the editor reads
+// the one concept it edits from the draft by id, the read a concept owner is still allowed.
+const useDraftConcept = (
+  editor: ConceptEditorRequest | undefined,
+  isEditing: boolean,
+  releaseId: string | undefined,
+  revision: number
+) => {
+  const conceptId = editor?.conceptId;
+
+  return useQuery({
+    enabled: Boolean(conceptId) && isEditing && !releaseId,
+    gcTime: 0,
+    queryFn: ({ signal }) =>
+      getOntologyConcept(conceptId ?? '', WORKING_CONCEPT_FIELDS, signal),
+    queryKey: ['ontology-draft-concept', conceptId, revision],
+    retry: false,
+    staleTime: 0,
+  });
+};
+
 const OntologyGraphView = ({
   ontology,
   releaseId,
@@ -497,18 +518,12 @@ const OntologyGraphView = ({
   );
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology, releaseId);
-  // The graph can be drawn from the release when the working list is refused, so the editor reads
-  // the one concept it edits from the draft by id, the read a concept owner is still allowed.
-  const editedConceptId = isEditing ? conceptEditor?.conceptId : undefined;
-  const draftConceptQuery = useQuery({
-    enabled: Boolean(editedConceptId) && !releaseId,
-    gcTime: 0,
-    queryFn: ({ signal }) =>
-      getOntologyConcept(editedConceptId ?? '', WORKING_CONCEPT_FIELDS, signal),
-    queryKey: ['ontology-draft-concept', editedConceptId, dataRevision],
-    retry: false,
-    staleTime: 0,
-  });
+  const draftConceptQuery = useDraftConcept(
+    conceptEditor,
+    isEditing,
+    releaseId,
+    dataRevision
+  );
   const conflictsQuery = useQuery({
     enabled: !releaseId,
     queryFn: () => getOntologyWorkingValidation(ontology.id),
