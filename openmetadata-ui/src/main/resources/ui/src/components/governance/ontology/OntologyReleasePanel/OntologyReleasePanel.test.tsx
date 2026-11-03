@@ -860,6 +860,12 @@ describe('OntologyReleasePanel', () => {
     await renderPanel(true, 'changes');
 
     expect(await screen.findByText(/Customer/)).toBeVisible();
+    expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
+
+    fireEvent.click(
+      within(screen.getByTestId('ontology-version-major')).getByRole('radio')
+    );
+
     expect(screen.getByTestId('ontology-request-review')).toBeEnabled();
 
     await act(async () => {
@@ -2360,8 +2366,33 @@ describe('reviewing what changed (G7)', () => {
     expect(
       await screen.findByTestId('ontology-changes-truncated')
     ).toHaveTextContent(
-      'Only the first change is counted. The filter counts, per-kind counts and suggested version may be incomplete.'
+      'Only the first change is counted. The filter counts and per-kind counts may be incomplete, so no version is suggested.'
     );
+  });
+
+  it('suggests no version and asks for a choice when the diff has a next page, because a removal there would be missed', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    serveGroups(
+      [groupOf('Alpha', 'ADDED', [memberOf('CONCEPT', 'ADDED', 'Alpha')])],
+      { total: 1400, after: 'page-two' }
+    );
+    await renderPanel(true, 'changes');
+
+    expect(
+      await screen.findByTestId('ontology-version-pick-required')
+    ).toHaveTextContent('Choose the version yourself before you publish.');
+    expect(
+      screen.queryByTestId('ontology-version-reason')
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Minor/ })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: /Major/ })).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole('radio', { name: /Major/ }));
+
+    expect(screen.getByRole('radio', { name: /Major/ })).toBeChecked();
+    expect(
+      screen.queryByTestId('ontology-version-pick-required')
+    ).not.toBeInTheDocument();
   });
 
   it('shows no truncation note when the whole diff fits in one page', async () => {

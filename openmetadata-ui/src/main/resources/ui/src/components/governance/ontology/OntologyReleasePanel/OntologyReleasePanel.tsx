@@ -317,7 +317,13 @@ const OntologyReleasePanel = ({
   ].every(Boolean);
   const baseVersion = versionBase.data?.semanticVersion;
   const workingChanges = getWorkingChanges(working.data);
-  const suggestion = suggestWorkingVersion(workingChanges, baseVersion);
+  // A removal on a later page would make the suggestion too small, so a
+  // truncated diff suggests nothing and the reader chooses the bump.
+  const isDiffTruncated = Boolean(working.data?.paging.after);
+  const suggestion = isDiffTruncated
+    ? undefined
+    : suggestWorkingVersion(workingChanges, baseVersion);
+  const isVersionPickRequired = isDiffTruncated && versionBump === undefined;
   const visibleMembers = filterMemberChanges(
     changes.data?.data ?? [],
     changeFilter,
@@ -337,6 +343,7 @@ const OntologyReleasePanel = ({
     !versionBase.isFetching,
     Boolean(currentStage?.unpublishedChanges),
     changedSinceRejection(),
+    !isVersionPickRequired,
   ].every(Boolean);
   const metadata = { versionBump: bump, releaseNotes };
   const retryChanges = () => {
@@ -828,8 +835,9 @@ const OntologyReleasePanel = ({
     versionBase.isSuccess && (
       <OntologyVersionEditor
         baseVersion={baseVersion}
-        bump={bump}
+        bump={isVersionPickRequired ? undefined : bump}
         isDisabled={!canWrite}
+        isPickRequired={isVersionPickRequired}
         notes={releaseNotes}
         suggestion={suggestion}
         onBumpChange={(value) =>

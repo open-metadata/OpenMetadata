@@ -12,6 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
@@ -27,6 +28,7 @@ interface OntologyQueryPickerProps {
 }
 
 const COUNT_SEPARATOR = ' · ';
+const ROWS_PER_PAGE = 20;
 
 /** Query mode on All ontologies: a query reads one ontology, so the user picks it here. */
 const OntologyQueryPicker = ({
@@ -35,8 +37,11 @@ const OntologyQueryPicker = ({
   onSelect,
 }: OntologyQueryPickerProps) => {
   const { t } = useTranslation();
-  const conceptCounts = useOntologyConceptCounts(ontologies, true);
-  const propertyCounts = useOntologyPropertyCounts(ontologies, true);
+  const [shown, setShown] = useState(ROWS_PER_PAGE);
+  // Counts cost one request per row, so only the rows on screen are counted.
+  const visibleOntologies = ontologies.slice(0, shown);
+  const conceptCounts = useOntologyConceptCounts(visibleOntologies, true);
+  const propertyCounts = useOntologyPropertyCounts(visibleOntologies, true);
 
   const describeCounts = (ontology: Ontology) => {
     const concepts = conceptCounts[ontology.id];
@@ -81,7 +86,7 @@ const OntologyQueryPicker = ({
       <Box
         className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
         direction="col">
-        {ontologies.map((ontology) => (
+        {visibleOntologies.map((ontology) => (
           <Button
             noTextPadding
             className="tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:py-3 tw:text-left tw:last:border-b-0"
@@ -102,6 +107,15 @@ const OntologyQueryPicker = ({
           </Button>
         ))}
       </Box>
+      {ontologies.length > shown && (
+        <Button
+          color="secondary"
+          data-testid="ontology-query-picker-show-more"
+          size="sm"
+          onClick={() => setShown((count) => count + ROWS_PER_PAGE)}>
+          {t('label.show-more')}
+        </Button>
+      )}
     </Box>
   );
 };

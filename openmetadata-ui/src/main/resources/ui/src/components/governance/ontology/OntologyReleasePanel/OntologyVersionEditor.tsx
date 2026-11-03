@@ -26,7 +26,8 @@ import { nextSemanticVersion } from './OntologyReleasePanel.utils';
 
 interface OntologyVersionEditorProps {
   baseVersion?: string;
-  bump: VersionBump;
+  bump?: VersionBump;
+  isPickRequired?: boolean;
   notes: string;
   suggestion?: VersionSuggestion;
   isDisabled: boolean;
@@ -37,6 +38,7 @@ interface OntologyVersionEditorProps {
 const OntologyVersionEditor = ({
   baseVersion,
   bump,
+  isPickRequired,
   notes,
   suggestion,
   isDisabled,
@@ -53,16 +55,26 @@ const OntologyVersionEditor = ({
       onBumpChange(selected);
     }
   };
-  const reason = suggestion && (
+  const reason = isPickRequired ? (
     <Typography
       color="secondary"
-      data-testid="ontology-version-reason"
+      data-testid="ontology-version-pick-required"
       role="note"
       size="text-xs">
-      {t(`message.ontology-version-reason-${suggestion.reason}`, {
-        version: nextSemanticVersion(baseVersion, suggestion.bump),
-      })}
+      {t('message.ontology-version-pick-required')}
     </Typography>
+  ) : (
+    suggestion && (
+      <Typography
+        color="secondary"
+        data-testid="ontology-version-reason"
+        role="note"
+        size="text-xs">
+        {t(`message.ontology-version-reason-${suggestion.reason}`, {
+          version: nextSemanticVersion(baseVersion, suggestion.bump),
+        })}
+      </Typography>
+    )
   );
   const bumpOptions = [VersionBump.Patch, VersionBump.Minor, VersionBump.Major];
   const notesField = (
@@ -92,7 +104,7 @@ const OntologyVersionEditor = ({
                 aria-label={t('label.version')}
                 className="tw:gap-2"
                 isDisabled={isDisabled}
-                value={bump}
+                value={bump ?? null}
                 onChange={handleBumpChange}>
                 {bumpOptions.map((option) => (
                   <RadioButton
@@ -126,7 +138,7 @@ const OntologyVersionEditor = ({
       <RadioGroup
         aria-label={t('label.version')}
         isDisabled={isDisabled}
-        value={bump}
+        value={bump ?? null}
         onChange={handleBumpChange}>
         <div className="tw:grid tw:grid-cols-1 tw:gap-2 tw:sm:grid-cols-3">
           {bumpOptions.map((option) => (

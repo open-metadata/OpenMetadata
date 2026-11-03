@@ -26,25 +26,82 @@ export interface ConflictHighlight {
 export const conflictEdgeKey = ({ from, to }: { from: string; to: string }) =>
   from < to ? `${from}::${to}` : `${to}::${from}`;
 
+const CHILD_TO_PARENT = new Set(['subclassof', 'isa', 'broader']);
+const PARENT_TO_CHILD = new Set(['superclassof', 'narrower']);
+
+const normalize = (relationType?: string) =>
+  (relationType ?? '').replaceAll(/[^a-z]/gi, '').toLowerCase();
+
+const reach = (start: string, next: ReadonlyMap<string, string[]>) => {
+  const seen = new Set([start]);
+  const queue = [start];
+  for (let head = 0; head < queue.length; head++) {
+    (next.get(queue[head]) ?? []).forEach((id) => {
+      if (!seen.has(id)) {
+        seen.add(id);
+        queue.push(id);
+      }
+    });
+  }
+
+  return seen;
+};
+
+const push = (map: Map<string, string[]>, key: string, value: string) =>
+  map.set(key, [...(map.get(key) ?? []), value]);
+
 /**
- * The clashing class is the first concept id; every edge from it to another
- * concept the clash names is the subclass link that makes the clash, so those
- * edges turn red. Linear in violations and edges, so it holds at 400 concepts.
+ * The server reports the clashing class first, then the disjoint ancestors it
+ * inherits from, which need not be its direct parents. Every subclass edge on a
+ * path from the class up to a reported ancestor is part of the clash, so those
+ * edges turn red. An edge that names no relation type counts only when it
+ * joins the class to a reported concept directly. Linear in edges per reported
+ * ancestor.
  */
 export const buildConflictHighlight = (
   violations: ConflictViolation[],
-  edges: ReadonlyArray<{ from: string; to: string }>
+  edges: ReadonlyArray<{ from: string; to: string; relationType?: string }>
 ): ConflictHighlight => {
+  const parents = new Map<string, string[]>();
+  const children = new Map<string, string[]>();
+  const subclassLinks: Array<[child: string, parent: string]> = [];
+  edges.forEach(({ from, to, relationType }) => {
+    const kind = normalize(relationType);
+    const link: [string, string] | undefined = CHILD_TO_PARENT.has(kind)
+      ? [from, to]
+      : PARENT_TO_CHILD.has(kind)
+      ? [to, from]
+      : undefined;
+    if (link) {
+      subclassLinks.push(link);
+      push(parents, link[0], link[1]);
+      push(children, link[1], link[0]);
+    }
+  });
+
   const nodeIds = new Set<string>();
   const pairs = new Set<string>();
   violations.forEach(({ conceptIds = [] }) => {
     const [clashing, ...others] = conceptIds;
-    if (clashing) {
-      nodeIds.add(clashing);
-      others.forEach((other) =>
-        pairs.add(conflictEdgeKey({ from: clashing, to: other }))
-      );
+    if (!clashing) {
+      return;
     }
+    nodeIds.add(clashing);
+    const above = reach(clashing, parents);
+    others.forEach((other) => {
+      pairs.add(conflictEdgeKey({ from: clashing, to: other }));
+      const below = reach(other, children);
+      subclassLinks.forEach(([child, parent]) => {
+        if (
+          above.has(child) &&
+          below.has(child) &&
+          above.has(parent) &&
+          below.has(parent)
+        ) {
+          pairs.add(conflictEdgeKey({ from: child, to: parent }));
+        }
+      });
+    });
   });
   const edgeKeys = new Set(
     edges.map(conflictEdgeKey).filter((key) => pairs.has(key))

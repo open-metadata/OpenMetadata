@@ -69,4 +69,48 @@ describe('diffMemberFields', () => {
       )
     ).toEqual([{ field: 'range.min', before: '1', after: '5' }]);
   });
+
+  it('tells ["New York, USA"] from ["New York", "USA"]', () => {
+    expect(
+      diffMemberFields(
+        { synonyms: ['New York, USA'] },
+        { synonyms: ['New York', 'USA'] }
+      )
+    ).toEqual([
+      {
+        field: 'synonyms',
+        before: '"New York, USA"',
+        after: 'New York, USA',
+      },
+    ]);
+  });
+
+  it('shows an owner swapped for another user with the same display name, with their ids', () => {
+    expect(
+      diffMemberFields(
+        { owners: [{ id: 'u-1', type: 'user', displayName: 'Alice' }] },
+        { owners: [{ id: 'u-2', type: 'user', displayName: 'Alice' }] }
+      )
+    ).toEqual([
+      { field: 'owners', before: 'Alice (u-1)', after: 'Alice (u-2)' },
+    ]);
+  });
+
+  it('does not report an owner whose only difference is server bookkeeping', () => {
+    expect(
+      diffMemberFields(
+        { owners: [{ id: 'u-1', displayName: 'Alice', href: '/a' }] },
+        { owners: [{ id: 'u-1', displayName: 'Alice', href: '/b' }] }
+      )
+    ).toEqual([]);
+  });
+
+  it('shows a change to a field of a listed object that carries the same label', () => {
+    expect(
+      diffMemberFields(
+        { owners: [{ id: 'u-1', displayName: 'Alice', deleted: false }] },
+        { owners: [{ id: 'u-1', displayName: 'Alice', deleted: true }] }
+      )
+    ).toHaveLength(1);
+  });
 });

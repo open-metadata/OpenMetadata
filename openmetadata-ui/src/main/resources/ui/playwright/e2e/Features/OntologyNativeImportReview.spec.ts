@@ -829,6 +829,47 @@ test.describe(
       }
     });
 
+    test('a failed pack review shows an error, holds Install, and recovers on retry', async ({
+      isolatedUserPage: page,
+    }) => {
+      const { api, ontology } = await createOntology(`pw_revfail_${uuid()}`);
+      let failures = 1;
+
+      try {
+        await page.route('**/api/v1/ontologies/*/library/*/review', (route) =>
+          failures-- > 0
+            ? route.fulfill({ status: 500, body: '{"message":"boom"}' })
+            : route.continue()
+        );
+        await page.goto(`/governance/ontology?ontology=${ontology.id}`);
+        await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+        await page.getByTestId('ontology-library-trigger').click();
+        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-library-target').click();
+        await page
+          .getByRole('option', { name: new RegExp(ontology.name) })
+          .click();
+
+        await expect(
+          page.getByTestId('ontology-library-pack-review-error')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('ontology-library-native-install')
+        ).toBeDisabled();
+
+        await page.getByTestId('ontology-library-pack-review-retry').click();
+
+        await expect(
+          page.getByTestId('ontology-library-pack-review')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('ontology-library-native-install')
+        ).toBeEnabled();
+      } finally {
+        await remove(api, ontology.id);
+      }
+    });
+
     test('choosing an existing ontology as the target keeps the selected modules', async ({
       isolatedUserPage: page,
     }) => {
