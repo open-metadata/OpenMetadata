@@ -14,6 +14,7 @@ Max Metric definition
 """
 
 from collections.abc import Callable
+from datetime import datetime
 from functools import partial
 from typing import TYPE_CHECKING, Optional
 
@@ -91,6 +92,7 @@ class Max(StaticMetric):
     """
 
     schema_metric_type = MetricType.max
+    preserve_datetime: bool = False
 
     @classmethod
     def name(cls):
@@ -121,14 +123,16 @@ class Max(StaticMetric):
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[float | None, float | None](
+        return PandasComputation[float | datetime | None, float | datetime | None](
             create_accumulator=lambda: None,
             update_accumulator=lambda acc, df: Max.update_accumulator(acc, df, self.col),
-            aggregate_accumulator=lambda acc: acc,
+            aggregate_accumulator=lambda acc: (
+                int(acc.timestamp() * 1000) if isinstance(acc, datetime) and not self.preserve_datetime else acc
+            ),
         )
 
     @staticmethod
-    def update_accumulator(current_max: float | None, df: "pd.DataFrame", column) -> float | None:
+    def update_accumulator(current_max: float | datetime | None, df: "pd.DataFrame", column) -> float | datetime | None:
         """Computes one DataFrame chunk and updates the running maximum
 
         Maintains a single maximum value (not a list). Compares chunk's max
@@ -137,16 +141,16 @@ class Max(StaticMetric):
         import pandas as pd
         from pandas import Timestamp
 
-        chunk_max: float | None = None
+        chunk_max: float | datetime | None = None
 
         if is_quantifiable(column.type):
             raw = df[column.name].max()
             chunk_max = float(raw) if not bool(pd.isnull(raw)) else None  # type: ignore[arg-type]
         elif is_date_time(column.type):
             if column.type in {DataType.DATETIME, DataType.DATE}:
-                max_val = pd.to_datetime(df[column.name]).max()
+                max_val = pd.to_datetime(df[column.name], utc=True).max()
                 if isinstance(max_val, Timestamp) and not pd.isnull(max_val):
-                    chunk_max = int(max_val.timestamp() * 1000)
+                    chunk_max = max_val.tz_localize(None)
             elif column.type == DataType.TIME:
                 max_val = pd.to_timedelta(df[column.name]).max()
                 if not pd.isnull(max_val):

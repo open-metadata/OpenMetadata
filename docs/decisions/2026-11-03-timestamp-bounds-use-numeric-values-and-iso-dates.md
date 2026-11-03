@@ -24,9 +24,10 @@ timezone offsets are honored; dates and datetimes without an offset use UTC. The
 seconds since the Unix epoch, with fractional seconds preserved. Invalid dates and non-finite
 numeric values raise `ValueError`.
 
-The pandas between validator compares datetime extrema directly with its datetime bounds,
-without passing through the profiler's millisecond representation. This preserves microseconds
-and keeps its result consistent with SQL validation.
+The shared pandas min/max calculations accumulate datetime values at their original precision.
+Their default output remains epoch milliseconds for compatibility. The between validator requests
+`preserve_datetime=True` through the existing metric configuration mechanism, so it compares
+datetimes with its parsed bounds using the same aggregation code as other callers.
 
 ## Consequences
 
