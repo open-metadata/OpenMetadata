@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -8,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.it.util.DataQualitySearchFixtures.RESERVED_CHARACTER_QUERIES;
 import static org.openmetadata.it.util.DataQualitySearchFixtures.SEARCH_CONVERGENCE_TIMEOUT;
 
@@ -42,6 +44,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
@@ -71,6 +74,7 @@ import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.BulkCreateConflictPolicy;
 import org.openmetadata.schema.type.BulkCreateItemResult;
@@ -96,6 +100,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.slf4j.Logger;
@@ -2790,6 +2795,300 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .anyMatch(
                 tag ->
                     shared.PII_SENSITIVE_TAG_LABEL.getTagFQN().equalsIgnoreCase(tag.getTagFQN())));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"ssn, ssn", "ssn, SSN", "contact.ssn, contact.ssn", "ssn, ssn::description"})
+  void test_piiColumnLinksAreMaskedAcrossReadPaths(
+      String columnName, String linkedColumn, TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User owner = UserTestFactory.createUser(ns, "pii_test_owner");
+    User reader = UserTestFactory.createUser(ns, "pii_test_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+    Table table = createTable(ns);
+    table.setColumns(
+        List.of(
+            new Column()
+                .withName(columnName)
+                .withDataType(ColumnDataType.STRING)
+                .withTags(
+                    List.of(
+                        new TagLabel()
+                            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+                            .withSource(TagLabel.TagSource.CLASSIFICATION)))));
+    table.setOwners(List.of(owner.getEntityReference()));
+    admin.tables().update(table.getId().toString(), table);
+    Table storedTable = admin.tables().get(table.getId().toString(), "columns,tags");
+    assertTrue(
+        storedTable.getColumns().getFirst().getTags().stream()
+            .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())),
+        "The column must carry the tag used by the PII masker");
+    ns.trackRoot(Entity.DATABASE_SERVICE, table.getService().getId());
+    TestCase testCase =
+        admin
+            .testCases()
+            .create(
+                new CreateTestCase()
+                    .withName(ns.prefix("pii_column_link"))
+                    .withDescription("Sensitive description")
+                    .withEntityLink(
+                        "<#E::table::"
+                            + table.getFullyQualifiedName()
+                            + "::columns::"
+                            + linkedColumn
+                            + ">")
+                    .withTestDefinition("columnValuesToMatchRegex")
+                    .withParameterValues(
+                        List.of(
+                            new TestCaseParameterValue().withName("regex").withValue("^078-"))));
+    ns.trackRoot(Entity.TEST_CASE, testCase);
+    TestCaseResult createdResult =
+        admin
+            .testCaseResults()
+            .create(
+                testCase.getFullyQualifiedName(),
+                new CreateTestCaseResult()
+                    .withTimestamp(System.currentTimeMillis())
+                    .withTestCaseStatus(TestCaseStatus.Failed)
+                    .withResult("Sensitive failure")
+                    .withTestResultValue(
+                        List.of(
+                            new TestResultValue()
+                                .withName("actual")
+                                .withValue("Sensitive measure"))));
+
+    assertPiiColumnTag(admin.testCases().get(testCase.getId().toString(), "tags"));
+    assertMaskedTestCase(
+        readerClient.testCases().get(testCase.getId().toString(), "testCaseResult"), testCase);
+    assertMaskedTestCase(
+        readerClient.testCases().getByName(testCase.getFullyQualifiedName(), "testCaseResult"),
+        testCase);
+    assertMaskedTestCase(
+        readerClient.testCases().getVersion(testCase.getId(), testCase.getVersion()), testCase);
+    EntityHistory history =
+        readerClient
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                getResourcePath() + testCase.getId() + "/versions",
+                null,
+                EntityHistory.class);
+    assertFalse(history.getVersions().isEmpty());
+    history
+        .getVersions()
+        .forEach(
+            version ->
+                assertMaskedTestCase(
+                    JsonUtils.readOrConvertValue(version, TestCase.class), testCase));
+    List<TestCaseResult> results =
+        JsonUtils.convertObjects(
+            readerClient.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+            TestCaseResult.class);
+    assertEquals(1, results.size());
+    assertNull(results.getFirst().getResult());
+
+    Awaitility.await("all test case read paths mask PII")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .untilAsserted(
+            () ->
+                assertAll(
+                    () ->
+                        assertFalse(
+                            searchTestHit(
+                                    readerClient,
+                                    "test_case_search_index",
+                                    testCase.getId(),
+                                    "_score",
+                                    true)
+                                .has("_explanation")),
+                    () ->
+                        assertMaskedTestCase(
+                            JsonUtils.convertValueLenient(
+                                JsonUtils.readTree(
+                                        readerClient
+                                            .getHttpClient()
+                                            .executeForString(
+                                                HttpMethod.GET,
+                                                "/v1/search/fieldQuery",
+                                                null,
+                                                RequestOptions.builder()
+                                                    .queryParam("index", "test_case_search_index")
+                                                    .queryParam("fieldName", "id.keyword")
+                                                    .queryParam(
+                                                        "fieldValue", testCase.getId().toString())
+                                                    .build()))
+                                    .path("hits")
+                                    .path("hits")
+                                    .get(0)
+                                    .path("_source"),
+                                TestCase.class),
+                            testCase),
+                    () ->
+                        assertThrows(
+                            InvalidRequestException.class,
+                            () ->
+                                searchTestHit(
+                                    readerClient,
+                                    "test_case_search_index",
+                                    testCase.getId(),
+                                    "testCaseResult.testResultValue.value.keyword")),
+                    () -> {
+                      for (String path :
+                          List.of(getResourcePath(), getResourcePath() + "search/list")) {
+                        TestCase listed = readLinkedTestCase(readerClient, path, table);
+                        assertMaskedTestCase(listed, testCase);
+                        assertPiiColumnTag(listed);
+                      }
+                    },
+                    () ->
+                        assertMaskedTestCase(
+                            JsonUtils.convertValueLenient(
+                                searchTestHit(
+                                        readerClient, "test_case_search_index", testCase.getId())
+                                    .path("_source"),
+                                TestCase.class),
+                            testCase),
+                    () ->
+                        assertFalse(
+                            searchTestHit(
+                                    readerClient,
+                                    "test_case_result_search_index",
+                                    createdResult.getId())
+                                .path("_source")
+                                .has("result")),
+                    () -> {
+                      List<TestCaseResult> searchedResults =
+                          JsonUtils.convertObjects(
+                              readerClient
+                                  .testCaseResults()
+                                  .searchList(
+                                      new ListParams()
+                                          .addFilter(
+                                              "testCaseFQN", testCase.getFullyQualifiedName()))
+                                  .getData(),
+                              TestCaseResult.class);
+                      assertEquals(1, searchedResults.size());
+                      assertNull(searchedResults.getFirst().getResult());
+                    },
+                    () -> {
+                      TestCaseResult latest =
+                          readerClient
+                              .getHttpClient()
+                              .execute(
+                                  HttpMethod.GET,
+                                  getResourcePath() + "testCaseResults/search/latest",
+                                  null,
+                                  TestCaseResult.class,
+                                  RequestOptions.builder()
+                                      .queryParam("testCaseFQN", testCase.getFullyQualifiedName())
+                                      .build());
+                      assertNotNull(latest);
+                      assertNull(latest.getResult());
+                    }));
+
+    OpenMetadataClient ownerClient =
+        SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
+    for (OpenMetadataClient privileged : List.of(admin, ownerClient, SdkClients.botClient())) {
+      TestCase visible = privileged.testCases().get(testCase.getId().toString(), "testCaseResult");
+      assertEquals("Sensitive description", visible.getDescription());
+      assertEquals(testCase.getParameterValues(), visible.getParameterValues());
+      assertEquals("Sensitive failure", visible.getTestCaseResult().getResult());
+      assertTrue(
+          searchTestHit(privileged, "test_case_search_index", testCase.getId(), "_score", true)
+              .path("_explanation")
+              .toString()
+              .contains("description:"));
+      assertEquals(
+          "Sensitive measure",
+          searchTestHit(
+                  privileged,
+                  "test_case_search_index",
+                  testCase.getId(),
+                  "testCaseResult.testResultValue.value.keyword")
+              .path("sort")
+              .get(0)
+              .asText());
+      assertEquals(
+          "Sensitive description",
+          searchTestHit(privileged, "test_case_search_index", testCase.getId())
+              .path("_source")
+              .path("description")
+              .asText());
+      assertEquals(
+          "Sensitive failure",
+          JsonUtils.convertObjects(
+                  privileged.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+                  TestCaseResult.class)
+              .getFirst()
+              .getResult());
+    }
+  }
+
+  private static void assertMaskedTestCase(TestCase masked, TestCase original) {
+    assertEquals(original.getName() + " [MASKED]", masked.getName());
+    assertEquals(original.getId(), masked.getId());
+    assertNull(masked.getDescription());
+    assertTrue(nullOrEmpty(masked.getParameterValues()));
+    assertNull(masked.getTestCaseResult());
+  }
+
+  private static void assertPiiColumnTag(TestCase testCase) {
+    assertTrue(
+        testCase.getTags().stream()
+            .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+  }
+
+  private static TestCase readLinkedTestCase(OpenMetadataClient client, String path, Table table) {
+    String json =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                path,
+                null,
+                RequestOptions.builder()
+                    .queryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
+                    .queryParam("includeAllTests", "true")
+                    .queryParam("fields", "tags,testCaseResult")
+                    .build());
+    List<TestCase> tests = JsonUtils.readValue(json, TestCaseResource.TestCaseList.class).getData();
+    assertEquals(1, tests.size());
+    return tests.getFirst();
+  }
+
+  private static JsonNode searchTestHit(OpenMetadataClient client, String index, UUID id) {
+    return searchTestHit(client, index, id, "_score");
+  }
+
+  private static JsonNode searchTestHit(
+      OpenMetadataClient client, String index, UUID id, String sortField) {
+    return searchTestHit(client, index, id, sortField, false);
+  }
+
+  private static JsonNode searchTestHit(
+      OpenMetadataClient client, String index, UUID id, String sortField, boolean explain) {
+    // The dedicated test case builder omits explanations; global search returns them.
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("index", explain ? "all" : index)
+            .queryParam("q", "id:" + id)
+            .queryParam("sort_field", sortField);
+    if (explain) {
+      options
+          .queryParam("explain", "true")
+          .queryParam("fetch_source", "false")
+          .queryParam(
+              "query_filter",
+              "{\"query\":{\"wildcard\":{\"description\":{\"value\":\"*\",\"rewrite\":\"scoring_boolean\"}}}}");
+    }
+    String json =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/search/query", null, options.build());
+    JsonNode hits = JsonUtils.readTree(json).path("hits").path("hits");
+    assertEquals(1, hits.size());
+    return hits.get(0);
   }
 
   @Test

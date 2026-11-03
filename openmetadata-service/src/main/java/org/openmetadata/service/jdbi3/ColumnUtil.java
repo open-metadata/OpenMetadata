@@ -7,6 +7,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -113,6 +114,21 @@ public final class ColumnUtil {
       }
     }
     return null;
+  }
+
+  /** Resolves a column name as accepted by case-insensitive test case validation. */
+  public static Optional<Column> findColumnByName(List<Column> columns, String columnName) {
+    final List<Column> candidates = listOrEmpty(columns);
+    return candidates.stream()
+        .filter(Objects::nonNull)
+        .filter(column -> column.getName().equals(columnName))
+        .findFirst()
+        .or(
+            () ->
+                candidates.stream()
+                    .filter(Objects::nonNull)
+                    .filter(column -> column.getName().equalsIgnoreCase(columnName))
+                    .findFirst());
   }
 
   /**

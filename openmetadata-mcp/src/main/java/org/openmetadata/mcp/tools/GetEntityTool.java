@@ -20,6 +20,7 @@ import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -275,6 +276,8 @@ public class GetEntityTool implements McpTool {
       // The email is hidden from callers without PII access, as UserResource does. The user is
       // the copy maskSecrets made, so this does not touch the repository's entity.
       PIIMasker.maskUser(authorizer, securityContext, user);
+    } else if (entity instanceof TestCase testCase) {
+      PIIMasker.getTestCase(testCase, authorizer, securityContext);
     }
     Map<String, Object> entityData = JsonUtils.getMap(entity);
 

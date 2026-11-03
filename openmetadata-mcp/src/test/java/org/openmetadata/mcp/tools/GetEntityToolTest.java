@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.util.McpResponseTrim;
@@ -44,11 +46,15 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
@@ -348,6 +354,47 @@ class GetEntityToolTest {
     }
 
     assertEquals(PIIMasker.MASKED_MAIL, result.get("email"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testCaseDetailsUseTheLinkedColumnResponsePolicy(boolean authorized) throws Exception {
+    String tableFqn = "service.db.schema.table";
+    String fqn = tableFqn + ".SSN.check";
+    TestCase testCase =
+        new TestCase()
+            .withName("check")
+            .withFullyQualifiedName(fqn)
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::SSN>")
+            .withDescription("Column details");
+    Table table =
+        new Table()
+            .withOwners(List.of())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("ssn")
+                        .withTags(
+                            List.of(new TagLabel().withTagFQN(PIIMasker.SENSITIVE_PII_TAG)))));
+    Authorizer authorizer = mock(Authorizer.class);
+    CatalogSecurityContext context = securityContextFor("alice");
+    when(authorizer.authorizePII(context, List.of())).thenReturn(authorized);
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(eq(Entity.TEST_CASE), eq(fqn), anyString(), any()))
+          .thenReturn(testCase);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+      Map<String, Object> result =
+          new GetEntityTool()
+              .execute(authorizer, context, Map.of("entityType", Entity.TEST_CASE, "fqn", fqn));
+      assertEquals(authorized ? "Column details" : null, result.get("description"));
+      assertEquals(authorized ? "check" : "check [MASKED]", result.get("name"));
+    }
   }
 
   static WorkflowDefinition gitSinkWorkflow(String name) {

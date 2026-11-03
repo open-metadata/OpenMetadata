@@ -666,10 +666,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             table.getTags() != null ? new ArrayList<>(table.getTags()) : new ArrayList<>();
 
         if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-          table.getColumns().stream()
-              .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .ifPresent(column -> tags.addAll(column.getTags()));
+          ColumnUtil.findColumnByName(table.getColumns(), entityLink.getArrayFieldName())
+              .ifPresent(column -> tags.addAll(listOrEmpty(column.getTags())));
         }
 
         testCase.setTags(tags);
@@ -790,9 +788,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           table.getTags() != null ? new ArrayList<>(table.getTags()) : new ArrayList<>();
       EntityUtil.mergeTags(testCaseTags, filterMutuallyExclusiveConflicts(testCaseTags, tableTags));
       if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-        table.getColumns().stream()
-            .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
-            .findFirst()
+        ColumnUtil.findColumnByName(table.getColumns(), entityLink.getArrayFieldName())
             .ifPresent(
                 column ->
                     EntityUtil.mergeTags(
