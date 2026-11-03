@@ -35,7 +35,10 @@ describe('DocumentationLinksClassBase', () => {
     const docsURLs = documentationLinksClassBase.getDocsURLS();
 
     expect(docsURLs.WORKFLOWS_PROFILER_DOCS).toBe(
-      'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/workflow'
+      'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/profiler-workflow'
+    );
+    expect(docsURLs.DATA_QUALITY_PROFILER_WORKFLOW_DOCS).toBe(
+      'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/profiler-workflow'
     );
     expect(docsURLs.GLOSSARIES_DOCS).toBe(
       'https://docs.open-metadata.org/latest/main-concepts/metadata-standard/schemas/entity/data/glossary'
@@ -120,7 +123,7 @@ describe('DocumentationLinksClassBase', () => {
     const docsURLs = documentationLinksClassBase.getDocsURLS();
 
     expect(docsURLs.WORKFLOWS_PROFILER_DOCS).toBe(
-      `${newURL}how-to-guides/data-quality-observability/profiler/workflow`
+      `${newURL}how-to-guides/data-quality-observability/profiler/profiler-workflow`
     );
     expect(docsURLs.GLOSSARIES_DOCS).toBe(
       `${newURL}main-concepts/metadata-standard/schemas/entity/data/glossary`
