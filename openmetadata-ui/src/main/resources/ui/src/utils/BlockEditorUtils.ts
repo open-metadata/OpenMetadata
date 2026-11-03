@@ -124,8 +124,7 @@ export const transformImgTagsToFileAttachment = (
     return htmlString;
   }
 
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlString;
+  const tempDiv = new DOMParser().parseFromString(htmlString, 'text/html').body;
 
   const imgTags = tempDiv.querySelectorAll('img[src]');
 
@@ -156,7 +155,9 @@ export const transformImgTagsToFileAttachment = (
 
 export const setEditorContent = (editor: Editor, newContent: string) => {
   // Convert the markdown string to an HTML string
-  let htmlString = getHtmlStringFromMarkdownString(newContent);
+  let htmlString = getSanitizeContent(
+    getHtmlStringFromMarkdownString(newContent)
+  );
 
   // Transform img tags to file-attachment divs before Tiptap processes them
   htmlString = transformImgTagsToFileAttachment(htmlString);

@@ -20,6 +20,7 @@ import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -275,6 +276,8 @@ public class GetEntityTool implements McpTool {
       // The email is hidden from callers without PII access, as UserResource does. The user is
       // the copy maskSecrets made, so this does not touch the repository's entity.
       PIIMasker.maskUser(authorizer, securityContext, user);
+    } else if (entity instanceof TestCase testCase) {
+      PIIMasker.getTestCase(testCase, authorizer, securityContext);
     }
     Map<String, Object> entityData = JsonUtils.getMap(entity);
 
@@ -383,6 +386,9 @@ public class GetEntityTool implements McpTool {
             ctx.securityContext(),
             new OperationContext(ctx.entityType(), VIEW_ALL),
             new ResourceContext<>(ctx.entityType(), null, ctx.fqn()));
+    if (masksTestCaseContent(ctx)) {
+      return renderText(ctx, "");
+    }
     AIContext context =
         new AIContextBuilder(ctx.entityType(), ctx.fqn())
             .withQuery(ctx.options().query())
@@ -414,6 +420,9 @@ public class GetEntityTool implements McpTool {
   }
 
   private static Object knowledgeContent(IncludeContext ctx) {
+    if (masksTestCaseContent(ctx)) {
+      return renderText(ctx, "");
+    }
     String query = ctx.options().query();
     List<String> found =
         query != null && !query.isBlank() && vectorSearchEnabled()
@@ -430,6 +439,11 @@ public class GetEntityTool implements McpTool {
               : renderText(ctx, String.join("\n\n---\n\n", found));
     }
     return rendered;
+  }
+
+  private static boolean masksTestCaseContent(IncludeContext ctx) {
+    return ctx.entity() instanceof TestCase testCase
+        && PIIMasker.shouldMaskTestCase(testCase, ctx.authorizer(), ctx.securityContext());
   }
 
   /**

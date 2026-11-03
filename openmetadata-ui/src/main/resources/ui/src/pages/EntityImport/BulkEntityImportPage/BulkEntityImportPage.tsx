@@ -110,6 +110,8 @@ import {
   getCsvGridRowHeight,
   getCSVStringFromColumnsAndDataSource,
   getFailedImportRowIds,
+  normalizeCsvLineBreaks,
+  restoreFormula,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import entityBulkEditConfigClassBase, {
@@ -845,7 +847,7 @@ const BulkEntityImportPage = () => {
       // results.data is returning data with unknown type
       const cellEditable = true;
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
-        results.data as string[][],
+        (results.data as string[][]).map((row) => row.map(restoreFormula)),
         importedEntityType,
         {
           user: entityRules.canAddMultipleUserOwners,
@@ -886,7 +888,7 @@ const BulkEntityImportPage = () => {
 
   const handleLoadData = useCallback(
     (e: ProgressEvent<FileReader>, file?: File) => {
-      const result = String(e.target?.result ?? '');
+      const result = normalizeCsvLineBreaks(String(e.target?.result ?? ''));
 
       setSelectedCsvFile({
         content: result,
