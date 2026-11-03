@@ -29,6 +29,7 @@ import {
   clickGraphNode,
   createUserWithRoles,
   openPageAs,
+  createFlowConcept,
   createFlowOntology,
   findEmptyCanvasPoint,
   openOntologyInStudio,
@@ -681,6 +682,382 @@ test.describe(
           await attachStudioShot(author, testInfo, `p1-reviewed-${mode}`);
         } finally {
           await actors.cleanup();
+        }
+      });
+    }
+
+    const editDescription = async (
+      page: Page,
+      conceptId: string,
+      text: string
+    ) => {
+      await clickGraphNode(page, conceptId);
+      await page.getByTestId('ontology-concept-edit').click();
+      await page
+        .getByTestId('ontology-concept-editor')
+        .getByRole('textbox', { name: 'Description' })
+        .fill(text);
+      const saved = page.waitForResponse(
+        (response) =>
+          response.request().method() !== 'GET' &&
+          /\/api\/v1\/ontology(ChangeSets|Concepts)\//.test(response.url())
+      );
+      await page
+        .getByTestId('ontology-concept-editor')
+        .getByRole('button', { name: 'Save', exact: true })
+        .click();
+      expect((await saved).ok()).toBe(true);
+    };
+
+    for (const mode of MODES) {
+      test(`flow 7: a rejection shows its reason to the author, who edits and asks again, and withdraws the second request, in ${mode} mode`, async ({
+        browser,
+      }, testInfo) => {
+        test.slow();
+        const api = await getWorkerAdminAPIContext();
+        const actors = await reviewActors(api, browser, (id) => [id]);
+        const { authorPage: author, reviewerPage: reviewer, ontology } = actors;
+        const reason = 'Add a label to Customer.';
+        try {
+          await useMode(author, mode);
+          await openPublicationDialog(author, ontology);
+          await requestReview(author, actors.tasks);
+          await expect(
+            author.getByTestId('ontology-publication-notice-requested')
+          ).toBeVisible();
+
+          await reviewNow(reviewer, ontology);
+          await reviewer
+            .getByTestId('ontology-task-detail')
+            .getByRole('button', { name: 'Reject', exact: true })
+            .click();
+          await reviewer.getByLabel('Reason').fill(reason);
+          await decide(reviewer, 'Reject with comment');
+          await expect(
+            reviewer.getByTestId('ontology-task-detail')
+          ).toContainText(reason);
+
+          await openPublicationDialog(author, ontology);
+          await expect(
+            author.getByTestId('ontology-rejection-reason')
+          ).toHaveText(reason);
+          await expect(
+            author.getByTestId('ontology-request-review')
+          ).toBeDisabled();
+          await attachStudioShot(
+            author,
+            testInfo,
+            `p1-reject-withdraw-${mode}`
+          );
+          await closePublicationDialog(author);
+
+          await openOntologyInStudio(author, ontology.id, '&mode=edit');
+          await editDescription(
+            author,
+            actors.concept.id,
+            'Customer, relabelled'
+          );
+
+          await openPublicationDialog(author, ontology);
+          await expect(
+            author.getByTestId('ontology-request-review')
+          ).toBeEnabled();
+          const second = await requestReview(author, actors.tasks);
+          await expect(
+            author.getByTestId('ontology-publication-notice-requested')
+          ).toBeVisible();
+
+          const closed = author.waitForResponse(
+            (response) =>
+              response.url().endsWith(`/api/v1/tasks/${second.id}/close`) &&
+              response.request().method() === 'POST'
+          );
+          await author.getByTestId('ontology-withdraw-request').click();
+          expect((await closed).status()).toBe(200);
+          await expect(
+            author.getByTestId('ontology-publication-notice-withdrawn')
+          ).toContainText('withdrawn. The release is a draft again.');
+          await expect(
+            author.getByTestId('ontology-request-review')
+          ).toBeEnabled();
+
+          const releases = await okJson<{ data: OntologyRelease[] }>(
+            await api.get(`/api/v1/ontologies/${ontology.id}/releases`),
+            'List the releases'
+          );
+          const latest = await okJson<OntologyRelease>(
+            await api.get(`/api/v1/ontologyReleases/${releases.data[0].id}`),
+            'Read the withdrawn release'
+          );
+          expect(latest.entityStatus).toBe('Draft');
+        } finally {
+          await actors.cleanup();
+        }
+      });
+
+      test(`flow 8: each role sees only the actions it allows, in ${mode} mode`, async ({
+        browser,
+      }) => {
+        test.slow();
+        const api = await getWorkerAdminAPIContext();
+        const { ontology } = await createFlowOntology(api, {
+          prefix: 'pw_p1_roles',
+          concepts: ['Customer', 'Order'],
+        });
+        const state = await okJson<OntologyState>(
+          await api.get(`/api/v1/ontologies/${ontology.id}/state`),
+          'Read the fence'
+        );
+        const release = await okJson<OntologyRelease>(
+          await api.post(`/api/v1/ontologies/${ontology.id}/releases`, {
+            data: { expectedWorkingRevision: state.workingRevision },
+          }),
+          'Capture the release'
+        );
+        await okJson(
+          await api.put(`/api/v1/ontologies/${ontology.id}/activation`, {
+            data: {
+              releaseId: release.id,
+              expectedActivationRevision: state.activationRevision,
+            },
+          }),
+          'Publish the release'
+        );
+        const roles = {
+          OntologyAuthor: true,
+          DataSteward: true,
+          OntologyReviewer: false,
+          DataConsumer: false,
+        } as const;
+        const users: UserClass[] = [];
+        const pages: Page[] = [];
+        try {
+          for (const [role, canWrite] of Object.entries(roles)) {
+            const user = await createUserWithRoles(api, [
+              role as keyof typeof roles,
+            ]);
+            users.push(user);
+            const page = await openPageAs(browser, user);
+            pages.push(page);
+            await useMode(page, mode);
+            await openOntologyInStudio(page, ontology.id, '&mode=edit');
+
+            await expect(page.getByTestId('mode-tab-view')).toBeVisible();
+            await expect(page.getByTestId('mode-tab-query')).toBeVisible();
+            await expect(
+              page.getByTestId('ontology-tasks-trigger')
+            ).toBeVisible();
+            const writes = canWrite ? 1 : 0;
+            await expect(
+              page.getByTestId('mode-tab-edit'),
+              `${role} Edit tab`
+            ).toHaveCount(writes);
+            await expect(
+              page.getByTestId('ontology-publication-trigger'),
+              `${role} Publish`
+            ).toHaveCount(writes);
+            await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
+              'aria-selected',
+              canWrite ? 'false' : 'true'
+            );
+            if (canWrite) {
+              await expect(
+                page.getByTestId('ontology-add-concept')
+              ).toBeVisible();
+            } else {
+              await expect(
+                page.getByTestId('ontology-add-concept')
+              ).toHaveCount(0);
+            }
+            await page.getByTestId('ontology-scope-menu-trigger').click();
+            await expect(
+              page.getByTestId('ontology-create'),
+              `${role} Create ontology`
+            ).toHaveCount(writes);
+            await page.keyboard.press('Escape');
+          }
+          await attachStudioShot(
+            pages[pages.length - 1],
+            test.info(),
+            'p1-roles'
+          );
+        } finally {
+          await Promise.all(pages.map((page) => page.close()));
+          await removeFlowOntologies(api, [ontology]);
+          for (const user of users) {
+            await user.delete(api);
+          }
+        }
+      });
+
+      test(`flow 9: an author rolls back to an older release, View shows it, and compare lists the differences, in ${mode} mode`, async ({
+        browser,
+      }, testInfo) => {
+        test.slow();
+        const api = await getWorkerAdminAPIContext();
+        const author = await createUserWithRoles(api, ['OntologyAuthor']);
+        const { ontology, concepts } = await createFlowOntology(api, {
+          prefix: 'pw_p1_history',
+          ownerIds: [author.responseData.id],
+          concepts: ['Customer'],
+        });
+        const seal = async (notes: string) => {
+          const state = await okJson<OntologyState>(
+            await api.get(`/api/v1/ontologies/${ontology.id}/state`),
+            'Read the fence'
+          );
+          const release = await okJson<OntologyRelease>(
+            await api.post(`/api/v1/ontologies/${ontology.id}/releases`, {
+              data: {
+                expectedWorkingRevision: state.workingRevision,
+                expectedLatestReleaseRevision: state.lastReleaseRevision,
+                expectedActivationRevision: state.activationRevision,
+                versionBump: 'minor',
+                releaseNotes: notes,
+              },
+            }),
+            'Seal the release'
+          );
+          await okJson(
+            await api.put(`/api/v1/ontologies/${ontology.id}/activation`, {
+              data: {
+                releaseId: release.id,
+                expectedActivationRevision: state.activationRevision,
+              },
+            }),
+            'Publish the release'
+          );
+
+          return release;
+        };
+        const page = await openPageAs(browser, author);
+        try {
+          const first = await seal('first cut');
+          await okJson(
+            await api.patch(`/api/v1/ontologyConcepts/${concepts[0].id}`, {
+              headers: { 'Content-Type': 'application/json-patch+json' },
+              data: [
+                { op: 'replace', path: '/description', value: 'Customer v2' },
+              ],
+            }),
+            'Edit the concept'
+          );
+          await createFlowConcept(api, ontology, 'Invoice');
+          const second = await seal('second pass');
+          expect([first.semanticVersion, second.semanticVersion]).toEqual([
+            '0.1.0',
+            '0.2.0',
+          ]);
+
+          await useMode(page, mode);
+          await openOntologyInStudio(page, ontology.id);
+          await page.getByTestId('ontology-release-history-trigger').click();
+          await expect(page.getByTestId('ontology-release-row')).toHaveCount(2);
+
+          await page
+            .getByRole('button', { name: 'From version', exact: true })
+            .click();
+          await page.getByText('0.1.0 (').click();
+          await page
+            .getByRole('button', { name: 'To version', exact: true })
+            .click();
+          await page.getByText('0.2.0 (').click();
+          await expect(
+            page.getByTestId('ontology-compare-added')
+          ).toContainText('Invoice');
+          await expect(
+            page.getByTestId('ontology-compare-changed')
+          ).toContainText('Customer');
+          await expect(page.getByTestId('ontology-compare-counts')).toHaveText(
+            '2 changes · 2 concepts'
+          );
+          await attachStudioShot(page, testInfo, `p1-history-compare-${mode}`);
+
+          await page.getByTestId(`ontology-release-select-${first.id}`).click();
+          const activation = page.waitForResponse(isActivation(ontology.id));
+          await page.getByTestId('ontology-rollback-release').click();
+          await clickIgnoringToasts(
+            page.getByTestId('ontology-rollback-confirm')
+          );
+          const rolled = await okJson<OntologyState>(
+            await activation,
+            'Roll back'
+          );
+          expect(rolled.activeReleaseId).toBe(first.id);
+          await closePublicationDialog(page);
+
+          await page.getByTestId('mode-tab-view').click();
+          await page.getByTestId('ontology-version-published').click();
+          await expect(
+            page.getByTestId('ontology-release-history-trigger')
+          ).toContainText('v0.1.0');
+          await page.getByTestId('submode-tab-tree').click();
+          await expect(
+            page.getByTestId('ontology-tree-term-' + concepts[0].id)
+          ).toBeVisible();
+          await expect(page.getByRole('treegrid').getByRole('row')).toHaveCount(
+            1
+          );
+          await attachStudioShot(page, testInfo, `p1-history-${mode}`);
+        } finally {
+          await page.close();
+          await removeFlowOntologies(api, [ontology]);
+          await author.delete(api);
+        }
+      });
+
+      test(`flow 10: the tree and the graph reach every concept from the keyboard and Enter opens it, in ${mode} mode`, async ({
+        isolatedUserPage: page,
+      }, testInfo) => {
+        test.slow();
+        const api = await getWorkerAdminAPIContext();
+        const { ontology, concepts } = await createFlowOntology(api, {
+          prefix: 'pw_p1_keys',
+          concepts: ['Alpha', 'Bravo', 'Charlie'],
+        });
+        const inspector = page.getByTestId('ontology-concept-inspector');
+        try {
+          await useMode(page, mode);
+          await openOntologyInStudio(page, ontology.id);
+
+          await page.getByTestId('submode-tab-tree').click();
+          const rows = page.getByRole('treegrid').getByRole('row');
+          await expect(rows).toHaveCount(3);
+          await page
+            .getByTestId(`ontology-tree-term-${concepts[0].id}`)
+            .focus();
+          for (const [index, concept] of concepts.entries()) {
+            await expect(
+              page.getByTestId(`ontology-tree-term-${concept.id}`)
+            ).toBeFocused();
+            await page.keyboard.press('Enter');
+            await expect(inspector).toContainText(concept.name);
+            if (index < concepts.length - 1) {
+              await page
+                .getByTestId(`ontology-tree-term-${concept.id}`)
+                .focus();
+              await page.keyboard.press('ArrowDown');
+            }
+          }
+          await attachStudioShot(page, testInfo, `p1-keyboard-${mode}`);
+
+          await page.getByTestId('submode-tab-graph').click();
+          const list = page.getByRole('listbox', { name: 'Concepts (3)' });
+          let presses = 0;
+          while (
+            !(await list.evaluate((el) => el === document.activeElement)) &&
+            presses < 150
+          ) {
+            await page.keyboard.press('Tab');
+            presses += 1;
+          }
+          await expect(list).toBeFocused();
+          const names = (await list.getByRole('option').allTextContents()).map(
+            (name) => name.trim()
+          );
+          expect(names.sort()).toEqual(['Alpha', 'Bravo', 'Charlie']);
+        } finally {
+          await removeFlowOntologies(api, [ontology]);
         }
       });
     }

@@ -771,6 +771,24 @@ export interface FlowOntologyOptions {
   concepts?: string[];
 }
 
+export async function createFlowConcept(
+  api: APIRequestContext,
+  ontology: Ontology,
+  label: string
+): Promise<OntologyConcept> {
+  return okJson<OntologyConcept>(
+    await api.post('/api/v1/ontologyConcepts', {
+      data: {
+        name: label,
+        ontology: ontology.fullyQualifiedName,
+        conceptType: 'OWL_CLASS',
+        description: `${label} definition`,
+      },
+    }),
+    `Create the ${label} concept`
+  );
+}
+
 /** An ontology with a name unique to the run, because hard delete archives one that has releases and archived names stay taken. */
 export async function createFlowOntology(
   api: APIRequestContext,
@@ -796,19 +814,7 @@ export async function createFlowOntology(
   );
   const created: OntologyConcept[] = [];
   for (const label of concepts) {
-    created.push(
-      await okJson<OntologyConcept>(
-        await api.post('/api/v1/ontologyConcepts', {
-          data: {
-            name: label,
-            ontology: ontology.fullyQualifiedName,
-            conceptType: 'OWL_CLASS',
-            description: `${label} definition`,
-          },
-        }),
-        `Create the ${label} concept`
-      )
-    );
+    created.push(await createFlowConcept(api, ontology, label));
   }
 
   return { ontology, concepts: created };
