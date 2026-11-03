@@ -146,6 +146,25 @@ public final class OntologyStructureValidator {
         .withViolations(List.copyOf(violations));
   }
 
+  /**
+   * Checks every definition of a working draft the way capture will, so a clash that a single
+   * save could not see (a new subclass edge above classes already under a disjoint pair) shows up
+   * before the release is captured. Clashes are errors here because capture rejects them.
+   */
+  public static OntologyProfileReport validateDraft(final List<OntologyDefinition> values) {
+    final var validator =
+        validateWorkingDefinitions(
+            values, values.stream().map(OntologyDefinition::getId).collect(Collectors.toSet()));
+    final var violations =
+        new ArrayList<>(
+            validator.findings.stream().map(OntologyReleaseStructureIssue::getViolation).toList());
+    OntologyDisjointnessClashes.find(values)
+        .forEach(clash -> violations.add(clashViolation(clash)));
+    return new OntologyProfileReport()
+        .withValid(violations.isEmpty())
+        .withViolations(List.copyOf(violations));
+  }
+
   private static OntologyProfileViolation clashViolation(
       final OntologyDisjointnessClashes.Clash clash) {
     return new OntologyProfileViolation()

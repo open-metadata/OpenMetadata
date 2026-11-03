@@ -89,6 +89,7 @@ export interface OntologyNode {
   isDataModeSeed?: boolean;
   lineageNotes?: LineageNote[];
   proposal?: OntologyProposalRef;
+  hasConflict?: boolean;
 }
 
 export interface LineageNote {
@@ -184,6 +185,7 @@ export interface OntologyGraphProps {
   hierarchyCombos?: HierarchyComboInfo[];
   focusNodeId?: string | null;
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  conflictEdgeKeys?: ReadonlySet<string>;
   isAuthoringMode?: boolean;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
@@ -320,6 +322,7 @@ export interface BuildGraphDataProps {
   layoutType: LayoutEngineType;
   hierarchyCombos?: HierarchyComboInfo[];
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  conflictEdgeKeys?: ReadonlySet<string>;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
   relationColors?: Record<string, string>;
