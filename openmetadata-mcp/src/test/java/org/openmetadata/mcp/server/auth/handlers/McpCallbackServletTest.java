@@ -13,8 +13,6 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import jakarta.servlet.ServletOutputStream;
@@ -36,9 +34,11 @@ import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.validators.IdTokenValidator;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
-import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.OidcIdentityResolver;
+import org.openmetadata.service.util.UserUtil;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
 class McpCallbackServletTest {
@@ -132,30 +132,6 @@ class McpCallbackServletTest {
       when(request.getParameter("error_description")).thenReturn(errorDescription);
     }
     return request;
-  }
-
-  @Test
-  void getClaimsMapping_keepsClaimNamesThatContainAColon() throws Exception {
-    // Without the colon-safe split, both entries are dropped and the username falls back to the
-    // email prefix, which can name a different OpenMetadata user than the web login resolves.
-    AuthenticationConfiguration authConfig =
-        new AuthenticationConfiguration()
-            .withJwtPrincipalClaimsMapping(List.of("username:custom:login", "email:custom:mail"));
-    Map<String, Object> claims =
-        Map.of(
-            "custom:login", "employee42",
-            "custom:mail", "employee42@corp.example",
-            "email", "jdoe@example.com");
-
-    try (MockedStatic<SecurityConfigurationManager> scm =
-        mockStatic(SecurityConfigurationManager.class)) {
-      scm.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(authConfig);
-      Map<String, String> mapping = invokeGetClaimsMapping(makeServlet());
-
-      assertThat(findUserNameFromClaims(mapping, List.of("email"), claims)).isEqualTo("employee42");
-      assertThat(findEmailFromClaims(mapping, List.of("email"), claims, ""))
-          .isEqualTo("employee42@corp.example");
-    }
   }
 
   @Test
@@ -302,6 +278,43 @@ class McpCallbackServletTest {
   @Test
   void doGet_completedLogin_usesTheCredentialsThisCallbackValidated() throws Exception {
     UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+
+    HttpServletRequest request =
+        completeLogin(provider, new AuthenticationConfiguration(), "alice@example.com");
+
+    verify(provider)
+        .handleSSOCallbackWithDbState(
+            eq(request), any(), eq("alice"), eq("alice@example.com"), eq("mcp:auth-req-1"));
+  }
+
+  @Test
+  void doGet_emailFirstLogin_usesTheAccountThatOwnsTheEmail() throws Exception {
+    // "john" belongs to john@corp.example, so john@partner.example was provisioned as john_x1y2.
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    try (MockedStatic<UserUtil> userUtil = mockStatic(UserUtil.class)) {
+      userUtil
+          .when(() -> UserUtil.resolveUserNameForEmail("john@partner.example"))
+          .thenReturn("john_x1y2");
+
+      HttpServletRequest request =
+          completeLogin(
+              provider,
+              new AuthenticationConfiguration().withEmailClaim("email"),
+              "john@partner.example");
+
+      verify(provider)
+          .handleSSOCallbackWithDbState(
+              eq(request),
+              any(),
+              eq("john_x1y2"),
+              eq("john@partner.example"),
+              eq("mcp:auth-req-1"));
+    }
+  }
+
+  private static HttpServletRequest completeLogin(
+      UserSSOOAuthProvider provider, AuthenticationConfiguration authConfig, String email)
+      throws Exception {
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
     when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
     HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
@@ -325,18 +338,21 @@ class McpCallbackServletTest {
             })
         .when(ssoHandler)
         .handleCallback(any(), any());
+    when(ssoHandler.resolveOidcIdentity(any()))
+        .thenAnswer(
+            call ->
+                new OidcIdentityResolver(
+                        authConfig, new AuthorizerConfiguration(), Map.of(), List.of("email"), "")
+                    .resolve(call.getArgument(0)));
     McpCallbackServlet servlet = makeServletWithHandler(provider, pendingRepo, ssoHandler);
     IdTokenValidator validator = mock(IdTokenValidator.class);
     when(validator.validateAndDecode("this.id.token"))
-        .thenReturn(new JWTClaimsSet.Builder().claim("email", "alice@example.com").build());
+        .thenReturn(new JWTClaimsSet.Builder().claim("email", email).build());
     setField(servlet, "idTokenValidator", validator);
     setField(servlet, "validatorBuiltFrom", ssoHandler);
 
     servlet.doGet(request, mock(HttpServletResponse.class));
-
-    verify(provider)
-        .handleSSOCallbackWithDbState(
-            eq(request), any(), eq("alice"), eq("alice@example.com"), eq("mcp:auth-req-1"));
+    return request;
   }
 
   private static McpCallbackServlet makeServletWithHandler(
@@ -391,14 +407,6 @@ class McpCallbackServletTest {
   private static McpCallbackServlet makeServlet() {
     return new McpCallbackServlet(
         mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class));
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Map<String, String> invokeGetClaimsMapping(McpCallbackServlet servlet)
-      throws Exception {
-    Method m = McpCallbackServlet.class.getDeclaredMethod("getClaimsMapping");
-    m.setAccessible(true);
-    return (Map<String, String>) m.invoke(servlet);
   }
 
   private static HttpServletResponse newBufferedResponse(HttpServletResponse response)
