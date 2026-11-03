@@ -90,6 +90,15 @@ public interface GovernanceDAOs {
       return false;
     }
 
+    /** JSON of every domain with a style; served to chips by id from {@code /v1/domains/styles}. */
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM domain_entity WHERE JSON_EXTRACT(json, '$.style') IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM domain_entity WHERE json -> 'style' IS NOT NULL",
+        connectionType = POSTGRES)
+    List<String> listStyledJson();
+
     /** Ids of the domain with {@code fqnHash} and of every domain nested under it. */
     @SqlQuery(
         "SELECT id FROM domain_entity WHERE fqnHash = :fqnHash OR fqnHash LIKE :fqnHashPrefix")
@@ -218,6 +227,16 @@ public interface GovernanceDAOs {
     default String getTableName() {
       return "data_product_entity";
     }
+
+    /** JSON of every data product with a style; served to chips by id from {@code /v1/domains/styles}. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM data_product_entity WHERE JSON_EXTRACT(json, '$.style') IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM data_product_entity WHERE json -> 'style' IS NOT NULL",
+        connectionType = POSTGRES)
+    List<String> listStyledJson();
 
     @Override
     default Class<DataProduct> getEntityClass() {

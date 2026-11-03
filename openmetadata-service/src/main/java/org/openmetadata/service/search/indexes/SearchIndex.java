@@ -43,7 +43,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ReferenceStyles;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -207,9 +206,6 @@ public interface SearchIndex {
         "ownerName",
         ownersList.stream().map(EntityReference::getName).filter(n -> !nullOrEmpty(n)).toList());
     doc.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
-    if (entity.getDataProducts() != null) {
-      doc.put("dataProducts", getEntitiesWithDisplayName(entity.getDataProducts()));
-    }
     doc.put("reviewers", getEntitiesWithDisplayName(entity.getReviewers()));
     doc.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
     doc.put(
@@ -272,7 +268,6 @@ public interface SearchIndex {
           nullOrEmpty(cloneEntity.getDisplayName())
               ? cloneEntity.getName()
               : cloneEntity.getDisplayName());
-      ReferenceStyles.apply(cloneEntity);
       clone.add(cloneEntity);
     }
     return clone;

@@ -26,8 +26,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,8 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.api.domains.DomainStyles;
+import org.openmetadata.schema.api.domains.EntityStyle;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -68,6 +72,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for Domain entity operations.
@@ -1596,138 +1601,67 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     verifyDomainInSearch(siblingFqn, sibling.getId().toString());
   }
 
-  // References to a domain carried no style, so every domain chip fell back to the default colour
-  // and icon. ADR:2026-11-02-references-to-styled-entities-carry-their-colour-and-icon
+  // Domain and data product references carry no style, so chips look the colour and icon up by id
+  // from this list. ADR:2026-11-02-domain-chips-resolve-their-style-by-domain-id
   @Test
-  void test_domainReferencesCarryTheDomainStyle(TestNamespace ns) throws Exception {
+  void test_listStylesReturnsStyledDomainsAndDataProducts(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    ObjectMapper mapper = new ObjectMapper();
-    Domain domain =
+    Domain styled =
         createEntity(
             new CreateDomain()
                 .withName(ns.prefix("styled_domain"))
                 .withDomainType(DomainType.AGGREGATE)
-                .withDescription("Domain whose style its references carry")
+                .withDescription("Domain with a style")
                 .withStyle(
                     new Style()
                         .withColor("#F14C75")
                         .withIconURL("Database01")
                         .withCoverImage(
                             new CoverImage().withUrl("https://example.com/cover.png"))));
-    Table asset = createTableInDomain(ns, "style", domain.getFullyQualifiedName());
-    String assetId = asset.getId().toString();
-    awaitAssetReferenceStyle(client, mapper, assetId, "domains", "#F14C75", "Database01");
-
-    Style style = client.tables().get(assetId, "domains").getDomains().get(0).getStyle();
-    assertNotNull(style, "a single read carries the domain style");
-    assertEquals("#F14C75", style.getColor());
-    assertEquals("Database01", style.getIconURL());
-    assertNull(style.getCoverImage(), "a reference carries colour and icon only");
-
-    Table listed =
-        client
-            .tables()
-            .list(
-                new ListParams()
-                    .setFields("domains")
-                    .setDatabaseSchema(asset.getDatabaseSchema().getFullyQualifiedName()))
-            .getData()
-            .get(0);
-    assertEquals("#F14C75", listed.getDomains().get(0).getStyle().getColor(), "a list read too");
-
-    domain.setStyle(new Style().withColor("#1470EF").withIconURL("Globe01"));
-    patchEntity(domain.getId().toString(), domain);
-
-    Style restyled = client.tables().get(assetId, "domains").getDomains().get(0).getStyle();
-    assertEquals("#1470EF", restyled.getColor(), "a restyle shows on the next read");
-    assertEquals("Globe01", restyled.getIconURL());
-    awaitAssetReferenceStyle(client, mapper, assetId, "domains", "#1470EF", "Globe01");
-
-    Domain other =
+    Domain plain =
         createEntity(
             new CreateDomain()
-                .withName(ns.prefix("styled_domain_other"))
+                .withName(ns.prefix("plain_domain"))
                 .withDomainType(DomainType.AGGREGATE)
-                .withDescription("Second styled domain the asset moves into")
-                .withStyle(new Style().withColor("#7D81E9").withIconURL("Bank")));
-    Table moved = client.tables().get(assetId, "domains");
-    moved.setDomains(List.of(other.getEntityReference()));
-    Table updated = client.tables().update(assetId, moved);
-    assertEquals(
-        "#7D81E9", updated.getDomains().get(0).getStyle().getColor(), "a write response too");
-    awaitAssetReferenceStyle(client, mapper, assetId, "domains", "#7D81E9", "Bank");
-  }
-
-  @Test
-  void test_dataProductReferencesCarryTheDataProductStyle(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    ObjectMapper mapper = new ObjectMapper();
-    Domain domain =
-        createEntity(
-            new CreateDomain()
-                .withName(ns.prefix("dp_style_domain"))
-                .withDomainType(DomainType.AGGREGATE)
-                .withDescription("Domain of the styled data product"));
+                .withDescription("Domain without a style"));
     DataProduct dataProduct =
         client
             .dataProducts()
             .create(
                 new CreateDataProduct()
                     .withName(ns.prefix("styled_dp"))
-                    .withDescription("Data product whose style its references carry")
-                    .withDomains(List.of(domain.getFullyQualifiedName()))
+                    .withDescription("Data product with a style")
+                    .withDomains(List.of(styled.getFullyQualifiedName()))
                     .withStyle(new Style().withColor("#12B76A").withIconURL("Cube01")));
-    Table asset = createTableInDomain(ns, "dp_style", domain.getFullyQualifiedName());
-    String assetId = asset.getId().toString();
-    Table withProduct = client.tables().get(assetId, "domains,dataProducts");
-    withProduct.setDataProducts(List.of(dataProduct.getEntityReference()));
-    client.tables().update(assetId, withProduct);
 
-    Style style = client.tables().get(assetId, "dataProducts").getDataProducts().get(0).getStyle();
-    assertNotNull(style, "a read carries the data product style");
-    assertEquals("#12B76A", style.getColor());
-    assertEquals("Cube01", style.getIconURL());
-    awaitAssetReferenceStyle(client, mapper, assetId, "dataProducts", "#12B76A", "Cube01");
+    Map<UUID, EntityStyle> styles = listStylesById(client);
 
-    dataProduct.setStyle(new Style().withColor("#F79009").withIconURL("Tag01"));
-    client.dataProducts().update(dataProduct.getId().toString(), dataProduct);
-    awaitAssetReferenceStyle(client, mapper, assetId, "dataProducts", "#F79009", "Tag01");
+    EntityStyle domainStyle = styles.get(styled.getId());
+    assertNotNull(domainStyle, "a styled domain is listed");
+    assertEquals(Entity.DOMAIN, domainStyle.getType());
+    assertEquals("#F14C75", domainStyle.getStyle().getColor());
+    assertEquals("Database01", domainStyle.getStyle().getIconURL());
+    assertNull(domainStyle.getStyle().getCoverImage(), "only the colour and icon");
+    assertFalse(styles.containsKey(plain.getId()), "a domain without a style is omitted");
+    assertEquals(Entity.DATA_PRODUCT, styles.get(dataProduct.getId()).getType());
+    assertEquals("#12B76A", styles.get(dataProduct.getId()).getStyle().getColor());
+
+    styled.setStyle(new Style().withColor("#1470EF").withIconURL("Globe01"));
+    patchEntity(styled.getId().toString(), styled);
+
+    assertEquals(
+        "#1470EF",
+        listStylesById(client).get(styled.getId()).getStyle().getColor(),
+        "a restyle shows on the next request");
   }
 
-  private void awaitAssetReferenceStyle(
-      OpenMetadataClient client,
-      ObjectMapper mapper,
-      String tableId,
-      String referenceField,
-      String expectedColor,
-      String expectedIcon) {
-    Awaitility.await(
-            "asset " + tableId + " search doc " + referenceField + " style " + expectedColor)
-        .atMost(Duration.ofSeconds(60))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(1))
-        .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              String response =
-                  client
-                      .search()
-                      .query("id:" + tableId)
-                      .index("table_search_index")
-                      .size(1)
-                      .execute();
-              JsonNode reference =
-                  mapper
-                      .readTree(response)
-                      .path("hits")
-                      .path("hits")
-                      .get(0)
-                      .path("_source")
-                      .path(referenceField)
-                      .get(0);
-              assertEquals(expectedColor, reference.path("style").path("color").asText());
-              assertEquals(expectedIcon, reference.path("style").path("iconURL").asText());
-            });
+  private Map<UUID, EntityStyle> listStylesById(OpenMetadataClient client) {
+    DomainStyles styles =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, "/v1/domains/styles", null, DomainStyles.class);
+    return styles.getData().stream()
+        .collect(Collectors.toMap(EntityStyle::getId, Function.identity()));
   }
 
   private Table createTableInDomain(TestNamespace ns, String suffix, String domainFqn) {

@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { EntityReference } from '../../../generated/entity/type';
+import { getDomainStyles } from '../../../rest/domainAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import DomainTags from './DomainTags';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -75,6 +77,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('../../../rest/domainAPI', () => ({
+  getDomainStyles: jest.fn(),
+}));
+
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: (fqn?: string) => `/domain/${fqn}`,
 }));
@@ -91,15 +97,21 @@ const makeDomain = (
   ...extra,
 });
 
+const mockGetDomainStyles = getDomainStyles as jest.Mock;
+
 describe('DomainTags', () => {
+  beforeEach(() => {
+    mockGetDomainStyles.mockResolvedValue({ data: [] });
+  });
+
   it('should render the empty placeholder when there are no domains', () => {
-    render(<DomainTags domains={[]} />);
+    renderWithQueryClient(<DomainTags domains={[]} />);
 
     expect(screen.getByTestId('no-domain-text')).toBeInTheDocument();
   });
 
   it('should render a chip for each domain linking to its detail page', () => {
-    render(<DomainTags domains={[makeDomain('Finance')]} />);
+    renderWithQueryClient(<DomainTags domains={[makeDomain('Finance')]} />);
 
     const chip = screen.getByTestId('domain-tag-Finance');
 
@@ -107,24 +119,30 @@ describe('DomainTags', () => {
     expect(chip).toHaveAttribute('data-href', '/domain/Finance');
   });
 
-  // The chip used to ignore the domain's custom colour and icon and always
-  // draw the default.
-  it("should draw each chip in its domain's own colour and icon", () => {
-    render(
-      <DomainTags
-        domains={[
-          makeDomain('Sales', {
-            style: { color: '#F14C75', iconURL: 'Database01' },
-          }),
-          makeDomain('Plain'),
-        ]}
-      />
+  // Domain references carry no style, so a chip looks its domain's colour and
+  // icon up by id; before that every chip drew the default.
+  it("should draw each chip in its domain's own colour and icon, from one styles request", async () => {
+    mockGetDomainStyles.mockResolvedValue({
+      data: [
+        {
+          id: 'Sales',
+          type: 'domain',
+          style: { color: '#F14C75', iconURL: 'Database01' },
+        },
+      ],
+    });
+
+    renderWithQueryClient(
+      <DomainTags domains={[makeDomain('Sales'), makeDomain('Plain')]} />
     );
 
-    expect(screen.getByTestId('domain-tag-Sales')).toHaveAttribute(
-      'data-color',
-      '#F14C75'
+    await waitFor(() =>
+      expect(screen.getByTestId('domain-tag-Sales')).toHaveAttribute(
+        'data-color',
+        '#F14C75'
+      )
     );
+
     expect(screen.getByTestId('domain-tag-Sales')).toHaveAttribute(
       'data-icon',
       'Database01'
@@ -133,10 +151,11 @@ describe('DomainTags', () => {
       'data-color',
       ''
     );
+    expect(mockGetDomainStyles).toHaveBeenCalledTimes(1);
   });
 
   it('should mark inherited domains and pass the translated inherited label', () => {
-    render(
+    renderWithQueryClient(
       <DomainTags domains={[makeDomain('Finance', { inherited: true })]} />
     );
 
@@ -149,7 +168,7 @@ describe('DomainTags', () => {
   });
 
   it('should not pass the inherited flag when showInheritedIcon is false', () => {
-    render(
+    renderWithQueryClient(
       <DomainTags
         domains={[makeDomain('Finance', { inherited: true })]}
         showInheritedIcon={false}
@@ -164,7 +183,7 @@ describe('DomainTags', () => {
 
   it('should render removable chips (no href) when onRemove is provided', () => {
     const onRemove = jest.fn();
-    render(
+    renderWithQueryClient(
       <DomainTags domains={[makeDomain('Finance')]} onRemove={onRemove} />
     );
 
@@ -181,7 +200,7 @@ describe('DomainTags', () => {
 
   it('should collapse domains beyond maxVisible behind a "+N More" toggle', () => {
     const domains = [makeDomain('A'), makeDomain('B'), makeDomain('C')];
-    render(<DomainTags domains={domains} maxVisible={2} />);
+    renderWithQueryClient(<DomainTags domains={domains} maxVisible={2} />);
 
     expect(screen.getByTestId('domain-tag-A')).toBeInTheDocument();
     expect(screen.getByTestId('domain-tag-B')).toBeInTheDocument();

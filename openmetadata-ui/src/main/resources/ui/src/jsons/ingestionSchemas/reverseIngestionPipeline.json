@@ -117,10 +117,6 @@
                         "description": "Link to the entity resource.",
                         "type": "string",
                         "format": "uri"
-                      },
-                      "style": {
-                        "description": "Colour and icon of the referenced entity, set on references to styled entities (domains, data products) in API responses and search documents, so a client can draw the reference without fetching the entity.",
-                        "$ref": "#/definitions/operation/properties/parameters/oneOf/2/properties/addedTags/items/properties/style"
                       }
                     },
                     "required": [

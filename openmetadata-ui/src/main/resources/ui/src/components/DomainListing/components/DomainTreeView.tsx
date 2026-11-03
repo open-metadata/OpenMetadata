@@ -24,6 +24,7 @@ import {
   NoSearch,
   Plus as Expand,
 } from '@openmetadata/ui-core-components/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -45,6 +46,7 @@ import {
   removeFollower,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { invalidateDomainStyles } from '../../../rest/queries/domainStyleQuery';
 import { domainBuildESQuery } from '../../../utils/DomainFilterUtils';
 import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -143,6 +145,7 @@ const DomainTreeView = ({
 }: DomainTreeViewProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { currentUser } = useApplicationStore();
   const { userDomains, isDomainRestricted } = useDomainStore();
   const { permissions } = usePermissionProvider();
@@ -643,6 +646,7 @@ const DomainTreeView = ({
           jsonPatch as unknown as JsonPathOperation[]
         );
         setSelectedDomain(response);
+        void invalidateDomainStyles(queryClient);
 
         if (response.fullyQualifiedName) {
           setSelectedFqn(response.fullyQualifiedName);
@@ -655,7 +659,7 @@ const DomainTreeView = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [refreshAll, selectedDomain]
+    [queryClient, refreshAll, selectedDomain]
   );
 
   const handleDomainDelete = useCallback(async () => {

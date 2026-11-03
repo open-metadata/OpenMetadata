@@ -114,13 +114,6 @@ public final class JsonUtils {
           "/testCaseResultSummary",
           "/summary");
 
-  // The server fills the style of domain, data-product and child references in each response
-  // (ADR:2026-11-02-references-to-styled-entities-carry-their-colour-and-icon); the stored entity
-  // never holds it, so a patch diffed against a response must not touch it. The entity's own
-  // /style stays patchable.
-  private static final Pattern REFERENCE_STYLE_PATCH_PATH =
-      Pattern.compile("^/(domains|dataProducts|children)/\\d+/style(/.*)?$");
-
   static {
     // Quoted "Z" to indicate UTC, no timezone offset
     DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
@@ -400,7 +393,7 @@ public final class JsonUtils {
     if (path == null || path.isBlank()) {
       return false;
     }
-    if (path.endsWith("href") || REFERENCE_STYLE_PATCH_PATH.matcher(path).matches()) {
+    if (path.endsWith("href")) {
       return true;
     }
     return READ_ONLY_PATCH_ROOT_FIELDS.stream()
