@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InheritedBadge } from '../../../icons/InheritedBadge';
 import { Teams as TeamsIcon } from '../../../icons/Teams';
 import type { ReactNode } from 'react';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
@@ -21,6 +20,7 @@ import {
   getOwnerRenderer,
   resolveOwnerHref,
 } from '../../application/owner/owner-renderer';
+import { OwnerInheritedBadge } from '../../application/owner/owner-inherited-badge';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
 import type { AvatarSize, OwnerEntityReference } from '../../../types';
 import { getFirstAlphanumeric } from './utils';
@@ -94,14 +94,7 @@ export const AvatarGroup = ({
         alt={nameStr}
         badge={
           owner.inherited ? (
-            <InheritedBadge
-              aria-hidden={false}
-              aria-label={t('label.inherited')}
-              className="tw:absolute tw:-right-0.5 tw:-bottom-0.5 tw:text-fg-secondary"
-              data-testid="inherited-owner-icon"
-              role="img"
-              size={12}
-            />
+            <OwnerInheritedBadge size={resolvedSize} />
           ) : undefined
         }
         className={isTeam ? 'tw:bg-utility-gray-200' : undefined}

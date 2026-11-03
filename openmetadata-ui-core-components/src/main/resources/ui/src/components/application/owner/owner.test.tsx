@@ -286,4 +286,23 @@ describe('Owner inherited badge', () => {
     expect(screen.getByRole('link', { name: /^user1, \S/ })).toBeVisible();
     expect(screen.getByRole('link', { name: 'user2' })).toBeVisible();
   });
+
+  it('scales the badge with the avatar size', () => {
+    const { unmount } = render(
+      <Owner avatarSize={24} owners={[inheritedUser]} />
+    );
+
+    expect(screen.getByTestId('inherited-owner-icon')).toHaveAttribute(
+      'width',
+      '10'
+    );
+
+    unmount();
+    render(<Owner avatarSize={64} owners={[inheritedUser]} />);
+
+    expect(screen.getByTestId('inherited-owner-icon')).toHaveAttribute(
+      'width',
+      '20'
+    );
+  });
 });
