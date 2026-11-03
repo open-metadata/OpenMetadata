@@ -200,37 +200,45 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
     }
   });
 
-  test('refuses the authoring lease to a steward without EditAll on the glossary', async ({
+  test('offers a steward without EditAll no Edit tab, because every glossary Edit-mode write is refused', async ({
     browser,
   }) => {
     const { page, apiContext, afterAction } = await performUserLogin(
       browser,
       plainSteward
     );
+    const glossary = fixture.glossary.responseData;
 
     try {
-      const response = await apiContext.post(
-        '/api/v1/ontologyEditLocks/acquire',
-        {
-          data: {
-            leaseSeconds: 60,
-            resourceId: fixture.glossary.responseData.id,
-            resourceType: 'glossary',
-            sessionId: `pw-plain-${uuid()}`,
-          },
-        }
-      );
+      const lease = await apiContext.post('/api/v1/ontologyEditLocks/acquire', {
+        data: {
+          leaseSeconds: 60,
+          resourceId: glossary.id,
+          resourceType: 'glossary',
+          sessionId: `pw-plain-${uuid()}`,
+        },
+      });
+      expect(lease.status()).toBe(403);
 
-      expect(response.status()).toBe(403);
+      const changeSet = await apiContext.post('/api/v1/ontologyChangeSets', {
+        data: {
+          description: 'Steward draft',
+          displayName: 'Steward draft',
+          glossaries: [glossary.fullyQualifiedName],
+          name: `pw_plain_cs_${suffix}`,
+        },
+      });
+      expect(changeSet.status()).toBe(403);
 
       await navigateToOntologyStudio(page);
       await fixture.selectInStudio(page);
-      await page.getByTestId('mode-tab-edit').click();
-      await expect(
-        page
-          .getByTestId('ontology-edit-lease-status')
-          .getByRole('button', { name: 'Retry' })
-      ).toBeVisible();
+      await expect(page.getByTestId('mode-tab-view')).toBeVisible();
+      await expect(page.getByTestId('mode-tab-edit')).toBeHidden();
+
+      await page.goto(`${page.url()}&mode=edit`);
+      await expect(page.getByTestId('mode-tab-view')).toBeVisible();
+      await expect(page.getByTestId('mode-tab-edit')).toBeHidden();
+      await expect(page.getByTestId('ontology-edit-lease-status')).toBeHidden();
     } finally {
       await afterAction();
     }
