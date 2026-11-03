@@ -5592,7 +5592,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /** Checked by the restore endpoint only; upserts and cascades that restore do not call it. */
-  public void validateRestore(T entity) {}
+  public void validateRestore(UUID id) {}
 
   @FunctionalInterface
   protected interface DeleteLifecycle extends AutoCloseable {
