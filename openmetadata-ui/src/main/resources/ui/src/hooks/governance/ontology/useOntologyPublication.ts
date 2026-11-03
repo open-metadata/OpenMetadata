@@ -184,6 +184,10 @@ export const useOntologyPublication = (
       return value;
     },
   });
+  // A ref, so the task title reads the loaded name without changing the
+  // identity of the callbacks that submit the review.
+  const ontologyName = useRef('');
+  ontologyName.current = getEntityName(projection.data);
   const state = useQuery({
     queryKey: ['ontology-state', ontologyId, userId],
     retry: false,
@@ -393,6 +397,10 @@ export const useOntologyPublication = (
         task = await createTask({
           category: TaskCategory.Approval,
           type: TaskType.RequestApproval,
+          displayName: t('message.ontology-review-task-title', {
+            ontology: ontologyName.current,
+            version: releaseVersion(attempt.release),
+          }),
           about: getEntityFeedLink(
             'ontologyRelease',
             attempt.release.fullyQualifiedName
@@ -425,7 +433,7 @@ export const useOntologyPublication = (
         taskHref: getTaskDetailPath(task),
       });
     },
-    [showNotice, storeReceipt]
+    [showNotice, storeReceipt, t]
   );
   const reconcileActivation = useCallback(
     async (

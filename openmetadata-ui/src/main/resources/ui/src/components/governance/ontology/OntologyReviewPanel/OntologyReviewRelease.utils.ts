@@ -1,0 +1,114 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+export interface FieldChange {
+  field: string;
+  before?: string;
+  after?: string;
+}
+
+// Bookkeeping the server rewrites on every save: it differs between any two
+// snapshots and says nothing about what the author changed.
+const IGNORED_FIELDS = new Set([
+  'updatedAt',
+  'updatedBy',
+  'version',
+  'href',
+  'changeDescription',
+  'incrementalChangeDescription',
+]);
+
+const LABEL_KEYS = [
+  'displayName',
+  'name',
+  'label',
+  'iri',
+  'fullyQualifiedName',
+];
+
+type Leaves = Map<string, string>;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const itemLabel = (item: unknown): string | undefined => {
+  if (!isRecord(item)) {
+    return item === null || item === undefined ? undefined : String(item);
+  }
+  const key = LABEL_KEYS.find(
+    (candidate) => typeof item[candidate] === 'string'
+  );
+
+  return key ? String(item[key]) : undefined;
+};
+
+const collect = (value: unknown, path: string, leaves: Leaves) => {
+  if (value === null || value === undefined || value === '') {
+    return;
+  }
+  if (Array.isArray(value)) {
+    const labels = value.map(itemLabel);
+    if (labels.every((label) => label !== undefined)) {
+      if (labels.length) {
+        leaves.set(path, labels.join(', '));
+      }
+
+      return;
+    }
+    value.forEach((item, index) =>
+      collect(item, `${path}[${index + 1}]`, leaves)
+    );
+
+    return;
+  }
+  if (isRecord(value)) {
+    Object.entries(value).forEach(([key, child]) =>
+      collect(child, `${path}.${key}`, leaves)
+    );
+
+    return;
+  }
+  leaves.set(path, String(value));
+};
+
+const flatten = (payload: unknown): Leaves => {
+  const leaves: Leaves = new Map();
+  if (isRecord(payload)) {
+    Object.entries(payload)
+      .filter(([key]) => !IGNORED_FIELDS.has(key))
+      .forEach(([key, child]) => collect(child, key, leaves));
+  }
+
+  return leaves;
+};
+
+/**
+ * One row per field whose value differs between the two snapshots, with the
+ * old and new value as text. A field only one side has reads as unset on the
+ * other, which is how an added or removed member lists every field.
+ */
+export const diffMemberFields = (
+  before: unknown,
+  after: unknown
+): FieldChange[] => {
+  const previous = flatten(before);
+  const next = flatten(after);
+
+  return [...new Set([...previous.keys(), ...next.keys()])]
+    .filter((field) => previous.get(field) !== next.get(field))
+    .map((field) => ({
+      field,
+      before: previous.get(field),
+      after: next.get(field),
+    }));
+};

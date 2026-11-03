@@ -77,6 +77,7 @@ import {
   type VersionEditorState,
 } from './OntologyReleasePanel.utils';
 import OntologyReleaseReviewers from './OntologyReleaseReviewers';
+import OntologyReleaseTruncationNote from './OntologyReleaseTruncationNote';
 import OntologyReleaseValidation, {
   firstValidationErrors,
   firstWorkingErrors,
@@ -781,26 +782,29 @@ const OntologyReleasePanel = ({
   );
 
   const renderChangesPagination = () => (
-    <Box gap={2}>
-      <Button
-        color="secondary"
-        data-testid="ontology-working-previous"
-        isDisabled={cursors.length === 1 || !hasCoherentPreview}
-        size="sm"
-        onPress={() => setCursors((previous) => previous.slice(0, -1))}>
-        {t('label.previous')}
-      </Button>
-      <Button
-        color="secondary"
-        data-testid="ontology-working-next"
-        isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
-        size="sm"
-        onPress={() =>
-          setCursors((previous) => [...previous, changes.data?.paging.after])
-        }>
-        {t('label.next')}
-      </Button>
-    </Box>
+    <>
+      <OntologyReleaseTruncationNote working={working.data} />
+      <Box gap={2}>
+        <Button
+          color="secondary"
+          data-testid="ontology-working-previous"
+          isDisabled={cursors.length === 1 || !hasCoherentPreview}
+          size="sm"
+          onPress={() => setCursors((previous) => previous.slice(0, -1))}>
+          {t('label.previous')}
+        </Button>
+        <Button
+          color="secondary"
+          data-testid="ontology-working-next"
+          isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
+          size="sm"
+          onPress={() =>
+            setCursors((previous) => [...previous, changes.data?.paging.after])
+          }>
+          {t('label.next')}
+        </Button>
+      </Box>
+    </>
   );
 
   const renderVersionError = () =>

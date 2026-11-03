@@ -28,6 +28,10 @@ import {
 import { Stage } from '../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../generated/type/ontologyState';
 import APIClient from '../../../rest/axiosClient';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../test/unit/enUsTranslation';
 import { runQueryNotificationsSynchronously } from '../../../test/unit/test-utils';
 import { useApplicationStore } from '../../useApplicationStore';
 import { useOntologyPublication } from './useOntologyPublication';
@@ -217,6 +221,29 @@ it('opens the latest Draft when active is older, and keeps current separate from
   }
 
   expect(hook.result.current.current.value.candidate?.id).toBe(releaseId(5));
+});
+
+it('titles the review task with the ontology and the semantic version', async () => {
+  useEnUsTranslations();
+  const hook = await setup();
+  post.mockImplementation(async (url) => {
+    if (url === `/ontologies/${owner}/releases`) {
+      return { data: makeRelease(currentState.lastReleaseRevision + 1) };
+    }
+
+    throw new Error('Response lost after the task was created');
+  });
+  await act(async () => {
+    await hook.result.current.captureAndRequestApproval(currentState, {
+      versionBump: VersionBump.Minor,
+    });
+  });
+
+  expect(post).toHaveBeenCalledWith(
+    '/tasks',
+    expect.objectContaining({ displayName: 'Review Sales v1.5.0' })
+  );
+  useKeyEchoTranslations();
 });
 
 it('does not create a second task after an unknown task outcome returns Draft without a task', async () => {

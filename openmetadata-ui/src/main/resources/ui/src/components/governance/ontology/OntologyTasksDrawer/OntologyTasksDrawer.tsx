@@ -58,9 +58,11 @@ import {
   buildResolveBody,
   getTaskResolveActions,
 } from '../../../discovery/personal-space/InboxPage/taskResolve.utils';
+import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
 import OntologyTaskDetail from './OntologyTaskDetail';
 import OntologyTaskThread from './OntologyTaskThread';
+import { getOpenReviews } from './OntologyTasksDrawer.utils';
 
 type Props = {
   /** The ontology in view; its latest decided review is announced to the requester. */
@@ -85,6 +87,9 @@ type Detail = {
 // ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
 const PAGE_SIZE = 25;
 const CURSOR_HISTORY_LIMIT = 40;
+// The reviews endpoint cannot filter by ontology, so the banner reads the
+// server's largest page and picks the selected ontology's reviews from it.
+const BANNER_SCAN_LIMIT = 100;
 
 // The trim keeps page 1 first, so Previous can still walk back to it.
 const pushCursor = (cursors: (string | undefined)[], after?: string) => {
@@ -199,14 +204,20 @@ const OntologyTasksDrawer = ({
     gcTime: 0,
     retry: false,
     queryFn: ({ signal }) =>
-      getOntologyReleaseReviews({ view: 'pending', limit: 1 }, signal),
+      getOntologyReleaseReviews(
+        { view: 'pending', limit: BANNER_SCAN_LIMIT },
+        signal
+      ),
   });
   const created = useQuery({
     queryKey: [...queuesKey, account, 'created-banner'],
     gcTime: 0,
     retry: false,
     queryFn: ({ signal }) =>
-      getOntologyReleaseReviews({ view: 'created', limit: 1 }, signal),
+      getOntologyReleaseReviews(
+        { view: 'created', limit: BANNER_SCAN_LIMIT },
+        signal
+      ),
   });
   const queue = useQuery({
     queryKey: [
@@ -228,7 +239,12 @@ const OntologyTasksDrawer = ({
         signal
       ),
   });
-  const openBannerReview = pending.data?.data[0] ?? created.data?.data[0];
+  const openReviews = getOpenReviews(
+    ontologyId,
+    pending.data?.data,
+    created.data?.data
+  );
+  const openBannerReview = openReviews[0];
   const decided = useDecidedReview({
     account,
     ontologyId,
@@ -242,7 +258,7 @@ const OntologyTasksDrawer = ({
     queryKey: ['ontology-review-banner', account, bannerReview?.release.id],
     gcTime: 0,
     retry: false,
-    enabled: Boolean(bannerReview),
+    enabled: Boolean(bannerReview) && Boolean(ontologyId),
     queryFn: ({ signal }) =>
       getOntologyRelease(bannerReview?.release.id ?? '', signal),
   });
@@ -624,8 +640,19 @@ const OntologyTasksDrawer = ({
       {t('label.task-plural')}
     </Button>
   );
-  const renderBanner = () =>
-    bannerReview && bannerRelease.data ? (
+  const renderOpenReviews = () => (
+    <OntologyOpenReviewsBanner
+      reviews={openReviews}
+      onOpenList={() => setListOpen(true)}
+      onOpenTask={onTaskChange}
+    />
+  );
+  const renderBanner = () => {
+    if (!ontologyId) {
+      return renderOpenReviews();
+    }
+
+    return bannerReview && bannerRelease.data ? (
       <OntologyReviewBanner
         release={bannerRelease.data}
         review={bannerReview}
@@ -634,6 +661,7 @@ const OntologyTasksDrawer = ({
         onOpenTask={onTaskChange}
       />
     ) : null;
+  };
   const renderQueue = () => (
     <Tabs
       selectedKey={view}

@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import {
+  AssigneeStatus,
   EntityStatus,
+  OntologyReleaseReview,
   ReviewVoteDecision,
 } from '../../../../generated/api/data/ontologyReleaseReview';
 import {
@@ -24,6 +26,7 @@ import {
   release,
   review,
 } from '../OntologyTasksDrawer/OntologyTasksDrawer.mock';
+import OntologyOpenReviewsBanner from './OntologyOpenReviewsBanner';
 import OntologyReviewBanner from './OntologyReviewBanner';
 
 it('shows an amber pending review and navigates using the UUID', () => {
@@ -163,5 +166,183 @@ describe('decision banner for the requester', () => {
     expect(
       screen.queryByTestId('ontology-review-decision-banner')
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('pending banner text', () => {
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  const author = { id: 'author', name: 'Author', type: 'user' };
+  const alice = { id: 'alice', name: 'alice', type: 'user' };
+  const bob = { id: 'bob', name: 'bob', type: 'user' };
+  const asRequester = (
+    changes: Partial<OntologyReleaseReview>,
+    version?: string
+  ) => (
+    <OntologyReviewBanner
+      release={{
+        ...release,
+        semanticVersion: version,
+        changeSummary: { added: 1, changed: 1, removed: 0, deprecated: 0 },
+      }}
+      review={{ ...review, callerCanVote: false, ...changes }}
+      viewerId="author"
+      viewerName="Author"
+      onOpenTask={jest.fn()}
+    />
+  );
+
+  it('names the ontology, the version, the reviewers and the task', () => {
+    render(
+      asRequester(
+        {
+          assignees: [
+            { assignee: alice, status: AssigneeStatus.Pending },
+            { assignee: bob, status: AssigneeStatus.Approved },
+          ],
+        },
+        '0.1.0'
+      )
+    );
+
+    const banner = screen.getByTestId('ontology-review-banner');
+
+    expect(banner).toHaveTextContent('In review · waiting on alice');
+    expect(banner).toHaveTextContent(
+      'Commerce · v0.1.0 · 2 Changes · Author · TASK-00042'
+    );
+    expect(banner).not.toHaveTextContent('Unavailable');
+  });
+
+  it('calls a release that has no version yet a Draft, never Unavailable', () => {
+    render(asRequester({}));
+
+    expect(screen.getByTestId('ontology-review-banner')).toHaveTextContent(
+      'Commerce · Draft · 2 Changes'
+    );
+    expect(screen.queryByText(/Unavailable/)).not.toBeInTheDocument();
+  });
+
+  it('says who approved when nobody is left to vote', () => {
+    render(
+      asRequester({
+        assignees: [{ assignee: bob, status: AssigneeStatus.Approved }],
+      })
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Approved by bob · ready to publish'
+    );
+  });
+
+  it('says the review can be published when there are no reviewers at all', () => {
+    render(asRequester({ assignees: [] }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'In review · ready to publish'
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/waiting on\s*$/);
+  });
+
+  it('keeps the reviewer-facing title when the viewer can vote', () => {
+    render(
+      <OntologyReviewBanner
+        release={release}
+        review={review}
+        viewerName="Reviewer"
+        onOpenTask={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Reviewer, a release is waiting for your review'
+    );
+  });
+});
+
+describe('open reviews in All ontologies', () => {
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  const reviewOn = (name: string, taskId: string): OntologyReleaseReview => ({
+    ...review,
+    ontology: { id: name, name, type: 'ontology' },
+    task: { id: 'uuid-' + taskId, type: 'task' },
+    taskId,
+    assignees: [
+      {
+        assignee: { id: 'alice', name: 'alice', type: 'user' },
+        status: AssigneeStatus.Pending,
+      },
+    ],
+  });
+
+  it('names the ontology on each line and opens that review', () => {
+    const open = jest.fn();
+    render(
+      <OntologyOpenReviewsBanner
+        reviews={[reviewOn('Sales', 'TASK-1'), reviewOn('Finance', 'TASK-2')]}
+        onOpenList={jest.fn()}
+        onOpenTask={open}
+      />
+    );
+
+    const lines = within(
+      screen.getByTestId('ontology-open-reviews-banner')
+    ).getAllByText(/waiting on/);
+
+    expect(lines.map((line) => line.textContent)).toEqual([
+      'Sales · In review · waiting on alice · TASK-1',
+      'Finance · In review · waiting on alice · TASK-2',
+    ]);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'View task' })[1]);
+
+    expect(open).toHaveBeenCalledWith('uuid-TASK-2');
+  });
+
+  it('shows a count with a link to the list when there are many', () => {
+    const openList = jest.fn();
+    render(
+      <OntologyOpenReviewsBanner
+        reviews={['A', 'B', 'C', 'D'].map((name) =>
+          reviewOn(name, 'TASK-' + name)
+        )}
+        onOpenList={openList}
+        onOpenTask={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('ontology-open-reviews-banner')
+    ).toHaveTextContent('4 reviews in progress');
+    expect(screen.queryByText(/waiting on/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'View All' }));
+
+    expect(openList).toHaveBeenCalled();
+  });
+
+  it('renders nothing when no review is open', () => {
+    const { container } = render(
+      <OntologyOpenReviewsBanner
+        reviews={[]}
+        onOpenList={jest.fn()}
+        onOpenTask={jest.fn()}
+      />
+    );
+
+    expect(container).toBeEmptyDOMElement();
   });
 });
