@@ -242,7 +242,8 @@ public class ContextMemoryReconciler {
       if (score >= MemoryTextSimilarity.IDENTITY_THRESHOLD) {
         boolean conflicting =
             MemoryTextSimilarity.hasConflictingNumbers(pill.getAnswer(), candidate.getAnswer());
-        boolean sameQuestion = questionKey(pill).equals(questionKey(candidate));
+        boolean sameQuestion =
+            MemoryTextSimilarity.sameQuestion(pill.getQuestion(), candidate.getQuestion());
         clearing.add(new Candidate(entry.getKey(), score, conflicting, sameQuestion));
       }
     }

@@ -36,10 +36,30 @@ class MemoryTextSimilarityTest {
     assertFalse(
         MemoryTextSimilarity.hasConflictingNumbers(
             "15% (Sales handbook, section 3)", "15% (Sales handbook, section 4)"));
-    assertFalse(MemoryTextSimilarity.hasConflictingNumbers("30 days, pages 3-5", "30 days, p. 6"));
+    assertFalse(
+        MemoryTextSimilarity.hasConflictingNumbers("30 days (pages 3-5)", "30 days (p. 6)"));
+    assertFalse(
+        MemoryTextSimilarity.hasConflictingNumbers(
+            "$75 per day (Table 3)", "$75 per day (Table 4)"));
     assertTrue(MemoryTextSimilarity.hasConflictingNumbers("15% (section 3)", "25% (section 3)"));
     assertTrue(
         MemoryTextSimilarity.hasConflictingNumbers(
             "Per section 3, 25% commission", "Per section 3, 15% commission"));
+    // Outside parentheses the number after a citation word may be the value itself.
+    assertTrue(
+        MemoryTextSimilarity.hasConflictingNumbers("Section 3 – 25 days", "Section 3 – 30 days"));
+    assertTrue(
+        MemoryTextSimilarity.hasConflictingNumbers("Results per page 50", "Results per page 100"));
+  }
+
+  @Test
+  void aQuestionInOtherWordsOfTheSameVocabularyIsTheSameQuestion() {
+    assertTrue(
+        MemoryTextSimilarity.sameQuestion(
+            "What is the refund window?", "What's the refund window?"));
+    assertFalse(
+        MemoryTextSimilarity.sameQuestion(
+            "How many vacation days do employees get per year?",
+            "How many vacation days do contractors get per year?"));
   }
 }

@@ -489,6 +489,21 @@ class ContextMemoryReconcilerTest {
     assertEquals(CONTRACTORS, captor.getValue().getQuestion());
   }
 
+  /** The model rewords questions between runs; a correction still claims its own value. */
+  @Test
+  void aCorrectedPillClaimsItsOwnQuestionAskedInOtherWords() {
+    existing(
+        pill(
+            "What is the refund window?",
+            "45 days",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED));
+
+    reconcile(List.of(derived("What's the refund window?", "30 days")));
+
+    verify(memoryRepository, never()).create(any(), any());
+  }
+
   /** With only another fact's value derived, the correction must not swallow it. */
   @Test
   void aCorrectedPillNeverTakesAnotherQuestionsValue() {

@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -20,11 +21,18 @@ final class MemoryTextSimilarity {
    */
   static final double IDENTITY_THRESHOLD = 0.5;
 
-  /** A citation names where a value is written, not the value: "section 3", "§ 4.2", "pp. 3-5". */
-  private static final Pattern CITATIONS =
+  /**
+   * A citation in parentheses names where a value is written, not the value: "(section 3)",
+   * "(Table 4)", "(§ 4.2)", "(pp. 3-5)". Outside parentheses a word like "page" may be the fact
+   * itself ("50 results per page"), so only parenthesized citations are set aside.
+   */
+  private static final Pattern PARENTHESIZED = Pattern.compile("\\(([^()]*)\\)");
+
+  private static final Pattern CITATION =
       Pattern.compile(
-          "(?i)(?:\\b(?:sections?|sec\\.|pages?|pp?\\.|chapters?|clauses?|paragraphs?|appendix)|§)"
-              + "\\s*\\d+(?:\\.\\d+)*(?:\\s*[-–&]\\s*\\d+(?:\\.\\d+)*)*");
+          "(?i)(?:\\b(?:sections?|pages?|pp?\\.|chapters?|clauses?|paragraphs?|appendix|articles?"
+              + "|tables?|figures?|annex(?:es)?|schedules?|parts?)\\s*|§\\s*)"
+              + "\\d+(?:\\.\\d+)*(?:[-–]\\d+(?:\\.\\d+)*)?");
 
   private static final Pattern NUMBERS =
       Pattern.compile("\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?");
@@ -35,10 +43,10 @@ final class MemoryTextSimilarity {
 
   /**
    * One answer replaces a number of the other: two values for one fact, not a rewording. An added
-   * or dropped number, a section, a year or an edition, is a rewording: "15%" and "15% (section
-   * 3)" agree, "15%" and "20%" do not, nor do "15% (2025)" and "20% (2025)". Numbers compare by
-   * value, so "1,500" and "1500" are one number, and a citation is no value: "section 3" and
-   * "section 4" agree.
+   * or dropped number, a year or an edition, is a rewording: "15%" and "15% (2025)" agree, "15%"
+   * and "20%" do not, nor do "15% (2025)" and "20% (2025)". Grouping commas and leading zeros
+   * aside ("1,500" is "1500"), numbers compare as written, and a parenthesized citation is no
+   * value: "15% (section 3)" and "15% (section 4)" agree.
    */
   static boolean hasConflictingNumbers(String answerA, String answerB) {
     Set<String> a = numbers(answerA);
@@ -63,7 +71,27 @@ final class MemoryTextSimilarity {
   }
 
   static String withoutCitations(String text) {
-    return text == null ? null : CITATIONS.matcher(text).replaceAll(" ");
+    return text == null
+        ? null
+        : PARENTHESIZED
+            .matcher(text)
+            .replaceAll(
+                group ->
+                    Matcher.quoteReplacement(
+                        "(" + CITATION.matcher(group.group(1)).replaceAll(" ") + ")"));
+  }
+
+  /** One question in other words of the same vocabulary: "What is" and "What's" ask the same. */
+  static boolean sameQuestion(String questionA, String questionB) {
+    Set<String> a = tokenize(questionA);
+    Set<String> b = tokenize(questionB);
+    return a.isEmpty() && b.isEmpty()
+        ? normalize(questionA).equals(normalize(questionB))
+        : a.equals(b);
+  }
+
+  private static String normalize(String text) {
+    return text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
   }
 
   static double weighted(String questionA, String answerA, String questionB, String answerB) {
