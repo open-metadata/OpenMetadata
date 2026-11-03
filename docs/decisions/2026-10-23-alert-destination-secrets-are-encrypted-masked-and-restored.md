@@ -1,7 +1,7 @@
 # An alert destination's endpoint, header values and credentials are encrypted at rest, masked in every response, and restored from the stored alert when the mask is sent back
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered); v5 2026-10-28 (a PATCH may not carry a stored value into a channel that does not name it a secret); v6 2026-10-29 (a receivers list is a target; a template send resolves masks as a test send does); v7 2026-11-02 (a destination may change channel while its stored secrets stay secret; user and team profile webhooks follow the same rules; 2.1.0 encrypts and masks existing rows)
+- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered); v5 2026-10-28 (a PATCH may not carry a stored value into a channel that does not name it a secret); v6 2026-10-29 (a receivers list is a target; a template send resolves masks as a test send does); v7 2026-11-03 (an id the alert does not store, or one the request repeats, is matched by position); v8 2026-11-03 (a destination may change channel while its stored secrets stay secret; user and team profile webhooks follow the same rules; 2.1.0 encrypts and masks existing rows)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `DestinationSecretsTest`, `DestinationSecretGuardsTest`, `DestinationSecretGuardsTest#aDestinationMayChangeChannelWhileItsStoredSecretsStaySecret`, `EventSubscriptionResourceIT#test_destinationSecretsAreMaskedEncryptedAndRestored`, `EventSubscriptionResourceIT#test_patchCannotCarryAStoredSecretIntoAChannelThatDoesNotMaskIt`, `EventSubscriptionResourceIT#test_receiversCannotRedirectStoredCredentials`, `EventSubscriptionResourceIT#test_ownersDestinationMovesFromEmailToSlack`, `TemplateTestSendIT`, `ProfileWebhookSecretsTest`, `WebhookSecretStoresTest`, `ProfileWebhookSecretsIT`, `WebhookSecretsMigrationIT`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
@@ -27,8 +27,10 @@ mask back, decrypt only at the point of use.
   a configuration is read to send (`WebhookConfigRules.stored` / `submitted`), and masks them with
   `PasswordEntityMasker.PASSWORD_MASK` in every response of `EventSubscriptionResource` and of the
   MCP tools — for every caller, bots included — including version history and change descriptions.
-- A request that sends the mask back keeps the stored value: by destination id, or, for a PUT that
-  carries no ids, by position when type and channel match. A plaintext secret equal to what the
+- A request that sends the mask back keeps the stored value: by a destination id this alert
+  stores, or, for a destination sent without one (v7:2026-11-03: or with an id the alert does not
+  store, or that the request repeats, since destination ids are the server's), by position when
+  type and channel match. A plaintext secret equal to what the
   stored ciphertext decrypts to keeps the stored ciphertext, so re-sending a configuration changes
   nothing. A mask with no stored value, ciphertext that is not the stored value, and a PATCH `copy`
   or `move` of a stored secret into another field are refused with 400.
@@ -52,7 +54,7 @@ mask back, decrypt only at the point of use.
   time and is sent the same headers and credentials, so a receivers list is a target too: a
   request that changes it, and keeps any stored or masked value at another secret field, is
   refused the same way.
-- (v7:2026-11-02) A destination an update keeps by its id may move to another channel, but every
+- (v8:2026-11-03) A destination an update keeps by its id may move to another channel, but every
   field its stored channel named a secret must be either secret on the new channel or empty;
   otherwise it would be stored and read back as written, and the update is refused with 400.
   Webhook, Slack, Microsoft Teams and Google Chat name the same fields, while email and the
@@ -68,7 +70,7 @@ mask back, decrypt only at the point of use.
   destination the users do not configure (`Owners`, `Teams`, …) is judged from its configuration
   as it would be sent, decrypted, so an update of one stays editable while its endpoint sits
   encrypted at rest.
-- (v7:2026-11-02) A user's or team's `profile.subscription` webhooks (`slack`, `msTeams`,
+- (v8:2026-11-03) A user's or team's `profile.subscription` webhooks (`slack`, `msTeams`,
   `gChat`, `generic`) are the same `Webhook` type, so `ProfileWebhookSecrets` keeps the same
   fields the same way: encrypted before the user or team is stored, masked in every response of
   `UserResource`, `TeamResource` and the MCP tools, in their version history, change descriptions
@@ -87,7 +89,7 @@ mask back, decrypt only at the point of use.
   destination otherwise edits it as the masks round-trip.
 - A client that re-creates an alert from a read copy must supply the real values; that is the
   same contract as a service connection.
-- (v7:2026-11-02) The 2.1.0 data step (`WebhookSecretsMigration`) encrypts the stored alert, user
+- (v8:2026-11-03) The 2.1.0 data step (`WebhookSecretsMigration`) encrypts the stored alert, user
   and team rows and their versions, and rewrites the stored change events of users and teams with
   the mask rather than ciphertext, since delivery reads a recipient from the stored user or team, never from an
   event. Running it again changes nothing. Search documents of users and teams drop their profile
