@@ -59,6 +59,7 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Markdown,
     SourceUrl,
+    SqlFunction,
 )
 from metadata.generated.schema.type.entityLineage import ColumnLineage, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
@@ -694,28 +695,30 @@ class TableauSource(DashboardServiceSource):
         data_model_entity: DashboardDataModel,
         upstream_data_model_entity: DashboardDataModel,
         upstream_formulas: dict[str, str] | None = None,
-    ):
+    ) -> list[ColumnLineage] | None:
         """
         Method to get the ColumnLineage list for the datamodels lineage
 
         A calculated field of the published datasource carries its formula as the column edge's
         ``function``, so selecting that edge in the lineage view shows how the field is computed.
         """
-        datamodel_column_lineage = []
+        datamodel_column_lineage: list[ColumnLineage] = []
         formulas = upstream_formulas or {}
         try:
             for data_model_col in data_model_entity.columns or []:
                 for upstream_data_model_col in upstream_data_model_entity.columns or []:
                     if data_model_col.displayName == upstream_data_model_col.displayName:
-                        from_column = upstream_data_model_col.fullyQualifiedName.root
-                        to_column = data_model_col.fullyQualifiedName.root
-                        datamodel_column_lineage.append(
-                            ColumnLineage(
-                                fromColumns=[from_column],
-                                toColumn=to_column,
-                                function=formulas.get(upstream_data_model_col.displayName),
+                        from_column = upstream_data_model_col.fullyQualifiedName
+                        to_column = data_model_col.fullyQualifiedName
+                        formula = formulas.get(upstream_data_model_col.displayName or "")
+                        if from_column and to_column:
+                            datamodel_column_lineage.append(
+                                ColumnLineage(
+                                    fromColumns=[from_column],
+                                    toColumn=to_column,
+                                    function=SqlFunction(formula) if formula else None,
+                                )
                             )
-                        )
                         datamodel_child_col_lineage = self._get_datamodel_child_col_lineage(
                             data_model_col=data_model_col,
                             upstream_data_model_col=upstream_data_model_col,
@@ -750,14 +753,15 @@ class TableauSource(DashboardServiceSource):
                 upstream_data_model_entity = self._get_datamodel(datamodel=upstream_data_model)
                 if upstream_data_model_entity:
                     # Create [Published Datasource<->Embedded Datasource] lineage
-                    yield self._get_add_lineage_request(
+                    column_lineage = self._get_datamodel_col_lineage(
+                        data_model_entity=data_model_entity,
+                        upstream_data_model_entity=upstream_data_model_entity,
+                        upstream_formulas=self._get_field_formulas(upstream_data_model),
+                    )
+                    yield self._get_add_lineage_request(  # pyright: ignore[reportReturnType]
                         to_entity=data_model_entity,
                         from_entity=upstream_data_model_entity,
-                        column_lineage=self._get_datamodel_col_lineage(
-                            data_model_entity=data_model_entity,
-                            upstream_data_model_entity=upstream_data_model_entity,
-                            upstream_formulas=self._get_field_formulas(upstream_data_model),
-                        ),
+                        column_lineage=column_lineage,  # pyright: ignore[reportArgumentType]
                     )
                     # Create [Table<->Published Datasource] lineage
                     yield from self._get_table_datamodel_lineage(
