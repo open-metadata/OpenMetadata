@@ -1132,7 +1132,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         });
         const isPendingFurtherApproval =
           isTaskPendingFurtherApproval(updatedTask);
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: GLOSSARY_PROPOSALS_QUERY_KEY,
         });
 

@@ -68,8 +68,8 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
     const rowKey =
       movedTeam?.to?.fullyQualifiedName ?? movedTeam?.from.fullyQualifiedName;
     const row = Array.from(
-      tableRef.current?.querySelectorAll('[data-row-key]') ?? []
-    ).find((el) => el.getAttribute('data-row-key') === rowKey);
+      tableRef.current?.querySelectorAll<HTMLElement>('[data-row-key]') ?? []
+    ).find((el) => el.dataset.rowKey === rowKey);
 
     return { current: row ?? tableRef.current };
   }, [movedTeam]);

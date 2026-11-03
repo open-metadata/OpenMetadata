@@ -250,7 +250,7 @@ export const WorkflowExecutionHistory: React.FC<
             onReload={() => {
               // The retry reads the first page, so the pager must show page 1.
               setCurrentPage(1);
-              fetchExecutionHistory();
+              void fetchExecutionHistory();
             }}
           />
         )}

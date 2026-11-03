@@ -206,7 +206,7 @@ export const useSaveSystemAnnouncement = (
           )
         : createAnnouncement(request),
     onSuccess: (announcement, { original }) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: SYSTEM_ANNOUNCEMENTS_QUERY_KEY,
       });
       showSuccessToast(
@@ -231,7 +231,7 @@ export const useDeleteSystemAnnouncement = (onDeleted: () => void) => {
   return useMutation({
     mutationFn: (id: string) => deleteAnnouncement(id, true),
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: SYSTEM_ANNOUNCEMENTS_QUERY_KEY,
       });
       showSuccessToast(

@@ -266,7 +266,7 @@ const SchemaTable = () => {
       }
     };
 
-    fetchColumnTypeDetail();
+    void fetchColumnTypeDetail();
 
     return () => {
       cancelled = true;

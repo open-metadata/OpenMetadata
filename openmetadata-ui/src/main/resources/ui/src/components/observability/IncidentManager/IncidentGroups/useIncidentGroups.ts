@@ -363,7 +363,7 @@ export const useIncidentGroups = () => {
         return;
       }
 
-      replaceSearch({ [INCIDENT_GROUP_BY_PARAM]: updatedGroupBy });
+      void replaceSearch({ [INCIDENT_GROUP_BY_PARAM]: updatedGroupBy });
     },
     [groupBy, replaceSearch]
   );

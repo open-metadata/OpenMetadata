@@ -831,7 +831,9 @@ const AccessControlAuditLogsPanel: React.FC<
         onConfirm={() =>
           new Promise<boolean>((resolve) => {
             settleExportRef.current = resolve;
-            handleExport().then((started) => !started && resolve(false));
+            handleExport()
+              .then((started) => !started && resolve(false))
+              .catch(() => resolve(false));
           })
         }
         onOpenChange={(open) => !open && handleExportModalClose()}
