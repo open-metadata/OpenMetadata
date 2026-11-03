@@ -37,12 +37,25 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
       "You extract reusable company knowledge from a document as a JSON array. Each element is an "
           + "object with keys: title, question, answer, summary, memoryType (one of Faq, Note, "
           + "Runbook, UseCase, Preference). Capture durable facts, definitions, policies, and "
-          + "how-to guidance. Return ONLY the JSON array, no prose.";
+          + "how-to guidance. When the document gives different values for the same fact, "
+          + "return one element per value, each stating only its own value and the section it "
+          + "comes from; never merge them or choose one, even when a section says it is newer. "
+          + "Return ONLY the JSON array, no prose.";
 
   private final LLMCompletionClient llmClient;
+  private final ContextMemoryStatus initialStatus;
 
   public ContextMemoryExtractor(LLMCompletionClient llmClient) {
+    this(llmClient, ContextMemoryStatus.APPROVED);
+  }
+
+  /**
+   * A provider that reviews extracted memories before they ground answers starts them Unprocessed.
+   * ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values
+   */
+  public ContextMemoryExtractor(LLMCompletionClient llmClient, ContextMemoryStatus initialStatus) {
     this.llmClient = llmClient;
+    this.initialStatus = initialStatus;
   }
 
   /**
@@ -152,14 +165,19 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
     return result;
   }
 
+  /** Drops repeats of the same fact; different answers to one question are kept as a conflict. */
   private List<KnowledgePill> dedupe(List<KnowledgePill> pills) {
-    Map<String, KnowledgePill> byQuestion = new LinkedHashMap<>();
+    Map<String, KnowledgePill> byFact = new LinkedHashMap<>();
     for (KnowledgePill pill : pills) {
       if (isValid(pill)) {
-        byQuestion.putIfAbsent(pill.question().trim().toLowerCase(Locale.ROOT), pill);
+        byFact.putIfAbsent(normalize(pill.question()) + '\n' + normalize(pill.answer()), pill);
       }
     }
-    return new ArrayList<>(byQuestion.values());
+    return new ArrayList<>(byFact.values());
+  }
+
+  private static String normalize(String text) {
+    return text.trim().toLowerCase(Locale.ROOT);
   }
 
   private boolean isValid(KnowledgePill pill) {
@@ -183,7 +201,7 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         .withSummary(pill.summary())
         .withMemoryType(parseType(pill.memoryType()))
         .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
-        .withEntityStatus(ContextMemoryStatus.APPROVED)
+        .withEntityStatus(initialStatus)
         .withSourceType(sourceType)
         .withSourceEntity(sourceRef)
         .withPrimaryEntity(sourceRef)

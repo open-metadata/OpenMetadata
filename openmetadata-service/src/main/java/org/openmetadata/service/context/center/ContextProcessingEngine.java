@@ -1,5 +1,8 @@
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
@@ -27,8 +30,16 @@ public abstract class ContextProcessingEngine {
     this.reconciler = reconciler;
   }
 
-  /** A source's current text, a stable hash of it, and the reference pills are linked back to. */
-  public record Source(String text, String hash, EntityReference sourceRef) {}
+  /**
+   * A source's current text, a stable hash of it, the reference pills are linked back to, and its
+   * owners, who own the pills so a pending one has someone to review it.
+   */
+  public record Source(
+      String text, String hash, EntityReference sourceRef, List<EntityReference> owners) {
+    public Source(String text, String hash, EntityReference sourceRef) {
+      this(text, hash, sourceRef, List.of());
+    }
+  }
 
   /** Outcome of a runExtraction call: a skip (unchanged content) or a processed run with stats. */
   public record ExtractionOutcome(
@@ -78,6 +89,9 @@ public abstract class ContextProcessingEngine {
     if (derived.chunksProcessed() != derived.chunksTotal()) {
       throw new LLMCompletionException(
           "Knowledge pill extraction did not process every source chunk");
+    }
+    if (!nullOrEmpty(source.owners())) {
+      derived.memories().forEach(memory -> memory.setOwners(List.copyOf(source.owners())));
     }
     ReconcileResult reconciled =
         reconciler.reconcile(source.sourceRef(), entityType(), derived.memories());

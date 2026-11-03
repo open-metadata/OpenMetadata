@@ -263,6 +263,53 @@ class ContextMemoryReconcilerTest {
   }
 
   @Test
+  void keepsASecondAnswerTheDocumentGivesToAnExistingQuestion() {
+    ContextMemory kept =
+        pill("Q1", "15%", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.APPROVED);
+    existing(kept);
+    ContextMemory conflicting = derived("Q1", "25%");
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(List.of(derived("Q1", "15%"), conflicting));
+
+    assertEquals(1, result.kept());
+    assertEquals(1, result.created());
+    verify(memoryRepository).create(isNull(), eq(conflicting));
+    verify(memoryRepository, never()).update(any(), any(), any(), any());
+  }
+
+  @Test
+  void reExtractionMaintainsAPillAwaitingReview() {
+    ContextMemory pending =
+        pill("Q1", "old", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.UNPROCESSED);
+    existing(pending);
+
+    ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(derived("Q1", "new")));
+
+    assertEquals(1, result.updated());
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).update(isNull(), eq(pending), captor.capture(), any());
+    assertEquals("new", captor.getValue().getAnswer());
+    assertEquals(pending.getId(), captor.getValue().getId());
+  }
+
+  /** A reviewing provider derives Unprocessed pills, so a changed fact goes back to review. */
+  @Test
+  void aChangedFactTakesTheStatusItWasDerivedIn() {
+    ContextMemory approved =
+        pill("Q1", "old", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.APPROVED);
+    existing(approved);
+    ContextMemory changed =
+        pill("Q1", "new", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.UNPROCESSED);
+
+    reconcile(List.of(changed));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).update(isNull(), eq(approved), captor.capture(), any());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, captor.getValue().getEntityStatus());
+  }
+
+  @Test
   void updatesPillInPlaceWhenAnswerChanges() {
     ContextMemory original =
         pill("Q1", "old", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.APPROVED);
