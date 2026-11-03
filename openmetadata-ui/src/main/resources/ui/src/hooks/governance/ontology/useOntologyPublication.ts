@@ -129,6 +129,10 @@ const useScopedNotice = (scopeKey: string, owner: { current: string }) => {
   };
 };
 
+// Readers without edit rights never request the working diff, so it cannot gate their reads.
+const isWorkingReady = (canEdit: boolean, workingLoaded: boolean) =>
+  !canEdit || workingLoaded;
+
 export const useOntologyPublication = (
   ontologyId: string,
   canEdit: boolean,
@@ -203,6 +207,7 @@ export const useOntologyPublication = (
   });
   const working = useQuery({
     queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontologyId, undefined, userId],
+    enabled: canEdit,
     retry: false,
     gcTime: 0,
     queryFn: async ({ signal }) => {
@@ -281,7 +286,10 @@ export const useOntologyPublication = (
   });
   const activeRelease = useQuery({
     queryKey: [RELEASE_QUERY, ontologyId, activeReleaseId, userId],
-    enabled: [Boolean(activeReleaseId), working.isSuccess].every(Boolean),
+    enabled: [
+      Boolean(activeReleaseId),
+      isWorkingReady(canEdit, working.isSuccess),
+    ].every(Boolean),
     retry: false,
     gcTime: 0,
     queryFn: ({ signal }) => readRelease(activeReleaseId, signal),
@@ -289,7 +297,7 @@ export const useOntologyPublication = (
   const versionBase = selectVersionBase(
     activeRelease,
     Boolean(activeReleaseId),
-    [state.isSuccess, working.isSuccess].every(Boolean)
+    [state.isSuccess, isWorkingReady(canEdit, working.isSuccess)].every(Boolean)
   );
   const reviewTask = reviewTaskToRead(
     projection.data?.publicationStatus?.latest?.stage,
