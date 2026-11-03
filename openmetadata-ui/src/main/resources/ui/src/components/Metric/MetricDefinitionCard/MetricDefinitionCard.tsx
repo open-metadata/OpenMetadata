@@ -445,7 +445,11 @@ const MetricDefinitionCard = ({
       />
       <Card.Content>
         <Box direction="col" gap={5}>
-          <MetricExpression isEmbedded metric={metric} />
+          <MetricExpression
+            isEmbedded
+            changeDescription={changeDescription}
+            metric={metric}
+          />
           {/* Columns follow the card's width, not the viewport's: the card is often narrow (version
               view, beside a panel), where viewport breakpoints let one-word labels overlap. */}
           <Box

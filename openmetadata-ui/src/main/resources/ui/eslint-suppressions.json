@@ -813,11 +813,6 @@
       "count": 1
     }
   },
-  "src/components/DataQuality/AddDataQualityTest/components/AddTestSuitePipeline.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 1
-    }
-  },
   "src/components/DataQuality/IncidentManager/SqlQueryTab/SqlQueryTab.component.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 1

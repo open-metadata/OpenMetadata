@@ -112,6 +112,7 @@ import {
   getCSVStringFromColumnsAndDataSource,
   getFailedImportRowIds,
   normalizeCsvLineBreaks,
+  restoreFormula,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import entityBulkEditConfigClassBase, {
@@ -847,7 +848,7 @@ const BulkEntityImportPage = () => {
       // results.data is returning data with unknown type
       const cellEditable = true;
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
-        results.data as string[][],
+        (results.data as string[][]).map((row) => row.map(restoreFormula)),
         importedEntityType,
         {
           user: entityRules.canAddMultipleUserOwners,

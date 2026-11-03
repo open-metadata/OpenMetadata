@@ -202,6 +202,7 @@ const TestSuiteDetail = () => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
@@ -291,7 +292,10 @@ const TestSuiteDetail = () => {
     if (activeTab === EntityTabs.PIPELINE) {
       return (
         <div className="tw:w-full">
-          <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+          <TestSuitePipelineTab
+            testSuite={testSuite}
+            onPipelinesChange={handlePipelinesChange}
+          />
         </div>
       );
     }

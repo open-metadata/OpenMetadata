@@ -168,6 +168,8 @@ export const DataAssetsHeader = ({
   entityType,
   openTaskCount,
   isRecursiveDelete,
+  softDeleteMessagePostFix,
+  hardDeleteMessagePostFix,
   onRestoreDataAsset,
   onDisplayNameUpdate,
   afterDomainUpdateAction,
@@ -957,7 +959,9 @@ export const DataAssetsHeader = ({
       entityName={dataAsset.name}
       entityType={entityType}
       extraDropdownContent={extraDropdownContent}
+      hardDeleteMessagePostFix={hardDeleteMessagePostFix}
       isRecursiveDelete={isRecursiveDelete}
+      softDeleteMessagePostFix={softDeleteMessagePostFix}
       onAnnouncementClick={
         flags.canEditAll ? handleOpenAnnouncementDrawer : undefined
       }

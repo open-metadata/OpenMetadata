@@ -216,10 +216,25 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     );
   }, [setSelectedQuickFilters]);
 
-  // Any narrowing/widening of the result set (search term or quick filter)
-  // must re-fetch starting from page 1 of the new set, otherwise a stale
-  // `currentPage` can request a `from` offset past the narrowed result count
-  // and render an empty table (with no pager at the default page size).
+  // Any narrowing/widening of the result set (search term, quick filter, or
+  // node-depth change) must re-fetch starting from page 1 of the new set,
+  // otherwise a stale `currentPage` can request a `from` offset past the
+  // narrowed result count and render an empty table (with no pager at the
+  // default page size). The node-depth dropdown rewrites only the `depth`
+  // URL param (see CustomControls), so the reset on that path is wired here
+  // via an effect keyed on `nodeDepth`. Comparing against the previous depth
+  // keeps a URL deep-link to a specific page (e.g. `?depth=3&currentPage=2`)
+  // on its page, and ignores the new `handlePageChange` identity usePaging
+  // hands out on every page change — only a *change* of depth resets.
+  const previousNodeDepthRef = useRef(nodeDepth);
+  useEffect(() => {
+    if (previousNodeDepthRef.current === nodeDepth) {
+      return;
+    }
+    previousNodeDepthRef.current = nodeDepth;
+    handlePageChange(1);
+  }, [nodeDepth, handlePageChange]);
+
   const handlePageReset = useCallback(() => {
     handlePageChange(1);
   }, [handlePageChange]);
